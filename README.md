@@ -19,7 +19,7 @@
 - [AI Integration](#ai-integration)
 - [Agent Manager](#agent-manager)
 - [Supervisor System](#supervisor-system)
-- [Scheduler System](#scheduler-system)
+
 - [System Monitor](#system-monitor)
 - [MCP Server](#mcp-server)
 - [Task Manager](#task-manager)
@@ -38,11 +38,11 @@ The Nexus transforms a local development machine into a connected fortress, brid
 
 - **Project Discovery** — Auto-detect and display projects from `~/Projects` directory
 - **Git Management** — Initialize repos, add remotes, commit and push with AI-generated messages
-- **AI Terminal** — Multi-provider chat interface (Google Gemini, Anthropic Claude, OpenAI)
+- **AI Terminal** — Multi-provider chat interface (Google Gemini, Anthropic Claude, OpenAI, xAI Grok)
 - **Task Manager** — Full AI-powered workflow: Research → Plan → Implement → Complete
 - **Agent Manager** — Configure and customize AI agents via dashboard UI
 - **Supervisor Agent** — Orchestrates task manager with dynamic intent-based routing
-- **Scheduler System** — Cron-based automated agent task execution with memory and health monitoring
+- **Cortex** — LangGraph-based "System 2" reasoning engine for complex planning with adversarial council review
 - **System Monitor** — Real-time CPU, memory, and port monitoring dashboard
 - **Code Critic** — AI-powered code review before file writes
 - **MCP Server** — Model Context Protocol integration for seamless AI agent interoperability
@@ -82,11 +82,12 @@ The Nexus Protocol upgrade transforms the Agent Designer into a universal, cross
 │  • Agent Manager    │              │         │                │        │
 │  • System Monitor   │              │         ▼                ▼        │
 │  • Activity Feed    │              │  ┌──────────────┐ ┌────────────┐  │
-└─────────────────────┘              │  │  Services    │ │ LangGraph  │  │
-                                     │  │  Supervisor  │ │ Core Agent │  │
-                                     │  │  Scheduler   │ │ Engine     │  │
-                                     │  └──────────────┘ └────────────┘  │
-                                     └───────────────────────────────────┘
+│                     │              │  │  Services    │ │ LangGraph  │  │
+│                     │              │  │  Supervisor  │ │ Cortex     │  │
+│                     │              │  │  Critic      │ │ Engine     │  │
+│                     │              │  └──────────────┘ └────────────┘  │
+│                     │              └───────────────────────────────────┘
+└─────────────────────┘
 ```
 
 ### Directory Structure
@@ -99,7 +100,6 @@ TheNexus/                       # Flat monorepo
 │   ├── mcp.js                  # MCP Server (stdio)
 │   ├── agent/                  # Multi-provider AI agent
 │   ├── services/               # Supervisor, critic, system monitor
-│   ├── scheduler/              # Cron-based automation
 │   ├── tools/                  # Filesystem & command tools
 │   └── utils/                  # Retry utilities
 ├── dashboard/                  # Next.js 16 frontend
@@ -127,12 +127,9 @@ TheNexus/                       # Flat monorepo
 │   ├── cortex/                 # AI brain tests
 │   └── nexus-builder/          # Builder tests
 ├── db/                         # Supabase schema & migrations
-├── docker/                     # All Dockerfiles & compose files
+├── docker/                     # Sandbox Dockerfiles
 ├── docs/                       # Documentation
-├── scripts/                    # Utility scripts
 ├── package.json                # Node.js dependencies (root)
-├── requirements.txt            # Python dependencies
-├── pytest.ini                  # Test configuration
 ├── start-nexus.bat             # Windows full startup
 ├── start-local.bat             # Local dev startup (no tunnel)
 └── .env                        # Environment variables
@@ -191,7 +188,7 @@ node server/server.js
 cd dashboard && npm run dev
 
 # Terminal 3 - Tunnel (optional)
-cloudflared tunnel --config cloudflared_config.yml run vibe-nexus
+cloudflared tunnel --config cloudflared_config.yml run <your-tunnel-name>
 ```
 
 ### Access Points
@@ -354,16 +351,6 @@ Each project can store context documents that are injected into AI prompts for b
 | `PUT` | `/api/agents/:id` | Update agent configuration |
 | `PUT` | `/api/agents/critic/toggle` | Enable/disable code critic |
 
-### Scheduler
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/scheduler/tasks` | List all scheduled tasks |
-| `POST` | `/api/scheduler/tasks` | Create a scheduled task |
-| `PUT` | `/api/scheduler/tasks/:id` | Update a scheduled task |
-| `DELETE` | `/api/scheduler/tasks/:id` | Delete a scheduled task |
-| `POST` | `/api/scheduler/tasks/:id/run` | Manually trigger a task |
-| `GET` | `/api/scheduler/tasks/:id/history` | Get execution history |
 
 ### Pin Management
 
@@ -409,7 +396,7 @@ Each project can store context documents that are injected into AI prompts for b
 
 ### Multi-Provider Support
 
-The system supports three AI providers with automatic format conversion:
+The system supports four AI providers with automatic format conversion:
 
 #### Google Gemini
 - Models: `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash`
@@ -425,6 +412,11 @@ The system supports three AI providers with automatic format conversion:
 - Models: `gpt-4o`, `gpt-5.2`, etc.
 - Supports: `reasoning_effort`
 - Note: Full implementation pending in chat endpoint
+
+#### xAI Grok
+- Models: `grok-3`, `grok-3-mini`
+- Supports: Standard chat completion format
+- Used for: General-purpose tasks
 
 ### AI Terminal Component
 
@@ -531,88 +523,6 @@ await runSupervisor({
 
 ---
 
-## Scheduler System
-
-The Scheduler System (`server/scheduler/`) provides cron-based automation for AI agent tasks.
-
-### Core Components
-
-#### SchedulerService
-The main scheduling engine that:
-- Polls for due tasks
-- Dispatches tasks for execution
-- Manages concurrent execution limits
-- Handles retries and failures
-- Updates task state and logs
-
-#### TaskStore
-File-based persistent storage for:
-- Scheduled task definitions
-- Execution logs
-- Agent memories
-
-#### AgentMemorySystem
-Provides episodic memory for agent continuity:
-- Stores decisions, observations, feedback, errors, insights
-- Retrieves relevant memories for context
-- Consolidates old memories into summaries
-
-#### SandboxExecutor
-Secure execution environment with:
-- Resource limits (time, memory)
-- Command validation and blocking
-- Allowed commands whitelist
-- Process management
-
-#### HealthMonitor
-System health checks and alerting:
-- Component status monitoring
-- Failure notifications
-- Recovery suggestions
-- Health history tracking
-
-### Built-in Agent Types
-
-| Type | Description |
-|------|-------------|
-| `dependency-audit` | `npm audit` and outdated package checks |
-| `git-status` | Repository status and contributor analysis |
-| `code-summary` | Code metrics and TODO finder |
-| `security-sweep` | Comprehensive security scanning |
-| `custom` | User-defined tasks |
-
-### Cron Expression Support
-
-The CronParser supports:
-- Standard 5-field cron expressions
-- Presets: `@hourly`, `@daily`, `@weekly`, `@monthly`
-- Natural language conversion: "every 2 hours", "at 9am on monday"
-
-### Example: Creating a Scheduled Task
-
-```javascript
-const { createSchedulerSystem } = require('./src/scheduler');
-
-const system = await createSchedulerSystem({
-    dataDir: './data/scheduler'
-}).start();
-
-await system.taskStore.createTask({
-    name: 'Daily Dependency Audit',
-    description: 'Check for vulnerabilities and outdated packages',
-    cronExpression: '0 9 * * *',  // Every day at 9 AM
-    agentType: 'dependency-audit',
-    agentConfiguration: {
-        checkVulnerabilities: true,
-        checkOutdated: true,
-        severityThreshold: 'moderate'
-    },
-    projectId: 'TheNexus'
-});
-```
-
----
-
 ## System Monitor
 
 The System Monitor (`server/services/system-monitor.js`) provides real-time system resource information.
@@ -685,7 +595,7 @@ Connect to the Nexus MCP server from Antigravity or other MCP clients:
 {
     "name": "local-nexus",
     "command": "node",
-    "args": ["C:\\Projects\\TheNexus\\server\\mcp.js"]
+    "args": ["path/to/TheNexus/server/mcp.js"]
 }
 ```
 
@@ -927,7 +837,6 @@ The critic can be toggled on/off via the Agent Manager UI.
 2. **Project Scoping** — When `scopedProject` is set, agent cannot access other projects
 3. **Command Blocking** — Dangerous commands (`rm -rf /`, `format`, `mkfs`) are blocked
 4. **Timeout** — Commands timeout after 30 seconds
-5. **Sandbox Execution** — Scheduled tasks run in isolated environments
 
 ---
 
@@ -939,12 +848,11 @@ The critic can be toggled on/off via the Agent Manager UI.
 |-----------|-------------|
 | `project-card.tsx` | Project tile with git status, actions |
 | `ai-terminal.tsx` | Multi-provider AI chat interface |
-| `feature-pipeline.tsx` | Feature status Kanban board |
-| `feature-detail-modal.tsx` | Full feature workflow UI |
-| `feature-archive.tsx` | View completed/rejected features |
+| `task-pipeline.tsx` | Task status Kanban board |
+| `task-detail-modal.tsx` | Full task workflow UI |
+| `task-archive.tsx` | View completed/rejected tasks |
 | `agent-manager.tsx` | Configure AI agents |
 | `resource-monitor.tsx` | System monitor (CPU/memory/ports) |
-| `scheduled-agents-list.tsx` | View/manage scheduled tasks |
 | `activity-feed.tsx` | Recent commits across projects |
 | `new-project-modal.tsx` | Scaffold new project dialog |
 
@@ -966,16 +874,18 @@ export async function approveResearch(projectId: string, featureId: string, feed
 
 ## Cloudflare Tunnel
 
+The Nexus uses [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) for secure, Zero Trust remote access to the local dashboard and API.
+
 ### Configuration
 
 The tunnel is configured in `cloudflared_config.yml`:
 
 ```yaml
-tunnel: cfff4e97-6c4a-44cb-bc99-1b699b2f9fa3
-credentials-file: C:\Projects\TheNexus\cfff4e97-6c4a-44cb-bc99-1b699b2f9fa3.json 
+tunnel: <your-tunnel-id>
+credentials-file: /path/to/<your-tunnel-id>.json
 
 ingress:
-  - hostname: nexus.vibeshiftai.com
+  - hostname: your-domain.com
     service: http://localhost:3000
   - service: http_status:404
 ```
@@ -985,7 +895,7 @@ ingress:
 ### Running the Tunnel
 
 ```bash
-cloudflared tunnel --config cloudflared_config.yml run vibe-nexus
+cloudflared tunnel --config cloudflared_config.yml run <your-tunnel-name>
 ```
 
 ---
@@ -994,14 +904,14 @@ cloudflared tunnel --config cloudflared_config.yml run vibe-nexus
 
 ### Adding New API Endpoints
 
-1. Add route handler in `src/server.js`
+1. Add route handler in `server/server.js`
 2. Add TypeScript client function in `dashboard/src/lib/nexus.ts`
 3. Create/update component to use the new endpoint
 
 ### Adding New Agent Tools
 
-1. Create tool definition in `src/tools/` with Zod schema
-2. Export from `src/tools/index.js`
+1. Create tool definition in `server/tools/` with Zod schema
+2. Export from `server/tools/index.js`
 3. Tools are automatically available to agent and MCP server
 
 ### Adding New AI Models
@@ -1012,10 +922,7 @@ cloudflared tunnel --config cloudflared_config.yml run vibe-nexus
 
 ### Adding New Scheduled Agent Types
 
-1. Create tool in `src/scheduler/tools/`
-2. Export from `src/scheduler/tools/index.js`
-3. Add type to `AGENT_TYPES` in `src/scheduler/index.js`
-4. Add default config to `DEFAULT_CONFIGS`
+_The scheduler module has been removed. This section is reserved for future re-implementation._
 
 ### Configuring Agents
 
@@ -1079,23 +986,6 @@ if (primaryProvider fails && GOOGLE_API_KEY exists) {
 - Diff output: Truncated to 5000 characters
 - Key file reading: Truncated to 10000 characters
 - Command output: Max buffer 1MB
-
-### 7. Supervisor vs Autopilot
-
-The `autopilot.js` service is deprecated. Use `supervisor.js` instead, which provides:
-- Dynamic intent-based routing to specialized agents
-- Task Ledger for state tracking (prevents re-execution)
-- More resilient failure handling
-- Better observability
-
-### 8. Scheduler State Persistence
-
-Scheduled tasks are stored in JSON files under `./data/scheduler/`:
-- `tasks.json` — Task definitions
-- `executions.json` — Execution logs
-- `memories.json` — Agent memories
-
-Consider migrating to PostgreSQL for production deployments.
 
 ---
 

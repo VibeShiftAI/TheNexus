@@ -14,13 +14,14 @@ server-debug.log
 node_modules/
 
 # Python virtual environment
-python/venv/
 venv/
 .venv/
+ENV/
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.Python
 *.egg-info/
 .eggs/
 
@@ -52,35 +53,8 @@ build/
 # Neo4j data files
 docker/data/neo4j_data/
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-.eggs/
-dist/
-build/
-
-# Virtual environments
-venv/
-.venv/
-ENV/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
 # SQLite databases (checkpoints)
 *.db
 
-# Logs
-*.log
-logs/
-
-# OS files
-.DS_Store
-Thumbs.db
+# Blackboard session data
+data/blackboard/
