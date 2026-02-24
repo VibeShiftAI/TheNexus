@@ -1,0 +1,17 @@
+[build]
+  base = "dashboard"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  GENERATE_SOURCEMAP = "false"
+  NODE_VERSION = "20"
+  # Exclude env vars from secrets scanning that are intentionally in build output:
+  # - NEXT_PUBLIC_* vars are embedded in client bundles by Next.js (expected)
+  # - SUPABASE_URL/ANON_KEY are used for client auth (public, safe to expose)
+  # - PORT/PROJECT_ROOT are local dev config, not actual secrets
+  SECRETS_SCAN_OMIT_KEYS = "PORT,PROJECT_ROOT,NEXT_PUBLIC_API_URL,SUPABASE_URL,SUPABASE_ANON_KEY"
+
+# Required for Next.js App Router (server components, middleware, etc.)
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

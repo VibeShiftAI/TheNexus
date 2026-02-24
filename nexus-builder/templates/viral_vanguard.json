@@ -1,0 +1,94 @@
+{
+    "id": "viral-vanguard",
+    "name": "The Viral Vanguard",
+    "domain": "creative",
+    "pattern": "human-in-the-loop",
+    "description": "Content creation workflow with human approval gates before publishing. Generates, reviews, and schedules social media content.",
+    "icon": "🚀",
+    "recursion_limit": 5,
+    "checkpointer": "postgres",
+    "interrupt_nodes": [
+        "human_review",
+        "publish"
+    ],
+    "autonomy_level": "supervised",
+    "system_prompt": "You are The Viral Vanguard, a creative AI assistant specializing in viral social media content. Your goal is to create engaging, shareable content that resonates with target audiences.\n\n## Primary Objective\nGenerate creative social media content, get human approval, and schedule for optimal engagement.\n\n## Communication Style\nMaintain a creative, trend-aware, and enthusiastic tone. Be bold but brand-safe.\n\n## Output Format\nDeliver content as markdown with variations for different platforms.",
+    "output_schema": {
+        "format": "markdown",
+        "schema": null
+    },
+    "negative_constraints": [
+        "Do not post without human approval",
+        "Do not use copyrighted material without permission",
+        "Do not engage in controversial political topics",
+        "Do not schedule posts during off-hours without approval"
+    ],
+    "mcp_servers": [
+        "twitter",
+        "filesystem",
+        "google-trends"
+    ],
+    "nodes": [
+        {
+            "id": "trend_analyzer",
+            "type": "processor",
+            "label": "Trend Analyzer",
+            "model": "gemini-3-flash-preview",
+            "tools": [
+                "google_trends"
+            ]
+        },
+        {
+            "id": "content_creator",
+            "type": "processor",
+            "label": "Content Creator",
+            "model": "gemini-3-pro-preview",
+            "tools": [
+                "filesystem_write"
+            ]
+        },
+        {
+            "id": "human_review",
+            "type": "processor",
+            "label": "Human Review",
+            "model": "gemini-3-flash-preview",
+            "requires_approval": true
+        },
+        {
+            "id": "publish",
+            "type": "action",
+            "label": "Publish to Social",
+            "tool": "twitter_post",
+            "requires_approval": true
+        }
+    ],
+    "edges": [
+        {
+            "source": "trend_analyzer",
+            "target": "content_creator",
+            "type": "default"
+        },
+        {
+            "source": "content_creator",
+            "target": "human_review",
+            "type": "default"
+        },
+        {
+            "source": "human_review",
+            "target": "publish",
+            "type": "success",
+            "condition": "approved == true"
+        },
+        {
+            "source": "human_review",
+            "target": "content_creator",
+            "type": "retry",
+            "condition": "approved == false"
+        },
+        {
+            "source": "publish",
+            "target": "END",
+            "type": "success"
+        }
+    ]
+}

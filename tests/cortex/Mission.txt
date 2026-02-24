@@ -1,0 +1,1 @@
+Mission: Create a project plan to build a "Hello World" Python application. Context: I need a simple script that prints hello, and a README file. Goal: Produce a plan I can execute.

@@ -1,0 +1,48 @@
+# Sensorium Ingestion Configuration
+# Configure RSS feeds, YouTube channels, and scoring parameters
+
+# RSS/Atom Feeds
+feeds:
+  - url: "https://arxiv.org/rss/cs.AI"
+    name: "arXiv CS.AI"
+    category: "research"
+    poll_interval_minutes: 60
+    max_items_per_poll: 20
+    enabled: true
+
+  - url: "https://arxiv.org/rss/cs.LG"
+    name: "arXiv CS.LG"
+    category: "research"
+    poll_interval_minutes: 60
+    max_items_per_poll: 20
+    enabled: true
+
+  - url: "https://arxiv.org/rss/cs.CL"
+    name: "arXiv CS.CL"
+    category: "research"
+    poll_interval_minutes: 60
+    max_items_per_poll: 15
+    enabled: true
+
+# YouTube Channels (requires YOUTUBE_API_KEY env var)
+youtube_channels: []
+  # Example:
+  # - channel_id: "UC_x5XG1OV2P6uZZ5FSM9Ttw"
+  #   name: "Google Developers"
+  #   category: "technology"
+  #   poll_interval_minutes: 120
+  #   max_videos_per_poll: 5
+  #   include_transcripts: true
+  #   min_video_duration_seconds: 120
+  #   max_video_duration_seconds: 3600
+  #   enabled: true
+
+# Global Settings
+min_relevance_score: 0.5
+max_clickbait_score: 0.4
+enable_semantic_scoring: true
+deduplication_window_hours: 168  # 1 week
+
+# Rate Limiting
+max_items_per_hour: 100
+max_llm_calls_per_hour: 50

@@ -1,0 +1,19 @@
+# Squid proxy only - API runs on host
+services:
+  squid:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    container_name: sandbox-squid
+    ports:
+      - "3128:3128" # Expose for host access
+    networks:
+      - sandbox-net
+    restart: unless-stopped
+    labels:
+      - "sandbox.role=proxy"
+
+networks:
+  sandbox-net:
+    driver: bridge
+    name: sandbox-net

@@ -1,0 +1,85 @@
+# Documentation Bot Configuration
+
+# Bot identification
+bot_username: documentation-bot
+bot_email: bot@documentation.ai
+bot_name: Documentation Bot
+
+# VCS Provider Settings
+github:
+  api_token: ${GITHUB_API_TOKEN}
+  webhook_secret: ${GITHUB_WEBHOOK_SECRET}
+  api_base_url: https://api.github.com
+
+gitlab:
+  api_token: ${GITLAB_API_TOKEN}
+  webhook_token: ${GITLAB_WEBHOOK_TOKEN}
+  api_base_url: https://gitlab.com/api/v4
+
+bitbucket:
+  api_token: ${BITBUCKET_API_TOKEN}
+  api_base_url: https://api.bitbucket.org/2.0
+
+# LLM Provider Settings
+llm:
+  provider: openai  # Options: openai, anthropic
+  model: gpt-4
+  api_key: ${LLM_API_KEY}
+  temperature: 0.7
+  max_tokens: 2000
+  confidence_threshold: 0.8
+
+# Feature Detection Settings
+feature_detection:
+  keywords:
+    - feature
+    - enhancement
+    - functionality
+    - capability
+    - implement
+  exclude_keywords:
+    - fix
+    - bug
+    - refactor
+    - test
+    - docs
+    - style
+  min_additions: 20
+  min_files_changed: 1
+
+# README Update Settings
+readme:
+  update_strategy: append_to_section  # Options: append_to_section, subsection, replace
+  section_markers:
+    features: "## Features"
+    new_features: "### New Features"
+    recent_updates: "## Recent Updates"
+  max_content_length: 500
+  include_pr_reference: true
+  include_timestamp: true
+
+# Git Settings
+git:
+  temp_dir: /tmp/doc-bot
+  branch_prefix: docs/auto-update
+  commit_message_template: "📚 Update README.md with feature from PR #{pr_number}"
+
+# Security Settings
+security:
+  allowed_repositories:
+    - "*"  # Allow all, or specify list
+  blocked_users: []
+  require_labels: []  # e.g., ["documentation-approved"]
+
+# Performance Settings
+performance:
+  max_concurrent_jobs: 5
+  webhook_timeout: 30
+  llm_timeout: 60
+  git_timeout: 120
+
+# Monitoring
+monitoring:
+  metrics_enabled: true
+  log_level: INFO
+  sentry_dsn: ${SENTRY_DSN}

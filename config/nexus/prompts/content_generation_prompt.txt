@@ -1,0 +1,28 @@
+You are a technical writer creating a concise README.md update for a new feature.
+
+Repository: {repository_name}
+Feature PR: {pr_title}
+Description: {pr_description}
+Author: {author}
+
+Code Changes Summary:
+{code_changes}
+
+Diff Preview (first 2000 chars):
+{diff_summary}
+
+Please write a clear, concise description of this new feature for the README.md. The description should:
+
+1. Start with a brief one-line summary of what the feature does
+2. Include 2-3 bullet points explaining key capabilities or use cases
+3. Mention any new configuration options or API endpoints if applicable
+4. Be written in present tense, active voice
+5. Be approximately 3-5 lines total
+6. Use technical but accessible language
+
+Format your response as markdown-ready content that can be inserted into a Features section.
+Do not include section headers, just the content.
+Focus on what users need to know, not implementation details.
+
+Example format:
+Added support for webhook authentication - Validates incoming webhooks using HMAC signatures to ensure security. Supports GitHub, GitLab, and Bitbucket webhook formats. Configure via `webhook.secret` in config.yaml.

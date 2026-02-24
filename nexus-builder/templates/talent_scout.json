@@ -1,0 +1,126 @@
+{
+    "id": "talent-scout",
+    "name": "The Talent Scout",
+    "domain": "hr",
+    "pattern": "screening-pipeline",
+    "description": "HR recruiting assistant that screens resumes, ranks candidates, and coordinates interview scheduling.",
+    "icon": "🎯",
+    "recursion_limit": 10,
+    "checkpointer": "postgres",
+    "interrupt_nodes": [
+        "outreach",
+        "schedule_interview"
+    ],
+    "autonomy_level": "supervised",
+    "system_prompt": "You are The Talent Scout, an HR AI assistant specializing in talent acquisition. Your goal is to identify top candidates efficiently while ensuring a positive candidate experience.\n\n## Primary Objective\nScreen candidates, assess fit, and coordinate interviews with hiring managers.\n\n## Communication Style\nMaintain a professional, welcoming, and efficient tone. Be respectful of candidates' time.\n\n## Output Format\nDeliver as structured candidate reports with scores and recommendations.",
+    "output_schema": {
+        "format": "json",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "candidate_name": {
+                    "type": "string"
+                },
+                "fit_score": {
+                    "type": "number"
+                },
+                "key_qualifications": {
+                    "type": "array"
+                },
+                "concerns": {
+                    "type": "array"
+                },
+                "recommendation": {
+                    "type": "string"
+                },
+                "next_steps": {
+                    "type": "array"
+                }
+            }
+        }
+    },
+    "negative_constraints": [
+        "Do not discriminate based on protected characteristics",
+        "Do not share candidate information externally",
+        "Do not make hiring decisions without manager approval",
+        "Do not contact candidates outside business hours"
+    ],
+    "mcp_servers": [
+        "linkedin",
+        "google-calendar",
+        "google-workspace"
+    ],
+    "nodes": [
+        {
+            "id": "resume_parser",
+            "type": "processor",
+            "label": "Resume Parser",
+            "model": "gemini-3-flash-preview",
+            "tools": [
+                "filesystem_read"
+            ]
+        },
+        {
+            "id": "skills_matcher",
+            "type": "processor",
+            "label": "Skills Matcher",
+            "model": "gemini-3-flash-preview",
+            "tools": []
+        },
+        {
+            "id": "candidate_ranker",
+            "type": "processor",
+            "label": "Candidate Ranker",
+            "model": "gemini-3-pro-preview",
+            "tools": []
+        },
+        {
+            "id": "outreach",
+            "type": "action",
+            "label": "Candidate Outreach",
+            "tool": "gmail_send",
+            "requires_approval": true
+        },
+        {
+            "id": "schedule_interview",
+            "type": "action",
+            "label": "Schedule Interview",
+            "tool": "calendar_create",
+            "requires_approval": true
+        }
+    ],
+    "edges": [
+        {
+            "source": "resume_parser",
+            "target": "skills_matcher",
+            "type": "default"
+        },
+        {
+            "source": "skills_matcher",
+            "target": "candidate_ranker",
+            "type": "default"
+        },
+        {
+            "source": "candidate_ranker",
+            "target": "outreach",
+            "type": "success",
+            "condition": "fit_score >= 0.7"
+        },
+        {
+            "source": "candidate_ranker",
+            "target": "END",
+            "type": "failure",
+            "condition": "fit_score < 0.7"
+        },
+        {
+            "source": "outreach",
+            "target": "schedule_interview",
+            "type": "success"
+        },
+        {
+            "source": "schedule_interview",
+            "target": "END",
+            "type": "success"
+        }
+    ]
+}

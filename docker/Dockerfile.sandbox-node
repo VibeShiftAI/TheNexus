@@ -1,0 +1,14 @@
+# Sandbox Executor - Node.js
+# Hardened image for running JavaScript/TypeScript code
+
+FROM node:20-slim
+
+# Create non-root user (handle if user already exists)
+RUN useradd -m -s /bin/bash sandbox 2>/dev/null || true
+
+WORKDIR /workspace
+RUN chown sandbox:sandbox /workspace
+
+USER sandbox
+
+CMD ["tail", "-f", "/dev/null"]

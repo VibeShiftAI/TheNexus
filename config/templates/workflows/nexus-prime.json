@@ -1,0 +1,189 @@
+{
+    "id": "nexus-prime",
+    "name": "Nexus Prime (AI Agents)",
+    "description": "Full adversarial mesh: Research → Architect → Builder → Auditor with autonomous retry loops",
+    "level": "task",
+    "workflow_type": "nexus-prime",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "research",
+            "name": "Research Fleet",
+            "description": "Gemini mesh deep research",
+            "order": 1,
+            "agentId": "research-fleet"
+        },
+        {
+            "id": "architect",
+            "name": "Architect Fleet",
+            "description": "Generate BLUEPRINT artifact",
+            "order": 2,
+            "agentId": "architect-fleet"
+        },
+        {
+            "id": "builder",
+            "name": "Builder Fleet",
+            "description": "Implement with negative constraints",
+            "order": 3,
+            "agentId": "builder-fleet"
+        },
+        {
+            "id": "audit",
+            "name": "Audit Fleet",
+            "description": "Zero-trust verification",
+            "order": 4,
+            "agentId": "audit-fleet"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "supervisor",
+            "data": {
+                "label": "Supervisor",
+                "config": {
+                    "model": "gemini-3-pro-preview",
+                    "description": "Routes between workers"
+                }
+            },
+            "type": "supervisor",
+            "position": {
+                "x": 400,
+                "y": 80
+            }
+        },
+        {
+            "id": "research_fleet",
+            "data": {
+                "label": "Research Fleet",
+                "config": {
+                    "model": "gemini-3-flash-preview",
+                    "fleetType": "research",
+                    "description": "Gemini mesh deep research"
+                }
+            },
+            "type": "fleet",
+            "position": {
+                "x": 150,
+                "y": 200
+            }
+        },
+        {
+            "id": "architect_fleet",
+            "data": {
+                "label": "Architect Fleet",
+                "config": {
+                    "model": "claude-opus-4-5-20251101",
+                    "fleetType": "architect",
+                    "description": "Generate BLUEPRINT artifact"
+                }
+            },
+            "type": "fleet",
+            "position": {
+                "x": 320,
+                "y": 200
+            }
+        },
+        {
+            "id": "builder_fleet",
+            "data": {
+                "label": "Builder Fleet",
+                "config": {
+                    "model": "claude-opus-4-5-20251101",
+                    "fleetType": "builder",
+                    "description": "Implement with negative constraints"
+                }
+            },
+            "type": "fleet",
+            "position": {
+                "x": 490,
+                "y": 200
+            }
+        },
+        {
+            "id": "audit_fleet",
+            "data": {
+                "label": "Audit Fleet",
+                "config": {
+                    "model": "gemini-3-flash-preview",
+                    "fleetType": "audit",
+                    "description": "Zero-trust verification"
+                }
+            },
+            "type": "fleet",
+            "position": {
+                "x": 400,
+                "y": 320
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e-sup-research",
+            "type": "smoothstep",
+            "source": "supervisor",
+            "target": "research_fleet",
+            "animated": true
+        },
+        {
+            "id": "e-sup-architect",
+            "type": "smoothstep",
+            "source": "supervisor",
+            "target": "architect_fleet",
+            "animated": true
+        },
+        {
+            "id": "e-sup-builder",
+            "type": "smoothstep",
+            "source": "supervisor",
+            "target": "builder_fleet",
+            "animated": true
+        },
+        {
+            "id": "e-sup-audit",
+            "type": "smoothstep",
+            "source": "supervisor",
+            "target": "audit_fleet",
+            "animated": true
+        },
+        {
+            "id": "e-research-architect",
+            "type": "smoothstep",
+            "source": "research_fleet",
+            "target": "architect_fleet"
+        },
+        {
+            "id": "e-architect-builder",
+            "type": "smoothstep",
+            "source": "architect_fleet",
+            "target": "builder_fleet"
+        },
+        {
+            "id": "e-builder-audit",
+            "type": "smoothstep",
+            "source": "builder_fleet",
+            "target": "audit_fleet"
+        },
+        {
+            "id": "e-audit-supervisor",
+            "type": "smoothstep",
+            "style": {
+                "strokeDasharray": "5,5"
+            },
+            "source": "audit_fleet",
+            "target": "supervisor"
+        }
+    ],
+    "conditionalEdges": [
+        {
+            "source": "supervisor",
+            "targets": {
+                "finish": "END",
+                "audit_fleet": "audit_fleet",
+                "builder_fleet": "builder_fleet",
+                "research_fleet": "research_fleet",
+                "architect_fleet": "architect_fleet"
+            },
+            "routingField": "evaluator_decision"
+        }
+    ]
+}

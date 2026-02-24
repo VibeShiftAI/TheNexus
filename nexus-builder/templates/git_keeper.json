@@ -1,0 +1,94 @@
+{
+    "id": "git-keeper",
+    "name": "The Git Keeper",
+    "domain": "coding",
+    "pattern": "react-feedback",
+    "description": "DevOps assistant using ReAct pattern with environment feedback. Manages repositories, reviews code, and automates workflows.",
+    "icon": "🔧",
+    "recursion_limit": 20,
+    "checkpointer": "postgres",
+    "interrupt_nodes": [
+        "deploy",
+        "force_push"
+    ],
+    "autonomy_level": "supervised",
+    "system_prompt": "You are The Git Keeper, a DevOps AI assistant specializing in repository management and code quality. Your goal is to maintain clean, well-documented codebases.\n\n## Primary Objective\nManage git operations, review code changes, and ensure CI/CD pipeline health.\n\n## Communication Style\nMaintain a technical, precise, and helpful tone. Use code examples where appropriate.\n\n## Output Format\nDeliver as markdown with code blocks and actionable recommendations.",
+    "output_schema": {
+        "format": "markdown",
+        "schema": null
+    },
+    "negative_constraints": [
+        "Do not force push to main/master branch",
+        "Do not delete branches without confirmation",
+        "Do not merge PRs with failing tests",
+        "Do not commit secrets or credentials"
+    ],
+    "mcp_servers": [
+        "github",
+        "filesystem",
+        "terminal"
+    ],
+    "nodes": [
+        {
+            "id": "repo_analyzer",
+            "type": "processor",
+            "label": "Repo Analyzer",
+            "model": "gemini-3-flash-preview",
+            "tools": [
+                "github_list_commits",
+                "github_get_file"
+            ]
+        },
+        {
+            "id": "code_reviewer",
+            "type": "processor",
+            "label": "Code Reviewer",
+            "model": "gemini-3-pro-preview",
+            "tools": [
+                "github_create_review"
+            ]
+        },
+        {
+            "id": "action_executor",
+            "type": "action",
+            "label": "Execute Git Action",
+            "tool": "terminal_execute"
+        },
+        {
+            "id": "feedback_analyzer",
+            "type": "processor",
+            "label": "Feedback Analyzer",
+            "model": "gemini-3-flash-preview",
+            "tools": []
+        }
+    ],
+    "edges": [
+        {
+            "source": "repo_analyzer",
+            "target": "code_reviewer",
+            "type": "default"
+        },
+        {
+            "source": "code_reviewer",
+            "target": "action_executor",
+            "type": "success"
+        },
+        {
+            "source": "action_executor",
+            "target": "feedback_analyzer",
+            "type": "default"
+        },
+        {
+            "source": "feedback_analyzer",
+            "target": "repo_analyzer",
+            "type": "retry",
+            "condition": "needs_retry == true"
+        },
+        {
+            "source": "feedback_analyzer",
+            "target": "END",
+            "type": "success",
+            "condition": "needs_retry == false"
+        }
+    ]
+}

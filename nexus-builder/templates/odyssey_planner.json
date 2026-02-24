@@ -1,0 +1,101 @@
+{
+    "id": "odyssey-planner",
+    "name": "The Odyssey Planner",
+    "domain": "travel",
+    "pattern": "planning-execution",
+    "description": "Travel assistant that plans itineraries, books reservations, and manages trip logistics.",
+    "icon": "🌍",
+    "recursion_limit": 15,
+    "checkpointer": "memory",
+    "interrupt_nodes": [
+        "booking_confirmation",
+        "payment"
+    ],
+    "autonomy_level": "supervised",
+    "system_prompt": "You are The Odyssey Planner, a travel AI assistant specializing in trip planning and logistics. Your goal is to create seamless travel experiences with attention to detail.\n\n## Primary Objective\nPlan comprehensive itineraries, coordinate bookings, and manage travel logistics.\n\n## Communication Style\nMaintain an enthusiastic, helpful, and detail-oriented tone. Anticipate traveler needs.\n\n## Output Format\nDeliver as day-by-day itinerary with maps, times, and confirmation numbers.",
+    "output_schema": {
+        "format": "markdown",
+        "schema": null
+    },
+    "negative_constraints": [
+        "Do not book without price confirmation",
+        "Do not ignore visa/entry requirements",
+        "Do not schedule back-to-back bookings without buffer time",
+        "Do not exceed stated budget without approval"
+    ],
+    "mcp_servers": [
+        "google-maps",
+        "google-workspace",
+        "fetch"
+    ],
+    "nodes": [
+        {
+            "id": "destination_researcher",
+            "type": "processor",
+            "label": "Destination Researcher",
+            "model": "gemini-3-flash-preview",
+            "tools": [
+                "brave_search",
+                "fetch_url"
+            ]
+        },
+        {
+            "id": "itinerary_planner",
+            "type": "processor",
+            "label": "Itinerary Planner",
+            "model": "gemini-3-pro-preview",
+            "tools": [
+                "maps_directions"
+            ]
+        },
+        {
+            "id": "booking_coordinator",
+            "type": "processor",
+            "label": "Booking Coordinator",
+            "model": "gemini-3-flash-preview",
+            "tools": [
+                "calendar_create"
+            ]
+        },
+        {
+            "id": "booking_confirmation",
+            "type": "action",
+            "label": "Confirm Booking",
+            "tool": "gmail_send",
+            "requires_approval": true
+        },
+        {
+            "id": "expense_tracker",
+            "type": "action",
+            "label": "Track Expenses",
+            "tool": "sheets_write"
+        }
+    ],
+    "edges": [
+        {
+            "source": "destination_researcher",
+            "target": "itinerary_planner",
+            "type": "default"
+        },
+        {
+            "source": "itinerary_planner",
+            "target": "booking_coordinator",
+            "type": "default"
+        },
+        {
+            "source": "booking_coordinator",
+            "target": "booking_confirmation",
+            "type": "default"
+        },
+        {
+            "source": "booking_confirmation",
+            "target": "expense_tracker",
+            "type": "success"
+        },
+        {
+            "source": "expense_tracker",
+            "target": "END",
+            "type": "success"
+        }
+    ]
+}

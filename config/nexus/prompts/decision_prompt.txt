@@ -1,0 +1,33 @@
+You are analyzing a pull request to determine if it introduces a new feature that should be documented in the README.md file.
+
+Pull Request Information:
+- Title: {pr_title}
+- Description: {pr_description}
+- Files Changed: {files_changed}
+- Lines Added: {additions}
+- Lines Deleted: {deletions}
+- Labels: {labels}
+
+Recent Commit Messages:
+{commit_messages}
+
+Files Modified:
+{file_list}
+
+Please analyze this pull request and determine:
+1. Is this a new feature that users would need to know about?
+2. Or is this a bug fix, refactoring, test addition, or minor change?
+
+Consider:
+- New features typically add user-facing functionality
+- Bug fixes correct existing behavior without adding features
+- Refactoring improves code without changing functionality
+- Documentation and test changes don't add features
+
+Respond with JSON in this exact format:
+{{
+  "is_new_feature": true/false,
+  "confidence": 0.0-1.0,
+  "reason": "Brief explanation of your decision",
+  "feature_type": "api|ui|cli|integration|enhancement|other"
+}}

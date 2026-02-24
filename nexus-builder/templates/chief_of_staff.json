@@ -1,0 +1,131 @@
+{
+    "id": "chief-of-staff",
+    "name": "The Chief of Staff",
+    "domain": "productivity",
+    "pattern": "router-fanout",
+    "description": "Personal assistant that triages incoming requests, routes to specialists, and aggregates responses. Fan-out pattern for parallel task execution.",
+    "icon": "👔",
+    "recursion_limit": 15,
+    "checkpointer": "memory",
+    "interrupt_nodes": [
+        "urgent_escalation"
+    ],
+    "autonomy_level": "autonomous",
+    "system_prompt": "You are The Chief of Staff, an executive AI assistant that manages incoming requests efficiently. Your goal is to triage, delegate, and ensure all tasks are completed with excellence.\n\n## Primary Objective\nProcess incoming requests, route to appropriate specialists, and synthesize results.\n\n## Communication Style\nMaintain an efficient, professional, and organized tone. Be concise but thorough.\n\n## Output Format\nDeliver as structured task reports with status and next actions.",
+    "output_schema": {
+        "format": "json",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "tasks_completed": {
+                    "type": "array"
+                },
+                "pending_items": {
+                    "type": "array"
+                },
+                "escalations": {
+                    "type": "array"
+                },
+                "daily_summary": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "negative_constraints": [
+        "Do not ignore urgent requests",
+        "Do not send external messages without logging",
+        "Do not reschedule meetings without confirmation"
+    ],
+    "mcp_servers": [
+        "google-workspace",
+        "slack",
+        "notion"
+    ],
+    "nodes": [
+        {
+            "id": "triage",
+            "type": "processor",
+            "label": "Request Triage",
+            "model": "gemini-3-flash-preview",
+            "tools": []
+        },
+        {
+            "id": "email_handler",
+            "type": "processor",
+            "label": "Email Handler",
+            "model": "gemini-3-flash-preview",
+            "tools": [
+                "gmail_send",
+                "gmail_read"
+            ]
+        },
+        {
+            "id": "calendar_handler",
+            "type": "processor",
+            "label": "Calendar Manager",
+            "model": "gemini-3-flash-preview",
+            "tools": [
+                "calendar_create",
+                "calendar_list"
+            ]
+        },
+        {
+            "id": "task_handler",
+            "type": "processor",
+            "label": "Task Manager",
+            "model": "gemini-3-flash-preview",
+            "tools": [
+                "notion_create",
+                "notion_update"
+            ]
+        },
+        {
+            "id": "aggregator",
+            "type": "processor",
+            "label": "Result Aggregator",
+            "model": "gemini-3-flash-preview",
+            "tools": []
+        }
+    ],
+    "edges": [
+        {
+            "source": "triage",
+            "target": "email_handler",
+            "type": "conditional",
+            "condition": "type == 'email'"
+        },
+        {
+            "source": "triage",
+            "target": "calendar_handler",
+            "type": "conditional",
+            "condition": "type == 'meeting'"
+        },
+        {
+            "source": "triage",
+            "target": "task_handler",
+            "type": "conditional",
+            "condition": "type == 'task'"
+        },
+        {
+            "source": "email_handler",
+            "target": "aggregator",
+            "type": "default"
+        },
+        {
+            "source": "calendar_handler",
+            "target": "aggregator",
+            "type": "default"
+        },
+        {
+            "source": "task_handler",
+            "target": "aggregator",
+            "type": "default"
+        },
+        {
+            "source": "aggregator",
+            "target": "END",
+            "type": "success"
+        }
+    ]
+}

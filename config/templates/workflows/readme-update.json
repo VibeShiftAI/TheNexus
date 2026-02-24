@@ -1,0 +1,102 @@
+{
+    "id": "readme-update",
+    "name": "README Update",
+    "description": "Update README files across all projects",
+    "level": "dashboard",
+    "workflow_type": "readme-update",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "analyze",
+            "name": "Analyze READMEs",
+            "order": 1,
+            "description": "Check current README status"
+        },
+        {
+            "id": "generate",
+            "name": "Generate Updates",
+            "order": 2,
+            "description": "AI-generate README improvements"
+        },
+        {
+            "id": "review",
+            "name": "Review Changes",
+            "order": 3,
+            "description": "Human review of proposed changes"
+        },
+        {
+            "id": "apply",
+            "name": "Apply Changes",
+            "order": 4,
+            "description": "Commit README updates"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "analyze",
+            "data": {
+                "label": "Analyze READMEs",
+                "config": {}
+            },
+            "type": "researcher",
+            "position": {
+                "x": 250,
+                "y": 50
+            }
+        },
+        {
+            "id": "generate",
+            "data": {
+                "label": "Generate Updates",
+                "config": {}
+            },
+            "type": "coder",
+            "position": {
+                "x": 250,
+                "y": 200
+            }
+        },
+        {
+            "id": "review",
+            "data": {
+                "label": "Review Changes",
+                "config": {}
+            },
+            "type": "human_in_loop",
+            "position": {
+                "x": 250,
+                "y": 350
+            }
+        },
+        {
+            "id": "apply",
+            "data": {
+                "label": "Apply Changes",
+                "config": {}
+            },
+            "type": "coder",
+            "position": {
+                "x": 250,
+                "y": 500
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "analyze",
+            "target": "generate"
+        },
+        {
+            "id": "e2",
+            "source": "generate",
+            "target": "review"
+        },
+        {
+            "id": "e3",
+            "source": "review",
+            "target": "apply"
+        }
+    ],
+    "conditionalEdges": []
+}

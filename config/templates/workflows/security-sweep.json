@@ -1,0 +1,102 @@
+{
+    "id": "security-sweep",
+    "name": "Security Sweep",
+    "description": "Run security audits across all targeted projects",
+    "level": "dashboard",
+    "workflow_type": "security-sweep",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "audit-deps",
+            "name": "Audit Dependencies",
+            "order": 1,
+            "description": "Run npm audit on all projects"
+        },
+        {
+            "id": "check-secrets",
+            "name": "Check Secrets",
+            "order": 2,
+            "description": "Scan for exposed secrets or API keys"
+        },
+        {
+            "id": "review-perms",
+            "name": "Review Permissions",
+            "order": 3,
+            "description": "Check file and API permissions"
+        },
+        {
+            "id": "generate-report",
+            "name": "Generate Report",
+            "order": 4,
+            "description": "Compile security report"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "audit-deps",
+            "data": {
+                "label": "Audit Dependencies",
+                "config": {}
+            },
+            "type": "researcher",
+            "position": {
+                "x": 100,
+                "y": 150
+            }
+        },
+        {
+            "id": "check-secrets",
+            "data": {
+                "label": "Check Secrets",
+                "config": {}
+            },
+            "type": "researcher",
+            "position": {
+                "x": 300,
+                "y": 150
+            }
+        },
+        {
+            "id": "review-perms",
+            "data": {
+                "label": "Review Permissions",
+                "config": {}
+            },
+            "type": "reviewer",
+            "position": {
+                "x": 500,
+                "y": 150
+            }
+        },
+        {
+            "id": "generate-report",
+            "data": {
+                "label": "Generate Report",
+                "config": {}
+            },
+            "type": "planner",
+            "position": {
+                "x": 300,
+                "y": 300
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "audit-deps",
+            "target": "generate-report"
+        },
+        {
+            "id": "e2",
+            "source": "check-secrets",
+            "target": "generate-report"
+        },
+        {
+            "id": "e3",
+            "source": "review-perms",
+            "target": "generate-report"
+        }
+    ],
+    "conditionalEdges": []
+}

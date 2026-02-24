@@ -1,0 +1,326 @@
+<svg width="1400" height="900" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg" style="background-color: #0f172a; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="grad-cyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-purple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#c084fc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9333ea;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-emerald" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#34d399;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-indigo" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#818cf8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Glow Filters -->
+    <filter id="glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-purple" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Markers -->
+    <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#c084fc" />
+    </marker>
+    <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+    </marker>
+    <marker id="arrow-gold" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
+    </marker>
+    <marker id="arrow-pink" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f472b6" />
+    </marker>
+  </defs>
+
+  <style>
+    .flow-line {
+      stroke-dasharray: 10, 10;
+      animation: flow 1s linear infinite;
+    }
+    @keyframes flow {
+      to {
+        stroke-dashoffset: -20;
+      }
+    }
+    .node-box {
+      fill: #1e293b;
+      stroke-width: 2;
+    }
+    .text-title {
+      font-weight: bold;
+      fill: white;
+      text-anchor: middle;
+      font-size: 14px;
+    }
+    .text-label {
+      fill: #94a3b8;
+      text-anchor: middle;
+      font-size: 11px;
+    }
+    .group-label {
+      font-weight: bold;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .service-label {
+      font-weight: bold;
+      font-size: 12px;
+    }
+  </style>
+
+  <!-- BACKGROUND GRID -->
+  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#334155" stroke-width="0.5" stroke-opacity="0.3"/>
+  </pattern>
+  <rect width="100%" height="100%" fill="url(#grid)" />
+
+  <!-- ======================== 1. TERMINAL (ENTRY) ======================== -->
+  <g transform="translate(50, 200)">
+    <rect x="0" y="0" width="160" height="100" rx="10" stroke="#06b6d4" fill="#0f172a" stroke-width="2" filter="url(#glow-cyan)" />
+    <text x="80" y="45" class="text-title" fill="#22d3ee">NEXUS AI TERMINAL</text>
+    <text x="80" y="65" class="text-label">User Idea Entry</text>
+    <path d="M40,80 L120,80" stroke="#06b6d4" stroke-width="2" />
+    <circle cx="45" cy="80" r="3" fill="#22d3ee">
+      <animate attributeName="cx" from="40" to="120" dur="1.5s" repeatCount="indefinite" />
+    </circle>
+  </g>
+
+  <!-- Path: Terminal -> Cortex -->
+  <path d="M210,250 L320,250" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)" class="flow-line" />
+
+  <!-- ======================== 2. SYSTEM 2: THE Cortex ======================== -->
+  <g transform="translate(320, 50)">
+    <!-- Container -->
+    <rect x="0" y="0" width="340" height="400" rx="15" stroke="#9333ea" fill="#1e1b4b" stroke-width="2" stroke-opacity="0.5" />
+    <text x="170" y="30" class="group-label" fill="#c084fc" text-anchor="middle">The Cortex (LangGraph)</text>
+    
+    <!-- Planner -->
+    <g transform="translate(120, 60)">
+      <rect x="0" y="0" width="100" height="40" rx="5" fill="#3b0764" stroke="#c084fc" stroke-width="1.5" />
+      <text x="50" y="25" class="text-title" font-size="12">Orchestrator</text>
+    </g>
+
+    <!-- Simulator -->
+    <g transform="translate(120, 140)">
+      <rect x="0" y="0" width="100" height="40" rx="5" fill="#3b0764" stroke="#c084fc" stroke-width="1.5" />
+      <text x="50" y="25" class="text-title" font-size="12">Planner</text>
+    </g>
+
+    <!-- Cooperative Mesh -->
+    <g transform="translate(20, 220)">
+      <rect x="0" y="0" width="300" height="60" rx="5" fill="#3b0764" stroke="#c084fc" stroke-width="1.5" />
+      <text x="150" y="25" class="text-title" font-size="12">Cooperative Mesh (Voters)</text>
+      <text x="150" y="45" class="text-label" font-size="10">Critic &#x2022; Safety &#x2022; Efficiency</text>
+    </g>
+    
+    <!-- Human Review -->
+    <g transform="translate(100, 310)">
+      <rect x="0" y="0" width="140" height="40" rx="20" fill="#4c1d95" stroke="#fbbf24" stroke-width="2" />
+      <text x="70" y="25" class="text-title" fill="#fbbf24" font-size="12">Human Review</text>
+    </g>
+
+    <!-- Internal Flows -->
+    <path d="M170,100 L170,140" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arrow-purple)" />
+    <path d="M170,180 L170,220" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arrow-purple)" />
+    <path d="M170,280 L170,310" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arrow-purple)" />
+    
+    <!-- Critique Loops (Curved) -->
+    <path d="M320,250 C360,250 360,80 220,80" fill="none" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,3" />
+    <text x="330" y="170" fill="#ef4444" font-size="10" transform="rotate(90 330,170)">Critique Loop</text>
+
+  </g>
+
+  <!-- Path: Cortex -> Nexus API -->
+  <path d="M660,250 L780,250" stroke="#c084fc" stroke-width="2" marker-end="url(#arrow-purple)" class="flow-line" />
+  <text x="720" y="240" class="text-label">JSON Plan</text>
+ 
+  <!-- ======================== 3. THE NEXUS (PROJECTS) ======================== -->
+  <g transform="translate(780, 50)">
+    <rect x="0" y="0" width="180" height="400" rx="15" stroke="#10b981" fill="#022c22" stroke-width="2" stroke-opacity="0.5" />
+    <text x="90" y="30" class="group-label" fill="#34d399" text-anchor="middle">The Nexus (Execution)</text>
+
+    <!-- Project Record -->
+    <g transform="translate(30, 80)">
+      <rect x="0" y="0" width="120" height="60" rx="5" fill="#064e3b" stroke="#34d399" stroke-width="2" filter="url(#glow-cyan)" />
+      <text x="60" y="25" class="text-title" fill="#34d399">Project</text>
+      <text x="60" y="45" class="text-label" fill="#6ee7b7">DB Record Created</text>
+    </g>
+
+    <!-- Spawns Tasks -->
+    <path d="M90,140 L90,190" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-emerald)" />
+    
+    <!-- Task List -->
+    <g transform="translate(30, 190)">
+      <rect x="0" y="0" width="120" height="30" rx="3" fill="#064e3b" stroke="#34d399" stroke-width="1" />
+      <text x="60" y="20" class="text-label" fill="white">Task 1: Research</text>
+    </g>
+    <g transform="translate(30, 230)">
+      <rect x="0" y="0" width="120" height="30" rx="3" fill="#064e3b" stroke="#34d399" stroke-width="1" />
+      <text x="60" y="20" class="text-label" fill="white">Task 2: Design</text>
+    </g>
+    <g transform="translate(30, 270)">
+      <rect x="0" y="0" width="120" height="30" rx="3" fill="#064e3b" stroke="#34d399" stroke-width="1" />
+      <text x="60" y="20" class="text-label" fill="white">Task 3: Build</text>
+    </g>
+  </g>
+
+  <!-- Path: Tasks -> Nexus Builder -->
+  <path d="M960,255 L1020,255 L1020,475" stroke="#34d399" stroke-width="2" fill="none" class="flow-line" />
+  <path d="M960,295 L1020,295 L1020,475" stroke="#34d399" stroke-width="2" fill="none" class="flow-line" />
+  <path d="M960,335 L1020,335 L1020,475" stroke="#34d399" stroke-width="2" fill="none" class="flow-line" />
+
+  <!-- ======================== 4. Nexus Builder ENGINE ======================== -->
+  <g transform="translate(50, 500)">
+    <!-- Container -->
+    <rect x="0" y="0" width="1300" height="160" rx="15" stroke="#6366f1" fill="#1e1b4b" stroke-width="2" />
+    <text x="650" y="30" class="group-label" fill="#818cf8" text-anchor="middle">Nexus Workflow Builder Engine (Per Task)</text>
+
+    <!-- Flow: Research -> Architect -> Builder -> Audit -->
+    
+    <!-- 1. Research Fleet -->
+    <g transform="translate(60, 50)">
+      <rect x="0" y="0" width="200" height="80" rx="8" fill="#172554" stroke="#3b82f6" stroke-width="1.5" />
+      <text x="100" y="30" class="text-title" fill="#60a5fa">Research Fleet</text>
+      <text x="100" y="50" class="text-label">Scoper &#x2022; Executor &#x2022; Synthesizer</text>
+      <text x="100" y="70" class="text-label" fill="#fbbf24" font-size="9">OUTPUT: DOSSIER</text>
+    </g>
+
+    <!-- Arrow -->
+    <path d="M260,90 L380,90" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow-cyan)" class="flow-line" />
+
+    <!-- 2. Architect Fleet -->
+    <g transform="translate(380, 50)">
+      <rect x="0" y="0" width="200" height="80" rx="8" fill="#3b0764" stroke="#a855f7" stroke-width="1.5" />
+      <text x="100" y="30" class="text-title" fill="#c084fc">Architect Fleet</text>
+      <text x="100" y="50" class="text-label">Cartographer &#x2022; Drafter</text>
+      <text x="100" y="70" class="text-label" fill="#fbbf24" font-size="9">OUTPUT: BLUEPRINT</text>
+    </g>
+
+    <!-- Arrow -->
+    <path d="M580,90 L700,90" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow-purple)" class="flow-line" />
+
+    <!-- 3. Builder Fleet -->
+    <g transform="translate(700, 50)">
+      <rect x="0" y="0" width="200" height="80" rx="8" fill="#451a03" stroke="#f59e0b" stroke-width="1.5" />
+      <text x="100" y="30" class="text-title" fill="#fbbf24">Builder Fleet</text>
+      <text x="100" y="50" class="text-label">Loader &#x2022; Builder &#x2022; Syntax</text>
+      <text x="100" y="70" class="text-label" fill="#fbbf24" font-size="9">OUTPUT: CODE ARTIFACTS</text>
+    </g>
+
+    <!-- Arrow -->
+    <path d="M900,90 L1020,90" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow-gold)" class="flow-line" />
+
+    <!-- 4. Auditor Fleet -->
+    <g transform="translate(1020, 50)">
+      <rect x="0" y="0" width="200" height="80" rx="8" fill="#4c0519" stroke="#f43f5e" stroke-width="1.5" />
+      <text x="100" y="30" class="text-title" fill="#fda4af">Auditor Fleet</text>
+      <text x="100" y="50" class="text-label">Sentinel &#x2022; Interrogator</text>
+      <text x="100" y="70" class="text-label" fill="#fbbf24" font-size="9">OUTPUT: AUDIT REPORT</text>
+    </g>
+
+  </g>
+
+  <!-- Tasks feeding into Prime (Visual connection) -->
+  <path d="M1020,475 L1020,485 L690,485 L690,500" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-emerald)" fill="none" stroke-opacity="0.5" stroke-dasharray="5,5" />
+  <text x="690" y="640" class="text-label" fill="#34d399">Per-Task Execution Pipeline</text>
+
+  <!-- Final Output -->
+  <g transform="translate(1250, 300)">
+    <circle cx="50" cy="50" r="40" fill="#042f2e" stroke="#34d399" stroke-width="3" filter="url(#glow-cyan)" />
+    <text x="50" y="55" class="text-title" fill="#34d399" font-size="16">REALITY</text>
+  </g>
+  
+  <path d="M1270,590 L1300,590 L1300,405" stroke="#f43f5e" stroke-width="2" marker-end="url(#arrow-emerald)" stroke-dasharray="5,5" fill="none" />
+
+  <!-- ======================== 5. INFRASTRUCTURE SERVICES ======================== -->
+  <g transform="translate(50, 710)">
+    <!-- Container -->
+    <rect x="0" y="0" width="1300" height="160" rx="15" stroke="#475569" fill="#0f172a" stroke-width="1.5" stroke-dasharray="6 3" />
+    <text x="650" y="28" class="group-label" fill="#64748b" text-anchor="middle" font-size="14">Infrastructure Services</text>
+
+    <!-- MCP Server -->
+    <g transform="translate(60, 45)">
+      <rect x="0" y="0" width="280" height="95" rx="10" fill="#1e293b" stroke="#22d3ee" stroke-width="1.5" />
+      <text x="140" y="22" class="service-label" fill="#22d3ee" text-anchor="middle">MCP Server</text>
+      <text x="140" y="38" fill="#67e8f9" font-size="9" text-anchor="middle">Model Context Protocol Integration</text>
+      
+      <g transform="translate(15, 48)">
+        <rect x="0" y="0" width="115" height="35" rx="4" fill="#0f172a" stroke="#06b6d4" stroke-width="1" />
+        <text x="57" y="15" fill="#22d3ee" font-size="9" font-weight="bold" text-anchor="middle">MCP Host</text>
+        <text x="57" y="28" fill="#67e8f9" font-size="8" text-anchor="middle">stdio connection</text>
+      </g>
+      <g transform="translate(145, 48)">
+        <rect x="0" y="0" width="115" height="35" rx="4" fill="#0f172a" stroke="#06b6d4" stroke-width="1" />
+        <text x="57" y="15" fill="#22d3ee" font-size="9" font-weight="bold" text-anchor="middle">Tool Registry</text>
+        <text x="57" y="28" fill="#67e8f9" font-size="8" text-anchor="middle">Dynamic tools</text>
+      </g>
+    </g>
+
+    <!-- Nervous System -->
+    <g transform="translate(400, 45)">
+      <rect x="0" y="0" width="300" height="95" rx="10" fill="#1e293b" stroke="#f472b6" stroke-width="1.5" />
+      <text x="150" y="22" class="service-label" fill="#f472b6" text-anchor="middle">Nervous System (Real-Time)</text>
+      <text x="150" y="38" fill="#f9a8d4" font-size="9" text-anchor="middle">WebSocket Artifact Broadcasting</text>
+      
+      <g transform="translate(15, 48)">
+        <rect x="0" y="0" width="130" height="35" rx="4" fill="#0f172a" stroke="#be185d" stroke-width="1" />
+        <text x="65" y="15" fill="#f9a8d4" font-size="9" font-weight="bold" text-anchor="middle">NexusClient</text>
+        <text x="65" y="28" fill="#fce7f3" font-size="8" text-anchor="middle">push_artifact()</text>
+      </g>
+      <g transform="translate(155, 48)">
+        <rect x="0" y="0" width="130" height="35" rx="4" fill="#0f172a" stroke="#be185d" stroke-width="1" />
+        <text x="65" y="15" fill="#f9a8d4" font-size="9" font-weight="bold" text-anchor="middle">Broadcast API</text>
+        <text x="65" y="28" fill="#fce7f3" font-size="8" text-anchor="middle">POST /broadcast</text>
+      </g>
+    </g>
+
+    <!-- LLM Factory -->
+    <g transform="translate(760, 45)">
+      <rect x="0" y="0" width="280" height="95" rx="10" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5" />
+      <text x="140" y="22" class="service-label" fill="#fbbf24" text-anchor="middle">LLM Factory</text>
+      <text x="140" y="38" fill="#fde68a" font-size="9" text-anchor="middle">Multi-Provider Model Hub</text>
+      
+      <g transform="translate(15, 48)">
+        <rect x="0" y="0" width="250" height="35" rx="4" fill="#0f172a" stroke="#d97706" stroke-width="1" />
+        <text x="125" y="15" fill="#fcd34d" font-size="9" text-anchor="middle">Proposer &#x2022; Red Cell &#x2022; Judge &#x2022; Strategist</text>
+        <text x="125" y="28" fill="#fde68a" font-size="8" text-anchor="middle">get_model(role).with_structured_output()</text>
+      </g>
+    </g>
+
+    <!-- Dashed lines connecting services up to the main flow -->
+  </g>
+
+  <!-- Service connection lines (subtle) -->
+  <path d="M200,710 L200,660" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.4" />
+  <path d="M550,710 L550,660" stroke="#f472b6" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.4" />
+  <path d="M900,710 L900,660" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.4" />
+
+</svg>

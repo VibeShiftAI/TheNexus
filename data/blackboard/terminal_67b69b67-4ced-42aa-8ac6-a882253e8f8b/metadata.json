@@ -1,0 +1,11 @@
+{
+  "session_id": "terminal_67b69b67-4ced-42aa-8ac6-a882253e8f8b",
+  "topic": "",
+  "status": "active",
+  "created_at": "2026-02-17T20:40:23.067578",
+  "updated_at": "2026-02-17T20:42:19.360977",
+  "finding_count": 0,
+  "cortex_thread_id": null,
+  "nexus_task_id": null,
+  "processed_tool_call_ids": []
+}

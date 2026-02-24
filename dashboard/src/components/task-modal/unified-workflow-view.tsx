@@ -1,0 +1,303 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ActiveGraph } from "./active-graph";
+import { StreamingLog } from "./streaming-log";
+import { Play, Pause, AlertTriangle, Check, X, FileSearch } from "lucide-react";
+import { approveWalkthrough } from "@/lib/nexus";
+import { ArtifactPanel, Artifact } from "../artifact-viewer";
+
+interface UnifiedWorkflowViewProps {
+    projectId: string;
+    taskId: string;
+    runId: string;
+    initialStatus?: string;
+    onWorkflowComplete?: () => void;
+}
+
+// Static definition of the Nexus Prime graph topology
+const NEXUS_GRAPH_DEF = `
+graph TD
+    %% Nodes
+    START((Start))
+    nexus_prime[Nexus Prime]
+    research_fleet[Research Fleet]
+    architect_fleet[Architect Fleet]
+    builder_fleet[Builder Fleet]
+    audit_fleet[Audit Fleet]
+    
+    %% Approval Gates
+    await_research_approval{Research Approval}
+    await_plan_approval{Plan Approval}
+    human_in_loop{Human Input}
+    
+    %% End
+    END((End))
+
+    %% Edges
+    START --> nexus_prime
+    nexus_prime --> research_fleet
+    research_fleet --> await_research_approval
+    await_research_approval --> nexus_prime
+    
+    nexus_prime --> architect_fleet
+    architect_fleet --> await_plan_approval
+    await_plan_approval --> nexus_prime
+    
+    nexus_prime --> builder_fleet
+    builder_fleet --> nexus_prime
+    
+    nexus_prime --> audit_fleet
+    audit_fleet --> nexus_prime
+    
+    nexus_prime --> human_in_loop
+    human_in_loop --> nexus_prime
+    nexus_prime --> END
+    
+    %% Styling
+    classDef default fill:#1e293b,stroke:#475569,stroke-width:1px,color:#94a3b8;
+    classDef hub fill:#4f46e5,stroke:#6366f1,color:#fff,stroke-width:2px;
+    classDef fleet fill:#0f766e,stroke:#14b8a6,color:#fff;
+    classDef gate fill:#c2410c,stroke:#f97316,color:#fff,shape:diamond;
+    
+    class nexus_prime hub;
+    class research_fleet,architect_fleet,builder_fleet,audit_fleet fleet;
+    class await_research_approval,await_plan_approval,human_in_loop gate;
+`;
+
+export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, onWorkflowComplete }: UnifiedWorkflowViewProps) {
+    const [activeNode, setActiveNode] = useState<string | null>(null);
+    const [interruptData, setInterruptData] = useState<any | null>(null);
+    const [isResuming, setIsResuming] = useState(false);
+    const [feedbackText, setFeedbackText] = useState('');
+
+    // Artifact panel state
+    const [artifactPanelOpen, setArtifactPanelOpen] = useState(false);
+    const [currentArtifact, setCurrentArtifact] = useState<Artifact | null>(null);
+
+    // Handler for Approve & Commit button in StreamingLog
+    const handleApproveCommit = async () => {
+        try {
+            await approveWalkthrough(projectId, taskId);
+            onWorkflowComplete?.();
+        } catch (error) {
+            console.error('Failed to approve and commit:', error);
+            throw error;  // Re-throw so StreamingLog can show the error
+        }
+    };
+
+    const handleInterrupt = (payload: any) => {
+        console.log("Interrupt received:", payload);
+        // Payload: { type: 'interrupt', interrupts: ['await_research_approval'], values: {...} }
+        // The artifact is in values.pending_approval.artifact
+        setInterruptData(payload);
+
+        // Highlight the gate node
+        if (payload.interrupts && payload.interrupts.length > 0) {
+            setActiveNode(payload.interrupts[0]);
+        }
+
+        // Extract artifact from the state values
+        // The artifact is nested in values.pending_approval.artifact
+        const pendingApproval = payload.values?.pending_approval;
+        const artifact = pendingApproval?.artifact;
+
+        if (artifact) {
+            console.log("Artifact found in interrupt:", artifact);
+            setCurrentArtifact(artifact);
+            setArtifactPanelOpen(true);
+        }
+    };
+
+    const handleNodeChange = (node: string) => {
+        // If we are just entering a node, highlight it
+        setActiveNode(node);
+        // Clear interrupt state if we moved
+        setInterruptData(null);
+        setFeedbackText('');
+        // Close artifact panel if workflow moves on
+        setArtifactPanelOpen(false);
+        setCurrentArtifact(null);
+    };
+
+    // Handlers for artifact panel approve/reject
+    const handleArtifactApprove = () => {
+        setArtifactPanelOpen(false);
+        handleResume('approve', feedbackText || 'Looks good');
+    };
+
+    const handleArtifactReject = (feedback: string) => {
+        setArtifactPanelOpen(false);
+        handleResume('reject', feedback);
+    };
+
+    const handleResume = async (action: 'approve' | 'reject', feedback?: string) => {
+        if (!interruptData) return;
+
+        setIsResuming(true);
+        try {
+            const currentInterrupt = interruptData.interrupts[0];
+            const feedbackText = feedback || (action === 'approve' ? "Looks good" : "Please revise");
+
+            // Call specific API helpers based on where we paused
+            if (currentInterrupt === 'await_research_approval') {
+                await fetch(`/api/graph/nexus/${runId}/resume`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ approval_action: action, feedback: feedbackText })
+                });
+            } else if (currentInterrupt === 'await_plan_approval') {
+                await fetch(`/api/graph/nexus/${runId}/resume`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ approval_action: action, feedback: feedbackText })
+                });
+            } else {
+                // Generic resume
+                await fetch(`/api/graph/nexus/${runId}/resume`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ approval_action: action, feedback: feedbackText })
+                });
+            }
+
+            setInterruptData(null);
+        } catch (e) {
+            console.error("Failed to resume:", e);
+        } finally {
+            setIsResuming(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-[600px] gap-4">
+
+            {/* Top Area: Graph (Right) and Main Chat (Left) */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
+
+                {/* Zone A: Chat (2/3 width) */}
+                <div className="md:col-span-2 min-h-0">
+                    <StreamingLog
+                        runId={runId}
+                        projectId={projectId}
+                        taskId={taskId}
+                        onInterrupt={handleInterrupt}
+                        onNodeChange={handleNodeChange}
+                        onApproveCommit={handleApproveCommit}
+                    />
+                </div>
+
+                {/* Zone B: Graph (1/3 width) */}
+                <div className="md:col-span-1 min-h-0 flex flex-col gap-4">
+                    <div className="flex-1 min-h-0 relative">
+                        <ActiveGraph
+                            definition={NEXUS_GRAPH_DEF}
+                            activeNode={activeNode}
+                        />
+
+                        {/* Interrupt Overlay for Graph */}
+                        {interruptData && (
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-10 rounded-lg">
+                                <div className="bg-slate-900 border border-amber-500/50 rounded-xl p-4 shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-200">
+                                    <div className="flex items-center gap-3 mb-3 text-amber-400">
+                                        <AlertTriangle size={24} />
+                                        <h3 className="font-bold text-lg">
+                                            {interruptData.interrupts[0] === 'await_research_approval' ? 'Research Approval Required' :
+                                                interruptData.interrupts[0] === 'await_plan_approval' ? 'Plan Approval Required' :
+                                                    'Input Required'}
+                                        </h3>
+                                    </div>
+                                    <p className="text-slate-300 text-sm mb-3">
+                                        {interruptData.interrupts[0] === 'await_research_approval' ? (
+                                            <>Review the <strong className="text-cyan-400">Research Dossier</strong> in the chat and provide your decision.</>
+                                        ) : interruptData.interrupts[0] === 'await_plan_approval' ? (
+                                            <>Review the <strong className="text-purple-400">Implementation Plan</strong> in the chat and provide your decision.</>
+                                        ) : (
+                                            <>The workflow is paused at <strong>{interruptData.interrupts[0]}</strong>. Please review the artifacts and provide a decision.</>
+                                        )}
+                                    </p>
+
+                                    {/* Feedback textarea */}
+                                    <div className="mb-4">
+                                        <label className="block text-xs text-slate-500 mb-1">Comments (optional)</label>
+                                        <textarea
+                                            value={feedbackText}
+                                            onChange={(e) => setFeedbackText(e.target.value)}
+                                            placeholder="Add feedback or suggestions..."
+                                            className="w-full h-20 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-300 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 resize-none"
+                                        />
+                                    </div>
+
+                                    <div className="flex flex-col gap-2">
+                                        {/* Accept with Comments (if there's feedback) */}
+                                        {feedbackText.trim() && (
+                                            <button
+                                                onClick={() => handleResume('approve', feedbackText)}
+                                                disabled={isResuming}
+                                                className="w-full py-2 px-3 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors flex items-center justify-center gap-2 text-sm"
+                                            >
+                                                <Check size={16} /> Accept with Comments
+                                            </button>
+                                        )}
+
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleResume('reject', feedbackText || "Please revise")}
+                                                disabled={isResuming}
+                                                className="flex-1 py-2 px-3 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <X size={16} /> Reject
+                                            </button>
+                                            <button
+                                                onClick={() => handleResume('approve', feedbackText || "Looks good")}
+                                                disabled={isResuming}
+                                                className="flex-1 py-2 px-3 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <Check size={16} /> Approve
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Zone C: State / Mini-stats */}
+                    <div className="h-32 bg-slate-900/50 rounded-lg border border-slate-800 p-3">
+                        <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Live Context</div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-slate-950 p-2 rounded border border-slate-800/50">
+                                <div className="text-[10px] text-slate-500">Run ID</div>
+                                <div className="text-xs font-mono text-slate-300 truncate" title={runId}>{runId.split('-')[0]}...</div>
+                            </div>
+                            <div className="bg-slate-950 p-2 rounded border border-slate-800/50">
+                                <div className="text-[10px] text-slate-500">Active Node</div>
+                                <div className="text-xs text-amber-400 truncate">{activeNode || 'Initializing...'}</div>
+                            </div>
+                        </div>
+
+                        {/* Open Artifact Panel button (when artifact exists but panel closed) */}
+                        {currentArtifact && !artifactPanelOpen && (
+                            <button
+                                onClick={() => setArtifactPanelOpen(true)}
+                                className="mt-2 w-full py-1.5 px-2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs flex items-center justify-center gap-1.5 hover:bg-purple-500/20 transition-colors"
+                            >
+                                <FileSearch size={12} />
+                                Review {currentArtifact.category} Artifact
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Artifact Review Side Panel */}
+            <ArtifactPanel
+                artifact={currentArtifact}
+                isOpen={artifactPanelOpen}
+                onClose={() => setArtifactPanelOpen(false)}
+                onApprove={handleArtifactApprove}
+                onReject={handleArtifactReject}
+            />
+        </div>
+    );
+}

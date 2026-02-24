@@ -1,0 +1,1266 @@
+[
+  {
+    "id": "38b82a77-84f3-4a80-8785-ea897c6b1e98",
+    "name": "Dependency Audit",
+    "description": "Check for outdated and vulnerable dependencies",
+    "level": "dashboard",
+    "workflow_type": "dependency-audit",
+    "stages": [
+      {
+        "id": "npm-audit",
+        "name": "NPM Audit",
+        "order": 1,
+        "description": "Run npm audit for vulnerabilities"
+      },
+      {
+        "id": "check-outdated",
+        "name": "Check Outdated",
+        "order": 2,
+        "description": "Find outdated packages"
+      },
+      {
+        "id": "propose-updates",
+        "name": "Propose Updates",
+        "order": 3,
+        "description": "Generate update plan"
+      },
+      {
+        "id": "apply-updates",
+        "name": "Apply Updates",
+        "order": 4,
+        "description": "Apply approved updates"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-26T20:05:08.976626+00:00",
+    "updated_at": "2026-01-04T00:08:35.311607+00:00"
+  },
+  {
+    "id": "b325750e-f9e3-46dd-948d-3bf2f7170082",
+    "name": "Monthly Health Check",
+    "description": "Regular maintenance check across projects",
+    "level": "dashboard",
+    "workflow_type": "health-check",
+    "stages": [
+      {
+        "id": "check-tests",
+        "name": "Check Tests",
+        "order": 1,
+        "description": "Verify test suites are passing"
+      },
+      {
+        "id": "check-coverage",
+        "name": "Check Coverage",
+        "order": 2,
+        "description": "Review code coverage"
+      },
+      {
+        "id": "check-docs",
+        "name": "Check Docs",
+        "order": 3,
+        "description": "Verify documentation is current"
+      },
+      {
+        "id": "summarize",
+        "name": "Summarize",
+        "order": 4,
+        "description": "Generate health report"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-26T20:05:08.976626+00:00",
+    "updated_at": "2026-01-04T00:08:35.605319+00:00"
+  },
+  {
+    "id": "3c0bc19e-2438-4a38-b16c-117b223a563d",
+    "name": "README Update",
+    "description": "Update README files across all projects",
+    "level": "dashboard",
+    "workflow_type": "readme-update",
+    "stages": [
+      {
+        "id": "analyze",
+        "name": "Analyze READMEs",
+        "order": 1,
+        "description": "Check current README status"
+      },
+      {
+        "id": "generate",
+        "name": "Generate Updates",
+        "order": 2,
+        "description": "AI-generate README improvements"
+      },
+      {
+        "id": "review",
+        "name": "Review Changes",
+        "order": 3,
+        "description": "Human review of proposed changes"
+      },
+      {
+        "id": "apply",
+        "name": "Apply Changes",
+        "order": 4,
+        "description": "Commit README updates"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-26T20:05:08.976626+00:00",
+    "updated_at": "2026-01-04T00:08:35.462556+00:00"
+  },
+  {
+    "id": "054c75cf-f0ff-46ed-85c7-efd3a6d3ef5b",
+    "name": "Security Sweep",
+    "description": "Run security audits across all targeted projects",
+    "level": "dashboard",
+    "workflow_type": "security-sweep",
+    "stages": [
+      {
+        "id": "audit-deps",
+        "name": "Audit Dependencies",
+        "order": 1,
+        "description": "Run npm audit on all projects"
+      },
+      {
+        "id": "check-secrets",
+        "name": "Check Secrets",
+        "order": 2,
+        "description": "Scan for exposed secrets or API keys"
+      },
+      {
+        "id": "review-perms",
+        "name": "Review Permissions",
+        "order": 3,
+        "description": "Check file and API permissions"
+      },
+      {
+        "id": "generate-report",
+        "name": "Generate Report",
+        "order": 4,
+        "description": "Compile security report"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-26T20:05:08.976626+00:00",
+    "updated_at": "2026-01-04T00:08:34.909685+00:00"
+  },
+  {
+    "id": "251f75d0-d665-4587-9286-b3445cf01cc8",
+    "name": "Standard Feature",
+    "description": "Full development lifecycle: Research -> Plan -> Implement -> Walkthrough",
+    "level": "feature",
+    "workflow_type": "standard-feature",
+    "stages": [
+      {
+        "id": "research",
+        "name": "Research",
+        "order": 1,
+        "agentId": "deep-research",
+        "description": "Perform deep research and feasibility analysis"
+      },
+      {
+        "id": "plan",
+        "name": "Planning",
+        "order": 2,
+        "agentId": "plan-generator",
+        "description": "Generate a detailed technical implementation plan"
+      },
+      {
+        "id": "implement",
+        "name": "Implementation",
+        "order": 3,
+        "agentId": "implementation",
+        "description": "Execute the implementation plan and write code"
+      },
+      {
+        "id": "walkthrough",
+        "name": "Verification",
+        "order": 4,
+        "agentId": "failure-analyst",
+        "description": "Verify implementation and generate walkthrough"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-30T04:00:43.548182+00:00",
+    "updated_at": "2025-12-30T04:00:43.548182+00:00"
+  },
+  {
+    "id": "a931e855-b7fd-4242-9962-8d8d90a9a971",
+    "name": "Brand Development",
+    "description": "Develop project branding from concept to guidelines",
+    "level": "project",
+    "workflow_type": "brand-development",
+    "stages": [
+      {
+        "id": "discover",
+        "name": "Discovery",
+        "order": 1,
+        "description": "Define brand values and target audience"
+      },
+      {
+        "id": "concepts",
+        "name": "Concepts",
+        "order": 2,
+        "description": "Generate initial brand concepts"
+      },
+      {
+        "id": "logo-design",
+        "name": "Logo Design",
+        "order": 3,
+        "description": "Design and refine logo"
+      },
+      {
+        "id": "color-palette",
+        "name": "Color Palette",
+        "order": 4,
+        "description": "Define brand colors"
+      },
+      {
+        "id": "typography",
+        "name": "Typography",
+        "order": 5,
+        "description": "Select brand fonts"
+      },
+      {
+        "id": "guidelines",
+        "name": "Brand Guidelines",
+        "order": 6,
+        "description": "Compile brand guidelines document"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-26T20:05:08.976626+00:00",
+    "updated_at": "2026-01-04T00:08:35.746318+00:00"
+  },
+  {
+    "id": "71eb00fa-9dcf-4400-a026-d5721de95481",
+    "name": "Documentation",
+    "description": "Create comprehensive project documentation",
+    "level": "project",
+    "workflow_type": "documentation",
+    "stages": [
+      {
+        "id": "readme",
+        "name": "README",
+        "order": 1,
+        "description": "Create or update README"
+      },
+      {
+        "id": "api-docs",
+        "name": "API Docs",
+        "order": 2,
+        "description": "Generate API documentation"
+      },
+      {
+        "id": "user-guide",
+        "name": "User Guide",
+        "order": 3,
+        "description": "Create user guide"
+      },
+      {
+        "id": "contributing",
+        "name": "Contributing",
+        "order": 4,
+        "description": "Write contributing guidelines"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-26T20:05:08.976626+00:00",
+    "updated_at": "2026-01-04T00:08:36.072613+00:00"
+  },
+  {
+    "id": "ad1db64c-cad1-42e0-8ebf-ab1a08a2151d",
+    "name": "Logo Development",
+    "description": "Design and refine project logo",
+    "level": "project",
+    "workflow_type": "logo-development",
+    "stages": [
+      {
+        "id": "brief",
+        "name": "Creative Brief",
+        "order": 1,
+        "description": "Define logo requirements"
+      },
+      {
+        "id": "concepts",
+        "name": "Concepts",
+        "order": 2,
+        "description": "Generate logo concepts"
+      },
+      {
+        "id": "refinement",
+        "name": "Refinement",
+        "order": 3,
+        "description": "Refine selected concept"
+      },
+      {
+        "id": "finalization",
+        "name": "Finalization",
+        "order": 4,
+        "description": "Finalize logo design"
+      },
+      {
+        "id": "export",
+        "name": "Export Assets",
+        "order": 5,
+        "description": "Export logo in all required formats"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-26T20:05:08.976626+00:00",
+    "updated_at": "2026-01-04T00:08:35.935389+00:00"
+  },
+  {
+    "id": "c236b2cb-9620-494b-a5e4-8a7a12ea9db4",
+    "name": "Release Workflow",
+    "description": "Prepare and execute a release",
+    "level": "project",
+    "workflow_type": "release",
+    "stages": [
+      {
+        "id": "changelog",
+        "name": "Changelog",
+        "order": 1,
+        "description": "Generate changelog from commits"
+      },
+      {
+        "id": "version-bump",
+        "name": "Version Bump",
+        "order": 2,
+        "description": "Update version numbers"
+      },
+      {
+        "id": "build",
+        "name": "Build",
+        "order": 3,
+        "description": "Create production build"
+      },
+      {
+        "id": "deploy",
+        "name": "Deploy",
+        "order": 4,
+        "description": "Deploy to production"
+      },
+      {
+        "id": "announce",
+        "name": "Announce",
+        "order": 5,
+        "description": "Announce release"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-26T20:05:08.976626+00:00",
+    "updated_at": "2026-01-04T00:08:36.21165+00:00"
+  },
+  {
+    "id": "34f1bdaa-cc9a-49a0-a0de-6082222d424d",
+    "name": "Workflow 1",
+    "description": "it's a test workflow to see where they are saved",
+    "level": "project",
+    "workflow_type": "custom",
+    "stages": [],
+    "default_configuration": {
+      "edges": [
+        {
+          "id": "xy-edge__nexus_prime-1769292895136-stage_manager-1769292899504",
+          "label": null,
+          "source": "nexus_prime-1769292895136",
+          "target": "stage_manager-1769292899504"
+        },
+        {
+          "id": "xy-edge__stage_manager-1769292899504-human_in_loop-1769292897457",
+          "label": null,
+          "source": "stage_manager-1769292899504",
+          "target": "human_in_loop-1769292897457"
+        },
+        {
+          "id": "xy-edge__human_in_loop-1769292897457-nexus_prime-1769292895136",
+          "label": null,
+          "source": "human_in_loop-1769292897457",
+          "target": "nexus_prime-1769292895136"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "nexus_prime-1769292895136",
+          "data": {
+            "label": "Nexus Prime (Supervisor)",
+            "config": {}
+          },
+          "type": "nexus_prime",
+          "position": {
+            "x": 375,
+            "y": 135
+          }
+        },
+        {
+          "id": "human_in_loop-1769292897457",
+          "data": {
+            "label": "Human Approval",
+            "config": {}
+          },
+          "type": "human_in_loop",
+          "position": {
+            "x": 495,
+            "y": 285
+          }
+        },
+        {
+          "id": "stage_manager-1769292899504",
+          "data": {
+            "label": "Stage Manager",
+            "config": {}
+          },
+          "type": "stage_manager",
+          "position": {
+            "x": 390,
+            "y": 285
+          }
+        }
+      ]
+    },
+    "is_system": false,
+    "created_at": "2026-01-24T22:17:16.783161+00:00",
+    "updated_at": "2026-01-24T22:17:16.782148+00:00"
+  },
+  {
+    "id": "2ffa9969-a57e-4e70-888b-c4695f17d81c",
+    "name": "Bug Fix",
+    "description": "Targeted bug fixing: Reproduce -> Analyze -> Fix -> Verify",
+    "level": "task",
+    "workflow_type": "bug-fix",
+    "stages": [
+      {
+        "id": "reproduce",
+        "name": "Reproduction",
+        "order": 1,
+        "agentId": "implementation",
+        "description": "Reproduce the bug and write failing tests"
+      },
+      {
+        "id": "analyze",
+        "name": "Root Cause Analysis",
+        "order": 2,
+        "agentId": "failure-analyst",
+        "description": "Identify the source of the bug and plan fix"
+      },
+      {
+        "id": "fix",
+        "name": "Fix Implementation",
+        "order": 3,
+        "agentId": "implementation",
+        "description": "Implement the fix and ensure tests pass"
+      },
+      {
+        "id": "verify",
+        "name": "Verification",
+        "order": 4,
+        "agentId": "critic",
+        "description": "Final verification of the fix and regression check"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-30T04:00:43.688284+00:00",
+    "updated_at": "2026-01-04T00:08:36.668049+00:00"
+  },
+  {
+    "id": "272b75d7-160a-4c74-b13d-6298e3917983",
+    "name": "Code Refactor",
+    "description": "Improve code quality: Analyze -> Plan -> Refactor -> Verify",
+    "level": "task",
+    "workflow_type": "refactor",
+    "stages": [
+      {
+        "id": "analyze",
+        "name": "Refactor Analysis",
+        "order": 1,
+        "agentId": "quick-research",
+        "description": "Identify refactoring targets and define goals"
+      },
+      {
+        "id": "plan",
+        "name": "Refactoring Plan",
+        "order": 2,
+        "agentId": "plan-generator",
+        "description": "Develop a strategy for non-breaking changes"
+      },
+      {
+        "id": "implement",
+        "name": "Execution",
+        "order": 3,
+        "agentId": "implementation",
+        "description": "Perform the refactoring implementation"
+      },
+      {
+        "id": "verify",
+        "name": "Regression Check",
+        "order": 4,
+        "agentId": "critic",
+        "description": "Verify code quality and ensure no regressions"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2025-12-30T04:00:43.825496+00:00",
+    "updated_at": "2026-01-04T00:08:36.837063+00:00"
+  },
+  {
+    "id": "fff65c6b-0ee6-4319-8d2c-65b45c28902c",
+    "name": "Code Review Loop",
+    "description": "Code → Review → Revise until approved",
+    "level": "task",
+    "workflow_type": "code-review-loop",
+    "stages": [
+      {
+        "id": "coder-1",
+        "name": "Coder",
+        "order": 1,
+        "agentId": "coder",
+        "description": ""
+      },
+      {
+        "id": "reviewer-1",
+        "name": "Reviewer",
+        "order": 2,
+        "agentId": "reviewer",
+        "description": ""
+      },
+      {
+        "id": "human-1",
+        "name": "Human Approval",
+        "order": 3,
+        "agentId": "human_in_loop",
+        "description": ""
+      }
+    ],
+    "default_configuration": {
+      "edges": [
+        {
+          "id": "e1",
+          "source": "coder-1",
+          "target": "reviewer-1"
+        },
+        {
+          "id": "e2",
+          "source": "reviewer-1",
+          "target": "human-1"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "coder-1",
+          "data": {
+            "label": "Coder",
+            "config": {
+              "model": "claude-opus-4-20250514"
+            }
+          },
+          "type": "coder",
+          "position": {
+            "x": 150,
+            "y": 150
+          }
+        },
+        {
+          "id": "reviewer-1",
+          "data": {
+            "label": "Reviewer",
+            "config": {
+              "strictness": "strict"
+            }
+          },
+          "type": "reviewer",
+          "position": {
+            "x": 350,
+            "y": 150
+          }
+        },
+        {
+          "id": "human-1",
+          "data": {
+            "label": "Human Approval",
+            "config": {
+              "approval_message": "Review the code and approve to commit"
+            }
+          },
+          "type": "human_in_loop",
+          "position": {
+            "x": 250,
+            "y": 300
+          }
+        }
+      ],
+      "conditionalEdges": []
+    },
+    "is_system": true,
+    "created_at": "2025-12-26T23:50:28.729678+00:00",
+    "updated_at": "2025-12-26T23:50:28.729678+00:00"
+  },
+  {
+    "id": "267b328d-36ec-4475-83a7-e448e4383bdc",
+    "name": "Full Feature Pipeline",
+    "description": "Complete workflow with feedback loops: Research → Plan → Code → Evaluate → (loop or complete)",
+    "level": "task",
+    "workflow_type": "feature-full",
+    "stages": [
+      {
+        "id": "quick-research-1",
+        "name": "Quick Research",
+        "order": 1,
+        "agentId": "quick-research",
+        "description": ""
+      },
+      {
+        "id": "plan-generator-1",
+        "name": "Plan Generator",
+        "order": 2,
+        "agentId": "plan-generator",
+        "description": ""
+      },
+      {
+        "id": "implementation-1",
+        "name": "Implementation",
+        "order": 3,
+        "agentId": "implementation",
+        "description": ""
+      },
+      {
+        "id": "evaluator-1",
+        "name": "Evaluator",
+        "order": 4,
+        "agentId": "evaluator",
+        "description": ""
+      }
+    ],
+    "default_configuration": {
+      "edges": [
+        {
+          "id": "e1",
+          "source": "quick-research-1",
+          "target": "plan-generator-1"
+        },
+        {
+          "id": "e2",
+          "source": "plan-generator-1",
+          "target": "implementation-1"
+        },
+        {
+          "id": "e3",
+          "source": "implementation-1",
+          "target": "evaluator-1"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "quick-research-1",
+          "data": {
+            "label": "Quick Research",
+            "config": {}
+          },
+          "type": "quick-research",
+          "position": {
+            "x": 250,
+            "y": 50
+          }
+        },
+        {
+          "id": "plan-generator-1",
+          "data": {
+            "label": "Plan Generator",
+            "config": {}
+          },
+          "type": "plan-generator",
+          "position": {
+            "x": 250,
+            "y": 200
+          }
+        },
+        {
+          "id": "implementation-1",
+          "data": {
+            "label": "Implementation",
+            "config": {}
+          },
+          "type": "implementation",
+          "position": {
+            "x": 250,
+            "y": 350
+          }
+        },
+        {
+          "id": "evaluator-1",
+          "data": {
+            "label": "Evaluator",
+            "config": {}
+          },
+          "type": "evaluator",
+          "position": {
+            "x": 250,
+            "y": 500
+          }
+        }
+      ],
+      "conditionalEdges": [
+        {
+          "routes": {
+            "re-plan": "plan-generator-1",
+            "complete": "END",
+            "re-research": "quick-research-1",
+            "re-implement": "implementation-1"
+          },
+          "source": "evaluator-1"
+        }
+      ]
+    },
+    "is_system": true,
+    "created_at": "2025-12-26T23:50:28.729678+00:00",
+    "updated_at": "2025-12-26T23:50:28.729678+00:00"
+  },
+  {
+    "id": "ce915229-6fc9-4209-86be-36238387e866",
+    "name": "Nexus Prime (AI Agents)",
+    "description": "Full adversarial mesh: Research → Architect → Builder → Auditor with autonomous retry loops",
+    "level": "task",
+    "workflow_type": "nexus-prime",
+    "stages": [
+      {
+        "id": "research",
+        "name": "Research Fleet",
+        "order": 1,
+        "agentId": "research-fleet",
+        "description": "Gemini mesh deep research"
+      },
+      {
+        "id": "architect",
+        "name": "Architect Fleet",
+        "order": 2,
+        "agentId": "architect-fleet",
+        "description": "Generate BLUEPRINT artifact"
+      },
+      {
+        "id": "builder",
+        "name": "Builder Fleet",
+        "order": 3,
+        "agentId": "builder-fleet",
+        "description": "Implement with negative constraints"
+      },
+      {
+        "id": "audit",
+        "name": "Audit Fleet",
+        "order": 4,
+        "agentId": "audit-fleet",
+        "description": "Zero-trust verification"
+      }
+    ],
+    "default_configuration": {
+      "edges": [
+        {
+          "id": "e-sup-research",
+          "type": "smoothstep",
+          "source": "supervisor",
+          "target": "research_fleet",
+          "animated": true
+        },
+        {
+          "id": "e-sup-architect",
+          "type": "smoothstep",
+          "source": "supervisor",
+          "target": "architect_fleet",
+          "animated": true
+        },
+        {
+          "id": "e-sup-builder",
+          "type": "smoothstep",
+          "source": "supervisor",
+          "target": "builder_fleet",
+          "animated": true
+        },
+        {
+          "id": "e-sup-audit",
+          "type": "smoothstep",
+          "source": "supervisor",
+          "target": "audit_fleet",
+          "animated": true
+        },
+        {
+          "id": "e-research-architect",
+          "type": "smoothstep",
+          "source": "research_fleet",
+          "target": "architect_fleet"
+        },
+        {
+          "id": "e-architect-builder",
+          "type": "smoothstep",
+          "source": "architect_fleet",
+          "target": "builder_fleet"
+        },
+        {
+          "id": "e-builder-audit",
+          "type": "smoothstep",
+          "source": "builder_fleet",
+          "target": "audit_fleet"
+        },
+        {
+          "id": "e-audit-supervisor",
+          "type": "smoothstep",
+          "style": {
+            "strokeDasharray": "5,5"
+          },
+          "source": "audit_fleet",
+          "target": "supervisor"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "supervisor",
+          "data": {
+            "label": "Supervisor",
+            "config": {
+              "model": "gemini-3-pro-preview",
+              "description": "Routes between workers"
+            }
+          },
+          "type": "supervisor",
+          "position": {
+            "x": 400,
+            "y": 80
+          }
+        },
+        {
+          "id": "research_fleet",
+          "data": {
+            "label": "Research Fleet",
+            "config": {
+              "model": "gemini-3-flash-preview",
+              "fleetType": "research",
+              "description": "Gemini mesh deep research"
+            }
+          },
+          "type": "fleet",
+          "position": {
+            "x": 150,
+            "y": 200
+          }
+        },
+        {
+          "id": "architect_fleet",
+          "data": {
+            "label": "Architect Fleet",
+            "config": {
+              "model": "claude-opus-4-5-20251101",
+              "fleetType": "architect",
+              "description": "Generate BLUEPRINT artifact"
+            }
+          },
+          "type": "fleet",
+          "position": {
+            "x": 320,
+            "y": 200
+          }
+        },
+        {
+          "id": "builder_fleet",
+          "data": {
+            "label": "Builder Fleet",
+            "config": {
+              "model": "claude-opus-4-5-20251101",
+              "fleetType": "builder",
+              "description": "Implement with negative constraints"
+            }
+          },
+          "type": "fleet",
+          "position": {
+            "x": 490,
+            "y": 200
+          }
+        },
+        {
+          "id": "audit_fleet",
+          "data": {
+            "label": "Audit Fleet",
+            "config": {
+              "model": "gemini-3-flash-preview",
+              "fleetType": "audit",
+              "description": "Zero-trust verification"
+            }
+          },
+          "type": "fleet",
+          "position": {
+            "x": 400,
+            "y": 320
+          }
+        }
+      ],
+      "conditionalEdges": [
+        {
+          "source": "supervisor",
+          "targets": {
+            "finish": "END",
+            "audit_fleet": "audit_fleet",
+            "builder_fleet": "builder_fleet",
+            "research_fleet": "research_fleet",
+            "architect_fleet": "architect_fleet"
+          },
+          "routingField": "evaluator_decision"
+        }
+      ]
+    },
+    "is_system": true,
+    "created_at": "2026-01-04T00:08:36.368554+00:00",
+    "updated_at": "2026-01-11T01:44:36.455398+00:00"
+  },
+  {
+    "id": "caf5bbfd-d350-4a19-bbd9-c3048926d6fd",
+    "name": "Quick Implementation",
+    "description": "Fast path: Plan → Code → Evaluate (with feedback loops)",
+    "level": "task",
+    "workflow_type": "quick-implement",
+    "stages": [
+      {
+        "id": "plan-generator-1",
+        "name": "Plan Generator",
+        "order": 1,
+        "agentId": "plan-generator",
+        "description": ""
+      },
+      {
+        "id": "implementation-1",
+        "name": "Implementation",
+        "order": 2,
+        "agentId": "implementation",
+        "description": ""
+      },
+      {
+        "id": "evaluator-1",
+        "name": "Evaluator",
+        "order": 3,
+        "agentId": "evaluator",
+        "description": ""
+      }
+    ],
+    "default_configuration": {
+      "edges": [
+        {
+          "id": "e1",
+          "source": "plan-generator-1",
+          "target": "implementation-1"
+        },
+        {
+          "id": "e2",
+          "source": "implementation-1",
+          "target": "evaluator-1"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "plan-generator-1",
+          "data": {
+            "label": "Plan Generator",
+            "config": {}
+          },
+          "type": "plan-generator",
+          "position": {
+            "x": 250,
+            "y": 100
+          }
+        },
+        {
+          "id": "implementation-1",
+          "data": {
+            "label": "Implementation",
+            "config": {}
+          },
+          "type": "implementation",
+          "position": {
+            "x": 250,
+            "y": 250
+          }
+        },
+        {
+          "id": "evaluator-1",
+          "data": {
+            "label": "Evaluator",
+            "config": {}
+          },
+          "type": "evaluator",
+          "position": {
+            "x": 250,
+            "y": 400
+          }
+        }
+      ],
+      "conditionalEdges": [
+        {
+          "routes": {
+            "re-plan": "plan-generator-1",
+            "complete": "END",
+            "re-implement": "implementation-1"
+          },
+          "source": "evaluator-1"
+        }
+      ]
+    },
+    "is_system": true,
+    "created_at": "2025-12-26T23:50:28.729678+00:00",
+    "updated_at": "2025-12-26T23:50:28.729678+00:00"
+  },
+  {
+    "id": "841bcfb4-3487-4b2f-9165-1fcda421f595",
+    "name": "Research Report",
+    "description": "Deep research with summary",
+    "level": "task",
+    "workflow_type": "research-only",
+    "stages": [
+      {
+        "id": "researcher-1",
+        "name": "Deep Researcher",
+        "order": 1,
+        "agentId": "researcher",
+        "description": ""
+      },
+      {
+        "id": "summarizer-1",
+        "name": "Summarizer",
+        "order": 2,
+        "agentId": "summarizer",
+        "description": ""
+      }
+    ],
+    "default_configuration": {
+      "edges": [
+        {
+          "id": "e1",
+          "source": "researcher-1",
+          "target": "summarizer-1"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "researcher-1",
+          "data": {
+            "label": "Deep Researcher",
+            "config": {
+              "depth": "deep",
+              "model": "gemini-2.5-pro"
+            }
+          },
+          "type": "researcher",
+          "position": {
+            "x": 250,
+            "y": 100
+          }
+        },
+        {
+          "id": "summarizer-1",
+          "data": {
+            "label": "Summarizer",
+            "config": {
+              "model": "gemini-2.5-flash"
+            }
+          },
+          "type": "summarizer",
+          "position": {
+            "x": 250,
+            "y": 250
+          }
+        }
+      ],
+      "conditionalEdges": []
+    },
+    "is_system": true,
+    "created_at": "2025-12-26T23:50:28.729678+00:00",
+    "updated_at": "2025-12-26T23:50:28.729678+00:00"
+  },
+  {
+    "id": "c5095897-659b-488e-a100-af1ac0349b33",
+    "name": "Standard Task",
+    "description": "Full development lifecycle: Research -> Plan -> Implement -> Walkthrough",
+    "level": "task",
+    "workflow_type": "standard-task",
+    "stages": [
+      {
+        "id": "research",
+        "name": "Research",
+        "order": 1,
+        "agentId": "deep-research",
+        "description": "Perform deep research and feasibility analysis"
+      },
+      {
+        "id": "plan",
+        "name": "Planning",
+        "order": 2,
+        "agentId": "plan-generator",
+        "description": "Generate a detailed technical implementation plan"
+      },
+      {
+        "id": "implement",
+        "name": "Implementation",
+        "order": 3,
+        "agentId": "implementation",
+        "description": "Execute the implementation plan and write code"
+      },
+      {
+        "id": "walkthrough",
+        "name": "Verification",
+        "order": 4,
+        "agentId": "failure-analyst",
+        "description": "Verify implementation and generate walkthrough"
+      }
+    ],
+    "default_configuration": {},
+    "is_system": true,
+    "created_at": "2026-01-04T00:08:36.521813+00:00",
+    "updated_at": "2026-01-04T00:08:36.521813+00:00"
+  },
+  {
+    "id": "ae56641b-22f2-4da1-b267-416a90a01a0c",
+    "name": "Supervised Pipeline",
+    "description": "Supervisor routes between workers dynamically",
+    "level": "task",
+    "workflow_type": "supervised-full",
+    "stages": [
+      {
+        "id": "supervisor-1",
+        "name": "Supervisor",
+        "order": 1,
+        "agentId": "supervisor",
+        "description": ""
+      },
+      {
+        "id": "researcher-1",
+        "name": "Researcher",
+        "order": 2,
+        "agentId": "researcher",
+        "description": ""
+      },
+      {
+        "id": "planner-1",
+        "name": "Planner",
+        "order": 3,
+        "agentId": "planner",
+        "description": ""
+      },
+      {
+        "id": "coder-1",
+        "name": "Coder",
+        "order": 4,
+        "agentId": "coder",
+        "description": ""
+      },
+      {
+        "id": "reviewer-1",
+        "name": "Reviewer",
+        "order": 5,
+        "agentId": "reviewer",
+        "description": ""
+      }
+    ],
+    "default_configuration": {
+      "edges": [
+        {
+          "id": "e1",
+          "source": "supervisor-1",
+          "target": "researcher-1"
+        },
+        {
+          "id": "e2",
+          "source": "supervisor-1",
+          "target": "planner-1"
+        },
+        {
+          "id": "e3",
+          "source": "supervisor-1",
+          "target": "coder-1"
+        },
+        {
+          "id": "e4",
+          "source": "researcher-1",
+          "target": "supervisor-1"
+        },
+        {
+          "id": "e5",
+          "source": "planner-1",
+          "target": "supervisor-1"
+        },
+        {
+          "id": "e6",
+          "source": "coder-1",
+          "target": "reviewer-1"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "supervisor-1",
+          "data": {
+            "label": "Supervisor",
+            "config": {
+              "model": "gemini-2.5-flash"
+            }
+          },
+          "type": "supervisor",
+          "position": {
+            "x": 250,
+            "y": 50
+          }
+        },
+        {
+          "id": "researcher-1",
+          "data": {
+            "label": "Researcher"
+          },
+          "type": "researcher",
+          "position": {
+            "x": 100,
+            "y": 200
+          }
+        },
+        {
+          "id": "planner-1",
+          "data": {
+            "label": "Planner"
+          },
+          "type": "planner",
+          "position": {
+            "x": 250,
+            "y": 200
+          }
+        },
+        {
+          "id": "coder-1",
+          "data": {
+            "label": "Coder"
+          },
+          "type": "coder",
+          "position": {
+            "x": 400,
+            "y": 200
+          }
+        },
+        {
+          "id": "reviewer-1",
+          "data": {
+            "label": "Reviewer"
+          },
+          "type": "reviewer",
+          "position": {
+            "x": 250,
+            "y": 350
+          }
+        }
+      ],
+      "conditionalEdges": []
+    },
+    "is_system": true,
+    "created_at": "2025-12-26T23:50:28.729678+00:00",
+    "updated_at": "2025-12-26T23:50:28.729678+00:00"
+  }
+]

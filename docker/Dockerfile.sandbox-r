@@ -1,0 +1,17 @@
+# Sandbox Executor - R
+# Hardened image for running R code
+
+FROM r-base:4.3.2
+
+# Create non-root user (handle if user already exists)
+RUN useradd -m -s /bin/bash sandbox 2>/dev/null || true
+
+# Pre-install common R packages
+RUN Rscript -e "install.packages(c('tidyverse', 'ggplot2', 'jsonlite'), repos='https://cloud.r-project.org/')"
+
+WORKDIR /workspace
+RUN chown sandbox:sandbox /workspace
+
+USER sandbox
+
+CMD ["tail", "-f", "/dev/null"]

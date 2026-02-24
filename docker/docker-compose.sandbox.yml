@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SANDBOX API SERVER
+  # Orchestrates container lifecycle, handles execution requests
+  # ═══════════════════════════════════════════════════════════════════════════
+  sandbox-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: sandbox-api
+    ports:
+      - "8765:8765"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - session-data:/data/sessions
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://localhost:5432/nexus}
+      - SANDBOX_NETWORK=sandbox-net
+      - LOG_LEVEL=INFO
+    networks:
+      - sandbox-net
+      - default  # For PostgreSQL access
+    depends_on:
+      - squid
+    restart: unless-stopped
+    labels:
+      - "sandbox.role=api"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SQUID PROXY
+  # Network allowlisting - only permits traffic to approved domains
+  # ═══════════════════════════════════════════════════════════════════════════
+  squid:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    container_name: sandbox-squid
+    networks:
+      - sandbox-net
+    restart: unless-stopped
+    labels:
+      - "sandbox.role=proxy"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EXECUTOR IMAGES (build-only, not started by compose)
+  # Created dynamically by the API on demand
+  # ═══════════════════════════════════════════════════════════════════════════
+  executor-python:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    image: sandbox-python:latest
+    profiles: ["build-only"]
+
+  executor-node:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    image: sandbox-node:latest
+    profiles: ["build-only"]
+
+  executor-r:
+    build:
+      context: .
+      dockerfile: Dockerfile.r
+    image: sandbox-r:latest
+    profiles: ["build-only"]
+
+networks:
+  sandbox-net:
+    driver: bridge
+    internal: true  # No direct internet access
+    name: sandbox-net
+
+volumes:
+  session-data:
+    name: sandbox-sessions

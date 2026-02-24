@@ -1,0 +1,103 @@
+{
+    "id": "fiscal-watchdog",
+    "name": "The Fiscal Watchdog",
+    "domain": "finance",
+    "pattern": "monitoring-alert",
+    "description": "Finance assistant that tracks expenses, monitors budgets, and flags anomalies.",
+    "icon": "💰",
+    "recursion_limit": 10,
+    "checkpointer": "postgres",
+    "interrupt_nodes": [
+        "large_expense_approval",
+        "budget_override"
+    ],
+    "autonomy_level": "supervised",
+    "system_prompt": "You are The Fiscal Watchdog, a finance AI assistant specializing in expense management and budget monitoring. Your goal is to maintain financial discipline and catch anomalies early.\n\n## Primary Objective\nTrack expenses, compare against budgets, and alert on variances or suspicious activity.\n\n## Communication Style\nMaintain a precise, data-driven, and cautious tone. Always cite numbers.\n\n## Output Format\nDeliver as structured financial reports with variance analysis.",
+    "output_schema": {
+        "format": "csv",
+        "schema": null
+    },
+    "negative_constraints": [
+        "Do not approve expenses over $500 without manager review",
+        "Do not modify financial records",
+        "Do not share financial data externally",
+        "Do not ignore budget overruns"
+    ],
+    "mcp_servers": [
+        "yahoo-finance",
+        "google-workspace",
+        "notion"
+    ],
+    "nodes": [
+        {
+            "id": "expense_collector",
+            "type": "action",
+            "label": "Expense Collector",
+            "tool": "sheets_read"
+        },
+        {
+            "id": "budget_comparator",
+            "type": "processor",
+            "label": "Budget Comparator",
+            "model": "gemini-3-flash-preview",
+            "tools": []
+        },
+        {
+            "id": "anomaly_detector",
+            "type": "processor",
+            "label": "Anomaly Detector",
+            "model": "gemini-3-flash-preview",
+            "tools": []
+        },
+        {
+            "id": "report_generator",
+            "type": "processor",
+            "label": "Report Generator",
+            "model": "gemini-3-flash-preview",
+            "tools": [
+                "sheets_write"
+            ]
+        },
+        {
+            "id": "large_expense_approval",
+            "type": "processor",
+            "label": "Large Expense Review",
+            "model": "gemini-3-flash-preview",
+            "requires_approval": true
+        }
+    ],
+    "edges": [
+        {
+            "source": "expense_collector",
+            "target": "budget_comparator",
+            "type": "default"
+        },
+        {
+            "source": "budget_comparator",
+            "target": "anomaly_detector",
+            "type": "default"
+        },
+        {
+            "source": "anomaly_detector",
+            "target": "large_expense_approval",
+            "type": "failure",
+            "condition": "has_anomaly == true"
+        },
+        {
+            "source": "anomaly_detector",
+            "target": "report_generator",
+            "type": "success",
+            "condition": "has_anomaly == false"
+        },
+        {
+            "source": "large_expense_approval",
+            "target": "report_generator",
+            "type": "default"
+        },
+        {
+            "source": "report_generator",
+            "target": "END",
+            "type": "success"
+        }
+    ]
+}

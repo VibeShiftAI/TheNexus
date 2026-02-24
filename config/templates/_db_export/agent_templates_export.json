@@ -1,0 +1,914 @@
+[
+  {
+    "id": "market-research-marco",
+    "name": "Market Research Marco",
+    "description": "Recursive research loop that gathers market intelligence, evaluates findings, and iteratively improves until quality threshold is met.",
+    "domain": "business",
+    "graph_pattern": "evaluator-optimizer",
+    "config": {
+      "icon": "📊",
+      "edges": [
+        {
+          "type": "default",
+          "source": "researcher",
+          "target": "evaluator"
+        },
+        {
+          "type": "success",
+          "source": "evaluator",
+          "target": "optimizer",
+          "condition": "quality_score >= 0.8"
+        },
+        {
+          "type": "retry",
+          "source": "evaluator",
+          "target": "researcher",
+          "condition": "quality_score < 0.8"
+        },
+        {
+          "type": "success",
+          "source": "optimizer",
+          "target": "END"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "researcher",
+          "type": "processor",
+          "label": "Research Agent",
+          "model": "gemini-2.5-flash",
+          "tools": [
+            "brave_search",
+            "fetch_url"
+          ]
+        },
+        {
+          "id": "evaluator",
+          "type": "processor",
+          "label": "Quality Evaluator",
+          "model": "gemini-2.5-flash",
+          "tools": []
+        },
+        {
+          "id": "optimizer",
+          "type": "processor",
+          "label": "Insight Optimizer",
+          "model": "gemini-2.5-pro",
+          "tools": []
+        }
+      ],
+      "mcp_servers": [
+        "brave-search",
+        "fetch",
+        "notion"
+      ],
+      "checkpointer": "memory",
+      "output_schema": {
+        "format": "json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "trends": {
+              "type": "array"
+            },
+            "competitors": {
+              "type": "array"
+            },
+            "market_size": {
+              "type": "object"
+            },
+            "recommendations": {
+              "type": "array"
+            },
+            "executive_summary": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "system_prompt": "You are Market Research Marco, an AI specialist in competitive intelligence and market analysis. Your goal is to gather comprehensive market data, identify trends, and deliver actionable insights.\n\n## Primary Objective\nConduct thorough market research on the given topic, iterating until findings meet quality standards.\n\n## Communication Style\nMaintain a professional, data-driven tone. Present findings with supporting evidence.\n\n## Output Format\nDeliver results as structured JSON with sections for: executive_summary, market_size, competitors, trends, recommendations.",
+      "autonomy_level": "autonomous",
+      "interrupt_nodes": [],
+      "recursion_limit": 10,
+      "negative_constraints": [
+        "Do not present unverified claims as facts",
+        "Do not rely on data older than 12 months without noting it",
+        "Do not ignore competitor analysis"
+      ]
+    },
+    "preview_image": null,
+    "is_featured": true,
+    "usage_count": 0,
+    "created_at": "2025-12-29T19:25:15.574235+00:00",
+    "updated_at": "2025-12-29T19:25:15.574235+00:00",
+    "icon": "📊",
+    "autonomy_level": "autonomous",
+    "mcp_servers": [
+      "brave-search",
+      "fetch",
+      "notion"
+    ],
+    "recursion_limit": 10,
+    "checkpointer": "memory",
+    "interrupt_nodes": [],
+    "system_prompt": "You are Market Research Marco, an AI specialist in competitive intelligence and market analysis. Your goal is to gather comprehensive market data, identify trends, and deliver actionable insights.\n\n## Primary Objective\nConduct thorough market research on the given topic, iterating until findings meet quality standards.\n\n## Communication Style\nMaintain a professional, data-driven tone. Present findings with supporting evidence.\n\n## Output Format\nDeliver results as structured JSON with sections for: executive_summary, market_size, competitors, trends, recommendations.",
+    "negative_constraints": [
+      "Do not present unverified claims as facts",
+      "Do not rely on data older than 12 months without noting it",
+      "Do not ignore competitor analysis"
+    ],
+    "output_format": "json"
+  },
+  {
+    "id": "chief-of-staff",
+    "name": "The Chief of Staff",
+    "description": "Personal assistant that triages incoming requests, routes to specialists, and aggregates responses.",
+    "domain": "productivity",
+    "graph_pattern": "router-fanout",
+    "config": {
+      "icon": "👔",
+      "edges": [
+        {
+          "type": "conditional",
+          "source": "triage",
+          "target": "email_handler"
+        },
+        {
+          "type": "conditional",
+          "source": "triage",
+          "target": "calendar_handler"
+        },
+        {
+          "type": "conditional",
+          "source": "triage",
+          "target": "task_handler"
+        },
+        {
+          "type": "default",
+          "source": "email_handler",
+          "target": "aggregator"
+        },
+        {
+          "type": "default",
+          "source": "calendar_handler",
+          "target": "aggregator"
+        },
+        {
+          "type": "default",
+          "source": "task_handler",
+          "target": "aggregator"
+        },
+        {
+          "type": "success",
+          "source": "aggregator",
+          "target": "END"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "triage",
+          "type": "processor",
+          "label": "Request Triage"
+        },
+        {
+          "id": "email_handler",
+          "type": "processor",
+          "label": "Email Handler"
+        },
+        {
+          "id": "calendar_handler",
+          "type": "processor",
+          "label": "Calendar Manager"
+        },
+        {
+          "id": "task_handler",
+          "type": "processor",
+          "label": "Task Manager"
+        },
+        {
+          "id": "aggregator",
+          "type": "processor",
+          "label": "Result Aggregator"
+        }
+      ],
+      "mcp_servers": [
+        "google-workspace",
+        "slack",
+        "notion"
+      ],
+      "checkpointer": "memory",
+      "output_schema": {
+        "format": "json",
+        "schema": null
+      },
+      "system_prompt": "You are The Chief of Staff, an executive AI assistant that manages incoming requests efficiently.",
+      "autonomy_level": "autonomous",
+      "interrupt_nodes": [
+        "urgent_escalation"
+      ],
+      "recursion_limit": 15,
+      "negative_constraints": [
+        "Do not ignore urgent requests",
+        "Do not send external messages without logging"
+      ]
+    },
+    "preview_image": null,
+    "is_featured": true,
+    "usage_count": 0,
+    "created_at": "2025-12-29T19:25:16.135983+00:00",
+    "updated_at": "2025-12-29T19:25:16.135983+00:00",
+    "icon": "👔",
+    "autonomy_level": "autonomous",
+    "mcp_servers": [
+      "google-workspace",
+      "slack",
+      "notion"
+    ],
+    "recursion_limit": 15,
+    "checkpointer": "memory",
+    "interrupt_nodes": [
+      "urgent_escalation"
+    ],
+    "system_prompt": "You are The Chief of Staff, an executive AI assistant that manages incoming requests efficiently.",
+    "negative_constraints": [
+      "Do not ignore urgent requests",
+      "Do not send external messages without logging"
+    ],
+    "output_format": "json"
+  },
+  {
+    "id": "contract-hawk",
+    "name": "The Contract Hawk",
+    "description": "Legal assistant that analyzes contracts, identifies risk clauses, and tracks document versions.",
+    "domain": "legal",
+    "graph_pattern": "analysis-review",
+    "config": {
+      "icon": "⚖️",
+      "edges": [
+        {
+          "type": "default",
+          "source": "document_ingester",
+          "target": "clause_analyzer"
+        },
+        {
+          "type": "default",
+          "source": "clause_analyzer",
+          "target": "risk_assessor"
+        },
+        {
+          "type": "failure",
+          "source": "risk_assessor",
+          "target": "flag_critical"
+        },
+        {
+          "type": "success",
+          "source": "risk_assessor",
+          "target": "amend_suggestion"
+        },
+        {
+          "type": "default",
+          "source": "flag_critical",
+          "target": "amend_suggestion"
+        },
+        {
+          "type": "success",
+          "source": "amend_suggestion",
+          "target": "END"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "document_ingester",
+          "type": "action",
+          "label": "Document Ingester"
+        },
+        {
+          "id": "clause_analyzer",
+          "type": "processor",
+          "label": "Clause Analyzer"
+        },
+        {
+          "id": "risk_assessor",
+          "type": "processor",
+          "label": "Risk Assessor"
+        },
+        {
+          "id": "flag_critical",
+          "type": "processor",
+          "label": "Critical Flag",
+          "requires_approval": true
+        },
+        {
+          "id": "amend_suggestion",
+          "type": "processor",
+          "label": "Amendment Suggester",
+          "requires_approval": true
+        }
+      ],
+      "mcp_servers": [
+        "notion",
+        "filesystem",
+        "fetch"
+      ],
+      "checkpointer": "postgres",
+      "output_schema": {
+        "format": "json",
+        "schema": null
+      },
+      "system_prompt": "You are The Contract Hawk, a legal AI assistant specializing in contract analysis and risk management.",
+      "autonomy_level": "copilot",
+      "interrupt_nodes": [
+        "flag_critical",
+        "amend_suggestion"
+      ],
+      "recursion_limit": 8,
+      "negative_constraints": [
+        "Do not provide legal advice (only analysis)",
+        "Do not modify original documents without approval",
+        "Do not share contract contents externally",
+        "Do not approve contracts without human review"
+      ]
+    },
+    "preview_image": null,
+    "is_featured": false,
+    "usage_count": 0,
+    "created_at": "2025-12-29T19:25:16.539+00:00",
+    "updated_at": "2025-12-29T19:25:16.539+00:00",
+    "icon": "⚖️",
+    "autonomy_level": "copilot",
+    "mcp_servers": [
+      "notion",
+      "filesystem",
+      "fetch"
+    ],
+    "recursion_limit": 8,
+    "checkpointer": "postgres",
+    "interrupt_nodes": [
+      "flag_critical",
+      "amend_suggestion"
+    ],
+    "system_prompt": "You are The Contract Hawk, a legal AI assistant specializing in contract analysis and risk management.",
+    "negative_constraints": [
+      "Do not provide legal advice (only analysis)",
+      "Do not modify original documents without approval",
+      "Do not share contract contents externally",
+      "Do not approve contracts without human review"
+    ],
+    "output_format": "json"
+  },
+  {
+    "id": "fiscal-watchdog",
+    "name": "The Fiscal Watchdog",
+    "description": "Finance assistant that tracks expenses, monitors budgets, and flags anomalies.",
+    "domain": "finance",
+    "graph_pattern": "monitoring-alert",
+    "config": {
+      "icon": "💰",
+      "edges": [
+        {
+          "type": "default",
+          "source": "expense_collector",
+          "target": "budget_comparator"
+        },
+        {
+          "type": "default",
+          "source": "budget_comparator",
+          "target": "anomaly_detector"
+        },
+        {
+          "type": "failure",
+          "source": "anomaly_detector",
+          "target": "large_expense_approval"
+        },
+        {
+          "type": "success",
+          "source": "anomaly_detector",
+          "target": "report_generator"
+        },
+        {
+          "type": "default",
+          "source": "large_expense_approval",
+          "target": "report_generator"
+        },
+        {
+          "type": "success",
+          "source": "report_generator",
+          "target": "END"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "expense_collector",
+          "type": "action",
+          "label": "Expense Collector"
+        },
+        {
+          "id": "budget_comparator",
+          "type": "processor",
+          "label": "Budget Comparator"
+        },
+        {
+          "id": "anomaly_detector",
+          "type": "processor",
+          "label": "Anomaly Detector"
+        },
+        {
+          "id": "report_generator",
+          "type": "processor",
+          "label": "Report Generator"
+        },
+        {
+          "id": "large_expense_approval",
+          "type": "processor",
+          "label": "Large Expense Review",
+          "requires_approval": true
+        }
+      ],
+      "mcp_servers": [
+        "yahoo-finance",
+        "google-workspace",
+        "notion"
+      ],
+      "checkpointer": "postgres",
+      "output_schema": {
+        "format": "csv",
+        "schema": null
+      },
+      "system_prompt": "You are The Fiscal Watchdog, a finance AI assistant specializing in expense management.",
+      "autonomy_level": "supervised",
+      "interrupt_nodes": [
+        "large_expense_approval",
+        "budget_override"
+      ],
+      "recursion_limit": 10,
+      "negative_constraints": [
+        "Do not approve expenses over $500 without manager review",
+        "Do not modify financial records",
+        "Do not share financial data externally"
+      ]
+    },
+    "preview_image": null,
+    "is_featured": false,
+    "usage_count": 0,
+    "created_at": "2025-12-29T19:25:16.681004+00:00",
+    "updated_at": "2025-12-29T19:25:16.681004+00:00",
+    "icon": "💰",
+    "autonomy_level": "supervised",
+    "mcp_servers": [
+      "yahoo-finance",
+      "google-workspace",
+      "notion"
+    ],
+    "recursion_limit": 10,
+    "checkpointer": "postgres",
+    "interrupt_nodes": [
+      "large_expense_approval",
+      "budget_override"
+    ],
+    "system_prompt": "You are The Fiscal Watchdog, a finance AI assistant specializing in expense management.",
+    "negative_constraints": [
+      "Do not approve expenses over $500 without manager review",
+      "Do not modify financial records",
+      "Do not share financial data externally"
+    ],
+    "output_format": "csv"
+  },
+  {
+    "id": "git-keeper",
+    "name": "The Git Keeper",
+    "description": "DevOps assistant using ReAct pattern with environment feedback. Manages repositories, reviews code, and automates workflows.",
+    "domain": "coding",
+    "graph_pattern": "react-feedback",
+    "config": {
+      "icon": "🔧",
+      "edges": [
+        {
+          "type": "default",
+          "source": "repo_analyzer",
+          "target": "code_reviewer"
+        },
+        {
+          "type": "success",
+          "source": "code_reviewer",
+          "target": "action_executor"
+        },
+        {
+          "type": "default",
+          "source": "action_executor",
+          "target": "feedback_analyzer"
+        },
+        {
+          "type": "retry",
+          "source": "feedback_analyzer",
+          "target": "repo_analyzer"
+        },
+        {
+          "type": "success",
+          "source": "feedback_analyzer",
+          "target": "END"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "repo_analyzer",
+          "type": "processor",
+          "label": "Repo Analyzer"
+        },
+        {
+          "id": "code_reviewer",
+          "type": "processor",
+          "label": "Code Reviewer"
+        },
+        {
+          "id": "action_executor",
+          "type": "action",
+          "label": "Execute Git Action"
+        },
+        {
+          "id": "feedback_analyzer",
+          "type": "processor",
+          "label": "Feedback Analyzer"
+        }
+      ],
+      "mcp_servers": [
+        "github",
+        "filesystem",
+        "terminal"
+      ],
+      "checkpointer": "postgres",
+      "output_schema": {
+        "format": "markdown",
+        "schema": null
+      },
+      "system_prompt": "You are The Git Keeper, a DevOps AI assistant specializing in repository management and code quality.",
+      "autonomy_level": "supervised",
+      "interrupt_nodes": [
+        "deploy",
+        "force_push"
+      ],
+      "recursion_limit": 20,
+      "negative_constraints": [
+        "Do not force push to main/master branch",
+        "Do not delete branches without confirmation",
+        "Do not merge PRs with failing tests",
+        "Do not commit secrets or credentials"
+      ]
+    },
+    "preview_image": null,
+    "is_featured": true,
+    "usage_count": 0,
+    "created_at": "2025-12-29T19:25:16.262843+00:00",
+    "updated_at": "2025-12-29T19:25:16.262843+00:00",
+    "icon": "🔧",
+    "autonomy_level": "supervised",
+    "mcp_servers": [
+      "github",
+      "filesystem",
+      "terminal"
+    ],
+    "recursion_limit": 20,
+    "checkpointer": "postgres",
+    "interrupt_nodes": [
+      "deploy",
+      "force_push"
+    ],
+    "system_prompt": "You are The Git Keeper, a DevOps AI assistant specializing in repository management and code quality.",
+    "negative_constraints": [
+      "Do not force push to main/master branch",
+      "Do not delete branches without confirmation",
+      "Do not merge PRs with failing tests",
+      "Do not commit secrets or credentials"
+    ],
+    "output_format": "markdown"
+  },
+  {
+    "id": "odyssey-planner",
+    "name": "The Odyssey Planner",
+    "description": "Travel assistant that plans itineraries, books reservations, and manages trip logistics.",
+    "domain": "travel",
+    "graph_pattern": "planning-execution",
+    "config": {
+      "icon": "🌍",
+      "edges": [
+        {
+          "type": "default",
+          "source": "destination_researcher",
+          "target": "itinerary_planner"
+        },
+        {
+          "type": "default",
+          "source": "itinerary_planner",
+          "target": "booking_coordinator"
+        },
+        {
+          "type": "default",
+          "source": "booking_coordinator",
+          "target": "booking_confirmation"
+        },
+        {
+          "type": "success",
+          "source": "booking_confirmation",
+          "target": "expense_tracker"
+        },
+        {
+          "type": "success",
+          "source": "expense_tracker",
+          "target": "END"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "destination_researcher",
+          "type": "processor",
+          "label": "Destination Researcher"
+        },
+        {
+          "id": "itinerary_planner",
+          "type": "processor",
+          "label": "Itinerary Planner"
+        },
+        {
+          "id": "booking_coordinator",
+          "type": "processor",
+          "label": "Booking Coordinator"
+        },
+        {
+          "id": "booking_confirmation",
+          "type": "action",
+          "label": "Confirm Booking",
+          "requires_approval": true
+        },
+        {
+          "id": "expense_tracker",
+          "type": "action",
+          "label": "Track Expenses"
+        }
+      ],
+      "mcp_servers": [
+        "google-maps",
+        "google-workspace",
+        "fetch"
+      ],
+      "checkpointer": "memory",
+      "output_schema": {
+        "format": "markdown",
+        "schema": null
+      },
+      "system_prompt": "You are The Odyssey Planner, a travel AI assistant specializing in trip planning.",
+      "autonomy_level": "supervised",
+      "interrupt_nodes": [
+        "booking_confirmation",
+        "payment"
+      ],
+      "recursion_limit": 15,
+      "negative_constraints": [
+        "Do not book without price confirmation",
+        "Do not ignore visa/entry requirements",
+        "Do not exceed stated budget without approval"
+      ]
+    },
+    "preview_image": null,
+    "is_featured": false,
+    "usage_count": 0,
+    "created_at": "2025-12-29T19:25:16.803425+00:00",
+    "updated_at": "2025-12-29T19:25:16.803425+00:00",
+    "icon": "🌍",
+    "autonomy_level": "supervised",
+    "mcp_servers": [
+      "google-maps",
+      "google-workspace",
+      "fetch"
+    ],
+    "recursion_limit": 15,
+    "checkpointer": "memory",
+    "interrupt_nodes": [
+      "booking_confirmation",
+      "payment"
+    ],
+    "system_prompt": "You are The Odyssey Planner, a travel AI assistant specializing in trip planning.",
+    "negative_constraints": [
+      "Do not book without price confirmation",
+      "Do not ignore visa/entry requirements",
+      "Do not exceed stated budget without approval"
+    ],
+    "output_format": "markdown"
+  },
+  {
+    "id": "talent-scout",
+    "name": "The Talent Scout",
+    "description": "HR recruiting assistant that screens resumes, ranks candidates, and coordinates interview scheduling.",
+    "domain": "hr",
+    "graph_pattern": "screening-pipeline",
+    "config": {
+      "icon": "🎯",
+      "edges": [
+        {
+          "type": "default",
+          "source": "resume_parser",
+          "target": "skills_matcher"
+        },
+        {
+          "type": "default",
+          "source": "skills_matcher",
+          "target": "candidate_ranker"
+        },
+        {
+          "type": "success",
+          "source": "candidate_ranker",
+          "target": "outreach"
+        },
+        {
+          "type": "success",
+          "source": "outreach",
+          "target": "schedule_interview"
+        },
+        {
+          "type": "success",
+          "source": "schedule_interview",
+          "target": "END"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "resume_parser",
+          "type": "processor",
+          "label": "Resume Parser"
+        },
+        {
+          "id": "skills_matcher",
+          "type": "processor",
+          "label": "Skills Matcher"
+        },
+        {
+          "id": "candidate_ranker",
+          "type": "processor",
+          "label": "Candidate Ranker"
+        },
+        {
+          "id": "outreach",
+          "type": "action",
+          "label": "Candidate Outreach",
+          "requires_approval": true
+        },
+        {
+          "id": "schedule_interview",
+          "type": "action",
+          "label": "Schedule Interview",
+          "requires_approval": true
+        }
+      ],
+      "mcp_servers": [
+        "linkedin",
+        "google-calendar",
+        "google-workspace"
+      ],
+      "checkpointer": "postgres",
+      "output_schema": {
+        "format": "json",
+        "schema": null
+      },
+      "system_prompt": "You are The Talent Scout, an HR AI assistant specializing in talent acquisition.",
+      "autonomy_level": "supervised",
+      "interrupt_nodes": [
+        "outreach",
+        "schedule_interview"
+      ],
+      "recursion_limit": 10,
+      "negative_constraints": [
+        "Do not discriminate based on protected characteristics",
+        "Do not share candidate information externally",
+        "Do not make hiring decisions without manager approval"
+      ]
+    },
+    "preview_image": null,
+    "is_featured": false,
+    "usage_count": 0,
+    "created_at": "2025-12-29T19:25:16.417857+00:00",
+    "updated_at": "2025-12-29T19:25:16.417857+00:00",
+    "icon": "🎯",
+    "autonomy_level": "supervised",
+    "mcp_servers": [
+      "linkedin",
+      "google-calendar",
+      "google-workspace"
+    ],
+    "recursion_limit": 10,
+    "checkpointer": "postgres",
+    "interrupt_nodes": [
+      "outreach",
+      "schedule_interview"
+    ],
+    "system_prompt": "You are The Talent Scout, an HR AI assistant specializing in talent acquisition.",
+    "negative_constraints": [
+      "Do not discriminate based on protected characteristics",
+      "Do not share candidate information externally",
+      "Do not make hiring decisions without manager approval"
+    ],
+    "output_format": "json"
+  },
+  {
+    "id": "viral-vanguard",
+    "name": "The Viral Vanguard",
+    "description": "Content creation workflow with human approval gates before publishing. Generates, reviews, and schedules social media content.",
+    "domain": "creative",
+    "graph_pattern": "human-in-the-loop",
+    "config": {
+      "icon": "🚀",
+      "edges": [
+        {
+          "type": "default",
+          "source": "trend_analyzer",
+          "target": "content_creator"
+        },
+        {
+          "type": "default",
+          "source": "content_creator",
+          "target": "human_review"
+        },
+        {
+          "type": "success",
+          "source": "human_review",
+          "target": "publish"
+        },
+        {
+          "type": "success",
+          "source": "publish",
+          "target": "END"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "trend_analyzer",
+          "type": "processor",
+          "label": "Trend Analyzer",
+          "model": "gemini-2.5-flash"
+        },
+        {
+          "id": "content_creator",
+          "type": "processor",
+          "label": "Content Creator",
+          "model": "gemini-2.5-pro"
+        },
+        {
+          "id": "human_review",
+          "type": "processor",
+          "label": "Human Review",
+          "requires_approval": true
+        },
+        {
+          "id": "publish",
+          "type": "action",
+          "label": "Publish to Social",
+          "requires_approval": true
+        }
+      ],
+      "mcp_servers": [
+        "twitter",
+        "filesystem",
+        "google-trends"
+      ],
+      "checkpointer": "postgres",
+      "output_schema": {
+        "format": "markdown",
+        "schema": null
+      },
+      "system_prompt": "You are The Viral Vanguard, a creative AI assistant specializing in viral social media content. Your goal is to create engaging, shareable content that resonates with target audiences.",
+      "autonomy_level": "supervised",
+      "interrupt_nodes": [
+        "human_review",
+        "publish"
+      ],
+      "recursion_limit": 5,
+      "negative_constraints": [
+        "Do not post without human approval",
+        "Do not use copyrighted material without permission",
+        "Do not engage in controversial political topics"
+      ]
+    },
+    "preview_image": null,
+    "is_featured": true,
+    "usage_count": 0,
+    "created_at": "2025-12-29T19:25:15.989517+00:00",
+    "updated_at": "2025-12-29T19:25:15.989517+00:00",
+    "icon": "🚀",
+    "autonomy_level": "supervised",
+    "mcp_servers": [
+      "twitter",
+      "filesystem",
+      "google-trends"
+    ],
+    "recursion_limit": 5,
+    "checkpointer": "postgres",
+    "interrupt_nodes": [
+      "human_review",
+      "publish"
+    ],
+    "system_prompt": "You are The Viral Vanguard, a creative AI assistant specializing in viral social media content. Your goal is to create engaging, shareable content that resonates with target audiences.",
+    "negative_constraints": [
+      "Do not post without human approval",
+      "Do not use copyrighted material without permission",
+      "Do not engage in controversial political topics"
+    ],
+    "output_format": "markdown"
+  }
+]

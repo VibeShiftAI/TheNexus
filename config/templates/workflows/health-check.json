@@ -1,0 +1,102 @@
+{
+    "id": "health-check",
+    "name": "Monthly Health Check",
+    "description": "Regular maintenance check across projects",
+    "level": "dashboard",
+    "workflow_type": "health-check",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "check-tests",
+            "name": "Check Tests",
+            "order": 1,
+            "description": "Verify test suites are passing"
+        },
+        {
+            "id": "check-coverage",
+            "name": "Check Coverage",
+            "order": 2,
+            "description": "Review code coverage"
+        },
+        {
+            "id": "check-docs",
+            "name": "Check Docs",
+            "order": 3,
+            "description": "Verify documentation is current"
+        },
+        {
+            "id": "summarize",
+            "name": "Summarize",
+            "order": 4,
+            "description": "Generate health report"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "check-tests",
+            "data": {
+                "label": "Check Tests",
+                "config": {}
+            },
+            "type": "reviewer",
+            "position": {
+                "x": 100,
+                "y": 150
+            }
+        },
+        {
+            "id": "check-coverage",
+            "data": {
+                "label": "Check Coverage",
+                "config": {}
+            },
+            "type": "reviewer",
+            "position": {
+                "x": 300,
+                "y": 150
+            }
+        },
+        {
+            "id": "check-docs",
+            "data": {
+                "label": "Check Docs",
+                "config": {}
+            },
+            "type": "reviewer",
+            "position": {
+                "x": 500,
+                "y": 150
+            }
+        },
+        {
+            "id": "summarize",
+            "data": {
+                "label": "Summarize",
+                "config": {}
+            },
+            "type": "planner",
+            "position": {
+                "x": 300,
+                "y": 300
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "check-tests",
+            "target": "summarize"
+        },
+        {
+            "id": "e2",
+            "source": "check-coverage",
+            "target": "summarize"
+        },
+        {
+            "id": "e3",
+            "source": "check-docs",
+            "target": "summarize"
+        }
+    ],
+    "conditionalEdges": []
+}

@@ -1,0 +1,61 @@
+{
+    "id": "research-report",
+    "name": "Research Report",
+    "description": "Deep research with summary",
+    "level": "task",
+    "workflow_type": "research-only",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "researcher-1",
+            "name": "Deep Researcher",
+            "order": 1,
+            "agentId": "researcher"
+        },
+        {
+            "id": "summarizer-1",
+            "name": "Summarizer",
+            "order": 2,
+            "agentId": "summarizer"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "researcher-1",
+            "data": {
+                "label": "Deep Researcher",
+                "config": {
+                    "depth": "deep",
+                    "model": "gemini-2.5-pro"
+                }
+            },
+            "type": "researcher",
+            "position": {
+                "x": 250,
+                "y": 100
+            }
+        },
+        {
+            "id": "summarizer-1",
+            "data": {
+                "label": "Summarizer",
+                "config": {
+                    "model": "gemini-2.5-flash"
+                }
+            },
+            "type": "summarizer",
+            "position": {
+                "x": 250,
+                "y": 250
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "researcher-1",
+            "target": "summarizer-1"
+        }
+    ],
+    "conditionalEdges": []
+}

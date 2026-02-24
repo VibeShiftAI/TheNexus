@@ -1,0 +1,86 @@
+# Environment
+.env
+.env.local
+db/.env.supabase
+
+# Cloudflare Tunnel credentials
+cert.pem
+cloudflared_config.yml
+
+# Debug logs
+server-debug.log
+
+# Dependencies
+node_modules/
+
+# Python virtual environment
+python/venv/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+
+# Cloudflare
+.cloudflared/
+
+# Checkpoint archives (can contain sensitive conversation data)
+checkpoint_archives/*.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Neo4j data files
+docker/data/neo4j_data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# SQLite databases (checkpoints)
+*.db
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db

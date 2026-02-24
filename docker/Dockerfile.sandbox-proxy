@@ -1,0 +1,4 @@
+# Squid Proxy for network allowlisting
+FROM ubuntu/squid:latest
+COPY config/squid.conf /etc/squid/squid.conf
+EXPOSE 3128

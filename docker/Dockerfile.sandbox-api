@@ -1,0 +1,21 @@
+# Sandbox API Server
+# FastAPI server that orchestrates sandbox containers
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY src/ ./src/
+
+# Non-root user (but needs docker socket access)
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
+EXPOSE 8765
+
+CMD ["uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "8765"]

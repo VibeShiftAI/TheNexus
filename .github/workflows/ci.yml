@@ -1,0 +1,71 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run ESLint (if configured)
+      run: npm run lint --if-present
+      continue-on-error: true
+
+  build:
+    needs: lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Install root dependencies
+      run: npm ci
+    
+    - name: Install dashboard dependencies
+      working-directory: dashboard
+      run: npm ci
+    
+    - name: Build dashboard
+      working-directory: dashboard
+      run: npm run build
+      env:
+        # Provide dummy values for build (actual values come from Netlify)
+        SUPABASE_URL: https://example.supabase.co
+        SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example
+
+  # Deploy job only runs on main branch
+  # Actual deployment is handled by Netlify, this is just for status
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Deployment Status
+      run: |
+        echo "Build successful! Deployment is handled by Netlify."
+        echo "Check Netlify dashboard for deployment status."

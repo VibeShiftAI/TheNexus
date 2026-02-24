@@ -1,0 +1,85 @@
+{
+    "id": "code-review-loop",
+    "name": "Code Review Loop",
+    "description": "Code → Review → Revise until approved",
+    "level": "task",
+    "workflow_type": "code-review-loop",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "coder-1",
+            "name": "Coder",
+            "order": 1,
+            "agentId": "coder"
+        },
+        {
+            "id": "reviewer-1",
+            "name": "Reviewer",
+            "order": 2,
+            "agentId": "reviewer"
+        },
+        {
+            "id": "human-1",
+            "name": "Human Approval",
+            "order": 3,
+            "agentId": "human_in_loop"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "coder-1",
+            "data": {
+                "label": "Coder",
+                "config": {
+                    "model": "claude-opus-4-20250514"
+                }
+            },
+            "type": "coder",
+            "position": {
+                "x": 150,
+                "y": 150
+            }
+        },
+        {
+            "id": "reviewer-1",
+            "data": {
+                "label": "Reviewer",
+                "config": {
+                    "strictness": "strict"
+                }
+            },
+            "type": "reviewer",
+            "position": {
+                "x": 350,
+                "y": 150
+            }
+        },
+        {
+            "id": "human-1",
+            "data": {
+                "label": "Human Approval",
+                "config": {
+                    "approval_message": "Review the code and approve to commit"
+                }
+            },
+            "type": "human_in_loop",
+            "position": {
+                "x": 250,
+                "y": 300
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "coder-1",
+            "target": "reviewer-1"
+        },
+        {
+            "id": "e2",
+            "source": "reviewer-1",
+            "target": "human-1"
+        }
+    ],
+    "conditionalEdges": []
+}

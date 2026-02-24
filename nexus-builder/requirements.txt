@@ -1,0 +1,30 @@
+# LangGraph Engine Requirements
+# Python backend for TheNexus workflow orchestration
+
+# Web Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-dotenv>=1.0.0
+pydantic>=2.10.0
+
+# LangGraph & LangChain Core
+langgraph>=0.2.60
+langchain>=0.3.0
+langchain-core>=0.3.0
+
+# AI Providers
+langchain-google-genai>=2.0.0
+langchain-anthropic>=0.3.0
+langchain-openai>=0.2.0
+
+# LangGraph Persistence (PostgreSQL)
+langgraph-checkpoint>=2.0.0
+langgraph-checkpoint-postgres>=2.0.0
+psycopg[binary]>=3.2.0
+asyncpg>=0.30.0
+
+# HTTP Client (for calling Node.js backend)
+httpx>=0.28.0
+
+# Utilities
+python-multipart>=0.0.18

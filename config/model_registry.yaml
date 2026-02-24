@@ -1,0 +1,149 @@
+# Vibe Coding OS — Model Registry
+# Role-to-model mappings for the simplified Nexus pipeline
+
+defaults:
+  temperature: 0.7
+  max_retries: 3
+
+# 1. Define Physical Models
+models:
+  gpt-5.2:
+    provider: openai
+    family: GPT
+    model_name: gpt-5.2-pro
+    context_window: 128000
+    capabilities: ["reasoning", "code", "tool_use", "vision"]
+    cost_per_1k_input: 0.005
+    cost_per_1k_output: 0.015
+  
+  gpt-5.2-codex:
+    provider: openai
+    family: GPT
+    model_name: gpt-5.2-codex
+    context_window: 128000
+    capabilities: ["code", "agentic", "tool_use"]
+    cost_per_1k_input: 0.005
+    cost_per_1k_output: 0.015
+
+  gpt-5-mini:
+    provider: openai
+    family: GPT
+    model_name: gpt-5-mini-2025-08-07
+    context_window: 128000
+    capabilities: ["reasoning", "code", "tool_use"]
+    cost_per_1k_input: 0.0015
+    cost_per_1k_output: 0.006
+
+  claude-opus:
+    provider: anthropic
+    family: Claude
+    model_name: claude-opus-4-6
+    context_window: 1000000
+    capabilities: ["reasoning", "code", "extended_thinking"]
+    cost_per_1k_input: 0.015
+    cost_per_1k_output: 0.075
+
+  gemini-pro:
+    provider: google
+    family: Gemini
+    model_name: gemini-3.1-pro-preview
+    context_window: 1000000
+    capabilities: ["reasoning", "multimodal", "deep_think"]
+    cost_per_1k_input: 0.00025
+    cost_per_1k_output: 0.0005
+
+  gemini-flash:
+    provider: google
+    family: Gemini
+    model_name: gemini-3-flash-preview
+    context_window: 1000000
+    capabilities: ["fast", "multimodal", "configurable_thinking"]
+    cost_per_1k_input: 0.0000375
+    cost_per_1k_output: 0.00015
+
+  grok-4.1:
+    provider: xai
+    family: Grok
+    model_name: grok-4-1-fast-reasoning
+    context_window: 131072
+    capabilities: ["reasoning", "multimodal", "realtime_data"]
+    cost_per_1k_input: 0.003
+    cost_per_1k_output: 0.015
+
+  claude-sonnet:
+    provider: anthropic
+    family: Claude
+    model_name: claude-sonnet-4-6
+    context_window: 200000
+    capabilities: ["reasoning", "code", "tool_use"]
+    cost_per_1k_input: 0.003
+    cost_per_1k_output: 0.015
+
+# 2. Define Logical Roles
+roles:
+  # Lead Architect — plans projects (heavy model, shuffle for diversity)
+  proposer:
+    strategy: shuffle
+    pool: [gemini-pro, gemini-flash]
+    temperature: 0.9
+    description: "Lead Architect — high-diversity hypothesis generator"
+
+  # Council Reviewers — diverse models for anti-groupthink
+  reviewer:
+    strategy: shuffle
+    pool: [gemini-flash, gpt-5-mini, claude-sonnet, grok-4.1]
+    temperature: 0.3
+    description: "Council reviewers — shuffled diverse models for anti-groupthink"
+
+  # Chat Router — lightweight intent detection
+  router:
+    strategy: fixed
+    model: gemini-flash
+    temperature: 0.0
+    description: "Chat/Build intent classification — zero temperature for consistency"
+
+  # Recursive Browser Agent
+  browser:
+    strategy: fixed
+    model: gemini-flash
+    temperature: 0.1
+    description: "Recursive web browsing — URL selection and content evaluation"
+
+  # Visual Interpreter (B6) — Multi-modal image analysis
+  visual_interpreter:
+    strategy: fixed
+    model: gemini-pro
+    temperature: 0.1
+    description: "Multi-modal image analysis — charts, diagrams, screenshots, OCR"
+
+  # Nexus Builder — Code generation (downstream execution)
+  architect:
+    strategy: fixed
+    model: claude-opus
+    temperature: 0.3
+    description: "System design and deep planning"
+
+  builder:
+    strategy: fixed
+    model: gpt-5.2-codex
+    temperature: 0.2
+    description: "Code generation and execution"
+
+  # Entity Extraction (kept for hashtag manager)
+  entity_extractor:
+    strategy: fixed
+    model: gemini-flash
+    temperature: 0.1
+    description: "Fast entity/keyword extraction"
+
+  # Orchestrator meta-reasoning (kept for backward compat)
+  orchestrator:
+    strategy: fixed
+    model: gemini-flash
+    temperature: 0.2
+    description: "Meta-reasoning and task decomposition"
+
+# Shuffle Configuration
+shuffle:
+  enabled: false
+  seed: null

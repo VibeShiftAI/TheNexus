@@ -1,0 +1,133 @@
+{
+    "id": "supervised-pipeline",
+    "name": "Supervised Pipeline",
+    "description": "Supervisor routes between workers dynamically",
+    "level": "task",
+    "workflow_type": "supervised-full",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "supervisor-1",
+            "name": "Supervisor",
+            "order": 1,
+            "agentId": "supervisor"
+        },
+        {
+            "id": "researcher-1",
+            "name": "Researcher",
+            "order": 2,
+            "agentId": "researcher"
+        },
+        {
+            "id": "planner-1",
+            "name": "Planner",
+            "order": 3,
+            "agentId": "planner"
+        },
+        {
+            "id": "coder-1",
+            "name": "Coder",
+            "order": 4,
+            "agentId": "coder"
+        },
+        {
+            "id": "reviewer-1",
+            "name": "Reviewer",
+            "order": 5,
+            "agentId": "reviewer"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "supervisor-1",
+            "data": {
+                "label": "Supervisor",
+                "config": {
+                    "model": "gemini-2.5-flash"
+                }
+            },
+            "type": "supervisor",
+            "position": {
+                "x": 250,
+                "y": 50
+            }
+        },
+        {
+            "id": "researcher-1",
+            "data": {
+                "label": "Researcher"
+            },
+            "type": "researcher",
+            "position": {
+                "x": 100,
+                "y": 200
+            }
+        },
+        {
+            "id": "planner-1",
+            "data": {
+                "label": "Planner"
+            },
+            "type": "planner",
+            "position": {
+                "x": 250,
+                "y": 200
+            }
+        },
+        {
+            "id": "coder-1",
+            "data": {
+                "label": "Coder"
+            },
+            "type": "coder",
+            "position": {
+                "x": 400,
+                "y": 200
+            }
+        },
+        {
+            "id": "reviewer-1",
+            "data": {
+                "label": "Reviewer"
+            },
+            "type": "reviewer",
+            "position": {
+                "x": 250,
+                "y": 350
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "supervisor-1",
+            "target": "researcher-1"
+        },
+        {
+            "id": "e2",
+            "source": "supervisor-1",
+            "target": "planner-1"
+        },
+        {
+            "id": "e3",
+            "source": "supervisor-1",
+            "target": "coder-1"
+        },
+        {
+            "id": "e4",
+            "source": "researcher-1",
+            "target": "supervisor-1"
+        },
+        {
+            "id": "e5",
+            "source": "planner-1",
+            "target": "supervisor-1"
+        },
+        {
+            "id": "e6",
+            "source": "coder-1",
+            "target": "reviewer-1"
+        }
+    ],
+    "conditionalEdges": []
+}

@@ -1,0 +1,123 @@
+{
+    "id": "contract-hawk",
+    "name": "The Contract Hawk",
+    "domain": "legal",
+    "pattern": "analysis-review",
+    "description": "Legal assistant that analyzes contracts, identifies risk clauses, and tracks document versions.",
+    "icon": "⚖️",
+    "recursion_limit": 8,
+    "checkpointer": "postgres",
+    "interrupt_nodes": [
+        "flag_critical",
+        "amend_suggestion"
+    ],
+    "autonomy_level": "copilot",
+    "system_prompt": "You are The Contract Hawk, a legal AI assistant specializing in contract analysis and risk management. Your goal is to protect the organization by identifying problematic clauses and ensuring compliance.\n\n## Primary Objective\nAnalyze contracts for risk, compliance, and unfavorable terms. Suggest amendments.\n\n## Communication Style\nMaintain a precise, cautious, and thorough tone. Cite specific clauses.\n\n## Output Format\nDeliver as structured risk assessment with severity ratings.",
+    "output_schema": {
+        "format": "json",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "contract_type": {
+                    "type": "string"
+                },
+                "parties": {
+                    "type": "array"
+                },
+                "risk_score": {
+                    "type": "number"
+                },
+                "flagged_clauses": {
+                    "type": "array"
+                },
+                "missing_protections": {
+                    "type": "array"
+                },
+                "recommendations": {
+                    "type": "array"
+                }
+            }
+        }
+    },
+    "negative_constraints": [
+        "Do not provide legal advice (only analysis)",
+        "Do not modify original documents without approval",
+        "Do not share contract contents externally",
+        "Do not approve contracts without human review"
+    ],
+    "mcp_servers": [
+        "notion",
+        "filesystem",
+        "fetch"
+    ],
+    "nodes": [
+        {
+            "id": "document_ingester",
+            "type": "action",
+            "label": "Document Ingester",
+            "tool": "filesystem_read"
+        },
+        {
+            "id": "clause_analyzer",
+            "type": "processor",
+            "label": "Clause Analyzer",
+            "model": "gemini-3-pro-preview",
+            "tools": []
+        },
+        {
+            "id": "risk_assessor",
+            "type": "processor",
+            "label": "Risk Assessor",
+            "model": "gemini-3-pro-preview",
+            "tools": []
+        },
+        {
+            "id": "flag_critical",
+            "type": "processor",
+            "label": "Critical Flag",
+            "model": "gemini-3-flash-preview",
+            "requires_approval": true
+        },
+        {
+            "id": "amend_suggestion",
+            "type": "processor",
+            "label": "Amendment Suggester",
+            "model": "gemini-3-pro-preview",
+            "requires_approval": true
+        }
+    ],
+    "edges": [
+        {
+            "source": "document_ingester",
+            "target": "clause_analyzer",
+            "type": "default"
+        },
+        {
+            "source": "clause_analyzer",
+            "target": "risk_assessor",
+            "type": "default"
+        },
+        {
+            "source": "risk_assessor",
+            "target": "flag_critical",
+            "type": "failure",
+            "condition": "risk_score >= 0.8"
+        },
+        {
+            "source": "risk_assessor",
+            "target": "amend_suggestion",
+            "type": "success",
+            "condition": "risk_score < 0.8"
+        },
+        {
+            "source": "flag_critical",
+            "target": "amend_suggestion",
+            "type": "default"
+        },
+        {
+            "source": "amend_suggestion",
+            "target": "END",
+            "type": "success"
+        }
+    ]
+}

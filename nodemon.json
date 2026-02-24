@@ -1,0 +1,11 @@
+{
+    "watch": [
+        "src"
+    ],
+    "ext": "js,json",
+    "ignore": [
+        "src/**/*.spec.js",
+        "src/**/*.test.js"
+    ],
+    "exec": "node src/server.js"
+}

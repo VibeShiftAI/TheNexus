@@ -1,0 +1,106 @@
+{
+    "id": "standard-feature",
+    "name": "Standard Feature",
+    "description": "Full development lifecycle: Research → Plan → Implement → Walkthrough",
+    "level": "feature",
+    "workflow_type": "standard-feature",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "research",
+            "name": "Research",
+            "order": 1,
+            "agentId": "deep-research",
+            "description": "Perform deep research and feasibility analysis"
+        },
+        {
+            "id": "plan",
+            "name": "Planning",
+            "order": 2,
+            "agentId": "plan-generator",
+            "description": "Generate a detailed technical implementation plan"
+        },
+        {
+            "id": "implement",
+            "name": "Implementation",
+            "order": 3,
+            "agentId": "implementation",
+            "description": "Execute the implementation plan and write code"
+        },
+        {
+            "id": "walkthrough",
+            "name": "Verification",
+            "order": 4,
+            "agentId": "failure-analyst",
+            "description": "Verify implementation and generate walkthrough"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "research",
+            "data": {
+                "label": "Research",
+                "config": {}
+            },
+            "type": "researcher",
+            "position": {
+                "x": 250,
+                "y": 50
+            }
+        },
+        {
+            "id": "plan",
+            "data": {
+                "label": "Planning",
+                "config": {}
+            },
+            "type": "planner",
+            "position": {
+                "x": 250,
+                "y": 200
+            }
+        },
+        {
+            "id": "implement",
+            "data": {
+                "label": "Implementation",
+                "config": {}
+            },
+            "type": "coder",
+            "position": {
+                "x": 250,
+                "y": 350
+            }
+        },
+        {
+            "id": "walkthrough",
+            "data": {
+                "label": "Verification",
+                "config": {}
+            },
+            "type": "reviewer",
+            "position": {
+                "x": 250,
+                "y": 500
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "research",
+            "target": "plan"
+        },
+        {
+            "id": "e2",
+            "source": "plan",
+            "target": "implement"
+        },
+        {
+            "id": "e3",
+            "source": "implement",
+            "target": "walkthrough"
+        }
+    ],
+    "conditionalEdges": []
+}

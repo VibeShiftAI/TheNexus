@@ -1,0 +1,5 @@
+Summarize the following code changes in 2-3 sentences, focusing on what functionality was added or modified:
+
+{code_diff}
+
+Provide a technical but concise summary that captures the essence of the changes.

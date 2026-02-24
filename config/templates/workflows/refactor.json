@@ -1,0 +1,110 @@
+{
+    "id": "refactor",
+    "name": "Code Refactor",
+    "description": "Safe refactoring: Analyze → Plan → Refactor → Validate",
+    "level": "task",
+    "workflow_type": "refactor",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "analyze",
+            "name": "Code Analysis",
+            "description": "Analyze code smells and technical debt",
+            "order": 1
+        },
+        {
+            "id": "plan",
+            "name": "Refactor Plan",
+            "description": "Plan the refactoring approach with safety checks",
+            "order": 2
+        },
+        {
+            "id": "refactor",
+            "name": "Refactor",
+            "description": "Execute the refactoring",
+            "order": 3
+        },
+        {
+            "id": "validate",
+            "name": "Validate",
+            "description": "Run tests and verify no regressions",
+            "order": 4
+        }
+    ],
+    "nodes": [
+        {
+            "id": "analyze",
+            "data": {
+                "label": "Code Analysis",
+                "config": {}
+            },
+            "type": "researcher",
+            "position": {
+                "x": 250,
+                "y": 50
+            }
+        },
+        {
+            "id": "plan",
+            "data": {
+                "label": "Refactor Plan",
+                "config": {}
+            },
+            "type": "planner",
+            "position": {
+                "x": 250,
+                "y": 200
+            }
+        },
+        {
+            "id": "refactor",
+            "data": {
+                "label": "Refactor",
+                "config": {}
+            },
+            "type": "coder",
+            "position": {
+                "x": 250,
+                "y": 350
+            }
+        },
+        {
+            "id": "validate",
+            "data": {
+                "label": "Validate",
+                "config": {}
+            },
+            "type": "reviewer",
+            "position": {
+                "x": 250,
+                "y": 500
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "analyze",
+            "target": "plan"
+        },
+        {
+            "id": "e2",
+            "source": "plan",
+            "target": "refactor"
+        },
+        {
+            "id": "e3",
+            "source": "refactor",
+            "target": "validate"
+        }
+    ],
+    "conditionalEdges": [
+        {
+            "source": "validate",
+            "routes": {
+                "pass": "END",
+                "fail": "refactor"
+            }
+        }
+    ]
+}

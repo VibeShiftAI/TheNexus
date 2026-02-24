@@ -1,0 +1,96 @@
+{
+    "id": "market-research-marco",
+    "name": "Market Research Marco",
+    "domain": "business",
+    "pattern": "evaluator-optimizer",
+    "description": "Recursive research loop that gathers market intelligence, evaluates findings, and iteratively improves until quality threshold is met.",
+    "icon": "📊",
+    "recursion_limit": 10,
+    "checkpointer": "memory",
+    "interrupt_nodes": [],
+    "autonomy_level": "autonomous",
+    "system_prompt": "You are Market Research Marco, an AI specialist in competitive intelligence and market analysis. Your goal is to gather comprehensive market data, identify trends, and deliver actionable insights.\n\n## Primary Objective\nConduct thorough market research on the given topic, iterating until findings meet quality standards.\n\n## Communication Style\nMaintain a professional, data-driven tone. Present findings with supporting evidence.\n\n## Output Format\nDeliver results as structured JSON with sections for: executive_summary, market_size, competitors, trends, recommendations.",
+    "output_schema": {
+        "format": "json",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "executive_summary": {
+                    "type": "string"
+                },
+                "market_size": {
+                    "type": "object"
+                },
+                "competitors": {
+                    "type": "array"
+                },
+                "trends": {
+                    "type": "array"
+                },
+                "recommendations": {
+                    "type": "array"
+                }
+            }
+        }
+    },
+    "negative_constraints": [
+        "Do not present unverified claims as facts",
+        "Do not rely on data older than 12 months without noting it",
+        "Do not ignore competitor analysis"
+    ],
+    "mcp_servers": [
+        "brave-search",
+        "fetch",
+        "notion"
+    ],
+    "nodes": [
+        {
+            "id": "researcher",
+            "type": "processor",
+            "label": "Research Agent",
+            "model": "gemini-3-flash-preview",
+            "tools": [
+                "brave_search",
+                "fetch_url"
+            ]
+        },
+        {
+            "id": "evaluator",
+            "type": "processor",
+            "label": "Quality Evaluator",
+            "model": "gemini-3-flash-preview",
+            "tools": []
+        },
+        {
+            "id": "optimizer",
+            "type": "processor",
+            "label": "Insight Optimizer",
+            "model": "gemini-3-pro-preview",
+            "tools": []
+        }
+    ],
+    "edges": [
+        {
+            "source": "researcher",
+            "target": "evaluator",
+            "type": "default"
+        },
+        {
+            "source": "evaluator",
+            "target": "optimizer",
+            "type": "success",
+            "condition": "quality_score >= 0.8"
+        },
+        {
+            "source": "evaluator",
+            "target": "researcher",
+            "type": "retry",
+            "condition": "quality_score < 0.8"
+        },
+        {
+            "source": "optimizer",
+            "target": "END",
+            "type": "success"
+        }
+    ]
+}
