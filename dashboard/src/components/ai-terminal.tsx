@@ -1,11 +1,16 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Settings2, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw } from "lucide-react";
+import { Send, Bot, User, Settings2, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw, Maximize2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useParams } from "next/navigation";
-import { models } from "@/lib/ai/models";
+
 import { getAuthHeader } from "@/lib/auth";
 import { io, Socket } from "socket.io-client";
+import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 interface Message {
     role: 'user' | 'assistant' | 'system';
@@ -65,6 +70,7 @@ interface VoteSummaryData {
 
 interface StatusUpdateData {
     status: string;
+    message?: string;
     preview?: string;
     thread_id?: string;
 }
@@ -110,100 +116,9 @@ interface ModelConfig {
     };
 }
 
-const MODELS: ModelConfig[] = [
-    // ═══════════════════════════════════════════════════════════════
-    // GOOGLE GEMINI MODELS
-    // ═══════════════════════════════════════════════════════════════
-    {
-        id: 'gemini-3-pro',
-        apiModelId: 'gemini-3-pro-preview',
-        name: 'Gemini 3 Pro',
-        provider: 'Google',
-        limits: { maxInputTokens: 1048576, maxOutputTokens: 65536 },
-    },
-    {
-        id: 'gemini-3-deep-think',
-        apiModelId: 'gemini-3-pro-preview', // Same model, different config
-        name: 'Gemini 3 Deep Think',
-        provider: 'Google',
-        isThinking: true,
-        parameters: {
-            thinking_config: { thinking_level: 'HIGH' },
-        },
-        limits: { maxInputTokens: 1048576, maxOutputTokens: 65536 },
-    },
-    {
-        id: 'gemini-3-flash',
-        apiModelId: 'gemini-3-flash-preview',
-        name: 'Gemini 3 Flash',
-        provider: 'Google',
-        parameters: {
-            thinking_budget: -1, // Dynamic reasoning (default)
-        },
-        limits: { maxInputTokens: 1048576, maxOutputTokens: 65535 },
-    },
-    // ═══════════════════════════════════════════════════════════════
-    // ANTHROPIC CLAUDE MODELS
-    // ═══════════════════════════════════════════════════════════════
-    {
-        id: 'claude-opus-4.5',
-        apiModelId: 'claude-opus-4-5-20251101',
-        name: 'Claude Opus 4.5',
-        provider: 'Anthropic',
-        limits: { maxInputTokens: 200000, maxOutputTokens: 64000 },
-    },
-    {
-        id: 'claude-opus-4.5-thinking',
-        apiModelId: 'claude-opus-4-5-20251101', // Same model, different config
-        name: 'Claude Opus 4.5 Thinking',
-        provider: 'Anthropic',
-        isThinking: true,
-        parameters: {
-            thinking: { type: 'enabled', budget_tokens: 16000 },
-        },
-        limits: { maxInputTokens: 200000, maxOutputTokens: 64000 },
-    },
-    {
-        id: 'claude-sonnet-4.5',
-        apiModelId: 'claude-sonnet-4-5-20250929',
-        name: 'Claude Sonnet 4.5',
-        provider: 'Anthropic',
-        limits: { maxInputTokens: 200000, maxOutputTokens: 64000 },
-    },
-    // ═══════════════════════════════════════════════════════════════
-    // OPENAI GPT MODELS
-    // ═══════════════════════════════════════════════════════════════
-    {
-        id: 'gpt-5.2',
-        apiModelId: 'gpt-5.2-chat-latest', // "Instant" variant for speed
-        name: 'GPT-5.2',
-        provider: 'OpenAI',
-        limits: { maxInputTokens: 128000, maxOutputTokens: 16000 },
-    },
-    {
-        id: 'gpt-5.2-thinking',
-        apiModelId: 'gpt-5.2', // Default thinking model
-        name: 'GPT-5.2 Thinking',
-        provider: 'OpenAI',
-        isThinking: true,
-        parameters: {
-            reasoning_effort: 'high',
-        },
-        limits: { maxInputTokens: 128000, maxOutputTokens: 128000 },
-    },
-    {
-        id: 'gpt-4o',
-        apiModelId: 'gpt-4o',
-        name: 'GPT-4o',
-        provider: 'OpenAI',
-        limits: { maxInputTokens: 128000, maxOutputTokens: 16384 },
-    },
-];
-
 const MODES = [
-    { id: 'chat', name: 'Chat', description: 'Natural conversation' },
     { id: 'agent', name: 'Agent', description: 'Execute actions on projects' },
-    { id: 'code', name: 'Code', description: 'Code generation focused' },
+    { id: 'chat', name: 'Chat', description: 'Natural conversation' },
 ];
 
 export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITerminalProps) {
@@ -211,11 +126,11 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
-    const [selectedModel, setSelectedModel] = useState(MODELS[0]);
-    const [selectedMode, setSelectedMode] = useState(MODES[0]);
+    const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
+    const [selectedModel, setSelectedModel] = useState<ModelConfig | null>(null);
+    const [selectedMode, setSelectedMode] = useState(MODES[0]); // Agent is first = default
     const [showSettings, setShowSettings] = useState(false);
     const [pendingArtifact, setPendingArtifact] = useState<CortexArtifact | null>(null);
-    const [currentStatus, setCurrentStatus] = useState<string | null>(null); // Phase 8: Status ticker
     const [attachedFiles, setAttachedFiles] = useState<File[]>([]); // File upload state
     const [isDragging, setIsDragging] = useState(false); // Drag-and-drop state
     const dragCounter = useRef(0); // Counter to properly track drag enter/leave across child elements
@@ -229,9 +144,11 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const [approvalLoading, setApprovalLoading] = useState<number | null>(null);
     // Track which thread_ids are ready for human review (after voting completes)
     const [readyForReview, setReadyForReview] = useState<Set<string>>(new Set());
-    // Track expanded artifact index for full content viewing
+    // Track expanded artifact index for full content viewing (council reviews)
     const [expandedArtifact, setExpandedArtifact] = useState<number | null>(null);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    // Fullscreen plan review modal state
+    const [reviewModalData, setReviewModalData] = useState<{ artifact: CortexArtifact; messageIndex: number } | null>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null); // Hidden file input
     const params = useParams();
@@ -286,10 +203,42 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
         }
     }, [messages]);
 
-    // Auto-scroll on new messages
+    // Auto-scroll on new messages (scoped to messages container only)
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const container = messagesContainerRef.current;
+        if (container) {
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
     }, [messages]);
+
+    // Fetch available models from the model discovery API
+    useEffect(() => {
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        const fetchModels = () => {
+            fetch('/api/models')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.models && data.models.length > 0) {
+                        setAvailableModels(data.models);
+                        setSelectedModel(data.models[0]);
+                        console.log(`[Nexus Terminal] Loaded ${data.models.length} models from discovery API`);
+                    } else if (++attempts < maxAttempts) {
+                        // Discovery may still be running — retry after 2s
+                        setTimeout(fetchModels, 2000);
+                    }
+                })
+                .catch(err => {
+                    console.warn('[Nexus Terminal] Model discovery unavailable:', err.message);
+                    if (++attempts < maxAttempts) {
+                        setTimeout(fetchModels, 2000);
+                    }
+                });
+        };
+
+        fetchModels();
+    }, []);
 
     // Focus input when terminal opens (modal only — inline shouldn't steal focus on page load)
     useEffect(() => {
@@ -314,11 +263,14 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             // Robust/Fuzzy handling (trim whitespace, normalize case)
             const type = artifact.type?.trim().toUpperCase();
 
-            // Handle STATUS_UPDATE
+            // Handle STATUS_UPDATE — append as persistent system message
             if (type === 'STATUS_UPDATE') {
                 const statusData = artifact.data as StatusUpdateData;
-                setCurrentStatus(statusData.status);
-                setTimeout(() => setCurrentStatus(null), 5000); // Auto-clear after 5s
+                setMessages(prev => [...prev, {
+                    role: 'system',
+                    content: statusData.message || statusData.status,
+                    timestamp: new Date(),
+                }]);
                 return;
             }
 
@@ -423,7 +375,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     }, []);
 
     const handleSend = async () => {
-        if ((!input.trim() && attachedFiles.length === 0) || loading) return;
+        if ((!input.trim() && attachedFiles.length === 0) || loading || !selectedModel) return;
 
         // Build user message content
         let messageContent = input.trim();
@@ -559,6 +511,220 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     // --- Extracted inner content shared by both modes ---
     function renderTerminalContent() {
         return (<>
+            {/* Fullscreen Plan Review Modal */}
+            {reviewModalData && (() => {
+                const planData = reviewModalData.artifact.data as PlanDraftData;
+                const modalMsgIndex = reviewModalData.messageIndex;
+                const isRevised = reviewModalData.artifact.type?.trim().toUpperCase() === 'PLAN_REVISED';
+                const threadId = (planData as any)?.thread_id;
+                const showActions = (planData as any)?.is_final || readyForReview.has(threadId);
+                return (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+                        {/* Backdrop */}
+                        <div
+                            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                            onClick={() => setReviewModalData(null)}
+                        />
+                        {/* Modal */}
+                        <div className="relative z-10 w-[92vw] max-w-5xl h-[90vh] rounded-2xl border border-slate-600 bg-slate-900 shadow-2xl flex flex-col overflow-hidden">
+                            {/* Modal Header */}
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700 bg-slate-800/60 flex-shrink-0">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className={`p-2 rounded-lg ${isRevised ? 'bg-emerald-500/20' : 'bg-blue-500/20'}`}>
+                                        <FileText size={20} className={isRevised ? 'text-emerald-400' : 'text-blue-400'} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h2 className="text-lg font-bold text-white truncate">
+                                            {isRevised ? '✅ Final for Review' : 'Draft Plan'} — {planData.title}
+                                        </h2>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isRevised
+                                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                                : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                                }`}>v{planData.version || 1}</span>
+                                            <span className="text-xs text-slate-500">Markdown Plan</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setReviewModalData(null)}
+                                    className="p-2 hover:bg-slate-700 rounded-lg transition-colors flex-shrink-0"
+                                >
+                                    <X size={20} className="text-slate-400" />
+                                </button>
+                            </div>
+
+                            {/* Modal Body — Rendered Markdown */}
+                            <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0">
+                                {planData.rationale && (
+                                    <div className="mb-6 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                                        <span className="text-sm font-semibold text-amber-400">Rationale: </span>
+                                        <span className="text-sm text-amber-200">{planData.rationale}</span>
+                                    </div>
+                                )}
+                                <div className="prose prose-invert prose-sm max-w-none
+                                    prose-headings:text-slate-100 prose-headings:font-bold
+                                    prose-h1:text-2xl prose-h1:border-b prose-h1:border-slate-700 prose-h1:pb-3 prose-h1:mb-4
+                                    prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-3
+                                    prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-2 prose-h3:text-cyan-300
+                                    prose-p:text-slate-300 prose-p:leading-relaxed
+                                    prose-li:text-slate-300 prose-li:my-0.5
+                                    prose-strong:text-white
+                                    prose-code:text-cyan-300 prose-code:bg-slate-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+                                    prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline
+                                    prose-hr:border-slate-700
+                                    prose-blockquote:border-l-cyan-500 prose-blockquote:bg-slate-800/50 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg
+                                    prose-table:text-sm prose-th:text-slate-200 prose-td:text-slate-300
+                                ">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            code({ node, inline, className, children, ...props }: any) {
+                                                const match = /language-(\w+)/.exec(className || '');
+                                                return !inline && match ? (
+                                                    <SyntaxHighlighter
+                                                        style={oneDark as any}
+                                                        language={match[1]}
+                                                        PreTag="div"
+                                                        className="rounded-lg !bg-slate-950 !text-sm"
+                                                        {...props}
+                                                    >
+                                                        {String(children).replace(/\n$/, '')}
+                                                    </SyntaxHighlighter>
+                                                ) : (
+                                                    <code className={className} {...props}>{children}</code>
+                                                );
+                                            },
+                                        }}
+                                    >
+                                        {normalizeMarkdown(planData.markdown) || ''}
+                                    </ReactMarkdown>
+                                </div>
+                            </div>
+
+                            {/* Modal Footer — Actions */}
+                            {showActions && (
+                                <div className="flex-shrink-0 px-6 py-4 border-t border-slate-700 bg-slate-800/60">
+                                    {critiqueFeedback.messageIndex === modalMsgIndex ? (
+                                        <div className="space-y-3">
+                                            <label className="block text-sm font-medium text-red-300">Revision Feedback</label>
+                                            <textarea
+                                                value={critiqueFeedback.text}
+                                                onChange={(e) => setCritiqueFeedback(prev => ({ ...prev, text: e.target.value }))}
+                                                placeholder="Describe the changes you'd like to see..."
+                                                className="w-full h-28 bg-slate-950 border border-slate-600 rounded-lg px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-red-500 focus:outline-none resize-none"
+                                                autoFocus
+                                                disabled={critiqueFeedback.loading}
+                                            />
+                                            <div className="flex gap-3 justify-end">
+                                                <button
+                                                    onClick={() => setCritiqueFeedback({ messageIndex: null, text: '', loading: false })}
+                                                    className="px-4 py-2 text-slate-400 hover:text-white text-sm transition-colors"
+                                                    disabled={critiqueFeedback.loading}
+                                                >Cancel</button>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!critiqueFeedback.text.trim()) return;
+                                                        setCritiqueFeedback(prev => ({ ...prev, loading: true }));
+                                                        const formData = new FormData();
+                                                        formData.append('thread_id', threadId || 'unknown');
+                                                        formData.append('action', 'REJECT');
+                                                        formData.append('comment', critiqueFeedback.text);
+                                                        try {
+                                                            const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
+                                                            const response = await fetch(`${cortexUrl}/api/terminal/interact`, {
+                                                                method: 'POST',
+                                                                body: formData
+                                                            });
+                                                            if (!response.ok) throw new Error('Failed to submit feedback');
+                                                            setMessages(prev => [...prev, {
+                                                                role: 'user',
+                                                                content: `🔄 Requested revision: ${critiqueFeedback.text}`,
+                                                                timestamp: new Date()
+                                                            }]);
+                                                            setCritiqueFeedback({ messageIndex: null, text: '', loading: false });
+                                                            setReviewModalData(null);
+                                                        } catch (e) {
+                                                            console.error('Critique failed:', e);
+                                                            setMessages(prev => [...prev, {
+                                                                role: 'system',
+                                                                content: '❌ Failed to submit feedback. Please try again.',
+                                                                timestamp: new Date()
+                                                            }]);
+                                                            setCritiqueFeedback(prev => ({ ...prev, loading: false }));
+                                                        }
+                                                    }}
+                                                    disabled={critiqueFeedback.loading || !critiqueFeedback.text.trim()}
+                                                    className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                >
+                                                    {critiqueFeedback.loading && <Loader2 size={14} className="animate-spin" />}
+                                                    {critiqueFeedback.loading ? 'Submitting...' : 'Submit Feedback'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => setCritiqueFeedback({ messageIndex: modalMsgIndex, text: '', loading: false })}
+                                                className="flex-1 py-3 px-4 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 flex items-center justify-center gap-2 transition-colors font-medium"
+                                                disabled={approvalLoading === modalMsgIndex}
+                                            >
+                                                <XCircle size={18} /> Request Revisions
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (!threadId || threadId === 'unknown') {
+                                                        setMessages(prev => [...prev, {
+                                                            role: 'system',
+                                                            content: '❌ Cannot approve: No valid thread ID found. Please try again.',
+                                                            timestamp: new Date()
+                                                        }]);
+                                                        return;
+                                                    }
+                                                    setApprovalLoading(modalMsgIndex);
+                                                    const formData = new FormData();
+                                                    formData.append('thread_id', threadId);
+                                                    formData.append('action', 'APPROVE');
+                                                    formData.append('comment', 'Plan approved by user');
+                                                    try {
+                                                        const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
+                                                        const response = await fetch(`${cortexUrl}/api/terminal/interact`, {
+                                                            method: 'POST',
+                                                            body: formData
+                                                        });
+                                                        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+                                                        setMessages(prev => [...prev, {
+                                                            role: 'user',
+                                                            content: '✅ Plan Approved - Execution starting...',
+                                                            timestamp: new Date()
+                                                        }]);
+                                                        setReviewModalData(null);
+                                                    } catch (e) {
+                                                        console.error('Approve failed:', e);
+                                                        setMessages(prev => [...prev, {
+                                                            role: 'system',
+                                                            content: `❌ Approval failed: ${e instanceof Error ? e.message : 'Unknown error'}. Please try again.`,
+                                                            timestamp: new Date()
+                                                        }]);
+                                                    } finally {
+                                                        setApprovalLoading(null);
+                                                    }
+                                                }}
+                                                className="flex-1 py-3 px-4 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 flex items-center justify-center gap-2 transition-colors font-medium"
+                                                disabled={approvalLoading === modalMsgIndex}
+                                            >
+                                                {approvalLoading === modalMsgIndex && <Loader2 size={14} className="animate-spin" />}
+                                                {approvalLoading === modalMsgIndex ? 'Approving...' : '✅ Approve Plan'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-800/50">
                 <div className="flex items-center gap-3">
@@ -572,11 +738,17 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                             </div>
                         )}
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${selectedModel.isThinking
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        : 'bg-cyan-500/20 text-cyan-400'}`}>
-                        {selectedModel.isThinking && '⚡ '}{selectedModel.name}
-                    </span>
+                    {selectedModel ? (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${selectedModel.isThinking
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'bg-cyan-500/20 text-cyan-400'}`}>
+                            {selectedModel.isThinking && '⚡ '}{selectedModel.name}
+                        </span>
+                    ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400 animate-pulse">
+                            Loading models…
+                        </span>
+                    )}
                     <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
                         {selectedMode.name}
                     </span>
@@ -611,16 +783,6 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 </div>
             </div>
 
-            {/* Phase 8: Status Ticker - Shows current processing state */}
-            {currentStatus && (
-                <div className="px-4 py-2 border-b border-slate-700 bg-gradient-to-r from-purple-900/30 to-cyan-900/30">
-                    <div className="flex items-center gap-2 text-sm text-cyan-300">
-                        <Loader2 size={14} className="animate-spin" />
-                        <span className="animate-pulse">{currentStatus}</span>
-                    </div>
-                </div>
-            )}
-
             {/* Settings Panel */}
             {showSettings && (
                 <div className="px-4 py-3 border-b border-slate-700 bg-slate-800/30 space-y-3">
@@ -628,11 +790,11 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                         <div>
                             <label className="block text-xs text-slate-400 mb-1">Model</label>
                             <select
-                                value={selectedModel.id}
-                                onChange={(e) => setSelectedModel(MODELS.find(m => m.id === e.target.value) || MODELS[0])}
+                                value={selectedModel?.id || ''}
+                                onChange={(e) => setSelectedModel(availableModels.find((m: ModelConfig) => m.id === e.target.value) || availableModels[0])}
                                 className="w-full rounded bg-slate-800 border border-slate-600 px-3 py-1.5 text-sm text-white focus:border-cyan-500 focus:outline-none"
                             >
-                                {MODELS.map(m => (
+                                {availableModels.map((m: ModelConfig) => (
                                     <option key={m.id} value={m.id}>{m.name} ({m.provider})</option>
                                 ))}
                             </select>
@@ -655,6 +817,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
 
             {/* Messages - with drag-and-drop support */}
             <div
+                ref={messagesContainerRef}
                 className={`flex-1 overflow-y-auto p-4 space-y-4 relative ${isDragging ? 'bg-cyan-500/10' : ''}`}
                 onDragEnter={handleDragEnter}
                 onDragOver={handleDragOver}
@@ -683,302 +846,318 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 )}
 
                 {messages.map((msg, i) => (
-                    <div
-                        key={i}
-                        className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-                    >
-                        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${msg.role === 'user'
-                            ? 'bg-cyan-500/20 text-cyan-400'
-                            : msg.role === 'assistant'
-                                ? 'bg-purple-500/20 text-purple-400'
-                                : 'bg-red-500/20 text-red-400'
-                            }`}>
-                            {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                    msg.role === 'system' ? (
+                        /* System messages: compact activity log line */
+                        <div key={i} className="flex items-center gap-2 py-1 px-2">
+                            <Loader2 size={12} className="text-cyan-500/60 animate-spin flex-shrink-0" />
+                            <span className="text-xs text-slate-400">{msg.content}</span>
                         </div>
-                        <div className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.role === 'user'
-                            ? 'bg-cyan-500/10 text-white'
-                            : msg.role === 'assistant'
-                                ? 'bg-slate-800 text-slate-200'
-                                : 'bg-red-500/10 text-red-400'
-                            }`}>
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                            {/* Render PLAN_DRAFT and PLAN_REVISED artifacts */}
-                            {(msg.artifact?.type?.trim().toUpperCase() === 'PLAN_DRAFT' || msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED') && (
-                                <div className={`mt-3 p-4 rounded-lg ${msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
+                    ) : (
+                        <div
+                            key={i}
+                            className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                        >
+                            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${msg.role === 'user'
+                                ? 'bg-cyan-500/20 text-cyan-400'
+                                : msg.role === 'assistant'
+                                    ? 'bg-purple-500/20 text-purple-400'
+                                    : 'bg-red-500/20 text-red-400'
+                                }`}>
+                                {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                            </div>
+                            <div className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.role === 'user'
+                                ? 'bg-cyan-500/10 text-white'
+                                : msg.role === 'assistant'
+                                    ? 'bg-slate-800 text-slate-200'
+                                    : 'bg-red-500/10 text-red-400'
+                                }`}>
+                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                {/* Render PLAN_DRAFT and PLAN_REVISED artifacts */}
+                                {(msg.artifact?.type?.trim().toUpperCase() === 'PLAN_DRAFT' || msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED') && (
+                                    <div className={`mt-3 p-4 rounded-lg ${msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
                                         ? 'border border-emerald-500/50 bg-emerald-900/20'
                                         : 'border border-blue-500/50 bg-blue-900/20'
-                                    }`}>
-                                    <div className="flex justify-between items-center">
-                                        <h3 className={`font-bold ${msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
+                                        }`}>
+                                        <div className="flex justify-between items-center">
+                                            <h3 className={`font-bold ${msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
                                                 ? 'text-emerald-300'
                                                 : 'text-blue-300'
-                                            }`}>
-                                            {msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
-                                                ? `✅ Final for Review — Plan v${(msg.artifact.data as PlanDraftData).version || 1}`
-                                                : (msg.artifact.data as PlanDraftData).is_final
-                                                    ? `Final Review: Plan v${(msg.artifact.data as PlanDraftData).version || (msg.artifact.data as PlanDraftData).revision || 1}`
-                                                    : `Draft Plan v${(msg.artifact.data as PlanDraftData).version || (msg.artifact.data as PlanDraftData).revision || 1}`
-                                            }: {(msg.artifact.data as PlanDraftData).title}
-                                        </h3>
-                                        {/* Phase 12: Show expand for Markdown or legacy nodes */}
-                                        {((msg.artifact.data as PlanDraftData).markdown || ((msg.artifact.data as PlanDraftData).nodes?.length || 0) > 3) && (
-                                            <button
-                                                onClick={() => setExpandedArtifact(expandedArtifact === i ? null : i)}
-                                                className="text-xs text-blue-400 hover:text-blue-300 underline"
-                                            >
-                                                {expandedArtifact === i ? 'Collapse' : 'Expand Details'}
-                                            </button>
-                                        )}
-                                    </div>
-                                    {/* Phase 12: Show Markdown content or legacy nodes */}
-                                    {(msg.artifact.data as PlanDraftData).markdown ? (
-                                        <>
-                                            <div className="mt-2 text-sm text-gray-300">
-                                                Markdown Plan (v{(msg.artifact.data as PlanDraftData).version || 1})
-                                            </div>
-                                            {expandedArtifact === i && (
-                                                <pre className="mt-2 text-xs text-slate-400 bg-slate-800 p-3 rounded overflow-auto max-h-60 whitespace-pre-wrap">
-                                                    {(msg.artifact.data as PlanDraftData).markdown}
-                                                </pre>
-                                            )}
-                                            {(msg.artifact.data as PlanDraftData).rationale && expandedArtifact === i && (
-                                                <div className="mt-2 text-xs text-amber-400 bg-amber-900/20 p-2 rounded">
-                                                    <span className="font-semibold">Rationale:</span> {(msg.artifact.data as PlanDraftData).rationale}
-                                                </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="mt-2 text-sm text-gray-300">
-                                                Proposed Steps: {(msg.artifact.data as PlanDraftData).nodes?.length || 0}
-                                            </div>
-                                            <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                                                {(expandedArtifact === i
-                                                    ? (msg.artifact.data as PlanDraftData).nodes || []
-                                                    : ((msg.artifact.data as PlanDraftData).nodes || []).slice(0, 3)
-                                                ).map((node, idx) => (
-                                                    <li key={idx}>• [{node.type}] {node.description}</li>
-                                                ))}
-                                                {expandedArtifact !== i && ((msg.artifact.data as PlanDraftData).nodes?.length || 0) > 3 && (
-                                                    <li className="text-slate-500 cursor-pointer hover:text-blue-400" onClick={() => setExpandedArtifact(i)}>...and {((msg.artifact.data as PlanDraftData).nodes?.length || 0) - 3} more</li>
-                                                )}
-                                            </ul>
-                                        </>
-                                    )}
-                                    {/* Only show Approve/Critique buttons when plan is marked as final for review */}
-                                    {((msg.artifact?.data as PlanDraftData)?.is_final || readyForReview.has((msg.artifact?.data as any)?.thread_id)) && (
-                                        <div className="mt-3 flex gap-2">
-                                            <button
-                                                onClick={async () => {
-                                                    const threadId = (msg.artifact?.data as any)?.thread_id;
-                                                    if (!threadId || threadId === 'unknown') {
-                                                        setMessages(prev => [...prev, {
-                                                            role: 'system',
-                                                            content: '❌ Cannot approve: No valid thread ID found. Please try again.',
-                                                            timestamp: new Date()
-                                                        }]);
-                                                        return;
-                                                    }
-                                                    setApprovalLoading(i);
-                                                    const formData = new FormData();
-                                                    formData.append('thread_id', threadId);
-                                                    formData.append('action', 'APPROVE');
-                                                    formData.append('comment', 'Plan approved by user');
-                                                    try {
-                                                        const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
-                                                        const response = await fetch(`${cortexUrl}/api/terminal/interact`, {
-                                                            method: 'POST',
-                                                            body: formData
-                                                        });
-                                                        if (!response.ok) {
-                                                            throw new Error(`Server returned ${response.status}`);
-                                                        }
-                                                        setMessages(prev => [...prev, {
-                                                            role: 'user',
-                                                            content: '✅ Plan Approved - Execution starting...',
-                                                            timestamp: new Date()
-                                                        }]);
-                                                    } catch (e) {
-                                                        console.error('Approve failed:', e);
-                                                        setMessages(prev => [...prev, {
-                                                            role: 'system',
-                                                            content: `❌ Approval failed: ${e instanceof Error ? e.message : 'Unknown error'}. Please try again.`,
-                                                            timestamp: new Date()
-                                                        }]);
-                                                    } finally {
-                                                        setApprovalLoading(null);
-                                                    }
-                                                }}
-                                                className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                                disabled={critiqueFeedback.messageIndex === i || approvalLoading === i}
-                                            >
-                                                {approvalLoading === i && <Loader2 size={14} className="animate-spin" />}
-                                                {approvalLoading === i ? 'Approving...' : 'Approve'}
-                                            </button>
-                                            <button
-                                                onClick={() => setCritiqueFeedback({ messageIndex: i, text: '', loading: false })}
-                                                className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors"
-                                                disabled={critiqueFeedback.messageIndex === i || approvalLoading === i}
-                                            >Critique</button>
-                                        </div>
-                                    )}
-                                    {/* Inline Critique Feedback Form */}
-                                    {critiqueFeedback.messageIndex === i && (
-                                        <div className="mt-3 border border-red-500/30 bg-red-900/20 rounded-lg p-3">
-                                            <label className="block text-xs text-red-300 mb-2 font-medium">Revision Feedback</label>
-                                            <textarea
-                                                value={critiqueFeedback.text}
-                                                onChange={(e) => setCritiqueFeedback(prev => ({ ...prev, text: e.target.value }))}
-                                                placeholder="Describe the changes you'd like to see..."
-                                                className="w-full h-24 bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-red-500 focus:outline-none resize-none"
-                                                autoFocus
-                                                disabled={critiqueFeedback.loading}
-                                            />
-                                            <div className="mt-2 flex gap-2 justify-end">
+                                                }`}>
+                                                {msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
+                                                    ? `✅ Final for Review — Plan v${(msg.artifact.data as PlanDraftData).version || 1}`
+                                                    : (msg.artifact.data as PlanDraftData).is_final
+                                                        ? `Final Review: Plan v${(msg.artifact.data as PlanDraftData).version || (msg.artifact.data as PlanDraftData).revision || 1}`
+                                                        : `Draft Plan v${(msg.artifact.data as PlanDraftData).version || (msg.artifact.data as PlanDraftData).revision || 1}`
+                                                }: {(msg.artifact.data as PlanDraftData).title}
+                                            </h3>
+                                            {/* Open fullscreen review modal for markdown plans */}
+                                            {(msg.artifact.data as PlanDraftData).markdown && (
                                                 <button
-                                                    onClick={() => setCritiqueFeedback({ messageIndex: null, text: '', loading: false })}
-                                                    className="px-3 py-1 text-slate-400 hover:text-white text-sm transition-colors"
-                                                    disabled={critiqueFeedback.loading}
-                                                >Cancel</button>
+                                                    onClick={() => setReviewModalData({ artifact: msg.artifact!, messageIndex: i })}
+                                                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                                >
+                                                    <Maximize2 size={12} /> Open Full View
+                                                </button>
+                                            )}
+                                            {/* Legacy nodes expand toggle */}
+                                            {!(msg.artifact.data as PlanDraftData).markdown && ((msg.artifact.data as PlanDraftData).nodes?.length || 0) > 3 && (
+                                                <button
+                                                    onClick={() => setExpandedArtifact(expandedArtifact === i ? null : i)}
+                                                    className="text-xs text-blue-400 hover:text-blue-300 underline"
+                                                >
+                                                    {expandedArtifact === i ? 'Collapse' : 'Expand Details'}
+                                                </button>
+                                            )}
+                                        </div>
+                                        {/* Markdown plans: show summary + open modal button */}
+                                        {(msg.artifact.data as PlanDraftData).markdown ? (
+                                            <>
+                                                <div
+                                                    className="mt-2 text-sm text-slate-400 cursor-pointer hover:text-blue-300 transition-colors flex items-center gap-2"
+                                                    onClick={() => setReviewModalData({ artifact: msg.artifact!, messageIndex: i })}
+                                                >
+                                                    <span>Markdown Plan (v{(msg.artifact.data as PlanDraftData).version || 1})</span>
+                                                    <span className="text-xs text-slate-500">— click to review</span>
+                                                </div>
+                                                {(msg.artifact.data as PlanDraftData).rationale && (
+                                                    <div className="mt-2 text-xs text-amber-400 bg-amber-900/20 p-2 rounded">
+                                                        <span className="font-semibold">Rationale:</span> {(msg.artifact.data as PlanDraftData).rationale}
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="mt-2 text-sm text-gray-300">
+                                                    Proposed Steps: {(msg.artifact.data as PlanDraftData).nodes?.length || 0}
+                                                </div>
+                                                <ul className="mt-2 text-xs text-slate-400 space-y-1">
+                                                    {(expandedArtifact === i
+                                                        ? (msg.artifact.data as PlanDraftData).nodes || []
+                                                        : ((msg.artifact.data as PlanDraftData).nodes || []).slice(0, 3)
+                                                    ).map((node, idx) => (
+                                                        <li key={idx}>• [{node.type}] {node.description}</li>
+                                                    ))}
+                                                    {expandedArtifact !== i && ((msg.artifact.data as PlanDraftData).nodes?.length || 0) > 3 && (
+                                                        <li className="text-slate-500 cursor-pointer hover:text-blue-400" onClick={() => setExpandedArtifact(i)}>...and {((msg.artifact.data as PlanDraftData).nodes?.length || 0) - 3} more</li>
+                                                    )}
+                                                </ul>
+                                            </>
+                                        )}
+                                        {/* Only show Approve/Critique buttons when plan is marked as final for review */}
+                                        {((msg.artifact?.data as PlanDraftData)?.is_final || readyForReview.has((msg.artifact?.data as any)?.thread_id)) && (
+                                            <div className="mt-3 flex gap-2">
                                                 <button
                                                     onClick={async () => {
-                                                        if (!critiqueFeedback.text.trim()) return;
-                                                        setCritiqueFeedback(prev => ({ ...prev, loading: true }));
-                                                        const threadId = (msg.artifact?.data as any)?.thread_id || 'unknown';
+                                                        const threadId = (msg.artifact?.data as any)?.thread_id;
+                                                        if (!threadId || threadId === 'unknown') {
+                                                            setMessages(prev => [...prev, {
+                                                                role: 'system',
+                                                                content: '❌ Cannot approve: No valid thread ID found. Please try again.',
+                                                                timestamp: new Date()
+                                                            }]);
+                                                            return;
+                                                        }
+                                                        setApprovalLoading(i);
                                                         const formData = new FormData();
                                                         formData.append('thread_id', threadId);
-                                                        formData.append('action', 'REJECT');
-                                                        formData.append('comment', critiqueFeedback.text);
+                                                        formData.append('action', 'APPROVE');
+                                                        formData.append('comment', 'Plan approved by user');
                                                         try {
                                                             const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
                                                             const response = await fetch(`${cortexUrl}/api/terminal/interact`, {
                                                                 method: 'POST',
                                                                 body: formData
                                                             });
-                                                            if (!response.ok) throw new Error('Failed to submit feedback');
+                                                            if (!response.ok) {
+                                                                throw new Error(`Server returned ${response.status}`);
+                                                            }
                                                             setMessages(prev => [...prev, {
                                                                 role: 'user',
-                                                                content: `🔄 Requested revision: ${critiqueFeedback.text}`,
+                                                                content: '✅ Plan Approved - Execution starting...',
                                                                 timestamp: new Date()
                                                             }]);
-                                                            setCritiqueFeedback({ messageIndex: null, text: '', loading: false });
                                                         } catch (e) {
-                                                            console.error('Critique failed:', e);
+                                                            console.error('Approve failed:', e);
                                                             setMessages(prev => [...prev, {
                                                                 role: 'system',
-                                                                content: '❌ Failed to submit feedback. Please try again.',
+                                                                content: `❌ Approval failed: ${e instanceof Error ? e.message : 'Unknown error'}. Please try again.`,
                                                                 timestamp: new Date()
                                                             }]);
-                                                            setCritiqueFeedback(prev => ({ ...prev, loading: false }));
+                                                        } finally {
+                                                            setApprovalLoading(null);
                                                         }
                                                     }}
-                                                    disabled={critiqueFeedback.loading || !critiqueFeedback.text.trim()}
-                                                    className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                    className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                    disabled={critiqueFeedback.messageIndex === i || approvalLoading === i}
                                                 >
-                                                    {critiqueFeedback.loading && <Loader2 size={14} className="animate-spin" />}
-                                                    {critiqueFeedback.loading ? 'Submitting...' : 'Submit Feedback'}
+                                                    {approvalLoading === i && <Loader2 size={14} className="animate-spin" />}
+                                                    {approvalLoading === i ? 'Approving...' : 'Approve'}
                                                 </button>
+                                                <button
+                                                    onClick={() => setCritiqueFeedback({ messageIndex: i, text: '', loading: false })}
+                                                    className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors"
+                                                    disabled={critiqueFeedback.messageIndex === i || approvalLoading === i}
+                                                >Critique</button>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            {/* Render COMPILED_PLAN artifacts */}
-                            {msg.artifact?.type?.trim().toUpperCase() === 'COMPILED_PLAN' && (
-                                <div className="mt-3 border border-emerald-500/50 bg-emerald-900/20 p-4 rounded-lg">
-                                    <h4 className="font-semibold text-emerald-300">🔧 Compiled Plan: {(msg.artifact.data as CompiledPlanData).title}</h4>
-                                    <p className="mt-1 text-sm text-slate-300">{(msg.artifact.data as CompiledPlanData).goal}</p>
-                                    <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                                        {(msg.artifact.data as CompiledPlanData).nodes?.map((node, idx) => (
-                                            <li key={idx}>• [{node.type}] {node.description}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                            {/* Render COUNCIL_REVIEW artifacts - VoteGrid */}
-                            {(msg.artifact?.type?.trim().toUpperCase() === 'COUNCIL_REVIEW' || msg.artifact?.type?.trim().toUpperCase() === 'VOTE_SUMMARY') && (
-                                <div className="mt-3 border border-purple-500/50 bg-purple-900/20 rounded-lg p-4">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h4 className="font-semibold text-purple-300">Council Review</h4>
-                                        <button
-                                            onClick={() => setExpandedArtifact(expandedArtifact === i ? null : i)}
-                                            className="text-xs text-purple-400 hover:text-purple-300 underline"
-                                        >
-                                            {expandedArtifact === i ? 'Collapse' : 'Expand Details'}
-                                        </button>
+                                        )}
+                                        {/* Inline Critique Feedback Form */}
+                                        {critiqueFeedback.messageIndex === i && (
+                                            <div className="mt-3 border border-red-500/30 bg-red-900/20 rounded-lg p-3">
+                                                <label className="block text-xs text-red-300 mb-2 font-medium">Revision Feedback</label>
+                                                <textarea
+                                                    value={critiqueFeedback.text}
+                                                    onChange={(e) => setCritiqueFeedback(prev => ({ ...prev, text: e.target.value }))}
+                                                    placeholder="Describe the changes you'd like to see..."
+                                                    className="w-full h-24 bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-red-500 focus:outline-none resize-none"
+                                                    autoFocus
+                                                    disabled={critiqueFeedback.loading}
+                                                />
+                                                <div className="mt-2 flex gap-2 justify-end">
+                                                    <button
+                                                        onClick={() => setCritiqueFeedback({ messageIndex: null, text: '', loading: false })}
+                                                        className="px-3 py-1 text-slate-400 hover:text-white text-sm transition-colors"
+                                                        disabled={critiqueFeedback.loading}
+                                                    >Cancel</button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!critiqueFeedback.text.trim()) return;
+                                                            setCritiqueFeedback(prev => ({ ...prev, loading: true }));
+                                                            const threadId = (msg.artifact?.data as any)?.thread_id || 'unknown';
+                                                            const formData = new FormData();
+                                                            formData.append('thread_id', threadId);
+                                                            formData.append('action', 'REJECT');
+                                                            formData.append('comment', critiqueFeedback.text);
+                                                            try {
+                                                                const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
+                                                                const response = await fetch(`${cortexUrl}/api/terminal/interact`, {
+                                                                    method: 'POST',
+                                                                    body: formData
+                                                                });
+                                                                if (!response.ok) throw new Error('Failed to submit feedback');
+                                                                setMessages(prev => [...prev, {
+                                                                    role: 'user',
+                                                                    content: `🔄 Requested revision: ${critiqueFeedback.text}`,
+                                                                    timestamp: new Date()
+                                                                }]);
+                                                                setCritiqueFeedback({ messageIndex: null, text: '', loading: false });
+                                                            } catch (e) {
+                                                                console.error('Critique failed:', e);
+                                                                setMessages(prev => [...prev, {
+                                                                    role: 'system',
+                                                                    content: '❌ Failed to submit feedback. Please try again.',
+                                                                    timestamp: new Date()
+                                                                }]);
+                                                                setCritiqueFeedback(prev => ({ ...prev, loading: false }));
+                                                            }
+                                                        }}
+                                                        disabled={critiqueFeedback.loading || !critiqueFeedback.text.trim()}
+                                                        className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                    >
+                                                        {critiqueFeedback.loading && <Loader2 size={14} className="animate-spin" />}
+                                                        {critiqueFeedback.loading ? 'Submitting...' : 'Submit Feedback'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 text-xs">
-                                        {(msg.artifact.data as VoteSummaryData).votes.map((vote, idx) => (
-                                            <div key={idx} className={`p-2 rounded text-center cursor-pointer hover:opacity-80 ${vote.decision === 'approve' ? 'bg-green-800/50 border border-green-600/30' :
-                                                vote.decision === 'reject' ? 'bg-red-800/50 border border-red-600/30' :
-                                                    'bg-yellow-800/50 border border-yellow-600/30'
-                                                }`}
+                                )}
+                                {/* Render COMPILED_PLAN artifacts */}
+                                {msg.artifact?.type?.trim().toUpperCase() === 'COMPILED_PLAN' && (
+                                    <div className="mt-3 border border-emerald-500/50 bg-emerald-900/20 p-4 rounded-lg">
+                                        <h4 className="font-semibold text-emerald-300">🔧 Compiled Plan: {(msg.artifact.data as CompiledPlanData).title}</h4>
+                                        <p className="mt-1 text-sm text-slate-300">{(msg.artifact.data as CompiledPlanData).goal}</p>
+                                        <ul className="mt-2 text-xs text-slate-400 space-y-1">
+                                            {(msg.artifact.data as CompiledPlanData).nodes?.map((node, idx) => (
+                                                <li key={idx}>• [{node.type}] {node.description}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                {/* Render COUNCIL_REVIEW artifacts - VoteGrid */}
+                                {(msg.artifact?.type?.trim().toUpperCase() === 'COUNCIL_REVIEW' || msg.artifact?.type?.trim().toUpperCase() === 'VOTE_SUMMARY') && (
+                                    <div className="mt-3 border border-purple-500/50 bg-purple-900/20 rounded-lg p-4">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <h4 className="font-semibold text-purple-300">Council Review</h4>
+                                            <button
                                                 onClick={() => setExpandedArtifact(expandedArtifact === i ? null : i)}
+                                                className="text-xs text-purple-400 hover:text-purple-300 underline"
                                             >
-                                                <div className="font-semibold text-white">{vote.voter}</div>
-                                                <div className={`text-lg ${vote.decision === 'approve' ? 'text-green-400' :
-                                                    vote.decision === 'reject' ? 'text-red-400' : 'text-yellow-400'
-                                                    }`}>
-                                                    {vote.decision === 'approve' ? '✅' : vote.decision === 'reject' ? '❌' : '❓'}
-                                                </div>
-                                                <div className="text-slate-400 truncate" title={vote.reasoning}>
-                                                    {expandedArtifact === i ? vote.reasoning : vote.reasoning.substring(0, 40) + '...'}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {/* Full reasoning panel when expanded */}
-                                    {expandedArtifact === i && (
-                                        <div className="mt-3 pt-3 border-t border-purple-500/30 space-y-2">
-                                            <h5 className="text-sm font-semibold text-purple-300">Full Reasoning:</h5>
+                                                {expandedArtifact === i ? 'Collapse' : 'Expand Details'}
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2 text-xs">
                                             {(msg.artifact.data as VoteSummaryData).votes.map((vote, idx) => (
-                                                <div key={idx} className={`p-2 rounded text-xs ${vote.decision === 'approve' ? 'bg-green-900/30' :
-                                                    vote.decision === 'reject' ? 'bg-red-900/30' : 'bg-yellow-900/30'
-                                                    }`}>
-                                                    <div className="font-semibold text-white mb-1">{vote.voter} ({vote.decision})</div>
-                                                    <div className="text-slate-300 whitespace-pre-wrap">{vote.reasoning}</div>
+                                                <div key={idx} className={`p-2 rounded text-center cursor-pointer hover:opacity-80 ${vote.decision === 'approve' ? 'bg-green-800/50 border border-green-600/30' :
+                                                    vote.decision === 'reject' ? 'bg-red-800/50 border border-red-600/30' :
+                                                        'bg-yellow-800/50 border border-yellow-600/30'
+                                                    }`}
+                                                    onClick={() => setExpandedArtifact(expandedArtifact === i ? null : i)}
+                                                >
+                                                    <div className="font-semibold text-white">{vote.voter}</div>
+                                                    <div className={`text-lg ${vote.decision === 'approve' ? 'text-green-400' :
+                                                        vote.decision === 'reject' ? 'text-red-400' : 'text-yellow-400'
+                                                        }`}>
+                                                        {vote.decision === 'approve' ? '✅' : vote.decision === 'reject' ? '❌' : '❓'}
+                                                    </div>
+                                                    <div className="text-slate-400 truncate" title={vote.reasoning}>
+                                                        {expandedArtifact === i ? vote.reasoning : vote.reasoning.substring(0, 40) + '...'}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
-                                    )}
-                                </div>
-                            )}
-                            {/* Phase 8: Render UNKNOWN_ARTIFACT with attention flag */}
-                            {msg.artifact?.type === 'UNKNOWN_ARTIFACT' && (
-                                <div className="mt-3 border border-orange-500/50 bg-orange-900/20 rounded-lg p-4">
-                                    <div className="flex items-center gap-2 text-orange-400">
-                                        <span className="text-lg">⚠️</span>
-                                        <span className="font-bold">Requires Attention</span>
+                                        {/* Full reasoning panel when expanded */}
+                                        {expandedArtifact === i && (
+                                            <div className="mt-3 pt-3 border-t border-purple-500/30 space-y-2">
+                                                <h5 className="text-sm font-semibold text-purple-300">Full Reasoning:</h5>
+                                                {(msg.artifact.data as VoteSummaryData).votes.map((vote, idx) => (
+                                                    <div key={idx} className={`p-2 rounded text-xs ${vote.decision === 'approve' ? 'bg-green-900/30' :
+                                                        vote.decision === 'reject' ? 'bg-red-900/30' : 'bg-yellow-900/30'
+                                                        }`}>
+                                                        <div className="font-semibold text-white mb-1">{vote.voter} ({vote.decision})</div>
+                                                        <div className="text-slate-300 whitespace-pre-wrap">{vote.reasoning}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                    <p className="mt-2 text-sm text-slate-300">
-                                        Unknown event from node: <code className="bg-slate-800 px-1 rounded">{(msg.artifact.data as UnknownArtifactData).node_name}</code>
-                                    </p>
-                                    <pre className="mt-2 text-xs text-slate-400 bg-slate-800 p-2 rounded overflow-x-auto">
-                                        {(msg.artifact.data as UnknownArtifactData).data.substring(0, 200)}...
-                                    </pre>
-                                </div>
-                            )}
-                            {/* DEFAULT: Catch-all for any unrecognized artifact type (e.g., UNKNOWN_SIGNAL) */}
-                            {msg.artifact && !['PLAN_DRAFT', 'PLAN_REVISED', 'COUNCIL_REVIEW', 'VOTE_SUMMARY', 'COMPILED_PLAN', 'CHAT_RESPONSE', 'UNKNOWN_ARTIFACT', 'STATUS_UPDATE', 'READY_FOR_REVIEW'].includes(msg.artifact.type) && (
-                                <div className="mt-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-900/20 text-yellow-200 font-mono text-sm">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-xl">⚠️</span>
-                                        <span className="font-bold">UNKNOWN SIGNAL</span>
-                                        <span className="text-xs text-yellow-400/70 ml-auto">{msg.artifact.type}</span>
+                                )}
+                                {/* Phase 8: Render UNKNOWN_ARTIFACT with attention flag */}
+                                {msg.artifact?.type === 'UNKNOWN_ARTIFACT' && (
+                                    <div className="mt-3 border border-orange-500/50 bg-orange-900/20 rounded-lg p-4">
+                                        <div className="flex items-center gap-2 text-orange-400">
+                                            <span className="text-lg">⚠️</span>
+                                            <span className="font-bold">Requires Attention</span>
+                                        </div>
+                                        <p className="mt-2 text-sm text-slate-300">
+                                            Unknown event from node: <code className="bg-slate-800 px-1 rounded">{(msg.artifact.data as UnknownArtifactData).node_name}</code>
+                                        </p>
+                                        <pre className="mt-2 text-xs text-slate-400 bg-slate-800 p-2 rounded overflow-x-auto">
+                                            {(msg.artifact.data as UnknownArtifactData).data.substring(0, 200)}...
+                                        </pre>
                                     </div>
-                                    <pre className="text-xs text-yellow-200/70 overflow-auto max-h-40 bg-black/40 p-2 rounded">
-                                        {JSON.stringify(msg.artifact.data, null, 2)}
-                                    </pre>
-                                    <div className="mt-2 text-[10px] uppercase tracking-widest text-yellow-600">
-                                        Flagged for Human Review
+                                )}
+                                {/* DEFAULT: Catch-all for any unrecognized artifact type (e.g., UNKNOWN_SIGNAL) */}
+                                {msg.artifact && !['PLAN_DRAFT', 'PLAN_REVISED', 'COUNCIL_REVIEW', 'VOTE_SUMMARY', 'COMPILED_PLAN', 'CHAT_RESPONSE', 'UNKNOWN_ARTIFACT', 'STATUS_UPDATE', 'READY_FOR_REVIEW'].includes(msg.artifact.type) && (
+                                    <div className="mt-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-900/20 text-yellow-200 font-mono text-sm">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xl">⚠️</span>
+                                            <span className="font-bold">UNKNOWN SIGNAL</span>
+                                            <span className="text-xs text-yellow-400/70 ml-auto">{msg.artifact.type}</span>
+                                        </div>
+                                        <pre className="text-xs text-yellow-200/70 overflow-auto max-h-40 bg-black/40 p-2 rounded">
+                                            {JSON.stringify(msg.artifact.data, null, 2)}
+                                        </pre>
+                                        <div className="mt-2 text-[10px] uppercase tracking-widest text-yellow-600">
+                                            Flagged for Human Review
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                            <span className="text-[10px] text-slate-500 mt-1 block">
-                                {msg.timestamp.toLocaleTimeString()}
-                            </span>
+                                )}
+                                <span className="text-[10px] text-slate-500 mt-1 block">
+                                    {msg.timestamp.toLocaleTimeString()}
+                                </span>
+                            </div>
                         </div>
-                    </div>
+                    )
                 ))}
 
                 {loading && (
@@ -996,13 +1175,13 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     </div>
                 )}
 
-                <div ref={messagesEndRef} />
+
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-slate-700 bg-slate-800/50">
+            < div className="p-4 border-t border-slate-700 bg-slate-800/50" >
                 {/* Hidden file input */}
-                <input
+                < input
                     ref={fileInputRef}
                     type="file"
                     multiple
@@ -1054,7 +1233,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={attachedFiles.length > 0 ? "Add a message (optional)..." : "Ask me anything about your projects..."}
+                        placeholder={attachedFiles.length > 0 ? "Add a message (optional)..." : "Tell me your idea and we'll work on a Project Plan for you"}
                         className="flex-1 rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
                         disabled={loading}
                     />

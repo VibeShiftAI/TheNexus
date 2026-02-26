@@ -163,7 +163,7 @@ export function ArtifactPanel({ artifact, isOpen, onClose, onApprove, onReject }
             artifact.category === "document") {
             return (
                 <MarkdownReviewer
-                    content={artifact.content || ""}
+                    content={typeof artifact.content === 'string' ? artifact.content : (artifact.content ? JSON.stringify(artifact.content, null, 2) : "")}
                     comments={comments}  // Pass all comments, component handles filtering
                     onAddComment={handleAddComment}
                     onResolveComment={handleResolveComment}

@@ -84,7 +84,7 @@ roles:
   # Lead Architect — plans projects (heavy model, shuffle for diversity)
   proposer:
     strategy: shuffle
-    pool: [gemini-pro, gemini-flash]
+    pool: [claude-opus, gemini-pro]
     temperature: 0.9
     description: "Lead Architect — high-diversity hypothesis generator"
 

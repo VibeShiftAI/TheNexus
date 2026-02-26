@@ -127,10 +127,11 @@ export default function CodexPage() {
                     </div>
 
                     <p className="text-slate-400 text-sm">
-                        This diagram visualizes the complete journey of an idea, from initial <span className="text-cyan-400">Terminal Entry</span>,
-                        through the <span className="text-purple-400">System 2 Agora&apos;s deliberation</span> and <span className="text-amber-400">Human-in-the-Loop review</span>, to <span className="text-emerald-400">Nexus Project Creation</span>,
-                        and finally into the <span className="text-indigo-400">Nexus Prime Execution Engine</span> for reality manifestation.
-                        Infrastructure services including the <span className="text-cyan-400">Memory Layer</span>, <span className="text-pink-400">Nervous System</span>, and <span className="text-yellow-400">LLM Factory</span> power the entire pipeline.
+                        This diagram traces the complete data flow from <span className="text-cyan-400">AI Terminal (Agent Mode)</span> submission,
+                        through the <span className="text-purple-400">23-node LangGraph Orchestrator</span> with complexity-based routing (Fast vs Full deliberation),
+                        <span className="text-amber-400">Human-in-the-Loop review</span> with revision loops, to <span className="text-emerald-400">Nexus Project &amp; Task Creation</span>.
+                        The <span className="text-indigo-400">Post-Execution Metacognitive Pipeline</span> runs 11 analysis nodes including Fact Check, Cognitive Auditor, and Epistemic Monitor.
+                        Infrastructure: <span className="text-purple-300">Blackboard</span>, <span className="text-cyan-400">Memory (Neo4j)</span>, <span className="text-pink-400">Glass Box Broadcasting</span>, and <span className="text-yellow-400">LLM Factory</span>.
                     </p>
 
                     <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4 overflow-auto">
@@ -138,7 +139,7 @@ export default function CodexPage() {
                             data="/nexus_data_flow.svg"
                             type="image/svg+xml"
                             className="w-full max-w-[1400px] mx-auto"
-                            style={{ minHeight: '900px' }}
+                            style={{ minHeight: '1200px' }}
                         >
                             Praxis End-to-End Data Flow Diagram
                         </object>

@@ -144,8 +144,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Dashboard Initiatives Section */}
-        <DashboardInitiatives onRefresh={loadData} />
 
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -198,8 +196,9 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Activity Sidebar */}
-            <div className="lg:sticky lg:top-24 lg:h-fit">
+            {/* Initiatives + Activity Sidebar */}
+            <div className="lg:sticky lg:top-24 lg:h-fit space-y-6">
+              <DashboardInitiatives onRefresh={loadData} />
               <ActivityFeed />
             </div>
           </div>

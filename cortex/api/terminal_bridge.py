@@ -132,14 +132,13 @@ class CortexBrainBridge:
             )
 
         # Yield initial status
-        yield {
-            "artifact_type": "STATUS_UPDATE",
-            "payload": {
-                "status": "resuming" if is_resuming else "thinking",
-                "message": "Resuming from your feedback..." if is_resuming else "Vibe Coding OS activated...",
-                "thread_id": thread_id
-            }
+        status_payload = {
+            "status": "resuming" if is_resuming else "thinking",
+            "message": "🔄 Resuming from your feedback..." if is_resuming else "🧠 Activating Vibe Coding OS...",
+            "thread_id": thread_id
         }
+        await nexus.push_artifact("STATUS_UPDATE", status_payload)
+        yield {"artifact_type": "STATUS_UPDATE", "payload": status_payload}
 
         final_response = None
         council_votes = []  # Track council votes as they stream through
@@ -156,14 +155,15 @@ class CortexBrainBridge:
                     # CHAT ROUTER: Intent classification
                     if node_name == "chat_router":
                         route = node_data.get("route", "chat")
-                        yield {
-                            "artifact_type": "STATUS_UPDATE",
-                            "payload": {
-                                "status": "routing",
-                                "message": f"Classified as: {route}",
-                                "thread_id": thread_id
-                            }
+                        route_msg = "🔀 Intent: build — spinning up the Architect..." if route == "build" else f"💬 Responding directly..."
+                        status_payload = {
+                            "status": "routing",
+                            "message": route_msg,
+                            "thread_id": thread_id
                         }
+                        if stream_artifacts:
+                            await nexus.push_artifact("STATUS_UPDATE", status_payload)
+                        yield {"artifact_type": "STATUS_UPDATE", "payload": status_payload}
 
                     # CHAT RESPONSE: Direct LLM reply (bypass)
                     elif node_name == "chat_response":
@@ -179,12 +179,27 @@ class CortexBrainBridge:
                                 }
                             }
 
-                    # ARCHITECT: Plan drafted
+                    # ARCHITECT: Plan drafted or revised
                     elif node_name == "architect":
                         plan_data = node_data.get("markdown_plan")
                         plan_diff = node_data.get("plan_diff")
                         if plan_data:
-                            print(f"📋 Architect produced: {plan_data.title} (v{plan_data.version})")
+                            is_revision = plan_data.version > 1
+                            if is_revision:
+                                print(f"🔄 Architect revised: {plan_data.title} (v{plan_data.version})")
+                                status_msg = f"🔄 Architect revising plan based on council feedback → {plan_data.title} (v{plan_data.version})"
+                            else:
+                                print(f"📋 Architect produced: {plan_data.title} (v{plan_data.version})")
+                                status_msg = f"📐 Plan drafted: {plan_data.title} (v{plan_data.version})"
+                            # Status: Architect finished
+                            status_payload = {
+                                "status": "architect_done",
+                                "message": status_msg,
+                                "thread_id": thread_id
+                            }
+                            if stream_artifacts:
+                                await nexus.push_artifact("STATUS_UPDATE", status_payload)
+                            yield {"artifact_type": "STATUS_UPDATE", "payload": status_payload}
                             artifact = {
                                 "artifact_type": "PLAN_DRAFT",
                                 "payload": {
@@ -200,6 +215,18 @@ class CortexBrainBridge:
                             if stream_artifacts:
                                 await nexus.push_artifact("PLAN_DRAFT", artifact["payload"])
                             yield artifact
+                            # Status: Council assembling with details
+                            council_payload = {
+                                "status": "council_assembling",
+                                "message": (
+                                    "🗳️ Council assembled — 4 specialist reviewers analyzing the plan in parallel...\n"
+                                    "   👤 Frontend/UX Specialist • 🔧 Systems Engineer • 🧪 QA Strategist • 🔍 Gap Analyst"
+                                ),
+                                "thread_id": thread_id
+                            }
+                            if stream_artifacts:
+                                await nexus.push_artifact("STATUS_UPDATE", council_payload)
+                            yield {"artifact_type": "STATUS_UPDATE", "payload": council_payload}
 
                     # COUNCIL REVIEW: Parallel critique
                     elif node_name == "council_review":
@@ -208,6 +235,41 @@ class CortexBrainBridge:
                             council_votes = votes  # Capture for READY_FOR_REVIEW
                             total_comments = sum(len(v.line_comments) for v in votes if v.line_comments)
                             print(f"🗳️ Council: {len(votes)} reviews, {total_comments} line comments")
+                            # Status: Detailed council results with individual votes
+                            approvals = sum(1 for v in votes if v.decision == "approve")
+                            rejections = sum(1 for v in votes if v.decision == "reject")
+                            concerns = sum(1 for v in votes if v.decision == "request_info")
+                            
+                            # Build per-voter summary lines
+                            vote_icons = {"approve": "✅", "reject": "❌", "request_info": "❓"}
+                            voter_lines = []
+                            for v in votes:
+                                icon = vote_icons.get(v.decision, "❓")
+                                comment_count = len(v.line_comments) if v.line_comments else 0
+                                comment_note = f" ({comment_count} comments)" if comment_count > 0 else ""
+                                voter_lines.append(f"   {icon} {v.voter}{comment_note}")
+                            
+                            # Header line
+                            if approvals > (len(votes) * 0.75):
+                                council_header = f"✅ Council: {approvals}/{len(votes)} approved — plan proceeding to review"
+                            elif approvals > 0:
+                                council_header = f"⚠️ Council: {approvals}/{len(votes)} approved, {concerns} requesting changes — revision needed"
+                            else:
+                                council_header = f"❌ Council: {rejections} rejected, {concerns} concerns — major revision needed"
+                            
+                            if total_comments > 0:
+                                council_header += f" • {total_comments} line comments total"
+                            
+                            council_summary = council_header + "\n" + "\n".join(voter_lines)
+                            
+                            council_status = {
+                                "status": "council_done",
+                                "message": council_summary,
+                                "thread_id": thread_id
+                            }
+                            if stream_artifacts:
+                                await nexus.push_artifact("STATUS_UPDATE", council_status)
+                            yield {"artifact_type": "STATUS_UPDATE", "payload": council_status}
                             vote_summary = [
                                 {
                                     "voter": v.voter,
@@ -233,7 +295,16 @@ class CortexBrainBridge:
                         plan_data = node_data.get("markdown_plan") if node_data else None
                         plan_diff = node_data.get("plan_diff") if node_data else None
                         if plan_data:
+                            prior_comments = len(node_data.get("prior_comments", [])) if node_data else 0
                             print(f"📝 Plan revised: {plan_data.title} (v{plan_data.version})")
+                            revision_status = {
+                                "status": "revision_done",
+                                "message": f"📝 Plan revised: {plan_data.title} (v{plan_data.version}) — addressed {prior_comments} council comments",
+                                "thread_id": thread_id
+                            }
+                            if stream_artifacts:
+                                await nexus.push_artifact("STATUS_UPDATE", revision_status)
+                            yield {"artifact_type": "STATUS_UPDATE", "payload": revision_status}
                             artifact = {
                                 "artifact_type": "PLAN_REVISED",
                                 "payload": {
@@ -251,12 +322,28 @@ class CortexBrainBridge:
                             yield artifact
                         else:
                             print(f"[PlanRevision] No line comments - plan unchanged")
+                            skip_status = {
+                                "status": "revision_skip",
+                                "message": "📝 No revisions needed — plan passed review cleanly",
+                                "thread_id": thread_id
+                            }
+                            if stream_artifacts:
+                                await nexus.push_artifact("STATUS_UPDATE", skip_status)
+                            yield {"artifact_type": "STATUS_UPDATE", "payload": skip_status}
 
                     # COMPILER: Markdown → JSON
                     elif node_name == "compiler":
                         compiled = node_data.get("compiled_plan")
                         if compiled:
                             print(f"🔧 Compiler: {compiled.title} ({len(compiled.nodes)} nodes)")
+                            compile_status = {
+                                "status": "compiling",
+                                "message": f"🔧 Compiling plan → {len(compiled.nodes)} executable tasks",
+                                "thread_id": thread_id
+                            }
+                            if stream_artifacts:
+                                await nexus.push_artifact("STATUS_UPDATE", compile_status)
+                            yield {"artifact_type": "STATUS_UPDATE", "payload": compile_status}
                             artifact = {
                                 "artifact_type": "COMPILED_PLAN",
                                 "payload": {
@@ -273,6 +360,14 @@ class CortexBrainBridge:
                     # EXECUTOR: Project created
                     elif node_name == "executor":
                         print(f"✅ Execution complete")
+                        exec_status = {
+                            "status": "executing",
+                            "message": "🚀 Creating project and tasks...",
+                            "thread_id": thread_id
+                        }
+                        if stream_artifacts:
+                            await nexus.push_artifact("STATUS_UPDATE", exec_status)
+                        yield {"artifact_type": "STATUS_UPDATE", "payload": exec_status}
                         if node_data is None:
                             print(f"⚠️ [CortexBridge] Executor returned None state — skipping plan extraction")
                             compiled = None

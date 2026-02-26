@@ -2,10 +2,11 @@
 Cortex Usage Callback — Phase 24: Treasury Guard Infrastructure
 
 Provides automatic token usage tracking for every LLM call that goes through
-the LLMFactory. Two key components:
+the LLMFactory. Three key components:
 
 1. SessionLedger: Thread-safe in-memory store, keyed by session_id
 2. CortexUsageCallback: LangChain BaseCallbackHandler injected into every model
+3. _persist_to_database: Synchronous Supabase writer for the system monitor
 
 The session_id is read at call time via contextvars, NOT baked in at creation.
 This supports module-level LLM singletons that serve multiple sessions.
@@ -86,6 +87,72 @@ class SessionLedger:
             cls._records.clear()
 
 
+# ─── Database Persistence ────────────────────────────────────────────────
+
+def _persist_to_database(model_id: str, input_tokens: int, output_tokens: int) -> None:
+    """
+    Synchronous write to the usage_stats table in Supabase.
+    
+    Uses the requests library (not asyncio) to avoid event loop issues
+    in LangChain callbacks. Fire-and-forget: errors are logged but
+    never propagated to avoid disrupting the LLM pipeline.
+    """
+    import os
+    import requests
+    from datetime import datetime
+
+    try:
+        supabase_url = os.environ.get("SUPABASE_URL")
+        supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
+
+        if not supabase_url or not supabase_key:
+            return
+
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        total_tokens = input_tokens + output_tokens
+
+        headers = {
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+        }
+
+        # Check for existing record for today + model
+        check_url = f"{supabase_url}/rest/v1/usage_stats?date=eq.{today}&model=eq.{model_id}"
+        response = requests.get(check_url, headers=headers, timeout=5)
+        existing = response.json() if response.ok else []
+
+        if existing and len(existing) > 0:
+            record = existing[0]
+            update_data = {
+                "input_tokens": (record.get("input_tokens", 0) or 0) + input_tokens,
+                "output_tokens": (record.get("output_tokens", 0) or 0) + output_tokens,
+                "total_tokens": (record.get("total_tokens", 0) or 0) + total_tokens,
+                "request_count": (record.get("request_count", 0) or 0) + 1,
+            }
+            update_url = f"{supabase_url}/rest/v1/usage_stats?id=eq.{record['id']}"
+            result = requests.patch(update_url, json=update_data, headers=headers, timeout=5)
+            if not result.ok:
+                logger.warning(f"DB update failed: {result.status_code} {result.text[:200]}")
+        else:
+            insert_data = {
+                "date": today,
+                "model": model_id,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": total_tokens,
+                "request_count": 1,
+            }
+            insert_url = f"{supabase_url}/rest/v1/usage_stats"
+            result = requests.post(insert_url, json=insert_data, headers=headers, timeout=5)
+            if not result.ok:
+                logger.warning(f"DB insert failed: {result.status_code} {result.text[:200]}")
+
+    except Exception as e:
+        logger.warning(f"DB persistence failed (non-fatal): {e}")
+
+
 # ─── LangChain Callback ─────────────────────────────────────────────────
 
 class CortexUsageCallback(BaseCallbackHandler):
@@ -105,23 +172,44 @@ class CortexUsageCallback(BaseCallbackHandler):
         self.provider = provider
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-        """Extract usage metadata and record to ledger."""
+        """Extract usage metadata and record to ledger + database."""
         session_id = current_session.get()
 
-        # Try to extract token usage from response
         input_tokens = 0
         output_tokens = 0
         found_usage = False
 
-        # LangChain stores usage in llm_output or in generation metadata
-        if response.llm_output:
+        # ── Primary path: msg.usage_metadata (modern LangChain standard) ──
+        # This is the most reliable across all providers including OpenAI
+        # with_structured_output, Anthropic, Google, and xAI.
+        if not found_usage and response.generations:
+            for gen_list in response.generations:
+                for gen in gen_list:
+                    msg = getattr(gen, "message", None)
+                    if msg is not None:
+                        usage = getattr(msg, "usage_metadata", None)
+                        if usage:
+                            if isinstance(usage, dict):
+                                input_tokens = usage.get("input_tokens", 0) or usage.get("prompt_tokens", 0)
+                                output_tokens = usage.get("output_tokens", 0) or usage.get("completion_tokens", 0)
+                            else:
+                                input_tokens = getattr(usage, "input_tokens", 0) or getattr(usage, "prompt_tokens", 0)
+                                output_tokens = getattr(usage, "output_tokens", 0) or getattr(usage, "completion_tokens", 0)
+                            if input_tokens > 0 or output_tokens > 0:
+                                found_usage = True
+                                break
+                if found_usage:
+                    break
+
+        # ── Fallback 1: llm_output.token_usage (OpenAI classic path) ──
+        if not found_usage and response.llm_output:
             token_usage = response.llm_output.get("token_usage", {})
             if token_usage:
                 input_tokens = token_usage.get("prompt_tokens", 0)
                 output_tokens = token_usage.get("completion_tokens", 0)
                 found_usage = True
 
-        # Fallback: check generation-level metadata (some providers put it here)
+        # ── Fallback 2: generation_info.usage_metadata ──
         if not found_usage and response.generations:
             for gen_list in response.generations:
                 for gen in gen_list:
@@ -132,7 +220,7 @@ class CortexUsageCallback(BaseCallbackHandler):
                         output_tokens += usage.get("output_tokens", usage.get("completion_tokens", 0))
                         found_usage = True
 
-        # Fallback 3: Gemini uses different key names (prompt_token_count, candidates_token_count)
+        # ── Fallback 3: Gemini-style keys ──
         if not found_usage and response.generations:
             for gen_list in response.generations:
                 for gen in gen_list:
@@ -143,14 +231,13 @@ class CortexUsageCallback(BaseCallbackHandler):
                         output_tokens += usage.get("candidates_token_count", 0)
                         if input_tokens > 0 or output_tokens > 0:
                             found_usage = True
-                    # Also check top-level generation_info for Gemini
                     if not found_usage:
                         input_tokens += gen_info.get("prompt_token_count", 0)
                         output_tokens += gen_info.get("candidates_token_count", 0)
                         if input_tokens > 0 or output_tokens > 0:
                             found_usage = True
 
-        # Fallback 4: Check llm_output for Gemini-style keys
+        # ── Fallback 4: llm_output.usage_metadata (Gemini alt) ──
         if not found_usage and response.llm_output:
             usage = response.llm_output.get("usage_metadata", {})
             if usage:
@@ -166,6 +253,7 @@ class CortexUsageCallback(BaseCallbackHandler):
             )
             return
 
+        # Record to in-memory session ledger
         SessionLedger.record(
             session_id=session_id,
             role=self.role,
@@ -174,3 +262,6 @@ class CortexUsageCallback(BaseCallbackHandler):
             input_tokens=input_tokens,
             output_tokens=output_tokens,
         )
+
+        # Persist to database for the system monitor
+        _persist_to_database(self.model_id, input_tokens, output_tokens)

@@ -229,26 +229,26 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
 
     if (isLoading) {
         return (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-                <div className="flex items-center justify-center py-8">
-                    <Loader2 size={24} className="animate-spin text-slate-400" />
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+                <div className="flex items-center justify-center py-4">
+                    <Loader2 size={20} className="animate-spin text-slate-400" />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Workflow size={22} className="text-cyan-400" />
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Workflow size={16} className="text-cyan-400" />
                     Project Workflows
                 </h2>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 transition-all"
+                    className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 transition-all"
                 >
-                    <Plus size={16} />
+                    <Plus size={14} />
                     <span>New Workflow</span>
                 </button>
             </div>
@@ -268,10 +268,10 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
 
             {/* Workflows List */}
             {workflows.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
-                    <Workflow size={32} className="mx-auto mb-3 opacity-50" />
-                    <p className="text-lg font-medium">No project workflows yet</p>
-                    <p className="text-sm mt-1">Start a branding, documentation, or release workflow</p>
+                <div className="text-center py-6 text-slate-500">
+                    <Workflow size={24} className="mx-auto mb-2 opacity-50" />
+                    <p className="text-sm font-medium">No project workflows yet</p>
+                    <p className="text-xs mt-0.5">Start a branding, documentation, or release workflow</p>
                 </div>
             ) : (
                 <div className="space-y-4">

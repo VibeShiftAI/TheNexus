@@ -93,15 +93,15 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
     if (!isEditing) {
         return (
             <>
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 relative group">
+                <div className="relative group">
                     <button
                         onClick={() => setIsEditing(true)}
-                        className="absolute top-4 right-4 p-2 bg-slate-800 text-slate-400 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:text-cyan-400 hover:bg-slate-700"
+                        className="absolute top-0 right-0 p-2 bg-slate-800 text-slate-400 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:text-cyan-400 hover:bg-slate-700"
                     >
                         <Edit2 size={16} />
                     </button>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div>
                             <h2 className="text-2xl font-bold text-white mb-1">{project.name}</h2>
                             <p className="text-slate-400 text-sm mono">{project.path}</p>
@@ -111,7 +111,7 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                             <p className="text-slate-300">{project.description}</p>
                         )}
 
-                        <div className="flex flex-wrap gap-4 text-sm">
+                        <div className="flex flex-wrap items-center gap-4 text-sm">
                             <div className="flex items-center gap-2 text-slate-400">
                                 <Layout size={16} className="text-purple-400" />
                                 <span className="text-slate-200">{project.type}</span>
@@ -122,49 +122,42 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                                     <span className="text-slate-200">{project.vibe}</span>
                                 </div>
                             )}
-                        </div>
 
-                        {(project.urls?.production || project.urls?.repo) && (
-                            <div className="flex gap-4 pt-2">
-                                {project.urls?.production && (
-                                    <a
-                                        href={project.urls.production}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 text-xs text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20"
-                                    >
-                                        <Globe size={14} />
-                                        Production Payload
-                                    </a>
-                                )}
-                                {project.urls?.repo && (
-                                    <a
-                                        href={project.urls.repo}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 text-xs text-slate-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700"
-                                    >
-                                        <GitBranch size={14} />
-                                        Source Matrix
-                                    </a>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                            {(project.urls?.production || project.urls?.repo) && (
+                                <>
+                                    {project.urls?.production && (
+                                        <a
+                                            href={project.urls.production}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 text-xs text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20"
+                                        >
+                                            <Globe size={14} />
+                                            Production Payload
+                                        </a>
+                                    )}
+                                    {project.urls?.repo && (
+                                        <a
+                                            href={project.urls.repo}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 text-xs text-slate-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700"
+                                        >
+                                            <GitBranch size={14} />
+                                            Source Matrix
+                                        </a>
+                                    )}
+                                </>
+                            )}
 
-                    {/* Danger Zone */}
-                    <div className="mt-6 pt-6 border-t border-red-500/20">
-                        <div className="flex items-center gap-2 text-red-400 mb-3">
-                            <AlertTriangle size={16} />
-                            <span className="text-sm font-medium">Danger Zone</span>
+                            <button
+                                onClick={() => setShowDeleteModal(true)}
+                                className="flex items-center gap-1.5 text-xs text-red-400/60 hover:text-red-400 transition-colors ml-auto"
+                            >
+                                <Trash2 size={14} />
+                                Delete
+                            </button>
                         </div>
-                        <button
-                            onClick={() => setShowDeleteModal(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/20 hover:border-red-500/50 transition-all"
-                        >
-                            <Trash2 size={16} />
-                            Delete Project
-                        </button>
                     </div>
                 </div>
 

@@ -8,12 +8,24 @@ const db = require('../../db');
 
 // Pricing per 1M tokens (input/output) in USD - approximate values
 const PRICING = {
+    // API model names (Node.js path writes these)
     'gemini-3-flash-preview': { input: 0.075, output: 0.30 },
     'gemini-3-pro-preview': { input: 1.25, output: 5.00 },
     'claude-opus-4-5-20251101': { input: 15.00, output: 75.00 },
     'claude-sonnet-4-20250514': { input: 3.00, output: 15.00 },
     'gpt-4o': { input: 2.50, output: 10.00 },
     'gpt-4o-mini': { input: 0.15, output: 0.60 },
+    'grok-3': { input: 3.00, output: 15.00 },
+    'grok-3-mini': { input: 0.30, output: 0.50 },
+    // Registry model IDs (Cortex/Python path writes these)
+    'grok-4.1': { input: 3.00, output: 15.00 },
+    'gpt-5-mini': { input: 1.50, output: 6.00 },
+    'gpt-5.2': { input: 5.00, output: 15.00 },
+    'gpt-5.2-codex': { input: 5.00, output: 15.00 },
+    'claude-opus': { input: 15.00, output: 75.00 },
+    'claude-sonnet': { input: 3.00, output: 15.00 },
+    'gemini-pro': { input: 1.25, output: 5.00 },
+    'gemini-flash': { input: 0.075, output: 0.30 },
     // Default fallback
     'default': { input: 1.00, output: 4.00 }
 };
@@ -80,6 +92,7 @@ function getProviderFromModel(model) {
     if (m.includes('gemini') || m.includes('google')) return 'google';
     if (m.includes('claude') || m.includes('anthropic')) return 'anthropic';
     if (m.includes('gpt') || m.includes('openai')) return 'openai';
+    if (m.includes('grok') || m.includes('xai')) return 'xai';
     return 'other';
 }
 

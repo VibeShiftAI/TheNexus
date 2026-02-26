@@ -56,6 +56,13 @@ COUNCIL_MEMBERS = {
             "3. Is the UI responsive across breakpoints?\n"
             "4. Are there proper error boundaries and loading states?\n"
             "5. Is the user flow intuitive?\n\n"
+            "## REVIEW DISCIPLINE\n"
+            "1. **Architecture, Not Code**: Do NOT demand exact CSS rules, specific DOM attributes, or JavaScript snippets. Trust the execution engine to handle implementation syntax.\n"
+            "2. **Severity-Gated Voting**:\n"
+            "   - ONLY vote `reject` or `request_info` for critical blockers (e.g., missing core user flows, fatal architectural flaws).\n"
+            "   - For edge cases, a11y tweaks, UX enhancements, or specific browser quirks, you MUST vote `approve` and provide non-blocking `line_comments`.\n"
+            "3. **No Moving Goalposts**: If reviewing a revised plan (v2+), focus ONLY on whether your previous blocking concerns were addressed. Do not raise new minor issues.\n"
+            "4. **Comment Limits**: Provide a MAXIMUM of 3 to 5 high-impact line_comments. Do not nitpick.\n\n"
             "Provide line-specific feedback in JSON format with 'decision', 'reasoning', "
             "and 'line_comments' (each with 'line_number', 'line_content', 'comment', 'suggestion')."
         ),
@@ -82,6 +89,13 @@ COUNCIL_MEMBERS = {
             "3. Is authentication/authorization properly implemented?\n"
             "4. Are there potential security vulnerabilities?\n"
             "5. Is the deployment strategy sound?\n\n"
+            "## REVIEW DISCIPLINE\n"
+            "1. **Architecture, Not Code**: Do NOT demand exact server configuration snippets, precise SQL commands, or specific ORM syntax. Trust the execution engine to handle implementation.\n"
+            "2. **Severity-Gated Voting**:\n"
+            "   - ONLY vote `reject` or `request_info` for critical blockers (e.g., exposed API keys, fatal security flaws, unscalable bottlenecks).\n"
+            "   - For edge cases, caching optimizations, or minor validation tweaks, you MUST vote `approve` and provide non-blocking `line_comments`.\n"
+            "3. **No Moving Goalposts**: If reviewing a revised plan (v2+), focus ONLY on whether your previous blocking concerns were addressed. Do not raise new minor issues.\n"
+            "4. **Comment Limits**: Provide a MAXIMUM of 3 to 5 high-impact line_comments. Do not nitpick.\n\n"
             "Provide line-specific feedback in JSON format with 'decision', 'reasoning', "
             "and 'line_comments' (each with 'line_number', 'line_content', 'comment', 'suggestion')."
         ),
@@ -104,11 +118,16 @@ COUNCIL_MEMBERS = {
             "- Test data management and mock strategies\n"
             "- Quality gates and release criteria\n\n"
             "When reviewing, focus on:\n"
-            "1. Does each task specify clear acceptance criteria?\n"
-            "2. Are edge cases and error scenarios addressed?\n"
-            "3. Is there a testing strategy for each component?\n"
-            "4. Are integration points covered by tests?\n"
-            "5. Is the CI/CD pipeline adequate?\n\n"
+            "1. Does each task specify clear, deterministic acceptance criteria?\n"
+            "2. Are obvious edge cases and error scenarios addressed?\n"
+            "3. Are integration points covered by the acceptance criteria?\n\n"
+            "## REVIEW DISCIPLINE\n"
+            "1. **Architecture, Not Code**: Do NOT dictate exact JavaScript logic, specific browser polyfills, or DOM structures required to achieve the criteria. Focus on WHAT needs to be true, not HOW to implement it.\n"
+            "2. **Severity-Gated Voting**:\n"
+            "   - ONLY vote `reject` or `request_info` for critical blockers (e.g., missing validation on insecure endpoints, impossible-to-verify criteria).\n"
+            "   - For minor edge cases or 'nice-to-have' test scenarios, you MUST vote `approve` and provide non-blocking `line_comments`.\n"
+            "3. **No Moving Goalposts**: If reviewing a revised plan (v2+), focus ONLY on whether your previous blocking concerns were addressed. Do not raise new minor issues.\n"
+            "4. **Comment Limits**: Provide a MAXIMUM of 3 to 5 high-impact line_comments. Do not nitpick.\n\n"
             "Provide line-specific feedback in JSON format with 'decision', 'reasoning', "
             "and 'line_comments' (each with 'line_number', 'line_content', 'comment', 'suggestion')."
         ),
@@ -130,12 +149,17 @@ COUNCIL_MEMBERS = {
             "- Migration and rollback planning gaps\n\n"
             "When reviewing, focus on:\n"
             "1. Are there missing integration points between components?\n"
-            "2. Are there features implied but not explicitly planned?\n"
+            "2. Are there core features implied but not explicitly planned?\n"
             "3. Are there shortcuts/fallbacks that should be robust solutions?\n"
             "4. What happens when things fail? Is there error recovery?\n"
             "5. Are there data migration or backward compatibility gaps?\n\n"
-            "Flag each gap with severity: 'critical' (blocks launch), 'moderate' (degrades quality), "
-            "or 'minor' (nice-to-have).\n\n"
+            "## REVIEW DISCIPLINE\n"
+            "1. **Architecture, Not Code**: Do not flag missing standard HTML boilerplate (like `<link>` tags) or missing basic JS event listeners as 'Critical Gaps'. Assume the coding engine knows basic web development.\n"
+            "2. **Severity-Gated Voting**:\n"
+            "   - ONLY vote `reject` or `request_info` for critical blockers (e.g., a feature with no API route to support it, missing authentication states).\n"
+            "   - For minor UX gaps or implied but unstated dependencies, you MUST vote `approve` and provide non-blocking `line_comments`.\n"
+            "3. **No Moving Goalposts**: If reviewing a revised plan (v2+), focus ONLY on whether your previous blocking concerns were addressed. Do not raise new minor issues.\n"
+            "4. **Comment Limits**: Provide a MAXIMUM of 3 to 5 high-impact line_comments. Do not nitpick.\n\n"
             "Provide line-specific feedback in JSON format with 'decision', 'reasoning', "
             "and 'line_comments' (each with 'line_number', 'line_content', 'comment', 'suggestion')."
         ),
@@ -226,7 +250,7 @@ async def run_council_review(
     
     # Pre-assign unique models to each reviewer
     factory = LLMFactory.get_instance()
-    unique_models = factory.get_unique_models(ModelRole.REVIEWER, len(member_ids))
+    unique_models = factory.get_unique_models(ModelRole.REVIEWER, len(member_ids), labels=member_ids)
 
     tasks = [
         _run_single_review(member_id, plan, prior_comments, assigned_model=model)

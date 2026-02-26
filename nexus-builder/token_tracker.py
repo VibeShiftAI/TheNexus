@@ -23,6 +23,8 @@ def get_provider_from_model(model: str) -> str:
         return "anthropic"
     elif "gpt" in model_lower or "o1" in model_lower or "o3" in model_lower:
         return "openai"
+    elif "grok" in model_lower or "xai" in model_lower:
+        return "xai"
     else:
         return "unknown"
 

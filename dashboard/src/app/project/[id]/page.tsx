@@ -237,127 +237,97 @@ export default function ProjectDetailPage() {
 
             <div className="container mx-auto p-6 space-y-6">
 
-                {/* Artifacts In Review Row */}
-                <div className="grid grid-cols-1">
-                    <ArtifactsList
-                        items={artifactsInReview.items}
-                        projectCount={artifactsInReview.project}
-                        taskCount={artifactsInReview.task}
-                        projectId={projectId}
-                    />
-                </div>
 
                 {/* Project Overview Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Project Details Editor and Context Manager */}
-                    <div className="lg:col-span-2 flex flex-col gap-6">
-                        <ProjectSettings
-                            project={project}
-                            onUpdate={() => {
-                                // Refresh project data
-                                getProject(projectId).then(setProject);
-                            }}
-                        />
-
-                        {/* Context Manager Section */}
+                    {/* Project Details + Context Manager (unified) */}
+                    <div className="lg:col-span-2">
                         <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-                            <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-800">
-                                <FileText size={20} className="text-cyan-400" />
-                                <h2 className="text-lg font-bold text-white">Context Manager</h2>
+                            <div className="p-6 border-b border-slate-800">
+                                <ProjectSettings
+                                    project={project}
+                                    onUpdate={() => {
+                                        getProject(projectId).then(setProject);
+                                    }}
+                                />
                             </div>
                             <ProjectContextManager project={project} />
                         </div>
                     </div>
 
-                    {/* Git Status Widget */}
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                            <GitBranch size={18} className="text-cyan-400" />
-                            Git Status
-                        </h3>
-                        {status ? (
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg">
-                                    <span className="text-slate-400 text-sm">Branch</span>
-                                    <span className="text-white font-mono font-bold">{status.current || 'N/A'}</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-3 bg-slate-800/50 rounded-lg text-center">
-                                        <div className={`text-xl font-bold ${status.uncommittedCount > 0 ? "text-orange-400" : "text-emerald-400"}`}>
-                                            {status.uncommittedCount}
-                                        </div>
-                                        <div className="text-xs text-slate-500 uppercase mt-1">Changes</div>
-                                    </div>
-                                    <div className="p-3 bg-slate-800/50 rounded-lg text-center">
-                                        <div className="text-xl font-bold text-blue-400">
-                                            {status.ahead} / {status.behind}
-                                        </div>
-                                        <div className="text-xs text-slate-500 uppercase mt-1">Sync (↑/↓)</div>
-                                    </div>
-                                </div>
-                                {commits.length > 0 && (
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase mb-2">Recent Commits</p>
-                                        <div className="space-y-3">
-                                            {commits.slice(0, 5).map((commit, idx) => (
-                                                <div key={commit.hash} className={`text-sm border-l-2 pl-3 ${idx === 0 ? 'border-cyan-500/50' : 'border-slate-700/50'}`}>
-                                                    <div className="font-mono text-cyan-400 text-xs mb-1">{commit.hash.substring(0, 7)}</div>
-                                                    <div className="text-slate-300 line-clamp-1">{commit.message}</div>
-                                                    <div className="text-slate-500 text-xs mt-1">{formatDate(commit.date)}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                    {/* Git Status + Project Workflows + Artifacts */}
+                    <div className="flex flex-col gap-4">
+                        <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                    <GitBranch size={14} className="text-cyan-400" />
+                                    Git Status
+                                </h3>
+                                {status && (
+                                    <span className="text-white font-mono font-bold text-xs bg-slate-800/80 px-2 py-0.5 rounded">{status.current || 'N/A'}</span>
                                 )}
                             </div>
-                        ) : (
-                            <div className="text-slate-500 text-center py-8">No git repository detected</div>
-                        )}
+                            {status ? (
+                                <div className="space-y-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="p-2 bg-slate-800/50 rounded-lg text-center">
+                                            <div className={`text-lg font-bold ${status.uncommittedCount > 0 ? "text-orange-400" : "text-emerald-400"}`}>
+                                                {status.uncommittedCount}
+                                            </div>
+                                            <div className="text-xs text-slate-500 uppercase">Changes</div>
+                                        </div>
+                                        <div className="p-2 bg-slate-800/50 rounded-lg text-center">
+                                            <div className="text-lg font-bold text-blue-400">
+                                                {status.ahead} / {status.behind}
+                                            </div>
+                                            <div className="text-xs text-slate-500 uppercase">Sync (↑/↓)</div>
+                                        </div>
+                                    </div>
+                                    {commits.length > 0 && (
+                                        <div>
+                                            <p className="text-xs text-slate-500 uppercase mb-1">Recent Commits</p>
+                                            <div className="space-y-1.5">
+                                                {commits.slice(0, 3).map((commit, idx) => (
+                                                    <div key={commit.hash} className={`text-xs border-l-2 pl-2 ${idx === 0 ? 'border-cyan-500/50' : 'border-slate-700/50'}`}>
+                                                        <div className="font-mono text-cyan-400 text-xs">{commit.hash.substring(0, 7)}</div>
+                                                        <div className="text-slate-300 line-clamp-1">{commit.message}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="text-slate-500 text-center py-3 text-sm">No git repository detected</div>
+                            )}
+                        </div>
+                        <div className="flex-1">
+                            <ProjectWorkflows projectId={projectId} />
+                        </div>
+                        <div className="flex-1">
+                            <ArtifactsList
+                                items={artifactsInReview.items}
+                                projectCount={artifactsInReview.project}
+                                taskCount={artifactsInReview.task}
+                                projectId={projectId}
+                            />
+                        </div>
                     </div>
                 </div>
 
-                {/* Project Workflows Section */}
-                <div className="w-full">
-                    <ProjectWorkflows projectId={projectId} />
-                </div>
-
-                {/* Task Status Overview Row */}
-                <div className="w-full">
-                    <TaskStatusTiles stats={taskStats} />
-                </div>
-
-                {/* Task Manager Row - Compact */}
+                {/* Task Status + Task Manager Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div className="lg:col-span-3">
-                        <TaskManager
+                    <div className="lg:col-span-1 space-y-3">
+                        <TaskStatusTiles stats={taskStats} />
+                        <TaskArchive
                             projectId={projectId}
                             tasks={tasks}
                             onTasksChange={loadTasks}
                             onTaskSelect={setSelectedTask}
                         />
                     </div>
-                    <div className="space-y-6">
-                        {/* Task Stats - Compact summary at top */}
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                            <h3 className="text-sm font-bold text-slate-400 uppercase mb-4">Task Stats</h3>
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">Total Tasks</span>
-                                    <span className="text-white">{tasks.length}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">In Progress</span>
-                                    <span className="text-cyan-400">{tasks.filter(t => ['researching', 'researched', 'planning', 'planned', 'implementing'].includes(t.status)).length}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">Completed</span>
-                                    <span className="text-emerald-400">{tasks.filter(t => t.status === 'complete').length}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Archive - Can expand below stats */}
-                        <TaskArchive
+                    <div className="lg:col-span-3">
+                        <TaskManager
                             projectId={projectId}
                             tasks={tasks}
                             onTasksChange={loadTasks}

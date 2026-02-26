@@ -30,6 +30,7 @@ from supervisor.agent import (
     call_architect_fleet,  # Gemini Mesh
     call_builder_fleet,    # Implementation + Retry
     call_audit_fleet,      # Claude/Gemini Adversarial Mesh
+    call_walkthrough_generator,  # LLM-powered walkthrough synthesis
     await_research_approval,  # Human approval gate after research
     await_plan_approval       # Human approval gate after planning
 )
@@ -44,6 +45,7 @@ def route_nexus_prime(state: WorkflowState) -> Literal[
     "architect_fleet", 
     "builder_fleet", 
     "audit_fleet", 
+    "walkthrough_generator",
     "human_in_loop", 
     "finish"
 ]:
@@ -63,7 +65,7 @@ def route_nexus_prime(state: WorkflowState) -> Literal[
     
     # Default: Route to the requested fleet
     # Safety: Ensure the decision matches a known node
-    valid_routes = ["research_fleet", "architect_fleet", "builder_fleet", "audit_fleet"]
+    valid_routes = ["research_fleet", "architect_fleet", "builder_fleet", "audit_fleet", "walkthrough_generator"]
     if decision in valid_routes:
         return decision
         
@@ -119,6 +121,7 @@ def build_nexus_graph(checkpointer=None):
     builder.add_node("await_plan_approval", await_plan_approval)
     builder.add_node("builder_fleet", call_builder_fleet)
     builder.add_node("audit_fleet", call_audit_fleet)
+    builder.add_node("walkthrough_generator", call_walkthrough_generator)
     builder.add_node("human_in_loop", human_node)
     
     # B. Create the Edges (Star Topology with Approval Gates)
@@ -138,7 +141,10 @@ def build_nexus_graph(checkpointer=None):
     builder.add_edge("builder_fleet", "nexus_prime")
     builder.add_edge("audit_fleet", "nexus_prime")
     
-    # 5. Human -> Hub (Resume Loop for manual intervention)
+    # 5. Walkthrough Generator -> END (final step before completion)
+    builder.add_edge("walkthrough_generator", END)
+    
+    # 6. Human -> Hub (Resume Loop for manual intervention)
     builder.add_edge("human_in_loop", "nexus_prime")
     
     # C. The Conditional Router (Hub -> Spokes)
@@ -150,6 +156,7 @@ def build_nexus_graph(checkpointer=None):
             "architect_fleet": "architect_fleet",
             "builder_fleet": "builder_fleet",
             "audit_fleet": "audit_fleet",
+            "walkthrough_generator": "walkthrough_generator",
             "human_in_loop": "human_in_loop",
             "finish": END
         }

@@ -26,7 +26,7 @@ create_file = _registry.get("create_file").to_langchain_tool() if _registry.get(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @tool
-def run_bash_command(command: str, cwd: str = "", timeout: int = 60) -> str:
+def run_bash_command(command: str, cwd: str = "", timeout: int = 300) -> str:
     """
     Executes a shell command for git operations, builds, npm/pip installs, and terminal tasks.
     
@@ -40,8 +40,14 @@ def run_bash_command(command: str, cwd: str = "", timeout: int = 60) -> str:
     """
     import subprocess
     import os
+    import sys
     
     work_dir = cwd if cwd else os.getcwd()
+    
+    # On Windows, use CREATE_NEW_PROCESS_GROUP so timeout can kill the entire tree
+    kwargs = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
     
     try:
         result = subprocess.run(
@@ -50,7 +56,9 @@ def run_bash_command(command: str, cwd: str = "", timeout: int = 60) -> str:
             cwd=work_dir,
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=timeout,
+            stdin=subprocess.DEVNULL,  # Prevent interactive prompts from hanging
+            **kwargs,
         )
         
         output = f"Exit code: {result.returncode}\n"
@@ -60,7 +68,7 @@ def run_bash_command(command: str, cwd: str = "", timeout: int = 60) -> str:
             output += f"STDERR:\n{result.stderr[:1000]}"
         return output
     except subprocess.TimeoutExpired:
-        return f"ERROR: Command timed out after {timeout}s"
+        return f"ERROR: Command timed out after {timeout}s. If this is a scaffolding command (e.g. create-next-app), ensure all interactive prompts are suppressed with CLI flags."
     except Exception as e:
         return f"ERROR: {str(e)}"
 

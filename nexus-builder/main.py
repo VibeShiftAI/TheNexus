@@ -1286,7 +1286,7 @@ async def _execute_nexus_workflow(run_id: str, initial_state: Dict[str, Any]):
                     current_agent_response = {"name": "", "content": ""}
                 
                 # Check if this is a main node completing
-                if name in ["research_fleet", "architect_fleet", "builder_fleet", "audit_fleet", "nexus_prime"]:
+                if name in ["research_fleet", "architect_fleet", "builder_fleet", "audit_fleet", "walkthrough_generator", "nexus_prime"]:
                     _nexus_runs[run_id]["current_stage"] = name
                     if name not in _nexus_runs[run_id]["stages_completed"]:
                         _nexus_runs[run_id]["stages_completed"].append(name)
@@ -1341,13 +1341,40 @@ async def _execute_nexus_workflow(run_id: str, initial_state: Dict[str, Any]):
             if task_id:
                 try:
                     import httpx
+                    import json as json_mod
                     nodejs_url = os.getenv("NODEJS_BACKEND_URL", "http://localhost:4000")
                     service_key = os.getenv("SUPABASE_SERVICE_KEY")
                     headers = {"Authorization": f"Bearer {service_key}"} if service_key else {}
+                    
+                    # Extract walkthrough from final graph state (safety net)
+                    walkthrough = ""
+                    try:
+                        run_outputs = snapshot.values.get("outputs", {})
+                        walkthrough = run_outputs.get("walkthrough", "")
+                        if not walkthrough:
+                            sa = run_outputs.get("source_artifacts", {})
+                            if isinstance(sa, dict):
+                                walkthrough = sa.get("walkthrough", "")
+                    except Exception:
+                        pass
+                    
+                    patch_body = {
+                        "status": "complete",
+                        "status_message": "Workflow completed successfully"
+                    }
+                    if walkthrough:
+                        patch_body["walkthrough"] = json_mod.dumps({
+                            "content": walkthrough,
+                            "generatedAt": __import__('datetime').datetime.now().isoformat()
+                        })
+                        print(f"[Nexus] Including walkthrough ({len(walkthrough)} chars) in completion PATCH")
+                    else:
+                        print(f"[Nexus] ⚠️ No walkthrough found in workflow state for task {task_id}")
+                    
                     async with httpx.AsyncClient(timeout=10.0) as client:
                         resp = await client.patch(
                             f"{nodejs_url}/api/tasks/{task_id}",
-                            json={"status": "complete", "status_message": "Workflow completed successfully"},
+                            json=patch_body,
                             headers=headers
                         )
                     if resp.status_code == 200:
@@ -1531,7 +1558,7 @@ async def _resume_nexus_workflow(run_id: str, updates: Optional[Dict[str, Any]] 
                 })
             
             # Persist State logic (simplified same as above)
-            if kind == "on_chain_end" and name in ["research_fleet", "architect_fleet", "builder_fleet", "audit_fleet", "nexus_prime"]:
+            if kind == "on_chain_end" and name in ["research_fleet", "architect_fleet", "builder_fleet", "audit_fleet", "walkthrough_generator", "nexus_prime"]:
                 _nexus_runs[run_id]["current_stage"] = name
                 output = data.get("output", {})
                 if isinstance(output, dict):
@@ -1565,13 +1592,40 @@ async def _resume_nexus_workflow(run_id: str, updates: Optional[Dict[str, Any]] 
             if task_id:
                 try:
                     import httpx
+                    import json as json_mod
                     nodejs_url = os.getenv("NODEJS_BACKEND_URL", "http://localhost:4000")
                     service_key = os.getenv("SUPABASE_SERVICE_KEY")
                     headers = {"Authorization": f"Bearer {service_key}"} if service_key else {}
+                    
+                    # Extract walkthrough from final graph state (safety net)
+                    walkthrough = ""
+                    try:
+                        run_outputs = snapshot.values.get("outputs", {})
+                        walkthrough = run_outputs.get("walkthrough", "")
+                        if not walkthrough:
+                            sa = run_outputs.get("source_artifacts", {})
+                            if isinstance(sa, dict):
+                                walkthrough = sa.get("walkthrough", "")
+                    except Exception:
+                        pass
+                    
+                    patch_body = {
+                        "status": "complete",
+                        "status_message": "Workflow completed successfully"
+                    }
+                    if walkthrough:
+                        patch_body["walkthrough"] = json_mod.dumps({
+                            "content": walkthrough,
+                            "generatedAt": __import__('datetime').datetime.now().isoformat()
+                        })
+                        print(f"[Nexus] Including walkthrough ({len(walkthrough)} chars) in completion PATCH")
+                    else:
+                        print(f"[Nexus] ⚠️ No walkthrough found in workflow state for task {task_id}")
+                    
                     async with httpx.AsyncClient(timeout=10.0) as client:
                         resp = await client.patch(
                             f"{nodejs_url}/api/tasks/{task_id}",
-                            json={"status": "complete", "status_message": "Workflow completed successfully"},
+                            json=patch_body,
                             headers=headers
                         )
                     if resp.status_code == 200:

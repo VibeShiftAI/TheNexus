@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-    Activity, 
-    Cpu, 
-    HardDrive, 
-    Server, 
+import {
+    Activity,
+    Cpu,
+    HardDrive,
+    Server,
     Wifi,
     Coins,
     TrendingUp,
@@ -31,7 +31,7 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
     const [isExpanded, setIsExpanded] = useState(true);
     const [activeTab, setActiveTab] = useState<'ports' | 'tokens'>('ports');
     const [retryCount, setRetryCount] = useState(0);
-    
+
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
@@ -51,7 +51,7 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
             setIsLoading(false);
         }
     }, []);
-    
+
     // Initial fetch and polling
     useEffect(() => {
         fetchData();
@@ -63,12 +63,12 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
         }, 5000); // Poll every 5 seconds
         return () => clearInterval(interval);
     }, [fetchData, error]);
-    
+
     const handleRetry = useCallback(() => {
         setRetryCount(prev => prev + 1);
         fetchData();
     }, [fetchData]);
-    
+
     const formatBytes = (bytes: number): string => {
         if (bytes === 0) return '0 B';
         const k = 1024;
@@ -76,24 +76,24 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     };
-    
+
     const formatNumber = (num: number): string => {
         if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
         if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
         return num.toString();
     };
-    
+
     const formatCost = (cost: number): string => {
         return '$' + cost.toFixed(4);
     };
 
     // Check if error is a server restart needed error
     const isServerRestartNeeded = error && (error.includes('404') || error.includes('Failed to get'));
-    
+
     return (
         <div className={`bg-slate-900/50 border border-slate-800 rounded-xl ${className}`}>
             {/* Header */}
-            <div 
+            <div
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/30 transition-colors"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
@@ -142,7 +142,7 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
                     )}
                 </div>
             </div>
-            
+
             {isExpanded && (
                 <div className="px-4 pb-4">
                     {/* Error State - Server Restart Needed */}
@@ -186,7 +186,7 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
                             </button>
                         </div>
                     )}
-                    
+
                     {/* Loading Skeleton - only show on initial load */}
                     {isLoading && !systemStatus && !error && (
                         <div className="space-y-4 animate-pulse">
@@ -204,7 +204,7 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
                             </div>
                         </div>
                     )}
-                    
+
                     {/* System Stats Bar */}
                     {systemStatus && (
                         <div className="grid grid-cols-2 gap-3 mb-4">
@@ -224,7 +224,7 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
                             </div>
                         </div>
                     )}
-                    
+
                     {/* Only show tabs and content when we have data or no error */}
                     {(systemStatus || usageStats) && (
                         <>
@@ -232,44 +232,41 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
                             <div className="flex gap-2 mb-4">
                                 <button
                                     onClick={() => setActiveTab('ports')}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                                        activeTab === 'ports' 
-                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === 'ports'
+                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
                                             : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                                    }`}
+                                        }`}
                                 >
                                     <Server className="w-4 h-4" />
                                     Ports
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('tokens')}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                                        activeTab === 'tokens' 
-                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === 'tokens'
+                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
                                             : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                                    }`}
+                                        }`}
                                 >
                                     <Coins className="w-4 h-4" />
                                     Token Usage
                                 </button>
                             </div>
-                            
+
                             {/* Ports Tab */}
                             {activeTab === 'ports' && (
                                 <div className="space-y-2">
                                     {systemStatus && systemStatus.ports.length > 0 ? (
                                         systemStatus.ports.map((port, index) => (
-                                            <div 
+                                            <div
                                                 key={`${port.port}-${index}`}
                                                 className="flex items-center justify-between p-2 bg-slate-800/30 rounded-lg"
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-2 h-2 rounded-full ${
-                                                        port.type === 'node' ? 'bg-green-400' :
-                                                        port.type === 'python' ? 'bg-yellow-400' :
-                                                        port.type === 'java' ? 'bg-orange-400' :
-                                                        'bg-slate-400'
-                                                    }`} />
+                                                    <div className={`w-2 h-2 rounded-full ${port.type === 'node' ? 'bg-green-400' :
+                                                            port.type === 'python' ? 'bg-yellow-400' :
+                                                                port.type === 'java' ? 'bg-orange-400' :
+                                                                    'bg-slate-400'
+                                                        }`} />
                                                     <span className="text-white font-mono text-sm">:{port.port}</span>
                                                     {port.hint && (
                                                         <span className="text-xs text-slate-500">{port.hint}</span>
@@ -293,7 +290,7 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
                                     ) : null}
                                 </div>
                             )}
-                            
+
                             {/* Token Usage Tab */}
                             {activeTab === 'tokens' && (
                                 <div className="space-y-4">
@@ -320,24 +317,24 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
                                                     </span>
                                                 </div>
                                             </div>
-                                            
+
                                             {/* By Provider */}
                                             <div>
                                                 <h4 className="text-xs text-slate-500 uppercase tracking-wide mb-2">By Provider</h4>
                                                 <div className="space-y-2">
                                                     {Object.entries(usageStats.byProvider).length > 0 ? (
                                                         Object.entries(usageStats.byProvider).map(([provider, data]) => (
-                                                            <div 
+                                                            <div
                                                                 key={provider}
                                                                 className="flex items-center justify-between p-2 bg-slate-800/30 rounded-lg"
                                                             >
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className={`w-2 h-2 rounded-full ${
-                                                                        provider === 'google' ? 'bg-blue-400' :
-                                                                        provider === 'anthropic' ? 'bg-amber-400' :
-                                                                        provider === 'openai' ? 'bg-green-400' :
-                                                                        'bg-slate-400'
-                                                                    }`} />
+                                                                    <span className={`w-2 h-2 rounded-full ${provider === 'google' ? 'bg-blue-400' :
+                                                                            provider === 'anthropic' ? 'bg-amber-400' :
+                                                                                provider === 'openai' ? 'bg-green-400' :
+                                                                                    provider === 'xai' ? 'bg-red-400' :
+                                                                                        'bg-slate-400'
+                                                                        }`} />
                                                                     <span className="text-sm text-white capitalize">{provider}</span>
                                                                 </div>
                                                                 <div className="flex items-center gap-4 text-xs">
@@ -357,14 +354,14 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
                                                     )}
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Recent Activity */}
                                             {usageStats.recentUsage.length > 0 && (
                                                 <div>
                                                     <h4 className="text-xs text-slate-500 uppercase tracking-wide mb-2">Recent Activity</h4>
                                                     <div className="space-y-1 max-h-40 overflow-y-auto">
                                                         {usageStats.recentUsage.slice(0, 10).map((entry, index) => (
-                                                            <div 
+                                                            <div
                                                                 key={`${entry.timestamp}-${index}`}
                                                                 className="flex items-center justify-between p-2 bg-slate-800/20 rounded text-xs"
                                                             >

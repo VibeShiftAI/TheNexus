@@ -1,26 +1,19 @@
 // ============================================================================
 // AUTOMATED FEATURE RESEARCH
-// This module handles background AI-powered feature research
+// This module handles background AI-powered task suggestion via LLM analysis
 // ============================================================================
 
 const path = require('path');
 const fs = require('fs');
 const { callAI } = require('./services/ai-service');
-
-/**
- * Background function to research project features using Gemini
- * This runs asynchronously - does not block the HTTP response
- */
 const db = require('../db');
 
-const { createClient } = require('@supabase/supabase-js');
-// No need to re-import createClient if we use the db module.
+// In-memory status tracking for active research sessions
+const researchStatus = new Map();
 
 /**
- * Background function to research project features using Gemini
- * DB-based implementation
+ * Build the prompt for auto-research task suggestion
  */
-
 function buildAutoResearchPrompt(context, taskInfo) {
     const contextText = typeof context === 'object' ? JSON.stringify(context, null, 2) : context;
 
@@ -58,20 +51,46 @@ Return a JSON array of objects with the following structure:
 `;
 }
 
+/**
+ * Background function to research and suggest tasks for a project
+ * Runs asynchronously — does not block the HTTP response
+ */
 async function researchProjectTasks(projectPath, projectId, getProjectContext) {
-    const db = require('../db');
     console.log(`[AutoResearch] Starting task research for project: ${projectId}`);
 
     if (!db.isDatabaseEnabled()) {
         console.warn('[AutoResearch] Database not enabled. Skipping research.');
+        researchStatus.set(projectId, { status: 'error', error: 'Database not enabled' });
         return;
     }
 
-    try {
-        console.log(`[AutoResearch] Calling Gemini for project: ${projectId}`);
+    researchStatus.set(projectId, { status: 'researching', startedAt: new Date().toISOString() });
 
-        // Get project context
+    try {
+        console.log(`[AutoResearch] Calling AI for project: ${projectId}`);
+
+        // Get project context (returns object with fileTree, metadata, sourceCode)
         const context = getProjectContext(projectPath);
+
+        // Parse project metadata from the raw JSON string
+        let projectMeta = {};
+        if (context.metadata?.projectJson) {
+            try {
+                projectMeta = JSON.parse(context.metadata.projectJson);
+            } catch (e) {
+                console.warn('[AutoResearch] Failed to parse project.json:', e.message);
+            }
+        }
+
+        // Also check package.json as fallback for name/description
+        let packageMeta = {};
+        if (context.metadata?.packageJson) {
+            try {
+                packageMeta = JSON.parse(context.metadata.packageJson);
+            } catch (e) {
+                // Ignore parse errors
+            }
+        }
 
         // Fetch existing tasks from DB for context
         const existingTasks = await db.getTasks(projectId);
@@ -79,28 +98,21 @@ async function researchProjectTasks(projectPath, projectId, getProjectContext) {
         const completedTasks = existingTasks.filter(f => ['complete'].includes(f.status));
         const rejectedTasks = existingTasks.filter(f => ['rejected', 'cancelled'].includes(f.status));
 
-        // Build the prompt
-        // Re-using logic but mapped to DB objects
+        // Build the prompt with properly extracted metadata
         const prompt = buildAutoResearchPrompt(context, {
             existingTasks: existingTasks.map(f => f.name),
             plannedTasks,
             rejectedTasks,
             completedTasks,
-            projectName: context.metadata.name || projectId,
-            projectDescription: context.metadata.description || '',
-            projectType: context.metadata.type || 'unknown'
+            projectName: projectMeta.name || packageMeta.name || projectId,
+            projectDescription: projectMeta.description || packageMeta.description || '',
+            projectType: projectMeta.type || 'unknown'
         });
 
         // Call AI Service (using 'quick' profile which defaults to Flash model)
-        const responseText = await callAI(
-            'quick', 
-            prompt, 
-            null, 
-            [], 
-            { generationConfig: { responseMimeType: 'application/json' } }
-        );
+        const responseText = await callAI('quick', prompt);
 
-        // Parse JSON
+        // Parse JSON response
         let suggestedTasks = [];
         try {
             const jsonMatch = responseText.match(/\[[\s\S]*\]/);
@@ -112,32 +124,35 @@ async function researchProjectTasks(projectPath, projectId, getProjectContext) {
         } catch (e) {
             console.error('[AutoResearch] Failed to parse JSON:', e);
             console.log('[AutoResearch] Raw response:', responseText);
+            researchStatus.set(projectId, { status: 'error', error: 'Failed to parse AI response' });
             return;
         }
 
         if (!Array.isArray(suggestedTasks)) suggestedTasks = [suggestedTasks];
 
-        // Save to DB
+        // Save to DB — use `name` (the actual DB column), not `title`
         console.log(`[AutoResearch] Generated ${suggestedTasks.length} new tasks for ${projectId}`);
 
         for (const task of suggestedTasks.slice(0, 3)) {
             await db.createTask({
                 project_id: projectId,
-                title: task.title || task.name || 'New Task',
+                name: task.title || task.name || 'New Task',
                 description: task.description || '',
                 status: 'idea',
                 priority: 0,
-                // store origin info in metadata if needed
                 metadata: { source: 'auto-research' }
             });
         }
 
-        console.log(`[AutoResearch] Successfully saved tasks to DB`);
+        console.log(`[AutoResearch] Successfully saved ${suggestedTasks.length} tasks to DB`);
+        researchStatus.set(projectId, { status: 'completed', completedAt: new Date().toISOString() });
+
+        // Clear status after 60 seconds so it doesn't persist forever
+        setTimeout(() => researchStatus.delete(projectId), 60000);
 
     } catch (error) {
         console.error(`[AutoResearch] Error researching tasks for ${projectId}:`, error);
-        // We don't have a place to store "research error" on the project anymore without modifying schema further.
-        // Logging is sufficient for background tasks.
+        researchStatus.set(projectId, { status: 'error', error: error.message });
     }
 }
 
@@ -168,10 +183,18 @@ function setupResearchRoutes(app, getProjectById, PROJECT_ROOT, getProjectContex
 
     // GET /api/projects/:id/tasks/research/status - Check research status
     app.get('/api/projects/:id/tasks/research/status', async (req, res) => {
-        // Since we don't track ephemeral research status in DB, just return 'idle' 
-        // or check if 'idea' tasks were recently created?
-        // Simpler to just say idle so UI doesn't block.
-        res.json({ status: 'idle' });
+        const { id } = req.params;
+        const entry = researchStatus.get(id);
+
+        if (entry) {
+            res.json({
+                status: entry.status,
+                error: entry.error || null,
+                lastResearchDate: entry.completedAt || entry.startedAt || null
+            });
+        } else {
+            res.json({ status: 'idle', error: null, lastResearchDate: null });
+        }
     });
 }
 

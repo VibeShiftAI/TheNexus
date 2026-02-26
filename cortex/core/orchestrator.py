@@ -163,6 +163,23 @@ async def council_review_node(state: System2State) -> dict:
         logger.warning("No plan to review!")
         return {}
 
+    # Skip council review for error/fallback plans — don't waste API calls
+    if plan.title.startswith("Error:"):
+        logger.warning(f"⚠️ [Council] Skipping review of error plan: {plan.title}")
+        # Return a unanimous "reject" so the routing sends it back to architect
+        from cortex.schemas.state import VoteReceipt
+        error_vote = VoteReceipt(
+            voter="System",
+            decision="reject",
+            reasoning=f"Automatic rejection: {plan.title}. The architect encountered an error and needs to retry.",
+            line_comments=[]
+        )
+        return {
+            "votes": [error_vote],
+            "council_feedback": [error_vote],
+            "prior_comments": [],
+        }
+
     prior_comments = state.get("prior_comments", [])
     logger.info(f"🗳️ [Council] Reviewing plan v{plan.version}...")
 
@@ -346,7 +363,10 @@ def route_after_chat_router(state: System2State) -> str:
 
 def route_after_council(state: System2State) -> str:
     """
-    After council review: if majority approves → human review; else → architect revision.
+    After council review: if strong majority approves → human review; else → architect revision.
+    
+    Threshold: >75% must approve (e.g., 3/4 or 4/4).
+    If 2/4 approve with 2 request_info, the plan gets revised and re-reviewed.
     Max 5 revisions safety valve → send to human review anyway.
     """
     votes = state.get("votes", [])
@@ -359,10 +379,18 @@ def route_after_council(state: System2State) -> str:
 
     if votes:
         approvals = sum(1 for v in votes if v.decision == "approve")
+        rejections = sum(1 for v in votes if v.decision == "reject")
+        concerns = sum(1 for v in votes if v.decision == "request_info")
         total = len(votes)
 
-        if approvals >= (total / 2):  # Majority approval
+        # Supermajority required: >=75% must approve (3/4 passes)
+        if approvals >= (total * 0.75):
+            logger.info(f"✅ [Council] Strong majority ({approvals}/{total}) — proceeding to plan revision & human review")
             return "plan_revision"
+        
+        # Any rejections or too many concerns → revise
+        logger.info(f"🔄 [Council] Insufficient approval ({approvals}/{total}, {concerns} concerns) — sending back to architect for revision (round {revision_count + 1})")
+        return "architect"
 
     # Default: send back for revision
     return "architect"

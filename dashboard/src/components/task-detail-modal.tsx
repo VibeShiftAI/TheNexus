@@ -7,6 +7,9 @@ import { X, Lightbulb, FileText, BookOpen, Check, XCircle, Loader2, Trash2, GitC
 import { AnnotatedMarkdown } from './annotated-markdown';
 import { StageTimeline } from './stage-timeline';
 import { FeedbackHistory } from './feedback-history';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { normalizeMarkdown } from '@/lib/normalizeMarkdown';
 
 import { UnifiedWorkflowView } from './task-modal/unified-workflow-view';
 
@@ -518,9 +521,23 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                         <div className="space-y-4">
                             <div>
                                 <h3 className="text-sm font-medium text-slate-400 mb-2">Description</h3>
-                                <p className="text-white">
-                                    {task.description || 'No description provided.'}
-                                </p>
+                                {task.description ? (
+                                    <div className="prose prose-invert prose-sm max-w-none
+                                        prose-p:text-slate-300 prose-p:leading-relaxed prose-p:my-1
+                                        prose-strong:text-white
+                                        prose-li:text-slate-300 prose-li:my-0.5
+                                        prose-code:text-cyan-300 prose-code:bg-slate-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+                                        prose-headings:text-slate-100 prose-headings:font-bold
+                                        prose-h3:text-base prose-h3:mt-4 prose-h3:mb-1
+                                        prose-hr:border-slate-700
+                                    ">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {normalizeMarkdown(task.description)}
+                                        </ReactMarkdown>
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-500 italic">No description provided.</p>
+                                )}
                             </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
@@ -629,7 +646,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                 </div>
                                 {task.spec_output ? (
                                     <AnnotatedMarkdown
-                                        content={cleanContent(task.spec_output)}
+                                        content={normalizeMarkdown(cleanContent(task.spec_output))}
                                         stage="spec"
                                         taskId={task.id}
                                         projectId={projectId}
@@ -656,7 +673,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                     )}
                                 </div>
                                 <AnnotatedMarkdown
-                                    content={cleanContent(task.researchReport.content)}
+                                    content={normalizeMarkdown(cleanContent(task.researchReport.content))}
                                     stage="research"
                                     taskId={task.id}
                                     projectId={projectId}
@@ -692,7 +709,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                     )}
                                 </div>
                                 <AnnotatedMarkdown
-                                    content={cleanContent(task.implementationPlan.content)}
+                                    content={normalizeMarkdown(cleanContent(task.implementationPlan.content))}
                                     stage="plan"
                                     taskId={task.id}
                                     projectId={projectId}
@@ -728,7 +745,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                     )}
                                 </div>
                                 <AnnotatedMarkdown
-                                    content={cleanContent(task.walkthrough.content)}
+                                    content={normalizeMarkdown(cleanContent(task.walkthrough.content))}
                                     stage="walkthrough"
                                     taskId={task.id}
                                     projectId={projectId}

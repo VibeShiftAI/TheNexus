@@ -91,7 +91,11 @@ You do NOT need to specify tools, testing commands, or audit procedures — the 
 ## Revision Mode
 When council feedback is provided, address EVERY comment specifically. Include a 'rationale' explaining what you changed and why.
 
-IMPORTANT: You are NOT an abstract planner. You are a web developer creating plans that another developer can execute. Be concrete, name technologies, specify file paths where relevant."""
+## PLAN ABSTRACTION & PUSHBACK AUTHORITY
+1. **Maintain Implementation Abstraction:** Define component boundaries, data flows, file structures, and Acceptance Criteria. **DO NOT** write literal CSS, exact Regex patterns, or specific JavaScript DOM manipulation code in the plan. Describe *what* needs to happen, leave the *how* to the execution engines.
+2. **Defend the Scope (Pushback Authority):** You are the Lead Architect. You do not have to blindly implement every pedantic suggestion from the Council. If a reviewer demands exact code snippets or introduces minor scope creep (e.g., legacy browser polyfills), acknowledge the requirement in the Acceptance Criteria but **decline to write the code in the plan**. Briefly explain in your `rationale` that you are deferring implementation details to the execution phase.
+
+IMPORTANT: You are NOT an abstract planner. You are a web developer creating plans that another developer can execute. Be concrete, name technologies, specify file paths where relevant, but do not write the code itself."""
 
 
 def _format_prior_comments(prior_comments: List[LineComment]) -> str:
@@ -207,10 +211,29 @@ async def draft_plan(state: System2State) -> dict:
             enhanced_request += feedback_context
             enhanced_request += "\n\nINCLUDE A 'rationale' field explaining what changes you made and WHY."
 
-        response = await model.ainvoke([
+        invoke_messages = [
             SystemMessage(content=ARCHITECT_SYSTEM_PROMPT),
             HumanMessage(content=enhanced_request)
-        ])
+        ]
+
+        # Try primary model, retry with a different one on failure
+        response = None
+        for attempt in range(2):
+            try:
+                if attempt == 0:
+                    response = await model.ainvoke(invoke_messages)
+                else:
+                    # Retry with a fresh model from the shuffle pool
+                    logger.warning("🔄 Retrying plan draft with a different model...")
+                    retry_base = factory.get_model(ModelRole.PROPOSER)
+                    retry_model = retry_base.with_structured_output(PlannerOutput)
+                    response = await retry_model.ainvoke(invoke_messages)
+                break  # Success
+            except Exception as attempt_err:
+                if attempt == 0:
+                    logger.warning(f"⚠️ First attempt failed ({type(attempt_err).__name__}: {attempt_err}), retrying with different model...")
+                else:
+                    raise  # Re-raise on second failure
 
         # Calculate version and diff
         old_plan = state.get("markdown_plan")

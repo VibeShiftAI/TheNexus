@@ -18,6 +18,7 @@ const { updateDocumentationForFeature } = require('./services/auto-documentation
 const supervisorSync = require('./services/supervisor-sync');
 const contextSync = require('./services/context-sync');
 const { runAgent } = require('./agent');
+const { discoverModels, getModels } = require('./services/model-discovery');
 
 const { getDefaultMemoryManager } = require('./memory');
 const os = require('os');
@@ -134,15 +135,10 @@ app.get('/api/health', (req, res) => {
 // MODELS ENDPOINTS
 // ============================================================================
 
-// GET /api/models - List all available models (public)
-app.get('/api/models', async (req, res) => {
-    try {
-        const models = await getAvailableModels();
-        res.json(models);
-    } catch (error) {
-        console.error('[Models] Error fetching models:', error);
-        res.status(500).json({ error: 'Failed to fetch models: ' + error.message });
-    }
+// GET /api/models - List all available models (from discovery service)
+app.get('/api/models', (req, res) => {
+    const models = getModels();
+    res.json({ models });
 });
 
 // POST /api/models - Create or update a model (authenticated)
@@ -1095,7 +1091,7 @@ app.post('/api/ai/chat', async (req, res) => {
     // PROXY TO PYTHON CORTEX (for Agent/Tools)
     // ---------------------------------------------------------------
     // If mode is 'agent' or 'cortex', we proxy to the Python backend
-    // which has access to the Cortex tools (Memory, Agora, Autopilot).
+    // which has access to the Cortex tools.
     if (mode === 'agent' || mode === 'cortex') {
         try {
             console.log(`[AI Chat] Proxying 'agent' request to Python Cortex (Port 8000)...`);
@@ -1121,7 +1117,8 @@ app.post('/api/ai/chat', async (req, res) => {
             const pythonResponse = await fetch('http://localhost:8000/ai-builder/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(pythonPayload)
+                body: JSON.stringify(pythonPayload),
+                signal: AbortSignal.timeout(300000), // 5 min — council reviews generate large parallel payloads
             });
 
             if (!pythonResponse.ok) {
@@ -1191,9 +1188,8 @@ app.post('/api/ai/chat', async (req, res) => {
 
     // Build system prompt based on mode
     let systemPrompt = 'You are a helpful AI assistant for a developer dashboard called The Nexus.';
-    if (mode === 'code') {
-        systemPrompt = 'You are a code-focused AI assistant. Provide code examples and technical solutions. Format code blocks properly.';
-    }
+
+
 
     // Check for API keys per provider
     const apiKeys = {
@@ -3293,7 +3289,7 @@ app.post('/api/tools/search', async (req, res) => {
 
 
 // Setup automated feature research routes
-setupResearchRoutes(app, getProjectById, PROJECT_ROOT, getProjectContext, GoogleGenAI);
+setupResearchRoutes(app, getProjectById, PROJECT_ROOT, getProjectContext);
 
 
 
@@ -4388,6 +4384,7 @@ app.post('/api/broadcast', (req, res) => {
     });
 });
 
+
 server.listen(PORT, async () => {
     // Reasoning level was previously in config, defaulting to standard log for now
     const reasoningLevel = 'standard';
@@ -4410,5 +4407,12 @@ server.listen(PORT, async () => {
     } else {
         console.log(`Database: NOT CONFIGURED (using file-based storage)`);
     }
+
+    // Run model discovery in background (non-blocking)
+    discoverModels().then(models => {
+        console.log(`Model Discovery: ${models.length} latest models ready`);
+    }).catch(err => {
+        console.warn(`Model Discovery: failed (using fallbacks) - ${err.message}`);
+    });
 
 });

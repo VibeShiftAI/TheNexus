@@ -116,32 +116,32 @@ export function DashboardInitiatives({ onRefresh }: DashboardInitiativesProps) {
     const hasInitiatives = activeInitiatives.length > 0;
 
     return (
-        <div className="mb-8">
+        <div>
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
                 <button
                     onClick={() => setExpanded(!expanded)}
                     className="flex items-center gap-2 group"
                 >
-                    <Target className="text-orange-400" size={20} />
-                    <h2 className="text-lg font-semibold text-white group-hover:text-orange-400 transition-colors">
-                        Dashboard Initiatives
+                    <Target className="text-orange-400" size={16} />
+                    <h2 className="text-sm font-semibold text-white group-hover:text-orange-400 transition-colors">
+                        Initiatives
                     </h2>
-                    <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
-                        {activeInitiatives.length} active
+                    <span className="text-xs text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">
+                        {activeInitiatives.length}
                     </span>
                     {expanded ? (
-                        <ChevronUp size={16} className="text-slate-500" />
+                        <ChevronUp size={14} className="text-slate-500" />
                     ) : (
-                        <ChevronDown size={16} className="text-slate-500" />
+                        <ChevronDown size={14} className="text-slate-500" />
                     )}
                 </button>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/30 hover:border-orange-500/50 transition-all text-orange-400 hover:text-orange-300 text-sm"
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/30 hover:border-orange-500/50 transition-all text-orange-400 hover:text-orange-300 text-xs"
                 >
-                    <Plus size={14} />
-                    <span>New Initiative</span>
+                    <Plus size={12} />
+                    <span>New</span>
                 </button>
             </div>
 
@@ -153,15 +153,12 @@ export function DashboardInitiatives({ onRefresh }: DashboardInitiativesProps) {
                             <Loader2 className="animate-spin text-orange-400" size={24} />
                         </div>
                     ) : !hasInitiatives ? (
-                        <div className="border border-dashed border-slate-700 rounded-lg py-6 text-center">
-                            <Target className="mx-auto text-slate-600 mb-2" size={32} />
-                            <p className="text-slate-500 text-sm">No active initiatives</p>
-                            <p className="text-slate-600 text-xs mt-1">
-                                Create a cross-project initiative to get started
-                            </p>
+                        <div className="border border-dashed border-slate-700 rounded-lg py-4 text-center">
+                            <Target className="mx-auto text-slate-600 mb-1" size={24} />
+                            <p className="text-slate-500 text-xs">No active initiatives</p>
                         </div>
                     ) : (
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="space-y-2">
                             {activeInitiatives.map((initiative) => (
                                 <InitiativeCard
                                     key={initiative.id}

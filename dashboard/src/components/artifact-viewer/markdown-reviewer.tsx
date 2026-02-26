@@ -33,8 +33,11 @@ export function MarkdownReviewer({
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [replyContent, setReplyContent] = useState("");
 
+    // Defensive: ensure content is always a string (backend may send objects/arrays)
+    const safeContent = typeof content === 'string' ? content : (content ? JSON.stringify(content, null, 2) : '');
+
     // Split content into lines for line-by-line rendering
-    const lines = content.split('\n');
+    const lines = safeContent.split('\n');
 
     // Count stats
     const unresolvedCount = comments.filter(c => !c.resolved).length;

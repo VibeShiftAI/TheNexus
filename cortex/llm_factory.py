@@ -139,7 +139,7 @@ class LLMFactory:
             model_id=model_id,
         )
 
-    def get_unique_models(self, role: ModelRole, count: int) -> list:
+    def get_unique_models(self, role: ModelRole, count: int, labels: Optional[List[str]] = None) -> list:
         """Returns `count` unique LLM instances from a shuffle pool.
         
         If the pool has fewer models than `count`, cycles through the pool
@@ -184,7 +184,8 @@ class LLMFactory:
             model_def = self._registry.get("models", {}).get(model_id)
             if not model_def:
                 raise ValueError(f"Model ID '{model_id}' not found in 'models' section")
-            logger.info(f"🎲 Unique Shuffle: Selected '{model_id}' ({model_def['model_name']}) for role '{role_key}'")
+            display_role = labels[len(models)] if labels and len(models) < len(labels) else role_key
+            logger.info(f"🎲 Unique Shuffle: Selected '{model_id}' ({model_def['model_name']}) for role '{display_role}'")
             driver = self._create_driver(
                 provider=model_def["provider"],
                 model_name=model_def["model_name"],
@@ -224,6 +225,7 @@ class LLMFactory:
                     model=model_name,
                     temperature=temperature,
                     max_retries=retries,
+                    max_tokens=16384,
                     api_key=settings.anthropic_api_key.get_secret_value(),
                     callbacks=callbacks,
                 )

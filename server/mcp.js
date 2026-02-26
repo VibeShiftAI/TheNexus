@@ -224,9 +224,10 @@ server.tool(
     "commit_and_push",
     {
         project_name: z.string().describe("The name or ID of the project to commit and push"),
-        message: z.string().describe("The commit message").default("Auto-commit from Nexus dashboard")
+        message: z.string().describe("The commit message").default("Auto-commit from Nexus dashboard"),
+        force: z.boolean().describe("Force commit even if walkthroughs are missing (for infrastructure commits)").default(false)
     },
-    async ({ project_name, message }) => {
+    async ({ project_name, message, force }) => {
         const project = await db.getProject(project_name);
 
         if (!project) {
@@ -234,6 +235,33 @@ server.tool(
                 content: [{ type: "text", text: `Error: Project '${project_name}' not found.` }],
                 isError: true
             };
+        }
+
+        // Walkthrough gate: Refuse commit if active tasks lack walkthroughs
+        if (!force) {
+            try {
+                const tasks = await db.getTasks(project.id);
+                const activeTasks = (tasks || []).filter(t =>
+                    ['implementing', 'testing', 'complete'].includes(t.status)
+                );
+                const missingWalkthrough = activeTasks.filter(t => !t.walkthrough);
+
+                if (missingWalkthrough.length > 0) {
+                    const taskList = missingWalkthrough
+                        .map(t => `  - "${t.title}" (status: ${t.status})`)
+                        .join('\n');
+                    return {
+                        content: [{
+                            type: "text",
+                            text: `⚠️ WALKTHROUGH GATE: Cannot commit. The following tasks have no walkthrough:\n${taskList}\n\nA walkthrough is required before committing. Use force=true to bypass (for infrastructure commits only).`
+                        }],
+                        isError: true
+                    };
+                }
+            } catch (err) {
+                // Don't block on DB errors, just warn
+                console.error(`[MCP] Walkthrough gate check failed: ${err.message}`);
+            }
         }
 
         const gitPath = path.join(project.path, '.git');
