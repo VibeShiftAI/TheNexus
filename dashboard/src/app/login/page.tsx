@@ -16,20 +16,14 @@ export default function LoginPage() {
     useEffect(() => {
         setMounted(true)
 
-        // Listen for auth state changes
+        // onAuthStateChange fires INITIAL_SESSION on mount, handling both
+        // the initial auth check and ongoing state changes in one listener.
+        // Avoids the race condition with middleware token refresh that caused
+        // "refresh_token_already_used" errors.
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-                // Redirect to dashboard after successful sign-in
-                router.push('/')
-            }
-        })
-
-        // Check if already logged in
-        supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 router.push('/')
             } else {
-                // Only show login UI if not authenticated
                 setCheckingAuth(false)
             }
         })

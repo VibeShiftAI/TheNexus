@@ -43,7 +43,7 @@ export function DashboardSidebar({ onRefresh }: DashboardSidebarProps) {
     if (!stats) return null;
 
     return (
-        <div className="space-y-4 h-full overflow-y-auto pr-1 custom-scrollbar">
+        <div className="space-y-4 pr-1">
             {/* Artifacts In Review */}
             <ArtifactsList
                 items={stats.artifactsInReview.items}

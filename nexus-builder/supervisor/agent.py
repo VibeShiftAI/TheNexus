@@ -38,6 +38,16 @@ async def await_research_approval(state: WorkflowState):
     outputs = state.get("outputs", {})
     dossier = outputs.get("research_dossier", "No research available")
     
+    # Defensive: normalize content if it came as Gemini parts list
+    if isinstance(dossier, list):
+        text_parts = []
+        for part in dossier:
+            if isinstance(part, dict) and part.get("type") == "text":
+                text_parts.append(part["text"])
+            elif isinstance(part, str):
+                text_parts.append(part)
+        dossier = "\n".join(text_parts)
+    
     # Sync the research to the database so the frontend can display it
     # ALWAYS update status to 'researched' when entering approval gate
     # This ensures the modal shows approval UI instead of workflow selector

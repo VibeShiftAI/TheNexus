@@ -9,7 +9,7 @@ const simpleGit = require('simple-git');
 const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
 const fs = require('fs');
-const { scanProjects, getProjectContext, getAllProjects, getProjectById } = require('./utils/project-manager');
+const { scanProjects, getAllProjects, getProjectById } = require('./utils/project-manager');
 const { setupResearchRoutes } = require('./auto-research');
 const systemMonitor = require('./services/system-monitor');
 const tokenTracker = require('./utils/token-tracker');
@@ -3289,7 +3289,7 @@ app.post('/api/tools/search', async (req, res) => {
 
 
 // Setup automated feature research routes
-setupResearchRoutes(app, getProjectById, PROJECT_ROOT, getProjectContext);
+setupResearchRoutes(app, getProjectById, PROJECT_ROOT);
 
 
 

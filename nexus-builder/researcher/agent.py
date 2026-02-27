@@ -377,10 +377,23 @@ Structure it with clear sections, code examples where relevant, and actionable r
     # Use async invoke
     response = await llm_researcher.ainvoke(state["messages"] + [HumanMessage(content=prompt)])
     
+    # Extract text content - Gemini can return content as a list of parts
+    # like [{"type": "text", "text": "..."}] instead of a plain string
+    dossier_content = response.content
+    if isinstance(dossier_content, list):
+        # Extract text from parts list
+        text_parts = []
+        for part in dossier_content:
+            if isinstance(part, dict) and part.get("type") == "text":
+                text_parts.append(part["text"])
+            elif isinstance(part, str):
+                text_parts.append(part)
+        dossier_content = "\n".join(text_parts)
+    
     # Write synthesis and export to Neo4j
     if bb is not None:
         try:
-            bb.write_synthesis(response.content)
+            bb.write_synthesis(dossier_content)
             
             from cortex.blackboard import BlackboardExporter
             exporter = BlackboardExporter()
@@ -390,7 +403,7 @@ Structure it with clear sections, code examples where relevant, and actionable r
             print(f"⚠️ [Research] Export error: {e}")
     
     return {
-        "final_dossier": response.content,
+        "final_dossier": dossier_content,
         "messages": [HumanMessage(content=prompt), response]
     }
 

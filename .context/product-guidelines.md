@@ -1,5 +1,11 @@
 ---
 context_type: product-guidelines
+status: active
+updated_at: 2026-02-27T01:49:15.468Z
+---
+
+---
+context_type: product-guidelines
 status: current
 updated_at: 2026-02-23T14:40:00.000Z
 ---

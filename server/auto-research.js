@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { callAI } = require('./services/ai-service');
 const db = require('../db');
+const { getProjectContext } = require('./scanner');
 
 // In-memory status tracking for active research sessions
 const researchStatus = new Map();
@@ -55,7 +56,7 @@ Return a JSON array of objects with the following structure:
  * Background function to research and suggest tasks for a project
  * Runs asynchronously — does not block the HTTP response
  */
-async function researchProjectTasks(projectPath, projectId, getProjectContext) {
+async function researchProjectTasks(projectPath, projectId) {
     console.log(`[AutoResearch] Starting task research for project: ${projectId}`);
 
     if (!db.isDatabaseEnabled()) {
@@ -110,7 +111,8 @@ async function researchProjectTasks(projectPath, projectId, getProjectContext) {
         });
 
         // Call AI Service (using 'quick' profile which defaults to Flash model)
-        const responseText = await callAI('quick', prompt);
+        const systemPrompt = 'You are an expert product manager and software architect. Respond only with valid JSON.';
+        const responseText = await callAI('quick', prompt, systemPrompt);
 
         // Parse JSON response
         let suggestedTasks = [];
@@ -159,7 +161,7 @@ async function researchProjectTasks(projectPath, projectId, getProjectContext) {
 /**
  * Setup the research routes
  */
-function setupResearchRoutes(app, getProjectById, PROJECT_ROOT, getProjectContext) {
+function setupResearchRoutes(app, getProjectById, PROJECT_ROOT) {
     // POST /api/projects/:id/tasks/research - Trigger automated task research
     app.post('/api/projects/:id/tasks/research', async (req, res) => {
         const { id } = req.params;
@@ -170,7 +172,7 @@ function setupResearchRoutes(app, getProjectById, PROJECT_ROOT, getProjectContex
         if (!project) return res.status(404).json({ error: 'Project not found' });
 
         // Trigger background research
-        researchProjectTasks(project.path, id, getProjectContext)
+        researchProjectTasks(project.path, id)
             .catch(err => console.error(`[AutoResearch] Background error:`, err));
 
         // Return immediately

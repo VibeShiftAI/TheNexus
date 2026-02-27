@@ -133,13 +133,13 @@ export default function Home() {
       <div className="container mx-auto p-6">
         {/* AI Terminal & Dashboard Sidebar */}
         <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_380px]">
-          {/* Left: Inline AI Terminal */}
-          <div className="h-[calc(100vh-180px)] min-h-[500px]">
+          {/* Left: Inline AI Terminal — stretches to match sidebar height */}
+          <div className="h-full min-h-[400px]">
             <AITerminal mode="inline" />
           </div>
 
-          {/* Right: Consolidated Sidebar */}
-          <div className="h-[calc(100vh-180px)] min-h-[500px]">
+          {/* Right: Consolidated Sidebar — content-driven height */}
+          <div>
             <DashboardSidebar onRefresh={loadData} />
           </div>
         </div>

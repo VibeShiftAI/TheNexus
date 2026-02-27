@@ -613,7 +613,7 @@ interface ApiModel {
 }
 
 export function StateInspector({ workflowId, className = '', nodes: workflowNodes = [] }: StateInspectorProps) {
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [activeTab, setActiveTab] = useState<'state' | 'trace' | 'cost'>('state');
     const [isRunning, setIsRunning] = useState(false);
     const [model, setModel] = useState('');

@@ -122,8 +122,12 @@ async function callGemini(message, config, systemPrompt, history, apiKey) {
 
     const requestBody = {
         contents,
-        systemInstruction: { parts: [{ text: systemPrompt }] },
     };
+
+    // Only include systemInstruction if a system prompt was actually provided
+    if (systemPrompt) {
+        requestBody.systemInstruction = { parts: [{ text: systemPrompt }] };
+    }
 
     if (Object.keys(generationConfig).length > 0) {
         requestBody.generationConfig = generationConfig;

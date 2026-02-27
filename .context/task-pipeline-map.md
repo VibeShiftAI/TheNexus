@@ -1,5 +1,11 @@
 ---
 context_type: task-pipeline-map
+status: active
+updated_at: 2026-02-27T01:49:15.463Z
+---
+
+---
+context_type: task-pipeline-map
 status: current
 updated_at: 2026-02-23T14:40:00.000Z
 ---

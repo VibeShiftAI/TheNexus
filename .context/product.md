@@ -1,5 +1,11 @@
 ---
 context_type: product
+status: active
+updated_at: 2026-02-27T01:49:15.460Z
+---
+
+---
+context_type: product
 status: current
 updated_at: 2026-02-23T14:40:00.000Z
 ---

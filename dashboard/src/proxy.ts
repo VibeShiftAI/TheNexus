@@ -30,6 +30,12 @@ export async function proxy(request: NextRequest) {
             }
         )
 
+        // Skip auth refresh for login page — avoids race condition with
+        // client-side auth that causes "refresh_token_already_used" errors
+        if (request.nextUrl.pathname.startsWith('/login')) {
+            return response
+        }
+
         // Refresh session if expired
         const {
             data: { user },

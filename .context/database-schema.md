@@ -1,5 +1,11 @@
 ---
 context_type: database-schema
+status: active
+updated_at: 2026-02-27T01:49:15.470Z
+---
+
+---
+context_type: database-schema
 status: current
 updated_at: 2026-02-23T14:40:00.000Z
 ---

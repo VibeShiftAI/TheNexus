@@ -124,6 +124,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
             // RESET ALL LOCAL STATE to prevent "zombie" state from previous task
             setError(null);
             setShowDeleteConfirm(false);
+            setShowCompleteConfirm(false);
             setShowCancelConfirm(false);
             setCancelWarning(null);
             setFeedbackText('');
@@ -164,6 +165,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
 
     const [error, setError] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [cancelWarning, setCancelWarning] = useState<string | null>(null);
     const [feedbackText, setFeedbackText] = useState('');
@@ -395,6 +397,29 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
             console.error('Failed to cancel task:', error);
             // On failure, reset the confirm dialog so user can try again
             setShowDeleteConfirm(false);
+        }
+    };
+
+    const handleCompleteTask = async () => {
+        try {
+            await updateTask(projectId, task.id, { status: 'complete' });
+
+            // Stop any active polling
+            if (langGraphPollRef.current) {
+                clearInterval(langGraphPollRef.current);
+                langGraphPollRef.current = null;
+            }
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
+
+            setShowCompleteConfirm(false);
+            onClose();
+            onTaskChange();
+        } catch (error) {
+            console.error('Failed to complete task:', error);
+            setShowCompleteConfirm(false);
         }
     };
 
@@ -821,30 +846,58 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
 
                 {/* Footer */}
                 <div className="p-6 border-t border-slate-800 flex items-center justify-between bg-slate-900/50">
-                    {showDeleteConfirm ? (
-                        <div className="flex items-center gap-2 text-sm">
-                            <span className="text-slate-400">Are you sure?</span>
-                            <button
-                                onClick={() => handleCancelTask()}
-                                className="font-bold text-red-400 hover:text-red-300 underline transition-colors"
-                            >
-                                Yes, Cancel
-                            </button>
-                            <button
-                                onClick={() => setShowDeleteConfirm(false)}
-                                className="text-slate-500 hover:text-slate-300 transition-colors"
-                            >
-                                No
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => setShowDeleteConfirm(true)}
-                            className="text-slate-500 hover:text-red-400 text-sm transition-colors flex items-center gap-2"
-                        >
-                            <Trash2 size={16} /> Cancel Task
-                        </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {showDeleteConfirm ? (
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="text-slate-400">Cancel this task?</span>
+                                <button
+                                    onClick={() => handleCancelTask()}
+                                    className="font-bold text-red-400 hover:text-red-300 underline transition-colors"
+                                >
+                                    Yes, Cancel
+                                </button>
+                                <button
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                    No
+                                </button>
+                            </div>
+                        ) : showCompleteConfirm ? (
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="text-slate-400">Mark as complete?</span>
+                                <button
+                                    onClick={() => handleCompleteTask()}
+                                    className="font-bold text-emerald-400 hover:text-emerald-300 underline transition-colors"
+                                >
+                                    Yes, Complete
+                                </button>
+                                <button
+                                    onClick={() => setShowCompleteConfirm(false)}
+                                    className="text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                    No
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    className="text-slate-500 hover:text-red-400 text-sm transition-colors flex items-center gap-2"
+                                >
+                                    <Trash2 size={16} /> Cancel Task
+                                </button>
+                                {task.status !== 'complete' && task.status !== 'cancelled' && (
+                                    <button
+                                        onClick={() => setShowCompleteConfirm(true)}
+                                        className="text-slate-500 hover:text-emerald-400 text-sm transition-colors flex items-center gap-2"
+                                    >
+                                        <Check size={16} /> Mark Complete
+                                    </button>
+                                )}
+                            </>
+                        )}
+                    </div>
 
                     <div className="flex gap-2">
                         {showFeedbackInput && (

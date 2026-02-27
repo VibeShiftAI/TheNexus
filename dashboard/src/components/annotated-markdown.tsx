@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { MessageSquare, Check, X, Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { InlineComment, getInlineComments, addInlineComment, resolveInlineComment } from '@/lib/nexus';
 
@@ -153,7 +154,72 @@ export function AnnotatedMarkdown({
                     className="flex-1 prose prose-invert prose-sm max-w-none"
                     onMouseUp={handleMouseUp}
                 >
-                    <ReactMarkdown>{getHighlightedContent()}</ReactMarkdown>
+                    <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                            h1: ({ children }) => (
+                                <h1 className="text-xl font-bold text-white mt-6 mb-3 pb-2 border-b border-cyan-500/30">{children}</h1>
+                            ),
+                            h2: ({ children }) => (
+                                <h2 className="text-lg font-semibold text-slate-100 mt-5 mb-2 pb-1.5 border-b border-slate-700">{children}</h2>
+                            ),
+                            h3: ({ children }) => (
+                                <h3 className="text-base font-semibold text-slate-200 mt-4 mb-2">{children}</h3>
+                            ),
+                            h4: ({ children }) => (
+                                <h4 className="text-sm font-semibold text-slate-300 mt-3 mb-1">{children}</h4>
+                            ),
+                            p: ({ children }) => (
+                                <p className="text-sm text-slate-300 leading-relaxed mb-3">{children}</p>
+                            ),
+                            ul: ({ children }) => (
+                                <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 mb-3 ml-2">{children}</ul>
+                            ),
+                            ol: ({ children }) => (
+                                <ol className="list-decimal list-inside text-sm text-slate-300 space-y-1 mb-3 ml-2">{children}</ol>
+                            ),
+                            li: ({ children }) => (
+                                <li className="text-sm text-slate-300 leading-relaxed">{children}</li>
+                            ),
+                            code: ({ className, children, ...props }) => {
+                                const isInline = !className;
+                                if (isInline) {
+                                    return <code className="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 text-xs font-mono border border-slate-700">{children}</code>;
+                                }
+                                return (
+                                    <pre className="bg-slate-950 border border-slate-700 rounded-lg p-3 overflow-x-auto mb-3">
+                                        <code className={`text-xs font-mono text-slate-300 ${className}`}>{children}</code>
+                                    </pre>
+                                );
+                            },
+                            blockquote: ({ children }) => (
+                                <blockquote className="border-l-3 border-purple-500/50 pl-4 py-1 my-3 bg-purple-500/5 rounded-r-lg text-slate-400 italic">{children}</blockquote>
+                            ),
+                            table: ({ children }) => (
+                                <div className="overflow-x-auto mb-3">
+                                    <table className="min-w-full text-xs border-collapse border border-slate-700 rounded-lg overflow-hidden">{children}</table>
+                                </div>
+                            ),
+                            thead: ({ children }) => (
+                                <thead className="bg-slate-800">{children}</thead>
+                            ),
+                            th: ({ children }) => (
+                                <th className="px-3 py-2 text-left text-slate-300 font-semibold border border-slate-700">{children}</th>
+                            ),
+                            td: ({ children }) => (
+                                <td className="px-3 py-2 text-slate-400 border border-slate-700">{children}</td>
+                            ),
+                            hr: () => (
+                                <hr className="border-slate-700 my-4" />
+                            ),
+                            strong: ({ children }) => (
+                                <strong className="text-slate-100 font-semibold">{children}</strong>
+                            ),
+                            a: ({ href, children }) => (
+                                <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline decoration-cyan-500/30 hover:decoration-cyan-400 transition-colors">{children}</a>
+                            ),
+                        }}
+                    >{getHighlightedContent()}</ReactMarkdown>
                 </div>
 
                 {/* Comments sidebar */}

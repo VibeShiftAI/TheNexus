@@ -98,9 +98,54 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
         }
 
         // Extract artifact from the state values
-        // The artifact is nested in values.pending_approval.artifact
+        // The artifact is nested in values.pending_approval.artifact (live SSE)
         const pendingApproval = payload.values?.pending_approval;
-        const artifact = pendingApproval?.artifact;
+        let artifact = pendingApproval?.artifact;
+
+        // Fallback: reconstruct artifact from outputs when reconnecting
+        // (fetchHistory sends outputs directly, not the structured pending_approval)
+        if (!artifact && payload.interrupts?.length > 0) {
+            const interruptType = payload.interrupts[0];
+            const outputs = payload.values || {};
+
+            if (interruptType === 'await_research_approval' || interruptType.includes('research')) {
+                const content = outputs.research_dossier;
+                if (content) {
+                    // Normalize content if it's a Gemini parts list
+                    let normalizedContent = content;
+                    if (Array.isArray(content)) {
+                        normalizedContent = content
+                            .map((p: any) => typeof p === 'string' ? p : (p?.text || ''))
+                            .join('\n');
+                    }
+                    artifact = {
+                        id: `restored-research-${Date.now()}`,
+                        key: 'research_dossier',
+                        name: 'Research Dossier',
+                        content: normalizedContent,
+                        category: 'research',
+                        mime_type: 'text/markdown',
+                        file_extension: '.md',
+                        version: 1,
+                    };
+                }
+            } else if (interruptType === 'await_plan_approval' || interruptType.includes('plan')) {
+                const blueprint = outputs.blueprint;
+                const content = blueprint?.spec_markdown || outputs.plan;
+                if (content) {
+                    artifact = {
+                        id: `restored-plan-${Date.now()}`,
+                        key: 'implementation_plan',
+                        name: 'Implementation Plan',
+                        content: typeof content === 'string' ? content : JSON.stringify(content, null, 2),
+                        category: 'plan',
+                        mime_type: 'text/markdown',
+                        file_extension: '.md',
+                        version: 1,
+                    };
+                }
+            }
+        }
 
         if (artifact) {
             console.log("Artifact found in interrupt:", artifact);
