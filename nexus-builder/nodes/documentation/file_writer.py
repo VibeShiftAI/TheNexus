@@ -123,7 +123,7 @@ class DocFileWriterNode(AtomicNode):
                 try:
                     import aiohttp
                     async with aiohttp.ClientSession() as session:
-                        sync_url = f"http://localhost:3000/api/projects/{project_id}/context/sync"
+                        sync_url = f"http://localhost:4000/api/projects/{project_id}/context/sync"
                         async with session.post(sync_url) as resp:
                             if resp.status == 200:
                                 sync_result = await resp.json()
@@ -134,7 +134,7 @@ class DocFileWriterNode(AtomicNode):
                     # Fallback to requests if aiohttp not available
                     try:
                         import requests as req_lib
-                        sync_url = f"http://localhost:3000/api/projects/{project_id}/context/sync"
+                        sync_url = f"http://localhost:4000/api/projects/{project_id}/context/sync"
                         resp = req_lib.post(sync_url, timeout=10)
                         if resp.ok:
                             sync_result = resp.json()

@@ -139,7 +139,7 @@ export default function CodexPage() {
                             data="/nexus_data_flow.svg"
                             type="image/svg+xml"
                             className="w-full max-w-[1400px] mx-auto"
-                            style={{ minHeight: '1200px' }}
+                            style={{ minHeight: '600px' }}
                         >
                             Praxis End-to-End Data Flow Diagram
                         </object>

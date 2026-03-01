@@ -1129,7 +1129,7 @@ export async function getWorkflowTemplates(level?: 'dashboard' | 'project' | 'ta
         return data.templates || [];
     } catch (err) {
         console.error('[getWorkflowTemplates] Error:', err);
-        throw err;  // No fallbacks - propagate error
+        return [];  // Gracefully degrade when LangGraph service is unavailable
     }
 }
 

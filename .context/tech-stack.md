@@ -1,13 +1,7 @@
 ---
 context_type: tech-stack
-status: active
-updated_at: 2026-02-27T01:49:15.455Z
----
-
----
-context_type: tech-stack
-status: current
-updated_at: 2026-02-23T14:40:00.000Z
+status: draft
+updated_at: 2026-03-01T19:12:44.442Z
 ---
 
 # Technology Stack: The Nexus
@@ -53,3 +47,9 @@ updated_at: 2026-02-23T14:40:00.000Z
 *   **express-rate-limit:** API rate limiting.
 *   **Supabase RLS:** Row-level security for multi-user data isolation.
 *   **CORS:** Cross-origin resource sharing configuration.
+
+---
+context_type: tech-stack
+status: active
+updated_at: 2026-03-01T19:08:12.044Z
+---

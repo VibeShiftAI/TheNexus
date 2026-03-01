@@ -1,13 +1,7 @@
 ---
 context_type: product
-status: active
-updated_at: 2026-02-27T01:49:15.460Z
----
-
----
-context_type: product
-status: current
-updated_at: 2026-02-23T14:40:00.000Z
+status: draft
+updated_at: 2026-03-01T19:12:43.356Z
 ---
 
 # Product Guide: The Nexus
@@ -55,3 +49,9 @@ The Nexus is a "Personal Developer Operating System" — a hybrid local-cloud pl
 *   **Approachable yet Powerful:** The interface adapts to the user. It can abstract away all technical details for a "magic" experience or expose full code diffs and terminal logs for deep inspection.
 *   **Agentic-Native:** The system is built to be operated by AI, with an MCP server and specialized APIs ensuring seamless agent integration.
 *   **Transparency:** Users should always know what the AI is doing, with clear visibility into agent thoughts, plans, and system status via glass-box streaming visualization.
+
+---
+context_type: product
+status: active
+updated_at: 2026-03-01T19:08:10.689Z
+---

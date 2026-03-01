@@ -38,7 +38,7 @@ export function MermaidViewer({ chart }: MermaidViewerProps) {
     }, []);
 
     useEffect(() => {
-        if (isLoaded && chart && containerRef.current) {
+        if (isLoaded && chart) {
             renderChart();
         }
     }, [isLoaded, chart]);
@@ -58,12 +58,11 @@ export function MermaidViewer({ chart }: MermaidViewerProps) {
     if (!chart) return null;
 
     return (
-        <div className="w-full h-full overflow-auto bg-slate-900/50 p-4 rounded-lg">
+        <div ref={containerRef} className="w-full h-full overflow-auto bg-slate-900/50 p-4 rounded-lg">
             {!isLoaded && <div className="text-slate-500 text-xs">Loading renderer...</div>}
             {error && <div className="text-red-400 text-xs font-mono">{error}</div>}
             {svg && (
                 <div
-                    ref={containerRef}
                     dangerouslySetInnerHTML={{ __html: svg }}
                     className="flex justify-center"
                 />

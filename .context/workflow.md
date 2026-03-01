@@ -1,13 +1,7 @@
 ---
 context_type: workflow
-status: active
-updated_at: 2026-02-27T01:49:15.465Z
----
-
----
-context_type: workflow
-status: current
-updated_at: 2026-02-23T14:40:00.000Z
+status: draft
+updated_at: 2026-03-01T19:12:44.797Z
 ---
 
 # Development Workflow
@@ -129,3 +123,9 @@ stop-nexus.bat
 | Dashboard | 3000 | Next.js |
 | Node API | 4000 | Express |
 | LangGraph Engine | 8000 | FastAPI / Uvicorn |
+
+---
+context_type: workflow
+status: active
+updated_at: 2026-03-01T19:08:12.450Z
+---

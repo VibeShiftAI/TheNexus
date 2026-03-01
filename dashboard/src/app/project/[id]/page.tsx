@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { getProject, getProjectStatus, getProjectCommits, getTasks, getProjectReadme, Project, GitStatus, Commit, Task, getDashboardStats, ReviewItem } from "@/lib/nexus";
-import { ArrowLeft, GitBranch, GitCommit, Folder, ExternalLink, Zap, Layers, Globe, Bot, Activity, Brain, Clock, FolderOpen as Folders, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, GitBranch, Zap, Bot, Activity, Brain, FolderOpen as Folders, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { AITerminal } from "@/components/ai-terminal";
 import { TaskManager } from "@/components/task-manager";
@@ -17,7 +17,6 @@ import { TaskStatusTiles } from "@/components/task-status-tiles";
 
 export default function ProjectDetailPage() {
     const params = useParams();
-    const router = useRouter();
     const projectId = params.id as string;
 
     const [project, setProject] = useState<Project | null>(null);
@@ -238,12 +237,12 @@ export default function ProjectDetailPage() {
             <div className="container mx-auto p-6 space-y-6">
 
 
-                {/* Project Overview Row */}
+                {/* Project Overview Row - right column drives height, left fills to match */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Project Details + Context Manager (unified) */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-800">
+                    <div className="lg:col-span-2 relative">
+                        <div className="lg:absolute lg:inset-0 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden flex flex-col">
+                            <div className="px-4 py-3 border-b border-slate-800 shrink-0">
                                 <ProjectSettings
                                     project={project}
                                     onUpdate={() => {
@@ -251,7 +250,9 @@ export default function ProjectDetailPage() {
                                     }}
                                 />
                             </div>
-                            <ProjectContextManager project={project} />
+                            <div className="overflow-y-auto flex-1 min-h-0">
+                                <ProjectContextManager project={project} />
+                            </div>
                         </div>
                     </div>
 
@@ -316,18 +317,18 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Task Status + Task Manager Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div className="lg:col-span-1 space-y-3">
-                        <TaskStatusTiles stats={taskStats} />
-                        <TaskArchive
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2">
+                        <TaskManager
                             projectId={projectId}
                             tasks={tasks}
                             onTasksChange={loadTasks}
                             onTaskSelect={setSelectedTask}
                         />
                     </div>
-                    <div className="lg:col-span-3">
-                        <TaskManager
+                    <div className="lg:col-span-1 space-y-3">
+                        <TaskStatusTiles stats={taskStats} />
+                        <TaskArchive
                             projectId={projectId}
                             tasks={tasks}
                             onTasksChange={loadTasks}

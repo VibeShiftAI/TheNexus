@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Project, updateProject, deleteProject } from "@/lib/nexus";
-import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen, AlertTriangle } from "lucide-react";
+import { Project, updateProject } from "@/lib/nexus";
+import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen } from "lucide-react";
 
 interface ProjectSettingsProps {
     project: Project;
@@ -11,30 +10,10 @@ interface ProjectSettingsProps {
 }
 
 export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
-    const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     const [editedProject, setEditedProject] = useState<Project>(project);
     const [stackEntry, setStackEntry] = useState({ key: '', value: '' });
-
-    // Delete modal state
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [deleteFilesOption, setDeleteFilesOption] = useState(false);
-    const [deleting, setDeleting] = useState(false);
-    const [deleteError, setDeleteError] = useState<string | null>(null);
-
-    const handleDelete = async () => {
-        setDeleting(true);
-        setDeleteError(null);
-        try {
-            await deleteProject(project.id, deleteFilesOption);
-            router.push('/');
-        } catch (error) {
-            console.error('Failed to delete project:', error);
-            setDeleteError(error instanceof Error ? error.message : 'Failed to delete project');
-            setDeleting(false);
-        }
-    };
 
     const handleChange = (field: keyof Project, value: any) => {
         setEditedProject(prev => ({ ...prev, [field]: value }));
@@ -92,155 +71,69 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
 
     if (!isEditing) {
         return (
-            <>
-                <div className="relative group">
-                    <button
-                        onClick={() => setIsEditing(true)}
-                        className="absolute top-0 right-0 p-2 bg-slate-800 text-slate-400 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:text-cyan-400 hover:bg-slate-700"
-                    >
-                        <Edit2 size={16} />
-                    </button>
+            <div className="relative group">
+                <button
+                    onClick={() => setIsEditing(true)}
+                    className="absolute top-0 right-0 p-2 bg-slate-800 text-slate-400 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:text-cyan-400 hover:bg-slate-700"
+                >
+                    <Edit2 size={16} />
+                </button>
 
-                    <div className="space-y-3">
-                        <div>
-                            <h2 className="text-2xl font-bold text-white mb-1">{project.name}</h2>
-                            <p className="text-slate-400 text-sm mono">{project.path}</p>
-                        </div>
-
+                <div className="flex items-start justify-between gap-4">
+                    {/* Left: Name + Description */}
+                    <div className="min-w-0">
+                        <h2 className="text-2xl font-bold text-white leading-tight">{project.name}</h2>
                         {project.description && (
-                            <p className="text-slate-300">{project.description}</p>
+                            <p className="text-slate-300 text-sm mt-1">{project.description}</p>
                         )}
+                    </div>
 
-                        <div className="flex flex-wrap items-center gap-4 text-sm">
-                            <div className="flex items-center gap-2 text-slate-400">
-                                <Layout size={16} className="text-purple-400" />
-                                <span className="text-slate-200">{project.type}</span>
+                    {/* Right: Path + Type/Vibe badges */}
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <p className="text-slate-500 text-xs font-mono">{project.path}</p>
+                        <div className="flex items-center gap-3 text-sm">
+                            <div className="flex items-center gap-1.5 text-slate-400">
+                                <Layout size={14} className="text-purple-400" />
+                                <span className="text-slate-300 text-xs">{project.type}</span>
                             </div>
                             {project.vibe && (
-                                <div className="flex items-center gap-2 text-slate-400">
-                                    <span className="text-yellow-400">⚡</span>
-                                    <span className="text-slate-200">{project.vibe}</span>
+                                <div className="flex items-center gap-1.5 text-slate-400">
+                                    <span className="text-yellow-400 text-xs">⚡</span>
+                                    <span className="text-slate-300 text-xs">{project.vibe}</span>
                                 </div>
                             )}
-
-                            {(project.urls?.production || project.urls?.repo) && (
-                                <>
-                                    {project.urls?.production && (
-                                        <a
-                                            href={project.urls.production}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 text-xs text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20"
-                                        >
-                                            <Globe size={14} />
-                                            Production Payload
-                                        </a>
-                                    )}
-                                    {project.urls?.repo && (
-                                        <a
-                                            href={project.urls.repo}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 text-xs text-slate-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700"
-                                        >
-                                            <GitBranch size={14} />
-                                            Source Matrix
-                                        </a>
-                                    )}
-                                </>
-                            )}
-
-                            <button
-                                onClick={() => setShowDeleteModal(true)}
-                                className="flex items-center gap-1.5 text-xs text-red-400/60 hover:text-red-400 transition-colors ml-auto"
-                            >
-                                <Trash2 size={14} />
-                                Delete
-                            </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Delete Confirmation Modal */}
-                {showDeleteModal && (
-                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => !deleting && setShowDeleteModal(false)}>
-                        <div className="bg-slate-900 border border-red-500/30 rounded-xl p-6 max-w-md w-full mx-4 animate-in fade-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="p-2 bg-red-500/20 rounded-lg">
-                                    <AlertTriangle className="text-red-400" size={24} />
-                                </div>
-                                <h3 className="text-xl font-semibold text-white">Delete Project</h3>
-                            </div>
-
-                            <p className="text-slate-400 mb-4">
-                                Are you sure you want to delete <span className="text-white font-medium">{project.name}</span>?
-                            </p>
-
-                            <div className="space-y-3 mb-6">
-                                <label className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-800 transition-colors">
-                                    <input
-                                        type="radio"
-                                        name="deleteOption"
-                                        checked={!deleteFilesOption}
-                                        onChange={() => setDeleteFilesOption(false)}
-                                        className="mt-0.5"
-                                    />
-                                    <div>
-                                        <p className="text-white text-sm font-medium">Remove from Dashboard</p>
-                                        <p className="text-slate-500 text-xs">Project files will remain on disk</p>
-                                    </div>
-                                </label>
-                                <label className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg cursor-pointer hover:bg-red-500/20 transition-colors">
-                                    <input
-                                        type="radio"
-                                        name="deleteOption"
-                                        checked={deleteFilesOption}
-                                        onChange={() => setDeleteFilesOption(true)}
-                                        className="mt-0.5"
-                                    />
-                                    <div>
-                                        <p className="text-red-400 text-sm font-medium">Delete Everything</p>
-                                        <p className="text-red-400/60 text-xs">Permanently remove project folder from disk</p>
-                                    </div>
-                                </label>
-                            </div>
-
-                            {deleteError && (
-                                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                                    {deleteError}
-                                </div>
-                            )}
-
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setShowDeleteModal(false)}
-                                    disabled={deleting}
-                                    className="flex-1 px-4 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleDelete}
-                                    disabled={deleting}
-                                    className="flex-1 px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
-                                    {deleting ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
-                                            Deleting...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Trash2 size={16} />
-                                            Delete
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
+                {/* URL links */}
+                {(project.urls?.production || project.urls?.repo) && (
+                    <div className="flex flex-wrap items-center gap-3 text-sm mt-2">
+                        {project.urls?.production && (
+                            <a
+                                href={project.urls.production}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-xs text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20"
+                            >
+                                <Globe size={14} />
+                                Production Payload
+                            </a>
+                        )}
+                        {project.urls?.repo && (
+                            <a
+                                href={project.urls.repo}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-xs text-slate-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700"
+                            >
+                                <GitBranch size={14} />
+                                Source Matrix
+                            </a>
+                        )}
                     </div>
                 )}
-            </>
+            </div>
         );
     }
 

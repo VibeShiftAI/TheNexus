@@ -37,9 +37,6 @@ import { FleetNode } from './workflow-nodes/fleet-node';
 import { AgentNode } from './workflow-nodes/agent-node';
 import { getNodeTypes, saveTemplate } from '@/lib/nexus';
 
-// Import Tool Dock for MCP tool binding (Nexus Protocol Phase 2)
-import { ToolDock } from './tool-dock';
-
 // === Nexus Protocol Phase 4 ===
 import { ProcessorCard } from './workflow-nodes/processor-card';
 import { ActionNode } from './workflow-nodes/action-node';
@@ -198,9 +195,6 @@ export function WorkflowBuilder({
 
   // Workflow level state (dashboard, project, feature)
   const [workflowLevel, setWorkflowLevel] = useState<'dashboard' | 'project' | 'task'>('task');
-
-  // Tool Dock visibility (Nexus Protocol Phase 2)
-  const [showToolDock, setShowToolDock] = useState(true);
 
   // Dynamic node palette (fetched from backend)
   const [nodePalette, setNodePalette] = useState<{ type: string; label: string; icon: string; description: string; levels?: string[] }[]>([]);
@@ -525,16 +519,6 @@ export function WorkflowBuilder({
           />
         )}
 
-        {/* Tool Dock - MCP Server Management (Nexus Protocol Phase 2) */}
-        {/* TODO: Future upgrades:
-            - Highlight nodes that support tool binding when dragging
-            - Show tool count per node
-            - Auto-suggest tools based on node type (e.g., filesystem for builder)
-            - Persist MCP server configs to database
-        */}
-        {showToolDock && (
-          <ToolDock className="w-64" />
-        )}
       </div>
 
       {/* State Inspector - Bottom Panel (Nexus Protocol Phase 5) */}

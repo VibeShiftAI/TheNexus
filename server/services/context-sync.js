@@ -64,35 +64,44 @@ async function writeContextFile(projectPath, contextType, content, status = 'dra
 }
 
 /**
- * Format content with YAML frontmatter
+ * Format content with YAML frontmatter at the BOTTOM of the file.
+ * Strips any existing frontmatter blocks from the content to prevent duplication.
  */
 function formatWithFrontmatter(content, contextType, status) {
-    const lines = [
+    // Strip any existing frontmatter blocks (top or bottom) from the content
+    let cleaned = (content || '').replace(/---\r?\n[\s\S]*?\r?\n---\r?\n?/g, '').trim();
+
+    const footer = [
+        '',
         '---',
         `context_type: ${contextType}`,
         `status: ${status}`,
         `updated_at: ${new Date().toISOString()}`,
         '---',
-        '',
-        content || ''
+        ''
     ];
-    return lines.join('\n');
+    return cleaned + '\n' + footer.join('\n');
 }
 
 /**
- * Parse frontmatter from a context file
+ * Parse frontmatter from a context file.
+ * Looks for the LAST frontmatter block (at the bottom of the file).
  * @returns {{ content: string, metadata: object }}
  */
 function parseFrontmatter(fileContent) {
-    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/;
-    const match = fileContent.match(frontmatterRegex);
+    // Match the last --- block in the file
+    const allBlocks = [...fileContent.matchAll(/---\r?\n([\s\S]*?)\r?\n---/g)];
 
-    if (!match) {
-        return { content: fileContent, metadata: {} };
+    if (allBlocks.length === 0) {
+        return { content: fileContent.trim(), metadata: {} };
     }
 
-    const frontmatter = match[1];
-    const content = fileContent.slice(match[0].length);
+    // Use the last block as the metadata
+    const lastBlock = allBlocks[allBlocks.length - 1];
+    const frontmatter = lastBlock[1];
+
+    // Remove ALL frontmatter blocks from the content
+    const content = fileContent.replace(/---\r?\n[\s\S]*?\r?\n---\r?\n?/g, '').trim();
 
     // Parse YAML-like frontmatter
     const metadata = {};
@@ -105,7 +114,7 @@ function parseFrontmatter(fileContent) {
         }
     });
 
-    return { content: content.trim(), metadata };
+    return { content, metadata };
 }
 
 /**
