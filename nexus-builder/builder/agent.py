@@ -217,6 +217,9 @@ class BuilderState(TypedDict):
     
     # Output artifact
     walkthrough: str  # Markdown summary of changes for human review
+    
+    # Model overrides from workflow builder config
+    model_overrides: dict
 
 # --- 2. LOGIC NODES ---
 
@@ -251,8 +254,13 @@ async def scout_node(state: BuilderState):
     loop_count = state.get("loop_count", 0)
     print(f"[Builder:Scout] === Iteration {loop_count + 1}/{MAX_SCOUT_ITERATIONS} ===")
     
-    # Get Claude Opus with caching enabled
-    llm = get_claude_opus(temperature=0.1, enable_caching=True)
+    # Get Claude Opus with caching enabled — use override if configured
+    override = state.get("model_overrides", {}).get("scout_model")
+    if override:
+        from model_config import get_custom_model
+        llm = get_custom_model(override, temperature=0.1)
+    else:
+        llm = get_claude_opus(temperature=0.1, enable_caching=True)
     
     # Generate skeleton only once (None = not generated yet, "" = generated but empty)
     skeleton = state.get("repo_skeleton")
@@ -414,8 +422,13 @@ async def builder_node(state: BuilderState):
     builder_iteration = state.get("builder_iteration", 0)
     print(f"[Builder:Execute] === Builder Node (loop {loop_count}, iteration {builder_iteration}) ===")
     
-    # Get Claude Opus with caching enabled (reuses the cached system prompt)
-    llm = get_claude_opus(temperature=0.1, enable_caching=True)
+    # Get Claude Opus with caching enabled — use override if configured
+    override = state.get("model_overrides", {}).get("coder_model")
+    if override:
+        from model_config import get_custom_model
+        llm = get_custom_model(override, temperature=0.1, enable_caching=True)
+    else:
+        llm = get_claude_opus(temperature=0.1, enable_caching=True)
     
     # Bind file editing tools from unified registry
     model = llm.bind_tools(_builder_tools)
@@ -596,7 +609,13 @@ def basic_check_node(state: BuilderState):
     if file_contents:
         print(f"[Builder:Check] Running cross-provider review with Gemini Pro...")
         try:
-            llm = get_gemini_pro(temperature=0)
+            # Use override model if configured, else default
+            override = state.get("model_overrides", {}).get("checker_model")
+            if override:
+                from model_config import get_custom_model
+                llm = get_custom_model(override, temperature=0)
+            else:
+                llm = get_gemini_pro(temperature=0)
             
             # Build review prompt with file contents
             files_text = "\n\n".join([

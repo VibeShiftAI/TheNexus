@@ -45,6 +45,9 @@ class ArchitectState(TypedDict):
     
     # DIALOGUE CONTEXT - tracks conversation between drafter and grounder
     dialogue_history: Optional[List[dict]]  # [{role: "drafter"|"grounder", content: str}]
+    
+    # Model overrides from workflow builder config
+    model_overrides: dict
 
 
 class ProjectBlueprint(BaseModel):

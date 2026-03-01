@@ -30,6 +30,9 @@ class AuditorState(TypedDict):
     
     # The Output
     final_verdict: dict
+    
+    # Model overrides from workflow builder config
+    model_overrides: dict
 
 # --- 2. THE AGENT (Claude Opus) with automatic tracking ---
 def get_auditor_llm():
@@ -44,7 +47,13 @@ async def forensic_node(state: AuditorState):
     Claude reviews the Diff, Blast Radius, and Linter Report.
     Enhanced with full task context and acceptance criteria.
     """
-    llm = get_auditor_llm()
+    # Use override model if configured, else default
+    override = state.get("model_overrides", {}).get("forensic_model")
+    if override:
+        from model_config import get_custom_model
+        llm = get_custom_model(override, temperature=0)
+    else:
+        llm = get_auditor_llm()
     
     # Extract enhanced context
     task_title = state.get('task_title', 'Unknown Task')

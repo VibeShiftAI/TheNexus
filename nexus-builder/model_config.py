@@ -68,6 +68,7 @@ def get_gemini_flash(temperature: float = 0, callbacks: Optional[List[Any]] = No
     return ChatGoogleGenerativeAI(
         model=DEFAULT_FLASH_MODEL,
         temperature=temperature,
+        max_tokens=16384,
         callbacks=cb
     )
 
@@ -87,6 +88,7 @@ def get_gemini_pro(temperature: float = 0.1, callbacks: Optional[List[Any]] = No
     return ChatGoogleGenerativeAI(
         model=DEFAULT_PRO_MODEL,
         temperature=temperature,
+        max_tokens=16384,
         callbacks=cb
     )
 
@@ -161,3 +163,73 @@ def get_supervisor_llm(temperature: float = 0, callbacks: Optional[List[Any]] = 
         temperature=temperature,
         callbacks=cb
     )
+
+
+def get_custom_model(model_id: str, temperature: float = 0, enable_caching: bool = False):
+    """
+    Instantiate any LLM by its model ID string.
+    
+    Used by the workflow builder to allow per-agent model overrides.
+    Detects the provider from the model ID and returns the appropriate
+    LangChain ChatModel with token tracking.
+    
+    Args:
+        model_id: The model identifier (e.g. 'gemini-3-pro-preview', 'claude-opus-4-20250514')
+        temperature: Model temperature
+        enable_caching: Enable prompt caching (Anthropic only)
+    """
+    cb = []
+    handler = _get_tracking_handler()
+    if handler:
+        cb = [handler]
+    
+    # Detect provider from model ID
+    model_lower = model_id.lower()
+    
+    if any(k in model_lower for k in ["gemini", "google"]):
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        return ChatGoogleGenerativeAI(
+            model=model_id,
+            temperature=temperature,
+            callbacks=cb
+        )
+    elif any(k in model_lower for k in ["claude", "anthropic"]):
+        from langchain_anthropic import ChatAnthropic
+        kwargs = {
+            "model": model_id,
+            "temperature": temperature,
+            "callbacks": cb
+        }
+        if enable_caching:
+            kwargs["model_kwargs"] = {
+                "extra_headers": {
+                    "anthropic-beta": "extended-cache-ttl-2025-04-11,prompt-caching-2024-07-31"
+                }
+            }
+        return ChatAnthropic(**kwargs)
+    elif any(k in model_lower for k in ["gpt", "o1", "o3", "o4"]):
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            model=model_id,
+            temperature=temperature,
+            callbacks=cb
+        )
+    elif any(k in model_lower for k in ["grok", "xai"]):
+        from langchain_openai import ChatOpenAI
+        from cortex.config import settings
+        return ChatOpenAI(
+            model=model_id,
+            temperature=temperature,
+            base_url="https://api.x.ai/v1",
+            api_key=settings.xai_api_key.get_secret_value() if settings.xai_api_key else "",
+            callbacks=cb
+        )
+    else:
+        # Fallback: try OpenAI-compatible
+        from langchain_openai import ChatOpenAI
+        print(f"[ModelConfig] Unknown provider for '{model_id}', trying OpenAI-compatible")
+        return ChatOpenAI(
+            model=model_id,
+            temperature=temperature,
+            callbacks=cb
+        )

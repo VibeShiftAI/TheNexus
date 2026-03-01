@@ -1,0 +1,79 @@
+{
+  "id": "monthly-health-check",
+  "name": "Monthly Health Check",
+  "description": "",
+  "level": "dashboard",
+  "workflow_type": "custom",
+  "is_system": false,
+  "nodes": [
+    {
+      "id": "check-tests",
+      "type": "reviewer",
+      "data": {
+        "label": "Check Tests",
+        "config": {}
+      },
+      "position": {
+        "x": 100.0,
+        "y": 150.0
+      }
+    },
+    {
+      "id": "check-coverage",
+      "type": "reviewer",
+      "data": {
+        "label": "Check Coverage",
+        "config": {}
+      },
+      "position": {
+        "x": 300.0,
+        "y": 150.0
+      }
+    },
+    {
+      "id": "check-docs",
+      "type": "reviewer",
+      "data": {
+        "label": "Check Docs",
+        "config": {}
+      },
+      "position": {
+        "x": 500.0,
+        "y": 150.0
+      }
+    },
+    {
+      "id": "summarize",
+      "type": "planner",
+      "data": {
+        "label": "Summarize",
+        "config": {}
+      },
+      "position": {
+        "x": 300.0,
+        "y": 300.0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "check-tests",
+      "target": "summarize",
+      "label": null
+    },
+    {
+      "id": "e2",
+      "source": "check-coverage",
+      "target": "summarize",
+      "label": null
+    },
+    {
+      "id": "e3",
+      "source": "check-docs",
+      "target": "summarize",
+      "label": null
+    }
+  ],
+  "stages": []
+}

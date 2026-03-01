@@ -42,6 +42,12 @@ class ReadFileTool(NexusTool):
             Dict with success/result or error
         """
         import httpx
+        import os
+        
+        # Resolve relative paths using project_root
+        project_root = context.get("project_root", ".")
+        if not os.path.isabs(path):
+            path = os.path.join(project_root, path)
         
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -167,11 +173,17 @@ class ListDirectoryTool(NexusTool):
             Dict with success/result or error
         """
         import httpx
+        import os
+        
+        # Resolve relative paths using project_root
+        project_root = context.get("project_root", ".")
+        if not os.path.isabs(path):
+            path = os.path.join(project_root, path)
         
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.get(
-                    f"{NODEJS_URL}/api/tools/list-directory",
+                    f"{NODEJS_URL}/api/tools/list-dir",
                     params={"path": path}
                 )
                 return resp.json()
@@ -208,18 +220,98 @@ class SearchFilesTool(NexusTool):
             Dict with success/result or error
         """
         import httpx
+        import os
         
         base_path = path or context.get("project_root", ".")
+        if not os.path.isabs(base_path):
+            base_path = os.path.join(context.get("project_root", "."), base_path)
         
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.get(
-                    f"{NODEJS_URL}/api/tools/search-files",
-                    params={"query": query, "path": base_path}
+                resp = await client.post(
+                    f"{NODEJS_URL}/api/tools/search",
+                    json={"pattern": query, "directory": base_path}
                 )
                 return resp.json()
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+
+class GetProjectContextTool(NexusTool):
+    """Get all .context/ documentation for a project."""
+    
+    @property
+    def metadata(self) -> ToolMetadata:
+        return ToolMetadata(
+            name="get_project_context",
+            description="Get all existing .context/ documentation files for the project (product vision, tech-stack, guidelines, architecture, etc.). Returns the full content of all context documents concatenated together. Use this FIRST to understand what documentation already exists. No arguments needed.",
+            category=ToolCategory.RESEARCH,
+            can_auto_execute=True,
+            requires_permission=False,
+            tags=["context", "documentation", "project"],
+        )
+    
+    async def execute(
+        self, context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Fetch all context documents for a project.
+        Uses project_root from injected context (no args needed from LLM).
+        """
+        import httpx
+        
+        project_root = context.get("project_root", "")
+        if not project_root:
+            return {"success": False, "error": "No project_root in context"}
+        
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    f"{NODEJS_URL}/api/tools/project-context",
+                    params={"projectPath": project_root}
+                )
+                
+                if resp.status_code != 200:
+                    return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+                
+                data = resp.json()
+                
+                # Format the response into readable text
+                parts = []
+                
+                # The endpoint returns structured data, format it
+                for key, value in data.items():
+                    if key == "error":
+                        continue
+                    if isinstance(value, str) and value.strip():
+                        parts.append(f"## {key}\n{value}")
+                    elif isinstance(value, dict) and value:
+                        parts.append(f"## {key}\n{_format_dict(value)}")
+                    elif isinstance(value, list) and value:
+                        parts.append(f"## {key}\n" + "\n".join(f"- {item}" for item in value))
+                
+                if not parts:
+                    return {"success": True, "result": "No .context/ documentation found."}
+                
+                return {"success": True, "result": "\n\n".join(parts)}
+                
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+
+def _format_dict(d, indent=0):
+    """Helper to format nested dicts for readability."""
+    lines = []
+    prefix = "  " * indent
+    for k, v in d.items():
+        if isinstance(v, dict):
+            lines.append(f"{prefix}{k}:")
+            lines.append(_format_dict(v, indent + 1))
+        elif isinstance(v, list):
+            lines.append(f"{prefix}{k}: {', '.join(str(item) for item in v)}")
+        else:
+            lines.append(f"{prefix}{k}: {v}")
+    return "\n".join(lines)
 
 
 def register_tools(registry) -> None:
@@ -229,3 +321,4 @@ def register_tools(registry) -> None:
     registry.register(RunCommandTool())
     registry.register(ListDirectoryTool())
     registry.register(SearchFilesTool())
+    registry.register(GetProjectContextTool())

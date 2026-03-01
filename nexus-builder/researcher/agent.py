@@ -39,6 +39,9 @@ class ResearchState(TypedDict):
     
     # Blackboard session for findings persistence
     blackboard_session_id: Optional[str] 
+    
+    # Model overrides from workflow builder config
+    model_overrides: dict
 
 # --- MODELS (with automatic tracking) ---
 llm_researcher = get_gemini_pro(temperature=0.2)
@@ -89,7 +92,14 @@ def scoper_node(state: ResearchState):
     
     Create a focused research plan that fills knowledge gaps.
     """
-    model = llm_researcher.with_structured_output(ResearchPlan)
+    # Use override model if configured, else default
+    override = state.get("model_overrides", {}).get("scoper_model")
+    if override:
+        from model_config import get_custom_model
+        base_llm = get_custom_model(override, temperature=0.2)
+    else:
+        base_llm = llm_researcher
+    model = base_llm.with_structured_output(ResearchPlan)
     
     # Inject prompt if first turn
     messages = state["messages"]
@@ -197,7 +207,14 @@ def vetting_node(state: ResearchState):
     2. Specific?
     3. Safe?
     """
-    model = llm_professor.with_structured_output(PlanReview)
+    # Use override model if configured, else default
+    override = state.get("model_overrides", {}).get("vetter_model")
+    if override:
+        from model_config import get_custom_model
+        base_llm = get_custom_model(override, temperature=0)
+    else:
+        base_llm = llm_professor
+    model = base_llm.with_structured_output(PlanReview)
     review = model.invoke(prompt)  # Tracking via callback
     
     return {
@@ -249,7 +266,14 @@ def execution_node(state: ResearchState):
     """
     
     # Bind research tools from unified registry
-    model = llm_researcher.bind_tools(_research_tools)
+    # Use override model if configured, else default
+    override = state.get("model_overrides", {}).get("researcher_model")
+    if override:
+        from model_config import get_custom_model
+        base_llm = get_custom_model(override, temperature=0.2)
+    else:
+        base_llm = llm_researcher
+    model = base_llm.bind_tools(_research_tools)
     response = model.invoke(state["messages"] + [HumanMessage(content=prompt)])  # Tracking via callback
     
     return {
@@ -375,7 +399,14 @@ Structure it with clear sections, code examples where relevant, and actionable r
         prompt = "Review the tool outputs. Compile the final 'RESEARCH_DOSSIER.md'."
     
     # Use async invoke
-    response = await llm_researcher.ainvoke(state["messages"] + [HumanMessage(content=prompt)])
+    # Use override model if configured, else default
+    override = state.get("model_overrides", {}).get("synthesizer_model")
+    if override:
+        from model_config import get_custom_model
+        synth_llm = get_custom_model(override, temperature=0.2)
+    else:
+        synth_llm = llm_researcher
+    response = await synth_llm.ainvoke(state["messages"] + [HumanMessage(content=prompt)])
     
     # Extract text content - Gemini can return content as a list of parts
     # like [{"type": "text", "text": "..."}] instead of a plain string

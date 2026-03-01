@@ -5,6 +5,7 @@ import { X, MessageSquare, Check, XCircle, FileText, Code, Database, Image } fro
 import { MarkdownReviewer } from "./markdown-reviewer";
 import { JsonViewer } from "./json-viewer";
 import { CodeViewer } from "./code-viewer";
+import { DocDiffReviewer } from "./doc-diff-reviewer";
 
 export interface Artifact {
     id: string;
@@ -41,6 +42,7 @@ interface ArtifactPanelProps {
     onClose: () => void;
     onApprove: (comments?: string) => void;
     onReject: (feedback: string) => void;
+    onDocChangesUpdate?: (changes: any) => void;
 }
 
 // Category styling
@@ -51,10 +53,11 @@ const CATEGORY_STYLES: Record<string, { bg: string; text: string; icon: any }> =
     document: { bg: "bg-blue-500/20", text: "text-blue-400", icon: FileText },
     media: { bg: "bg-amber-500/20", text: "text-amber-400", icon: Image },
     data: { bg: "bg-orange-500/20", text: "text-orange-400", icon: Database },
+    doc_changes: { bg: "bg-teal-500/20", text: "text-teal-400", icon: FileText },
     default: { bg: "bg-slate-500/20", text: "text-slate-400", icon: FileText },
 };
 
-export function ArtifactPanel({ artifact, isOpen, onClose, onApprove, onReject }: ArtifactPanelProps) {
+export function ArtifactPanel({ artifact, isOpen, onClose, onApprove, onReject, onDocChangesUpdate }: ArtifactPanelProps) {
     const [comments, setComments] = useState<Comment[]>([]);
     const [rejectFeedback, setRejectFeedback] = useState("");
     const [showRejectInput, setShowRejectInput] = useState(false);
@@ -152,6 +155,10 @@ export function ArtifactPanel({ artifact, isOpen, onClose, onApprove, onReject }
 
         // JSON content
         if (mimeType === "application/json" || artifact.content_json) {
+            // Doc changes diff viewer
+            if (artifact.category === "doc_changes" && artifact.content_json) {
+                return <DocDiffReviewer changes={artifact.content_json} onDecisionsUpdate={onDocChangesUpdate} />;
+            }
             return <JsonViewer data={artifact.content_json || JSON.parse(artifact.content || "{}")} />;
         }
 

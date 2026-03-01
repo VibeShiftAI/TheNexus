@@ -1712,158 +1712,9 @@ app.post('/api/projects/:id/tasks', async (req, res) => {
 });
 
 // =============================================================================
-// DASHBOARD INITIATIVES API
-// Cross-project initiatives (Security Sweeps, Dependency Audits, etc.)
+// DASHBOARD INITIATIVES API — Routes are defined later (~line 3780+)
+// to use the correct schema (name, status: 'idea', background execution).
 // =============================================================================
-
-// GET all initiatives (with optional status filter)
-app.get('/api/initiatives', async (req, res) => {
-    try {
-        const { status } = req.query;
-        const initiatives = await db.getDashboardInitiatives(status || undefined);
-        res.json(initiatives);
-    } catch (error) {
-        console.error('[Initiatives API] Error listing initiatives:', error);
-        res.status(500).json({ error: 'Failed to list initiatives' });
-    }
-});
-
-// GET single initiative with progress details
-app.get('/api/initiatives/:id', async (req, res) => {
-    try {
-        const initiative = await db.getDashboardInitiative(req.params.id);
-        if (!initiative) {
-            return res.status(404).json({ error: 'Initiative not found' });
-        }
-
-        // Get progress summary if initiative has been run
-        let progress = null;
-        if (initiative.status !== 'idle' && initiative.status !== 'draft') {
-            progress = await getInitiativeProgress(req.params.id);
-        }
-
-        res.json({
-            ...initiative,
-            progress: progress?.summary || null,
-            percentComplete: progress?.percentComplete || 0,
-            projectProgress: progress?.projectProgress || []
-        });
-    } catch (error) {
-        console.error('[Initiatives API] Error getting initiative:', error);
-        res.status(500).json({ error: 'Failed to get initiative' });
-    }
-});
-
-// POST create a new initiative
-app.post('/api/initiatives', async (req, res) => {
-    try {
-        const { title, description, workflow_type, target_projects, configuration } = req.body;
-
-        if (!title) {
-            return res.status(400).json({ error: 'Title is required' });
-        }
-
-        const initiative = await db.createDashboardInitiative({
-            title,
-            description: description || '',
-            workflow_type: workflow_type || 'custom',
-            target_projects: target_projects || [],
-            configuration: configuration || {},
-            status: 'idle'
-        });
-
-        res.json({ success: true, initiative });
-    } catch (error) {
-        console.error('[Initiatives API] Error creating initiative:', error);
-        res.status(500).json({ error: 'Failed to create initiative' });
-    }
-});
-
-// PATCH update an initiative
-app.patch('/api/initiatives/:id', async (req, res) => {
-    try {
-        const existing = await db.getDashboardInitiative(req.params.id);
-        if (!existing) {
-            return res.status(404).json({ error: 'Initiative not found' });
-        }
-
-        const updates = {};
-        const allowedFields = ['title', 'description', 'workflow_type', 'target_projects', 'configuration', 'status'];
-        for (const field of allowedFields) {
-            if (req.body[field] !== undefined) {
-                updates[field] = req.body[field];
-            }
-        }
-
-        const updated = await db.updateDashboardInitiative(req.params.id, updates);
-        res.json({ success: true, initiative: updated });
-    } catch (error) {
-        console.error('[Initiatives API] Error updating initiative:', error);
-        res.status(500).json({ error: 'Failed to update initiative' });
-    }
-});
-
-// DELETE an initiative
-app.delete('/api/initiatives/:id', async (req, res) => {
-    try {
-        const success = await db.deleteDashboardInitiative(req.params.id);
-        if (!success) {
-            return res.status(404).json({ error: 'Initiative not found' });
-        }
-        res.json({ success: true, message: 'Initiative deleted' });
-    } catch (error) {
-        console.error('[Initiatives API] Error deleting initiative:', error);
-        res.status(500).json({ error: 'Failed to delete initiative' });
-    }
-});
-
-// POST run/execute an initiative across target projects
-app.post('/api/initiatives/:id/run', async (req, res) => {
-    try {
-        const initiative = await db.getDashboardInitiative(req.params.id);
-        if (!initiative) {
-            return res.status(404).json({ error: 'Initiative not found' });
-        }
-
-        console.log(`[Initiatives API] Running initiative: ${initiative.title} (${initiative.workflow_type})`);
-
-        const result = await runDashboardInitiativeSupervisor({
-            initiativeId: req.params.id
-        });
-
-        if (!result.success) {
-            return res.status(500).json({ error: result.error });
-        }
-
-        res.json({
-            success: true,
-            message: result.message,
-            summary: result.summary,
-            results: result.results
-        });
-    } catch (error) {
-        console.error('[Initiatives API] Error running initiative:', error);
-        res.status(500).json({ error: 'Failed to run initiative' });
-    }
-});
-
-// Validate initiative request (Pre-flight for Frontend)
-app.post('/api/initiatives/validate', async (req, res) => {
-    try {
-        const { title, description } = req.body;
-
-        if (!title) {
-            return res.status(400).json({ error: 'Title is required' });
-        }
-
-        console.log(`[Validation API] Checking: "${title}"`);
-        const result = await validateInitiativeRequest({ title, description });
-        res.json(result);
-    } catch (error) {
-        console.error('[Validation API] Error:', error);
-        res.status(500).json({ error: error.message || 'Failed to validate request' });
-    }
-});
 
 // DELETE a task
 app.delete('/api/projects/:id/tasks/:taskId', async (req, res) => {
@@ -2652,11 +2503,21 @@ app.get('/api/langgraph/node-types/atomic/:typeId', async (req, res) => {
     }
 });
 
-// GET workflow templates
+// GET workflow templates (with level filtering support)
 app.get('/api/langgraph/templates', async (req, res) => {
     try {
-        const templates = await proxyToLangGraph('/templates');
-        res.json(templates);
+        const { level } = req.query;
+        const url = level ? `/templates?level=${level}` : '/templates';
+        const result = await proxyToLangGraph(url);
+
+        // If the backend didn't filter by level, filter client-side
+        if (level && result.templates && Array.isArray(result.templates)) {
+            result.templates = result.templates.filter(t =>
+                !t.level || t.level === level
+            );
+        }
+
+        res.json(result);
     } catch (error) {
         res.status(503).json({ error: 'LangGraph engine unavailable', templates: [] });
     }
@@ -2810,6 +2671,83 @@ app.post('/api/langgraph/runs/:runId/cancel', async (req, res) => {
     }
 });
 
+// POST callback from Python when a LangGraph workflow run completes
+app.post('/api/langgraph/workflow-complete', async (req, res) => {
+    const { run_id, workflow_id, project_id, status, error } = req.body;
+
+    console.log(`[LangGraph Complete] Workflow ${workflow_id} run ${run_id}: ${status}`);
+
+    if (!workflow_id) {
+        return res.json({ success: false, error: 'Missing workflow_id' });
+    }
+
+    try {
+        if (status === 'completed') {
+            // Get the workflow to access its stages
+            const workflow = await db.getProjectWorkflow(workflow_id);
+            const completedOutputs = {};
+            for (const stage of (workflow?.stages || [])) {
+                completedOutputs[stage.id] = {
+                    status: 'complete',
+                    completedAt: new Date().toISOString(),
+                    mode: 'langgraph'
+                };
+            }
+
+            await db.updateProjectWorkflow(workflow_id, {
+                status: 'complete',
+                current_stage: null,
+                outputs: completedOutputs,
+                supervisor_status: 'completed',
+                supervisor_details: {
+                    langgraph_run_id: run_id,
+                    completedAt: new Date().toISOString(),
+                    mode: 'langgraph'
+                }
+            });
+            console.log(`[LangGraph Complete] Workflow ${workflow_id} marked as complete`);
+
+            // Auto-sync .context/ files to DB
+            // Doc workflows write .context/*.md files to disk — sync them to Supabase
+            // so the project page picks them up immediately.
+            if (project_id) {
+                try {
+                    const project = await getProjectById(PROJECT_ROOT, project_id);
+                    if (project) {
+                        const contextFiles = contextSync.readAllContextFiles(project.path);
+                        if (contextFiles.length > 0) {
+                            for (const ctx of contextFiles) {
+                                await db.updateProjectContext(project_id, ctx.type, ctx.content, ctx.status);
+                            }
+                            console.log(`[LangGraph Complete] Synced ${contextFiles.length} context file(s) to DB for project ${project_id}`);
+                        }
+                    }
+                } catch (syncErr) {
+                    // Don't fail the workflow-complete callback if sync fails
+                    console.error('[LangGraph Complete] Context sync failed (non-fatal):', syncErr.message);
+                }
+            }
+        } else {
+            // Failed — reset to idea so user can retry
+            await db.updateProjectWorkflow(workflow_id, {
+                status: 'idea',
+                supervisor_status: 'error',
+                supervisor_details: {
+                    langgraph_run_id: run_id,
+                    error: error || 'Unknown error',
+                    failedAt: new Date().toISOString()
+                }
+            });
+            console.log(`[LangGraph Complete] Workflow ${workflow_id} failed, reset to idea`);
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[LangGraph Complete] Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // POST sync node output from LangGraph to database
 app.post('/api/langgraph/sync-output', async (req, res) => {
     const { run_id, node_id, project_id, task_id, feature_id, outputs } = req.body;
@@ -2895,6 +2833,25 @@ app.post('/api/langgraph/sync-output', async (req, res) => {
         }
 
         res.json({ success: true, updates_applied: Object.keys(updates) });
+
+        // Post-response: sync .context/ files to DB if project_id is available
+        // This catches context files written by doc nodes (write_docs, implementation agent, etc.)
+        if (project_id) {
+            try {
+                const project = await getProjectById(PROJECT_ROOT, project_id);
+                if (project) {
+                    const contextFiles = contextSync.readAllContextFiles(project.path);
+                    if (contextFiles.length > 0) {
+                        for (const ctx of contextFiles) {
+                            await db.updateProjectContext(project_id, ctx.type, ctx.content, ctx.status);
+                        }
+                        console.log(`[LangGraph Sync] Auto-synced ${contextFiles.length} context file(s) for project ${project_id}`);
+                    }
+                }
+            } catch (syncErr) {
+                console.error('[LangGraph Sync] Context sync failed (non-fatal):', syncErr.message);
+            }
+        }
     } catch (error) {
         console.error('[LangGraph Sync] Error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -3999,12 +3956,18 @@ app.post('/api/projects/:id/workflows', async (req, res) => {
             return res.status(400).json({ error: 'Name and workflow_type are required' });
         }
 
-        // If using a template, get its stages
+        // Load stages from local JSON template file (source of truth)
         let stages = [];
         if (template_id) {
-            const template = await db.getWorkflowTemplate(template_id);
-            if (template) {
-                stages = template.stages;
+            const fs = require('fs');
+            const path = require('path');
+            const templatePath = path.resolve(__dirname, '../config/templates/workflows', `${template_id}.json`);
+            if (fs.existsSync(templatePath)) {
+                const jsonTemplate = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+                stages = jsonTemplate.stages || [];
+                console.log(`[Project Workflows API] Loaded stages from template: ${template_id}`);
+            } else {
+                return res.status(400).json({ error: `Template not found: ${template_id}` });
             }
         }
 
@@ -4013,9 +3976,9 @@ app.post('/api/projects/:id/workflows', async (req, res) => {
             name,
             description: description || '',
             workflow_type,
-            template_id: template_id || null,
+            template_id: null,
             stages,
-            configuration: configuration || {},
+            configuration: { ...(configuration || {}), template_name: template_id || null },
             parent_initiative_id: parent_initiative_id || null,
             status: 'idea',
             current_stage: stages.length > 0 ? stages[0].id : null
@@ -4179,115 +4142,57 @@ app.post('/api/projects/:id/workflows/:workflowId/check', async (req, res) => {
     }
 });
 
+
 // -----------------------------------------------------------------------------
-// WORKFLOW TEMPLATES API
-// Predefined and custom workflow templates
+// WORKFLOW TEMPLATES API — REMOVED
+// Templates are now served exclusively from the Python LangGraph backend
+// via /api/langgraph/templates (JSON files on disk).
+// The Supabase workflow_templates table is no longer used.
 // -----------------------------------------------------------------------------
 
-// GET all workflow templates
-app.get('/api/workflow-templates', async (req, res) => {
-    try {
-        const { level } = req.query;
-        const templates = await db.getWorkflowTemplates(level || null);
-        res.json({ templates });
-    } catch (error) {
-        console.error('[Templates API] Error fetching templates:', error);
-        res.status(500).json({ error: 'Failed to fetch workflow templates' });
-    }
-});
 
-// GET a single workflow template
-app.get('/api/workflow-templates/:id', async (req, res) => {
+// POST /api/tools/create-task - Internal endpoint for Python agents to create tasks (no auth)
+app.post('/api/tools/create-task', async (req, res) => {
     try {
-        const template = await db.getWorkflowTemplate(req.params.id);
-        if (!template) {
-            return res.status(404).json({ error: 'Template not found' });
-        }
-        res.json({ template });
-    } catch (error) {
-        console.error('[Templates API] Error fetching template:', error);
-        res.status(500).json({ error: 'Failed to fetch template' });
-    }
-});
+        const { project_id, title, description, status, source, priority } = req.body;
 
-// POST create a custom workflow template
-app.post('/api/workflow-templates', async (req, res) => {
-    try {
-        const { name, description, level, workflow_type, stages, default_configuration } = req.body;
-
-        if (!name || !level || !workflow_type) {
-            return res.status(400).json({ error: 'Name, level, and workflow_type are required' });
+        if (!project_id || !title) {
+            return res.status(400).json({ error: 'project_id and title are required' });
         }
 
-        const template = await db.createWorkflowTemplate({
-            name,
-            description: description || '',
-            level,
-            workflow_type,
-            stages: stages || [],
-            default_configuration: default_configuration || {},
-            is_system: false
+        const project = await getProjectById(PROJECT_ROOT, project_id);
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        const newTask = {
+            project_id: project.id,
+            name: title.trim(),
+            description: description?.trim() || '',
+            status: status || 'idea',
+            priority: priority || 0,
+            source: source || 'workflow:documentation',
+            metadata: {
+                classifiedAt: new Date().toISOString(),
+                createdBy: 'langgraph-agent'
+            }
+        };
+
+        const created = await db.createTask(newTask);
+        console.log(`[Tools] Created task: "${title}" for project ${project_id}`);
+
+        res.json({
+            success: true,
+            task: {
+                id: created.id,
+                name: created.name,
+                status: created.status,
+                project_id: created.project_id
+            }
         });
-
-        if (!template) {
-            return res.status(500).json({ error: 'Failed to create template' });
-        }
-
-        res.json({ success: true, template });
     } catch (error) {
-        console.error('[Templates API] Error creating template:', error);
-        res.status(500).json({ error: 'Failed to create template' });
-    }
-});
-
-// PATCH update a workflow template (non-system only)
-app.patch('/api/workflow-templates/:id', async (req, res) => {
-    try {
-        // Check if it's a system template
-        const existing = await db.getWorkflowTemplate(req.params.id);
-        if (!existing) {
-            return res.status(404).json({ error: 'Template not found' });
-        }
-        if (existing.is_system) {
-            return res.status(403).json({ error: 'Cannot modify system templates' });
-        }
-
-        const { name, description, stages, default_configuration } = req.body;
-
-        const updates = {};
-        if (name !== undefined) updates.name = name;
-        if (description !== undefined) updates.description = description;
-        if (stages !== undefined) updates.stages = stages;
-        if (default_configuration !== undefined) updates.default_configuration = default_configuration;
-
-        const template = await db.updateWorkflowTemplate(req.params.id, updates);
-
-        res.json({ success: true, template });
-    } catch (error) {
-        console.error('[Templates API] Error updating template:', error);
-        res.status(500).json({ error: 'Failed to update template' });
-    }
-});
-
-// DELETE a custom workflow template (non-system only)
-app.delete('/api/workflow-templates/:id', async (req, res) => {
-    try {
-        const existing = await db.getWorkflowTemplate(req.params.id);
-        if (!existing) {
-            return res.status(404).json({ error: 'Template not found' });
-        }
-        if (existing.is_system) {
-            return res.status(403).json({ error: 'Cannot delete system templates' });
-        }
-
-        const success = await db.deleteWorkflowTemplate(req.params.id);
-        if (!success) {
-            return res.status(500).json({ error: 'Failed to delete template' });
-        }
-        res.json({ success: true, message: 'Template deleted' });
-    } catch (error) {
-        console.error('[Templates API] Error deleting template:', error);
-        res.status(500).json({ error: 'Failed to delete template' });
+        console.error('[Tools] Create task error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 

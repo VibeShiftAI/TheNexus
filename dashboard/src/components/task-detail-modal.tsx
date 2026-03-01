@@ -267,13 +267,10 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                     if (['completed', 'failed', 'cancelled'].includes(status.status)) {
                         if (langGraphPollRef.current) clearInterval(langGraphPollRef.current);
                         langGraphPollRef.current = null;
-                        // Workflow finished — refresh the task to get updated status + walkthrough
+                        // Workflow finished — refresh the task to get updated status
                         onTaskChange();
                         setIsRunningLangGraph(false);
-                        // Switch to walkthrough tab if completed
-                        if (status.status === 'completed') {
-                            setActiveTab('walkthrough');
-                        }
+                        // Don't auto-switch tabs — onWorkflowComplete handles post-completion
                     }
                 }
             } catch (err) {
@@ -457,7 +454,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
 
 
     const actions = statusActions[task.status] || [];
-    const isPending = task.status === 'researching' || task.status === 'planning' || task.status === 'implementing';
+    const isPending = !langGraphRunId && (task.status === 'researching' || task.status === 'planning' || task.status === 'implementing');
 
     // Show feedback for any approval/rejection stage
     const showFeedbackInput =
@@ -810,16 +807,20 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                 projectId={projectId}
                                 taskId={task.id}
                                 runId={langGraphRunId}
-                                onWorkflowComplete={() => {
-                                    // Refresh task data to get the walkthrough content
-                                    onTaskChange();
-                                    // Switch to walkthrough tab
-                                    setActiveTab('walkthrough');
-                                    // Clear LangGraph state since workflow is complete
-                                    setLangGraphRunId(null);
+                                onWorkflowComplete={async () => {
+                                    // Clear LangGraph execution state
                                     setIsRunningLangGraph(false);
                                     setLangGraphStatus(null);
                                     setLangGraphNode(null);
+                                    // Mark the task as complete for generic workflows
+                                    try {
+                                        await updateTask(projectId, task.id, { status: 'complete' as TaskStatus });
+                                    } catch (err) {
+                                        console.error('Failed to mark task complete:', err);
+                                    }
+                                    // Refresh task data
+                                    onTaskChange();
+                                    // Stay on workflow tab
                                 }}
                             />
                         </div>

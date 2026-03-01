@@ -164,6 +164,12 @@ class ToolRegistry:
         except ImportError:
             pass
         
+        try:
+            from .lib import git_tools
+            git_tools.register_tools(self)
+        except ImportError:
+            pass
+        
         self._initialized = True
     
     def __len__(self) -> int:

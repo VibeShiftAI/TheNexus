@@ -429,7 +429,7 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
                         {!selectedTemplate ? (
                             <div className="space-y-3">
                                 <p className="text-sm text-slate-400 mb-4">Choose a workflow template:</p>
-                                <div className="grid gap-3">
+                                <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
                                     {templates.map(template => (
                                         <button
                                             key={template.id}

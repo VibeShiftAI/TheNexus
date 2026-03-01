@@ -109,7 +109,7 @@ async def await_plan_approval(state: WorkflowState):
     context = state.get("context", {})
     outputs = state.get("outputs", {})
     blueprint = outputs.get("blueprint", {})
-    plan_content = blueprint.get("spec_markdown", "No plan available") if isinstance(blueprint, dict) else str(blueprint)
+    plan_content = (blueprint.get("spec_markdown") or "No plan available") if isinstance(blueprint, dict) else str(blueprint)
     
     # Sync the plan to the database so the frontend can display it
     # Use sync_artifacts (which uses /api/langgraph/sync-output) instead of direct PATCH
@@ -560,7 +560,9 @@ async def call_research_fleet(state: WorkflowState):
             "proposed_queries": [],
             "is_plan_approved": False,
             "critique": "",
-            "final_dossier": ""
+            "final_dossier": "",
+            # Pass model overrides from FleetNode config
+            "model_overrides": state.get("model_overrides", {}),
         }
         graph = compile_researcher_graph()
         result = await graph.ainvoke(inputs)
@@ -625,14 +627,16 @@ async def call_architect_fleet(state: WorkflowState):
             "final_manifest": None,
             "definition_of_done": None,
             "grounding_errors": [],
-            "loop_count": 0
+            "loop_count": 0,
+            # Pass model overrides from FleetNode config
+            "model_overrides": state.get("model_overrides", {}),
         }
         graph = compile_architect_graph()
-        result = await graph.ainvoke(inputs)
+        result = await graph.ainvoke(inputs, config={"recursion_limit": 50})
         
         # ARTIFACT CONTRACT: Produce BLUEPRINT object
         blueprint = {
-            "spec_markdown": result.get("final_spec"),
+            "spec_markdown": result.get("final_spec") or result.get("draft_spec"),
             "manifest_json": result.get("final_manifest"),
             "dod_json": result.get("definition_of_done")
 
@@ -652,7 +656,13 @@ async def call_architect_fleet(state: WorkflowState):
             }
         }
     except Exception as e:
-        return {"messages": [AIMessage(content=f"Architect Fleet Failed: {e}")]}
+        import traceback
+        print(f"[Architect Fleet] ❌ EXCEPTION: {e}")
+        traceback.print_exc()
+        return {
+            "messages": [AIMessage(content=f"Architect Fleet Failed: {e}")],
+            "outputs": {**state.get("outputs", {})}
+        }
 
 async def call_builder_fleet(state: WorkflowState):
     """Builder Fleet Wrapper - produces SOURCE_ARTIFACTS.
@@ -700,7 +710,9 @@ async def call_builder_fleet(state: WorkflowState):
             "thought_signature": "",
             "builder_iteration": 0,  # Track builder tool loops (prevents impl_prompt re-injection)
             # Pass constraints from failed audits
-            "negative_constraints": negative_constraints
+            "negative_constraints": negative_constraints,
+            # Pass model overrides from FleetNode config
+            "model_overrides": state.get("model_overrides", {}),
         }
         
         graph = compile_builder_graph()
@@ -808,7 +820,9 @@ async def call_audit_fleet(state: WorkflowState):
             "linter_report": "TODO: Run Linter",
             "implementation_spec": blueprint.get("spec_markdown") or state["outputs"].get("plan"),
             "test_logs": [],
-            "final_verdict": {}
+            "final_verdict": {},
+            # Pass model overrides from FleetNode config
+            "model_overrides": state.get("model_overrides", {}),
         }
         
         graph = compile_auditor_graph()

@@ -15,65 +15,126 @@ interface UnifiedWorkflowViewProps {
     onWorkflowComplete?: () => void;
 }
 
-// Static definition of the Nexus Prime graph topology
+// Fallback graph definition for Nexus Prime workflows (when no graph_config is available)
 const NEXUS_GRAPH_DEF = `
 graph TD
-    %% Nodes
     START((Start))
     nexus_prime[Nexus Prime]
     research_fleet[Research Fleet]
     architect_fleet[Architect Fleet]
     builder_fleet[Builder Fleet]
     audit_fleet[Audit Fleet]
-    
-    %% Approval Gates
     await_research_approval{Research Approval}
     await_plan_approval{Plan Approval}
     human_in_loop{Human Input}
-    
-    %% End
     END((End))
-
-    %% Edges
     START --> nexus_prime
     nexus_prime --> research_fleet
     research_fleet --> await_research_approval
     await_research_approval --> nexus_prime
-    
     nexus_prime --> architect_fleet
     architect_fleet --> await_plan_approval
     await_plan_approval --> nexus_prime
-    
     nexus_prime --> builder_fleet
     builder_fleet --> nexus_prime
-    
     nexus_prime --> audit_fleet
     audit_fleet --> nexus_prime
-    
     nexus_prime --> human_in_loop
     human_in_loop --> nexus_prime
     nexus_prime --> END
-    
-    %% Styling
     classDef default fill:#1e293b,stroke:#475569,stroke-width:1px,color:#94a3b8;
     classDef hub fill:#4f46e5,stroke:#6366f1,color:#fff,stroke-width:2px;
     classDef fleet fill:#0f766e,stroke:#14b8a6,color:#fff;
     classDef gate fill:#c2410c,stroke:#f97316,color:#fff,shape:diamond;
-    
     class nexus_prime hub;
     class research_fleet,architect_fleet,builder_fleet,audit_fleet fleet;
     class await_research_approval,await_plan_approval,human_in_loop gate;
 `;
+
+/**
+ * Generate a Mermaid graph definition from a workflow's graph_config.
+ * Produces a clean flowchart from the nodes and edges arrays.
+ */
+function generateMermaidFromConfig(graphConfig: any): string {
+    const nodes = graphConfig?.nodes || [];
+    const edges = graphConfig?.edges || [];
+
+    if (nodes.length === 0) return NEXUS_GRAPH_DEF;
+
+    let mermaid = 'graph LR\n';
+
+    // Add nodes with labels
+    for (const node of nodes) {
+        const id = node.id;
+        const label = node.data?.label || node.id;
+        const type = node.type || '';
+
+        // Use different shapes based on node type
+        if (type.includes('gate') || type.includes('review') || type.includes('approval')) {
+            mermaid += `    ${id}{${label}}\n`;
+        } else {
+            mermaid += `    ${id}["${label}"]\n`;
+        }
+    }
+
+    // Add edges
+    for (const edge of edges) {
+        const label = edge.label ? ` -->|${edge.label}|` : ' -->';
+        mermaid += `    ${edge.source}${label} ${edge.target}\n`;
+    }
+
+    // Add styling
+    mermaid += `    classDef default fill:#1e293b,stroke:#475569,stroke-width:1px,color:#94a3b8;\n`;
+    mermaid += `    classDef gate fill:#c2410c,stroke:#f97316,color:#fff;\n`;
+
+    // Apply gate class to review/gate nodes
+    const gateNodes = nodes
+        .filter((n: any) => (n.type || '').includes('gate') || (n.type || '').includes('review'))
+        .map((n: any) => n.id);
+    if (gateNodes.length > 0) {
+        mermaid += `    class ${gateNodes.join(',')} gate;\n`;
+    }
+
+    return mermaid;
+}
 
 export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, onWorkflowComplete }: UnifiedWorkflowViewProps) {
     const [activeNode, setActiveNode] = useState<string | null>(null);
     const [interruptData, setInterruptData] = useState<any | null>(null);
     const [isResuming, setIsResuming] = useState(false);
     const [feedbackText, setFeedbackText] = useState('');
+    const [interruptApproved, setInterruptApproved] = useState(false);
 
     // Artifact panel state
     const [artifactPanelOpen, setArtifactPanelOpen] = useState(false);
     const [currentArtifact, setCurrentArtifact] = useState<Artifact | null>(null);
+    const [docChangesState, setDocChangesState] = useState<any | null>(null);
+
+    // Dynamic graph definition (fetched from run's graph_config)
+    const [graphDef, setGraphDef] = useState<string>(NEXUS_GRAPH_DEF);
+
+    // Fetch graph_config from run history to generate dynamic topology
+    useEffect(() => {
+        if (!runId) return;
+
+        const fetchGraphConfig = async () => {
+            try {
+                const res = await fetch(`http://localhost:8000/runs/${runId}/history`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.graph_config) {
+                        const dynamicDef = generateMermaidFromConfig(data.graph_config);
+                        setGraphDef(dynamicDef);
+                    }
+                }
+            } catch (err) {
+                console.error('[UnifiedWorkflowView] Failed to fetch graph config:', err);
+                // Fall back to default Nexus Prime graph
+            }
+        };
+
+        fetchGraphConfig();
+    }, [runId]);
 
     // Handler for Approve & Commit button in StreamingLog
     const handleApproveCommit = async () => {
@@ -144,6 +205,22 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
                         version: 1,
                     };
                 }
+            } else if (interruptType === 'review_docs' || interruptType.includes('doc_review')) {
+                // Doc review interrupt — reconstruct from outputs
+                const docChanges = outputs.outputs?.doc_changes || outputs.doc_changes;
+                if (docChanges) {
+                    artifact = {
+                        id: `restored-doc-review-${Date.now()}`,
+                        key: 'doc_changes',
+                        name: 'Documentation Changes',
+                        content: `Review changes across ${docChanges.files?.length || 0} files`,
+                        content_json: docChanges,
+                        category: 'doc_changes',
+                        mime_type: 'application/json',
+                        file_extension: '.json',
+                        version: 1,
+                    };
+                }
             }
         }
 
@@ -151,6 +228,10 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
             console.log("Artifact found in interrupt:", artifact);
             setCurrentArtifact(artifact);
             setArtifactPanelOpen(true);
+            // Initialize doc changes state for per-hunk review
+            if (artifact.category === 'doc_changes' && artifact.content_json) {
+                setDocChangesState(artifact.content_json);
+            }
         }
     };
 
@@ -168,7 +249,24 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
     // Handlers for artifact panel approve/reject
     const handleArtifactApprove = () => {
         setArtifactPanelOpen(false);
-        handleResume('approve', feedbackText || 'Looks good');
+        setInterruptApproved(true);  // Mark that user already reviewed
+        // If this is a doc_changes review, pass hunk decisions
+        if (currentArtifact?.category === 'doc_changes' && docChangesState) {
+            // Auto-approve any hunks still in "pending" status
+            const finalChanges = {
+                ...docChangesState,
+                files: docChangesState.files?.map((file: any) => ({
+                    ...file,
+                    hunks: file.hunks?.map((hunk: any) => ({
+                        ...hunk,
+                        status: hunk.status === 'pending' ? 'approved' : hunk.status
+                    }))
+                })) || []
+            };
+            handleResume('approve', feedbackText || 'Approved', finalChanges);
+        } else {
+            handleResume('approve', feedbackText || 'Looks good');
+        }
     };
 
     const handleArtifactReject = (feedback: string) => {
@@ -176,7 +274,7 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
         handleResume('reject', feedback);
     };
 
-    const handleResume = async (action: 'approve' | 'reject', feedback?: string) => {
+    const handleResume = async (action: 'approve' | 'reject', feedback?: string, docChanges?: any) => {
         if (!interruptData) return;
 
         setIsResuming(true);
@@ -184,29 +282,22 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
             const currentInterrupt = interruptData.interrupts[0];
             const feedbackText = feedback || (action === 'approve' ? "Looks good" : "Please revise");
 
-            // Call specific API helpers based on where we paused
-            if (currentInterrupt === 'await_research_approval') {
-                await fetch(`/api/graph/nexus/${runId}/resume`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ approval_action: action, feedback: feedbackText })
-                });
-            } else if (currentInterrupt === 'await_plan_approval') {
-                await fetch(`/api/graph/nexus/${runId}/resume`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ approval_action: action, feedback: feedbackText })
-                });
-            } else {
-                // Generic resume
-                await fetch(`/api/graph/nexus/${runId}/resume`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ approval_action: action, feedback: feedbackText })
-                });
+            // Build the request body
+            const body: any = { approval_action: action, feedback: feedbackText };
+
+            // For doc_review interrupts, include hunk decisions
+            if (currentInterrupt === 'review_docs' && docChanges) {
+                body.doc_changes = docChanges;
             }
 
+            await fetch(`http://localhost:8000/runs/${runId}/resume`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
             setInterruptData(null);
+            setDocChangesState(null);
         } catch (e) {
             console.error("Failed to resume:", e);
         } finally {
@@ -229,6 +320,7 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
                         onInterrupt={handleInterrupt}
                         onNodeChange={handleNodeChange}
                         onApproveCommit={handleApproveCommit}
+                        onAutoComplete={interruptApproved ? () => onWorkflowComplete?.() : undefined}
                     />
                 </div>
 
@@ -236,7 +328,7 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
                 <div className="md:col-span-1 min-h-0 flex flex-col gap-4">
                     <div className="flex-1 min-h-0 relative">
                         <ActiveGraph
-                            definition={NEXUS_GRAPH_DEF}
+                            definition={graphDef}
                             activeNode={activeNode}
                         />
 
@@ -342,6 +434,7 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
                 onClose={() => setArtifactPanelOpen(false)}
                 onApprove={handleArtifactApprove}
                 onReject={handleArtifactReject}
+                onDocChangesUpdate={setDocChangesState}
             />
         </div>
     );

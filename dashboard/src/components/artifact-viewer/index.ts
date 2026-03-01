@@ -10,3 +10,4 @@ export type { Artifact, Comment } from "./artifact-panel";
 export { MarkdownReviewer } from "./markdown-reviewer";
 export { JsonViewer } from "./json-viewer";
 export { CodeViewer } from "./code-viewer";
+export { DocDiffReviewer } from "./doc-diff-reviewer";

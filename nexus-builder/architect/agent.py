@@ -1,6 +1,7 @@
 from typing import Annotated, List, Literal, Optional
 from langgraph.graph import StateGraph, START, END
 from langchain_core.tools import tool
+import os
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
@@ -8,9 +9,17 @@ from .state import ArchitectState, ProjectBlueprint, GroundingReport
 from tools import get_registry
 from model_config import get_gemini_pro, get_gemini_flash
 
-# Get code analysis tools from unified registry
+# Get exploration tools from unified registry
 _registry = get_registry()
-_architect_tools = _registry.get_langchain_tools(["read_file_signatures", "search_codebase"])
+_architect_tools = _registry.get_langchain_tools([
+    "read_file_signatures",   # AST-based class/function signatures
+    "search_codebase",        # Regex search with proper filtering
+    "read_file",              # Read full file contents
+    "list_directory",         # Targeted directory exploration
+    "generate_ast_map",       # Full codebase class/method skeleton
+    "get_project_context",    # Project .context/ documentation
+    "git_log",                # Recent commit history
+])
 
 # --- MODELS (with automatic tracking) ---
 # THE STRATEGIST (Gemini 3 Pro)
@@ -53,15 +62,35 @@ async def cartographer_node(state: ArchitectState):
     CONTEXT OVERVIEW (File Tree):
     {state.get('repo_structure', 'Structure Unknown')[:8000]}...
     
-    TASK:
-    1. Use 'search_codebase' to find similar patterns in the existing code.
-    2. Use 'read_file_signatures' to inspect APIs. USE ABSOLUTE PATHS.
-    3. Consider the project's tech stack and guidelines when planning.
-    4. Do NOT draft yet. Reply "READY_TO_DRAFT" when you have a mental model.
+    YOUR EXPLORATION TOOLS:
+    1. **get_project_context** - Fetch all .context/ documents (product vision, tech-stack, guidelines).
+       Use this FIRST to understand project conventions. No arguments needed.
+    2. **search_codebase** - Find code patterns using regex. Use to locate similar implementations.
+    3. **read_file_signatures** - Read class/function signatures from a file (AST-based). USE ABSOLUTE PATHS.
+    4. **read_file** - Read the full contents of a file when you need detailed understanding.
+    5. **list_directory** - List files in a specific directory. Use for targeted exploration.
+    6. **generate_ast_map** - Generate a complete class/method skeleton of the codebase or a subdirectory.
+       Use this for large projects instead of relying on the truncated file tree above.
+    7. **git_log** - View recent commit history. Useful for understanding what changed recently.
+    
+    EXPLORATION STRATEGY:
+    - For LARGE projects: Start with get_project_context, then generate_ast_map on relevant subdirectories.
+    - For TARGETED tasks: Use search_codebase to find relevant files, then read_file_signatures.
+    - For DOCUMENTATION tasks: Use list_directory + read_file on the docs directory.
+    - Always check git_log for recent modifications to files you plan to change.
+    
+    Do NOT draft yet. Reply "READY_TO_DRAFT" when you have a mental model.
     """
     
     # Bind exploration tools from unified registry
-    model = llm_strategist.bind_tools(_architect_tools)
+    # Use override model if configured, else default
+    override = state.get("model_overrides", {}).get("cartographer_model")
+    if override:
+        from model_config import get_custom_model
+        base_llm = get_custom_model(override, temperature=0.1)
+    else:
+        base_llm = llm_strategist
+    model = base_llm.bind_tools(_architect_tools)
     
     # Restore thought signature if supported by API (simulated here)
     messages = state["messages"]
@@ -153,7 +182,14 @@ async def drafter_node(state: ArchitectState):
     """
     
     # Enforce Pydantic Output with FileOperation structure
-    model = llm_strategist.with_structured_output(ProjectBlueprint)
+    # Use override model if configured, else default
+    override = state.get("model_overrides", {}).get("drafter_model")
+    if override:
+        from model_config import get_custom_model
+        base_llm = get_custom_model(override, temperature=0.1)
+    else:
+        base_llm = llm_strategist
+    model = base_llm.with_structured_output(ProjectBlueprint)
     plan = await model.ainvoke(state["messages"] + [HumanMessage(content=prompt)])
     
     # Convert FileOperation objects to dicts for state storage
@@ -190,6 +226,16 @@ async def grounding_node(state: ArchitectState):
         for f in manifest
     ])
     
+    # Programmatic file existence verification (bypasses truncated repo tree)
+    file_existence_checks = []
+    for f in manifest:
+        file_path = f.get('path')
+        if file_path:
+            exists = os.path.exists(file_path)
+            status = "EXISTS" if exists else "DOES NOT EXIST"
+            file_existence_checks.append(f"- {file_path}: {status}")
+    existence_text = "\n".join(file_existence_checks) if file_existence_checks else "(no files to verify)"
+    
     # Format previous dialogue for context
     dialogue_text = "\n".join([
         f"{turn['role'].upper()}: {turn['content']}" 
@@ -202,16 +248,20 @@ async def grounding_node(state: ArchitectState):
     ## MANIFEST WITH RATIONALES:
     {rationales_text}
     
-    ## ACTUAL REPO FILE TREE:
-    {repo_truth[:15000]}  # Truncate if too large
+    ## DISK VERIFICATION (AUTHORITATIVE — TRUST THIS OVER REPO TREE):
+    {existence_text}
+    
+    ## ACTUAL REPO FILE TREE (may be truncated, use only for context):
+    {repo_truth[:15000]}
     
     ## PREVIOUS DIALOGUE:
     {dialogue_text}
     
     VALIDATION RULES:
-    1. MODIFY files: MUST exist in the repo tree. If not found → issue.
-    2. NEW files: MUST NOT exist in the repo tree. If found → should be MODIFY instead.
-    3. NEW files: Parent directory SHOULD exist (warning if not, but not a blocker).
+    1. MODIFY files: Must say "EXISTS" in DISK VERIFICATION above. If it says EXISTS, ACCEPT it regardless of the repo tree.
+    2. NEW files: Must say "DOES NOT EXIST" in DISK VERIFICATION. If it says DOES NOT EXIST, ACCEPT it.
+    3. DELETE files: Must say "EXISTS" in DISK VERIFICATION.
+    4. The repo tree may be truncated. NEVER reject based on a file missing from the tree if DISK VERIFICATION says it EXISTS.
     
     CRITICAL INSTRUCTIONS:
     - Consider the drafter's RATIONALE before rejecting.
@@ -223,7 +273,14 @@ async def grounding_node(state: ArchitectState):
     Return GroundingReport.
     """
     
-    structured_llm = llm_grounder.with_structured_output(GroundingReport)
+    # Use override model if configured, else default
+    override = state.get("model_overrides", {}).get("grounder_model")
+    if override:
+        from model_config import get_custom_model
+        base_llm = get_custom_model(override, temperature=0)
+    else:
+        base_llm = llm_grounder
+    structured_llm = base_llm.with_structured_output(GroundingReport)
     result = await structured_llm.ainvoke(prompt)
     
     if result.is_valid:
@@ -261,14 +318,15 @@ def escalation_node(state: ArchitectState):
     for turn in dialogue_history:
         print(f"  {turn['role'].upper()}: {turn['content'][:300]}...")
     
-    # Return an error state that can be surfaced to the user
+    # Return with draft_spec fallback — the draft was good enough to stream,
+    # so it's better than returning None and losing the plan entirely
     return {
-        "final_spec": None,
-        "final_manifest": None,
+        "final_spec": state.get("draft_spec"),
+        "final_manifest": state.get("draft_manifest"),
         "grounding_errors": [
             f"Architect failed after {state.get('loop_count', 0)} attempts. "
             "The drafter and grounder could not reach agreement. "
-            "Review the dialogue history for details."
+            "Using draft spec as fallback. Review the dialogue history for details."
         ]
     }
 

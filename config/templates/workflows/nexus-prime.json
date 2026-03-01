@@ -41,14 +41,15 @@
             "data": {
                 "label": "Supervisor",
                 "config": {
-                    "model": "gemini-3-pro-preview",
-                    "description": "Routes between workers"
+                    "supervisor_model": "",
+                    "max_retries": 3,
+                    "description": "Nexus Prime — routes between fleet workers"
                 }
             },
             "type": "supervisor",
             "position": {
                 "x": 400,
-                "y": 80
+                "y": 50
             }
         },
         {
@@ -56,15 +57,34 @@
             "data": {
                 "label": "Research Fleet",
                 "config": {
-                    "model": "gemini-3-flash-preview",
-                    "fleetType": "research",
+                    "fleet_type": "research",
+                    "scoper_model": "",
+                    "researcher_model": "",
+                    "vetter_model": "",
+                    "synthesizer_model": "",
+                    "max_iterations": 10,
                     "description": "Gemini mesh deep research"
                 }
             },
             "type": "fleet",
             "position": {
-                "x": 150,
+                "x": 100,
                 "y": 200
+            }
+        },
+        {
+            "id": "research_approval",
+            "data": {
+                "label": "Research Approval",
+                "config": {
+                    "gate_name": "Research Review",
+                    "description": "Review research dossier before planning"
+                }
+            },
+            "type": "approval_gate",
+            "position": {
+                "x": 100,
+                "y": 340
             }
         },
         {
@@ -72,15 +92,33 @@
             "data": {
                 "label": "Architect Fleet",
                 "config": {
-                    "model": "claude-opus-4-5-20251101",
-                    "fleetType": "architect",
+                    "fleet_type": "architect",
+                    "cartographer_model": "",
+                    "drafter_model": "",
+                    "grounder_model": "",
+                    "max_iterations": 10,
                     "description": "Generate BLUEPRINT artifact"
                 }
             },
             "type": "fleet",
             "position": {
-                "x": 320,
+                "x": 300,
                 "y": 200
+            }
+        },
+        {
+            "id": "plan_approval",
+            "data": {
+                "label": "Plan Approval",
+                "config": {
+                    "gate_name": "Blueprint Review",
+                    "description": "Review blueprint before building"
+                }
+            },
+            "type": "approval_gate",
+            "position": {
+                "x": 300,
+                "y": 340
             }
         },
         {
@@ -88,14 +126,17 @@
             "data": {
                 "label": "Builder Fleet",
                 "config": {
-                    "model": "claude-opus-4-5-20251101",
-                    "fleetType": "builder",
+                    "fleet_type": "builder",
+                    "scout_model": "",
+                    "coder_model": "",
+                    "checker_model": "",
+                    "max_iterations": 10,
                     "description": "Implement with negative constraints"
                 }
             },
             "type": "fleet",
             "position": {
-                "x": 490,
+                "x": 500,
                 "y": 200
             }
         },
@@ -104,15 +145,48 @@
             "data": {
                 "label": "Audit Fleet",
                 "config": {
-                    "model": "gemini-3-flash-preview",
-                    "fleetType": "audit",
+                    "fleet_type": "audit",
+                    "forensic_model": "",
+                    "verdict_model": "",
+                    "max_iterations": 10,
                     "description": "Zero-trust verification"
                 }
             },
             "type": "fleet",
             "position": {
+                "x": 700,
+                "y": 200
+            }
+        },
+        {
+            "id": "walkthrough",
+            "data": {
+                "label": "Walkthrough Generator",
+                "config": {
+                    "model": "",
+                    "description": "Synthesizes walkthrough from workflow artifacts"
+                }
+            },
+            "type": "walkthrough_generator",
+            "position": {
+                "x": 700,
+                "y": 340
+            }
+        },
+        {
+            "id": "human_in_loop",
+            "data": {
+                "label": "Human Review",
+                "config": {
+                    "approval_message": "Manual intervention required",
+                    "approval_type": "manual",
+                    "description": "Manual review and intervention point"
+                }
+            },
+            "type": "human_in_loop",
+            "position": {
                 "x": 400,
-                "y": 320
+                "y": 450
             }
         }
     ],
@@ -146,16 +220,34 @@
             "animated": true
         },
         {
-            "id": "e-research-architect",
+            "id": "e-research-approval",
             "type": "smoothstep",
             "source": "research_fleet",
-            "target": "architect_fleet"
+            "target": "research_approval"
         },
         {
-            "id": "e-architect-builder",
+            "id": "e-rapproval-sup",
+            "type": "smoothstep",
+            "source": "research_approval",
+            "target": "supervisor",
+            "style": {
+                "strokeDasharray": "5,5"
+            }
+        },
+        {
+            "id": "e-architect-approval",
             "type": "smoothstep",
             "source": "architect_fleet",
-            "target": "builder_fleet"
+            "target": "plan_approval"
+        },
+        {
+            "id": "e-papproval-sup",
+            "type": "smoothstep",
+            "source": "plan_approval",
+            "target": "supervisor",
+            "style": {
+                "strokeDasharray": "5,5"
+            }
         },
         {
             "id": "e-builder-audit",
@@ -164,20 +256,46 @@
             "target": "audit_fleet"
         },
         {
-            "id": "e-audit-supervisor",
+            "id": "e-audit-sup",
             "type": "smoothstep",
+            "source": "audit_fleet",
+            "target": "supervisor",
             "style": {
                 "strokeDasharray": "5,5"
-            },
-            "source": "audit_fleet",
-            "target": "supervisor"
+            }
+        },
+        {
+            "id": "e-sup-walkthrough",
+            "type": "smoothstep",
+            "source": "supervisor",
+            "target": "walkthrough",
+            "animated": true,
+            "label": "finish"
+        },
+        {
+            "id": "e-sup-human",
+            "type": "smoothstep",
+            "source": "supervisor",
+            "target": "human_in_loop",
+            "animated": true,
+            "label": "escalate"
+        },
+        {
+            "id": "e-human-sup",
+            "type": "smoothstep",
+            "source": "human_in_loop",
+            "target": "supervisor",
+            "style": {
+                "strokeDasharray": "5,5"
+            }
         }
     ],
     "conditionalEdges": [
         {
             "source": "supervisor",
             "targets": {
-                "finish": "END",
+                "finish": "walkthrough",
+                "escalate": "human_in_loop",
                 "audit_fleet": "audit_fleet",
                 "builder_fleet": "builder_fleet",
                 "research_fleet": "research_fleet",

@@ -1110,7 +1110,7 @@ export async function getLangGraphHealth(): Promise<LangGraphHealthStatus> {
  * Get available workflow templates - SINGLE SOURCE OF TRUTH
  * 
  * This is the only function that should be used to fetch workflow templates.
- * Templates come from Python backend which reads from workflow_templates.default_configuration
+ * Uses the LangGraph proxy which reads templates from Python backend JSON files.
  * 
  * @param level Optional filter: 'dashboard', 'project', or 'task'
  */
@@ -1132,6 +1132,7 @@ export async function getWorkflowTemplates(level?: 'dashboard' | 'project' | 'ta
         throw err;  // No fallbacks - propagate error
     }
 }
+
 
 /**
  * Delete a workflow template by ID
@@ -1526,7 +1527,7 @@ export async function resolveInlineComment(
 
 // Dashboard Initiative Types
 export type InitiativeStatus = 'idea' | 'planning' | 'in_progress' | 'paused' | 'complete' | 'cancelled';
-export type InitiativeType = 'security-sweep' | 'dependency-audit' | 'readme-update' | 'api-migration' | 'health-check' | 'custom';
+export type InitiativeType = 'security-sweep' | 'dependency-audit' | 'readme-update' | 'api-migration' | 'health-check' | 'documentation' | 'custom';
 
 export interface DashboardInitiative {
     id: string;

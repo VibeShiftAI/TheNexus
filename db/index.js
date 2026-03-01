@@ -1244,129 +1244,11 @@ async function deleteProjectWorkflow(workflowId) {
 }
 
 // ============================================================================
-// WORKFLOW TEMPLATE OPERATIONS
+// WORKFLOW TEMPLATE OPERATIONS — REMOVED
+// Templates are now served exclusively from the Python LangGraph backend
+// via JSON files on disk (config/templates/workflows/*.json).
 // ============================================================================
 
-/**
- * Get workflow templates
- * @param {string} level - Optional filter by level ('dashboard', 'project', 'feature')
- * @returns {Promise<Array>}
- */
-async function getWorkflowTemplates(level = null) {
-    if (!supabase) return [];
-
-    let query = supabase.from('workflow_templates').select('*');
-
-    if (level) {
-        query = query.eq('level', level);
-    }
-
-    const { data, error } = await query.order('name');
-
-    if (error) {
-        console.error('[Database] Error fetching workflow templates:', error);
-        return [];
-    }
-    return data;
-}
-
-/**
- * Get a single workflow template by ID or name
- * @param {string} identifier - Template UUID or name
- * @returns {Promise<Object|null>}
- */
-async function getWorkflowTemplate(identifier) {
-    if (!supabase) return null;
-
-    // Try by name first
-    let { data, error } = await supabase
-        .from('workflow_templates')
-        .select('*')
-        .eq('name', identifier)
-        .single();
-
-    // If not found by name, try by ID
-    if (error && error.code === 'PGRST116') {
-        const result = await supabase
-            .from('workflow_templates')
-            .select('*')
-            .eq('id', identifier)
-            .single();
-        data = result.data;
-        error = result.error;
-    }
-
-    if (error) {
-        console.error('[Database] Error fetching workflow template:', error);
-        return null;
-    }
-    return data;
-}
-
-/**
- * Create a workflow template
- * @param {Object} template - Template data
- * @returns {Promise<Object|null>}
- */
-async function createWorkflowTemplate(template) {
-    if (!supabase) return null;
-
-    const { data, error } = await supabase
-        .from('workflow_templates')
-        .insert(template)
-        .select()
-        .single();
-
-    if (error) {
-        console.error('[Database] Error creating workflow template:', error);
-        return null;
-    }
-    return data;
-}
-
-/**
- * Update a workflow template
- * @param {string} templateId - Template UUID
- * @param {Object} updates - Fields to update
- * @returns {Promise<Object|null>}
- */
-async function updateWorkflowTemplate(templateId, updates) {
-    if (!supabase) return null;
-
-    const { data, error } = await supabase
-        .from('workflow_templates')
-        .update(updates)
-        .eq('id', templateId)
-        .select()
-        .single();
-
-    if (error) {
-        console.error('[Database] Error updating workflow template:', error);
-        return null;
-    }
-    return data;
-}
-
-/**
- * Delete a workflow template (only non-system templates)
- * @param {string} templateId - Template UUID
- * @returns {Promise<boolean>}
- */
-async function deleteWorkflowTemplate(templateId) {
-    if (!supabase) return false;
-
-    const { error } = await supabase
-        .from('workflow_templates')
-        .delete()
-        .eq('id', templateId)
-        .eq('is_system', false); // Only allow deleting non-system templates
-
-    if (error) {
-        console.error('[Database] Error deleting workflow template:', error);
-        return false;
-    }
-    return true;
-}
 
 // ============================================================================
 // MODEL OPERATIONS
@@ -1548,12 +1430,6 @@ module.exports = {
     createProjectWorkflow,
     updateProjectWorkflow,
     deleteProjectWorkflow,
-    // Workflow Templates
-    getWorkflowTemplates,
-    getWorkflowTemplate,
-    createWorkflowTemplate,
-    updateWorkflowTemplate,
-    deleteWorkflowTemplate,
     // Agent Configs - DEPRECATED (functions removed)
     // Models
     getModels,

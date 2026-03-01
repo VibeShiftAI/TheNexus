@@ -201,7 +201,12 @@ class NodeRegistry(AtomicNodeRegistry):
                     parameters={
                         **config,
                         # Inject critical context fields as parameters
-                        "project_root": state.get("context", {}).get("project_root", "."),
+                        "project_root": (
+                            state.get("context", {}).get("project_root") or
+                            state.get("context", {}).get("project_path") or
+                            "."
+                        ),
+                        "project_path": state.get("context", {}).get("project_path", ""),
                         "task_title": state.get("context", {}).get("task_title", ""),
                     }
                 ),
@@ -210,11 +215,13 @@ class NodeRegistry(AtomicNodeRegistry):
             )
             
             # ═══════════════════════════════════════════════════════════════════
-            # ARTIFACT STORE: Inject or create shared artifact store
+            # ARTIFACT STORE: Reconstruct from serialized data or create new
             # ═══════════════════════════════════════════════════════════════════
-            if "artifact_store" in state.get("context", {}):
-                # Use existing store from workflow state
-                ctx.set_artifact_store(state["context"]["artifact_store"])
+            artifact_store_data = state.get("context", {}).get("artifact_store_data")
+            if artifact_store_data and isinstance(artifact_store_data, dict):
+                # Reconstruct store from serialized dict (set by previous node)
+                store = ArtifactStore.from_dict(artifact_store_data)
+                ctx.set_artifact_store(store)
             else:
                 # Create new store and attach to context for downstream nodes
                 store = ArtifactStore(
@@ -238,22 +245,61 @@ class NodeRegistry(AtomicNodeRegistry):
             # Convert results back to legacy state format
             if results and results[0]:
                 output_data = results[0][0].json
-                return {
+                
+                # IMPORTANT: Do NOT store the ArtifactStore object directly in state.
+                # ArtifactStore contains threading.Lock which is not JSON-serializable,
+                # causing FastAPI's jsonable_encoder to crash on every /runs/{id} poll.
+                # Instead, store only its serializable dict for downstream reconstruction.
+                context_update = {
+                    **state.get("context", {}),
+                    # Store serializable dict instead of live object
+                    "artifact_store_data": artifact_store.to_dict(),
+                }
+                # Remove any previously leaked live ArtifactStore reference
+                context_update.pop("artifact_store", None)
+                
+                # Merge the node's context update into state context
+                node_context = output_data.get("context", {})
+                if isinstance(node_context, dict):
+                    context_update.update(node_context)
+                
+                # Extract the node's inner "outputs" dict to merge flat into state outputs.
+                # Nodes return { "outputs": { "doc_changes": ... }, "messages": [...] }
+                # We want state["outputs"]["doc_changes"], NOT state["outputs"]["outputs"]["doc_changes"]
+                node_outputs = output_data.get("outputs", {})
+                
+                # Build the merged outputs dict
+                merged_outputs = {
+                    **state.get("outputs", {}),
+                    # Namespace the full node output under type_id for debugging
+                    type_id: output_data,
+                    # Merge the node's inner outputs flat (the important data like doc_changes)
+                    **(node_outputs if isinstance(node_outputs, dict) else {}),
+                    # Also merge legacy outputs from artifact store
+                    **artifact_store.to_legacy_outputs(),
+                }
+                
+                # Extract top-level state fields from node output.
+                # These are WorkflowState fields that nodes set for routing/control
+                # (e.g., evaluator_decision for conditional edges, pending_approval for gates).
+                top_level_state = {
                     "messages": state.get("messages", []),
-                    "context": {
-                        **state.get("context", {}),
-                        # Share artifact store with downstream nodes
-                        "artifact_store": artifact_store,
-                    },
-                    "outputs": {
-                        **state.get("outputs", {}),
-                        **output_data,
-                        # Also merge legacy outputs from artifact store
-                        **artifact_store.to_legacy_outputs(),
-                    },
+                    "context": context_update,
+                    "outputs": merged_outputs,
                     # Store artifacts list for UI display
                     "artifacts": artifact_store.to_dict()["artifacts"],
                 }
+                
+                # Propagate routing/control fields to top-level state
+                STATE_PASSTHROUGH_FIELDS = [
+                    "evaluator_decision", "pending_approval",
+                    "current_step", "scratchpad", "retry_count",
+                ]
+                for field in STATE_PASSTHROUGH_FIELDS:
+                    if field in output_data:
+                        top_level_state[field] = output_data[field]
+                
+                return top_level_state
             return state
         
         return node_handler
@@ -303,16 +349,32 @@ def init_atomic_nodes() -> int:
         StageManagerNode,
         FleetNode,
         SupervisorNode,
+        WalkthroughGeneratorNode,
+        ApprovalGateNode,
     )
     from .utility import (
         SummarizerNode,
         GitCommitNode,
         AggregateResultsNode,
+        # Sub-agent nodes
+        BashExecutorNode,
+        CodebaseExplorerNode,
+        PlanArchitectNode,
+        GeneralAgentNode,
+        # Documentation workflow
+        DocumentationTaskCreatorNode,
     )
     # Phase 7: Memory nodes
     from .memory.atomic_nodes import (
         MemoryBufferWindowNode,
         MemoryManagerNode,
+    )
+    # Documentation nodes (Atomic Node Bridge)
+    from .documentation import (
+        DocExplorerNode,
+        DocDrafterNode,
+        DocReviewGateNode,
+        DocFileWriterNode,
     )
     
     # Register all built-in nodes
@@ -330,9 +392,24 @@ def init_atomic_nodes() -> int:
         SummarizerNode,
         GitCommitNode,
         AggregateResultsNode,
+        # Sub-agent nodes
+        BashExecutorNode,
+        CodebaseExplorerNode,
+        PlanArchitectNode,
+        GeneralAgentNode,
+        # Documentation workflow
+        DocumentationTaskCreatorNode,
         # Phase 7: Memory nodes
         MemoryBufferWindowNode,
         MemoryManagerNode,
+        # Documentation nodes (Atomic Node Bridge)
+        DocExplorerNode,
+        DocDrafterNode,
+        DocReviewGateNode,
+        DocFileWriterNode,
+        # Nexus Prime workflow nodes
+        WalkthroughGeneratorNode,
+        ApprovalGateNode,
     ]:
         registry.register(node_class)
     

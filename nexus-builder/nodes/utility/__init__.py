@@ -240,6 +240,7 @@ from .bash_executor import BashExecutorNode
 from .codebase_explorer import CodebaseExplorerNode
 from .plan_architect import PlanArchitectNode
 from .general_agent import GeneralAgentNode
+from .doc_task_creator import DocumentationTaskCreatorNode
 
 
 __all__ = [
@@ -251,5 +252,7 @@ __all__ = [
     "CodebaseExplorerNode",
     "PlanArchitectNode",
     "GeneralAgentNode",
+    # Documentation workflow
+    "DocumentationTaskCreatorNode",
 ]
 

@@ -11,6 +11,7 @@ This module handles:
 import os
 import json
 import uuid
+import asyncio
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv
@@ -87,12 +88,15 @@ class GraphEngine:
     Manages database connections and checkpoint persistence.
     """
     
-    def __init__(self, hooks: Optional[ExecutionLifecycleHooks] = None):
+    def __init__(self, hooks: Optional[ExecutionLifecycleHooks] = None, stream_manager=None):
         self.db_url = os.getenv("DATABASE_URL")
         self.checkpointer = None
         self._connection = None  # Store connection for cleanup
         self._runs: Dict[str, Dict] = {}  # In-memory run tracking
         self.hooks = hooks or ExecutionLifecycleHooks()  # Phase 4: Lifecycle hooks
+        self.stream_manager = stream_manager  # SSE event broadcasting
+        self._resume_events: Dict[str, asyncio.Event] = {}  # Interrupt pause/resume
+        self._resume_data: Dict[str, Dict] = {}  # Data from resume calls
     
     async def initialize(self):
         """Initialize database connections"""
@@ -314,25 +318,42 @@ class GraphEngine:
         run_id = str(uuid.uuid4())
         run = {
             "id": run_id,
+            "run_id": run_id,
             "workflow_id": workflow_id,
             "project_id": project_id,
             "task_id": task_id,
             "status": "pending",
             "current_node": None,
             "context": {},
-            "graph_config": graph_config,
+            "activity_log": [],
             "started_at": datetime.utcnow().isoformat(),
-            "completed_at": None
+            "completed_at": None,
+            "graph_config": graph_config
         }
         
-        # Store in memory for quick access
+        # Store in memory for quick access (keeps all fields)
         self._runs[run_id] = run
         
-        # Also persist to Supabase
+        # Persist to Supabase — only send columns that exist in the 'runs' table
+        # Table columns: id, workflow_id, project_id, task_id, status, current_node,
+        #                context (JSONB), error_message, started_at, completed_at
         supabase = get_supabase()
         if supabase.is_configured():
             try:
-                await supabase.insert_run(run)
+                supabase_payload = {
+                    "id": run_id,
+                    "workflow_id": workflow_id,
+                    "project_id": project_id,
+                    "task_id": task_id,
+                    "status": "pending",
+                    "current_node": None,
+                    "context": {
+                        "graph_config": graph_config,
+                        "activity_log": []
+                    },
+                    "started_at": datetime.utcnow().isoformat(),
+                }
+                await supabase.insert_run(supabase_payload)
             except Exception as e:
                 print(f"[GraphEngine] Failed to persist run to Supabase: {e}")
         
@@ -436,7 +457,11 @@ class GraphEngine:
             for node in nodes:
                 node_type = node.get("type")
                 node_id = node.get("id")
-                node_config = node.get("data", {})
+                node_data = node.get("data", {})
+                # Merge data.config into top-level so node parameters are flat
+                # Template format: {label: "...", config: {task: "...", model: "..."}}
+                # Node expects:    {label: "...", task: "...", model: "..."}
+                node_config = {**node_data, **node_data.get("config", {})}
                 
                 # Get and configure the node handler
                 handler = registry.create_node(node_type, node_config)
@@ -444,10 +469,24 @@ class GraphEngine:
                 
                 print(f"[GraphEngine] Added node: {node_id} ({node_type})")
             
-            # Add edges
+            # Collect nodes that have conditional edges — their routing is handled
+            # exclusively by the conditional edges, so regular edges must be skipped
+            # to avoid LangGraph's InvalidUpdateError (concurrent writes to same channel).
+            conditional_edge_sources = set()
+            conditional_edges = graph_config.get("conditionalEdges") or []
+            for cond_edge in conditional_edges:
+                source_node = cond_edge.get("source")
+                if source_node:
+                    conditional_edge_sources.add(source_node)
+            
+            # Add edges (skip sources that have conditional routing)
             for edge in edges:
                 source = edge.get("source")
                 target = edge.get("target")
+                
+                if source in conditional_edge_sources:
+                    print(f"[GraphEngine] Skipped regular edge {source} -> {target} (has conditional routing)")
+                    continue
                 
                 if target == "END" or target == "end":
                     builder.add_edge(source, END)
@@ -456,23 +495,36 @@ class GraphEngine:
                 
                 print(f"[GraphEngine] Added edge: {source} -> {target}")
             
-            # Add conditional edges (for evaluator routing)
-            conditional_edges = graph_config.get("conditionalEdges", [])
+            # Add conditional edges (for evaluator/review routing)
             print(f"[GraphEngine] Conditional edges received: {len(conditional_edges)} entries")
             if conditional_edges:
                 print(f"[GraphEngine] conditionalEdges data: {conditional_edges}")
             for cond_edge in conditional_edges:
                 source_node = cond_edge.get("source")
-                routes = cond_edge.get("routes", {})
+                # Support both "routes" (legacy) and "targets" (template format)
+                routes = cond_edge.get("routes") or cond_edge.get("targets", {})
+                # The state key to read the routing decision from
+                routing_field = cond_edge.get("routingField", "evaluator_decision")
                 
                 if source_node and routes:
                     # Create a routing function for this conditional edge
-                    def make_router(route_map):
+                    # IMPORTANT: LangGraph expects the router to return a KEY from path_map,
+                    # not the resolved node name. LangGraph maps key→node internally.
+                    def make_router(route_map, field):
                         def router(state):
-                            decision = state.get("evaluator_decision", "complete")
-                            next_node = route_map.get(decision, route_map.get("complete", END))
-                            print(f"[GraphEngine] Conditional routing: {decision} -> {next_node}")
-                            return next_node
+                            decision = state.get(field, "complete")
+                            # Return the decision key directly if it exists in the route map
+                            if decision in route_map:
+                                print(f"[GraphEngine] Conditional routing: {field}={decision} -> {route_map[decision]}")
+                                return decision
+                            # Fallback to "complete" key
+                            if "complete" in route_map:
+                                print(f"[GraphEngine] Conditional routing: {field}={decision} (fallback) -> {route_map['complete']}")
+                                return "complete"
+                            # Last resort: return first key
+                            first_key = next(iter(route_map))
+                            print(f"[GraphEngine] Conditional routing: {field}={decision} (default) -> {route_map[first_key]}")
+                            return first_key
                         return router
                     
                     # Convert route values to proper LangGraph targets
@@ -483,8 +535,8 @@ class GraphEngine:
                         else:
                             path_map[decision] = target
                     
-                    builder.add_conditional_edges(source_node, make_router(path_map), path_map)
-                    print(f"[GraphEngine] Added conditional edge from {source_node}: {routes}")
+                    builder.add_conditional_edges(source_node, make_router(path_map, routing_field), path_map)
+                    print(f"[GraphEngine] Added conditional edge from {source_node}: {routes} (field: {routing_field})")
             
             # Find and set entry point
             target_ids = {e["target"] for e in edges}
@@ -506,11 +558,16 @@ class GraphEngine:
                     if node["id"] not in interrupt_nodes:
                         interrupt_nodes.append(node["id"])
             
-            # Compile the graph without recursion_limit (it's a runtime arg)
+            # Compile the graph — always use a checkpointer so update_state() works
+            # (needed for injecting user decisions after interrupt/resume)
             compile_kwargs = {}
             
             if self.checkpointer:
                 compile_kwargs["checkpointer"] = self.checkpointer
+            else:
+                # Fallback: in-memory checkpointer for state updates
+                from langgraph.checkpoint.memory import MemorySaver
+                compile_kwargs["checkpointer"] = MemorySaver()
             
             if interrupt_nodes:
                 compile_kwargs["interrupt_before"] = interrupt_nodes
@@ -550,28 +607,200 @@ class GraphEngine:
             # Execute the graph
             print(f"[GraphEngine] Starting execution for run {run_id}")
             
-            async for event in graph.astream(initial_state, thread_config):
-                # Update run with current progress
-                current_node = list(event.keys())[0] if event else None
-                node_output = event.get(current_node, {}) if current_node else {}
+            # Broadcast SSE: workflow started
+            if self.stream_manager:
+                await self.stream_manager.broadcast_log(run_id, "Workflow execution started", "info")
+            
+            previous_node = None
+            interrupt_handled = False  # Once an interrupt is handled, skip all future ones
+            stream_input = initial_state  # First iteration uses initial_state; after interrupt uses None
+            
+            while True:  # Outer loop: restarts astream after interrupt resume
+                needs_restart = False
+                async for event in graph.astream(stream_input, thread_config):
+                    # Update run with current progress
+                    current_node = list(event.keys())[0] if event else None
+                    node_output = event.get(current_node, {}) if current_node else {}
+                    
+                    # Broadcast SSE: node completed (astream yields AFTER node finishes)
+                    if self.stream_manager and current_node and current_node not in ('__start__', '__end__'):
+                        
+                        # ── Node START event (detect transitions) ──
+                        if current_node != previous_node:
+                            # Broadcast start of this node 
+                            await self.stream_manager.broadcast_log(
+                                run_id, f"▶ Starting {current_node}...", "info"
+                            )
+                            await self.stream_manager.publish(run_id, {
+                                "type": "graph_event",
+                                "kind": "on_chain_start",
+                                "name": current_node,
+                                "data": {"input": {"status": "running"}}
+                            })
+                        
+                        # ── Extract detail summary from node output ──
+                        detail_parts = []
+                        if node_output.get("outputs"):
+                            out = node_output["outputs"]
+                            # Doc exploration details
+                            if "doc_exploration" in out:
+                                exp = out["doc_exploration"]
+                                file_count = len(exp.get("existing_files", {}))
+                                detail_parts.append(f"Found {file_count} existing doc files")
+                                if exp.get("summary"):
+                                    # First 100 chars of summary
+                                    detail_parts.append(exp["summary"][:120])
+                            # Doc changes details
+                            if "doc_changes" in out:
+                                dc = out["doc_changes"]
+                                files = dc.get("files", [])
+                                hunks = sum(len(f.get("hunks", [])) for f in files)
+                                detail_parts.append(f"Generated {len(files)} file(s) with {hunks} hunk(s)")
+                            # Doc result details
+                            if "doc_result" in out:
+                                dr = out["doc_result"]
+                                written = dr.get("written", [])
+                                skipped = dr.get("skipped", [])
+                                detail_parts.append(f"Wrote {len(written)} file(s)")
+                                if skipped:
+                                    detail_parts.append(f"Skipped {len(skipped)} file(s)")
+                        
+                        # Get last message if available
+                        msgs = node_output.get("messages", [])
+                        if msgs:
+                            last_msg = msgs[-1] if isinstance(msgs, list) else msgs
+                            if isinstance(last_msg, dict):
+                                content = last_msg.get("content", "")
+                                if content and len(content) > 10:
+                                    # Trim to first line or 120 chars
+                                    summary = content.split("\n")[0][:120]
+                                    detail_parts.append(summary)
+                        
+                        # Broadcast detail if available
+                        if detail_parts:
+                            detail = " · ".join(detail_parts)
+                            await self.stream_manager.broadcast_log(
+                                run_id, f"  ↳ {detail}", "info"
+                            )
+                        
+                        # ── Node COMPLETION event ──
+                        await self.stream_manager.broadcast_log(
+                            run_id, f"✓ Completed {current_node}", "info"
+                        )
+                        # Emit graph_event for node highlighting
+                        await self.stream_manager.publish(run_id, {
+                            "type": "graph_event",
+                            "kind": "on_chain_end",
+                            "name": current_node,
+                            "data": {"output": {"status": "completed"}}
+                        })
+                        # Log to activity_log for history
+                        run_data = self._runs.get(run_id, {})
+                        if "activity_log" not in run_data:
+                            run_data["activity_log"] = []
+                        run_data["activity_log"].append({
+                            "type": "agent",
+                            "stage": current_node,
+                            "message": f"Completed {current_node}",
+                            "timestamp": datetime.utcnow().isoformat()
+                        })
+                        
+                        previous_node = current_node
+                    
+                    # Phase 4: Fire node execution hook
+                    await self.hooks.run_hook("node_execute_after", run_id, current_node, node_output)
+                    
+                    await self.update_run(run_id, {
+                        "current_node": current_node,
+                        "context": node_output
+                    })
+                    print(f"[GraphEngine] Executed node: {current_node}")
+                    
+                    # ── Interrupt check: detect pending_approval in node output ──
+                    # Skip if we already handled an interrupt (pending_approval persists in state)
+                    pending = node_output.get("pending_approval")
+                    if pending and self.stream_manager and not interrupt_handled:
+                        print(f"[GraphEngine] Interrupt detected at {current_node}: {pending.get('gate', 'unknown')}")
+                        
+                        # Update run status
+                        await self.update_run(run_id, {"status": "interrupted", "current_node": current_node})
+                        
+                        # Emit SSE interrupt event with the pending_approval payload
+                        await self.stream_manager.publish(run_id, {
+                            "type": "interrupt",
+                            "interrupts": [current_node],
+                            "values": node_output
+                        })
+                        await self.stream_manager.broadcast_log(
+                            run_id, f"⏸ Waiting for review at {current_node}", "warning"
+                        )
+                        
+                        # Create an asyncio.Event and wait for resume
+                        event = asyncio.Event()
+                        self._resume_events[run_id] = event
+                        print(f"[GraphEngine] Paused execution for run {run_id}, waiting for resume...")
+                        await event.wait()  # Blocks until resume_run() is called
+                        
+                        # Resume: merge user decisions back into graph state
+                        resume_data = self._resume_data.pop(run_id, {})
+                        self._resume_events.pop(run_id, None)
+                        interrupt_handled = True  # Skip all further interrupt checks
+                        print(f"[GraphEngine] Resumed execution for run {run_id}")
+                        
+                        # ── CRITICAL: Update LangGraph's actual state with user decision ──
+                        # The conditional router reads from LangGraph's internal state, NOT
+                        # from our _runs dict. We must inject evaluator_decision into the
+                        # graph checkpoint, then restart astream from the updated state.
+                        approval_action = resume_data.get("approval_action", "approve")
+                        new_decision = "complete" if approval_action == "approve" else "revise"
+                        
+                        state_update = {"evaluator_decision": new_decision, "pending_approval": None}
+                        
+                        try:
+                            await graph.aupdate_state(thread_config, state_update)
+                            print(f"[GraphEngine] Updated graph state: evaluator_decision={new_decision}")
+                        except Exception as state_err:
+                            print(f"[GraphEngine] Warning: Could not update graph state: {state_err}")
+                            try:
+                                graph.update_state(thread_config, state_update)
+                                print(f"[GraphEngine] Updated graph state (sync fallback): evaluator_decision={new_decision}")
+                            except Exception as sync_err:
+                                print(f"[GraphEngine] Warning: Sync state update also failed: {sync_err}")
+                        
+                        # Merge user's hunk decisions into the run's context
+                        # so that write_docs can read approved/rejected statuses
+                        if "doc_changes" in resume_data:
+                            from shared_state import set_hunk_decisions
+                            set_hunk_decisions(run_id, resume_data["doc_changes"])
+                            run_ctx = self._runs.get(run_id, {}).get("context", {})
+                            if "outputs" not in run_ctx:
+                                run_ctx["outputs"] = {}
+                            run_ctx["outputs"]["doc_changes"] = resume_data["doc_changes"]
+                            # Clear pending_approval since review is done
+                            run_ctx.pop("pending_approval", None)
+                        
+                        await self.update_run(run_id, {"status": "running"})
+                        await self.stream_manager.broadcast_log(run_id, "▶ Workflow resumed", "info")
+                        
+                        # Break out of current astream — we'll restart from updated checkpoint
+                        # The astream generator has already committed its routing decision,
+                        # so we must create a fresh one that reads the updated state.
+                        stream_input = None  # Resume from checkpoint (not initial_state)
+                        needs_restart = True
+                        break
+                    
+                    # Sync outputs to Node.js backend (which updates Supabase)
+                    if current_node and node_output.get("outputs"):
+                        await self._sync_outputs_to_backend(
+                            run_id=run_id,
+                            node_id=current_node,
+                            outputs=node_output.get("outputs", {}),
+                            context=input_data
+                        )
                 
-                # Phase 4: Fire node execution hook
-                await self.hooks.run_hook("node_execute_after", run_id, current_node, node_output)
-                
-                await self.update_run(run_id, {
-                    "current_node": current_node,
-                    "context": node_output
-                })
-                print(f"[GraphEngine] Executed node: {current_node}")
-                
-                # Sync outputs to Node.js backend (which updates Supabase)
-                if current_node and node_output.get("outputs"):
-                    await self._sync_outputs_to_backend(
-                        run_id=run_id,
-                        node_id=current_node,
-                        outputs=node_output.get("outputs", {}),
-                        context=input_data
-                    )
+                # If we broke out for restart, continue outer loop; otherwise we're done
+                if not needs_restart:
+                    break
             
             # Mark as completed
             await self.update_run(run_id, {
@@ -579,9 +808,20 @@ class GraphEngine:
                 "completed_at": datetime.utcnow().isoformat()
             })
             
+            # Broadcast SSE: workflow complete
+            if self.stream_manager:
+                await self.stream_manager.publish(run_id, {
+                    "type": "workflow_complete",
+                    "status": "completed",
+                    "run_id": run_id
+                })
+            
             # Phase 4: Fire workflow complete hook
             await self.hooks.run_hook("workflow_execute_after", run_id, "completed")
             print(f"[GraphEngine] Run {run_id} completed successfully")
+            
+            # Notify Node.js backend that workflow run is complete
+            await self._notify_workflow_complete(run_id, input_data, "completed")
             
         except Exception as e:
             import traceback
@@ -604,7 +844,44 @@ class GraphEngine:
             
             # Phase 4: Fire error hook
             await self.hooks.run_hook("on_error", run_id, e)
+            
+            # Notify Node.js backend that workflow run failed
+            await self._notify_workflow_complete(run_id, input_data, "failed", str(e))
             raise
+    
+    async def resume_run(self, run_id: str, updates: Dict[str, Any] = None):
+        """Resume a paused workflow execution after user review."""
+        event = self._resume_events.get(run_id)
+        if not event:
+            print(f"[GraphEngine] No pending interrupt for run {run_id}")
+            return False
+        
+        # Store the user's decisions for the execute_graph loop to pick up
+        self._resume_data[run_id] = updates or {}
+        
+        # Update the run state with user decisions (e.g., doc_changes with hunk statuses)
+        run = self._runs.get(run_id, {})
+        if updates:
+            # Merge doc_changes decisions into the run's context
+            if "doc_changes" in updates:
+                context = run.get("context", {})
+                outputs = context.get("outputs", {})
+                outputs["doc_changes"] = updates["doc_changes"]
+                # Clear pending_approval since user has reviewed
+                if "pending_approval" in context:
+                    del context["pending_approval"]
+                run["context"] = {**context, "outputs": outputs}
+            
+            # Set evaluator_decision based on approval action
+            if "approval_action" in updates:
+                action = updates["approval_action"]
+                context = run.get("context", {})
+                context["evaluator_decision"] = "complete" if action == "approve" else "revise"
+                run["context"] = context
+        
+        print(f"[GraphEngine] Signaling resume for run {run_id}")
+        event.set()  # Unblock the execute_graph loop
+        return True
     
     async def _sync_outputs_to_backend(
         self,
@@ -640,6 +917,44 @@ class GraphEngine:
         except Exception as e:
             # Don't fail the workflow if sync fails
             print(f"[GraphEngine] Warning: Could not sync outputs to backend: {e}")
+    
+    async def _notify_workflow_complete(
+        self,
+        run_id: str,
+        input_data: Dict[str, Any],
+        status: str,
+        error: str = None
+    ):
+        """
+        Notify Node.js backend that a workflow run has completed.
+        This allows the backend to mark project_workflows as complete.
+        """
+        import httpx
+        
+        nodejs_url = os.getenv("NODEJS_BACKEND_URL", "http://localhost:4000")
+        workflow_id = input_data.get("workflow_id")
+        
+        if not workflow_id:
+            return  # Not a project workflow run, skip
+        
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{nodejs_url}/api/langgraph/workflow-complete",
+                    json={
+                        "run_id": run_id,
+                        "workflow_id": workflow_id,
+                        "project_id": input_data.get("project_id"),
+                        "status": status,
+                        "error": error
+                    }
+                )
+                if response.status_code == 200:
+                    print(f"[GraphEngine] Notified backend: workflow {workflow_id} {status}")
+                else:
+                    print(f"[GraphEngine] Failed to notify backend: {response.status_code}")
+        except Exception as e:
+            print(f"[GraphEngine] Warning: Could not notify workflow completion: {e}")
     
     # ═══════════════════════════════════════════════════════════════
     # CHECKPOINTS / TIME TRAVEL

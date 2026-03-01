@@ -39,12 +39,12 @@ async def lifespan(app: FastAPI):
     # Startup
     print("[LangGraph Engine] Starting up...")
     
-    # Initialize the graph engine
-    app.state.engine = GraphEngine()
-    await app.state.engine.initialize()
-    
-    # Initialize stream manager
+    # Initialize stream manager (must be before engine so engine can broadcast)
     app.state.stream_manager = StreamManager()
+    
+    # Initialize the graph engine with stream manager for SSE broadcasting
+    app.state.engine = GraphEngine(stream_manager=app.state.stream_manager)
+    await app.state.engine.initialize()
     
     # Load active workflow runs from database into memory
     await _load_active_runs_from_db()
@@ -107,6 +107,7 @@ class GraphConfig(BaseModel):
     """Full workflow graph configuration from React Flow"""
     nodes: List[NodeConfig]
     edges: List[EdgeConfig]
+    conditionalEdges: Optional[List[Dict[str, Any]]] = None
     
 class WorkflowCreateRequest(BaseModel):
     """Request to save a new workflow"""
@@ -1057,6 +1058,99 @@ async def cancel_run(run_id: str):
     
     return {"success": True, "message": "Run cancelled"}
 
+@app.get("/runs/{run_id}/stream")
+async def stream_run(run_id: str):
+    """
+    Unified SSE endpoint for real-time workflow visibility.
+    Works for ALL workflow types (Nexus Prime, doc-writer, custom graphs).
+    """
+    stream_manager: StreamManager = app.state.stream_manager
+    
+    async def event_generator():
+        queue = await stream_manager.subscribe(run_id)
+        try:
+            while True:
+                data = await queue.get()
+                yield f"data: {data}\n\n"
+        except asyncio.CancelledError:
+            await stream_manager.unsubscribe(run_id, queue)
+            
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@app.get("/runs/{run_id}/history")
+async def get_run_history(run_id: str):
+    """
+    Unified history endpoint for reconnecting to any workflow run.
+    Works for both Nexus Prime and generic engine runs.
+    """
+    run = await _get_run_from_db_or_memory(run_id)
+    
+    # Also check generic engine runs directly
+    if not run:
+        engine: GraphEngine = app.state.engine
+        run = await engine.get_run(run_id)
+    
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    
+    # Extract context — generic runs store it differently than Nexus Prime
+    context = run.get("context", {})
+    if not context:
+        initial_state = run.get("initial_state", {})
+        context = initial_state.get("context", {})
+    
+    return {
+        "activity_log": run.get("activity_log", []),
+        "context": context,
+        "status": run.get("status"),
+        "current_node": run.get("current_node"),
+        "current_stage": run.get("current_stage"),
+        "stages_completed": run.get("stages_completed", []),
+        "error": run.get("error"),
+        "outputs": run.get("outputs", run.get("artifacts", {})),
+        "graph_config": run.get("graph_config"),
+        "next": run.get("paused_at")
+    }
+
+
+class RunResumeRequest(BaseModel):
+    """Request to resume a paused generic workflow run"""
+    approval_action: str = "approve"  # 'approve' or 'reject'
+    feedback: Optional[str] = None
+    doc_changes: Optional[Dict[str, Any]] = None  # Per-hunk decisions
+
+
+@app.post("/runs/{run_id}/resume")
+async def resume_run(run_id: str, request: RunResumeRequest):
+    """
+    Resume a paused generic workflow run after human review.
+    This is used by the GraphEngine interrupt mechanism.
+    """
+    engine: GraphEngine = app.state.engine
+    
+    # Check if this run exists in the engine
+    run = engine._runs.get(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found in engine")
+    
+    # Build updates from the request
+    updates = {
+        "approval_action": request.approval_action,
+        "feedback": request.feedback,
+    }
+    if request.doc_changes:
+        updates["doc_changes"] = request.doc_changes
+    
+    success = await engine.resume_run(run_id, updates)
+    if not success:
+        raise HTTPException(status_code=409, detail="Run is not paused at an interrupt point")
+    
+    return {
+        "success": True,
+        "run_id": run_id,
+        "status": "resuming",
+        "message": f"Workflow resuming after {request.approval_action}"
+    }
 
 # ═══════════════════════════════════════════════════════════════
 # NEXUS PRIME WORKFLOW (Adversarial Mesh)
@@ -1070,8 +1164,9 @@ class NexusRunRequest(BaseModel):
 
 class NexusResumeRequest(BaseModel):
     """Request to resume a paused Nexus workflow"""
-    approval_action: str  # 'approve' or 'reject'
+    approval_action: str = "approve"
     feedback: Optional[str] = None
+    doc_changes: Optional[Dict[str, Any]] = None  # Hunk decisions for doc-writer workflow
 
 class NexusStageUpdate(BaseModel):
     """Real-time stage update from Nexus workflow"""
@@ -1139,11 +1234,17 @@ async def _sync_run_to_db(run_id: str, project_id: str = None, task_id: str = No
 async def _get_run_from_db_or_memory(run_id: str) -> Optional[Dict[str, Any]]:
     """
     Get run state from memory first, fallback to database.
+    Checks both Nexus Prime runs and generic engine runs.
     Restores run to memory if found in DB.
     """
-    # Check memory first
+    # Check Nexus Prime memory first
     if run_id in _nexus_runs:
         return _nexus_runs[run_id]
+    
+    # Check generic engine runs
+    engine: GraphEngine = app.state.engine
+    if run_id in engine._runs:
+        return engine._runs[run_id]
     
     # Try loading from database
     supabase = get_supabase()
@@ -1168,7 +1269,15 @@ async def _execute_nexus_workflow(run_id: str, initial_state: Dict[str, Any]):
     print(f"[Nexus] Starting workflow execution for run_id: {run_id}")
     
     try:
-        from nexus_workflow import nexus_graph
+        # Determine which workflow graph to use based on workflow_type
+        workflow_type = initial_state.get("context", {}).get("workflow_type", "nexus-prime")
+        
+        if workflow_type == "doc-writer":
+            from doc_workflow import doc_graph as active_graph
+            print(f"[Nexus] Using Documentation Writer workflow")
+        else:
+            from nexus_workflow import nexus_graph as active_graph
+            print(f"[Nexus] Using Nexus Prime workflow")
     except Exception as import_err:
         print(f"[Nexus] IMPORT ERROR: {import_err}")
         _nexus_runs[run_id] = {
@@ -1202,17 +1311,18 @@ async def _execute_nexus_workflow(run_id: str, initial_state: Dict[str, Any]):
     # Initialize state
     _nexus_runs[run_id] = {
         "status": "running",
-        "current_stage": "nexus_prime",
+        "current_stage": workflow_type,
         "stages_completed": [],
         "artifacts": {},
         "activity_log": [],
         "error": None,
         "project_id": project_id,
         "task_id": task_id,
-        "initial_state": initial_state
+        "initial_state": initial_state,
+        "workflow_type": workflow_type
     }
     await _sync_run_to_db(run_id, project_id, task_id)
-    await stream_manager.broadcast_log(run_id, "Workflow started", "info")
+    await stream_manager.broadcast_log(run_id, f"Workflow started ({workflow_type})", "info")
     
     try:
         config = {"configurable": {"thread_id": run_id}}
@@ -1233,7 +1343,7 @@ async def _execute_nexus_workflow(run_id: str, initial_state: Dict[str, Any]):
         current_agent_response = {"name": "", "content": ""}
         
         # USE astream_events FOR GRANULAR VISIBILITY
-        async for event in nexus_graph.astream_events(initial_state, config, version="v2"):
+        async for event in active_graph.astream_events(initial_state, config, version="v2"):
             kind = event["event"]
             name = event.get("name", "")
             tags = event.get("tags", [])
@@ -1315,7 +1425,7 @@ async def _execute_nexus_workflow(run_id: str, initial_state: Dict[str, Any]):
         
         # Check if we finished due to completion or interrupt
         # We can check the graph state
-        snapshot = await nexus_graph.aget_state(config)
+        snapshot = await active_graph.aget_state(config)
         if snapshot.next:
             print(f"[Nexus] Workflow PAUSED at: {snapshot.next}")
             # Notify frontend of interrupt via stream
@@ -1324,8 +1434,8 @@ async def _execute_nexus_workflow(run_id: str, initial_state: Dict[str, Any]):
                 "interrupts": snapshot.next,
                 "values": snapshot.values
             })
-             # Update state status
             _nexus_runs[run_id]["status"] = "awaiting_input"
+            _nexus_runs[run_id]["paused_at"] = list(snapshot.next)
         else:
             _nexus_runs[run_id]["status"] = "completed"
             await stream_manager.broadcast_log(run_id, "Workflow completed successfully", "success")
@@ -1506,7 +1616,9 @@ async def get_nexus_history(run_id: str):
         "status": run.get("status"),
         "current_stage": run.get("current_stage"),
         "stages_completed": run.get("stages_completed", []),
-        "error": run.get("error")
+        "error": run.get("error"),
+        "outputs": run.get("artifacts", {}),
+        "next": run.get("paused_at")
     }
 
 
@@ -1522,7 +1634,13 @@ async def _resume_nexus_workflow(run_id: str, updates: Optional[Dict[str, Any]] 
     print(f"[Nexus] Resuming workflow for run_id: {run_id}")
     
     try:
-        from nexus_workflow import nexus_graph
+        # Determine which graph to resume based on stored workflow_type
+        workflow_type = _nexus_runs.get(run_id, {}).get("workflow_type", "nexus-prime")
+        
+        if workflow_type == "doc-writer":
+            from doc_workflow import doc_graph as active_graph
+        else:
+            from nexus_workflow import nexus_graph as active_graph
     except Exception as import_err:
         print(f"[Nexus] RESUME IMPORT ERROR: {import_err}")
         return
@@ -1536,11 +1654,11 @@ async def _resume_nexus_workflow(run_id: str, updates: Optional[Dict[str, Any]] 
         # Apply updates (Human Feedback) before resuming
         if updates:
             print(f"[Nexus] Applying state updates before resume: {updates}")
-            await nexus_graph.aupdate_state(config, updates)
+            await active_graph.aupdate_state(config, updates)
         
         # Resume with astream_events
         # Pass None to resume from interrupt
-        async for event in nexus_graph.astream_events(None, config, version="v2"):
+        async for event in active_graph.astream_events(None, config, version="v2"):
             kind = event["event"]
             name = event.get("name", "")
             data = event.get("data", {})
@@ -1568,10 +1686,11 @@ async def _resume_nexus_workflow(run_id: str, updates: Optional[Dict[str, Any]] 
                 await _sync_run_to_db(run_id)
 
         # Check final status
-        snapshot = await nexus_graph.aget_state(config)
+        snapshot = await active_graph.aget_state(config)
         if snapshot.next:
             print(f"[Nexus] Workflow PAUSED at: {snapshot.next}")
             _nexus_runs[run_id]["status"] = "awaiting_input"
+            _nexus_runs[run_id]["paused_at"] = list(snapshot.next)
             # Notify interrupt
             await stream_manager.publish(run_id, {
                 "type": "interrupt",
@@ -1685,17 +1804,21 @@ async def resume_nexus_workflow(run_id: str, request: NexusResumeRequest, backgr
     # Assuming we just update 'evaluator_decision' or inject feedback into 'messages'
     
     updates = {}
-    if request.approval_action == "reject":
-        updates["evaluator_decision"] = "human_in_loop" # Send back to human/loop or retry?
+    
+    # Handle doc-writer hunk decisions
+    if request.doc_changes:
+        # Merge hunk decisions into the graph state's outputs
+        existing_outputs = run.get("outputs", {}) if isinstance(run, dict) else {}
+        updates["outputs"] = {
+            **existing_outputs,
+            "doc_changes": request.doc_changes
+        }
+        updates["messages"] = [f"Human reviewed documentation changes: {request.approval_action}"]
+    elif request.approval_action == "reject":
+        updates["evaluator_decision"] = "human_in_loop"
         updates["messages"] = [f"Human Rejected: {request.feedback}"]
         updates["nexus_protocol_extensions"] = {"status_update": "REJECTED: Revising based on feedback"}
     else:
-        # If approved, we don't set a decision, we let it flow?
-        # Or we set decision="approved"?
-        # route_nexus_prime handles explicit routes.
-        # If we are coming from 'await_research_approval', the next node is 'nexus_prime'.
-        # 'nexus_prime' (the LLM) will see the current state.
-        # We should append a message "Human approved research."
         updates["messages"] = [f"Human Approved: {request.feedback or 'Proceed'}"]
         updates["nexus_protocol_extensions"] = {"status_update": f"APPROVED: {request.approval_action}"}
 

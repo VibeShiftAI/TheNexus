@@ -206,6 +206,8 @@ class FleetNode(AtomicNode):
     
     Represents Research, Architect, Builder, or Auditor fleets
     that work together on a specific phase of the pipeline.
+    Each fleet's sub-agents can be individually configured with
+    different models via the workflow builder config panel.
     """
     
     type_id = "fleet"
@@ -217,8 +219,32 @@ class FleetNode(AtomicNode):
     levels = ["project", "task"]
     node_type = "fleet"
     
+    # Per-fleet sub-agent model config keys
+    _FLEET_MODEL_KEYS = {
+        "research": [
+            ("scoper_model", "Scoper Model", "Model for the Scoper agent (plans research queries)"),
+            ("researcher_model", "Researcher Model", "Model for the Researcher agent (executes searches)"),
+            ("vetter_model", "Vetter Model", "Model for the Vetter agent (reviews research plan)"),
+            ("synthesizer_model", "Synthesizer Model", "Model for the Synthesizer agent (writes dossier)"),
+        ],
+        "architect": [
+            ("cartographer_model", "Cartographer Model", "Model for the Cartographer agent (explores codebase)"),
+            ("drafter_model", "Drafter Model", "Model for the Drafter agent (writes blueprint spec)"),
+            ("grounder_model", "Grounder Model", "Model for the Grounder agent (validates manifest)"),
+        ],
+        "builder": [
+            ("scout_model", "Scout Model", "Model for the Scout agent (reads files, plans edits)"),
+            ("coder_model", "Coder Model", "Model for the Coder agent (writes code)"),
+            ("checker_model", "Checker Model", "Model for the Checker agent (syntax/logic review)"),
+        ],
+        "audit": [
+            ("forensic_model", "Forensic Model", "Model for the Forensic agent (investigates changes)"),
+            ("verdict_model", "Verdict Model", "Model for the Verdict agent (final approval)"),
+        ],
+    }
+    
     def get_properties(self) -> List[Dict[str, Any]]:
-        return [
+        props = [
             {
                 "displayName": "Fleet Type",
                 "name": "fleet_type",
@@ -233,13 +259,6 @@ class FleetNode(AtomicNode):
                 "description": "The type of fleet to deploy",
             },
             {
-                "displayName": "Model",
-                "name": "model",
-                "type": "modelSelector",
-                "default": "",
-                "description": "AI model to use for this fleet",
-            },
-            {
                 "displayName": "Max Iterations",
                 "name": "max_iterations",
                 "type": "number",
@@ -247,6 +266,32 @@ class FleetNode(AtomicNode):
                 "description": "Maximum iterations before stopping",
             },
         ]
+        
+        # Add per-agent model selectors with displayOptions
+        for fleet_type, model_keys in self._FLEET_MODEL_KEYS.items():
+            for key, display_name, description in model_keys:
+                props.append({
+                    "displayName": display_name,
+                    "name": key,
+                    "type": "modelSelector",
+                    "default": "",
+                    "description": description,
+                    "displayOptions": {
+                        "show": {"fleet_type": [fleet_type]}
+                    },
+                })
+        
+        return props
+    
+    def _collect_model_overrides(self, ctx: NodeExecutionContext, fleet_type: str) -> Dict[str, str]:
+        """Collect non-empty model overrides from node config."""
+        overrides = {}
+        model_keys = self._FLEET_MODEL_KEYS.get(fleet_type, [])
+        for key, _, _ in model_keys:
+            value = ctx.get_node_parameter(key, "")
+            if value:
+                overrides[key] = value
+        return overrides
     
     async def execute(
         self,
@@ -254,24 +299,57 @@ class FleetNode(AtomicNode):
         items: List[NodeExecutionData]
     ) -> List[List[NodeExecutionData]]:
         """Execute the fleet's coordinated agents."""
-        fleet_type = ctx.get_node_parameter("fleet_type", "research")
+        from supervisor.agent import (
+            call_research_fleet,
+            call_architect_fleet,
+            call_builder_fleet,
+            call_audit_fleet,
+        )
         
-        # Route to appropriate specialized node based on fleet type
-        result = {
-            "fleet_type": fleet_type,
-            "status": "completed",
-            **(items[0].json if items else {})
+        fleet_type = ctx.get_node_parameter("fleet_type", "research")
+        state = items[0].json if items else {}
+        
+        # Inject model overrides from config panel
+        model_overrides = self._collect_model_overrides(ctx, fleet_type)
+        if model_overrides:
+            existing = state.get("model_overrides", {})
+            state["model_overrides"] = {**existing, **model_overrides}
+        
+        dispatch = {
+            "research": call_research_fleet,
+            "architect": call_architect_fleet,
+            "builder": call_builder_fleet,
+            "audit": call_audit_fleet,
         }
-        return [[NodeExecutionData(json=result)]]
+        
+        fleet_fn = dispatch.get(fleet_type)
+        if not fleet_fn:
+            return [[NodeExecutionData(
+                json={"error": f"Unknown fleet type: {fleet_type}"},
+            )]]
+        
+        try:
+            print(f"[FleetNode] Dispatching to {fleet_type} fleet")
+            result = await fleet_fn(state)
+            merged = {**state, **result}
+            return [[NodeExecutionData(json=merged)]]
+        except Exception as e:
+            print(f"[FleetNode] {fleet_type} fleet error: {e}")
+            import traceback
+            traceback.print_exc()
+            return [[NodeExecutionData(
+                json={**state, "error": str(e)},
+                error=e
+            )]]
 
 
 class SupervisorNode(AtomicNode):
     """
-    Generic Supervisor node for workflow orchestration.
+    Supervisor node for Nexus Prime workflow orchestration.
     
-    Routes decisions between worker nodes based on state evaluation.
-    This is the visual builder's supervisor type - distinct from
-    NexusPrimeNode which is the full Nexus workflow.
+    Routes decisions between worker fleet nodes based on state evaluation.
+    Delegates to the actual supervisor_node() from supervisor.agent which
+    uses an LLM to make routing decisions.
     """
     
     type_id = "supervisor"
@@ -286,23 +364,11 @@ class SupervisorNode(AtomicNode):
     def get_properties(self) -> List[Dict[str, Any]]:
         return [
             {
-                "displayName": "Model",
-                "name": "model",
+                "displayName": "Supervisor Model",
+                "name": "supervisor_model",
                 "type": "modelSelector",
                 "default": "",
-                "description": "AI model used for routing decisions",
-            },
-            {
-                "displayName": "Routing Strategy",
-                "name": "routing_strategy",
-                "type": "options",
-                "default": "sequential",
-                "options": [
-                    {"name": "Sequential", "value": "sequential"},
-                    {"name": "Conditional", "value": "conditional"},
-                    {"name": "Parallel", "value": "parallel"},
-                ],
-                "description": "How to route between worker nodes",
+                "description": "AI model for the Supervisor (routing decisions)",
             },
             {
                 "displayName": "Max Retries",
@@ -318,16 +384,33 @@ class SupervisorNode(AtomicNode):
         ctx: NodeExecutionContext,
         items: List[NodeExecutionData]
     ) -> List[List[NodeExecutionData]]:
-        """Execute supervisor routing logic."""
-        strategy = ctx.get_node_parameter("routing_strategy", "sequential")
+        """Execute supervisor routing logic via actual supervisor_node()."""
+        from supervisor.agent import supervisor_node
         
-        result = {
-            "supervisor_decision": "continue",
-            "routing_strategy": strategy,
-            **(items[0].json if items else {})
-        }
-        return [[NodeExecutionData(json=result)]]
+        state = items[0].json if items else {}
+        
+        # Inject supervisor model override
+        supervisor_model = ctx.get_node_parameter("supervisor_model", "")
+        if supervisor_model:
+            overrides = state.get("model_overrides", {})
+            overrides["supervisor_model"] = supervisor_model
+            state["model_overrides"] = overrides
+        
+        try:
+            print(f"[SupervisorNode] Executing routing decision")
+            result = await supervisor_node(state)
+            merged = {**state, **result}
+            return [[NodeExecutionData(json=merged)]]
+        except Exception as e:
+            print(f"[SupervisorNode] Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return [[NodeExecutionData(
+                json={**state, "error": str(e)},
+                error=e
+            )]]
 from .approval_gate import ApprovalGateNode
+from .walkthrough_generator import WalkthroughGeneratorNode
 
 
 __all__ = [
@@ -338,5 +421,5 @@ __all__ = [
     "FleetNode",
     "SupervisorNode",
     "ApprovalGateNode",
+    "WalkthroughGeneratorNode",
 ]
-

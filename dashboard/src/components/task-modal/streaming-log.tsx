@@ -10,7 +10,8 @@ interface StreamingLogProps {
     onInterrupt?: (payload: any) => void;
     onStateUpdate?: (update: any) => void;
     onNodeChange?: (node: string) => void;
-    onApproveCommit?: () => Promise<void>;  // Called when user clicks Approve & Commit
+    onApproveCommit?: () => Promise<void>;
+    onAutoComplete?: () => void;  // Called on workflow_complete without needing button click  // Called when user clicks Approve & Commit
 }
 
 interface LogBlock {
@@ -78,7 +79,7 @@ function RenderContent({ content }: { content: string }) {
     return <>{content}</>;
 }
 
-export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpdate, onNodeChange, onApproveCommit }: StreamingLogProps) {
+export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpdate, onNodeChange, onApproveCommit, onAutoComplete }: StreamingLogProps) {
     const [blocks, setBlocks] = useState<LogBlock[]>([]);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
     const [context, setContext] = useState<TaskContext | null>(null);
@@ -102,7 +103,7 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
 
         const fetchHistory = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/graph/nexus/${runId}/history`);
+                const response = await fetch(`http://localhost:8000/runs/${runId}/history`);
                 if (response.ok) {
                     const data = await response.json();
 
@@ -133,12 +134,13 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
                     }
 
                     // Check if workflow is paused at an interrupt point (for restored workflows)
+                    // Only fire if the run is actually in interrupted/paused status
                     const pausedAt = data.next || data.paused_at;
-                    if (pausedAt && onInterrupt) {
+                    if (pausedAt && onInterrupt && (data.status === 'interrupted' || data.status === 'paused')) {
                         // Normalize to array format expected by overlay
                         const interruptNodes = Array.isArray(pausedAt) ? pausedAt : [pausedAt];
                         // Only trigger for known interrupt points
-                        const interruptPoints = ['nexus_prime', 'human_in_loop', 'await_research_approval', 'await_plan_approval'];
+                        const interruptPoints = ['nexus_prime', 'human_in_loop', 'await_research_approval', 'await_plan_approval', 'review_docs'];
                         const matchingInterrupt = interruptNodes.find((n: string) =>
                             interruptPoints.includes(n) || n.includes('approval') || n.includes('human')
                         );
@@ -168,7 +170,7 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
             eventSourceRef.current.close();
         }
 
-        const eventSource = new EventSource(`http://localhost:8000/graph/nexus/${runId}/stream`);
+        const eventSource = new EventSource(`http://localhost:8000/runs/${runId}/stream`);
 
         setConnectionStatus('connecting');
 
@@ -219,6 +221,10 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
         if (type === 'workflow_complete') {
             setWorkflowComplete(true);
             addSystemBlock('Workflow completed successfully!', 'info');
+            // Auto-complete if callback provided (for generic workflows that already had user review)
+            if (onAutoComplete) {
+                onAutoComplete();
+            }
             return;
         }
 
@@ -270,17 +276,18 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
 
             // B. Chain/Node Start/End
             else if (kind === 'on_chain_start') {
-                // Ignore noisy wrapper nodes, focus on main fleet nodes
-                // Filter by tags or names
-                if (['research_fleet', 'architect_fleet', 'builder_fleet', 'audit_fleet', 'nexus_prime'].includes(name)) {
+                // Notify parent of any node start (generic — works for all workflow types)
+                if (name && name !== '__start__' && name !== '__end__') {
                     if (onNodeChange) onNodeChange(name);
                     addSystemBlock(`Starting ${name}...`, 'info');
                 }
             }
 
             else if (kind === 'on_chain_end') {
-                // If an agent finished speaking (chain ended), mark block as done
-                if (['research_fleet', 'architect_fleet', 'builder_fleet', 'audit_fleet', 'nexus_prime'].includes(name)) {
+                // Mark the block for this node as done (generic — any node)
+                if (name && name !== '__start__' && name !== '__end__') {
+                    // Update active node (astream only yields after completion)
+                    if (onNodeChange) onNodeChange(name);
                     setBlocks(prev => {
                         const last = prev[prev.length - 1];
                         if (last && last.name === name) {
@@ -351,8 +358,8 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
                     <span className="text-xs font-medium text-slate-300">Live Agent Activity</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* Approve & Commit Button - shown when workflow completes */}
-                    {workflowComplete && onApproveCommit && (
+                    {/* Approve & Commit Button - shown when workflow completes (hidden if auto-completing) */}
+                    {workflowComplete && onApproveCommit && !onAutoComplete && (
                         <button
                             onClick={async () => {
                                 setIsCommitting(true);

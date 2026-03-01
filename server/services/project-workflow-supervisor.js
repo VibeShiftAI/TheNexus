@@ -501,6 +501,10 @@ async function runProjectWorkflowSupervisor(options) {
 
 /**
  * Handle starting a workflow
+ * 
+ * For workflows with a matching project-level LangGraph template,
+ * this delegates execution to the Python backend via /graph/run.
+ * For legacy workflows without a template, falls back to generateStageTasks.
  */
 async function handleStartWorkflow(workflow, context) {
     const { id, stages, status, current_stage } = workflow;
@@ -525,27 +529,118 @@ async function handleStartWorkflow(workflow, context) {
         current_stage: firstStage
     });
 
-    // Refresh workflow
-    const updatedWorkflow = await db.getProjectWorkflow(id);
+    // ═══════════════════════════════════════════════════════════════
+    // Execute via LangGraph Python backend
+    // ═══════════════════════════════════════════════════════════════
+    const langGraphUrl = process.env.LANGGRAPH_URL || 'http://localhost:8000';
+    const workflowType = workflow.workflow_type || workflow.type;
 
-    // Generate tasks for first stage
-    const tasks = await generateStageTasks(updatedWorkflow, context);
+    if (!workflowType) {
+        return { success: false, error: 'No workflow_type defined' };
+    }
 
-    const stageName = stages?.find(s => s.id === firstStage)?.name || firstStage;
+    try {
+        // Fetch project-level templates from Python backend
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    await updateWorkflowSupervisorStatus(id, WORKFLOW_STATUS.RUNNING, {
-        currentStage: stageName,
-        tasksCreated: tasks.length
-    });
+        const templatesRes = await fetch(`${langGraphUrl}/templates?level=project`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
 
-    console.log(`[WorkflowSupervisor] Started workflow ${id} with ${tasks.length} tasks for stage: ${stageName}`);
+        if (!templatesRes.ok) {
+            throw new Error(`Template fetch failed: ${templatesRes.status}`);
+        }
 
-    return {
-        success: true,
-        message: `Workflow started with ${tasks.length} tasks for stage: ${stageName}`,
-        tasksCreated: tasks.length, // Consistent with API response property
-        tasks
-    };
+        const data = await templatesRes.json();
+        const templates = data.templates || [];
+
+        // Find matching template
+        const template = templates.find(t =>
+            t.workflow_type === workflowType ||
+            t.name.toLowerCase().includes(workflowType.replace('-', ' '))
+        );
+
+        if (!template) {
+            throw new Error(`No LangGraph template found for workflow type: ${workflowType}`);
+        }
+
+        console.log(`[WorkflowSupervisor] Found LangGraph template: ${template.name}`);
+
+        // Get project info for context
+        const project = workflow.project || await db.getProject(workflow.project_id);
+
+        // Execute via Python /graph/run
+        const runController = new AbortController();
+        const runTimeoutId = setTimeout(() => runController.abort(), 120000); // 2 min for full run
+
+        const runRes = await fetch(`${langGraphUrl}/graph/run`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                graph_config: {
+                    nodes: template.nodes,
+                    edges: template.edges,
+                    conditionalEdges: template.conditionalEdges || []
+                },
+                project_id: workflow.project_id,
+                input_data: {
+                    project_id: workflow.project_id,
+                    project_path: project?.path || project?.local_path || '',
+                    project_name: project?.name || '',
+                    workflow_id: id,
+                    workflow_type: workflowType,
+                    context: context || ''
+                }
+            }),
+            signal: runController.signal
+        });
+        clearTimeout(runTimeoutId);
+
+        if (!runRes.ok) {
+            throw new Error(`LangGraph run failed: ${runRes.status}`);
+        }
+
+        const runData = await runRes.json();
+
+        if (!runData.success) {
+            throw new Error(`LangGraph run returned error: ${runData.error || 'unknown'}`);
+        }
+
+        console.log(`[WorkflowSupervisor] LangGraph workflow started: run_id=${runData.run_id}`);
+
+        // Store the LangGraph run_id — workflow stays in_progress
+        // Completion will be triggered by Python callback to /api/langgraph/workflow-complete
+        await db.updateProjectWorkflow(id, {
+            supervisor_status: WORKFLOW_STATUS.RUNNING,
+            supervisor_details: {
+                langgraph_run_id: runData.run_id,
+                template_name: template.name,
+                startedAt: new Date().toISOString(),
+                mode: 'langgraph'
+            }
+        });
+
+        return {
+            success: true,
+            message: `Workflow started via LangGraph (${template.name})`,
+            runId: runData.run_id,
+            mode: 'langgraph'
+        };
+
+    } catch (err) {
+        console.error(`[WorkflowSupervisor] Workflow ${id} failed: ${err.message}`);
+        await db.updateProjectWorkflow(id, {
+            status: 'idea',
+            supervisor_status: WORKFLOW_STATUS.ERROR,
+            supervisor_details: {
+                error: err.message,
+                timestamp: new Date().toISOString()
+            }
+        });
+        return { success: false, error: err.message };
+    }
 }
 
 /**

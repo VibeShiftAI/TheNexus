@@ -233,8 +233,11 @@ async function executeInitiativeForProject(options) {
         initiativeId
     });
 
-    // Create actionable tasks in the project from template stages
-    if (result.success) {
+    // Create actionable tasks from template stages — but ONLY if the workflow
+    // was a dashboard-level template. Project-level LangGraph templates (like
+    // documentation.json) create their own tasks via DocumentationTaskCreatorNode,
+    // so we skip to avoid duplicates.
+    if (result.success && result.data?.templateLevel !== 'project') {
         try {
             const taskIds = await createInitiativeTasks({
                 initiativeId,
@@ -295,23 +298,25 @@ async function executeWithWorkflowTemplate(options) {
         throw new Error(`Failed to fetch workflow templates: ${err.message}`);
     }
 
-    // Find a matching dashboard-level template for this workflow type
+    // Find the project-level template matching this workflow type.
+    // Dashboard initiatives orchestrate project-level workflows across
+    // multiple projects — they always delegate to project templates.
     const template = templates.find(t =>
-        t.level === 'dashboard' &&
-        (t.name.toLowerCase().includes(workflowType.replace('-', ' ')) ||
-            t.workflow_type === workflowType)
+        t.level === 'project' &&
+        (t.workflow_type === workflowType ||
+            t.name.toLowerCase().includes(workflowType.replace('-', ' ')))
     );
 
     if (!template) {
         const availableTemplates = templates
-            .filter(t => t.level === 'dashboard')
-            .map(t => t.name)
+            .filter(t => t.level === 'project')
+            .map(t => `${t.name} (${t.workflow_type})`)
             .join(', ') || 'None';
 
         throw new Error(
-            `No workflow template found for initiative type "${workflowType}". ` +
-            `Create a dashboard-level template in the Workflow Builder that matches this type. ` +
-            `Available dashboard templates: [${availableTemplates}]`
+            `No project-level workflow template found for initiative type "${workflowType}". ` +
+            `Create a project-level template that matches this type. ` +
+            `Available project templates: [${availableTemplates}]`
         );
     }
 
@@ -366,7 +371,7 @@ async function executeWithWorkflowTemplate(options) {
         success: true,
         runId: runData.run_id,
         summary: `Workflow template "${template.name}" started`,
-        data: { templateName: template.name }
+        data: { templateName: template.name, templateLevel: template.level }
     };
 }
 

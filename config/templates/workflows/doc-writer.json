@@ -1,0 +1,132 @@
+{
+    "id": "doc-writer",
+    "name": "Documentation Writer",
+    "description": "Lightweight workflow for updating .context/ and .md documentation files. Produces diff-based review artifacts with per-hunk approve/reject/revise controls.",
+    "level": "task",
+    "workflow_type": "doc-writer",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "explore",
+            "name": "Explore Docs",
+            "order": 1,
+            "description": "Read existing documentation and recent changes"
+        },
+        {
+            "id": "draft",
+            "name": "Draft Changes",
+            "order": 2,
+            "description": "Generate documentation updates with diff hunks"
+        },
+        {
+            "id": "review",
+            "name": "Review Changes",
+            "order": 3,
+            "description": "Human reviews diff-based changes per hunk"
+        },
+        {
+            "id": "write",
+            "name": "Write Files",
+            "order": 4,
+            "description": "Write approved changes to disk"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "explore_docs",
+            "data": {
+                "label": "Explore Docs",
+                "config": {
+                    "description": "Read existing .context/ files, git history, and project structure"
+                }
+            },
+            "type": "doc_explorer",
+            "position": {
+                "x": 100,
+                "y": 150
+            }
+        },
+        {
+            "id": "draft_docs",
+            "data": {
+                "label": "Draft Changes",
+                "config": {
+                    "description": "Generate documentation updates with per-hunk diffs"
+                }
+            },
+            "type": "doc_drafter",
+            "position": {
+                "x": 300,
+                "y": 150
+            }
+        },
+        {
+            "id": "review_docs",
+            "data": {
+                "label": "Review Gate",
+                "config": {
+                    "description": "Human reviews diff-based changes"
+                }
+            },
+            "type": "doc_review_gate",
+            "position": {
+                "x": 500,
+                "y": 150
+            }
+        },
+        {
+            "id": "write_docs",
+            "data": {
+                "label": "Write Files",
+                "config": {
+                    "description": "Write approved changes to disk"
+                }
+            },
+            "type": "doc_file_writer",
+            "position": {
+                "x": 700,
+                "y": 150
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e-explore-draft",
+            "type": "smoothstep",
+            "source": "explore_docs",
+            "target": "draft_docs"
+        },
+        {
+            "id": "e-draft-review",
+            "type": "smoothstep",
+            "source": "draft_docs",
+            "target": "review_docs"
+        },
+        {
+            "id": "e-review-write",
+            "type": "smoothstep",
+            "source": "review_docs",
+            "target": "write_docs"
+        },
+        {
+            "id": "e-review-revise",
+            "type": "smoothstep",
+            "source": "review_docs",
+            "target": "draft_docs",
+            "style": {
+                "strokeDasharray": "5,5"
+            },
+            "label": "revise"
+        }
+    ],
+    "conditionalEdges": [
+        {
+            "source": "review_docs",
+            "targets": {
+                "complete": "write_docs",
+                "revise": "draft_docs"
+            },
+            "routingField": "evaluator_decision"
+        }
+    ]
+}

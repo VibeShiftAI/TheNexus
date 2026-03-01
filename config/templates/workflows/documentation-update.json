@@ -1,0 +1,69 @@
+{
+  "id": "documentation-update",
+  "name": "Documentation Update",
+  "description": "",
+  "level": "project",
+  "workflow_type": "custom",
+  "is_system": false,
+  "nodes": [
+    {
+      "id": "explore",
+      "type": "codebase_explorer",
+      "data": {
+        "label": "Explore Codebase",
+        "config": {
+          "query": "structure",
+          "search_type": "structure",
+          "thoroughness": "medium"
+        }
+      },
+      "position": {
+        "x": 100.0,
+        "y": 150.0
+      }
+    },
+    {
+      "id": "analyze",
+      "type": "general_agent",
+      "data": {
+        "label": "Analyze Context Gaps",
+        "config": {
+          "task": "You are a documentation analyst for a software project. You have been given the project's codebase structure and its existing .context/ documentation files.\n\nYour job is to identify documentation gaps by comparing what the codebase ACTUALLY contains vs what the .context/ files CURRENTLY describe.\n\nFor each gap, produce a JSON array of objects with:\n- `action`: 'update' or 'create'\n- `file`: the .context/ filename (e.g., 'tech-stack.md', 'architecture.md')\n- `title`: a clear task title (e.g., 'Update tech-stack.md to add FastAPI backend')\n- `description`: detailed markdown description of what needs to change and why, including acceptance criteria\n- `priority`: 'high', 'medium', or 'low'\n\nFocus on:\n1. New technologies/frameworks in the code not mentioned in tech-stack.md\n2. New services, APIs, or architectural patterns not documented\n3. Outdated information in existing .context/ files\n4. Missing context files (e.g., no architecture.md, no api-reference.md)\n\nReturn ONLY the JSON array, no other text.",
+          "max_turns": 20,
+          "model": "gemini-3-flash-preview"
+        }
+      },
+      "position": {
+        "x": 300.0,
+        "y": 150.0
+      }
+    },
+    {
+      "id": "create-tasks",
+      "type": "doc_task_creator",
+      "data": {
+        "label": "Generate Documentation Tasks",
+        "config": {}
+      },
+      "position": {
+        "x": 500.0,
+        "y": 150.0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "explore",
+      "target": "analyze",
+      "label": null
+    },
+    {
+      "id": "e2",
+      "source": "analyze",
+      "target": "create-tasks",
+      "label": null
+    }
+  ],
+  "stages": []
+}
