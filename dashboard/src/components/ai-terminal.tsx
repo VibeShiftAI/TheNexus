@@ -9,78 +9,11 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useParams } from "next/navigation";
 
 import { getAuthHeader } from "@/lib/auth";
-import { io, Socket } from "socket.io-client";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
+import { useCortex } from "@/components/cortex-provider";
+import type { Message, CortexArtifact, PlanDraftData, CompiledPlanData, ChatResponseData, LineCommentData, VoteSummaryData, StatusUpdateData, UnknownArtifactData } from "@/components/cortex-provider";
 
-interface Message {
-    role: 'user' | 'assistant' | 'system';
-    content: string;
-    timestamp: Date;
-    artifact?: CortexArtifact;
-}
-
-// Cortex Artifact types for Glass Box transparency
-interface CortexArtifact {
-    type: 'PLAN_DRAFT' | 'PLAN_REVISED' | 'COUNCIL_REVIEW' | 'COMPILED_PLAN' | 'CHAT_RESPONSE' | 'STATUS_UPDATE' | 'READY_FOR_REVIEW' | 'UNKNOWN_ARTIFACT';
-    data: PlanDraftData | VoteSummaryData | CompiledPlanData | ChatResponseData | StatusUpdateData | UnknownArtifactData | any;
-}
-
-// Phase 12: Updated for Markdown-based plans
-interface PlanDraftData {
-    title: string;
-    // Phase 12 fields
-    version?: number;     // Plan version number
-    markdown?: string;    // Full Markdown content
-    rationale?: string;   // Why revisions were made
-    diff?: string;        // Diff from previous version
-    // Legacy fields (backward compat)
-    goal?: string;
-    nodes?: { id: string; type: string; description: string }[];
-    status?: 'draft' | 'approved' | 'rejected';
-    thread_id?: string;
-    revision?: number;    // Legacy revision number
-    is_final?: boolean;   // True when plan is ready for human review
-}
-
-interface CompiledPlanData {
-    title: string;
-    goal: string;
-    nodes: { id: string; type: string; description: string; workflow?: string }[];
-    thread_id?: string;
-}
-
-interface ChatResponseData {
-    response: string;
-    thread_id?: string;
-}
-
-// Phase 12: Updated with line_comments
-interface LineCommentData {
-    voter: string;
-    line_number: number;
-    line_content: string;
-    comment: string;
-    suggestion?: string;
-}
-
-interface VoteSummaryData {
-    votes: { voter: string; decision: string; reasoning: string; line_comments?: LineCommentData[] }[];
-    thread_id?: string;
-}
-
-interface StatusUpdateData {
-    status: string;
-    message?: string;
-    preview?: string;
-    thread_id?: string;
-}
-
-interface UnknownArtifactData {
-    node_name: string;
-    data: string;
-    requires_attention: boolean;
-    thread_id?: string;
-}
+// Types are now imported from cortex-provider.tsx
 
 interface AITerminalProps {
     isOpen?: boolean;
@@ -123,7 +56,7 @@ const MODES = [
 
 export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITerminalProps) {
     const isInline = mode === 'inline';
-    const [messages, setMessages] = useState<Message[]>([]);
+    const { messages, setMessages, readyForReview, setReadyForReview } = useCortex();
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
@@ -143,7 +76,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     // Approval loading state
     const [approvalLoading, setApprovalLoading] = useState<number | null>(null);
     // Track which thread_ids are ready for human review (after voting completes)
-    const [readyForReview, setReadyForReview] = useState<Set<string>>(new Set());
+    // readyForReview is now provided by CortexProvider via useCortex()
     // Track expanded artifact index for full content viewing (council reviews)
     const [expandedArtifact, setExpandedArtifact] = useState<number | null>(null);
     // Fullscreen plan review modal state
@@ -154,54 +87,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const params = useParams();
     const scopedProjectId = typeof params?.id === 'string' ? params.id : null;
 
-    // Phase 8: Load persisted messages on mount
-    useEffect(() => {
-        const stored = localStorage.getItem('cortex_chat_history');
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                // Restore timestamps as Date objects
-                const restored = parsed.map((m: any) => ({
-                    ...m,
-                    timestamp: new Date(m.timestamp)
-                }));
-                setMessages(restored);
-            } catch (e) {
-                console.warn('Failed to restore chat history:', e);
-            }
-        }
-
-        // Phase 9: Check for pending Cortex state (rehydration)
-        const lastThreadId = localStorage.getItem('cortex_thread_id');
-        if (lastThreadId) {
-            const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
-            fetch(`${cortexUrl}/api/terminal/state/${lastThreadId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.is_paused && data.current_plan) {
-                        console.log('[Nexus Terminal] Rehydrating pending plan:', data.current_plan.title);
-                        // Add a system message about the pending plan
-                        setMessages(prev => [...prev, {
-                            role: 'system',
-                            content: `⏸️ Pending plan "${data.current_plan.title}" awaiting your review.`,
-                            timestamp: new Date(),
-                            artifact: {
-                                type: 'PLAN_DRAFT',
-                                data: { ...data.current_plan, thread_id: lastThreadId }
-                            }
-                        }]);
-                    }
-                })
-                .catch(err => console.warn('[Nexus Terminal] Rehydration check failed:', err));
-        }
-    }, []);
-
-    // Phase 8: Persist messages to localStorage
-    useEffect(() => {
-        if (messages.length > 0) {
-            localStorage.setItem('cortex_chat_history', JSON.stringify(messages.slice(-100))); // Keep last 100
-        }
-    }, [messages]);
+    // Message persistence and rehydration are now handled by CortexProvider
 
     // Auto-scroll on new messages (scoped to messages container only)
     useEffect(() => {
@@ -247,78 +133,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
         }
     }, [isOpen, isInline]);
 
-    // Listen for Cortex artifact events via WebSocket (Phase 8: Glass Box)
-    useEffect(() => {
-        const nexusUrl = process.env.NEXT_PUBLIC_NEXUS_API_URL || 'http://localhost:4000';
-        const socket: Socket = io(nexusUrl, { transports: ['websocket', 'polling'] });
-
-        socket.on('connect', () => {
-            console.log('[Nexus Terminal] WebSocket connected:', socket.id);
-        });
-
-        socket.on('cortex-artifact', (artifact: CortexArtifact) => {
-            console.log('[Nexus Terminal] Artifact:', artifact.type);
-
-            // Phase 8: Handle STATUS_UPDATE separately (status ticker)
-            // Robust/Fuzzy handling (trim whitespace, normalize case)
-            const type = artifact.type?.trim().toUpperCase();
-
-            // Handle STATUS_UPDATE — append as persistent system message
-            if (type === 'STATUS_UPDATE') {
-                const statusData = artifact.data as StatusUpdateData;
-                setMessages(prev => [...prev, {
-                    role: 'system',
-                    content: statusData.message || statusData.status,
-                    timestamp: new Date(),
-                }]);
-                return;
-            }
-
-            // Handle READY_FOR_REVIEW - signals voting is complete and plan is ready
-            if (type === 'READY_FOR_REVIEW') {
-                const threadId = artifact.data?.thread_id;
-                console.log('[Nexus Terminal] READY_FOR_REVIEW received, thread:', threadId);
-                if (threadId) {
-                    setReadyForReview(prev => {
-                        const newSet = new Set(prev).add(threadId);
-                        return newSet;
-                    });
-                } else {
-                    console.warn('[Nexus Terminal] READY_FOR_REVIEW missing thread_id');
-                }
-                return;
-            }
-
-            // All other artifacts become messages
-            const labelMap: Record<string, string> = {
-                'PLAN_DRAFT': '📋 Draft Plan',
-                'PLAN_REVISED': '✅ Final Plan for Review',
-                'COUNCIL_REVIEW': '🗳️ Council Review',
-                'COMPILED_PLAN': '🔧 Compiled Plan',
-                'CHAT_RESPONSE': '💬 Response',
-                'UNKNOWN_ARTIFACT': '⚠️ Unknown Event'
-            };
-
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: labelMap[type] || `📋 ${artifact.type}`,
-                timestamp: new Date(),
-                artifact: artifact
-            }]);
-        });
-
-        socket.on('disconnect', () => {
-            console.warn('[Nexus Terminal] WebSocket disconnected');
-        });
-
-        socket.on('connect_error', (error: Error) => {
-            console.error('[Nexus Terminal] WebSocket connection failed:', error.message);
-        });
-
-        return () => {
-            socket.disconnect();
-        };
-    }, []);
+    // Socket.IO connection and artifact handling are now managed by CortexProvider
 
     // File handling functions
     const handleFileDrop = useCallback((files: FileList | File[]) => {
@@ -556,25 +371,22 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
 
                             {/* Modal Body — Rendered Markdown */}
                             <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0">
-                                {planData.rationale && (
-                                    <div className="mb-6 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                                        <span className="text-sm font-semibold text-amber-400">Rationale: </span>
-                                        <span className="text-sm text-amber-200">{planData.rationale}</span>
-                                    </div>
-                                )}
                                 <div className="prose prose-invert prose-sm max-w-none
                                     prose-headings:text-slate-100 prose-headings:font-bold
-                                    prose-h1:text-2xl prose-h1:border-b prose-h1:border-slate-700 prose-h1:pb-3 prose-h1:mb-4
-                                    prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-3
-                                    prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-2 prose-h3:text-cyan-300
-                                    prose-p:text-slate-300 prose-p:leading-relaxed
-                                    prose-li:text-slate-300 prose-li:my-0.5
-                                    prose-strong:text-white
-                                    prose-code:text-cyan-300 prose-code:bg-slate-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+                                    prose-h1:text-2xl prose-h1:border-b prose-h1:border-slate-600/50 prose-h1:pb-3 prose-h1:mb-6
+                                    prose-h2:text-xl prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-slate-50
+                                    prose-h3:text-lg prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-cyan-300
+                                    prose-h4:text-base prose-h4:mt-6 prose-h4:mb-2 prose-h4:text-slate-200
+                                    prose-p:text-slate-300 prose-p:leading-relaxed prose-p:my-3
+                                    prose-li:text-slate-300 prose-li:my-1 prose-li:leading-relaxed
+                                    prose-ul:my-3 prose-ol:my-3
+                                    prose-strong:text-white prose-strong:font-semibold
+                                    prose-em:text-slate-200
+                                    prose-code:text-cyan-300 prose-code:bg-slate-800/80 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono
                                     prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline
-                                    prose-hr:border-slate-700
-                                    prose-blockquote:border-l-cyan-500 prose-blockquote:bg-slate-800/50 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg
-                                    prose-table:text-sm prose-th:text-slate-200 prose-td:text-slate-300
+                                    prose-hr:border-slate-700/50 prose-hr:my-8
+                                    prose-blockquote:border-l-cyan-500/70 prose-blockquote:bg-slate-800/30 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic prose-blockquote:text-slate-400
+                                    prose-table:text-sm prose-th:text-slate-200 prose-th:bg-slate-800/50 prose-th:px-4 prose-th:py-2 prose-td:text-slate-300 prose-td:px-4 prose-td:py-2 prose-td:border-slate-700/50
                                 ">
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
@@ -600,6 +412,27 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                                         {normalizeMarkdown(planData.markdown) || ''}
                                     </ReactMarkdown>
                                 </div>
+
+                                {/* Rationale — shown at bottom after reading the plan */}
+                                {planData.rationale && (
+                                    <div className="mt-8 px-5 py-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="w-1 h-5 rounded-full bg-amber-400/60" />
+                                            <span className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Council Rationale</span>
+                                        </div>
+                                        <div className="prose prose-invert prose-sm max-w-none
+                                            prose-p:text-amber-200/90 prose-p:leading-relaxed prose-p:my-2
+                                            prose-strong:text-amber-300 prose-strong:font-semibold
+                                            prose-li:text-amber-200/90 prose-li:my-1
+                                            prose-ol:my-2 prose-ul:my-2
+                                            prose-code:text-amber-300 prose-code:bg-amber-900/30 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+                                        ">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {planData.rationale}
+                                            </ReactMarkdown>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Modal Footer — Actions */}
@@ -849,7 +682,13 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     msg.role === 'system' ? (
                         /* System messages: compact activity log line */
                         <div key={i} className="flex items-center gap-2 py-1 px-2">
-                            <Loader2 size={12} className="text-cyan-500/60 animate-spin flex-shrink-0" />
+                            {loading && i === messages.length - 1 ? (
+                                <Loader2 size={12} className="text-cyan-500/60 animate-spin flex-shrink-0" />
+                            ) : (
+                                <div className="w-3 h-3 flex items-center justify-center flex-shrink-0">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50" />
+                                </div>
+                            )}
                             <span className="text-xs text-slate-400">{msg.content}</span>
                         </div>
                     ) : (

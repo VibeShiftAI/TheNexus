@@ -1,7 +1,7 @@
 ---
 context_type: product-guidelines
-status: draft
-updated_at: 2026-03-01T19:12:42.973Z
+status: active
+updated_at: 2026-03-01T22:23:09.830Z
 ---
 
 # Product Guidelines: The Nexus
@@ -37,9 +37,3 @@ updated_at: 2026-03-01T19:12:42.973Z
 *   **Human-Centric:** Explain failures in plain language before showing technical details.
 *   **Solution-Oriented:** Always provide at least one recommended next step or fix.
 *   **Proactive:** If a common failure is detected (e.g., missing API key), offer to help fix it immediately.
-
----
-context_type: product-guidelines
-status: active
-updated_at: 2026-03-01T19:08:10.276Z
----

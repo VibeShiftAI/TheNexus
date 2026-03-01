@@ -1,7 +1,7 @@
 ---
 context_type: database-schema
-status: draft
-updated_at: 2026-03-01T19:12:42.573Z
+status: active
+updated_at: 2026-03-01T22:23:09.458Z
 ---
 
 # Database Schema Reference
@@ -185,9 +185,3 @@ Aggregated token usage tracking per day per model.
 - **model** (Text): Model identifier.
 - **input_tokens / output_tokens / total_tokens** (BigInt): Token counts.
 - **request_count** (Integer): Number of API calls.
-
----
-context_type: database-schema
-status: active
-updated_at: 2026-03-01T19:08:09.847Z
----

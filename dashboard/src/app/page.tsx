@@ -132,14 +132,14 @@ export default function Home() {
       {/* Content Grid */}
       <div className="container mx-auto p-6">
         {/* AI Terminal & Dashboard Sidebar */}
-        <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_380px]">
-          {/* Left: Inline AI Terminal — stretches to match sidebar height */}
-          <div className="h-full min-h-[400px]">
+        <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_380px]" style={{ gridTemplateRows: '1fr' }}>
+          {/* Left: Inline AI Terminal — height capped to match sidebar */}
+          <div className="min-h-[400px] overflow-hidden">
             <AITerminal mode="inline" />
           </div>
 
-          {/* Right: Consolidated Sidebar — content-driven height */}
-          <div>
+          {/* Right: Consolidated Sidebar — drives the row height */}
+          <div className="h-fit">
             <DashboardSidebar onRefresh={loadData} />
           </div>
         </div>

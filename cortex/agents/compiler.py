@@ -29,10 +29,10 @@ Your job: convert a Markdown project plan into a structured, executable format.
 ## Input
 You will receive a Markdown plan using the Ticket Generation format. Each task follows this structure:
 - `### Task [Number]: [Task Name]` — The task header
-- `**Workflow**:` — One of: Nexus Prime, Human Action, Custom
-- `**Goal**:` — 1-2 sentence goal
-- `**Context & Execution**:` — Architecture details, file paths, or step-by-step instructions
-- `**Acceptance Criteria**:` — Bullet list of success conditions
+- `**Workflow:**` — One of: Nexus Prime, Human Action, Custom
+- `**Goal:**` — 1-2 sentence goal
+- `#### Context & Execution` — Architecture details, file paths, or step-by-step instructions (may also appear as `**Context & Execution**:`)
+- `#### Acceptance Criteria` — Bullet list of success conditions (may also appear as `**Acceptance Criteria**:`)
 
 ## Output Rules
 Convert to a ProjectPlan with:

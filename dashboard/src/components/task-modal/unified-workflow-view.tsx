@@ -290,7 +290,7 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
                 body.doc_changes = docChanges;
             }
 
-            await fetch(`http://localhost:8000/runs/${runId}/resume`, {
+            await fetch(`http://localhost:8000/graph/nexus/${runId}/resume`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)

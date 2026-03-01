@@ -1,7 +1,7 @@
 ---
 context_type: project-workflow-map
-status: draft
-updated_at: 2026-03-01T19:12:43.732Z
+status: active
+updated_at: 2026-03-01T22:23:10.608Z
 ---
 
 # Project Workflow Architecture
@@ -108,9 +108,3 @@ erDiagram
         jsonb stages
     }
 ```
-
----
-context_type: project-workflow-map
-status: active
-updated_at: 2026-03-01T19:08:11.126Z
----

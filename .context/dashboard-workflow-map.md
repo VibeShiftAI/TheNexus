@@ -1,7 +1,7 @@
 ---
 context_type: dashboard-workflow-map
-status: draft
-updated_at: 2026-03-01T19:12:42.195Z
+status: active
+updated_at: 2026-03-01T22:23:09.091Z
 ---
 
 # Dashboard Workflow Architecture
@@ -97,9 +97,3 @@ erDiagram
         string system_prompt
     }
 ```
-
----
-context_type: dashboard-workflow-map
-status: active
-updated_at: 2026-03-01T19:08:09.440Z
----

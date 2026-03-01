@@ -1,7 +1,7 @@
 ---
 context_type: nodes-reference
 status: draft
-updated_at: 2026-03-01T19:12:45.152Z
+updated_at: 2026-03-01T22:23:12.115Z
 ---
 
 # Atomic Node Reference
@@ -81,9 +81,3 @@ Using the JSON Schema provided by the endpoint, the Visual Builder:
 1.  **Generates Forms**: Automatically renders text inputs, dropdowns, toggles, and array fields based on the node's input schema.
 2.  **Validates Input**: Enforces types, required fields, and constraints (e.g., min/max values) client-side before saving the workflow.
 3.  **Displays Context**: Shows tooltips and descriptions defined in the backend Pydantic models to guide the user.
-
----
-context_type: nodes-reference
-status: draft
-updated_at: 2026-03-01T19:08:12.844Z
----

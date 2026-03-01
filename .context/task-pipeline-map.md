@@ -1,7 +1,7 @@
 ---
 context_type: task-pipeline-map
-status: draft
-updated_at: 2026-03-01T19:12:44.096Z
+status: active
+updated_at: 2026-03-01T22:23:10.982Z
 ---
 
 # Task Pipeline Architecture
@@ -126,9 +126,3 @@ erDiagram
         timestamp completedAt
     }
 ```
-
----
-context_type: task-pipeline-map
-status: active
-updated_at: 2026-03-01T19:08:11.561Z
----

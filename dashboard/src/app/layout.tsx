@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { CortexProvider } from "@/components/cortex-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,18 +29,20 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <main style={{ flex: 1 }}>
-            {children}
-          </main>
-          <footer style={{
-            textAlign: 'center',
-            padding: '1rem',
-            borderTop: '1px solid rgba(255,255,255,0.1)',
-            color: 'rgba(255,255,255,0.5)',
-            fontSize: '0.875rem'
-          }}>
-            © {new Date().getFullYear()} VibeShift AI. All rights reserved.
-          </footer>
+          <CortexProvider>
+            <main style={{ flex: 1 }}>
+              {children}
+            </main>
+            <footer style={{
+              textAlign: 'center',
+              padding: '1rem',
+              borderTop: '1px solid rgba(255,255,255,0.1)',
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '0.875rem'
+            }}>
+              © {new Date().getFullYear()} VibeShift AI. All rights reserved.
+            </footer>
+          </CortexProvider>
         </div>
       </body>
     </html>
