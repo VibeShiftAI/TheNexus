@@ -1,0 +1,244 @@
+{
+  "id": "nexus-prime-ai-agents",
+  "name": "Nexus Prime (AI Agents)",
+  "description": "",
+  "level": "task",
+  "workflow_type": "custom",
+  "is_system": false,
+  "nodes": [
+    {
+      "id": "supervisor",
+      "type": "supervisor",
+      "data": {
+        "label": "Supervisor",
+        "config": {
+          "supervisor_model": "",
+          "max_retries": 10,
+          "description": "Nexus Prime \u2014 routes between fleet workers"
+        }
+      },
+      "position": {
+        "x": 400.0,
+        "y": 50.0
+      }
+    },
+    {
+      "id": "research_fleet",
+      "type": "fleet",
+      "data": {
+        "label": "Research Fleet",
+        "config": {
+          "fleet_type": "research",
+          "scoper_model": "",
+          "researcher_model": "",
+          "vetter_model": "",
+          "synthesizer_model": "",
+          "max_iterations": 10,
+          "description": "Gemini mesh deep research"
+        }
+      },
+      "position": {
+        "x": 100.0,
+        "y": 200.0
+      }
+    },
+    {
+      "id": "research_approval",
+      "type": "approval_gate",
+      "data": {
+        "label": "Research Approval",
+        "config": {
+          "gate_name": "Research Review",
+          "description": "Review research dossier before planning"
+        }
+      },
+      "position": {
+        "x": 100.0,
+        "y": 340.0
+      }
+    },
+    {
+      "id": "architect_fleet",
+      "type": "fleet",
+      "data": {
+        "label": "Architect Fleet",
+        "config": {
+          "fleet_type": "architect",
+          "cartographer_model": "",
+          "drafter_model": "",
+          "grounder_model": "",
+          "max_iterations": 10,
+          "description": "Generate BLUEPRINT artifact"
+        }
+      },
+      "position": {
+        "x": 300.0,
+        "y": 200.0
+      }
+    },
+    {
+      "id": "plan_approval",
+      "type": "approval_gate",
+      "data": {
+        "label": "Plan Approval",
+        "config": {
+          "gate_name": "Blueprint Review",
+          "description": "Review blueprint before building"
+        }
+      },
+      "position": {
+        "x": 300.0,
+        "y": 340.0
+      }
+    },
+    {
+      "id": "builder_fleet",
+      "type": "fleet",
+      "data": {
+        "label": "Builder Fleet",
+        "config": {
+          "fleet_type": "builder",
+          "scout_model": "claude-sonnet-4-20250514",
+          "coder_model": "claude-sonnet-4-20250514",
+          "checker_model": "claude-sonnet-4-20250514",
+          "max_iterations": 10,
+          "description": "Implement with negative constraints"
+        }
+      },
+      "position": {
+        "x": 500.0,
+        "y": 200.0
+      }
+    },
+    {
+      "id": "audit_fleet",
+      "type": "fleet",
+      "data": {
+        "label": "Audit Fleet",
+        "config": {
+          "fleet_type": "audit",
+          "forensic_model": "",
+          "verdict_model": "",
+          "max_iterations": 10,
+          "description": "Zero-trust verification"
+        }
+      },
+      "position": {
+        "x": 700.0,
+        "y": 200.0
+      }
+    },
+    {
+      "id": "walkthrough",
+      "type": "walkthrough_generator",
+      "data": {
+        "label": "Walkthrough Generator",
+        "config": {
+          "model": "",
+          "description": "Synthesizes walkthrough from workflow artifacts"
+        }
+      },
+      "position": {
+        "x": 700.0,
+        "y": 340.0
+      }
+    },
+    {
+      "id": "human_in_loop",
+      "type": "human_in_loop",
+      "data": {
+        "label": "Human Review",
+        "config": {
+          "approval_message": "Manual intervention required",
+          "approval_type": "manual",
+          "description": "Manual review and intervention point"
+        }
+      },
+      "position": {
+        "x": 400.0,
+        "y": 450.0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-sup-research",
+      "source": "supervisor",
+      "target": "research_fleet",
+      "label": null
+    },
+    {
+      "id": "e-sup-architect",
+      "source": "supervisor",
+      "target": "architect_fleet",
+      "label": null
+    },
+    {
+      "id": "e-sup-builder",
+      "source": "supervisor",
+      "target": "builder_fleet",
+      "label": null
+    },
+    {
+      "id": "e-sup-audit",
+      "source": "supervisor",
+      "target": "audit_fleet",
+      "label": null
+    },
+    {
+      "id": "e-research-approval",
+      "source": "research_fleet",
+      "target": "research_approval",
+      "label": null
+    },
+    {
+      "id": "e-rapproval-sup",
+      "source": "research_approval",
+      "target": "supervisor",
+      "label": null
+    },
+    {
+      "id": "e-architect-approval",
+      "source": "architect_fleet",
+      "target": "plan_approval",
+      "label": null
+    },
+    {
+      "id": "e-papproval-sup",
+      "source": "plan_approval",
+      "target": "supervisor",
+      "label": null
+    },
+    {
+      "id": "e-builder-audit",
+      "source": "builder_fleet",
+      "target": "audit_fleet",
+      "label": null
+    },
+    {
+      "id": "e-audit-sup",
+      "source": "audit_fleet",
+      "target": "supervisor",
+      "label": null
+    },
+    {
+      "id": "e-sup-walkthrough",
+      "source": "supervisor",
+      "target": "walkthrough",
+      "label": "finish"
+    },
+    {
+      "id": "e-sup-human",
+      "source": "supervisor",
+      "target": "human_in_loop",
+      "label": "escalate"
+    },
+    {
+      "id": "e-human-sup",
+      "source": "human_in_loop",
+      "target": "supervisor",
+      "label": null
+    }
+  ],
+  "stages": []
+}

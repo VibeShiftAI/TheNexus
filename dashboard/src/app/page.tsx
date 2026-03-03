@@ -10,7 +10,7 @@ import { AITerminal } from "@/components/ai-terminal";
 import { DashboardInitiatives } from "@/components/dashboard-initiatives";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { createClient } from "@/lib/supabaseClient";
-import { Activity, ShieldCheck, Zap, Folder, Plus, Brain, Gauge, X, LogOut, BookOpen } from "lucide-react";
+import { Activity, ShieldCheck, Zap, Folder, Plus, Gauge, X, LogOut, BookOpen } from "lucide-react";
 
 import Link from "next/link";
 
@@ -83,13 +83,6 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-6 text-sm font-medium text-slate-400">
             <Link
-              href="/agents"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 hover:border-emerald-500/50 transition-all text-emerald-400 hover:text-emerald-300"
-            >
-              <Brain size={16} />
-              <span>Agent Manager</span>
-            </Link>
-            <Link
               href="/system-monitor"
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 hover:border-amber-500/50 transition-all text-amber-400 hover:text-amber-300"
             >
@@ -132,14 +125,16 @@ export default function Home() {
       {/* Content Grid */}
       <div className="container mx-auto p-6">
         {/* AI Terminal & Dashboard Sidebar */}
-        <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_380px]" style={{ gridTemplateRows: '1fr' }}>
-          {/* Left: Inline AI Terminal — height capped to match sidebar */}
-          <div className="min-h-[400px] overflow-hidden">
-            <AITerminal mode="inline" />
+        <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_380px]">
+          {/* Left: AI Terminal — absolute-positioned so sidebar drives row height */}
+          <div className="relative min-h-[400px]">
+            <div className="absolute inset-0">
+              <AITerminal mode="inline" />
+            </div>
           </div>
 
-          {/* Right: Consolidated Sidebar — drives the row height */}
-          <div className="h-fit">
+          {/* Right: Consolidated Sidebar — its content determines the row height */}
+          <div>
             <DashboardSidebar onRefresh={loadData} />
           </div>
         </div>

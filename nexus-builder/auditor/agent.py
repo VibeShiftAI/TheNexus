@@ -18,6 +18,7 @@ class AuditorState(TypedDict):
     project_context: str  # Combined markdown from supervisor/*.md
     definition_of_done: dict  # Acceptance criteria from architect
     modified_files: List[str]  # List of files that were created/modified
+    project_root: str  # Absolute path to the target project directory
     
     # Artifacts injected at runtime
     diff_context: str
@@ -77,11 +78,17 @@ async def forensic_node(state: AuditorState):
     if modified_files:
         files_text = "FILES TO REVIEW:\n" + "\n".join([f"  - {f}" for f in modified_files])
     
+    project_root = state.get('project_root', 'Unknown')
+    
     prompt = f"""
     ROLE: Lead Security Auditor (The Sentinel).
     
     TASK TITLE: {task_title}
     TASK DESCRIPTION: {task_description}
+    
+    PROJECT ROOT: {project_root}
+    IMPORTANT: Use this path when running sandbox commands or reading files.
+    All modified files use absolute paths relative to this root.
     
     PROJECT CONTEXT (tech stack, guidelines):
     {context_preview}

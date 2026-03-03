@@ -74,7 +74,7 @@ def run_bash_command(command: str, cwd: str = "", timeout: int = 300) -> str:
 
 
 @tool
-def explore_codebase(query: str, search_type: str = "auto", thoroughness: str = "medium") -> str:
+def explore_codebase(query: str, search_type: str = "auto", thoroughness: str = "medium", project_root: str = "") -> str:
     """
     Fast codebase exploration - find files, search code, map project structure.
     
@@ -82,6 +82,7 @@ def explore_codebase(query: str, search_type: str = "auto", thoroughness: str = 
         query: What to search for (file pattern like "*.py", code keyword, or "structure" for tree)
         search_type: "auto" (detect), "glob" (file patterns), "grep" (code search), "structure" (tree)
         thoroughness: "quick" (shallow), "medium" (balanced), "very_thorough" (deep search)
+        project_root: Absolute path to the project root directory. Defaults to current working directory.
     
     Returns:
         Search results with file paths, line numbers, and content snippets
@@ -90,7 +91,7 @@ def explore_codebase(query: str, search_type: str = "auto", thoroughness: str = 
     import glob
     import subprocess
     
-    project_root = os.getcwd()
+    project_root = project_root or os.getcwd()
     
     # Thoroughness config
     depth_config = {

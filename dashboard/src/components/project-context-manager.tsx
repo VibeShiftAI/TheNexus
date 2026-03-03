@@ -262,15 +262,17 @@ export function ProjectContextManager({ project }: ProjectContextManagerProps) {
                                         {copied ? "Copied!" : "Copy All Context"}
                                     </span>
                                 </button>
-                                <button
-                                    onClick={() => setShowDeleteModal(true)}
-                                    className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors text-red-400/50 hover:text-red-400 hover:bg-red-500/10 flex items-center gap-2"
-                                >
-                                    <Trash2 size={14} />
-                                    <span>Delete Project</span>
-                                </button>
                             </div>
                         )}
+                        <div className={`pt-2 mt-2 border-t border-slate-800 ${contextTypes.length === 0 ? 'mt-auto' : ''}`}>
+                            <button
+                                onClick={() => setShowDeleteModal(true)}
+                                className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors text-red-400/50 hover:text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                            >
+                                <Trash2 size={14} />
+                                <span>Delete Project</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex-1 flex flex-col bg-slate-950">

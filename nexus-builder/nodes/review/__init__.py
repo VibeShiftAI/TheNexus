@@ -79,6 +79,7 @@ class AuditorNode(AtomicNode):
             "project_context": "",  # TODO: Load from context service
             "definition_of_done": dod,
             "modified_files": modified_files,
+            "project_root": project_context.get("project_path", "."),
             "diff_context": walkthrough,  # Use walkthrough as diff context
             "blast_radius": "No blast radius analysis",
             "linter_report": "No linter issues",

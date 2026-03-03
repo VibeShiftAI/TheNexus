@@ -814,6 +814,7 @@ async def call_audit_fleet(state: WorkflowState):
             "project_context": project_context,
             "definition_of_done": definition_of_done,
             "modified_files": modified_files,
+            "project_root": project_root,
             # Existing fields
             "diff_context": diff_context,
             "blast_radius": blast_radius_result if blast_radius_result.get("success") else {},

@@ -1121,14 +1121,69 @@ class RunResumeRequest(BaseModel):
 
 
 @app.post("/runs/{run_id}/resume")
-async def resume_run(run_id: str, request: RunResumeRequest):
+async def resume_run(run_id: str, request: RunResumeRequest, background_tasks: BackgroundTasks):
     """
-    Resume a paused generic workflow run after human review.
-    This is used by the GraphEngine interrupt mechanism.
+    Unified resume endpoint for ALL paused workflow runs.
+    
+    Handles both:
+    - Nexus Prime / doc-writer workflows (LangGraph native interrupts via _nexus_runs)
+    - Generic GraphEngine runs (custom asyncio.Event interrupts)
     """
+    
+    # ── 1. Check if this is a Nexus Prime / doc-writer run ──
+    nexus_run = await _get_run_from_db_or_memory(run_id)
+    if nexus_run and run_id in _nexus_runs:
+        # Ensure activity_log exists (may be empty from DB restore)
+        if "activity_log" not in _nexus_runs[run_id]:
+            _nexus_runs[run_id]["activity_log"] = []
+        
+        # Log the approval action
+        _nexus_runs[run_id]["activity_log"].append({
+            "timestamp": __import__('datetime').datetime.now().isoformat(),
+            "agent": "human",
+            "type": "approval",
+            "message": f"Human {request.approval_action}: {request.feedback or 'No feedback'}"
+        })
+        
+        # Clear pending approval
+        if "pending_approval" in nexus_run:
+            del _nexus_runs[run_id]["pending_approval"]
+        
+        # Sync state to DB before resuming
+        await _sync_run_to_db(run_id)
+        
+        # Build graph state updates
+        updates = {}
+        
+        # Handle doc-writer hunk decisions
+        if request.doc_changes:
+            existing_outputs = nexus_run.get("outputs", {}) if isinstance(nexus_run, dict) else {}
+            updates["outputs"] = {
+                **existing_outputs,
+                "doc_changes": request.doc_changes
+            }
+            updates["messages"] = [f"Human reviewed documentation changes: {request.approval_action}"]
+        elif request.approval_action == "reject":
+            updates["evaluator_decision"] = "human_in_loop"
+            updates["messages"] = [f"Human Rejected: {request.feedback}"]
+            updates["nexus_protocol_extensions"] = {"status_update": "REJECTED: Revising based on feedback"}
+        else:
+            updates["messages"] = [f"Human Approved: {request.feedback or 'Proceed'}"]
+            updates["nexus_protocol_extensions"] = {"status_update": f"APPROVED: {request.approval_action}"}
+        
+        # Resume in background
+        background_tasks.add_task(_resume_nexus_workflow, run_id, updates)
+        
+        return {
+            "success": True,
+            "run_id": run_id,
+            "status": "resuming",
+            "message": f"Workflow resuming after {request.approval_action}"
+        }
+    
+    # ── 2. Fall back to generic GraphEngine resume ──
     engine: GraphEngine = app.state.engine
     
-    # Check if this run exists in the engine
     run = engine._runs.get(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found in engine")
@@ -1622,10 +1677,6 @@ async def get_nexus_history(run_id: str):
     }
 
 
-class NexusResumeRequest(BaseModel):
-    """Request to resume a paused Nexus workflow"""
-    approval_action: str = "approve"  # 'approve' or 'reject'
-    feedback: Optional[str] = None
 
 
 async def _resume_nexus_workflow(run_id: str, updates: Optional[Dict[str, Any]] = None):
@@ -1766,71 +1817,12 @@ async def _resume_nexus_workflow(run_id: str, updates: Optional[Dict[str, Any]] 
 
 
 @app.post("/graph/nexus/{run_id}/resume")
-async def resume_nexus_workflow(run_id: str, request: NexusResumeRequest, background_tasks: BackgroundTasks):
+async def resume_nexus_workflow(run_id: str, request: RunResumeRequest, background_tasks: BackgroundTasks):
     """
-    Resume a paused Nexus workflow after human approval.
-    Call this when user approves research or plan in the UI.
+    Legacy Nexus-specific resume endpoint. Delegates to unified /runs/{run_id}/resume.
+    Kept for backward compatibility with any callers using this path.
     """
-    # Try to get run from memory or restore from database
-    run = await _get_run_from_db_or_memory(run_id)
-    if not run:
-        raise HTTPException(
-            status_code=404, 
-            detail="Nexus run not found. The workflow may have expired or the server was restarted. Please restart the task."
-        )
-    
-    # Ensure activity_log exists (may be empty from DB restore)
-    if "activity_log" not in _nexus_runs[run_id]:
-        _nexus_runs[run_id]["activity_log"] = []
-    
-    # Log the approval action
-    _nexus_runs[run_id]["activity_log"].append({
-        "timestamp": __import__('datetime').datetime.now().isoformat(),
-        "agent": "human",
-        "type": "approval",
-        "message": f"Human {request.approval_action}: {request.feedback or 'No feedback'}"
-    })
-    
-    # Clear pending approval
-    if "pending_approval" in run:
-        del _nexus_runs[run_id]["pending_approval"]
-    
-    # Sync state to DB before resuming
-    await _sync_run_to_db(run_id)
-    
-    # Prepare updates for the graph
-    # We map 'approve' -> signal to proceed?
-    # Actually, we should check what nexus_prime expects.
-    # Assuming we just update 'evaluator_decision' or inject feedback into 'messages'
-    
-    updates = {}
-    
-    # Handle doc-writer hunk decisions
-    if request.doc_changes:
-        # Merge hunk decisions into the graph state's outputs
-        existing_outputs = run.get("outputs", {}) if isinstance(run, dict) else {}
-        updates["outputs"] = {
-            **existing_outputs,
-            "doc_changes": request.doc_changes
-        }
-        updates["messages"] = [f"Human reviewed documentation changes: {request.approval_action}"]
-    elif request.approval_action == "reject":
-        updates["evaluator_decision"] = "human_in_loop"
-        updates["messages"] = [f"Human Rejected: {request.feedback}"]
-        updates["nexus_protocol_extensions"] = {"status_update": "REJECTED: Revising based on feedback"}
-    else:
-        updates["messages"] = [f"Human Approved: {request.feedback or 'Proceed'}"]
-        updates["nexus_protocol_extensions"] = {"status_update": f"APPROVED: {request.approval_action}"}
-
-    # Resume in background
-    background_tasks.add_task(_resume_nexus_workflow, run_id, updates)
-    
-    return {
-        "success": True,
-        "run_id": run_id,
-        "status": "resuming",
-        "message": f"Workflow resuming after {request.approval_action}"
-    }
+    return await resume_run(run_id, request, background_tasks)
 
 
 # ═══════════════════════════════════════════════════════════════

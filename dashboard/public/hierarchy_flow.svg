@@ -1,0 +1,168 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg" style="background-color: #0f172a; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-emerald" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-purple" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    
+    <marker id="arrow-gold" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
+    </marker>
+    <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+    </marker>
+    <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#c084fc" />
+    </marker>
+  </defs>
+
+  <style>
+    .text-title { font-weight: bold; }
+    .text-label { opacity: 0.8; }
+    .flow-line { fill: none; stroke-dasharray: 4, 3; }
+  </style>
+
+  <!-- Level 1: INITIATIVE -->
+  <g transform="translate(600, 80)">
+    <polygon points="0,-40 120,0 0,40 -120,0" fill="#1a1a2e" stroke="#fbbf24" stroke-width="2.5" filter="url(#glow-gold)" />
+    <text x="0" y="5" text-anchor="middle" fill="#fbbf24" class="text-title" font-size="14">Dashboard Initiative</text>
+  </g>
+
+  <!-- Initiative Downward Lines -->
+  <!-- To Left Workflow -->
+  <path d="M600,120 L600,160 L300,160 L300,200" stroke="#c084fc" stroke-width="2" marker-end="url(#arrow-purple)" class="flow-line" />
+  <text x="450" y="150" fill="#c084fc" font-size="10" class="text-title" text-anchor="middle">Kicks off</text>
+  
+  <!-- To Right Workflow -->
+  <path d="M600,120 L600,160 L900,160 L900,200" stroke="#c084fc" stroke-width="2" marker-end="url(#arrow-purple)" class="flow-line" />
+  <text x="750" y="150" fill="#c084fc" font-size="10" class="text-title" text-anchor="middle">Kicks off</text>
+
+  <!-- Level 2: WORKFLOWS -->
+  <!-- Left Workflow -->
+  <g transform="translate(300, 200)">
+    <rect x="-110" y="0" width="220" height="50" rx="6" fill="#1e1b4b" stroke="#c084fc" stroke-width="2" filter="url(#glow-purple)" />
+    <text x="0" y="24" text-anchor="middle" fill="#c084fc" class="text-title" font-size="12">Full Cortex Workflow</text>
+    <text x="0" y="38" text-anchor="middle" fill="#c084fc" class="text-label" font-size="9">Agentic System 2 Orchestration</text>
+  </g>
+
+  <!-- Right Workflow -->
+  <g transform="translate(900, 200)">
+    <rect x="-110" y="0" width="220" height="50" rx="6" fill="#1e1b4b" stroke="#c084fc" stroke-width="2" filter="url(#glow-purple)" />
+    <text x="0" y="24" text-anchor="middle" fill="#c084fc" class="text-title" font-size="12">Simple Execution</text>
+    <text x="0" y="38" text-anchor="middle" fill="#c084fc" class="text-label" font-size="9">Direct Execution Pipeline</text>
+  </g>
+
+  <!-- Workflow Downward Lines -->
+  <path d="M300,250 L300,320" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-emerald)" />
+  <text x="310" y="290" fill="#34d399" font-size="10" class="text-title">Generates</text>
+  
+  <path d="M900,250 L900,320" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-emerald)" />
+  <text x="910" y="290" fill="#34d399" font-size="10" class="text-title">Generates</text>
+
+  <!-- Level 3: PROJECTS -->
+  <!-- Left Project -->
+  <g transform="translate(300, 320)">
+    <rect x="-140" y="0" width="280" height="60" rx="8" fill="#022c22" stroke="#34d399" stroke-width="2" filter="url(#glow-emerald)" />
+    <text x="0" y="28" text-anchor="middle" fill="#34d399" class="text-title" font-size="14">Project Alpha</text>
+    <text x="0" y="45" text-anchor="middle" fill="#34d399" class="text-label" font-size="10">Supabase: Context &amp; Scope defined</text>
+  </g>
+
+  <!-- Right Project -->
+  <g transform="translate(900, 320)">
+    <rect x="-140" y="0" width="280" height="60" rx="8" fill="#022c22" stroke="#34d399" stroke-width="2" filter="url(#glow-emerald)" />
+    <text x="0" y="28" text-anchor="middle" fill="#34d399" class="text-title" font-size="14">Project Beta</text>
+    <text x="0" y="45" text-anchor="middle" fill="#34d399" class="text-label" font-size="10">Supabase: Context &amp; Scope defined</text>
+  </g>
+
+  <!-- Project Downward Lines (Split to tasks) -->
+  <!-- Alpha -> Task 1 & 2 -->
+  <path d="M300,380 L300,420 L180,420 L180,480" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)" />
+  <path d="M300,380 L300,420 L420,420 L420,480" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)" />
+  
+  <!-- Beta -> Task 3 & 4 -->
+  <path d="M900,380 L900,420 L780,420 L780,480" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)" />
+  <path d="M900,380 L900,420 L1020,420 L1020,480" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrow-cyan)" />
+
+  <text x="300" y="410" fill="#22d3ee" font-size="10" class="text-title" text-anchor="middle">Schedules Tasks</text>
+  <text x="900" y="410" fill="#22d3ee" font-size="10" class="text-title" text-anchor="middle">Schedules Tasks</text>
+
+  <!-- Level 4: TASKS -->
+  <!-- Task 1 (Alpha) -->
+  <g transform="translate(180, 480)">
+    <rect x="-70" y="0" width="140" height="40" rx="5" fill="#082f49" stroke="#22d3ee" stroke-width="2" />
+    <text x="0" y="18" text-anchor="middle" fill="#22d3ee" class="text-title" font-size="11">Task 1</text>
+    <text x="0" y="30" text-anchor="middle" fill="#22d3ee" class="text-label" font-size="8">Database Schema</text>
+  </g>
+
+  <!-- Task 2 (Alpha) -->
+  <g transform="translate(420, 480)">
+    <rect x="-70" y="0" width="140" height="40" rx="5" fill="#082f49" stroke="#22d3ee" stroke-width="2" />
+    <text x="0" y="18" text-anchor="middle" fill="#22d3ee" class="text-title" font-size="11">Task 2</text>
+    <text x="0" y="30" text-anchor="middle" fill="#22d3ee" class="text-label" font-size="8">API Routes</text>
+  </g>
+
+  <!-- Task 3 (Beta) -->
+  <g transform="translate(780, 480)">
+    <rect x="-70" y="0" width="140" height="40" rx="5" fill="#082f49" stroke="#22d3ee" stroke-width="2" />
+    <text x="0" y="18" text-anchor="middle" fill="#22d3ee" class="text-title" font-size="11">Task 3</text>
+    <text x="0" y="30" text-anchor="middle" fill="#22d3ee" class="text-label" font-size="8">UI Components</text>
+  </g>
+
+  <!-- Task 4 (Beta) -->
+  <g transform="translate(1020, 480)">
+    <rect x="-70" y="0" width="140" height="40" rx="5" fill="#082f49" stroke="#22d3ee" stroke-width="2" />
+    <text x="0" y="18" text-anchor="middle" fill="#22d3ee" class="text-title" font-size="11">Task 4</text>
+    <text x="0" y="30" text-anchor="middle" fill="#22d3ee" class="text-label" font-size="8">Testing</text>
+  </g>
+
+  <!-- Task Downward Lines (To Workflow Selectors) -->
+  <path d="M180,520 L180,570" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#arrow-cyan)" class="flow-line" />
+  <path d="M420,520 L420,570" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#arrow-cyan)" class="flow-line" />
+  <path d="M780,520 L780,570" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#arrow-cyan)" class="flow-line" />
+  <path d="M1020,520 L1020,570" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#arrow-cyan)" class="flow-line" />
+
+  <!-- Level 5: WORKFLOW SELECTORS -->
+  <!-- Selector 1 -->
+  <g transform="translate(180, 570)">
+    <rect x="-90" y="0" width="180" height="40" rx="4" fill="#0f172a" stroke="#06b6d4" stroke-width="1.5" filter="url(#glow-cyan)" />
+    <text x="0" y="24" text-anchor="middle" fill="#22d3ee" class="text-title" font-size="11">Workflow Selector</text>
+  </g>
+
+  <!-- Selector 2 -->
+  <g transform="translate(420, 570)">
+    <rect x="-90" y="0" width="180" height="40" rx="4" fill="#0f172a" stroke="#06b6d4" stroke-width="1.5" filter="url(#glow-cyan)" />
+    <text x="0" y="24" text-anchor="middle" fill="#22d3ee" class="text-title" font-size="11">Workflow Selector</text>
+  </g>
+
+  <!-- Selector 3 -->
+  <g transform="translate(780, 570)">
+    <rect x="-90" y="0" width="180" height="40" rx="4" fill="#0f172a" stroke="#06b6d4" stroke-width="1.5" filter="url(#glow-cyan)" />
+    <text x="0" y="24" text-anchor="middle" fill="#22d3ee" class="text-title" font-size="11">Workflow Selector</text>
+  </g>
+
+  <!-- Selector 4 -->
+  <g transform="translate(1020, 570)">
+    <rect x="-90" y="0" width="180" height="40" rx="4" fill="#0f172a" stroke="#06b6d4" stroke-width="1.5" filter="url(#glow-cyan)" />
+    <text x="0" y="24" text-anchor="middle" fill="#22d3ee" class="text-title" font-size="11">Workflow Selector</text>
+  </g>
+
+  <g transform="translate(50, 750)">
+    <text x="0" y="0" fill="#475569" font-size="11" font-family="monospace">FIG 1.3 - INITIATIVE STRUCTURAL HIERARCHY</text>
+  </g>
+
+</svg>

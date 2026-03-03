@@ -735,6 +735,12 @@ class NodeRegistry:
             # Initialize AuditorState
             auditor_initial_state = {
                 "messages": [],
+                "task_title": context.get("task_title", "Audit Task"),
+                "task_description": spec[:500] if spec else "Verify implementation",
+                "project_context": "",
+                "definition_of_done": {},
+                "modified_files": outputs.get("modified_files", []),
+                "project_root": project_root,
                 "diff_context": outputs.get("diff", "No diff info available"), 
                 "blast_radius": outputs.get("blast_radius", "No blast radius info available"), 
                 "linter_report": outputs.get("linter_report", "No linter report"),

@@ -96,7 +96,8 @@ export const VibecodingWorkflowDiagram = () => {
                 {/* ========== USER INPUT ========== */}
                 <g transform="translate(800, 50)">
                     <circle cx="0" cy="0" r="40" fill="#0f172a" stroke="#06b6d4" strokeWidth="2.5" filter="url(#glow-cyan)" />
-                    <text x="0" y="5" textAnchor="middle" fill="#06b6d4" fontWeight="bold" fontSize="13">User Input</text>
+                    <text x="0" y="-3" textAnchor="middle" fill="#06b6d4" fontWeight="bold" fontSize="11">Project Task</text>
+                    <text x="0" y="10" textAnchor="middle" fill="#06b6d4" fontWeight="bold" fontSize="9">Requiring Code</text>
                 </g>
                 <path d="M800,90 L800,140" stroke="#06b6d4" strokeWidth="2" strokeDasharray="5,4" markerEnd="url(#arrow-slate)" />
 
