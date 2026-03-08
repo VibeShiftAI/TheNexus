@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, MessageSquare, Check, XCircle, FileText, Code, Database, Image } from "lucide-react";
+import { X, MessageSquare, Check, XCircle, FileText, Code, Database, Image, BookOpen } from "lucide-react";
 import { MarkdownReviewer } from "./markdown-reviewer";
 import { JsonViewer } from "./json-viewer";
 import { CodeViewer } from "./code-viewer";
@@ -54,6 +54,7 @@ const CATEGORY_STYLES: Record<string, { bg: string; text: string; icon: any }> =
     media: { bg: "bg-amber-500/20", text: "text-amber-400", icon: Image },
     data: { bg: "bg-orange-500/20", text: "text-orange-400", icon: Database },
     doc_changes: { bg: "bg-teal-500/20", text: "text-teal-400", icon: FileText },
+    walkthrough: { bg: "bg-emerald-500/20", text: "text-emerald-400", icon: BookOpen },
     default: { bg: "bg-slate-500/20", text: "text-slate-400", icon: FileText },
 };
 
@@ -167,6 +168,7 @@ export function ArtifactPanel({ artifact, isOpen, onClose, onApprove, onReject, 
             mimeType.startsWith("text/markdown") ||
             artifact.category === "research" ||
             artifact.category === "plan" ||
+            artifact.category === "walkthrough" ||
             artifact.category === "document") {
             return (
                 <MarkdownReviewer

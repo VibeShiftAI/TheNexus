@@ -2787,8 +2787,11 @@ app.post('/api/langgraph/sync-output', async (req, res) => {
         // This just logs the output - the actual runAgent call happens in the implement endpoint
         const implementationContent = outputs.implementation || outputs.coder;
         if (implementationContent) {
-            console.log(`[LangGraph Sync] Implementation output received (${implementationContent.length} chars)`);
-            updates.walkthrough = implementationContent;
+            console.log(`[LangGraph Sync] Implementation output received (${typeof implementationContent === 'string' ? implementationContent.length : 'non-string'} chars)`);
+            updates.walkthrough = JSON.stringify({
+                content: typeof implementationContent === 'string' ? implementationContent : JSON.stringify(implementationContent),
+                generatedAt: new Date().toISOString()
+            });
             updates.status = 'testing';
         }
 
@@ -2796,19 +2799,49 @@ app.post('/api/langgraph/sync-output', async (req, res) => {
 
         // Review output (only if no implementation)
         if (outputs.review && !implementationContent) {
-            updates.walkthrough = outputs.review;
+            updates.walkthrough = JSON.stringify({
+                content: typeof outputs.review === 'string' ? outputs.review : JSON.stringify(outputs.review),
+                generatedAt: new Date().toISOString()
+            });
             console.log(`[LangGraph Sync] Setting walkthrough from review`);
         }
 
         // Direct walkthrough output from builder fleet
         if (outputs.walkthrough && !updates.walkthrough) {
+            // Normalize walkthrough content — LLMs may return parts lists or nested objects
+            let walkthroughText = outputs.walkthrough;
+            if (typeof walkthroughText !== 'string') {
+                // Handle array of parts: [{type: 'text', text: '...'}, ...]
+                if (Array.isArray(walkthroughText)) {
+                    walkthroughText = walkthroughText
+                        .map(p => (typeof p === 'string' ? p : (p.text || p.content || '')))
+                        .join('\n');
+                } else if (typeof walkthroughText === 'object' && walkthroughText !== null) {
+                    walkthroughText = walkthroughText.text || walkthroughText.content || JSON.stringify(walkthroughText);
+                }
+            }
+            // Also handle Python repr stringified arrays: "[{'type': 'text', 'text': '...'}]"
+            if (typeof walkthroughText === 'string' && walkthroughText.trimStart().startsWith("[{")) {
+                try {
+                    // Try parsing with single quotes replaced by double quotes (Python repr → JSON)
+                    const fixed = walkthroughText.replace(/'/g, '"');
+                    const parsed = JSON.parse(fixed);
+                    if (Array.isArray(parsed)) {
+                        walkthroughText = parsed
+                            .map(p => (typeof p === 'string' ? p : (p.text || p.content || '')))
+                            .join('\n');
+                    }
+                } catch (e) {
+                    // Not parseable, use as-is
+                }
+            }
             // Store as JSON object for frontend compatibility
             updates.walkthrough = JSON.stringify({
-                content: outputs.walkthrough,
+                content: walkthroughText,
                 generatedAt: new Date().toISOString()
             });
             updates.status = 'testing';
-            console.log(`[LangGraph Sync] Setting walkthrough from builder (${outputs.walkthrough.length} chars)`);
+            console.log(`[LangGraph Sync] Setting walkthrough from builder (${walkthroughText.length} chars)`);
         }
 
         // Critic output

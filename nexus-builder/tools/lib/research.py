@@ -16,7 +16,7 @@ from ..interface import NexusTool, ToolMetadata, ToolCategory
 
 
 class WebSearchTool(NexusTool):
-    """Search the web using Google Custom Search API."""
+    """Search the web using DuckDuckGo."""
     
     @property
     def metadata(self) -> ToolMetadata:
@@ -27,7 +27,7 @@ class WebSearchTool(NexusTool):
             can_auto_execute=True,
             requires_permission=False,
             estimated_cost="low",
-            tags=["search", "web", "google"],
+            tags=["search", "web", "duckduckgo"],
         )
     
     async def execute(
@@ -43,40 +43,26 @@ class WebSearchTool(NexusTool):
         Returns:
             Dict with success and list of results
         """
-        import requests
-        
-        api_key = os.environ.get("GOOGLE_API_KEY")
-        cse_id = os.environ.get("GOOGLE_CSE_ID")
-        
-        if not api_key or not cse_id:
-            return {
-                "success": False,
-                "error": "GOOGLE_API_KEY or GOOGLE_CSE_ID not configured"
-            }
-        
         try:
-            resp = requests.get(
-                "https://www.googleapis.com/customsearch/v1",
-                params={"key": api_key, "cx": cse_id, "q": query, "num": 5},
-                timeout=10
-            )
+            from ddgs import DDGS
             
-            if resp.status_code != 200:
-                return {"success": False, "error": f"HTTP {resp.status_code}"}
-            
-            items = resp.json().get("items", [])
-            results = [
+            # Using ddgs for zero-auth web search
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, max_results=5))
+                
+            formatted_results = [
                 {
-                    "title": item["title"],
-                    "url": item["link"],
-                    "snippet": item.get("snippet", "")
+                    "title": item.get("title", ""),
+                    "url": item.get("href", ""),
+                    "snippet": item.get("body", "")
                 }
-                for item in items
+                for item in results
             ]
-            return {"success": True, "result": results}
+            
+            return {"success": True, "result": formatted_results}
             
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": f"DuckDuckGo search error: {str(e)}"}
 
 
 class ScrapeDocumentationTool(NexusTool):

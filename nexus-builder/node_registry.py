@@ -669,8 +669,6 @@ class NodeRegistry:
         Creates the Builder Agent subgraph handler.
         This wraps the compiled LangGraph runnable.
         """
-        builder_graph = compile_builder_graph()
-        
         async def handler(state: Dict) -> Dict:
             # Extract inputs from global state for the builder subgraph
             context = state.get("context", {})
@@ -679,6 +677,9 @@ class NodeRegistry:
             # Use plan from outputs or spec from config
             implementation_spec = outputs.get("plan") or config.get("spec", "No spec provided")
             project_root = context.get("project_path", ".")
+            
+            # Compile with project_root so tools use correct directory
+            builder_graph = compile_builder_graph(project_root=project_root)
             
             # Initialize BuilderState
             builder_initial_state = {

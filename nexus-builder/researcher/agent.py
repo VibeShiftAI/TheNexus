@@ -235,7 +235,7 @@ def execution_node(state: ResearchState):
     queries = state["proposed_queries"]
     
     # After MAX iterations, stop generating tool calls
-    MAX_ITERATIONS = 3
+    MAX_ITERATIONS = 10
     if current_count >= MAX_ITERATIONS:
         print(f"[Research] Max iterations ({MAX_ITERATIONS}) reached, moving to synthesis")
         return {
@@ -447,7 +447,7 @@ def route_research(state: ResearchState):
 
 def route_execution(state: ResearchState):
     # Check if we've exceeded max iterations
-    if state.get("execution_count", 0) >= 3:
+    if state.get("execution_count", 0) >= 10:
         print("[Research] Route: Max iterations reached, going to synthesizer")
         return "synthesizer"
         

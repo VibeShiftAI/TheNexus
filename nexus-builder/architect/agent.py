@@ -334,7 +334,7 @@ def escalation_node(state: ArchitectState):
 
 def route_architect(state: ArchitectState):
     # Safety Valve - route to escalation instead of silent END
-    if state.get("loop_count", 0) > 3:
+    if state.get("loop_count", 0) > 5:
         return "escalation"
         
     # Validation Failure Loop - drafter gets another chance

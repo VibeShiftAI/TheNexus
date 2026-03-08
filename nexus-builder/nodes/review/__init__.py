@@ -89,7 +89,7 @@ class AuditorNode(AtomicNode):
         }
         
         try:
-            result = await auditor_graph.ainvoke(initial_state)
+            result = await auditor_graph.ainvoke(initial_state, config={"recursion_limit": 100})
             
             verdict = result.get("final_verdict", {})
             

@@ -104,6 +104,7 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
     const [isResuming, setIsResuming] = useState(false);
     const [feedbackText, setFeedbackText] = useState('');
     const [interruptApproved, setInterruptApproved] = useState(false);
+    const [isApprovingWalkthrough, setIsApprovingWalkthrough] = useState(false);
 
     // Artifact panel state
     const [artifactPanelOpen, setArtifactPanelOpen] = useState(false);
@@ -136,7 +137,7 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
         fetchGraphConfig();
     }, [runId]);
 
-    // Handler for Approve & Commit button in StreamingLog
+    // Handler for Approve & Commit button in StreamingLog (fallback)
     const handleApproveCommit = async () => {
         try {
             await approveWalkthrough(projectId, taskId);
@@ -145,6 +146,22 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
             console.error('Failed to approve and commit:', error);
             throw error;  // Re-throw so StreamingLog can show the error
         }
+    };
+
+    // Handler: workflow completed — surface walkthrough in ArtifactPanel for review
+    const handleWorkflowCompleteWithArtifact = (walkthroughContent: string) => {
+        const artifact: Artifact = {
+            id: `walkthrough-${Date.now()}`,
+            key: 'walkthrough',
+            name: 'Implementation Walkthrough',
+            content: walkthroughContent,
+            category: 'walkthrough',
+            mime_type: 'text/markdown',
+            file_extension: '.md',
+            version: 1,
+        };
+        setCurrentArtifact(artifact);
+        setArtifactPanelOpen(true);
     };
 
     const handleInterrupt = (payload: any) => {
@@ -190,6 +207,28 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
                         version: 1,
                     };
                 }
+            } else if (interruptType === 'human_in_loop' || interruptType === 'human_help') {
+                // Human-in-loop: prefer walkthrough over stale plan
+                const wt = outputs.walkthrough || outputs.source_artifacts?.walkthrough;
+                if (wt) {
+                    let normalizedContent = wt;
+                    if (Array.isArray(wt)) {
+                        normalizedContent = wt
+                            .map((p: any) => typeof p === 'string' ? p : (p?.text || ''))
+                            .join('\n');
+                    }
+                    artifact = {
+                        id: `restored-walkthrough-${Date.now()}`,
+                        key: 'walkthrough',
+                        name: 'Implementation Walkthrough',
+                        content: typeof normalizedContent === 'string' ? normalizedContent : JSON.stringify(normalizedContent, null, 2),
+                        category: 'walkthrough',
+                        mime_type: 'text/markdown',
+                        file_extension: '.md',
+                        version: 1,
+                    };
+                }
+                // If no walkthrough exists, don't show anything (avoids stale plan display)
             } else if (interruptType === 'await_plan_approval' || interruptType.includes('plan')) {
                 const blueprint = outputs.blueprint;
                 const content = blueprint?.spec_markdown || outputs.plan;
@@ -247,9 +286,24 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
     };
 
     // Handlers for artifact panel approve/reject
-    const handleArtifactApprove = () => {
+    const handleArtifactApprove = async () => {
         setArtifactPanelOpen(false);
         setInterruptApproved(true);  // Mark that user already reviewed
+
+        // Walkthrough approval: commit & push, then signal completion
+        if (currentArtifact?.category === 'walkthrough') {
+            setIsApprovingWalkthrough(true);
+            try {
+                await approveWalkthrough(projectId, taskId);
+                onWorkflowComplete?.();
+            } catch (error) {
+                console.error('Failed to approve walkthrough:', error);
+            } finally {
+                setIsApprovingWalkthrough(false);
+            }
+            return;
+        }
+
         // If this is a doc_changes review, pass hunk decisions
         if (currentArtifact?.category === 'doc_changes' && docChangesState) {
             // Auto-approve any hunks still in "pending" status
@@ -320,7 +374,7 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
                         onInterrupt={handleInterrupt}
                         onNodeChange={handleNodeChange}
                         onApproveCommit={handleApproveCommit}
-                        onAutoComplete={interruptApproved ? () => onWorkflowComplete?.() : undefined}
+                        onWorkflowCompleteWithArtifact={handleWorkflowCompleteWithArtifact}
                     />
                 </div>
 

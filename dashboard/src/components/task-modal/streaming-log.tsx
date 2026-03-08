@@ -11,7 +11,7 @@ interface StreamingLogProps {
     onStateUpdate?: (update: any) => void;
     onNodeChange?: (node: string) => void;
     onApproveCommit?: () => Promise<void>;
-    onAutoComplete?: () => void;  // Called on workflow_complete without needing button click  // Called when user clicks Approve & Commit
+    onWorkflowCompleteWithArtifact?: (walkthroughContent: string) => void;
 }
 
 interface LogBlock {
@@ -79,7 +79,7 @@ function RenderContent({ content }: { content: string }) {
     return <>{content}</>;
 }
 
-export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpdate, onNodeChange, onApproveCommit, onAutoComplete }: StreamingLogProps) {
+export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpdate, onNodeChange, onApproveCommit, onWorkflowCompleteWithArtifact }: StreamingLogProps) {
     const [blocks, setBlocks] = useState<LogBlock[]>([]);
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
     const [context, setContext] = useState<TaskContext | null>(null);
@@ -200,7 +200,7 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
         };
     }, [runId, historyLoaded]);
 
-    const handleEvent = (event: any) => {
+    const handleEvent = async (event: any) => {
         const { type, kind, name, data, tags } = event;
         const now = Date.now();
 
@@ -221,9 +221,21 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
         if (type === 'workflow_complete') {
             setWorkflowComplete(true);
             addSystemBlock('Workflow completed successfully!', 'info');
-            // Auto-complete if callback provided (for generic workflows that already had user review)
-            if (onAutoComplete) {
-                onAutoComplete();
+            // Fetch the walkthrough artifact and pass it up for ArtifactPanel review
+            if (onWorkflowCompleteWithArtifact && runId) {
+                try {
+                    const res = await fetch(`http://localhost:8000/graph/nexus/${runId}/artifacts`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Try walkthrough from artifacts, or from the task data
+                        const walkthrough = data.walkthrough || data.raw?.walkthrough || '';
+                        if (walkthrough) {
+                            onWorkflowCompleteWithArtifact(typeof walkthrough === 'string' ? walkthrough : walkthrough.content || JSON.stringify(walkthrough));
+                        }
+                    }
+                } catch (err) {
+                    console.error('[StreamingLog] Failed to fetch walkthrough artifact:', err);
+                }
             }
             return;
         }
@@ -358,8 +370,8 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
                     <span className="text-xs font-medium text-slate-300">Live Agent Activity</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* Approve & Commit Button - shown when workflow completes (hidden if auto-completing) */}
-                    {workflowComplete && onApproveCommit && !onAutoComplete && (
+                    {/* Approve & Commit Button - shown when workflow completes (fallback if no artifact handler) */}
+                    {workflowComplete && onApproveCommit && !onWorkflowCompleteWithArtifact && (
                         <button
                             onClick={async () => {
                                 setIsCommitting(true);

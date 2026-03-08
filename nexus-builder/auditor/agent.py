@@ -9,6 +9,11 @@ from .tools import write_dry_run_test, run_sandbox_cmd, read_reference_file, Aud
 from model_config import get_claude_opus
 
 # --- 1. STATE DEFINITION ---
+
+# Module-level variable for bound audit tools (set by compile_auditor_graph)
+# This allows forensic_node to bind the same tools that ToolNode uses
+_active_audit_tools = [write_dry_run_test, run_sandbox_cmd, read_reference_file]
+
 class AuditorState(TypedDict):
     messages: Annotated[List[Any], add_messages]
     
@@ -80,6 +85,27 @@ async def forensic_node(state: AuditorState):
     
     project_root = state.get('project_root', 'Unknown')
     
+    # Generate file listing so auditor knows what exists
+    file_listing = ""
+    if project_root and project_root != 'Unknown':
+        try:
+            import os as _os
+            listing = []
+            for root, dirs, files in _os.walk(project_root):
+                # Skip hidden dirs, node_modules, venv, __pycache__
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', 'venv', '__pycache__', '.git')]
+                level = root.replace(project_root, '').count(_os.sep)
+                indent = '  ' * level
+                listing.append(f"{indent}{_os.path.basename(root)}/")
+                for file in sorted(files):
+                    listing.append(f"{indent}  {file}")
+                if len(listing) > 200:
+                    listing.append("  ... (truncated)")
+                    break
+            file_listing = "\n".join(listing)
+        except Exception:
+            file_listing = "(could not generate file listing)"
+    
     prompt = f"""
     ROLE: Lead Security Auditor (The Sentinel).
     
@@ -97,6 +123,9 @@ async def forensic_node(state: AuditorState):
     
     {files_text}
     
+    AVAILABLE FILES IN PROJECT:
+    {file_listing or '(no file listing available)'}
+    
     CHANGES (Diff):
     {state.get('diff_context', 'No diff provided.')[:5000]}
     
@@ -107,21 +136,24 @@ async def forensic_node(state: AuditorState):
     {state.get('linter_report', 'No linter issues.')}
     
     PROCEDURE:
-    1. Use 'read_reference_file' to read ALL modified files.
+    1. Use 'read_reference_file' to read ALL modified files listed above.
     2. For EACH acceptance criterion, verify it is met by inspecting the file contents.
     3. If the linter failed, call 'AuditVerdict' with REJECTED immediately.
     4. For simple static files (HTML, CSS, JS), do NOT write tests - just verify contents directly.
     5. ONLY use 'write_dry_run_test' for complex Python logic where edge cases need verification.
     6. Once you have verified ALL criteria are met, call 'AuditVerdict' with APPROVED.
-    7. If ANY criterion is NOT met, call 'AuditVerdict' with REJECTED and list blocking_issues.
+    7. If ANY criterion is NOT met, call 'AuditVerdict' with REJECTED.
+       CRITICAL: Each blocking_issue MUST include a real file path and line number.
+       Do NOT report issues you cannot verify in the actual file contents.
     
     IMPORTANT: Be efficient. For simple tasks like HTML scaffolding, read the files, verify criteria, and approve quickly.
     """
     
     # Bind tools: Probing + Final Verdict
     # We bind the Pydantic model 'AuditVerdict' as a tool to force structured exit
+    # Uses _active_audit_tools (set by compile_auditor_graph with correct CWD)
     model = llm.bind_tools(
-        [write_dry_run_test, run_sandbox_cmd, read_reference_file, AuditVerdict]
+        _active_audit_tools + [AuditVerdict]
     )
     
     # If first turn, inject prompt. Otherwise continue.
@@ -187,12 +219,27 @@ def route_auditor(state: AuditorState):
 
 # --- 5. COMPILE GRAPH ---
 
-def compile_auditor_graph():
+def compile_auditor_graph(project_root: str = ""):
+    global _active_audit_tools
+    
+    # Create closure-wrapped run_sandbox_cmd that uses the correct project directory
+    _bound_root = project_root
+
+    @tool
+    def run_sandbox_cmd_bound(command: str) -> str:
+        """Runs a shell command in the project directory to execute tests or scripts.
+        Example: 'python dry_run_test.py' or 'pytest tests/test_auth.py'
+        """
+        return AuditorTools.run_sandbox_cmd(command, cwd=_bound_root or None)
+
+    # Set module-level tools so forensic_node uses the same bound tools
+    _active_audit_tools = [write_dry_run_test, run_sandbox_cmd_bound, read_reference_file]
+
     workflow = StateGraph(AuditorState)
 
     # Define Nodes
     workflow.add_node("forensic_node", forensic_node)
-    workflow.add_node("tools", ToolNode([write_dry_run_test, run_sandbox_cmd, read_reference_file]))
+    workflow.add_node("tools", ToolNode(_active_audit_tools))
     workflow.add_node("verdict_parser", verdict_parser)
 
     # Define Edges

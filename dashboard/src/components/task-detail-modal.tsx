@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Task, TaskStatus, Feedback, deleteTask, addPlanFeedback, addWalkthroughFeedback, addResearchFeedback, updateTaskDetails, researchTasks, getWorkflowTemplates, runTaskWithLangGraph, getTaskLangGraphStatus, WorkflowTemplate, updateTask, approveResearch, rejectResearch, approveWalkthrough, rejectWalkthrough, cancelWalkthrough } from "@/lib/nexus";
+import { Task, TaskStatus, Feedback, deleteTask, addPlanFeedback, addWalkthroughFeedback, addResearchFeedback, updateTaskDetails, researchTasks, getWorkflowTemplates, runTaskWithLangGraph, getTaskLangGraphStatus, WorkflowTemplate, updateTask, approveResearch, rejectResearch, approveWalkthrough, rejectWalkthrough, cancelWalkthrough, cancelWorkflowRun } from "@/lib/nexus";
 import { getTabForTaskStatus } from "@/lib/taskTabMapping";
 import { X, Lightbulb, FileText, BookOpen, Check, XCircle, Loader2, Trash2, GitCommit, Rocket, Search, MessageSquare, Send, Undo2, RefreshCw, Pencil, Zap, ChevronDown, Archive, RotateCw } from "lucide-react";
 import { AnnotatedMarkdown } from './annotated-markdown';
@@ -81,7 +81,18 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
             const trimmed = content.trim();
             // Only attempt parse if it looks like a JSON array or object
             if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-                const parsed = JSON.parse(trimmed);
+                let parsed;
+                try {
+                    parsed = JSON.parse(trimmed);
+                } catch {
+                    // Try Python repr format (single quotes → double quotes)
+                    try {
+                        const fixed = trimmed.replace(/'/g, '"');
+                        parsed = JSON.parse(fixed);
+                    } catch {
+                        return content;
+                    }
+                }
 
                 // Handle array of content blocks
                 if (Array.isArray(parsed)) {
@@ -369,8 +380,21 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
 
     const handleCancelTask = async () => {
         try {
-            // Update status first
-            await updateTask(projectId, task.id, { status: 'cancelled' });
+            // Stop backend workflow FIRST to prevent orphaned runs
+            const runId = langGraphRunId || (task as any).langgraph_run_id;
+            if (runId) {
+                try {
+                    await cancelWorkflowRun(runId);
+                } catch (e) {
+                    console.warn('Failed to cancel LangGraph run:', e);
+                }
+            }
+
+            // Update both task status and langgraph_status
+            await updateTask(projectId, task.id, {
+                status: 'cancelled',
+                langgraph_status: 'cancelled',
+            });
 
             // Stop any active polling BEFORE triggering re-renders
             if (langGraphPollRef.current) {
@@ -812,15 +836,11 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                     setIsRunningLangGraph(false);
                                     setLangGraphStatus(null);
                                     setLangGraphNode(null);
-                                    // Mark the task as complete for generic workflows
-                                    try {
-                                        await updateTask(projectId, task.id, { status: 'complete' as TaskStatus });
-                                    } catch (err) {
-                                        console.error('Failed to mark task complete:', err);
-                                    }
-                                    // Refresh task data
+                                    setLangGraphRunId(null);
+                                    // Refresh task data so walkthrough tab becomes enabled
                                     onTaskChange();
-                                    // Stay on workflow tab
+                                    // Pivot to walkthrough tab to show the completed work
+                                    setActiveTab('walkthrough');
                                 }}
                             />
                         </div>

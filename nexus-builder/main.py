@@ -1053,6 +1053,18 @@ async def cancel_run(run_id: str):
     engine: GraphEngine = app.state.engine
     
     success = await engine.cancel_run(run_id)
+    
+    # Also check Nexus Prime runs (stored in _nexus_runs, not engine._runs)
+    if not success and run_id in _nexus_runs:
+        _nexus_runs[run_id]["status"] = "cancelled"
+        _nexus_runs[run_id]["completed_at"] = __import__('datetime').datetime.utcnow().isoformat()
+        await _sync_run_to_db(run_id)
+        print(f"[Nexus] Run {run_id} cancelled via API")
+        # Notify frontend
+        stream_manager: StreamManager = app.state.stream_manager
+        await stream_manager.broadcast_log(run_id, "Workflow cancelled by user", "warning")
+        success = True
+    
     if not success:
         raise HTTPException(status_code=404, detail="Run not found or already completed")
     
@@ -1399,6 +1411,11 @@ async def _execute_nexus_workflow(run_id: str, initial_state: Dict[str, Any]):
         
         # USE astream_events FOR GRANULAR VISIBILITY
         async for event in active_graph.astream_events(initial_state, config, version="v2"):
+            # Check for cancellation before processing each event
+            if _nexus_runs.get(run_id, {}).get("status") == "cancelled":
+                await stream_manager.broadcast_log(run_id, "Workflow cancelled", "warning")
+                break
+            
             kind = event["event"]
             name = event.get("name", "")
             tags = event.get("tags", [])
@@ -1710,6 +1727,11 @@ async def _resume_nexus_workflow(run_id: str, updates: Optional[Dict[str, Any]] 
         # Resume with astream_events
         # Pass None to resume from interrupt
         async for event in active_graph.astream_events(None, config, version="v2"):
+            # Check for cancellation before processing each event
+            if _nexus_runs.get(run_id, {}).get("status") == "cancelled":
+                await stream_manager.broadcast_log(run_id, "Workflow cancelled", "warning")
+                break
+            
             kind = event["event"]
             name = event.get("name", "")
             data = event.get("data", {})

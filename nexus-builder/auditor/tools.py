@@ -29,7 +29,7 @@ class AuditorTools:
             return f"Error writing test file: {e}"
 
     @staticmethod
-    def run_sandbox_cmd(cmd: str, timeout: int = 30) -> str:
+    def run_sandbox_cmd(cmd: str, timeout: int = 30, cwd: str = None) -> str:
         """
         Executes a command in a sandboxed environment (simulated locally for now).
         Used to run existing tests or dry-run scripts.
@@ -40,13 +40,14 @@ class AuditorTools:
             if any(f in cmd.lower() for f in forbidden):
                 return "Error: Command rejected by safety filter."
             
-            # Execute
+            # Execute in the project directory if provided
             result = subprocess.run(
                 cmd, 
                 shell=True, 
                 capture_output=True, 
                 text=True, 
-                timeout=timeout
+                timeout=timeout,
+                cwd=cwd or None
             )
             
             output = result.stdout
@@ -75,11 +76,17 @@ class AuditorTools:
         
 # --- STRUCTURED OUTPUT ---
 
+class BlockingIssue(BaseModel):
+    """A specific issue that must be fixed, with file and line evidence."""
+    file: str = Field(description="Absolute path to the file containing the issue")
+    line: Optional[int] = Field(default=None, description="Line number where the issue occurs, or null if file-level")
+    description: str = Field(description="What is wrong and how to fix it")
+
 class AuditVerdict(BaseModel):
     """The final verdict of the audit session."""
     status: Literal["APPROVED", "REJECTED"] = Field(description="Final decision: APPROVED if safe, REJECTED if bugs found.")
     security_score: int = Field(description="1-10 scale. 10 is perfectly secure/robust.")
-    blocking_issues: List[str] = Field(description="List of specific bugs or security flaws that MUST be fixed.")
+    blocking_issues: List[BlockingIssue] = Field(description="List of specific bugs with file path, line number, and description. Each issue MUST reference a real file.")
     reasoning: str = Field(description="Detailed explanation of the verdict.")
 
 # --- TOOL BINDINGS ---

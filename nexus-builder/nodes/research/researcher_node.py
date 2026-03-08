@@ -158,7 +158,7 @@ class ResearcherNode(AtomicNode):
         
         # Execute the subgraph
         try:
-            result = await researcher_graph.ainvoke(initial_state)
+            result = await researcher_graph.ainvoke(initial_state, config={"recursion_limit": 100})
             
             # Extract the final dossier
             dossier = result.get("final_dossier", "")

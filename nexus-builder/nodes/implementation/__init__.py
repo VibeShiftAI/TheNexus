@@ -78,7 +78,7 @@ class BuilderNode(AtomicNode):
         project_context = ctx.get_project_context()
         
         # Compile the builder graph
-        builder_graph = compile_builder_graph()
+        builder_graph = compile_builder_graph(project_root=project_root)
         
         # Build initial state
         initial_state = {
@@ -100,7 +100,7 @@ class BuilderNode(AtomicNode):
         }
         
         try:
-            result = await builder_graph.ainvoke(initial_state)
+            result = await builder_graph.ainvoke(initial_state, config={"recursion_limit": 100})
             
             modified = result.get("modified_files", [])
             walkthrough = result.get("walkthrough", "")

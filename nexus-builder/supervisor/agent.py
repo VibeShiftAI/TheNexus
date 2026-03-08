@@ -297,10 +297,31 @@ async def supervisor_node(state: WorkflowState):
             }
     
     if audit and audit.get("status") == "REJECTED":
-        if retry_count >= 3:
+        # Check for builder dispute (scout verified issues already fixed)
+        source_artifacts = outputs.get("source_artifacts", {})
+        dispute = source_artifacts.get("dispute") if isinstance(source_artifacts, dict) else None
+        if dispute and dispute.get("disputed"):
+            print(f"[Supervisor] Builder DISPUTED audit verdict")
+            print(f"[Supervisor] Dispute evidence: {dispute.get('evidence', '')[:300]}")
+            # Auto-override: accept the build as-is
+            walkthrough = outputs.get("walkthrough", "") or (source_artifacts.get("walkthrough", "") if isinstance(source_artifacts, dict) else "")
+            return {
+                "evaluator_decision": "finish",
+                "pending_approval": None,
+                "nexus_protocol_extensions": {
+                    "status_update": "Audit dispute accepted — build verified",
+                    "status_color": "green",
+                    "reasoning": f"Builder disputed audit: {dispute.get('evidence', '')[:200]}"
+                },
+                "retry_count": retry_count,
+                "messages": [AIMessage(content=f"Supervisor Decision: finish (Builder disputed audit — issues verified as fixed)")]
+            }
+
+        if retry_count >= 10:
             print(f"[Supervisor] Audit REJECTED but max retries reached - routing to human_help")
             return {
                 "evaluator_decision": "human_help",
+                "pending_approval": None,  # Clear stale plan gate data
                 "nexus_protocol_extensions": {
                     "status_update": "Max retries reached - needs human intervention",
                     "status_color": "red",
@@ -310,11 +331,11 @@ async def supervisor_node(state: WorkflowState):
                 "messages": [AIMessage(content=f"Supervisor Decision: human_help (Max retries reached after {retry_count} attempts)")]
             }
         
-        print(f"[Supervisor] Audit REJECTED - deterministic route back to builder (retry {retry_count + 1}/3)")
+        print(f"[Supervisor] Audit REJECTED - deterministic route back to builder (retry {retry_count + 1}/10)")
         return {
             "evaluator_decision": "builder_fleet",
             "nexus_protocol_extensions": {
-                "status_update": f"Fixing issues from audit (attempt {retry_count + 1}/3)",
+                "status_update": f"Fixing issues from audit (attempt {retry_count + 1}/10)",
                 "status_color": "yellow",
                 "reasoning": f"Audit rejected: {audit.get('blocking_issues', [])}"
             },
@@ -371,6 +392,7 @@ async def supervisor_node(state: WorkflowState):
         print(f"[Supervisor] Audit FAILED/UNKNOWN - routing to human_help")
         return {
             "evaluator_decision": "human_help",
+            "pending_approval": None,  # Clear stale plan gate data
             "nexus_protocol_extensions": {
                 "status_update": "Audit system error - needs human review",
                 "status_color": "red",
@@ -467,7 +489,7 @@ async def supervisor_node(state: WorkflowState):
     5. If Audit == REJECTED -> 'builder_fleet' (Increment Retry)
     6. If Audit == APPROVED -> 'finish'
     
-    If >3 retries, route to 'human_help'.
+    If >10 retries, route to 'human_help'.
     """
     
     # 3. Get Decision (tracking handled automatically by callback)
@@ -632,7 +654,7 @@ async def call_architect_fleet(state: WorkflowState):
             "model_overrides": state.get("model_overrides", {}),
         }
         graph = compile_architect_graph()
-        result = await graph.ainvoke(inputs, config={"recursion_limit": 50})
+        result = await graph.ainvoke(inputs, config={"recursion_limit": 100})
         
         # ARTIFACT CONTRACT: Produce BLUEPRINT object
         blueprint = {
@@ -686,11 +708,23 @@ async def call_builder_fleet(state: WorkflowState):
         definition_of_done = blueprint.get("dod_json", {})
         
         # Inject negative constraints from previous audit if this is a retry
-        negative_constraints = state.get("negative_constraints", [])
+        audit_report = state.get("outputs", {}).get("audit_report", {})
+        negative_constraints = []
+        if isinstance(audit_report, dict) and audit_report.get("status") == "REJECTED":
+            negative_constraints = audit_report.get("blocking_issues", [])
+        # Fallback to state-level constraints if set
+        if not negative_constraints:
+            negative_constraints = state.get("negative_constraints", [])
+        
+        # Pass previous modified files so scout knows what was already built
+        prev_source = state.get("outputs", {}).get("source_artifacts", {})
+        prev_modified = prev_source.get("modified_files", []) if isinstance(prev_source, dict) else []
         
         print(f"[Builder Fleet] Loading context for task: {context.get('task_title', 'Unknown')}")
         print(f"[Builder Fleet] Project context length: {len(project_context)} chars")
         print(f"[Builder Fleet] Blueprint manifest has {len(manifest)} file operations")
+        if prev_modified:
+            print(f"[Builder Fleet] RETRY: {len(prev_modified)} files from previous build, {len(negative_constraints)} blocking issues")
         
         inputs = {
             "messages": [],
@@ -705,7 +739,7 @@ async def call_builder_fleet(state: WorkflowState):
             # Existing fields
             "repo_skeleton": "",
             "project_root": project_root,
-            "modified_files": [],
+            "modified_files": prev_modified,  # Carry forward from previous build attempt
             "syntax_error": None,
             "thought_signature": "",
             "builder_iteration": 0,  # Track builder tool loops (prevents impl_prompt re-injection)
@@ -715,8 +749,8 @@ async def call_builder_fleet(state: WorkflowState):
             "model_overrides": state.get("model_overrides", {}),
         }
         
-        graph = compile_builder_graph()
-        result = await graph.ainvoke(inputs)
+        graph = compile_builder_graph(project_root=project_root)
+        result = await graph.ainvoke(inputs, config={"recursion_limit": 100})
         
         print(f"[Builder Fleet] ainvoke complete. Result keys: {list(result.keys()) if result else 'None'}")
         
@@ -724,7 +758,8 @@ async def call_builder_fleet(state: WorkflowState):
         source_artifacts = {
             "diff_patch": result.get("diff_patch", ""),  # If builder generates this
             "modified_files": result.get("modified_files", []),
-            "walkthrough": result.get("walkthrough", "")  # Markdown summary for human review
+            "walkthrough": result.get("walkthrough", ""),  # Markdown summary for human review
+            "dispute": result.get("dispute"),  # Dispute evidence if audit was challenged
         }
         
         print(f"[Builder Fleet] source_artifacts: modified_files={len(source_artifacts['modified_files'])}, walkthrough={len(source_artifacts['walkthrough'])} chars")
@@ -826,21 +861,37 @@ async def call_audit_fleet(state: WorkflowState):
             "model_overrides": state.get("model_overrides", {}),
         }
         
-        graph = compile_auditor_graph()
+        graph = compile_auditor_graph(project_root=project_root)
         print(f"[Audit Fleet] Invoking auditor graph...")
-        result = await graph.ainvoke(inputs, config={"recursion_limit": 50})
+        result = await graph.ainvoke(inputs, config={"recursion_limit": 100})
         print(f"[Audit Fleet] Graph completed, extracting verdict...")
         
         # ARTIFACT CONTRACT: Produce VERDICT with status and blocking_issues
         verdict = result.get("final_verdict", {})
+        raw_issues = verdict.get("blocking_issues", [])
+        
+        # Serialize structured BlockingIssue objects to readable strings
+        issue_strings = []
+        for issue in raw_issues:
+            if isinstance(issue, dict):
+                file_ref = issue.get('file', '?')
+                line_ref = issue.get('line', '?')
+                desc = issue.get('description', '?')
+                issue_strings.append(f"{file_ref}:{line_ref} — {desc}")
+            else:
+                issue_strings.append(str(issue))
+        
         audit_report = {
             "status": verdict.get("status", "UNKNOWN"),
-            "blocking_issues": verdict.get("blocking_issues", []),
+            "blocking_issues": issue_strings,
             "security_score": verdict.get("security_score"),
             "reasoning": verdict.get("reasoning")
         }
         
-        print(f"[Audit Fleet] Verdict: {audit_report.get('status')} - {audit_report.get('reasoning', '')[:100]}")
+        print(f"[Audit Fleet] Verdict: {audit_report.get('status')} - {audit_report.get('reasoning', '')}")
+        if audit_report.get("blocking_issues"):
+            for i, issue in enumerate(audit_report["blocking_issues"], 1):
+                print(f"[Audit Fleet]   Issue {i}: {issue}")
         
         return {
             "outputs": {
@@ -848,7 +899,7 @@ async def call_audit_fleet(state: WorkflowState):
                 "audit_report": audit_report
             },
             # CRITICAL: Map blocking issues to negative constraints for Builder retry
-            "negative_constraints": audit_report.get("blocking_issues", [])
+            "negative_constraints": issue_strings
         }
     except Exception as e:
         print(f"[Audit Fleet] ERROR: {e}")
@@ -933,10 +984,22 @@ Write a structured markdown walkthrough with these sections:
 Keep it concise but informative. Focus on WHAT changed and WHY, not implementation minutiae."""
 
         response = await llm.ainvoke([HumanMessage(content=prompt)])
-        walkthrough = response.content if hasattr(response, 'content') else str(response)
         
-        # Prepend title
-        walkthrough = f"# Walkthrough: {task_title}\n\n{walkthrough}"
+        # Normalize response.content — Gemini may return a parts list instead of a string
+        raw_content = response.content if hasattr(response, 'content') else str(response)
+        if isinstance(raw_content, list):
+            # Extract text from parts: [{'type': 'text', 'text': '...'}, ...]
+            text_parts = []
+            for part in raw_content:
+                if isinstance(part, dict):
+                    text_parts.append(part.get('text', part.get('content', '')))
+                elif isinstance(part, str):
+                    text_parts.append(part)
+            walkthrough = "\n".join(text_parts)
+        else:
+            walkthrough = str(raw_content)
+        
+        # Note: Don't prepend a title — the LLM prompt already generates one
         
         print(f"[Walkthrough Generator] Generated walkthrough ({len(walkthrough)} chars)")
         

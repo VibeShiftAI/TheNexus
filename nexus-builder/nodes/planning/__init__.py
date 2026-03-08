@@ -103,7 +103,7 @@ class ArchitectNode(AtomicNode):
         }
         
         try:
-            result = await architect_graph.ainvoke(initial_state)
+            result = await architect_graph.ainvoke(initial_state, config={"recursion_limit": 100})
             
             spec = result.get("final_spec", "")
             manifest = result.get("final_manifest", [])

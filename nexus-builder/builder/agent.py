@@ -1,4 +1,4 @@
-from typing import Annotated, List, TypedDict, Literal, Dict, Any
+from typing import Annotated, List, TypedDict, Literal, Dict, Any, Optional
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -219,28 +219,44 @@ class BuilderState(TypedDict):
     # Output artifact
     walkthrough: str  # Markdown summary of changes for human review
     
+    # Dispute: if scout verifies all audit issues are already fixed
+    dispute: Optional[Dict[str, Any]]  # {disputed: bool, evidence: str, issues_verified: List[str]}
+    
+    # Generated diff for auditor (file content snapshot)
+    diff_patch: str
+
     # Model overrides from workflow builder config
     model_overrides: dict
 
 # --- 2. LOGIC NODES ---
 
 # Maximum iterations to prevent infinite loops
-MAX_SCOUT_ITERATIONS = 10
-MAX_BUILDER_ITERATIONS = 5
+MAX_SCOUT_ITERATIONS = 25
+MAX_BUILDER_ITERATIONS = 50
 
 def _format_negative_constraints(state: BuilderState) -> str:
     """Format audit feedback for injection into builder prompt."""
     constraints = state.get("negative_constraints", [])
-    if not constraints:
-        return ""
+    prev_files = state.get("modified_files", [])
     
-    lines = ["⚠️ AUDIT FEEDBACK (Previous attempt was REJECTED — you MUST fix these issues):",]
-    for i, issue in enumerate(constraints, 1):
-        lines.append(f"  {i}. {issue}")
-    lines.append("")
-    lines.append("DO NOT repeat the same mistakes. Read the existing files first, understand what went wrong, then fix the specific issues listed above.")
-    lines.append("")
-    return "\n".join(lines)
+    parts = []
+    
+    if prev_files:
+        parts.append("📁 FILES ALREADY BUILT (from previous attempt — do NOT re-read these one by one):")
+        for f in prev_files:
+            parts.append(f"  - {f}")
+        parts.append("")
+    
+    if constraints:
+        parts.append("⚠️ AUDIT FEEDBACK (Previous attempt was REJECTED — you MUST fix these issues):")
+        for i, issue in enumerate(constraints, 1):
+            parts.append(f"  {i}. {issue}")
+        parts.append("")
+        parts.append("DO NOT repeat the same mistakes. Focus ONLY on the specific issues listed above.")
+        parts.append("Say READY immediately in scout phase — you already know the codebase.")
+        parts.append("")
+    
+    return "\n".join(parts)
 
 
 async def scout_node(state: BuilderState):
@@ -331,6 +347,8 @@ AVAILABLE TOOLS:
 
 SUB-AGENT TOOLS (available in builder phase):
 - run_bash_command(command, cwd): Run shell commands (git, npm, pip, make, builds)
+  NOTE: Environment is Windows. Use PowerShell syntax, NOT bash/grep/tail.
+  Use 'findstr' or 'Select-String' instead of grep. Use 'type' instead of cat.
 - create_subplan(goal, context): Create detailed sub-plans for complex components
 
 YOUR GOAL: Locate relevant files (if any exist), read necessary code, and plan the implementation.
@@ -343,7 +361,15 @@ RULES:
 4. Use 'explore_codebase' for fast pattern/keyword searches.
 5. For files marked as NEW, you will CREATE them.
 6. For files marked as MODIFY, read them first to understand the context.
-7. When ready to implement, reply with exactly "READY"."""
+7. When ready to implement, reply with exactly "READY".
+8. Be EFFICIENT: If all files are NEW, you already know what to do — say "READY" immediately.
+9. If audit feedback lists specific missing files, focus only on those — do NOT re-read every existing file.
+10. Do NOT create summary markdown files, checklists, or placeholder test HTML files.
+    Only modify existing source files or create files specified in the FILE OPERATIONS list.
+11. DISPUTE: If audit feedback is present AND you verify by reading the actual files that
+    ALL listed issues have already been fixed, respond with DISPUTE followed by evidence
+    explaining what you checked and why each issue is resolved. Do NOT write any code —
+    just provide file paths and line references as proof."""
     
     # Bind navigation tools from unified registry
     model = llm.bind_tools(_scout_tools)
@@ -442,6 +468,11 @@ async def builder_node(state: BuilderState):
             [f"- {d['role']}: {d['content']}" for d in dialogue_history[-5:]]
         )
     
+    # Mid-builder pruning: compress old tool outputs after 15 iterations
+    PRUNE_THRESHOLD = 15
+    if builder_iteration > 0 and builder_iteration % PRUNE_THRESHOLD == 0:
+        _prune_builder_messages(state)
+
     messages = list(state["messages"])
     
     # Only inject the implementation prompt on the FIRST builder call.
@@ -484,6 +515,10 @@ async def builder_node(state: BuilderState):
         For scaffolding (new project), use create_file for each file with ABSOLUTE paths.
         For modifications, use edit_file_block on existing files with ABSOLUTE paths.
         For dependencies, use run_bash_command to install (e.g., "npm install", "pip install -r requirements.txt").
+        
+        IMPORTANT: You can call MULTIPLE tools in a single response! For scaffolding tasks,
+        create ALL files at once by including multiple create_file calls in one response.
+        This is much more efficient than creating one file per response.
         
         When you have completed ALL necessary file operations, stop calling tools.
         Do NOT re-create files that already exist.
@@ -695,24 +730,120 @@ If there are serious issues, respond with "ISSUES:" followed by a brief list."""
     
     print(f"[Builder:Check] Generated walkthrough ({len(walkthrough)} chars)")
     
+    # Generate diff context for auditor (file content snapshot)
+    diff_parts = []
+    for path in modified:
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            # Cap each file at 3000 chars to keep diff manageable
+            preview = content[:3000]
+            if len(content) > 3000:
+                preview += f"\n... ({len(content) - 3000} more chars)"
+            diff_parts.append(f"=== {path} ===\n{preview}")
+        except Exception as e:
+            diff_parts.append(f"=== {path} === (could not read: {e})")
+    diff_patch = "\n\n".join(diff_parts)
+    print(f"[Builder:Check] Generated diff_patch ({len(diff_patch)} chars) for {len(modified)} files")
+    
     return {
         "syntax_error": None,
         "walkthrough": walkthrough,
+        "diff_patch": diff_patch,
         "dialogue_history": dialogue_history + [
             {"role": "check", "content": f"Success: {len(modified)} files verified"}
         ]
     }
 
-# --- 3. ROUTING ---
+# --- 3. CONTEXT PRUNING ---
+
+def _prune_scout_messages(state: BuilderState):
+    """Compress scout phase messages before transitioning to builder.
+    
+    Keeps: SystemMessage, HumanMessage prompts, the final READY message.
+    Drops: ToolMessage responses (raw file dumps, grep outputs),
+           intermediate AIMessage tool_calls (no longer needed).
+    """
+    from langchain_core.messages import ToolMessage as _ToolMessage, SystemMessage as _SystemMessage, HumanMessage as _HumanMessage
+    
+    messages = state.get("messages", [])
+    if len(messages) <= 5:
+        return  # Nothing to prune
+    
+    pruned = []
+    tool_results_dropped = 0
+    
+    for i, msg in enumerate(messages):
+        # Keep all system and human messages (prompts, context)
+        if isinstance(msg, (_SystemMessage, _HumanMessage)):
+            pruned.append(msg)
+        # Keep the last 3 messages (scout's final reasoning + READY)
+        elif i >= len(messages) - 3:
+            pruned.append(msg)
+        # Drop tool result messages (raw file reads, grep outputs)
+        elif isinstance(msg, _ToolMessage):
+            tool_results_dropped += 1
+        # Drop AI messages that only had tool_calls (no reasoning content)
+        elif hasattr(msg, 'tool_calls') and msg.tool_calls and not msg.content:
+            tool_results_dropped += 1
+        else:
+            pruned.append(msg)
+    
+    if tool_results_dropped > 0:
+        # Inject summary of what was dropped
+        summary = _HumanMessage(content=f"[Context: {tool_results_dropped} scout tool outputs pruned to save tokens. Scout phase complete — all file analysis is done.]")
+        pruned.insert(-3, summary)  # Before the last 3 messages
+        state["messages"] = pruned
+        print(f"[Builder:Prune] Scout phase: {len(messages)} messages → {len(pruned)} (dropped {tool_results_dropped} tool outputs)")
+
+def _prune_builder_messages(state: BuilderState):
+    """Compress old builder tool outputs, keeping recent context.
+    
+    Strategy: Keep the first 3 messages (system + prompt + initial guidance)
+    and the last 10 messages (recent tool calls and results).
+    Replace everything in between with a summary.
+    """
+    messages = state.get("messages", [])
+    if len(messages) <= 15:
+        return  # Not enough to prune
+    
+    keep_start = 3   # System prompt + initial context
+    keep_end = 10    # Recent tool interactions
+    
+    head = messages[:keep_start]
+    tail = messages[-keep_end:]
+    dropped = len(messages) - keep_start - keep_end
+    
+    modified_count = len(state.get('modified_files', []))
+    summary = HumanMessage(content=f"[Context: {dropped} intermediate messages pruned. {modified_count} files modified so far. Continue implementing.]")
+    
+    state["messages"] = head + [summary] + tail
+    print(f"[Builder:Prune] Builder phase: {len(messages)} messages → {len(state['messages'])} (dropped {dropped} intermediate)")
+
+# --- 3.5 ROUTING ---
 
 def route_scout(state: BuilderState):
     loop_count = state.get("loop_count", 0)
     
-    # Safety valve: prevent infinite loops
+    # Safety valve: prevent infinite loops — gracefully degrade to builder
     if loop_count >= MAX_SCOUT_ITERATIONS:
-        error_msg = f"[Builder:Route] FATAL: MAX ITERATIONS ({MAX_SCOUT_ITERATIONS}) reached in scout phase! The model is not responding with 'READY' or tool calls."
-        print(error_msg)
-        raise RuntimeError(error_msg)
+        print(f"[Builder:Route] Scout hit MAX ITERATIONS ({MAX_SCOUT_ITERATIONS}) — gracefully proceeding to builder phase")
+        # CRITICAL: If the last message has pending tool_calls, we must inject
+        # synthetic tool_result messages before transitioning. Otherwise Claude's API
+        # will reject the conversation with a 400 error (tool_use without tool_result).
+        last_msg = state["messages"][-1]
+        if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
+            from langchain_core.messages import ToolMessage
+            synthetic_results = []
+            for tc in last_msg.tool_calls:
+                synthetic_results.append(ToolMessage(
+                    content="[Scout max iterations reached — tool not executed. Proceeding to implementation.]",
+                    tool_call_id=tc["id"]
+                ))
+            # Inject into state so builder_node sees valid message history
+            state["messages"].extend(synthetic_results)
+            print(f"[Builder:Route] Injected {len(synthetic_results)} synthetic tool_result(s) for pending tool calls")
+        return "builder"
     
     last_msg = state["messages"][-1]
     
@@ -723,7 +854,14 @@ def route_scout(state: BuilderState):
         
     if hasattr(last_msg, 'content') and last_msg.content and "READY" in str(last_msg.content):
         print(f"[Builder:Route] Scout -> builder (READY detected)")
+        # Prune raw scout tool outputs before transitioning to builder
+        _prune_scout_messages(state)
         return "builder"
+    
+    # Dispute: scout verified all audit issues are already fixed
+    if hasattr(last_msg, 'content') and last_msg.content and "DISPUTE" in str(last_msg.content):
+        print(f"[Builder:Route] Scout -> dispute_exit (DISPUTE — audit issues already fixed)")
+        return "dispute_exit"
     
     # If just talking, continue scouting (or could be error/confusion)
     print(f"[Builder:Route] Scout -> scout (no READY, no tools, continuing)")
@@ -758,8 +896,70 @@ def route_check(state: BuilderState):
 
 from langgraph.prebuilt import ToolNode
 
-def compile_builder_graph():
+def dispute_exit_node(state: BuilderState):
+    """Captures the scout's dispute evidence and exits the builder graph.
+    
+    Called when the scout verifies all audit issues are already fixed
+    and responds with DISPUTE instead of READY.
+    """
+    last_msg = state["messages"][-1]
+    content = str(last_msg.content) if hasattr(last_msg, 'content') else ""
+    
+    # Extract everything after "DISPUTE"
+    evidence = content.split("DISPUTE", 1)[-1].strip() if "DISPUTE" in content else content
+    negative_constraints = state.get("negative_constraints", [])
+    
+    print(f"[Builder:Dispute] Filing dispute with {len(negative_constraints)} issues verified")
+    print(f"[Builder:Dispute] Evidence: {evidence[:300]}")
+    
+    return {
+        "dispute": {
+            "disputed": True,
+            "evidence": evidence,
+            "issues_verified": negative_constraints,
+        },
+        "walkthrough": f"## Audit Dispute\n\nBuilder verified all audit issues are already resolved:\n\n{evidence}",
+    }
+
+def compile_builder_graph(project_root: str = ""):
     workflow = StateGraph(BuilderState)
+
+    # Create closure-wrapped tools that hard-code project_root
+    # This ensures explore_codebase and run_bash_command always use the correct directory,
+    # regardless of whether the LLM passes the parameter
+    _bound_root = project_root
+
+    @tool
+    def explore_codebase_bound(query: str, search_type: str = "auto", thoroughness: str = "medium") -> str:
+        """Fast codebase exploration - find files, search code, map project structure.
+        
+        Args:
+            query: What to search for (file pattern like "*.py", code keyword, or "structure" for tree)
+            search_type: "auto" (detect), "glob" (file patterns), "grep" (code search), "structure" (tree)
+            thoroughness: "quick" (shallow), "medium" (balanced), "very_thorough" (deep search)
+        
+        Returns:
+            Search results with file paths, line numbers, and content snippets
+        """
+        return explore_codebase.invoke({
+            "query": query, "search_type": search_type,
+            "thoroughness": thoroughness, "project_root": _bound_root or ""
+        })
+
+    @tool
+    def run_bash_command_bound(command: str, timeout: int = 300) -> str:
+        """Execute terminal commands for git, builds, npm/pip installs, and other tasks.
+        
+        Args:
+            command: The command to run (e.g., "npm install", "git status")
+            timeout: Maximum seconds to wait (default 300)
+        
+        Returns:
+            Command output including stdout/stderr and exit code
+        """
+        return run_bash_command.invoke({
+            "command": command, "cwd": _bound_root or "", "timeout": timeout
+        })
 
     workflow.add_node("scout", scout_node)
     workflow.add_node("builder", builder_node)
@@ -770,20 +970,23 @@ def compile_builder_graph():
 
     workflow.add_edge(START, "scout")
     
-    # Define specialized tool nodes
+    # Define specialized tool nodes (using bound tools with correct project_root)
     # Scout has navigation tools + codebase explorer for research
-    workflow.add_node("scout_tools", ToolNode([read_file_window, find_symbol, explore_codebase]))
+    workflow.add_node("scout_tools", ToolNode([read_file_window, find_symbol, explore_codebase_bound]))
     # Builder has file editing + sub-agents for shell commands and planning
-    workflow.add_node("builder_tools", ToolNode([edit_file_block, create_file, run_bash_command, explore_codebase, create_subplan]))
+    workflow.add_node("builder_tools", ToolNode([edit_file_block, create_file, run_bash_command_bound, explore_codebase_bound, create_subplan]))
+    
+    workflow.add_node("dispute_exit", dispute_exit_node)
     
     workflow.add_edge("scout_tools", "scout")
     workflow.add_edge("builder_tools", "builder")
+    workflow.add_edge("dispute_exit", END)
     
-    # Scout routing
+    # Scout routing (includes dispute exit)
     workflow.add_conditional_edges(
         "scout",
         route_scout,
-        {"tools": "scout_tools", "builder": "builder", "scout": "scout"}
+        {"tools": "scout_tools", "builder": "builder", "scout": "scout", "dispute_exit": "dispute_exit"}
     )
     
     # Builder routing

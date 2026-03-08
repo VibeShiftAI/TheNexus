@@ -7,7 +7,7 @@ Research Fleet Tools - Real implementations for web research.
     research_tools = registry.get_langchain_tools(["web_search", "scrape_documentation", "verify_library"])
 
 Legacy Tools:
-- web_search: Google Custom Search API for finding documentation
+- web_search: DuckDuckGo (legacy — unified registry preferred)
 - scrape_documentation: BeautifulSoup scraping with Gemini's large context advantage
 - verify_library_existence: PyPI/NPM registry checks to prevent hallucinations
 """
