@@ -5,7 +5,7 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
-from .tools import write_dry_run_test, run_sandbox_cmd, read_reference_file, AuditVerdict
+from .tools import AuditorTools, write_dry_run_test, run_sandbox_cmd, read_reference_file, AuditVerdict
 from model_config import get_claude_opus
 
 # --- 1. STATE DEFINITION ---
