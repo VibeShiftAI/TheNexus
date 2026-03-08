@@ -51,8 +51,9 @@ class DocFileWriterNode(AtomicNode):
         
         # Check for user-reviewed hunk decisions from the interrupt/resume flow
         # These override the graph-state doc_changes (which still has "pending" hunks)
-        from shared_state import get_latest_hunk_decisions
-        user_decisions = get_latest_hunk_decisions()
+        from shared_state import get_hunk_decisions
+        run_id = input_payload.get("context", {}).get("run_id")
+        user_decisions = get_hunk_decisions(run_id) if run_id else None
         if user_decisions:
             print(f"[DocFileWriter] Using user-reviewed hunk decisions from interrupt flow")
             doc_changes = user_decisions

@@ -2867,9 +2867,11 @@ app.post('/api/langgraph/sync-output', async (req, res) => {
 
         res.json({ success: true, updates_applied: Object.keys(updates) });
 
-        // Post-response: sync .context/ files to DB if project_id is available
-        // This catches context files written by doc nodes (write_docs, implementation agent, etc.)
-        if (project_id) {
+        // Post-response: sync .context/ files to DB only after file-writing nodes
+        // Skip for read-only nodes (explore_docs, draft_docs, review_docs) to avoid
+        // massive redundant I/O during concurrent workflows
+        const FILE_WRITING_NODES = ['write_docs', 'coder', 'implementation', 'doc_file_writer'];
+        if (project_id && FILE_WRITING_NODES.includes(node_id)) {
             try {
                 const project = await getProjectById(PROJECT_ROOT, project_id);
                 if (project) {

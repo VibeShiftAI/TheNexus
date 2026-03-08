@@ -136,7 +136,7 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
                     // Check if workflow is paused at an interrupt point (for restored workflows)
                     // Only fire if the run is actually in interrupted/paused status
                     const pausedAt = data.next || data.paused_at;
-                    if (pausedAt && onInterrupt && (data.status === 'interrupted' || data.status === 'paused')) {
+                    if (pausedAt && onInterrupt && (data.status === 'interrupted' || data.status === 'paused' || data.status === 'awaiting_input')) {
                         // Normalize to array format expected by overlay
                         const interruptNodes = Array.isArray(pausedAt) ? pausedAt : [pausedAt];
                         // Only trigger for known interrupt points

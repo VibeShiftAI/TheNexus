@@ -1,125 +1,57 @@
 ---
 context_type: workflow
 status: active
-updated_at: 2026-03-02T00:12:06.610Z
+updated_at: 2026-03-08T16:52:05.923Z
 ---
 
-# Development Workflow
+# Workflow Architecture
 
-## Task Pipeline
-
-All development work in The Nexus follows a ticket-based pipeline. Tasks are created either manually or spawned by project workflows, then processed through specialized AI agents.
-
-### Task Lifecycle
-
-```
-idea → researching → researched → planning → planned → implementing → testing → complete
-                                                                                ↘ rejected
-                                                                                ↘ cancelled
-```
-
-### Workflow Types
-
-Each task is assigned a workflow type that determines how it's executed:
-
-| Type | Description | Execution |
-|------|-------------|-----------|
-| **Nexus Prime** | Standard AI-driven development | Fully autonomous: research → plan → implement → commit |
-| **Human Action** | Tasks requiring manual work | Dashboard tracks status; human completes externally |
-| **Custom / Direct** | Tasks using custom workflow templates | Executes a user-defined workflow graph |
-
-### Ticket Format
-
-Tasks follow a structured Markdown format:
-- **Workflow**: The workflow type to use
-- **Goal**: What the task should accomplish
-- **Context & Execution**: Background info and implementation guidance
-- **Acceptance Criteria**: How to verify the task is complete
+The Nexus utilizes a sophisticated workflow engine built on **LangGraph** to orchestrate AI agents, manage project state, and execute complex development tasks. This architecture separates control flow from agent logic, allowing for deterministic and resumable execution.
 
 ## Agent Architecture
 
-### Supervisor Pattern
+The system has evolved from monolithic, multi-purpose agents to a modular architecture based on **Atomic Nodes**.
 
-The Supervisor Agent orchestrates the task pipeline by:
-1. **Analyzing state** — checking the task ledger for completed/pending phases
-2. **Routing** — dispatching to the appropriate specialist agent
-3. **Tracking** — recording results in the task ledger
-4. **Error handling** — invoking failure analysis on agent errors
+### Atomic Nodes
+Instead of large "Coder" or "Planner" agents that handle end-to-end logic, workflows are composed of granular, atomic nodes (e.g., `analyze_requirements`, `generate_code_snippet`, `run_linter`).
+- **Composability**: Nodes can be reused across different workflow types.
+- **State Isolation**: Each node receives a strictly typed state and returns specific updates.
+- **Error Handling**: Failures are isolated to specific nodes, allowing for targeted retries.
 
-### Agent Routing Map
+## Workflow Types
 
-| Intent | Agent | Model | Purpose |
-|--------|-------|-------|---------|
-| Research (Quick) | Quick Research | Gemini Pro | Fast feasibility analysis |
-| Research (Deep) | Deep Research | Gemini Deep Research API | Thorough codebase analysis |
-| Plan | Plan Generator | Claude Sonnet | Detailed implementation steps |
-| Implement | Implementation Agent | Claude Opus / Gemini Pro | Code generation with tool use |
-| Review | Code Critic | Gemini Flash | Pre-write code review |
-| Commit | Commit Generator | Gemini Flash | Git commit message generation |
+The engine supports specialized workflows tailored to specific operational contexts.
 
-### Human-in-the-Loop Checkpoints
+| Workflow | File | Description |
+| :--- | :--- | :--- |
+| **Task Execution** | `architect_workflow.py` | The standard development loop (Plan → Code → Test) for implementing project features. |
+| **Dashboard Initiative** | `dashboard_supervisor.py` | High-level orchestration for cross-project operations (e.g., "Update dependencies across all apps"). |
+| **Documentation** | `doc_workflow.py` | **(New)** A specialized lightweight workflow for context and documentation updates. It bypasses the heavy architect fleet to directly manipulate the `ArtifactStore` and context files. |
 
-The pipeline pauses for human review at key stages:
-- **After Research**: User reviews and approves/rejects research findings
-- **After Planning**: User reviews and approves/rejects the implementation plan
-- **After Implementation**: User reviews walkthrough, then approves (commit) or cancels (git restore)
+## Artifact Management
 
-## Multi-Level Workflow Orchestration
+To ensure data consistency and thread safety during parallel execution, the system employs a dedicated **Artifact Store**.
 
-### Three Levels
+### `ArtifactStore`
+The `ArtifactStore` serves as the central repository for all data generated during a workflow run.
+- **Thread-Safety**: Implements locking mechanisms to safely handle concurrent writes from parallel nodes.
+- **Versioning**: Maintains version history for artifacts, allowing workflows to rollback or reference previous states.
+- **Persistence**: Decouples transient workflow state from persistent project data.
 
-```
-Dashboard Initiatives (cross-project)
-  └── Project Workflows (multi-stage within a project)
-       └── Task Pipeline (individual task execution)
-```
+## Real-time Streaming (SSE)
 
-### Dashboard Initiatives
-Cross-project workflows (e.g., "Security Audit all projects"). A supervisor iterates over target projects, executing a template workflow for each.
+User experience is enhanced through real-time feedback managed by the **StreamManager**.
 
-### Project Workflows
-Multi-stage processes within a single project (e.g., "Brand Development", "Full Feature Pipeline"). Each stage spawns tasks that flow through the standard task pipeline. Stages advance when all spawned tasks complete.
+### `StreamManager`
+This component bridges the Python execution engine with the frontend via Server-Sent Events (SSE).
+- **Token Streaming**: Streams LLM output tokens immediately as they are generated.
+- **Lifecycle Events**: Broadcasts `node_start` and `node_end` events to visualize graph progress.
+- **Artifact Updates**: Notifies the UI when new artifacts (code, plans, files) are created or updated in the `ArtifactStore`.
 
-### Visual Workflow Builder
-Users can design custom workflows using the React Flow-based builder:
-- Drag-and-drop atomic nodes (research, plan, implement, etc.)
-- Connect nodes with edges to define execution flow
-- Configure per-node parameters (model, agent, tools)
-- Save as reusable templates
+## Execution Flow
 
-## Cortex (System 2 Planning)
-
-For complex tasks, the Cortex system provides deeper reasoning:
-1. **Lead Architect** generates a structured plan with tickets
-2. **Council Review** — specialized reviewers (Frontend, Systems, QA) evaluate the plan
-3. **Vote & Revise** — council votes are tallied; plan is revised if needed
-4. **Compile** — approved plans are compiled into actionable tasks in The Nexus
-
-## Git Integration
-
-All code changes follow a structured git workflow:
-- **Automated commits** with AI-generated conventional commit messages
-- **Git restore** for cancelled implementations (clean rollback)
-- **Branch management** via the dashboard
-- **Remote management** for pushing to GitHub/GitLab
-
-## Development Commands
-
-### Starting The Nexus
-```bash
-# Full stack (with Cloudflare tunnel)
-start-nexus.bat
-
-# Local development only
-start-local.bat
-
-# Stop all services
-stop-nexus.bat
-```
-
-### Services
-| Service | Port | Technology |
-|---------|------|------------|
-| Dashboard | 3000 | Next.js |
-| Node API | 4000 | Express |
-| LangGraph Engine | 8000 | FastAPI / Uvicorn |
+1. **Initialization**: The API triggers a workflow run via `POST /api/run`.
+2. **Graph Compilation**: The Python engine compiles the requested workflow template into a `StateGraph`.
+3. **Streaming**: The `StreamManager` establishes an SSE channel.
+4. **Execution**: Nodes execute atomically, reading/writing to the `ArtifactStore`.
+5. **Completion**: Final artifacts are synced to the database and the run concludes.

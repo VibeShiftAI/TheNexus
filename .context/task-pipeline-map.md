@@ -1,128 +1,115 @@
 ---
 context_type: task-pipeline-map
 status: active
-updated_at: 2026-03-02T00:12:05.824Z
+updated_at: 2026-03-08T16:52:05.180Z
 ---
 
 # Task Pipeline Architecture
 
-## Task-Level Workflow Management
+## Overview
 
-This diagram illustrates how individual tasks are processed through the Task Pipeline, driven by the Nexus Prime workflow.
+The Task Pipeline architecture has migrated from a hardcoded agent routing map to a dynamic **Atomic Node Registry**. This shift enables composable, n8n-style workflows where specific units of logic (Nodes) are assembled dynamically rather than following a rigid `Research -> Plan -> Implement` sequence.
 
-### Nexus Prime Pipeline Flow
+## Atomic Node Registry
 
-```mermaid
-stateDiagram-v2
-    [*] --> idea
-    idea --> researching: Trigger (User/Workflow)
+The core of the new system is the **Atomic Node Registry** (`nexus-builder/nodes/registry.py`). Instead of monolithic "Agents", the system defines atomic "Nodes".
 
-    state researching {
-        [*] --> QuickOrDeep
-        QuickOrDeep --> QuickResearch: Quick Mode
-        QuickOrDeep --> DeepResearch: Deep Mode
-        QuickResearch --> ResearchComplete
-        DeepResearch --> ResearchComplete
-    }
+- **Definition**: A Node is a discrete unit of execution (e.g., `ResearchNode`, `PlanNode`, `CodeEditNode`).
+- **Registration**: Nodes are registered in a central repository, making them available to the Graph Builder.
+- **Configurability**: Each node exposes a schema for configuration, allowing the frontend or API to parameterize execution (e.g., setting the model, temperature, or specific prompt templates).
 
-    researching --> researched: Research Output Saved
-    researched --> HumanReview1: Awaiting Approval
+## Universal Artifact System (ArtifactStore)
 
-    HumanReview1 --> planning: Approved
-    HumanReview1 --> rejected: Rejected
+To facilitate robust data exchange between atomic nodes, the system employs a **Universal Artifact System**.
 
-    state planning {
-        [*] --> PlanGeneration
-        PlanGeneration --> CouncilReview: Cortex Path (Optional)
-        PlanGeneration --> PlanComplete: Direct Path
-        CouncilReview --> PlanComplete
-    }
+- **ArtifactStore**: A central state object that holds structured data produced by nodes.
+- **Data Flow**: Unlike simple string passing, nodes consume specific Artifacts (e.g., `ResearchReport`, `FileContext`) and produce new ones (e.g., `ImplementationPlan`, `CodeDiff`).
+- **Persistence**: Artifacts are serialized and stored, allowing workflows to pause, resume, or be inspected at any stage.
 
-    planning --> planned: Plan Output Saved
-    planned --> HumanReview2: Awaiting Approval
+## Architecture Diagrams
 
-    HumanReview2 --> implementing: Approved
-    HumanReview2 --> rejected: Rejected
+### Node Registration & Execution
 
-    state implementing {
-        [*] --> AgentExecution
-        AgentExecution --> CriticReview: Write File
-        CriticReview --> AgentExecution: Issues Found
-        CriticReview --> AgentExecution: Approved
-        AgentExecution --> WalkthroughGenerated: Agent Complete
-    }
-
-    implementing --> testing: Walkthrough Ready
-    testing --> HumanReview3: Awaiting Approval
-
-    HumanReview3 --> complete: Approve & Commit
-    HumanReview3 --> implementing: Revise
-    HumanReview3 --> cancelled: Cancel & Git Restore
-
-    complete --> [*]
-    rejected --> [*]
-    cancelled --> [*]
-```
-
-### Agent Routing Map
+This diagram illustrates how atomic nodes are registered, compiled into a LangGraph, and executed using the ArtifactStore.
 
 ```mermaid
-graph LR
-    Supervisor[Supervisor Service]
-
-    subgraph Intents
-        Research[Intent: Research]
-        Plan[Intent: Plan]
-        Implement[Intent: Implement]
-        Commit[Intent: Commit]
+flowchart TB
+    subgraph Registry ["Atomic Node Registry"]
+        direction TB
+        RN[Research Node]
+        PN[Plan Node]
+        IN[Implement Node]
+        VN[Verify Node]
     end
 
-    subgraph Agents
-        Deep[Deep Research Agent<br>Gemini Deep Research API]
-        Quick[Quick Research Agent<br>Gemini Pro]
-        Planner[Plan Generator<br>Claude Sonnet]
-        Coder[Implementation Agent<br>Claude Opus / Gemini Pro]
-        Critic[Code Critic<br>Gemini Flash]
-        GitBot[Commit Generator<br>Gemini Flash]
+    subgraph Builder ["Graph Builder"]
+        Config[Workflow Config JSON]
+        Compiler[Graph Compiler]
     end
 
-    Supervisor --> Research
-    Supervisor --> Plan
-    Supervisor --> Implement
-    Supervisor --> Commit
+    subgraph Runtime ["LangGraph Engine"]
+        Store[("ArtifactStore<br>(Universal State)")]
+        
+        Start((Start)) --> NodeA[Execute Node A]
+        NodeA --> NodeB[Execute Node B]
+        NodeB --> End((End))
+        
+        NodeA <-->|Read/Write Artifacts| Store
+        NodeB <-->|Read/Write Artifacts| Store
+    end
 
-    Research --> Deep
-    Research --> Quick
-    Plan --> Planner
-    Implement --> Coder
-    Implement -.-> Critic
-    Commit --> GitBot
+    Registry -->|Provides Logic| Compiler
+    Config -->|Defines Structure| Compiler
+    Compiler -->|Instantiates| Runtime
 ```
 
-### Data Model & State Tracking
+### Standard Task Workflow (Node Composition)
 
-Tasks maintain their state via the `tasks` table columns.
+While the system is dynamic, the standard "Task" workflow is now a specific composition of atomic nodes.
 
 ```mermaid
-erDiagram
-    tasks {
-        uuid id
-        string status "idea|researching|planning|...|complete"
-        string supervisor_status "idle|routing|delegating"
-        text description "Ticket: Workflow, Goal, Context, Criteria"
-        text research_output
-        text plan_output
-        text walkthrough
-        jsonb task_ledger "Array of completed steps"
-        jsonb supervisor_details "Current supervisor state"
-    }
+sequenceDiagram
+    participant Orch as Orchestrator
+    participant Store as ArtifactStore
+    participant RN as Research Node
+    participant PN as Plan Node
+    participant IN as Implement Node
 
-    %% JSONB Structure for task_ledger entries
-    task_ledger_entry {
-        string taskId
-        string status "completed|failed"
-        string agent
-        string intent
-        timestamp completedAt
-    }
+    Orch->>Store: Initialize (Task Description)
+    
+    %% Research Phase
+    Orch->>RN: Execute
+    RN->>Store: Read (Task Description)
+    RN->>RN: Perform Research (LLM + Tools)
+    RN->>Store: Write (Research Artifact)
+    
+    %% Planning Phase
+    Orch->>PN: Execute
+    PN->>Store: Read (Research Artifact)
+    PN->>PN: Generate Plan
+    PN->>Store: Write (Plan Artifact)
+    
+    %% Implementation Phase
+    Orch->>IN: Execute
+    IN->>Store: Read (Plan Artifact)
+    IN->>IN: Apply Code Changes
+    IN->>Store: Write (Diff/Result Artifact)
+    
+    Orch->>Store: Finalize Task
 ```
+
+## Key Components
+
+| Component | Description |
+| :--- | :--- |
+| **Node Registry** | Python module (`nexus-builder/nodes/registry.py`) containing all available workflow nodes. |
+| **ArtifactStore** | The shared state dictionary passed through the LangGraph, replacing unstructured chat history. |
+| **Graph Compiler** | Converts a JSON workflow definition into a runnable LangGraph `StateGraph`. |
+| **Atomic Node** | A Python class/function implementing a specific step (e.g., `GitCommitNode`, `LLMGenerateNode`). |
+
+## Migration Status
+
+- [x] **Legacy**: Hardcoded `Supervisor -> Agent` routing.
+- [x] **Current**: Atomic Nodes defined in Registry.
+- [x] **State**: `ArtifactStore` implemented for structured data passing.
+- [ ] **Future**: Full UI for drag-and-drop node composition (n8n style).

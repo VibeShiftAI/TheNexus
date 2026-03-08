@@ -1506,8 +1506,11 @@ async def _execute_nexus_workflow(run_id: str, initial_state: Dict[str, Any]):
                 "interrupts": snapshot.next,
                 "values": snapshot.values
             })
-            _nexus_runs[run_id]["status"] = "awaiting_input"
+            _nexus_runs[run_id]["status"] = "interrupted"
             _nexus_runs[run_id]["paused_at"] = list(snapshot.next)
+            # Store snapshot values so history endpoint can restore the review UI
+            if snapshot.values:
+                _nexus_runs[run_id]["outputs"] = snapshot.values
         else:
             _nexus_runs[run_id]["status"] = "completed"
             await stream_manager.broadcast_log(run_id, "Workflow completed successfully", "success")

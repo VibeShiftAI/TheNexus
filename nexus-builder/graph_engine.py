@@ -147,6 +147,51 @@ class GraphEngine:
             except Exception as e:
                 print(f"[GraphEngine] Error closing connection: {e}")
     
+    async def _ensure_connection(self):
+        """Check if the PostgreSQL connection is alive and reconnect if stale.
+        
+        Supabase's PgBouncer closes idle connections after ~30s.
+        If a workflow pauses at a review gate for longer, the connection dies.
+        This method detects that and re-establishes it.
+        """
+        if not self.db_url or not POSTGRES_AVAILABLE:
+            return
+        
+        # Check if current connection is alive
+        if self._connection and not self._connection.closed:
+            try:
+                await self._connection.execute("SELECT 1")
+                return  # Connection is fine
+            except Exception:
+                print("[GraphEngine] PostgreSQL connection stale, reconnecting...")
+        else:
+            print("[GraphEngine] PostgreSQL connection closed, reconnecting...")
+        
+        # Reconnect
+        try:
+            import psycopg
+            import asyncio
+            
+            # Close old connection if it exists
+            if self._connection:
+                try:
+                    await self._connection.close()
+                except Exception:
+                    pass
+            
+            self._connection = await asyncio.wait_for(
+                psycopg.AsyncConnection.connect(self.db_url, autocommit=True, prepare_threshold=None),
+                timeout=20.0
+            )
+            
+            self.checkpointer = AsyncPostgresSaver(self._connection)
+            await self.checkpointer.setup()
+            print("[GraphEngine] PostgreSQL reconnected successfully")
+        except Exception as e:
+            print(f"[GraphEngine] PostgreSQL reconnection failed: {e}")
+            # Fall back to in-memory checkpointing
+            self.checkpointer = None
+    
     async def check_database(self) -> Dict[str, Any]:
         """Check database connection status"""
         if not self.checkpointer:
@@ -348,7 +393,6 @@ class GraphEngine:
                     "status": "pending",
                     "current_node": None,
                     "context": {
-                        "graph_config": graph_config,
                         "activity_log": []
                     },
                     "started_at": datetime.utcnow().isoformat(),
@@ -746,6 +790,16 @@ class GraphEngine:
                         self._resume_events.pop(run_id, None)
                         interrupt_handled = True  # Skip all further interrupt checks
                         print(f"[GraphEngine] Resumed execution for run {run_id}")
+                        
+                        # Reconnect PostgreSQL if connection dropped during pause
+                        await self._ensure_connection()
+                        
+                        # Recompile graph with fresh checkpointer if connection was refreshed
+                        # The old graph object captured the dead checkpointer at compile time
+                        if self.checkpointer:
+                            compile_kwargs["checkpointer"] = self.checkpointer
+                            graph = builder.compile(**compile_kwargs)
+                            print(f"[GraphEngine] Recompiled graph with fresh checkpointer")
                         
                         # ── CRITICAL: Update LangGraph's actual state with user decision ──
                         # The conditional router reads from LangGraph's internal state, NOT
