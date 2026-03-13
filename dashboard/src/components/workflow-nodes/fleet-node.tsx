@@ -13,6 +13,7 @@ export function FleetNode({ data, selected }: NodeProps) {
     // Extract fleet info from node data
     const label = data?.label as string || 'Fleet';
     const config = data?.config as { model?: string } || {};
+    const nodeData = data as { category?: string; inputs?: string[]; outputs?: string[]; model?: string; node_type?: string } | undefined;
 
     // Determine icon based on fleet type
     const getFleetIcon = () => {
@@ -40,9 +41,14 @@ export function FleetNode({ data, selected }: NodeProps) {
             title={label}
             color={getFleetColor()}
             selected={selected}
+            category={nodeData?.category || 'orchestration'}
+            inputs={nodeData?.inputs}
+            outputs={nodeData?.outputs}
+            model={nodeData?.model || config.model}
+            nodeType={nodeData?.node_type || 'fleet'}
         >
             <div className="fleet-info">
-                {config.model && (
+                {config.model && !nodeData?.model && (
                     <p className="fleet-model" style={{ fontSize: '0.75rem', color: '#888', margin: 0 }}>
                         {config.model}
                     </p>

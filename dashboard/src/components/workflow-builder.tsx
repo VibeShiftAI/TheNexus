@@ -197,7 +197,7 @@ export function WorkflowBuilder({
   const [workflowLevel, setWorkflowLevel] = useState<'dashboard' | 'project' | 'task'>('task');
 
   // Dynamic node palette (fetched from backend)
-  const [nodePalette, setNodePalette] = useState<{ type: string; label: string; icon: string; description: string; levels?: string[] }[]>([]);
+  const [nodePalette, setNodePalette] = useState<{ type: string; label: string; icon: string; description: string; levels?: string[]; category?: string; inputs?: string[]; outputs?: string[]; node_type?: string; model?: string }[]>([]);
 
   // Dynamic node types from backend (just the type IDs for lookup)
   const [dynamicNodeTypeIds, setDynamicNodeTypeIds] = useState<string[]>([]);
@@ -209,17 +209,22 @@ export function WorkflowBuilder({
         const types = await getNodeTypes();
 
         // Build palette from fetched types
-        const palette: { type: string; label: string; icon: string; description: string; levels?: string[] }[] = [];
+        const palette: { type: string; label: string; icon: string; description: string; levels?: string[]; category?: string; inputs?: string[]; outputs?: string[]; node_type?: string; model?: string }[] = [];
         const dynamicNodeTypes: NodeTypes = { ...BUILTIN_NODE_TYPES };
 
         for (const [typeId, typeDef] of Object.entries(types)) {
-          const def = typeDef as { name?: string; icon?: string; description?: string; levels?: string[] };
+          const def = typeDef as { name?: string; icon?: string; description?: string; levels?: string[]; category?: string; inputs?: string[]; outputs?: string[]; node_type?: string; model?: string };
           palette.push({
             type: typeId,
             label: def.name || typeId,
             icon: def.icon || '🤖',
             description: def.description || '',
             levels: def.levels || ['dashboard', 'project', 'task'],
+            category: def.category || 'agent',
+            inputs: def.inputs || ['main'],
+            outputs: def.outputs || ['main'],
+            node_type: def.node_type || 'atomic',
+            model: def.model || '',
           });
 
           // If not a built-in type, use AgentNode
@@ -283,12 +288,25 @@ export function WorkflowBuilder({
 
   // Handle new connections between nodes
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({
-      ...params,
-      animated: true,
-      style: { stroke: '#6366f1', strokeWidth: 2 },
-    }, eds)),
-    [setEdges]
+    (params: Connection) => setEdges((eds) => {
+      // Build an edge label from source/target node names
+      const sourceNode = nodes.find(n => n.id === params.source);
+      const targetNode = nodes.find(n => n.id === params.target);
+      const sourceLabel = String((sourceNode?.data as Record<string, unknown>)?.label || sourceNode?.type || '?');
+      const targetLabel = String((targetNode?.data as Record<string, unknown>)?.label || targetNode?.type || '?');
+
+      return addEdge({
+        ...params,
+        animated: true,
+        label: `${sourceLabel} → ${targetLabel}`,
+        style: { stroke: '#6366f1', strokeWidth: 2 },
+        labelStyle: { fill: '#888', fontSize: 10, fontWeight: 500 },
+        labelBgStyle: { fill: '#1e1e2e', fillOpacity: 0.9 },
+        labelBgPadding: [6, 3] as [number, number],
+        labelBgBorderRadius: 4,
+      }, eds);
+    }),
+    [setEdges, nodes]
   );
 
   // Handle dropping a new node from the palette
@@ -311,16 +329,29 @@ export function WorkflowBuilder({
         y: event.clientY,
       });
 
+      // Look up palette entry for rich metadata
+      const paletteEntry = nodePalette.find(n => n.type === type);
+
       const newNode: Node = {
         id: `${type}-${Date.now()}`,
         type,
         position,
-        data: { label, config: {} },
+        data: {
+          label,
+          config: {},
+          icon: paletteEntry?.icon || '🤖',
+          description: paletteEntry?.description || '',
+          category: paletteEntry?.category || 'agent',
+          inputs: paletteEntry?.inputs || ['main'],
+          outputs: paletteEntry?.outputs || ['main'],
+          model: paletteEntry?.model || '',
+          node_type: paletteEntry?.node_type || 'atomic',
+        },
       };
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, nodePalette]
   );
 
   // Handle node selection for config panel
@@ -434,27 +465,52 @@ export function WorkflowBuilder({
       </div>
 
       <div className="workflow-content">
-        {/* Node Palette */}
+        {/* Node Palette - Grouped by Category */}
         <div className="node-palette">
           <h4>Nodes</h4>
           <p className="palette-hint">Drag to canvas</p>
-          {nodePalette
-            .filter(node => !node.levels || node.levels.includes(workflowLevel))
-            .map((node) => (
-              <div
-                key={node.type}
-                className="palette-node"
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData('application/reactflow/type', node.type);
-                  e.dataTransfer.setData('application/reactflow/label', node.label);
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
-              >
-                <span className="node-icon">{node.icon}</span>
-                <span className="node-label">{node.label}</span>
+          {(() => {
+            const filtered = nodePalette.filter(node => !node.levels || node.levels.includes(workflowLevel));
+            const grouped = filtered.reduce<Record<string, typeof filtered>>((acc, node) => {
+              const cat = node.category || 'agent';
+              if (!acc[cat]) acc[cat] = [];
+              acc[cat].push(node);
+              return acc;
+            }, {});
+            // Sort categories: orchestration first, then alphabetical
+            const categoryOrder = ['orchestration', 'research', 'planning', 'implementation', 'review', 'documentation', 'memory', 'utility', 'agent', 'general'];
+            const sortedCategories = Object.keys(grouped).sort((a, b) => {
+              const ai = categoryOrder.indexOf(a);
+              const bi = categoryOrder.indexOf(b);
+              return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+            });
+            return sortedCategories.map(cat => (
+              <div key={cat} className="palette-category">
+                <div className="category-header">{cat}</div>
+                {grouped[cat].map((node) => (
+                  <div
+                    key={node.type}
+                    className="palette-node"
+                    draggable
+                    title={`${node.description}\n\nInputs: ${(node.inputs || ['main']).join(', ')}\nOutputs: ${(node.outputs || ['main']).join(', ')}${node.model ? `\nModel: ${node.model}` : ''}`}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('application/reactflow/type', node.type);
+                      e.dataTransfer.setData('application/reactflow/label', node.label);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                  >
+                    <span className="node-icon">{node.icon}</span>
+                    <div className="palette-node-info">
+                      <span className="node-label">{node.label}</span>
+                      <span className="node-io-hint">
+                        {(node.inputs || ['main']).length} in → {(node.outputs || ['main']).length} out
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ));
+          })()}
         </div>
 
         {/* React Flow Canvas */}
@@ -733,7 +789,7 @@ export function WorkflowBuilder({
         }
 
         .node-palette {
-          width: 160px;
+          width: 200px;
           padding: 12px;
           background: #1e1e2e;
           border-right: 1px solid #333;
@@ -752,12 +808,27 @@ export function WorkflowBuilder({
           color: #666;
         }
 
+        .palette-category {
+          margin-bottom: 12px;
+        }
+
+        .category-header {
+          font-size: 0.65rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: #6366f1;
+          padding: 4px 8px;
+          margin-bottom: 4px;
+          border-bottom: 1px solid #2a2a3e;
+        }
+
         .palette-node {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 10px 12px;
-          margin-bottom: 8px;
+          padding: 8px 10px;
+          margin-bottom: 4px;
           background: #2a2a3e;
           border: 1px solid #444;
           border-radius: 8px;
@@ -775,12 +846,28 @@ export function WorkflowBuilder({
         }
 
         .node-icon {
-          font-size: 1.25rem;
+          font-size: 1.1rem;
+          flex-shrink: 0;
+        }
+
+        .palette-node-info {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          min-width: 0;
         }
 
         .node-label {
-          font-size: 0.875rem;
+          font-size: 0.8rem;
           color: #fff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .node-io-hint {
+          font-size: 0.6rem;
+          color: #666;
         }
 
         .workflow-canvas {

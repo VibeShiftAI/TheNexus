@@ -206,6 +206,10 @@ async def get_node_types():
             "category": desc.get("category", "agent"),
             "levels": desc.get("levels", ["dashboard", "project", "task"]),
             "properties": desc.get("properties", []),
+            "inputs": desc.get("inputs", ["main"]),
+            "outputs": desc.get("outputs", ["main"]),
+            "node_type": desc.get("node_type", "atomic"),
+            "model": desc.get("model", ""),
         }
     return result
 
