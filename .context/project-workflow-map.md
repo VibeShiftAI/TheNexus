@@ -1,7 +1,7 @@
 ---
 context_type: project-workflow-map
 status: active
-updated_at: 2026-03-15T18:28:42.515Z
+updated_at: 2026-03-15T18:30:28.043Z
 ---
 
 # Project Workflow Architecture
@@ -17,7 +17,7 @@ sequenceDiagram
     participant API as Node.js API<br>(src/server.js)
     participant Supervisor as Project Workflow Supervisor<br>(project-workflow-supervisor.js)
     participant TaskAPI as Task Pipeline API
-    participant DB as Supabase DB
+    participant DB as SQLite DB
 
     %% Creation
     User->>Frontend: Select Template (e.g., Brand Development)

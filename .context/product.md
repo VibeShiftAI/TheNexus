@@ -1,7 +1,7 @@
 ---
 context_type: product
 status: active
-updated_at: 2026-03-15T18:28:42.513Z
+updated_at: 2026-03-15T18:30:28.042Z
 ---
 
 # Product Guide: The Nexus
@@ -41,7 +41,7 @@ The Nexus is a "Personal Developer Operating System" — a hybrid local-cloud pl
 *   **Cortex (System 2 Reasoning):** A LangGraph-based cognitive mesh for complex planning, featuring adversarial deliberation (council review) and structured plan compilation.
 *   **Visual Workflow Builder:** A React Flow-based drag-and-drop interface for designing and customizing agent workflows.
 *   **Unified Dashboard:** A Next.js-based UI providing real-time visibility into project status, system resources (CPU/RAM/Ports), and active agent tasks.
-*   **Local-Cloud Bridge:** Secure remote access to the local environment via Cloudflare Tunnel, backed by Supabase for state persistence.
+*   **Local-Cloud Bridge:** Secure remote access to the local environment via Cloudflare Tunnel, backed by local SQLite for state persistence.
 *   **MCP Tool Dock:** Dynamic discovery and binding of Model Context Protocol servers to agents.
 *   **Project Discovery:** Automatic detection and metadata management for all local projects.
 

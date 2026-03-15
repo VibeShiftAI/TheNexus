@@ -1,7 +1,7 @@
 ---
 context_type: dashboard-workflow-map
 status: active
-updated_at: 2026-03-15T18:28:42.509Z
+updated_at: 2026-03-15T18:30:28.037Z
 ---
 
 # Dashboard Workflow Architecture
@@ -16,7 +16,7 @@ sequenceDiagram
     participant Frontend as Dashboard UI<br>(dashboard-initiatives.tsx)
     participant API as Node.js API<br>(src/server.js)
     participant Supervisor as Supervisor Service<br>(dashboard-initiative-supervisor.js)
-    participant DB as Supabase DB
+    participant DB as SQLite DB
     participant Python as Python Engine<br>(LangGraph)
 
     %% Creation

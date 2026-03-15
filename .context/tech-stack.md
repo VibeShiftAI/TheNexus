@@ -1,7 +1,7 @@
 ---
 context_type: tech-stack
 status: active
-updated_at: 2026-03-15T18:28:42.520Z
+updated_at: 2026-03-15T18:30:28.048Z
 ---
 
 # Technology Stack: The Nexus
@@ -27,14 +27,13 @@ updated_at: 2026-03-15T18:28:42.520Z
 *   **Model Context Protocol (MCP):** Standard for connecting AI agents to local tools and data sources.
 
 ## 4. Database & Storage
-*   **Supabase (PostgreSQL):** Relational database for persistent state, user auth (RLS), agent configs, and workflow tracking.
-*   **LangGraph Checkpoint (PostgreSQL):** Dedicated checkpointing for graph state persistence and time-travel debugging.
+*   **SQLite (nexus.db):** Local relational database for persistent state, agent configs, tasks, and workflow tracking.
+*   **LangGraph Checkpoint (SQLite):** Dedicated checkpointing for graph state persistence and time-travel debugging.
 *   **Local Filesystem:** Used for project discovery, workflow template storage (JSON), and git operations.
 
 ## 5. Infrastructure & DevOps
-*   **Cloudflare Tunnel:** Exposes the local environment to the internet securely for remote access.
+*   **Cloudflare Tunnel (Optional):** Exposes the local environment to the internet securely for remote access.
 *   **Git (simple-git):** Version control integration for automated commits, branching, and project management.
-*   **Netlify:** Dashboard hosting for cloud-deployed frontend.
 
 ## 6. AI & Machine Learning
 *   **Google Gemini:** Primary model for research, supervision, and fast tasks (Flash/Pro).
@@ -45,5 +44,4 @@ updated_at: 2026-03-15T18:28:42.520Z
 ## 7. Security & Middleware
 *   **Helmet:** HTTP security headers for Express.
 *   **express-rate-limit:** API rate limiting.
-*   **Supabase RLS:** Row-level security for multi-user data isolation.
 *   **CORS:** Cross-origin resource sharing configuration.
