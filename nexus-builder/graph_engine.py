@@ -2,7 +2,7 @@
 Graph Engine - Core LangGraph orchestration
 
 This module handles:
-- Database connection (PostgresSaver for checkpoints)
+- Database connection (SqliteSaver for checkpoints)
 - Graph compilation from JSON configs
 - Workflow execution with checkpointing
 - Time-travel/rewind functionality
@@ -20,13 +20,13 @@ from langgraph.graph import StateGraph, END
 
 load_dotenv()
 
-# Try to import PostgresSaver (may fail if not installed/configured)
+# Use SQLite for checkpoint persistence (local, no remote DB)
 try:
-    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-    POSTGRES_AVAILABLE = True
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+    SQLITE_CHECKPOINTER_AVAILABLE = True
 except ImportError:
-    POSTGRES_AVAILABLE = False
-    AsyncPostgresSaver = None
+    SQLITE_CHECKPOINTER_AVAILABLE = False
+    AsyncSqliteSaver = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -89,108 +89,64 @@ class GraphEngine:
     """
     
     def __init__(self, hooks: Optional[ExecutionLifecycleHooks] = None, stream_manager=None):
-        self.db_url = os.getenv("DATABASE_URL")
         self.checkpointer = None
-        self._connection = None  # Store connection for cleanup
+        self._db_conn = None  # aiosqlite connection for checkpointer
         self._runs: Dict[str, Dict] = {}  # In-memory run tracking
         self.hooks = hooks or ExecutionLifecycleHooks()  # Phase 4: Lifecycle hooks
         self.stream_manager = stream_manager  # SSE event broadcasting
         self._resume_events: Dict[str, asyncio.Event] = {}  # Interrupt pause/resume
         self._resume_data: Dict[str, Dict] = {}  # Data from resume calls
+        self.on_run_complete = None  # Callback: fn(run_id, project_id) for cleanup
     
     async def initialize(self):
-        """Initialize database connections"""
-        if not self.db_url:
-            print("[GraphEngine] No DATABASE_URL configured, running without persistence")
-            return
-        
-        if not POSTGRES_AVAILABLE:
-            print("[GraphEngine] langgraph-checkpoint-postgres not installed, running without persistence")
+        """Initialize SQLite checkpoint persistence"""
+        if not SQLITE_CHECKPOINTER_AVAILABLE:
+            print("[GraphEngine] langgraph-checkpoint-sqlite not installed, running without persistence")
             return
             
         try:
-            print(f"[GraphEngine] Connecting to PostgreSQL at {self.db_url.split('@')[-1] if self.db_url and '@' in self.db_url else '...'}...")
+            import aiosqlite
+            from pathlib import Path
+            # Use a separate checkpoints.db alongside nexus.db to avoid WAL contention
+            db_path = os.getenv("NEXUS_CHECKPOINT_DB_PATH") or str(
+                Path(__file__).parent.parent / "checkpoints.db"
+            )
+            print(f"[GraphEngine] Initializing SQLite checkpointer at {db_path}...")
             
-            # Use psycopg for direct connection with timeout
-            import psycopg
-            import asyncio
-            
-            # Create connection pool
-            # Disable prepared statements (prepare_threshold=None) to avoid conflicts with connection poolers
-            # Add connect_timeout to connection string if possible, or use asyncio.wait_for
-            try:
-                self._connection = await asyncio.wait_for(
-                    psycopg.AsyncConnection.connect(self.db_url, autocommit=True, prepare_threshold=None),
-                    timeout=20.0
-                )
-            except asyncio.TimeoutError:
-                raise Exception("Connection timed out (20s) - Check your internet connection or VPN")
-            
-            # Create checkpointer with the connection
-            self.checkpointer = AsyncPostgresSaver(self._connection)
-            
-            # Setup the checkpoint tables
+            # Open the aiosqlite connection manually — AsyncSqliteSaver.from_conn_string()
+            # returns an async context manager in recent LangGraph versions, so calling
+            # .setup() on it directly fails with '_AsyncGeneratorContextManager' error.
+            self._db_conn = await aiosqlite.connect(db_path)
+            self.checkpointer = AsyncSqliteSaver(self._db_conn)
             await self.checkpointer.setup()
             
-            print("[GraphEngine] Connected to PostgreSQL with checkpointing enabled")
+            print("[GraphEngine] Connected to SQLite with checkpointing enabled")
         except Exception as e:
-            print(f"[GraphEngine] PostgreSQL connection failed: {e}")
+            print(f"[GraphEngine] SQLite checkpointer setup failed: {e}")
             print("[GraphEngine] WARNING: Running without checkpointing (DB unavailable)")
             self.checkpointer = None
+            self._db_conn = None
     
     async def close(self):
         """Cleanup connections"""
-        if self._connection:
+        if self.checkpointer:
             try:
-                await self._connection.close()
-                print("[GraphEngine] PostgreSQL connection closed")
+                if self._db_conn:
+                    await self._db_conn.close()
+                    self._db_conn = None
+                print("[GraphEngine] SQLite checkpointer closed")
             except Exception as e:
-                print(f"[GraphEngine] Error closing connection: {e}")
+                print(f"[GraphEngine] Error closing checkpointer: {e}")
     
     async def _ensure_connection(self):
-        """Check if the PostgreSQL connection is alive and reconnect if stale.
+        """Verify the SQLite checkpointer is available.
         
-        Supabase's PgBouncer closes idle connections after ~30s.
-        If a workflow pauses at a review gate for longer, the connection dies.
-        This method detects that and re-establishes it.
+        SQLite doesn't have idle connection timeouts like PostgreSQL/PgBouncer,
+        so this is mostly a no-op availability check.
         """
-        if not self.db_url or not POSTGRES_AVAILABLE:
-            return
-        
-        # Check if current connection is alive
-        if self._connection and not self._connection.closed:
-            try:
-                await self._connection.execute("SELECT 1")
-                return  # Connection is fine
-            except Exception:
-                print("[GraphEngine] PostgreSQL connection stale, reconnecting...")
-        else:
-            print("[GraphEngine] PostgreSQL connection closed, reconnecting...")
-        
-        # Reconnect
-        try:
-            import psycopg
-            import asyncio
-            
-            # Close old connection if it exists
-            if self._connection:
-                try:
-                    await self._connection.close()
-                except Exception:
-                    pass
-            
-            self._connection = await asyncio.wait_for(
-                psycopg.AsyncConnection.connect(self.db_url, autocommit=True, prepare_threshold=None),
-                timeout=20.0
-            )
-            
-            self.checkpointer = AsyncPostgresSaver(self._connection)
-            await self.checkpointer.setup()
-            print("[GraphEngine] PostgreSQL reconnected successfully")
-        except Exception as e:
-            print(f"[GraphEngine] PostgreSQL reconnection failed: {e}")
-            # Fall back to in-memory checkpointing
-            self.checkpointer = None
+        if not self.checkpointer and SQLITE_CHECKPOINTER_AVAILABLE:
+            # Try to re-initialize if checkpointer was lost
+            await self.initialize()
     
     async def check_database(self) -> Dict[str, Any]:
         """Check database connection status"""
@@ -841,6 +797,9 @@ class GraphEngine:
                         # so we must create a fresh one that reads the updated state.
                         stream_input = None  # Resume from checkpoint (not initial_state)
                         needs_restart = True
+                        # Reset interrupt flag so the NEXT review_docs pass can
+                        # pause for human review again (revision loops)
+                        interrupt_handled = False
                         break
                     
                     # Sync outputs to Node.js backend (which updates Supabase)
@@ -872,7 +831,12 @@ class GraphEngine:
             
             # Phase 4: Fire workflow complete hook
             await self.hooks.run_hook("workflow_execute_after", run_id, "completed")
-            print(f"[GraphEngine] Run {run_id} completed successfully")
+            print(f"[GraphEngine][{run_id[:8]}] Run {run_id} completed successfully")
+            
+            # Release concurrency lock via callback
+            if self.on_run_complete:
+                project_id = input_data.get("project_id")
+                self.on_run_complete(run_id, project_id)
             
             # Notify Node.js backend that workflow run is complete
             await self._notify_workflow_complete(run_id, input_data, "completed")
@@ -898,6 +862,11 @@ class GraphEngine:
             
             # Phase 4: Fire error hook
             await self.hooks.run_hook("on_error", run_id, e)
+            
+            # Release concurrency lock via callback
+            if self.on_run_complete:
+                project_id = input_data.get("project_id")
+                self.on_run_complete(run_id, project_id)
             
             # Notify Node.js backend that workflow run failed
             await self._notify_workflow_complete(run_id, input_data, "failed", str(e))

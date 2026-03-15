@@ -314,6 +314,9 @@ Return ONLY the JSON array, no other text.
             **state.get("outputs", {}),
             "doc_changes": doc_changes,
         },
+        # Reset evaluator_decision so route_review evaluates the fresh hunks
+        # instead of reading a stale 'complete' from the previous review cycle
+        "evaluator_decision": None,
         "messages": [AIMessage(
             content=f"[Doc Drafter] Drafted {total_hunks} changes across {total_files} files. Ready for review."
         )]
