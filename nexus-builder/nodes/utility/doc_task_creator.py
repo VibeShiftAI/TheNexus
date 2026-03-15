@@ -148,11 +148,37 @@ class DocumentationTaskCreatorNode(AtomicNode):
         nodejs_url = os.getenv("NODEJS_BACKEND_URL", "http://localhost:4000")
         created_tasks = []
         errors = []
+        skipped_duplicates = 0
         
         async with httpx.AsyncClient(timeout=15.0) as client:
+            # Fetch existing tasks for this project to prevent duplicates
+            existing_titles = set()
+            try:
+                resp = await client.get(
+                    f"{nodejs_url}/api/projects/{project_id}/tasks"
+                )
+                if resp.status_code == 200:
+                    existing = resp.json()
+                    task_list = existing.get("tasks", existing) if isinstance(existing, dict) else existing
+                    if isinstance(task_list, list):
+                        existing_titles = {
+                            t.get("title", "").strip().lower()
+                            for t in task_list
+                            if isinstance(t, dict) and t.get("title")
+                        }
+                    print(f"[DocTaskCreator] Found {len(existing_titles)} existing tasks for dedup")
+            except Exception as e:
+                print(f"[DocTaskCreator] Warning: Could not fetch existing tasks for dedup: {e}")
+            
             for gap in gaps:
                 title = gap.get("title", "Documentation Update")
                 description = self._format_task_description(gap)
+                
+                # Skip if a task with this title already exists (case-insensitive)
+                if title.strip().lower() in existing_titles:
+                    skipped_duplicates += 1
+                    print(f"[DocTaskCreator] Skipped duplicate: {title}")
+                    continue
                 
                 try:
                     response = await client.post(
@@ -162,7 +188,8 @@ class DocumentationTaskCreatorNode(AtomicNode):
                             "title": title,
                             "description": description,
                             "status": "idea",
-                            "source": "workflow:documentation"
+                            "source": "workflow:documentation",
+                            "templateId": "doc-writer"
                         }
                     )
                     
@@ -177,6 +204,8 @@ class DocumentationTaskCreatorNode(AtomicNode):
                             "file": gap.get("file", "unknown"),
                             "priority": gap.get("priority", "medium")
                         })
+                        # Track locally to prevent intra-run duplicates too
+                        existing_titles.add(title.strip().lower())
                         print(f"[DocTaskCreator] Created task: {title} (ID: {task_id})")
                     else:
                         error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
@@ -188,6 +217,9 @@ class DocumentationTaskCreatorNode(AtomicNode):
                         "error": str(e)
                     })
                     print(f"[DocTaskCreator] Failed to create task '{title}': {e}")
+        
+        if skipped_duplicates:
+            print(f"[DocTaskCreator] Skipped {skipped_duplicates} duplicate task(s)")
         
         return [[NodeExecutionData(
             json={

@@ -68,6 +68,14 @@ class AuditorNode(AtomicNode):
         # Get Nexus context
         project_context = ctx.get_project_context()
         
+        # Load full project context documents
+        project_root = project_context.get("project_path", ".")
+        try:
+            from ..utility.context_loader import read_project_contexts
+            full_context = read_project_contexts(project_root)
+        except Exception:
+            full_context = ""
+        
         # Compile the auditor graph
         auditor_graph = compile_auditor_graph()
         
@@ -76,10 +84,10 @@ class AuditorNode(AtomicNode):
             "messages": [],
             "task_title": project_context.get("task_id", "Audit Task"),
             "task_description": spec[:500] if spec else "Verify implementation",
-            "project_context": "",  # TODO: Load from context service
+            "project_context": full_context,
             "definition_of_done": dod,
             "modified_files": modified_files,
-            "project_root": project_context.get("project_path", "."),
+            "project_root": project_root,
             "diff_context": walkthrough,  # Use walkthrough as diff context
             "blast_radius": "No blast radius analysis",
             "linter_report": "No linter issues",

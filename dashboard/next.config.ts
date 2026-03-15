@@ -17,25 +17,11 @@ import path from "path";
 const parentEnvPath = path.resolve(__dirname, "..", ".env");
 dotenvConfig({ path: parentEnvPath });
 
-// Validate required environment variables in development
-const requiredEnvVars = ["SUPABASE_URL", "SUPABASE_ANON_KEY"];
-const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
-
-if (missingVars.length > 0 && process.env.NODE_ENV === "development") {
-  console.warn(
-    `⚠️  Missing environment variables: ${missingVars.join(", ")}\n` +
-    `   Expected to find them in: ${parentEnvPath}\n` +
-    `   Auth features will be disabled.`
-  );
-}
+// No environment variable validation needed — auth removed, local SQLite only.
 
 const nextConfig: NextConfig = {
   env: {
-    // Map environment variables to Next.js public variables
-    // These will be available both server-side and client-side
-    // IMPORTANT: Use ANON_KEY (public) for client-side, never the service key!
-    NEXT_PUBLIC_SUPABASE_URL: process.env.SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+    // No Supabase env vars needed — auth removed
   },
   async rewrites() {
     // API proxy configuration

@@ -500,6 +500,7 @@ export interface Task {
         templateId?: string;
         startedAt: string;
     };
+    langgraph_template?: string | null;  // Flat DB column — auto-assigned by compiler or user
 
     // First-class citizen fields
     initiativeValidation?: InitiativeValidation;
@@ -543,11 +544,11 @@ export async function getTasks(id: string): Promise<TasksResponse> {
     return res.json();
 }
 
-export async function addTask(id: string, title: string, description?: string): Promise<{ success: boolean; task: Task }> {
+export async function addTask(id: string, title: string, description?: string, templateId?: string): Promise<{ success: boolean; task: Task }> {
     const res = await authFetch(`${API_URL}/${id}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description }),
+        body: JSON.stringify({ title, description, templateId }),
     });
     if (!res.ok) {
         const data = await res.json();

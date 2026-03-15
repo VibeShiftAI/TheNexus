@@ -299,6 +299,79 @@ class GetProjectContextTool(NexusTool):
             return {"success": False, "error": str(e)}
 
 
+class ReadMultipleFilesTool(NexusTool):
+    """Read multiple files in a single tool call to reduce round-trips."""
+    
+    @property
+    def metadata(self) -> ToolMetadata:
+        return ToolMetadata(
+            name="read_multiple_files",
+            description="Read multiple files at once. Pass a comma-separated list of paths. Returns all contents with clear delimiters. Much more efficient than reading files one at a time.",
+            category=ToolCategory.FILESYSTEM,
+            can_auto_execute=True,
+            requires_permission=False,
+            tags=["file", "read", "batch", "filesystem"],
+        )
+    
+    async def execute(
+        self, context: Dict[str, Any], paths: str
+    ) -> Dict[str, Any]:
+        """
+        Read multiple files in one call.
+        
+        Args:
+            context: Execution context (project_root, etc.)
+            paths: Comma-separated list of file paths to read
+            
+        Returns:
+            Dict with success/result containing all file contents
+        """
+        import httpx
+        import os
+        
+        project_root = context.get("project_root", ".")
+        path_list = [p.strip() for p in paths.split(",") if p.strip()]
+        
+        if not path_list:
+            return {"success": False, "error": "No paths provided"}
+        
+        if len(path_list) > 10:
+            return {"success": False, "error": "Maximum 10 files per batch"}
+        
+        results = []
+        total_chars = 0
+        max_chars = 50000  # Prevent context explosion
+        
+        for file_path in path_list:
+            if not os.path.isabs(file_path):
+                file_path = os.path.join(project_root, file_path)
+            
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.get(
+                        f"{NODEJS_URL}/api/tools/read-file",
+                        params={"path": file_path}
+                    )
+                    data = resp.json()
+                    
+                    if data.get("success"):
+                        content = data.get("content", "")
+                        remaining = max_chars - total_chars
+                        if remaining <= 0:
+                            results.append(f"\n--- FILE: {file_path} ---\n[SKIPPED: output limit reached]\n")
+                            continue
+                        if len(content) > remaining:
+                            content = content[:remaining] + "\n... [TRUNCATED]"
+                        total_chars += len(content)
+                        results.append(f"\n--- FILE: {file_path} ---\n{content}\n--- END FILE ---")
+                    else:
+                        results.append(f"\n--- FILE: {file_path} ---\n[ERROR: {data.get('error', 'Could not read')}]\n--- END FILE ---")
+            except Exception as e:
+                results.append(f"\n--- FILE: {file_path} ---\n[ERROR: {e}]\n--- END FILE ---")
+        
+        return {"success": True, "result": "\n".join(results)}
+
+
 def _format_dict(d, indent=0):
     """Helper to format nested dicts for readability."""
     lines = []
@@ -322,3 +395,4 @@ def register_tools(registry) -> None:
     registry.register(ListDirectoryTool())
     registry.register(SearchFilesTool())
     registry.register(GetProjectContextTool())
+    registry.register(ReadMultipleFilesTool())

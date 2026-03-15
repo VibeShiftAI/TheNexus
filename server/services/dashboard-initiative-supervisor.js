@@ -428,6 +428,15 @@ async function createInitiativeTasks(options) {
             description += `\n\n**Target Project:** ${projectName}`;
         }
 
+        // Infer the best task-level template from the initiative workflow type
+        const templateMap = {
+            'security-sweep': 'nexus-prime',
+            'dependency-audit': 'nexus-prime',
+            'documentation': 'doc-writer',
+            'readme-update': 'doc-writer',
+        };
+        const inferredTemplate = templateMap[workflowType] || 'nexus-prime';
+
         // Create the task — same pattern as project-workflow-supervisor.js L321
         const task = await db.createTask({
             project_id: projectId,
@@ -435,6 +444,7 @@ async function createInitiativeTasks(options) {
             description,
             status: 'idea',
             source: `initiative:${initiativeId}:${workflowType}`,
+            langgraph_template: inferredTemplate,
             metadata: {
                 initiativeId,
                 workflowType,

@@ -17,7 +17,7 @@ class NexusClient:
     @property
     def headers(self):
         if self._headers is None:
-            service_key = settings.supabase_service_key
+            service_key = settings.nexus_service_key or settings.supabase_service_key
             key_value = service_key.get_secret_value() if service_key else ""
             self._headers = {
                 "Authorization": f"Bearer {key_value}",
@@ -82,7 +82,7 @@ class NexusClient:
             # Let's just pass description.
         }
         data = await self._post("/projects/scaffold", payload)
-        # Handle Supabase returning array vs object vs just object
+        # Handle API returning array vs object vs just object
         
         if not isinstance(data, dict) or not data.get('id'):
             print(f"DEBUG: create_project response missing ID. Attempting fallback lookup for '{name}'...")
@@ -99,7 +99,7 @@ class NexusClient:
 
         return data.get('id')
 
-    async def add_task(self, project_id: str, title: str, description: str = "") -> str:
+    async def add_task(self, project_id: str, title: str, description: str = "", template_id: str = None) -> str:
         """
         Adds a high-level task to the project.
         """
@@ -110,6 +110,8 @@ class NexusClient:
             "status": "idea",
             "priority": "high"
         }
+        if template_id:
+            payload["templateId"] = template_id
         data = await self._post("/tasks", payload)
         # db.createTask returns `data` directly.
         return data.get('id') if isinstance(data, dict) else (data[0]['id'] if isinstance(data, list) and data else None)

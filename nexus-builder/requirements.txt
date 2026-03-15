@@ -18,12 +18,10 @@ langchain-google-genai>=2.0.0
 langchain-anthropic>=0.3.0
 langchain-openai>=0.2.0
 
-# LangGraph Persistence (PostgreSQL)
+# LangGraph Persistence (SQLite)
 langgraph-checkpoint>=2.0.0
-langgraph-checkpoint-postgres>=2.0.0
 langgraph-checkpoint-sqlite>=2.0.0
-psycopg>=3.2.0
-asyncpg>=0.30.0
+aiosqlite>=0.20.0
 
 # HTTP Client (for calling Node.js backend)
 httpx>=0.28.0

@@ -1,7 +1,7 @@
 ---
 context_type: database-schema
 status: active
-updated_at: 2026-03-10T13:01:30.252Z
+updated_at: 2026-03-15T18:28:42.510Z
 ---
 
 # Database Schema Reference

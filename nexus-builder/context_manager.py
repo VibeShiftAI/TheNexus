@@ -258,7 +258,7 @@ class ContextManager:
     
     async def get_user_preferences(self, user_id: Optional[str]) -> UserPreferences:
         """Get user preferences (returns defaults for now)."""
-        # TODO: Implement database lookup for user preferences
+        # User preferences stored in .context/ files on disk — no DB needed
         return self.default_preferences
     
     def build_system_prompt(self, context: ExecutionContext) -> str:

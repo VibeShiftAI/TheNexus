@@ -121,84 +121,6 @@ class HumanApprovalNode(AtomicNode):
         )]]
 
 
-class ProjectIteratorNode(AtomicNode):
-    """
-    Iterates over target projects and runs child workflows.
-    
-    Dashboard-level node for multi-project operations.
-    """
-    
-    type_id = "project_iterator"
-    display_name = "Project Iterator"
-    description = "Iterates over projects and runs child workflows for each"
-    category = "dashboard"
-    icon = "🔄"
-    version = 1.0
-    levels = ["dashboard"]
-    
-    def get_properties(self) -> List[Dict[str, Any]]:
-        return [
-            {
-                "displayName": "Parallel Execution",
-                "name": "parallel",
-                "type": "boolean",
-                "default": False,
-                "description": "Run projects in parallel",
-            },
-            {
-                "displayName": "Max Concurrent",
-                "name": "max_concurrent",
-                "type": "number",
-                "default": 3,
-                "description": "Maximum concurrent project executions",
-            },
-        ]
-    
-    async def execute(
-        self,
-        ctx: NodeExecutionContext,
-        items: List[NodeExecutionData]
-    ) -> List[List[NodeExecutionData]]:
-        """Iterate over projects."""
-        # TODO: Implement project iteration logic
-        return [[NodeExecutionData(json={"status": "iterator_placeholder"})]]
-
-
-class StageManagerNode(AtomicNode):
-    """
-    Manages workflow stages and advancement.
-    
-    Project-level node for stage tracking.
-    """
-    
-    type_id = "stage_manager"
-    display_name = "Stage Manager"
-    description = "Manages workflow stages and advancement"
-    category = "project"
-    icon = "📈"
-    version = 1.0
-    levels = ["project"]
-    
-    def get_properties(self) -> List[Dict[str, Any]]:
-        return [
-            {
-                "displayName": "Require All Complete",
-                "name": "require_all_complete",
-                "type": "boolean",
-                "default": True,
-                "description": "All tasks must complete before advancing",
-            },
-        ]
-    
-    async def execute(
-        self,
-        ctx: NodeExecutionContext,
-        items: List[NodeExecutionData]
-    ) -> List[List[NodeExecutionData]]:
-        """Manage stage advancement."""
-        # TODO: Implement stage management logic
-        return [[NodeExecutionData(json={"status": "stage_manager_placeholder"})]]
-
 
 class FleetNode(AtomicNode):
     """
@@ -415,9 +337,7 @@ from .walkthrough_generator import WalkthroughGeneratorNode
 
 __all__ = [
     "NexusPrimeNode",
-    "HumanApprovalNode", 
-    "ProjectIteratorNode",
-    "StageManagerNode",
+    "HumanApprovalNode",
     "FleetNode",
     "SupervisorNode",
     "ApprovalGateNode",

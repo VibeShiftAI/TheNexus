@@ -33,6 +33,7 @@ class WorkflowNode(BaseModel):
     type: Literal["reasoning", "tool", "human"]
     description: str
     workflow: Literal["nexus_prime", "human_action", "custom"] = "nexus_prime"
+    template_id: Optional[str] = None  # LangGraph template ID (e.g., "doc-writer", "research-report")
     goal: str = ""  # 1-2 sentence goal for the task
     context: str = ""  # Architecture details, file paths, or step-by-step instructions
     acceptance_criteria: List[str] = []  # How we know the task succeeded

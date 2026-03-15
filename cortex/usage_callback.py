@@ -6,7 +6,7 @@ the LLMFactory. Three key components:
 
 1. SessionLedger: Thread-safe in-memory store, keyed by session_id
 2. CortexUsageCallback: LangChain BaseCallbackHandler injected into every model
-3. _persist_to_database: Synchronous Supabase writer for the system monitor
+3. _persist_to_database: Synchronous SQLite writer for the system monitor
 
 The session_id is read at call time via contextvars, NOT baked in at creation.
 This supports module-level LLM singletons that serve multiple sessions.
@@ -91,63 +91,59 @@ class SessionLedger:
 
 def _persist_to_database(model_id: str, input_tokens: int, output_tokens: int) -> None:
     """
-    Synchronous write to the usage_stats table in Supabase.
+    Synchronous write to the usage_stats table in SQLite.
     
-    Uses the requests library (not asyncio) to avoid event loop issues
+    Uses direct sqlite3 (not asyncio) to avoid event loop issues
     in LangChain callbacks. Fire-and-forget: errors are logged but
     never propagated to avoid disrupting the LLM pipeline.
     """
     import os
-    import requests
+    import sqlite3
+    import uuid
     from datetime import datetime
+    from pathlib import Path
 
     try:
-        supabase_url = os.environ.get("SUPABASE_URL")
-        supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
+        db_path = os.environ.get("NEXUS_DB_PATH") or str(
+            Path(__file__).parent.parent / "nexus.db"
+        )
 
-        if not supabase_url or not supabase_key:
+        if not os.path.exists(db_path):
             return
 
         today = datetime.utcnow().strftime("%Y-%m-%d")
         total_tokens = input_tokens + output_tokens
 
-        headers = {
-            "apikey": supabase_key,
-            "Authorization": f"Bearer {supabase_key}",
-            "Content-Type": "application/json",
-            "Prefer": "return=representation",
-        }
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
 
         # Check for existing record for today + model
-        check_url = f"{supabase_url}/rest/v1/usage_stats?date=eq.{today}&model=eq.{model_id}"
-        response = requests.get(check_url, headers=headers, timeout=5)
-        existing = response.json() if response.ok else []
+        cursor.execute(
+            "SELECT * FROM usage_stats WHERE date = ? AND model = ?",
+            (today, model_id)
+        )
+        existing = cursor.fetchone()
 
-        if existing and len(existing) > 0:
-            record = existing[0]
-            update_data = {
-                "input_tokens": (record.get("input_tokens", 0) or 0) + input_tokens,
-                "output_tokens": (record.get("output_tokens", 0) or 0) + output_tokens,
-                "total_tokens": (record.get("total_tokens", 0) or 0) + total_tokens,
-                "request_count": (record.get("request_count", 0) or 0) + 1,
-            }
-            update_url = f"{supabase_url}/rest/v1/usage_stats?id=eq.{record['id']}"
-            result = requests.patch(update_url, json=update_data, headers=headers, timeout=5)
-            if not result.ok:
-                logger.warning(f"DB update failed: {result.status_code} {result.text[:200]}")
+        if existing:
+            cursor.execute(
+                """UPDATE usage_stats SET
+                    input_tokens = input_tokens + ?,
+                    output_tokens = output_tokens + ?,
+                    total_tokens = total_tokens + ?,
+                    request_count = request_count + 1
+                WHERE id = ?""",
+                (input_tokens, output_tokens, total_tokens, existing["id"])
+            )
         else:
-            insert_data = {
-                "date": today,
-                "model": model_id,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_tokens": total_tokens,
-                "request_count": 1,
-            }
-            insert_url = f"{supabase_url}/rest/v1/usage_stats"
-            result = requests.post(insert_url, json=insert_data, headers=headers, timeout=5)
-            if not result.ok:
-                logger.warning(f"DB insert failed: {result.status_code} {result.text[:200]}")
+            cursor.execute(
+                """INSERT INTO usage_stats (id, date, model, input_tokens, output_tokens, total_tokens, request_count)
+                VALUES (?, ?, ?, ?, ?, ?, 1)""",
+                (str(uuid.uuid4()), today, model_id, input_tokens, output_tokens, total_tokens)
+            )
+
+        conn.commit()
+        conn.close()
 
     except Exception as e:
         logger.warning(f"DB persistence failed (non-fatal): {e}")

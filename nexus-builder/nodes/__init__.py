@@ -51,8 +51,6 @@ from .review import (
 from .orchestration import (
     NexusPrimeNode,
     HumanApprovalNode,
-    ProjectIteratorNode,
-    StageManagerNode,
     ApprovalGateNode,
 )
 from .utility import (
@@ -96,8 +94,6 @@ __all__ = [
     # Orchestration
     "NexusPrimeNode",
     "HumanApprovalNode",
-    "ProjectIteratorNode",
-    "StageManagerNode",
     "ApprovalGateNode",
     
     # Utility

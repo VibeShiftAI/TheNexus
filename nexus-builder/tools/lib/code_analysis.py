@@ -116,15 +116,20 @@ class SearchCodebaseTool(NexusTool):
         """
         base_path = path or context.get("project_root", ".")
         
+        # Directories to exclude (build artifacts, deps, caches)
+        EXCLUDED_DIRS = {
+            ".git", "__pycache__", "node_modules", "venv", "dist",
+            ".next", "build", "coverage", ".turbo", ".vercel", ".cache"
+        }
+        
         try:
             pattern = re.compile(query, re.IGNORECASE)
             matches = []
             
-            # Walk through Python files
-            for root, _, files in os.walk(base_path):
-                # Skip common non-source directories
-                if any(skip in root for skip in [".git", "__pycache__", "node_modules", "venv"]):
-                    continue
+            # Walk through source files
+            for root, dirs, files in os.walk(base_path):
+                # Prune excluded directories in-place to prevent descent
+                dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
                 
                 for file in files:
                     if file.endswith((".py", ".js", ".ts", ".jsx", ".tsx")):
@@ -200,10 +205,15 @@ class GenerateAstMapTool(NexusTool):
                 self.output.append(f"{'  ' * self.indent}async def {node.name}({', '.join(args)})")
         
         skeleton = []
+        EXCLUDED_DIRS = {
+            ".git", "__pycache__", "node_modules", "venv", "dist",
+            ".next", "build", "coverage", ".turbo", ".vercel", ".cache"
+        }
+        
         try:
-            for root, _, files in os.walk(root_dir):
-                if any(skip in root for skip in [".git", "__pycache__", "node_modules", "venv"]):
-                    continue
+            for root, dirs, files in os.walk(root_dir):
+                # Prune excluded directories in-place to prevent descent
+                dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
                     
                 for file in files:
                     if file.endswith(".py"):

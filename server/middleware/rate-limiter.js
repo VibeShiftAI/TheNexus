@@ -24,7 +24,7 @@ async function getQuota(userId, projectId) {
         return cached.data;
     }
 
-    if (!db.supabase) {
+    if (!db.isDatabaseEnabled()) {
         // No database - return unlimited quota
         return {
             daily_token_limit: Infinity,
@@ -43,25 +43,18 @@ async function getQuota(userId, projectId) {
     }
 
     try {
-        // Try to get existing quota
-        let { data, error } = await db.supabase
-            .from('usage_quotas')
-            .select('*')
-            .eq('user_id', userId)
-            .maybeSingle();
+        // Try to get existing quota by endpoint (user-based)
+        const endpoint = userId || 'global';
+        let data = await db.getQuota(endpoint, 'daily');
 
         if (!data) {
             // Create default quota
-            const { data: newQuota, error: insertError } = await db.supabase
-                .from('usage_quotas')
-                .insert({
-                    user_id: userId,
-                    project_id: projectId,
-                })
-                .select()
-                .single();
-
-            data = newQuota;
+            data = await db.upsertQuota({
+                endpoint,
+                period: 'daily',
+                max_requests: 1000,
+                current_count: 0,
+            });
         }
 
         if (data) {
@@ -85,53 +78,12 @@ async function checkRateLimit(userId, projectId) {
         return { allowed: true, reason: null };
     }
 
-    // Check daily limits
-    if (quota.daily_requests_used >= quota.daily_request_limit) {
+    // Check if current count exceeds max requests
+    if (quota.current_count >= quota.max_requests) {
         return {
             allowed: false,
-            reason: 'daily_request_limit',
-            message: `Daily request limit reached (${quota.daily_request_limit}). Resets at midnight.`
-        };
-    }
-
-    if (quota.daily_tokens_used >= quota.daily_token_limit) {
-        return {
-            allowed: false,
-            reason: 'daily_token_limit',
-            message: `Daily token limit reached (${quota.daily_token_limit}). Resets at midnight.`
-        };
-    }
-
-    if (parseFloat(quota.daily_cost_used) >= parseFloat(quota.daily_cost_limit)) {
-        return {
-            allowed: false,
-            reason: 'daily_cost_limit',
-            message: `Daily cost limit reached ($${quota.daily_cost_limit}). Resets at midnight.`
-        };
-    }
-
-    // Check monthly limits
-    if (quota.monthly_requests_used >= quota.monthly_request_limit) {
-        return {
-            allowed: false,
-            reason: 'monthly_request_limit',
-            message: `Monthly request limit reached (${quota.monthly_request_limit}).`
-        };
-    }
-
-    if (quota.monthly_tokens_used >= quota.monthly_token_limit) {
-        return {
-            allowed: false,
-            reason: 'monthly_token_limit',
-            message: `Monthly token limit reached (${quota.monthly_token_limit}).`
-        };
-    }
-
-    if (parseFloat(quota.monthly_cost_used) >= parseFloat(quota.monthly_cost_limit)) {
-        return {
-            allowed: false,
-            reason: 'monthly_cost_limit',
-            message: `Monthly cost limit reached ($${quota.monthly_cost_limit}).`
+            reason: 'request_limit',
+            message: `Request limit reached (${quota.max_requests}). Resets at ${quota.reset_at || 'midnight'}.`
         };
     }
 
@@ -145,29 +97,16 @@ async function recordUsage(userId, projectId, { tokens = 0, cost = 0 }) {
     const cacheKey = `${userId || 'global'}-${projectId || 'global'}`;
     quotaCache.delete(cacheKey); // Invalidate cache
 
-    if (!db.supabase) return;
+    if (!db.isDatabaseEnabled()) return;
 
     try {
-        // Get current quota
-        const { data: quota } = await db.supabase
-            .from('usage_quotas')
-            .select('id, daily_tokens_used, monthly_tokens_used, daily_requests_used, monthly_requests_used, daily_cost_used, monthly_cost_used')
-            .eq('user_id', userId)
-            .single();
+        const endpoint = userId || 'global';
+        const quota = await db.getQuota(endpoint, 'daily');
 
         if (quota) {
-            await db.supabase
-                .from('usage_quotas')
-                .update({
-                    daily_tokens_used: (quota.daily_tokens_used || 0) + tokens,
-                    monthly_tokens_used: (quota.monthly_tokens_used || 0) + tokens,
-                    daily_requests_used: (quota.daily_requests_used || 0) + 1,
-                    monthly_requests_used: (quota.monthly_requests_used || 0) + 1,
-                    daily_cost_used: parseFloat(quota.daily_cost_used || 0) + cost,
-                    monthly_cost_used: parseFloat(quota.monthly_cost_used || 0) + cost,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', quota.id);
+            await db.updateQuota(quota.id, {
+                current_count: (quota.current_count || 0) + 1,
+            });
         }
     } catch (e) {
         console.error('[RateLimiter] Error recording usage:', e);

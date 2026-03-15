@@ -127,9 +127,10 @@ class ExploreCodebaseTool(NexusTool):
                         continue
                     
                     # Skip common non-source dirs
-                    dirs[:] = [d for d in dirs if d not in [
-                        ".git", "__pycache__", "node_modules", "venv", ".next"
-                    ]]
+                    dirs[:] = [d for d in dirs if d not in {
+                        ".git", "__pycache__", "node_modules", "venv", ".next",
+                        "dist", "build", "coverage", ".turbo", ".vercel", ".cache"
+                    }]
                     
                     indent = "  " * depth
                     rel_path = os.path.relpath(root_dir, root)
@@ -141,9 +142,11 @@ class ExploreCodebaseTool(NexusTool):
             # Search if query provided
             if query and search_type in ("search", "auto"):
                 output.append(f"\n## Search Results for '{query}'\n")
-                for root_dir, _, files in os.walk(root):
-                    if any(skip in root_dir for skip in [".git", "__pycache__", "node_modules"]):
-                        continue
+                for root_dir, dirs, files in os.walk(root):
+                    dirs[:] = [d for d in dirs if d not in {
+                        ".git", "__pycache__", "node_modules", "venv", ".next",
+                        "dist", "build", "coverage", ".turbo", ".vercel", ".cache"
+                    }]
                     for file in files:
                         if query.lower() in file.lower():
                             output.append(f"- {os.path.relpath(os.path.join(root_dir, file), root)}")

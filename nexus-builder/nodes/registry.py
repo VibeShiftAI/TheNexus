@@ -345,8 +345,6 @@ def init_atomic_nodes() -> int:
     from .orchestration import (
         NexusPrimeNode,
         HumanApprovalNode,
-        ProjectIteratorNode,
-        StageManagerNode,
         FleetNode,
         SupervisorNode,
         WalkthroughGeneratorNode,
@@ -385,8 +383,6 @@ def init_atomic_nodes() -> int:
         AuditorNode,
         NexusPrimeNode,
         HumanApprovalNode,
-        ProjectIteratorNode,
-        StageManagerNode,
         FleetNode,
         SupervisorNode,
         SummarizerNode,

@@ -162,6 +162,8 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
         };
         setCurrentArtifact(artifact);
         setArtifactPanelOpen(true);
+        // Immediately notify parent to refresh task status (backend already set it to 'complete')
+        onWorkflowComplete?.();
     };
 
     const handleInterrupt = (payload: any) => {

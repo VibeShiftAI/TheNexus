@@ -88,16 +88,19 @@ async function callGemini(message, config, systemPrompt, history, apiKey) {
     const modelId = config.apiModelId;
     const params = config.parameters || {};
 
+    // Use the official @google/genai SDK (API key sent via header, not URL)
+    const genAI = new GoogleGenAI({ apiKey });
+
     // Build generation config with thinking parameters
     const generationConfig = {};
 
     if (params.thinking_config) {
-        generationConfig.thinking_config = params.thinking_config;
+        generationConfig.thinkingConfig = params.thinking_config;
         console.log(`[Gemini] Using thinking_level: ${params.thinking_config.thinking_level}`);
     }
 
     if (params.thinking_budget !== undefined) {
-        generationConfig.thinking_budget = params.thinking_budget;
+        generationConfig.thinkingBudget = params.thinking_budget;
         console.log(`[Gemini] Using thinking_budget: ${params.thinking_budget}`);
     }
 
@@ -120,37 +123,32 @@ async function callGemini(message, config, systemPrompt, history, apiKey) {
         parts: [{ text: message }]
     });
 
-    const requestBody = {
-        contents,
-    };
-
-    // Only include systemInstruction if a system prompt was actually provided
+    // Build SDK config
+    const sdkConfig = {};
     if (systemPrompt) {
-        requestBody.systemInstruction = { parts: [{ text: systemPrompt }] };
+        sdkConfig.systemInstruction = systemPrompt;
     }
-
     if (Object.keys(generationConfig).length > 0) {
-        requestBody.generationConfig = generationConfig;
+        Object.assign(sdkConfig, generationConfig);
     }
 
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+    const response = await genAI.models.generateContent({
+        model: modelId,
+        contents,
+        config: Object.keys(sdkConfig).length > 0 ? sdkConfig : undefined
+    });
+
+    // Extract text from SDK response
+    let text = 'No response from Gemini';
+    if (response.candidates && response.candidates[0]) {
+        const parts = response.candidates[0].content?.parts || [];
+        const textParts = parts.filter(p => p.text).map(p => p.text);
+        if (textParts.length > 0) {
+            text = textParts.join('');
         }
-    );
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Gemini API error: ${response.status} - ${JSON.stringify(errorData)}`);
     }
 
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini';
-
-    const usageMetadata = data.usageMetadata || {};
+    const usageMetadata = response.usageMetadata || {};
 
     // Track usage for resource monitor
     tokenTracker.trackUsage({
@@ -318,6 +316,76 @@ async function callAnthropic(message, config, systemPrompt, history, apiKey) {
     };
 }
 
+// ═══════════════════════════════════════════════════════════════
+// XAI (GROK) API HANDLER — OpenAI-compatible endpoint
+// ═══════════════════════════════════════════════════════════════
+async function callXAI(message, config, systemPrompt, history, apiKey) {
+    const modelId = config.apiModelId;
+    const params = config.parameters || {};
+
+    const messages = [
+        { role: 'system', content: systemPrompt }
+    ];
+
+    if (history && history.length > 0) {
+        for (const msg of history) {
+            messages.push({
+                role: msg.role === 'assistant' ? 'assistant' : 'user',
+                content: msg.content
+            });
+        }
+    }
+
+    messages.push({ role: 'user', content: message });
+
+    const requestBody = {
+        model: modelId,
+        messages,
+    };
+
+    if (params.reasoning_effort) {
+        requestBody.reasoning_effort = params.reasoning_effort;
+        console.log(`[xAI] Using reasoning_effort: ${params.reasoning_effort}`);
+    }
+
+    const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`xAI API error: ${response.status} - ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || 'No response from Grok';
+
+    const usage = data.usage || {};
+
+    // Track usage for resource monitor
+    tokenTracker.trackUsage({
+        provider: 'xai',
+        model: modelId,
+        inputTokens: usage.prompt_tokens || 0,
+        outputTokens: usage.completion_tokens || 0,
+        task: 'chat'
+    });
+
+    return {
+        text,
+        usage: {
+            inputTokens: usage.prompt_tokens || 0,
+            outputTokens: usage.completion_tokens || 0,
+            totalTokens: usage.total_tokens || 0
+        }
+    };
+}
+
 /**
  * Unified AI call router - THE SINGLE ENTRY POINT for all AI calls
  * 
@@ -371,6 +439,7 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
         google: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
         openai: process.env.OPENAI_API_KEY,
         anthropic: process.env.ANTHROPIC_API_KEY,
+        xai: process.env.XAI_API_KEY,
     };
 
     const apiKey = apiKeys[provider];
@@ -393,6 +462,9 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
             break;
         case 'openai':
             result = await callOpenAI(userPrompt, config, systemPrompt, history, apiKey);
+            break;
+        case 'xai':
+            result = await callXAI(userPrompt, config, systemPrompt, history, apiKey);
             break;
         default:
             throw new Error(`Unsupported provider: ${provider}`);
@@ -469,6 +541,7 @@ module.exports = {
     callGemini,
     callOpenAI,
     callAnthropic,
+    callXAI,
     getAIModelConfig,
     callAI,
     runDeepResearch

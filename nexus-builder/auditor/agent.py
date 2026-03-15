@@ -6,7 +6,7 @@ from langgraph.prebuilt import ToolNode
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 from .tools import AuditorTools, write_dry_run_test, run_sandbox_cmd, read_reference_file, AuditVerdict
-from model_config import get_claude_opus
+from model_config import get_discovered_model_id, DEFAULT_PRO_MODEL
 
 # --- 1. STATE DEFINITION ---
 
@@ -24,6 +24,7 @@ class AuditorState(TypedDict):
     definition_of_done: dict  # Acceptance criteria from architect
     modified_files: List[str]  # List of files that were created/modified
     project_root: str  # Absolute path to the target project directory
+    file_manifest: List[dict]  # Files the builder was ASKED to create/modify (scope boundary)
     
     # Artifacts injected at runtime
     diff_context: str
@@ -40,17 +41,35 @@ class AuditorState(TypedDict):
     # Model overrides from workflow builder config
     model_overrides: dict
 
-# --- 2. THE AGENT (Claude Opus) with automatic tracking ---
+# --- 2. THE AGENT (Latest Gemini Pro via Discovery) ---
 def get_auditor_llm():
-    """Returns Claude Opus with token tracking via factory."""
-    return get_claude_opus(temperature=0)
+    """Returns the latest Gemini Pro model (from discovery service) with token tracking.
+    Falls back to DEFAULT_PRO_MODEL if the discovery service is unavailable."""
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    from model_config import _get_tracking_handler
+    
+    discovered_id = get_discovered_model_id("Gemini Pro")
+    model_id = discovered_id or DEFAULT_PRO_MODEL
+    
+    cb = []
+    handler = _get_tracking_handler()
+    if handler:
+        cb = [handler]
+    
+    print(f"[Auditor] Using model: {model_id}" + (" (discovered)" if discovered_id else " (fallback)"))
+    return ChatGoogleGenerativeAI(
+        model=model_id,
+        temperature=0,
+        max_tokens=16384,
+        callbacks=cb
+    )
 
 # --- 3. LOGIC NODES ---
 
 async def forensic_node(state: AuditorState):
     """
     Phase 1: Investigation (async for streaming).
-    Claude reviews the Diff, Blast Radius, and Linter Report.
+    LLM reviews the Diff, Blast Radius, and Linter Report.
     Enhanced with full task context and acceptance criteria.
     """
     # Use override model if configured, else default
@@ -106,6 +125,20 @@ async def forensic_node(state: AuditorState):
         except Exception:
             file_listing = "(could not generate file listing)"
     
+    # Extract file manifest for scope boundary
+    file_manifest = state.get('file_manifest', [])
+    scope_text = ""
+    if file_manifest:
+        manifest_files = []
+        for op in file_manifest:
+            if isinstance(op, dict):
+                path = op.get('path', op.get('file', ''))
+                operation = op.get('operation', 'modify')
+                manifest_files.append(f"  - [{operation.upper()}] {path}")
+            else:
+                manifest_files.append(f"  - {op}")
+        scope_text = "TASK SCOPE (files the builder was asked to create/modify):\n" + "\n".join(manifest_files)
+    
     prompt = f"""
     ROLE: Lead Security Auditor (The Sentinel).
     
@@ -122,6 +155,8 @@ async def forensic_node(state: AuditorState):
     {dod_text}
     
     {files_text}
+    
+    {scope_text}
     
     AVAILABLE FILES IN PROJECT:
     {file_listing or '(no file listing available)'}
@@ -146,6 +181,13 @@ async def forensic_node(state: AuditorState):
        CRITICAL: Each blocking_issue MUST include a real file path and line number.
        Do NOT report issues you cannot verify in the actual file contents.
     
+    SCOPE RULES (CRITICAL):
+    - ONLY audit changes to files listed in the TASK SCOPE or modified files above.
+    - Do NOT flag references to files outside this task's scope as blocking issues.
+      For example, if this task creates index.html that references styles.css, but styles.css
+      is NOT in this task's scope, that is NOT a blocking issue — another task will create it.
+    - Focus on whether THIS task's deliverables meet THIS task's acceptance criteria.
+    
     IMPORTANT: Be efficient. For simple tasks like HTML scaffolding, read the files, verify criteria, and approve quickly.
     """
     
@@ -157,7 +199,7 @@ async def forensic_node(state: AuditorState):
     )
     
     # If first turn, inject prompt. Otherwise continue.
-    # IMPORTANT: Claude requires at least one HumanMessage, so we use SystemMessage + HumanMessage
+    # Both Claude and Gemini require at least one HumanMessage, so we use SystemMessage + HumanMessage
     messages = state.get("messages", [])
     if not messages:
         print(f"[Auditor:Forensic] Starting audit for task: {task_title}")
@@ -168,10 +210,35 @@ Use tools to investigate, then call AuditVerdict with your final decision.""")
         human_msg = HumanMessage(content=prompt)
         messages = [system_msg, human_msg]
     
-    print(f"[Auditor:Forensic] Invoking Claude with {len(messages)} messages...")
-    response = await model.ainvoke(messages)
-    print(f"[Auditor:Forensic] Response received, tool_calls: {bool(hasattr(response, 'tool_calls') and response.tool_calls)}")
-    return {"messages": [response]}
+    print(f"[Auditor:Forensic] Invoking LLM with {len(messages)} messages...")
+    
+    # Retry with exponential backoff for transient API errors (overloaded, rate limit)
+    max_retries = 3
+    retry_delays = [5, 15, 30]  # seconds
+    last_error = None
+    
+    for attempt in range(max_retries + 1):
+        try:
+            response = await model.ainvoke(messages)
+            print(f"[Auditor:Forensic] Response received, tool_calls: {bool(hasattr(response, 'tool_calls') and response.tool_calls)}")
+            return {"messages": [response]}
+        except Exception as e:
+            error_str = str(e).lower()
+            is_transient = any(term in error_str for term in [
+                'overloaded', 'rate_limit', 'rate limit', '529', '503', '429',
+                'server_error', 'internal_error', 'timeout', 'connection',
+                'resource_exhausted', 'quota', '500', 'unavailable'
+            ])
+            
+            if is_transient and attempt < max_retries:
+                delay = retry_delays[attempt]
+                print(f"[Auditor:Forensic] Transient API error (attempt {attempt + 1}/{max_retries + 1}): {e}")
+                print(f"[Auditor:Forensic] Retrying in {delay}s...")
+                import asyncio as _asyncio
+                await _asyncio.sleep(delay)
+                last_error = e
+            else:
+                raise  # Non-transient or exhausted retries
 
 def verdict_parser(state: AuditorState):
     """
@@ -205,7 +272,7 @@ def route_auditor(state: AuditorState):
     # Check for Tool Calls
     if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
         # Check ALL tool calls for AuditVerdict (not just the first one!)
-        # Claude often calls a regular tool AND AuditVerdict in the same response.
+        # Models may call a regular tool AND AuditVerdict in the same response.
         # If we only check tool_calls[0], the verdict gets routed to ToolNode
         # which doesn't know about AuditVerdict, silently dropping it.
         for tc in last_msg.tool_calls:

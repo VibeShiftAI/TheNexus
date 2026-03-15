@@ -44,6 +44,13 @@ async def lifespan(app: FastAPI):
     
     # Initialize the graph engine with stream manager for SSE broadcasting
     app.state.engine = GraphEngine(stream_manager=app.state.stream_manager)
+    
+    # Wire concurrency lock cleanup for generic engine runs
+    def _release_project_lock(run_id, project_id):
+        if project_id:
+            _active_project_runs.pop(project_id, None)
+    app.state.engine.on_run_complete = _release_project_lock
+    
     await app.state.engine.initialize()
     
     # Load active workflow runs from database into memory
@@ -1010,6 +1017,14 @@ async def run_workflow(request: WorkflowRunRequest, background_tasks: Background
         else:
             raise HTTPException(status_code=400, detail="Provide workflow_id or graph_config")
         
+        # Prevent duplicate concurrent runs for the same project
+        if request.project_id and request.project_id in _active_project_runs:
+            existing_run_id = _active_project_runs[request.project_id]
+            raise HTTPException(
+                status_code=409,
+                detail=f"Project already has an active run: {existing_run_id}"
+            )
+        
         # Create a new run
         run = await engine.create_run(
             workflow_id=request.workflow_id,
@@ -1017,6 +1032,10 @@ async def run_workflow(request: WorkflowRunRequest, background_tasks: Background
             task_id=request.task_id,
             graph_config=graph_config
         )
+        
+        # Register project → run mapping for concurrency guard
+        if request.project_id:
+            _active_project_runs[request.project_id] = run["id"]
         
         # Execute in background
         from nodes.registry import get_registry
@@ -1062,8 +1081,12 @@ async def cancel_run(run_id: str):
     if not success and run_id in _nexus_runs:
         _nexus_runs[run_id]["status"] = "cancelled"
         _nexus_runs[run_id]["completed_at"] = __import__('datetime').datetime.utcnow().isoformat()
+        # Release concurrency lock for this project
+        project_id = _nexus_runs[run_id].get("project_id")
+        if project_id:
+            _active_project_runs.pop(project_id, None)
         await _sync_run_to_db(run_id)
-        print(f"[Nexus] Run {run_id} cancelled via API")
+        print(f"[Nexus] Run {run_id} cancelled via API (lock released for project {project_id})")
         # Notify frontend
         stream_manager: StreamManager = app.state.stream_manager
         await stream_manager.broadcast_log(run_id, "Workflow cancelled by user", "warning")
@@ -1250,11 +1273,15 @@ class NexusStageUpdate(BaseModel):
 # Store for active Nexus run statuses (cached in memory, persisted to DB)
 _nexus_runs: Dict[str, Dict[str, Any]] = {}
 
+# Active project runs — prevents duplicate concurrent workflows for the same project
+_active_project_runs: Dict[str, str] = {}  # project_id → run_id
+
 
 async def _load_active_runs_from_db():
     """
     Load active workflow runs from database into memory on startup.
     This restores state after server restart.
+    Also rebuilds _active_project_runs to prevent ghost locks.
     """
     supabase = get_supabase()
     if not supabase.is_configured():
@@ -1265,11 +1292,24 @@ async def _load_active_runs_from_db():
         active_runs = await supabase.get_active_nexus_runs()
         for run in active_runs:
             run_id = run.pop("run_id")
+            status = run.get("status", "")
+            project_id = run.get("project_id")
+            
+            # Only restore runs that are genuinely still active
+            if status in ("completed", "failed", "cancelled"):
+                print(f"[Nexus] Skipping terminal run {run_id} (status: {status})")
+                continue
+            
             _nexus_runs[run_id] = run
-            print(f"[Nexus] Restored run {run_id} from database (status: {run.get('status')})")
+            
+            # Rebuild the concurrency guard map for truly active runs
+            if project_id and status in ("running", "interrupted"):
+                _active_project_runs[project_id] = run_id
+            
+            print(f"[Nexus] Restored run {run_id} from database (status: {status})")
         
         if active_runs:
-            print(f"[Nexus] Restored {len(active_runs)} active workflow runs from database")
+            print(f"[Nexus] Restored {len(active_runs)} workflow runs, {len(_active_project_runs)} active project locks")
         else:
             print("[Nexus] No active workflow runs to restore")
     except Exception as e:
@@ -1583,6 +1623,17 @@ async def _execute_nexus_workflow(run_id: str, initial_state: Dict[str, Any]):
         _nexus_runs[run_id]["error"] = str(e)
         await stream_manager.broadcast_log(run_id, f"Workflow Failed: {e}", "error")
         await _sync_run_to_db(run_id, project_id, task_id)
+    finally:
+        # BULLETPROOF: Always release the concurrency lock when the workflow
+        # executor exits, regardless of how it ended (complete, fail, cancel,
+        # or unexpected exception). The only exception is "interrupted" (paused
+        # for human approval) — those runs are still alive and will re-enter
+        # this executor via _resume_nexus_workflow.
+        final_status = _nexus_runs.get(run_id, {}).get("status", "")
+        if final_status != "interrupted":
+            removed = _active_project_runs.pop(project_id, None)
+            if removed:
+                print(f"[Nexus] Released project lock for {project_id} (final status: {final_status})")
 
 @app.get("/graph/nexus/{run_id}/stream")
 async def stream_nexus_run(run_id: str):
@@ -1618,6 +1669,17 @@ async def run_nexus_workflow(request: NexusRunRequest, background_tasks: Backgro
     import uuid
     
     run_id = str(uuid.uuid4())
+    
+    # Prevent duplicate concurrent runs for the same project
+    if request.project_id in _active_project_runs:
+        existing_run_id = _active_project_runs[request.project_id]
+        raise HTTPException(
+            status_code=409,
+            detail=f"Project already has an active run: {existing_run_id}"
+        )
+    
+    # Register project → run mapping for concurrency guard
+    _active_project_runs[request.project_id] = run_id
     
     # Build initial state for Nexus workflow
     initial_state = {
@@ -1668,14 +1730,24 @@ async def get_nexus_artifacts(run_id: str):
     if not run:
         raise HTTPException(status_code=404, detail="Nexus run not found")
     
-    artifacts = run.get("artifacts", {})
+    # Artifacts live in the outputs dict (set by supervisor fleets), not the top-level artifacts field
+    outputs = run.get("outputs", {}) or {}
+    source_artifacts = outputs.get("source_artifacts", {}) or {}
+    
+    # The walkthrough is produced by the Builder Fleet's basic_check node
+    walkthrough = (
+        outputs.get("walkthrough") or 
+        source_artifacts.get("walkthrough") or 
+        None
+    )
     
     # Map to Task artifact format
     return {
-        "researchReport": artifacts.get("research_dossier"),  # Maps to Research Dossier
-        "implementationPlan": artifacts.get("blueprint"),      # Maps to Blueprint
-        "walkthrough": artifacts.get("audit_report"),          # Maps to Audit Report
-        "raw": artifacts
+        "researchReport": outputs.get("research_dossier"),
+        "implementationPlan": outputs.get("blueprint"),
+        "walkthrough": walkthrough,
+        "auditReport": outputs.get("audit_report"),
+        "raw": outputs
     }
 
 @app.get("/graph/nexus/{run_id}/history")
@@ -1843,6 +1915,17 @@ async def _resume_nexus_workflow(run_id: str, updates: Optional[Dict[str, Any]] 
         _nexus_runs[run_id]["error"] = str(e)
         await stream_manager.broadcast_log(run_id, f"Resume Failed: {e}", "error")
         await _sync_run_to_db(run_id)
+    finally:
+        # BULLETPROOF: Release concurrency lock if the resumed workflow reached
+        # a terminal state. "awaiting_input" and "interrupted" mean the workflow
+        # is still alive and waiting for another human action.
+        final_status = _nexus_runs.get(run_id, {}).get("status", "")
+        if final_status not in ("interrupted", "awaiting_input", "running"):
+            project_id = _nexus_runs.get(run_id, {}).get("project_id")
+            if project_id:
+                removed = _active_project_runs.pop(project_id, None)
+                if removed:
+                    print(f"[Nexus] Released project lock for {project_id} after resume (final status: {final_status})")
 
 
 @app.post("/graph/nexus/{run_id}/resume")

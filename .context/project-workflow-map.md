@@ -1,7 +1,7 @@
 ---
 context_type: project-workflow-map
 status: active
-updated_at: 2026-03-10T13:01:31.506Z
+updated_at: 2026-03-15T18:28:42.515Z
 ---
 
 # Project Workflow Architecture

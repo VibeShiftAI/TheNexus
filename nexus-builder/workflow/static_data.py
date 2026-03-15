@@ -135,7 +135,7 @@ class StaticDataManager:
             supabase_client: Supabase client for persistence
         """
         self.workflow_id = workflow_id
-        self.supabase = supabase_client
+        self.db_client = supabase_client  # SQLiteClient instance (backward-compat param name)
         self._static_data: Dict[str, ObservableDict] = {}
         self._lock = threading.Lock()
         self._loaded = False
@@ -146,17 +146,22 @@ class StaticDataManager:
         
         Should be called once at workflow start.
         """
-        if self._loaded or not self.supabase:
+        if self._loaded or not self.db_client:
             return
         
         try:
-            result = self.supabase.client.table("workflow_static_data").select(
-                "*"
-            ).eq("workflow_id", self.workflow_id).execute()
+            db = await self.db_client._get_db()
+            async with db.execute(
+                "SELECT * FROM workflow_static_data WHERE workflow_id = ?",
+                (self.workflow_id,)
+            ) as cursor:
+                rows = await cursor.fetchall()
             
-            for row in result.data or []:
-                key = row.get("scope_key", "global")
-                data = row.get("data", {})
+            for row in rows or []:
+                key = row.get("scope_key", "global") if isinstance(row, dict) else "global"
+                import json as _json
+                raw_data = row.get("data", "{}") if isinstance(row, dict) else "{}"
+                data = _json.loads(raw_data) if isinstance(raw_data, str) else (raw_data or {})
                 self._static_data[key] = ObservableDict(data)
             
             self._loaded = True
@@ -209,7 +214,7 @@ class StaticDataManager:
         Returns:
             Count of scopes that were persisted
         """
-        if not self.supabase:
+        if not self.db_client:
             return 0
         
         count = 0
@@ -218,12 +223,16 @@ class StaticDataManager:
             for key, data in self._static_data.items():
                 if data.has_changed():
                     try:
-                        self.supabase.client.table("workflow_static_data").upsert({
-                            "workflow_id": self.workflow_id,
-                            "scope_key": key,
-                            "data": dict(data),
-                            "updated_at": datetime.utcnow().isoformat()
-                        }, on_conflict="workflow_id,scope_key").execute()
+                        import json as _json
+                        db = await self.db_client._get_db()
+                        await db.execute(
+                            """INSERT INTO workflow_static_data (workflow_id, scope_key, data, updated_at)
+                            VALUES (?, ?, ?, ?)
+                            ON CONFLICT (workflow_id, scope_key) DO UPDATE SET
+                            data = excluded.data, updated_at = excluded.updated_at""",
+                            (self.workflow_id, key, _json.dumps(dict(data)), datetime.utcnow().isoformat())
+                        )
+                        await db.commit()
                         
                         data.reset_changed()
                         count += 1

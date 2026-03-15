@@ -317,6 +317,16 @@ async function generateStageTasks(workflow, workflowContext = '') {
             description += `\n\n---\n# Context from Previous Stages\n${previousStageContext}`;
         }
 
+        // Infer the best task-level template from the workflow type and stage
+        let inferredTemplate = null;
+        if (workflow_type === 'documentation') {
+            inferredTemplate = 'doc-writer';
+        } else if (stageId === 'discover' || stageId === 'brief') {
+            inferredTemplate = 'research-report';
+        } else {
+            inferredTemplate = 'nexus-prime';
+        }
+
         // Create the task
         const task = await db.createTask({
             project_id,
@@ -324,6 +334,7 @@ async function generateStageTasks(workflow, workflowContext = '') {
             description,
             status: 'idea',
             source: `workflow:${id}:${workflow_type}`,
+            langgraph_template: inferredTemplate,
             metadata: {
                 workflowStage: stageId,
                 stageName: currentStageObj.name

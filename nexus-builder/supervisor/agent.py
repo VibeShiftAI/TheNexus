@@ -185,7 +185,7 @@ async def update_task_status(context: Dict, status: str, message: str):
     mapped_status = PHASE_TO_STATUS.get(status, status)
         
     url = os.getenv("NODEJS_BACKEND_URL", "http://localhost:4000")
-    service_key = os.getenv("SUPABASE_SERVICE_KEY")
+    service_key = os.getenv("NEXUS_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
     headers = {"Authorization": f"Bearer {service_key}"} if service_key else {}
     try:
         async with httpx.AsyncClient() as client:
@@ -850,10 +850,11 @@ async def call_audit_fleet(state: WorkflowState):
             "definition_of_done": definition_of_done,
             "modified_files": modified_files,
             "project_root": project_root,
+            "file_manifest": blueprint.get("manifest_json", []) or [],  # Scope boundary for auditor
             # Existing fields
             "diff_context": diff_context,
             "blast_radius": blast_radius_result if blast_radius_result.get("success") else {},
-            "linter_report": "TODO: Run Linter",
+            "linter_report": None,  # Linter integration not yet implemented
             "implementation_spec": blueprint.get("spec_markdown") or state["outputs"].get("plan"),
             "test_logs": [],
             "final_verdict": {},
@@ -863,7 +864,30 @@ async def call_audit_fleet(state: WorkflowState):
         
         graph = compile_auditor_graph(project_root=project_root)
         print(f"[Audit Fleet] Invoking auditor graph...")
-        result = await graph.ainvoke(inputs, config={"recursion_limit": 100})
+        
+        # Fleet-level retry for transient API errors (backup for forensic_node's own retries)
+        fleet_max_retries = 2
+        fleet_delays = [10, 30]
+        
+        for fleet_attempt in range(fleet_max_retries + 1):
+            try:
+                result = await graph.ainvoke(inputs, config={"recursion_limit": 100})
+                break  # Success
+            except Exception as fleet_err:
+                err_str = str(fleet_err).lower()
+                is_transient = any(t in err_str for t in [
+                    'overloaded', 'rate_limit', 'rate limit', '529', '503', '429',
+                    'server_error', 'timeout', 'connection'
+                ])
+                if is_transient and fleet_attempt < fleet_max_retries:
+                    delay = fleet_delays[fleet_attempt]
+                    print(f"[Audit Fleet] Transient error (fleet retry {fleet_attempt + 1}/{fleet_max_retries}): {fleet_err}")
+                    print(f"[Audit Fleet] Retrying full audit in {delay}s...")
+                    import asyncio as _asyncio
+                    await _asyncio.sleep(delay)
+                else:
+                    raise  # Non-transient or exhausted retries
+        
         print(f"[Audit Fleet] Graph completed, extracting verdict...")
         
         # ARTIFACT CONTRACT: Produce VERDICT with status and blocking_issues

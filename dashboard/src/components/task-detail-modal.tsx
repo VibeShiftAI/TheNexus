@@ -453,7 +453,8 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                 status: 'idea',
                 langgraph_run_id: null,
                 langgraph_status: null,
-                langgraph_template: null,
+                // NOTE: langgraph_template is intentionally preserved — it describes
+                // the task type, not the run state, so it survives restarts
                 langgraph_started_at: null,
                 research_output: null,
                 plan_output: null,
@@ -634,7 +635,11 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                                 ) : (
                                                     <Zap size={16} />
                                                 )}
-                                                {isRunningLangGraph ? 'Running Workflow...' : 'Select Workflow Template'}
+                                                {isRunningLangGraph ? 'Running Workflow...' : (
+                                                    task.langgraph_template
+                                                        ? `⚡ ${langGraphTemplates.find(t => t.id === task.langgraph_template)?.name || task.langgraph_template}`
+                                                        : 'Select Workflow Template'
+                                                )}
                                             </span>
                                             <ChevronDown size={16} className={`transition-transform ${showLangGraphMenu ? 'rotate-180' : ''}`} />
                                         </button>

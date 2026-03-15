@@ -14,8 +14,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: "The Nexus - VibeShift AI",
   description: "AI-powered project management dashboard by VibeShift AI",
+  openGraph: {
+    images: ['/opengraph-image.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/twitter-image.png'],
+  },
 };
 
 export default function RootLayout({

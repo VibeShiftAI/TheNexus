@@ -23,7 +23,7 @@ const { discoverModels, getModels } = require('./services/model-discovery');
 const { getDefaultMemoryManager } = require('./memory');
 const os = require('os');
 
-// Database client (Supabase/PostgreSQL)
+// Database client (SQLite)
 const db = require('../db');
 const { callAI, getAIModelConfig, runDeepResearch } = require('./services/ai-service');
 const { validateInitiativeRequest } = require('./services/initiative-router');
@@ -194,45 +194,14 @@ async function authenticate(req, res, next) {
         return next();
     }
 
-    // Get token from header
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({ error: 'No authorization header' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    if (!token) {
-        return res.status(401).json({ error: 'Invalid token format' });
-    }
-
-    // [HARDENING] Service Key Bypass with Impersonation
-    // This allows Cortex to act as an admin/service while attributing actions to a user
-    if (process.env.SUPABASE_SERVICE_KEY && token === process.env.SUPABASE_SERVICE_KEY) {
-        const impersonatedUser = req.headers['x-impersonate-user'];
-        req.user = {
-            id: impersonatedUser || 'cortex_system',
-            role: 'service_role',
-            is_service: true
-        };
-        // console.log(`[Auth] Service Key access granted for: ${req.user.id}`);
-        return next();
-    }
-
-    try {
-        const { data: { user }, error } = await db.supabase.auth.getUser(token);
-
-        if (error || !user) {
-            console.warn('[Auth] Invalid token:', error?.message);
-            return res.status(401).json({ error: 'Invalid or expired token' });
-        }
-
-        // Attach user to request
-        req.user = user;
-        next();
-    } catch (err) {
-        console.error('[Auth] Verification error:', err);
-        res.status(500).json({ error: 'Auth verification failed' });
-    }
+    // Single-user local app — no auth required.
+    // Attach a default local user to every request.
+    req.user = {
+        id: 'local_user',
+        role: 'admin',
+        is_service: false
+    };
+    return next();
 }
 
 // Apply auth to all /api routes except explicitly public ones
@@ -257,7 +226,18 @@ app.use('/api/mcp', mcpRouter);
 const mcpScopesRouter = require('./routes/mcp-scopes');
 app.use('/api/mcp', mcpScopesRouter);
 
+// === Extracted Route Modules ===
+const createToolsRouter = require('./routes/tools');
+const createMemoryRouter = require('./routes/memory');
+const createLangGraphRouter = require('./routes/langgraph');
+const createInitiativesRouter = require('./routes/initiatives');
+const createWorkflowsRouter = require('./routes/workflows');
 
+app.use('/api/tools', createToolsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects }));
+app.use('/api/memory', createMemoryRouter({ scanProjects, PROJECT_ROOT, getDefaultMemoryManager }));
+app.use('/api/langgraph', createLangGraphRouter({ db, PROJECT_ROOT, getProjectById, contextSync, runAgent }));
+app.use('/api/initiatives', createInitiativesRouter({ db }));
+app.use('/api/workflows', createWorkflowsRouter({ db, PROJECT_ROOT, getProjectById }));
 
 
 // Ensure the root directory exists for testing purposes, or warn
@@ -348,7 +328,7 @@ app.post('/api/projects', async (req, res) => {
 
 // [NEW] Create Task (Cortex Integration)
 app.post('/api/tasks', async (req, res) => {
-    const { project_id, title, status, priority, description } = req.body;
+    const { project_id, title, status, priority, description, templateId } = req.body;
 
     if (!project_id || !title) {
         return res.status(400).json({ error: 'project_id and title are required' });
@@ -360,7 +340,8 @@ app.post('/api/tasks', async (req, res) => {
             name: title,
             status: status || 'planning',
             priority: priority === 'high' ? 2 : 1,
-            description: description || ''
+            description: description || '',
+            langgraph_template: templateId || null
         };
 
         const result = await db.createTask(newTask);
@@ -616,7 +597,7 @@ ${type}
 ## 2. Core Technologies (Default)
 *   **Frontend:** Next.js, Tailwind CSS (inferred from defaults)
 *   **Backend:** Node.js / Python (inferred from defaults)
-*   **Database:** Supabase (inferred from defaults)
+*   **Database:** SQLite (local)
 `;
             fs.writeFileSync(path.join(supervisorPath, 'tech-stack.md'), techStackMd);
 
@@ -1018,8 +999,9 @@ app.get('/api/projects/:id/commits', async (req, res) => {
 
         res.json({ commits, hasGit: true });
     } catch (error) {
-        console.warn(`Error getting commits for ${id}:`, error.message);
-        // If no commits yet, just return empty list
+        // If no commits yet (freshly git-init'd), just return empty list silently
+        const isEmptyRepo = error.message.includes('does not have any commits') || error.message.includes('fatal: bad default revision');
+        if (!isEmptyRepo) console.warn(`Error getting commits for ${id}:`, error.message);
         if (error.message.includes('does not have any commits') || error.message.includes('fatal: bad default revision')) {
             return res.json({ commits: [], hasGit: true });
         }
@@ -1075,7 +1057,7 @@ app.delete('/api/projects/:id/pin', (req, res) => {
 // AI Chat endpoint
 // Supports new modelConfig object with provider-specific thinking configurations
 app.post('/api/ai/chat', async (req, res) => {
-    const { message, modelConfig, model, mode, history, projectId, session_id, files } = req.body;
+    const { message, modelConfig, model, mode, history, projectId, session_id, files } = req.body || {};
 
     console.log(`\n?? [AI Chat] Request Details:`);
     console.log(`   � Mode: ${mode}`);
@@ -1196,6 +1178,7 @@ app.post('/api/ai/chat', async (req, res) => {
         Google: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
         OpenAI: process.env.OPENAI_API_KEY,
         Anthropic: process.env.ANTHROPIC_API_KEY,
+        xAI: process.env.XAI_API_KEY,
     };
 
     const providerKey = apiKeys[config.provider];
@@ -1657,7 +1640,7 @@ app.get('/api/projects/:id/tasks', async (req, res) => {
 // POST add a new task
 app.post('/api/projects/:id/tasks', async (req, res) => {
     const { id } = req.params;
-    const { title, description } = req.body;
+    const { title, description, templateId } = req.body;
 
     if (!title || !title.trim()) {
         return res.status(400).json({ error: 'Task title is required' });
@@ -1689,6 +1672,7 @@ app.post('/api/projects/:id/tasks', async (req, res) => {
             priority: 0,
             initiative_validation: validation,
             source: 'user', // Default source
+            langgraph_template: templateId || null,
             metadata: {
                 classifiedAt: new Date().toISOString()
             }
@@ -2378,7 +2362,7 @@ app.post('/api/ai/usage/reset', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// DATABASE STATUS ENDPOINT (Supabase/PostgreSQL)
+// DATABASE STATUS ENDPOINT (SQLite)
 // ═══════════════════════════════════════════════════════════════
 
 // GET database connection status
@@ -2390,7 +2374,7 @@ app.get('/api/database/status', async (req, res) => {
             return res.json({
                 enabled: false,
                 connected: false,
-                message: 'Database not configured. Add SUPABASE_URL and SUPABASE_SECRET_KEY to .env',
+                message: 'Database not configured. Check NEXUS_DB_PATH in .env',
                 tables: []
             });
         }
@@ -2406,20 +2390,8 @@ app.get('/api/database/status', async (req, res) => {
             });
         }
 
-        // Get table counts for health info
-        const tables = ['projects', 'features', 'workflows', 'scheduled_tasks', 'agent_configs', 'usage_stats'];
+        // Health info — just confirm connection is good
         const tableCounts = {};
-
-        for (const table of tables) {
-            try {
-                const { count, error } = await db.supabase
-                    .from(table)
-                    .select('*', { count: 'exact', head: true });
-                tableCounts[table] = error ? 'error' : count;
-            } catch (e) {
-                tableCounts[table] = 'error';
-            }
-        }
 
         res.json({
             enabled: true,
@@ -2441,566 +2413,17 @@ app.get('/api/database/status', async (req, res) => {
 // LANGGRAPH ENGINE BRIDGE (Python Backend)
 // ═══════════════════════════════════════════════════════════════
 
-const LANGGRAPH_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
 
-// Helper to proxy requests to LangGraph engine
-async function proxyToLangGraph(path, options = {}) {
-    const url = `${LANGGRAPH_URL}${path}`;
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers
-        }
-    });
-    return response.json();
-}
 
-// GET LangGraph engine health
-app.get('/api/langgraph/health', async (req, res) => {
-    try {
-        const health = await proxyToLangGraph('/health');
-        res.json(health);
-    } catch (error) {
-        res.json({
-            status: 'unavailable',
-            error: 'LangGraph engine not running. Start it with: cd python && start.bat'
-        });
-    }
-});
+setupResearchRoutes(app, getProjectById, PROJECT_ROOT);
 
-// GET available node types
-app.get('/api/langgraph/node-types', async (req, res) => {
-    try {
-        const nodeTypes = await proxyToLangGraph('/node-types');
-        res.json(nodeTypes);
-    } catch (error) {
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
 
-// GET atomic node types (Phase 3 - Visual Builder)
-app.get('/api/langgraph/node-types/atomic', async (req, res) => {
-    try {
-        const nodeTypes = await proxyToLangGraph('/node-types/atomic');
-        res.json(nodeTypes);
-    } catch (error) {
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
+// ============================================================================
+// TASK-LEVEL LANGGRAPH DISPATCH (Python Backend Bridge)
+// ============================================================================
 
-// GET specific atomic node schema (Phase 3 - Visual Builder)
-app.get('/api/langgraph/node-types/atomic/:typeId', async (req, res) => {
-    try {
-        const schema = await proxyToLangGraph(`/node-types/atomic/${req.params.typeId}`);
-        res.json(schema);
-    } catch (error) {
-        if (error.message?.includes('404')) {
-            res.status(404).json({ error: `Node type '${req.params.typeId}' not found` });
-        } else {
-            res.status(503).json({ error: 'LangGraph engine unavailable' });
-        }
-    }
-});
-
-// GET workflow templates (with level filtering support)
-app.get('/api/langgraph/templates', async (req, res) => {
-    try {
-        const { level } = req.query;
-        const url = level ? `/templates?level=${level}` : '/templates';
-        const result = await proxyToLangGraph(url);
-
-        // If the backend didn't filter by level, filter client-side
-        if (level && result.templates && Array.isArray(result.templates)) {
-            result.templates = result.templates.filter(t =>
-                !t.level || t.level === level
-            );
-        }
-
-        res.json(result);
-    } catch (error) {
-        res.status(503).json({ error: 'LangGraph engine unavailable', templates: [] });
-    }
-});
-
-// POST save workflow template
-app.post('/api/langgraph/templates', async (req, res) => {
-    try {
-        const result = await proxyToLangGraph('/templates', {
-            method: 'POST',
-            body: JSON.stringify(req.body)
-        });
-        res.json(result);
-    } catch (error) {
-        console.error('[Templates] Save error:', error.message);
-        if (error.message?.includes('409')) {
-            res.status(409).json({ detail: 'Template with this name already exists' });
-        } else {
-            res.status(503).json({ error: 'LangGraph engine unavailable' });
-        }
-    }
-});
-
-// DELETE workflow template
-app.delete('/api/langgraph/templates/:templateId', async (req, res) => {
-    try {
-        const result = await proxyToLangGraph(`/templates/${req.params.templateId}`, {
-            method: 'DELETE'
-        });
-        res.json(result);
-    } catch (error) {
-        console.error('[Templates] Delete error:', error.message);
-        if (error.message?.includes('404')) {
-            res.status(404).json({ detail: 'Template not found' });
-        } else {
-            res.status(503).json({ error: 'LangGraph engine unavailable' });
-        }
-    }
-});
-
-// POST compile a graph (validate without executing)
-app.post('/api/langgraph/compile', async (req, res) => {
-    try {
-        const result = await proxyToLangGraph('/graph/compile', {
-            method: 'POST',
-            body: JSON.stringify(req.body)
-        });
-        res.json(result);
-    } catch (error) {
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
-
-// POST run a workflow
-app.post('/api/langgraph/run', async (req, res) => {
-    try {
-        const result = await proxyToLangGraph('/graph/run', {
-            method: 'POST',
-            body: JSON.stringify(req.body)
-        });
-        res.json(result);
-    } catch (error) {
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
-
-// GET run status
-app.get('/api/langgraph/runs/:runId', async (req, res) => {
-    try {
-        const result = await proxyToLangGraph(`/runs/${req.params.runId}`);
-        res.json(result);
-    } catch (error) {
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
-
-// GET Nexus Prime workflow status (for real-time activity log)
-app.get('/api/workflows/:runId/status', async (req, res) => {
-    try {
-        const result = await proxyToLangGraph(`/graph/nexus/${req.params.runId}`);
-        console.log(`[Workflow Status] RunId: ${req.params.runId}, Result:`, JSON.stringify(result).substring(0, 500));
-        res.json(result);
-    } catch (error) {
-        console.error(`[Workflow Status] Error for ${req.params.runId}:`, error);
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
-
-// GET Nexus Prime workflow artifacts
-app.get('/api/workflows/:runId/artifacts', async (req, res) => {
-    try {
-        const result = await proxyToLangGraph(`/graph/nexus/${req.params.runId}/artifacts`);
-        res.json(result);
-    } catch (error) {
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
-
-// POST Resume a Nexus Prime workflow (for approval with comments)
-app.post('/api/graph/nexus/:runId/resume', async (req, res) => {
-    const { runId } = req.params;
-    const { approval_action, feedback } = req.body;
-
-    console.log(`[Resume Workflow] runId: ${runId}, action: ${approval_action}, feedback: ${feedback?.substring(0, 100)}...`);
-
-    try {
-        const result = await proxyToLangGraph(`/graph/nexus/${runId}/resume`, {
-            method: 'POST',
-            body: JSON.stringify({ approval_action, feedback })
-        });
-        console.log(`[Resume Workflow] Result:`, result);
-        res.json(result);
-    } catch (error) {
-        console.error(`[Resume Workflow] Error:`, error);
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
-
-// GET checkpoints for time-travel
-app.get('/api/langgraph/runs/:runId/checkpoints', async (req, res) => {
-    try {
-        const result = await proxyToLangGraph(`/runs/${req.params.runId}/checkpoints`);
-        res.json(result);
-    } catch (error) {
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
-
-// POST rewind to checkpoint
-app.post('/api/langgraph/runs/:runId/rewind', async (req, res) => {
-    try {
-        const result = await proxyToLangGraph(`/runs/${req.params.runId}/rewind`, {
-            method: 'POST',
-            body: JSON.stringify(req.body)
-        });
-        res.json(result);
-    } catch (error) {
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
-
-// POST cancel a run
-app.post('/api/langgraph/runs/:runId/cancel', async (req, res) => {
-    try {
-        const result = await proxyToLangGraph(`/runs/${req.params.runId}/cancel`, {
-            method: 'POST'
-        });
-        res.json(result);
-    } catch (error) {
-        res.status(503).json({ error: 'LangGraph engine unavailable' });
-    }
-});
-
-// POST callback from Python when a LangGraph workflow run completes
-app.post('/api/langgraph/workflow-complete', async (req, res) => {
-    const { run_id, workflow_id, project_id, status, error } = req.body;
-
-    console.log(`[LangGraph Complete] Workflow ${workflow_id} run ${run_id}: ${status}`);
-
-    if (!workflow_id) {
-        return res.json({ success: false, error: 'Missing workflow_id' });
-    }
-
-    try {
-        if (status === 'completed') {
-            // Get the workflow to access its stages
-            const workflow = await db.getProjectWorkflow(workflow_id);
-            const completedOutputs = {};
-            for (const stage of (workflow?.stages || [])) {
-                completedOutputs[stage.id] = {
-                    status: 'complete',
-                    completedAt: new Date().toISOString(),
-                    mode: 'langgraph'
-                };
-            }
-
-            await db.updateProjectWorkflow(workflow_id, {
-                status: 'complete',
-                current_stage: null,
-                outputs: completedOutputs,
-                supervisor_status: 'completed',
-                supervisor_details: {
-                    langgraph_run_id: run_id,
-                    completedAt: new Date().toISOString(),
-                    mode: 'langgraph'
-                }
-            });
-            console.log(`[LangGraph Complete] Workflow ${workflow_id} marked as complete`);
-
-            // Auto-sync .context/ files to DB
-            // Doc workflows write .context/*.md files to disk — sync them to Supabase
-            // so the project page picks them up immediately.
-            if (project_id) {
-                try {
-                    const project = await getProjectById(PROJECT_ROOT, project_id);
-                    if (project) {
-                        const contextFiles = contextSync.readAllContextFiles(project.path);
-                        if (contextFiles.length > 0) {
-                            for (const ctx of contextFiles) {
-                                await db.updateProjectContext(project_id, ctx.type, ctx.content, ctx.status);
-                            }
-                            console.log(`[LangGraph Complete] Synced ${contextFiles.length} context file(s) to DB for project ${project_id}`);
-                        }
-                    }
-                } catch (syncErr) {
-                    // Don't fail the workflow-complete callback if sync fails
-                    console.error('[LangGraph Complete] Context sync failed (non-fatal):', syncErr.message);
-                }
-            }
-        } else {
-            // Failed — reset to idea so user can retry
-            await db.updateProjectWorkflow(workflow_id, {
-                status: 'idea',
-                supervisor_status: 'error',
-                supervisor_details: {
-                    langgraph_run_id: run_id,
-                    error: error || 'Unknown error',
-                    failedAt: new Date().toISOString()
-                }
-            });
-            console.log(`[LangGraph Complete] Workflow ${workflow_id} failed, reset to idea`);
-        }
-
-        res.json({ success: true });
-    } catch (err) {
-        console.error('[LangGraph Complete] Error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// POST sync node output from LangGraph to database
-app.post('/api/langgraph/sync-output', async (req, res) => {
-    const { run_id, node_id, project_id, task_id, feature_id, outputs } = req.body;
-
-    // Prefer task_id, fallback to feature_id for backward compatibility
-    const targetTaskId = task_id || feature_id;
-
-    console.log(`[LangGraph Sync] Received outputs from node ${node_id} for task ${targetTaskId}`);
-
-    if (!targetTaskId || !outputs) {
-        return res.json({ success: false, error: 'Missing task_id or outputs' });
-    }
-
-    try {
-        // Build update object based on which outputs are present
-        // Support both old (research, plan) and new (quick_research, plan_generator) output keys
-        const updates = {};
-
-        // Research output (supports: research, quick_research)
-        const researchContent = outputs.research || outputs.quick_research;
-        if (researchContent) {
-            updates.research_output = researchContent;
-            updates.status = 'researched';
-            console.log(`[LangGraph Sync] Setting research_output and status=researched`);
-        }
-
-        // Plan output (supports: plan, plan_generator)
-        const planContent = outputs.plan || outputs.plan_generator;
-        if (planContent) {
-            updates.plan_output = planContent;
-            updates.status = 'planned';
-            console.log(`[LangGraph Sync] Setting plan_output and status=planned`);
-        }
-
-        // Implementation node synced
-        // NOTE: Implementation is handled directly by Python calling /api/langgraph/implement
-        // This just logs the output - the actual runAgent call happens in the implement endpoint
-        const implementationContent = outputs.implementation || outputs.coder;
-        if (implementationContent) {
-            console.log(`[LangGraph Sync] Implementation output received (${typeof implementationContent === 'string' ? implementationContent.length : 'non-string'} chars)`);
-            updates.walkthrough = JSON.stringify({
-                content: typeof implementationContent === 'string' ? implementationContent : JSON.stringify(implementationContent),
-                generatedAt: new Date().toISOString()
-            });
-            updates.status = 'testing';
-        }
-
-
-
-        // Review output (only if no implementation)
-        if (outputs.review && !implementationContent) {
-            updates.walkthrough = JSON.stringify({
-                content: typeof outputs.review === 'string' ? outputs.review : JSON.stringify(outputs.review),
-                generatedAt: new Date().toISOString()
-            });
-            console.log(`[LangGraph Sync] Setting walkthrough from review`);
-        }
-
-        // Direct walkthrough output from builder fleet
-        if (outputs.walkthrough && !updates.walkthrough) {
-            // Normalize walkthrough content — LLMs may return parts lists or nested objects
-            let walkthroughText = outputs.walkthrough;
-            if (typeof walkthroughText !== 'string') {
-                // Handle array of parts: [{type: 'text', text: '...'}, ...]
-                if (Array.isArray(walkthroughText)) {
-                    walkthroughText = walkthroughText
-                        .map(p => (typeof p === 'string' ? p : (p.text || p.content || '')))
-                        .join('\n');
-                } else if (typeof walkthroughText === 'object' && walkthroughText !== null) {
-                    walkthroughText = walkthroughText.text || walkthroughText.content || JSON.stringify(walkthroughText);
-                }
-            }
-            // Also handle Python repr stringified arrays: "[{'type': 'text', 'text': '...'}]"
-            if (typeof walkthroughText === 'string' && walkthroughText.trimStart().startsWith("[{")) {
-                try {
-                    // Try parsing with single quotes replaced by double quotes (Python repr → JSON)
-                    const fixed = walkthroughText.replace(/'/g, '"');
-                    const parsed = JSON.parse(fixed);
-                    if (Array.isArray(parsed)) {
-                        walkthroughText = parsed
-                            .map(p => (typeof p === 'string' ? p : (p.text || p.content || '')))
-                            .join('\n');
-                    }
-                } catch (e) {
-                    // Not parseable, use as-is
-                }
-            }
-            // Store as JSON object for frontend compatibility
-            updates.walkthrough = JSON.stringify({
-                content: walkthroughText,
-                generatedAt: new Date().toISOString()
-            });
-            updates.status = 'testing';
-            console.log(`[LangGraph Sync] Setting walkthrough from builder (${walkthroughText.length} chars)`);
-        }
-
-        // Critic output
-        if (outputs.critic) {
-            updates.critic_feedback = outputs.critic;
-            console.log(`[LangGraph Sync] Setting critic_feedback`);
-        }
-
-        // Log files written if coder produced any
-        if (outputs.files_written && outputs.files_written.length > 0) {
-            console.log(`[LangGraph Sync] Files written:`, outputs.files_written);
-        }
-
-        // Update in database if we have updates
-        if (Object.keys(updates).length > 0) {
-            const updatedTask = await db.updateTask(targetTaskId, updates);
-            if (updatedTask) {
-                console.log(`[LangGraph Sync] Updated task ${targetTaskId} in database`);
-            } else {
-                console.log(`[LangGraph Sync] Database update returned null (task may not exist in DB)`);
-            }
-        }
-
-        res.json({ success: true, updates_applied: Object.keys(updates) });
-
-        // Post-response: sync .context/ files to DB only after file-writing nodes
-        // Skip for read-only nodes (explore_docs, draft_docs, review_docs) to avoid
-        // massive redundant I/O during concurrent workflows
-        const FILE_WRITING_NODES = ['write_docs', 'coder', 'implementation', 'doc_file_writer'];
-        if (project_id && FILE_WRITING_NODES.includes(node_id)) {
-            try {
-                const project = await getProjectById(PROJECT_ROOT, project_id);
-                if (project) {
-                    const contextFiles = contextSync.readAllContextFiles(project.path);
-                    if (contextFiles.length > 0) {
-                        for (const ctx of contextFiles) {
-                            await db.updateProjectContext(project_id, ctx.type, ctx.content, ctx.status);
-                        }
-                        console.log(`[LangGraph Sync] Auto-synced ${contextFiles.length} context file(s) for project ${project_id}`);
-                    }
-                }
-            } catch (syncErr) {
-                console.error('[LangGraph Sync] Context sync failed (non-fatal):', syncErr.message);
-            }
-        }
-    } catch (error) {
-        console.error('[LangGraph Sync] Error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// POST implement - Called by Python LangGraph to run the Node.js agent with file tools
-app.post('/api/langgraph/implement', async (req, res) => {
-    // Determine if we are receiving task_id or feature_id (compat)
-    const { project_id, feature_id, task_id, plan, feature_title, task_title, feature_description, task_description } = req.body;
-
-    const targetTaskId = task_id || feature_id;
-    const targetTitle = task_title || feature_title;
-    const targetDescription = task_description || feature_description;
-
-    console.log(`[LangGraph Implement] Received request for project=${project_id}, task=${targetTaskId}`);
-    console.log(`[LangGraph Implement] Plan length: ${plan?.length || 0} chars`);
-
-    try {
-        // Get the project
-        const project = await getProjectById(PROJECT_ROOT, project_id);
-        if (!project) {
-            return res.status(404).json({ success: false, error: 'Project not found' });
-        }
-
-        // Get model from environment (implementation agent is now built-in)
-        const model = process.env.IMPLEMENTATION_MODEL || 'gemini-2.5-pro';
-        const maxTurns = parseInt(process.env.IMPLEMENTATION_MAX_TURNS || '100');
-
-        console.log(`[LangGraph Implement] Using model: ${model}, maxTurns: ${maxTurns}`);
-
-        // Build the implementation prompt
-        const implementPrompt = `You are implementing a new task for the project "${project.name}".
-
-## APPROVED IMPLEMENTATION PLAN
-
-${plan}
-
----
-
-## YOUR TASK
-
-Follow the plan above and implement the changes. Use your tools to:
-1. Read existing files to understand the current code
-2. Write/modify files as specified in the plan
-3. Run commands if needed (e.g., to verify the build)
-
-Be thorough and implement ALL changes from the plan.
-`;
-
-        // Update task status to implementing
-        await db.updateTask(targetTaskId, {
-            status: 'implementing',
-            updated_at: new Date().toISOString()
-        });
-
-        // Run the agent with full tool access
-        const agentResult = await runAgent({
-            message: implementPrompt,
-            history: [],
-            projectRoot: PROJECT_ROOT,
-            model: model,
-            model: model,
-            scopedProject: require('path').basename(project.path), // Use dirname for scoping
-            projectId: project_id, // Explicitly pass UUID for Conductor context
-            maxTurns: maxTurns,
-            projectPath: project.path,
-            taskId: targetTaskId,
-            taskTitle: targetTitle,
-            onProgress: async (action, details) => {
-                console.log(`[LangGraph Implement] Progress: ${action}`);
-            },
-            onToolExecuted: async (tool, args, result) => {
-                console.log(`[LangGraph Implement] Tool: ${tool}`);
-            }
-        });
-
-        console.log(`[LangGraph Implement] Agent completed`);
-
-        // Update task with results - walkthrough must be object for frontend
-        const walkthroughContent = agentResult.response || 'Implementation completed.';
-        await db.updateTask(targetTaskId, {
-            status: 'testing',
-            walkthrough: JSON.stringify({
-                content: walkthroughContent,
-                generatedAt: new Date().toISOString()
-            }),
-            updated_at: new Date().toISOString()
-        });
-
-        res.json({
-            success: true,
-            walkthrough: agentResult.response || 'Implementation completed.',
-            files_written: agentResult.filesWritten || []
-        });
-
-    } catch (error) {
-        console.error('[LangGraph Implement] Error:', error);
-
-        // Revert status on error
-        try {
-            await db.updateTask(targetTaskId, {
-                status: 'planned',
-                updated_at: new Date().toISOString()
-            });
-        } catch (e) {
-            console.error('[LangGraph Implement] Could not revert status:', e);
-        }
-
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// POST run a task through LangGraph
+// POST /api/projects/:id/tasks/:taskId/langgraph/run
+// Dispatches a LangGraph workflow for a specific task
 app.post('/api/projects/:id/tasks/:taskId/langgraph/run', async (req, res) => {
     const { id: projectId, taskId } = req.params;
     const { templateId, graphConfig } = req.body;
@@ -3008,68 +2431,62 @@ app.post('/api/projects/:id/tasks/:taskId/langgraph/run', async (req, res) => {
     console.log(`[LangGraph] Received request for project=${projectId}, task=${taskId}, template=${templateId}`);
 
     try {
-        // Get project from database first, fallback to filesystem
         const project = await getProjectById(PROJECT_ROOT, projectId);
-
         if (!project) {
-            console.log(`[LangGraph] Project not found: ${projectId}`);
             return res.status(404).json({ error: 'Project not found' });
         }
         console.log(`[LangGraph] Found project at: ${project.path}`);
 
-        // Get task from Supabase database
+        // Get task from database
         const task = await db.getTask(taskId);
-
         if (!task) {
             console.log(`[LangGraph] Task not found in database: ${taskId}`);
             return res.status(404).json({ error: 'Task not found' });
         }
-        console.log(`[LangGraph] Found task: ${task.name}`);
 
-        // Use the LangGraph supervisor service
+        // Load LangGraph supervisor service
         console.log(`[LangGraph] Loading langgraph-supervisor service...`);
         const lgSupervisor = require('./services/langgraph-supervisor');
-        console.log(`[LangGraph] Service loaded, calling runLangGraphWorkflow...`);
 
         const result = await lgSupervisor.runLangGraphWorkflow({
             projectPath: project.path,
             projectId,
             taskId,
             taskData: {
-                title: task.name,  // Database column is 'name', not 'title'
-                description: task.description
+                title: task.name || task.title || 'Untitled',
+                description: task.description || ''
             },
             templateId,
             graphConfig
         });
 
-        // Persist the run ID to the task in Supabase
         if (result.success && result.run_id) {
-            const newStatus = (templateId === 'full-feature-pipeline' || templateId === 'feature-full' || templateId === 'research-report' || templateId === 'nexus-prime')
-                ? 'researching'
-                : 'planning';
+            // Determine the initial status based on the workflow
+            const newStatus = task.status === 'idea' ? 'researching' : task.status;
 
+            // Persist run ID and status to the database
             await db.updateTask(taskId, {
                 langgraph_run_id: result.run_id,
                 langgraph_status: 'running',
-                langgraph_template: templateId,
+                langgraph_template: templateId || null,
                 langgraph_started_at: new Date().toISOString(),
                 status: newStatus
             });
-            console.log(`[LangGraph] Persisted run_id ${result.run_id} to database`);
+            console.log(`[LangGraph] Saved run_id ${result.run_id} to database`);
         }
 
-        console.log(`[LangGraph] Workflow result:`, result);
         res.json(result);
     } catch (error) {
-        console.error('[LangGraph] Task workflow error:', error.message);
+        console.error(`[LangGraph] Error running workflow for task ${taskId}:`, error.message);
         console.error('[LangGraph] Stack:', error.stack);
         res.status(500).json({ error: error.message });
     }
 });
 
-// GET LangGraph run status for a task
+// GET /api/projects/:id/tasks/:taskId/langgraph/status
+// Polls the status of a running LangGraph workflow
 app.get('/api/projects/:id/tasks/:taskId/langgraph/status', async (req, res) => {
+    const { taskId } = req.params;
     const { runId } = req.query;
 
     if (!runId) {
@@ -3081,860 +2498,8 @@ app.get('/api/projects/:id/tasks/:taskId/langgraph/status', async (req, res) => 
         const status = await lgSupervisor.getLangGraphRunStatus(runId);
         res.json(status);
     } catch (error) {
+        console.error(`[LangGraph] Error getting status for run ${runId}:`, error.message);
         res.status(500).json({ error: error.message });
-    }
-});
-
-// ═══════════════════════════════════════════════════════════════
-// TOOL BRIDGE API (For Python LangGraph Backend)
-// These endpoints allow Python nodes to use Node.js tools
-// ═══════════════════════════════════════════════════════════════
-
-// Read a file
-app.get('/api/tools/read-file', async (req, res) => {
-    const { path: filePath } = req.query;
-
-    if (!filePath) {
-        return res.status(400).json({ error: 'path query parameter required' });
-    }
-
-    try {
-        const absolutePath = path.resolve(filePath);
-
-        if (!fs.existsSync(absolutePath)) {
-            return res.status(404).json({ error: 'File not found', path: absolutePath });
-        }
-
-        const content = fs.readFileSync(absolutePath, 'utf-8');
-        res.json({
-            success: true,
-            path: absolutePath,
-            content,
-            size: content.length
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Write a file
-app.post('/api/tools/write-file', async (req, res) => {
-    const { path: filePath, content, createDirs = true } = req.body;
-
-    if (!filePath || content === undefined) {
-        return res.status(400).json({ error: 'path and content required' });
-    }
-
-    try {
-        const absolutePath = path.resolve(filePath);
-
-        // Create parent directories if needed
-        if (createDirs) {
-            const dir = path.dirname(absolutePath);
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
-            }
-        }
-
-        fs.writeFileSync(absolutePath, content, 'utf-8');
-        res.json({
-            success: true,
-            path: absolutePath,
-            size: content.length
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// List directory contents
-app.get('/api/tools/list-dir', async (req, res) => {
-    const { path: dirPath, recursive = false, maxDepth = 3 } = req.query;
-
-    if (!dirPath) {
-        return res.status(400).json({ error: 'path query parameter required' });
-    }
-
-    try {
-        const absolutePath = path.resolve(dirPath);
-
-        if (!fs.existsSync(absolutePath)) {
-            return res.status(404).json({ error: 'Directory not found', path: absolutePath });
-        }
-
-        const stats = fs.statSync(absolutePath);
-        if (!stats.isDirectory()) {
-            return res.status(400).json({ error: 'Path is not a directory' });
-        }
-
-        // Get directory tree
-        const entries = fs.readdirSync(absolutePath, { withFileTypes: true });
-        const items = entries.map(entry => ({
-            name: entry.name,
-            type: entry.isDirectory() ? 'directory' : 'file',
-            path: path.join(absolutePath, entry.name)
-        }));
-
-        res.json({
-            success: true,
-            path: absolutePath,
-            items
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Run a shell command
-app.post('/api/tools/run-command', async (req, res) => {
-    const { command, cwd, timeout = 30000 } = req.body;
-
-    if (!command) {
-        return res.status(400).json({ error: 'command required' });
-    }
-
-    const workingDir = cwd ? path.resolve(cwd) : process.cwd();
-
-    try {
-        const { execSync } = require('child_process');
-        const output = execSync(command, {
-            cwd: workingDir,
-            timeout,
-            encoding: 'utf-8',
-            stdio: ['pipe', 'pipe', 'pipe']
-        });
-
-        res.json({
-            success: true,
-            command,
-            cwd: workingDir,
-            output: output.trim()
-        });
-    } catch (error) {
-        res.json({
-            success: false,
-            command,
-            cwd: workingDir,
-            error: error.message,
-            output: error.stdout?.toString() || '',
-            stderr: error.stderr?.toString() || ''
-        });
-    }
-});
-
-// Search in files (grep)
-app.post('/api/tools/search', async (req, res) => {
-    const { pattern, directory, filePattern = '*', caseSensitive = false } = req.body;
-
-    if (!pattern || !directory) {
-        return res.status(400).json({ error: 'pattern and directory required' });
-    }
-
-    try {
-        const absolutePath = path.resolve(directory);
-        const results = [];
-
-        function searchInFile(filePath) {
-            try {
-                const content = fs.readFileSync(filePath, 'utf-8');
-                const lines = content.split('\n');
-                const regex = new RegExp(pattern, caseSensitive ? 'g' : 'gi');
-
-                lines.forEach((line, index) => {
-                    if (regex.test(line)) {
-                        results.push({
-                            file: filePath,
-                            line: index + 1,
-                            content: line.trim()
-                        });
-                    }
-                });
-            } catch (e) {
-                // Skip unreadable files
-            }
-        }
-
-        function walkDir(dir) {
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            for (const entry of entries) {
-                const fullPath = path.join(dir, entry.name);
-                if (entry.isDirectory() && !['node_modules', '.git', '.next', 'dist'].includes(entry.name)) {
-                    walkDir(fullPath);
-                } else if (entry.isFile()) {
-                    searchInFile(fullPath);
-                }
-            }
-        }
-
-        walkDir(absolutePath);
-
-        res.json({
-            success: true,
-            pattern,
-            directory: absolutePath,
-            matches: results.slice(0, 100)  // Limit results
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-
-// Setup automated feature research routes
-setupResearchRoutes(app, getProjectById, PROJECT_ROOT);
-
-
-
-// ═══════════════════════════════════════════════════════════════
-// ============================================================================
-// SUPERVISOR ENDPOINTS (New orchestration layer)
-// ============================================================================
-
-// Routes /api/projects/:id/tasks/:taskId/supervisor/status, /task-ledger, and /supervisor/start were removed as legacy.
-// Use /api/projects/:id/tasks/:taskId/langgraph/run instead.
-
-// ============================================================================
-// CRITIC ENDPOINTS (Code review toggle)
-// ============================================================================
-
-// GET /api/critic/status - Check if Critic is enabled
-app.get('/api/critic/status', async (req, res) => {
-    const enabled = await isCriticEnabled();
-    res.json({
-        enabled,
-        message: enabled
-            ? 'Critic is reviewing code before file writes'
-            : 'Critic is disabled - code writes are not reviewed'
-    });
-});
-
-// POST /api/critic/toggle - Enable or disable Critic
-app.post('/api/critic/toggle', async (req, res) => {
-    const { enabled } = req.body;
-
-    if (typeof enabled !== 'boolean') {
-        return res.status(400).json({ error: 'enabled must be a boolean' });
-    }
-
-    const success = await setCriticEnabled(enabled);
-
-    if (success) {
-        res.json({
-            success: true,
-            enabled,
-            message: enabled
-                ? 'Critic enabled - code will be reviewed before writes'
-                : 'Critic disabled - code writes will not be reviewed'
-        });
-    } else {
-        res.status(500).json({ error: 'Failed to update Critic configuration' });
-    }
-});
-
-// ============================================================================
-// ============================================================================
-// REASONING CONFIGURATION ENDPOINTS
-// ============================================================================
-
-// GET /api/reasoning/config - Get reasoning configuration
-app.get('/api/reasoning/config', (req, res) => {
-    // Stubbed until DB table is created
-    const reasoningConfig = {
-        currentLevel: 'standard',
-        levels: {}
-    };
-
-    res.json(reasoningConfig);
-});
-
-// POST /api/reasoning/level - Set reasoning level
-app.post('/api/reasoning/level', (req, res) => {
-    return res.status(501).json({ error: 'Reasoning level configuration not yet implemented via API' });
-});
-
-// ═══════════════════════════════════════════════════════════════
-// GLOBAL CONTEXT MEMORY ENDPOINTS
-// ═══════════════════════════════════════════════════════════════
-
-// Get all preferences
-app.get('/api/memory/preferences', async (req, res) => {
-    try {
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        const prefs = await memory.getAllPreferences();
-        res.json(prefs);
-    } catch (error) {
-        console.error('[Memory] Failed to get preferences:', error);
-        res.status(500).json({ error: 'Failed to get preferences' });
-    }
-});
-
-// Set a preference
-app.post('/api/memory/preferences', async (req, res) => {
-    try {
-        const { category, key, value } = req.body;
-        if (!category || !key) {
-            return res.status(400).json({ error: 'category and key are required' });
-        }
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        await memory.setPreference(category, key, value);
-        res.json({ success: true });
-    } catch (error) {
-        console.error('[Memory] Failed to set preference:', error);
-        res.status(500).json({ error: 'Failed to set preference' });
-    }
-});
-
-// Delete a preference
-app.delete('/api/memory/preferences/:category/:key', async (req, res) => {
-    try {
-        const { category, key } = req.params;
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        const success = await memory.removePreference(category, key);
-        res.json({ success });
-    } catch (error) {
-        console.error('[Memory] Failed to remove preference:', error);
-        res.status(500).json({ error: 'Failed to remove preference' });
-    }
-});
-
-// Get all rules
-app.get('/api/memory/rules', async (req, res) => {
-    try {
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        const rules = await memory.getRules();
-        res.json(rules);
-    } catch (error) {
-        console.error('[Memory] Failed to get rules:', error);
-        res.status(500).json({ error: 'Failed to get rules' });
-    }
-});
-
-// Add a rule
-app.post('/api/memory/rules', async (req, res) => {
-    try {
-        const { rule } = req.body;
-        if (!rule) {
-            return res.status(400).json({ error: 'rule is required' });
-        }
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        const id = await memory.addRule(rule);
-        res.json({ success: true, id });
-    } catch (error) {
-        console.error('[Memory] Failed to add rule:', error);
-        res.status(500).json({ error: 'Failed to add rule' });
-    }
-});
-
-// Delete a rule
-app.delete('/api/memory/rules/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        const success = await memory.removeRule(id);
-        res.json({ success });
-    } catch (error) {
-        console.error('[Memory] Failed to remove rule:', error);
-        res.status(500).json({ error: 'Failed to remove rule' });
-    }
-});
-
-// Toggle a rule
-app.patch('/api/memory/rules/:id/toggle', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { enabled } = req.body;
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        const success = await memory.toggleRule(id, enabled);
-        res.json({ success });
-    } catch (error) {
-        console.error('[Memory] Failed to toggle rule:', error);
-        res.status(500).json({ error: 'Failed to toggle rule' });
-    }
-});
-
-// Get context for prompt injection
-app.get('/api/memory/context', async (req, res) => {
-    try {
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        const context = await memory.getContextForPrompt();
-        res.json({ context });
-    } catch (error) {
-        console.error('[Memory] Failed to get context:', error);
-        res.status(500).json({ error: 'Failed to get context' });
-    }
-});
-
-// Get scaffolding hints
-app.get('/api/memory/hints', async (req, res) => {
-    try {
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        const hints = await memory.getScaffoldingHints();
-        res.json(hints);
-    } catch (error) {
-        console.error('[Memory] Failed to get hints:', error);
-        res.status(500).json({ error: 'Failed to get scaffolding hints' });
-    }
-});
-
-// Get memory stats
-app.get('/api/memory/stats', async (req, res) => {
-    try {
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        const stats = await memory.getStats();
-        res.json(stats);
-    } catch (error) {
-        console.error('[Memory] Failed to get stats:', error);
-        res.status(500).json({ error: 'Failed to get memory stats' });
-    }
-});
-
-// Learn from a project (trigger project analysis)
-app.post('/api/memory/learn/:projectId', async (req, res) => {
-    try {
-        const { projectId } = req.params;
-        const projects = scanProjects(PROJECT_ROOT);
-        const project = projects.find(p => p.id === projectId);
-
-        if (!project) {
-            return res.status(404).json({ error: 'Project not found' });
-        }
-
-        // Read key config files
-        const files = new Map();
-        const filesToRead = [
-            'package.json', '.eslintrc', '.eslintrc.json', '.eslintrc.js',
-            '.prettierrc', '.prettierrc.json', 'tailwind.config.js', 'tailwind.config.ts',
-            'tsconfig.json', 'vitest.config.ts', 'jest.config.js', 'biome.json',
-            'next.config.js', 'next.config.mjs', 'vite.config.ts'
-        ];
-
-        for (const filename of filesToRead) {
-            const filePath = path.join(project.path, filename);
-            if (fs.existsSync(filePath)) {
-                files.set(filename, fs.readFileSync(filePath, 'utf-8'));
-            }
-        }
-
-        const memory = getDefaultMemoryManager();
-        await memory.ensureInitialized();
-        const analysis = await memory.learnFromProject(project.path, files);
-
-        res.json({ success: true, analysis });
-    } catch (error) {
-        console.error('[Memory] Failed to learn from project:', error);
-        res.status(500).json({ error: 'Failed to learn from project' });
-    }
-});
-
-// ═══════════════════════════════════════════════════════════════
-// EXECUTION TIMELINE & INLINE COMMENTS
-// ═══════════════════════════════════════════════════════════════
-
-// GET /api/projects/:id/features/:featureId/timeline - Get execution timeline
-app.get('/api/projects/:id/features/:featureId/timeline', async (req, res) => {
-    const { id, featureId } = req.params;
-    const { stage } = req.query;
-
-    try {
-        // First try database
-        if (db.isDatabaseEnabled()) {
-            let query = db.supabase
-                .from('execution_steps')
-                .select('*')
-                .eq('project_id', id)
-                .eq('feature_id', featureId);
-
-            if (stage) {
-                query = query.eq('stage', stage);
-            }
-
-            const { data, error } = await query.order('step', { ascending: true }).order('created_at', { ascending: true });
-
-            if (error) throw error;
-            return res.json({ steps: data || [] });
-        }
-
-        // Fallback: check if there's an active LangGraph run
-        // (Legacy fallback removed as part of DB migration)
-        const project = await getProjectById(PROJECT_ROOT, id);
-        if (!project) return res.json({ steps: [] });
-
-        // If we reach here without DB enabled, return empty
-        return res.json({ steps: [] });
-    } catch (error) {
-        console.error('[Timeline] Error:', error);
-        res.json({ steps: [] });
-    }
-});
-
-// POST /api/projects/:id/features/:featureId/timeline - Add execution step
-app.post('/api/projects/:id/features/:featureId/timeline', async (req, res) => {
-    const { id, featureId } = req.params;
-    const { runId, node, stage, step, status, input, output, startedAt, completedAt, durationMs, error } = req.body;
-
-    if (!db.isDatabaseEnabled()) {
-        return res.status(501).json({ error: 'Database not configured' });
-    }
-
-    try {
-        const { data, error: dbError } = await db.supabase
-            .from('execution_steps')
-            .insert({
-                run_id: runId,
-                feature_id: featureId,
-                project_id: id,
-                node,
-                stage,
-                step,
-                status: status || 'pending',
-                input,
-                output,
-                started_at: startedAt,
-                completed_at: completedAt,
-                duration_ms: durationMs,
-                error
-            })
-            .select()
-            .single();
-
-        if (dbError) throw dbError;
-
-        res.json({ success: true, step: data });
-    } catch (err) {
-        console.error('[Timeline] Create error:', err);
-        res.status(500).json({ error: 'Failed to create execution step' });
-    }
-});
-
-// GET /api/projects/:id/features/:featureId/comments - Get inline comments
-app.get('/api/projects/:id/features/:featureId/comments', async (req, res) => {
-    const { id, featureId } = req.params;
-    const { stage } = req.query;
-
-    if (!db.isDatabaseEnabled()) {
-        return res.json({ comments: [] });
-    }
-
-    try {
-        let query = db.supabase
-            .from('inline_comments')
-            .select('id, feature_id, stage, selection_text, selection_start, selection_end, comment, resolved, resolved_at, created_at')
-            .eq('project_id', id)
-            .eq('feature_id', featureId);
-
-        if (stage) {
-            query = query.eq('stage', stage);
-        }
-
-        const { data, error } = await query.order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        // Map to camelCase for frontend compatibility
-        const mappedComments = (data || []).map(c => ({
-            id: c.id,
-            featureId: c.feature_id,
-            stage: c.stage,
-            selectionText: c.selection_text,
-            selectionStart: c.selection_start,
-            selectionEnd: c.selection_end,
-            comment: c.comment,
-            resolved: c.resolved,
-            resolvedAt: c.resolved_at,
-            createdAt: c.created_at
-        }));
-
-        res.json({ comments: mappedComments });
-    } catch (error) {
-        console.error('[Comments] Error:', error);
-        res.json({ comments: [] });
-    }
-});
-
-// POST /api/projects/:id/features/:featureId/comments - Add inline comment
-app.post('/api/projects/:id/features/:featureId/comments', async (req, res) => {
-    const { id, featureId } = req.params;
-    const { stage, selectionText, selectionStart, selectionEnd, comment } = req.body;
-
-    if (!db.isDatabaseEnabled()) {
-        return res.status(501).json({ error: 'Database not configured' });
-    }
-
-    if (!stage || !selectionText || !comment) {
-        return res.status(400).json({ error: 'stage, selectionText, and comment are required' });
-    }
-
-    try {
-        const { data, error: dbError } = await db.supabase
-            .from('inline_comments')
-            .insert({
-                project_id: id,
-                feature_id: featureId,
-                stage,
-                selection_text: selectionText,
-                selection_start: selectionStart,
-                selection_end: selectionEnd,
-                comment
-            })
-            .select() // Select all fields to return
-            .single();
-
-        if (dbError) throw dbError;
-
-        // Map response to match frontend expectation
-        const newComment = {
-            id: data.id,
-            featureId: data.feature_id,
-            stage: data.stage,
-            selectionText: data.selection_text,
-            selectionStart: data.selection_start,
-            selectionEnd: data.selection_end,
-            comment: data.comment,
-            resolved: data.resolved,
-            resolvedAt: data.resolved_at,
-            createdAt: data.created_at
-        };
-
-        res.json({ success: true, comment: newComment });
-    } catch (err) {
-        console.error('[Comments] Create error:', err);
-        res.status(500).json({ error: 'Failed to add comment' });
-    }
-});
-
-// PATCH /api/projects/:id/features/:featureId/comments/:commentId - Resolve/unresolve comment
-app.patch('/api/projects/:id/features/:featureId/comments/:commentId', async (req, res) => {
-    const { id, featureId, commentId } = req.params;
-    const { resolved } = req.body;
-
-    if (!db.isDatabaseEnabled()) {
-        return res.status(501).json({ error: 'Database not configured' });
-    }
-
-    try {
-        const resolvedAt = resolved ? new Date().toISOString() : null;
-
-        const { data, error: dbError } = await db.supabase
-            .from('inline_comments')
-            .update({
-                resolved,
-                resolved_at: resolvedAt
-            })
-            .eq('id', commentId)
-            .eq('project_id', id)
-            .eq('feature_id', featureId)
-            .select()
-            .single();
-
-        if (dbError) throw dbError;
-
-        // Map response
-        const updatedComment = {
-            id: data.id,
-            featureId: data.feature_id,
-            stage: data.stage,
-            selectionText: data.selection_text,
-            selectionStart: data.selection_start,
-            selectionEnd: data.selection_end,
-            comment: data.comment,
-            resolved: data.resolved,
-            resolvedAt: data.resolved_at,
-            createdAt: data.created_at
-        };
-
-        res.json({ success: true, comment: updatedComment });
-    } catch (err) {
-        console.error('[Comments] Update error:', err);
-        res.status(500).json({ error: 'Failed to update comment' });
-    }
-});
-
-// ═════════════════════════════════════════════════════════════════════════════
-// MULTI-LEVEL WORKFLOW SYSTEM API
-// Dashboard Initiatives, Project Workflows, and Workflow Templates
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DASHBOARD INITIATIVES API
-// Cross-project workflows for security sweeps, dependency audits, etc.
-// ─────────────────────────────────────────────────────────────────────────────
-
-// GET all dashboard initiatives
-app.get('/api/initiatives', async (req, res) => {
-    try {
-        const { status } = req.query;
-        const initiatives = await db.getDashboardInitiatives(status || null);
-        res.json({ initiatives });
-    } catch (error) {
-        console.error('[Initiatives API] Error fetching initiatives:', error);
-        res.status(500).json({ error: 'Failed to fetch initiatives' });
-    }
-});
-
-// GET a single initiative with progress
-app.get('/api/initiatives/:id', async (req, res) => {
-    try {
-        const initiative = await db.getDashboardInitiative(req.params.id);
-        if (!initiative) {
-            return res.status(404).json({ error: 'Initiative not found' });
-        }
-
-        // Get progress across all targeted projects
-        const progress = await db.getInitiativeProgress(req.params.id);
-
-        res.json({
-            initiative,
-            progress,
-            summary: {
-                total: progress.length,
-                pending: progress.filter(p => p.status === 'pending').length,
-                inProgress: progress.filter(p => p.status === 'in_progress').length,
-                complete: progress.filter(p => p.status === 'complete').length,
-                failed: progress.filter(p => p.status === 'failed').length
-            }
-        });
-    } catch (error) {
-        console.error('[Initiatives API] Error fetching initiative:', error);
-        res.status(500).json({ error: 'Failed to fetch initiative' });
-    }
-});
-
-// POST create a new initiative
-app.post('/api/initiatives', async (req, res) => {
-    try {
-        const { name, description, workflow_type, target_projects, configuration } = req.body;
-
-        if (!name || !workflow_type) {
-            return res.status(400).json({ error: 'Name and workflow_type are required' });
-        }
-
-        const initiative = await db.createDashboardInitiative({
-            name,
-            description: description || '',
-            workflow_type,
-            target_projects: target_projects || [],
-            configuration: configuration || {},
-            status: 'idea'
-        });
-
-        if (!initiative) {
-            return res.status(500).json({ error: 'Failed to create initiative' });
-        }
-
-        // Initialize progress entries for each target project
-        for (const projectId of (target_projects || [])) {
-            await db.updateInitiativeProjectStatus(initiative.id, projectId, {
-                status: 'pending'
-            });
-        }
-
-        res.json({ success: true, initiative });
-    } catch (error) {
-        console.error('[Initiatives API] Error creating initiative:', error);
-        res.status(500).json({ error: 'Failed to create initiative' });
-    }
-});
-
-// PATCH update an initiative
-app.patch('/api/initiatives/:id', async (req, res) => {
-    try {
-        const { name, description, status, configuration, target_projects } = req.body;
-
-        const updates = {};
-        if (name !== undefined) updates.name = name;
-        if (description !== undefined) updates.description = description;
-        if (status !== undefined) updates.status = status;
-        if (configuration !== undefined) updates.configuration = configuration;
-        if (target_projects !== undefined) updates.target_projects = target_projects;
-
-        const initiative = await db.updateDashboardInitiative(req.params.id, updates);
-
-        if (!initiative) {
-            return res.status(404).json({ error: 'Initiative not found' });
-        }
-
-        res.json({ success: true, initiative });
-    } catch (error) {
-        console.error('[Initiatives API] Error updating initiative:', error);
-        res.status(500).json({ error: 'Failed to update initiative' });
-    }
-});
-
-// DELETE an initiative
-app.delete('/api/initiatives/:id', async (req, res) => {
-    try {
-        const success = await db.deleteDashboardInitiative(req.params.id);
-        if (!success) {
-            return res.status(404).json({ error: 'Initiative not found' });
-        }
-        res.json({ success: true, message: 'Initiative deleted' });
-    } catch (error) {
-        console.error('[Initiatives API] Error deleting initiative:', error);
-        res.status(500).json({ error: 'Failed to delete initiative' });
-    }
-});
-
-// POST run an initiative (execute across targeted projects)
-app.post('/api/initiatives/:id/run', async (req, res) => {
-    try {
-        const initiative = await db.getDashboardInitiative(req.params.id);
-        if (!initiative) {
-            return res.status(404).json({ error: 'Initiative not found' });
-        }
-
-        // Update initiative status to in_progress immediately
-        await db.updateDashboardInitiative(req.params.id, {
-            status: 'in_progress',
-            supervisor_status: 'initializing'
-        });
-
-        // Import and run the supervisor asynchronously
-        const { runDashboardInitiativeSupervisor } = require('./services/dashboard-initiative-supervisor');
-
-        // Get tools if available (for security sweeps, dependency audits)
-        const tools = {};
-        try {
-            const DependencyTool = require('./tools/DependencyTool');
-            tools.dependency = new DependencyTool();
-        } catch (e) {
-            console.log('[Initiatives API] DependencyTool not available');
-        }
-        try {
-            const GitTool = require('./tools/GitTool');
-            tools.git = new GitTool();
-        } catch (e) {
-            console.log('[Initiatives API] GitTool not available');
-        }
-
-        // Run supervisor in background (don't await)
-        runDashboardInitiativeSupervisor({
-            initiativeId: req.params.id,
-            tools
-        }).then(result => {
-            console.log(`[Initiatives API] Initiative ${req.params.id} completed:`, result.summary);
-        }).catch(err => {
-            console.error(`[Initiatives API] Initiative ${req.params.id} failed:`, err);
-        });
-
-        // Return immediately while processing continues in background
-        res.json({
-            success: true,
-            message: 'Initiative started - processing in background',
-            initiative: await db.getDashboardInitiative(req.params.id)
-        });
-    } catch (error) {
-        console.error('[Initiatives API] Error running initiative:', error);
-        res.status(500).json({ error: 'Failed to run initiative' });
     }
 });
 
@@ -4178,117 +2743,180 @@ app.post('/api/projects/:id/workflows/:workflowId/check', async (req, res) => {
 });
 
 
+
 // -----------------------------------------------------------------------------
-// WORKFLOW TEMPLATES API — REMOVED
+// WORKFLOW TEMPLATES API G�� REMOVED
 // Templates are now served exclusively from the Python LangGraph backend
 // via /api/langgraph/templates (JSON files on disk).
 // The Supabase workflow_templates table is no longer used.
-// -----------------------------------------------------------------------------
-
-
-// POST /api/tools/create-task - Internal endpoint for Python agents to create tasks (no auth)
-app.post('/api/tools/create-task', async (req, res) => {
-    try {
-        const { project_id, title, description, status, source, priority } = req.body;
-
-        if (!project_id || !title) {
-            return res.status(400).json({ error: 'project_id and title are required' });
-        }
-
-        const project = await getProjectById(PROJECT_ROOT, project_id);
-        if (!project) {
-            return res.status(404).json({ error: 'Project not found' });
-        }
-
-        const newTask = {
-            project_id: project.id,
-            name: title.trim(),
-            description: description?.trim() || '',
-            status: status || 'idea',
-            priority: priority || 0,
-            source: source || 'workflow:documentation',
-            metadata: {
-                classifiedAt: new Date().toISOString(),
-                createdBy: 'langgraph-agent'
-            }
-        };
-
-        const created = await db.createTask(newTask);
-        console.log(`[Tools] Created task: "${title}" for project ${project_id}`);
-
-        res.json({
-            success: true,
-            task: {
-                id: created.id,
-                name: created.name,
-                status: created.status,
-                project_id: created.project_id
-            }
-        });
-    } catch (error) {
-        console.error('[Tools] Create task error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// GET /api/tools/project-context - Tool endpoint for Python agents
-app.get('/api/tools/project-context', async (req, res) => {
-    try {
-        const { projectPath } = req.query;
-        if (!projectPath) return res.status(400).json({ error: 'projectPath required' });
-
-        // Find project by path
-        const projects = await getAllProjects(PROJECT_ROOT);
-        const project = projects.find(p => p.path === projectPath || p.path.toLowerCase() === projectPath.toLowerCase());
-
-        if (!project) return res.status(404).json({ error: 'Project not found' });
-
-        // Get context from DB
-        const contexts = await db.getProjectContexts(project.id);
-
-        // Format for AI
-        const result = {
-            techStack: [],
-            framework: 'Unknown',
-            structure: {},
-            maps: {}
-        };
-
-        contexts.forEach(ctx => {
-            if (ctx.context_type === 'tech-stack') {
-                result.techStack = ctx.content.split('\n')
-                    .map(l => l.trim())
-                    .filter(l => l.startsWith('-'))
-                    .map(l => l.substring(1).trim());
-            } else if (ctx.context_type === 'product') {
-                // Heuristic: try to find framework mentions if not explicit
-                // Otherwise user manual entry in tech-stack is best
-            } else if (['context_map', 'database-schema', 'project-workflow-map', 'task-pipeline-map'].includes(ctx.context_type)) {
-                result.maps[ctx.context_type] = ctx.content;
-            }
-        });
-
-        // Try to read project structure from file system if not in DB?
-        // Python previously got it from 'structure' property, which getProjectByPath/Id might provided?
-        // The original fetch code relied on 'getProjectContext' helper which did file scanning.
-        // We will assume file scanning is better done by the agent if needed, or we accept empty structure for now 
-        // to avoid duplicating the huge file scan logic. 
-        // Actually, Python prompt uses structure. Let's provide a basic file list if feasible.
-        try {
-            // Basic non-recursive list for now or rely on Python 'ls' tool?
-            // Python prompt expects "Structure: {ctx.get('structure', {})}"
-            // We can leave it empty or provide top level.
-        } catch (e) { }
-
-        res.json({ success: true, context: result });
-
-    } catch (error) {
-        console.error('[Tools API] Error getting project context:', error);
-        res.status(500).json({ error: 'Failed to get project context' });
-    }
-});
 
 // ============================================================================
+
+// ============================================================================
+// RESTORED ROUTES — Accidentally removed during refactoring
+// ============================================================================
+
+// --- Nexus Workflow Resume (requires proxyToLangGraph helper) ---
+
+const LANGGRAPH_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+
+async function proxyToLangGraph(urlPath, options = {}) {
+    const url = `${LANGGRAPH_URL}${urlPath}`;
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+    return response.json();
+}
+
+// POST /api/graph/nexus/:runId/resume — Resume a paused Nexus Prime workflow
+app.post('/api/graph/nexus/:runId/resume', async (req, res) => {
+    const { runId } = req.params;
+    const { approval_action, feedback } = req.body;
+
+    console.log(`[Resume Workflow] runId: ${runId}, action: ${approval_action}, feedback: ${feedback?.substring(0, 100)}...`);
+
+    try {
+        const result = await proxyToLangGraph(`/graph/nexus/${runId}/resume`, {
+            method: 'POST',
+            body: JSON.stringify({ approval_action, feedback })
+        });
+        console.log(`[Resume Workflow] Result:`, result);
+        res.json(result);
+    } catch (error) {
+        console.error(`[Resume Workflow] Error:`, error);
+        res.status(503).json({ error: 'LangGraph engine unavailable' });
+    }
+});
+
+// --- Critic Routes ---
+
+// GET /api/critic/status - Check if Critic is enabled
+app.get('/api/critic/status', async (req, res) => {
+    const enabled = await isCriticEnabled();
+    res.json({ enabled, message: enabled ? 'Critic is active - code will be reviewed before writes' : 'Critic disabled - code writes will not be reviewed' });
+});
+
+// POST /api/critic/toggle - Enable or disable Critic
+app.post('/api/critic/toggle', async (req, res) => {
+    const { enabled } = req.body;
+    if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ error: 'enabled must be a boolean' });
+    }
+    const success = await setCriticEnabled(enabled);
+    res.json({
+        success: true,
+        enabled,
+        message: enabled
+            ? 'Critic enabled - all code writes will be reviewed before writes'
+            : 'Critic disabled - code writes will not be reviewed'
+    });
+});
+
+// --- Reasoning Routes (Stubbed) ---
+
+// GET /api/reasoning/config - Get reasoning configuration
+app.get('/api/reasoning/config', (req, res) => {
+    // Stubbed until DB table is created
+    const reasoningConfig = {
+        currentLevel: 'standard',
+        levels: {}
+    };
+    res.json(reasoningConfig);
+});
+
+// POST /api/reasoning/level - Set reasoning level
+app.post('/api/reasoning/level', (req, res) => {
+    const { level } = req.body;
+    console.log(`[Reasoning] Level set to: ${level}`);
+    res.json({ success: true, level });
+});
+
+// --- Execution Timeline Routes ---
+
+// GET /api/projects/:id/features/:featureId/timeline - Get execution timeline
+app.get('/api/projects/:id/features/:featureId/timeline', async (req, res) => {
+    try {
+        const timeline = await db.getExecutionTimeline(req.params.featureId);
+        res.json({ timeline: timeline || [] });
+    } catch (error) {
+        console.error('[Timeline] Error:', error);
+        res.status(500).json({ error: 'Failed to get timeline' });
+    }
+});
+
+// POST /api/projects/:id/features/:featureId/timeline - Add execution step
+app.post('/api/projects/:id/features/:featureId/timeline', async (req, res) => {
+    try {
+        const { stage, action, node_id, details, next_stage } = req.body;
+        const step = await db.addExecutionStep(req.params.featureId, {
+            stage: stage || 'unknown',
+            action: action || 'step',
+            node_id,
+            details,
+            next_stage
+        });
+        res.json({ success: true, step });
+    } catch (error) {
+        console.error('[Timeline] Error adding step:', error);
+        res.status(500).json({ error: 'Failed to add timeline step' });
+    }
+});
+
+// --- Inline Comments Routes ---
+
+// GET /api/projects/:id/features/:featureId/comments - Get inline comments
+app.get('/api/projects/:id/features/:featureId/comments', async (req, res) => {
+    try {
+        const { stage } = req.query;
+        const comments = await db.getInlineComments(req.params.featureId, stage || null);
+        res.json({ comments: comments || [] });
+    } catch (error) {
+        console.error('[Comments] Error:', error);
+        res.status(500).json({ error: 'Failed to get comments' });
+    }
+});
+
+// POST /api/projects/:id/features/:featureId/comments - Add inline comment
+app.post('/api/projects/:id/features/:featureId/comments', async (req, res) => {
+    try {
+        const { stage, section_id, content, line_start, line_end, author } = req.body;
+        if (!stage || !content) {
+            return res.status(400).json({ error: 'stage and content are required' });
+        }
+        const comment = await db.addInlineComment(req.params.featureId, {
+            stage,
+            section_id: section_id || null,
+            content,
+            line_start: line_start || null,
+            line_end: line_end || null,
+            author: author || 'user'
+        });
+        res.json({ success: true, comment });
+    } catch (error) {
+        console.error('[Comments] Error adding comment:', error);
+        res.status(500).json({ error: 'Failed to add comment' });
+    }
+});
+
+// PATCH /api/projects/:id/features/:featureId/comments/:commentId - Resolve/unresolve comment
+app.patch('/api/projects/:id/features/:featureId/comments/:commentId', async (req, res) => {
+    try {
+        const { resolved } = req.body;
+        const comment = await db.updateInlineComment(req.params.commentId, { resolved });
+        if (!comment) {
+            return res.status(404).json({ error: 'Comment not found' });
+        }
+        res.json({ success: true, comment });
+    } catch (error) {
+        console.error('[Comments] Error updating comment:', error);
+        res.status(500).json({ error: 'Failed to update comment' });
+    }
+});
+
 // CORTEX BROADCAST ENDPOINT
 // Receives artifact pushes from Cortex and would emit to connected clients
 // ============================================================================

@@ -33,6 +33,50 @@ EVALUATOR_MODEL = DEFAULT_FLASH_MODEL
 
 
 # ═══════════════════════════════════════════════════════════════
+# MODEL DISCOVERY (via Node.js server)
+# ═══════════════════════════════════════════════════════════════
+
+_discovered_models_cache = None
+
+def _fetch_discovered_models():
+    """Fetch discovered models from the Nexus server's model discovery API."""
+    global _discovered_models_cache
+    if _discovered_models_cache is not None:
+        return _discovered_models_cache
+    
+    import urllib.request
+    import json
+    
+    nexus_url = "http://localhost:4000/api/models"
+    try:
+        req = urllib.request.Request(nexus_url, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+            _discovered_models_cache = data.get("models", [])
+            return _discovered_models_cache
+    except Exception as e:
+        print(f"[ModelConfig] Could not fetch discovered models from {nexus_url}: {e}")
+        return []
+
+
+def get_discovered_model_id(family: str) -> str:
+    """
+    Get the latest model ID for a given family from the discovery service.
+    
+    Args:
+        family: The model family name, e.g. 'Gemini Pro', 'Claude Opus', 'GPT'
+    
+    Returns:
+        The apiModelId string, or None if not found.
+    """
+    models = _fetch_discovered_models()
+    for m in models:
+        if m.get("family") == family:
+            return m.get("apiModelId")
+    return None
+
+
+# ═══════════════════════════════════════════════════════════════
 # TRACKED LLM FACTORIES
 # These functions return LLMs with automatic token tracking
 # ═══════════════════════════════════════════════════════════════

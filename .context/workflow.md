@@ -1,7 +1,7 @@
 ---
 context_type: workflow
 status: active
-updated_at: 2026-03-10T13:01:32.706Z
+updated_at: 2026-03-15T18:28:42.523Z
 ---
 
 # Workflow Architecture

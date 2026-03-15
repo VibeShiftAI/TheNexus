@@ -56,21 +56,15 @@ router.get('/:serverId/scopes', async (req, res) => {
     try {
         const { serverId } = req.params;
 
-        if (!db?.supabase) {
+        if (!db?.isDatabaseEnabled()) {
             // Return template scopes if no DB
             return res.json({ scopes: [], templates: SCOPE_TEMPLATES });
         }
 
-        const { data, error } = await db.supabase
-            .from('mcp_server_scopes')
-            .select('*')
-            .eq('mcp_server_id', serverId);
+        const allScopes = await db.getMcpScopes();
+        const scopes = allScopes.filter(s => s.server_name === serverId);
 
-        if (error) {
-            return res.status(500).json({ error: error.message });
-        }
-
-        res.json({ scopes: data || [], templates: SCOPE_TEMPLATES });
+        res.json({ scopes, templates: SCOPE_TEMPLATES });
     } catch (e) {
         console.error('[mcp-scopes] Error:', e);
         res.status(500).json({ error: 'Failed to fetch scopes' });
@@ -90,31 +84,17 @@ router.post('/:serverId/scopes', async (req, res) => {
             return res.status(400).json({ error: 'scope_name is required' });
         }
 
-        if (!db?.supabase) {
+        if (!db?.isDatabaseEnabled()) {
             return res.status(500).json({ error: 'Database not available' });
         }
 
-        const { data, error } = await db.supabase
-            .from('mcp_server_scopes')
-            .upsert({
-                mcp_server_id: serverId,
-                scope_name,
-                description,
-                is_dangerous: is_dangerous || false,
-                requires_confirmation: requires_confirmation || false,
-                max_calls_per_minute: max_calls_per_minute || 60,
-                max_calls_per_hour: max_calls_per_hour || 1000,
-            }, {
-                onConflict: 'mcp_server_id,scope_name'
-            })
-            .select()
-            .single();
+        const result = await db.upsertMcpScope({
+            server_name: serverId,
+            allowed_tools: [scope_name],
+            is_enabled: true,
+        });
 
-        if (error) {
-            return res.status(500).json({ error: error.message });
-        }
-
-        res.status(201).json(data);
+        res.status(201).json(result);
     } catch (e) {
         console.error('[mcp-scopes] Error:', e);
         res.status(500).json({ error: 'Failed to add scope' });
@@ -135,27 +115,18 @@ router.post('/:serverId/scopes/apply-template', async (req, res) => {
             return res.status(404).json({ error: `Template '${templateName}' not found` });
         }
 
-        if (!db?.supabase) {
+        if (!db?.isDatabaseEnabled()) {
             return res.status(500).json({ error: 'Database not available' });
         }
 
-        const scopes = template.map(t => ({
-            mcp_server_id: serverId,
-            ...t,
-            max_calls_per_minute: 60,
-            max_calls_per_hour: 1000,
-        }));
+        const toolNames = template.map(t => t.scope_name);
+        const result = await db.upsertMcpScope({
+            server_name: serverId,
+            allowed_tools: toolNames,
+            is_enabled: true,
+        });
 
-        const { data, error } = await db.supabase
-            .from('mcp_server_scopes')
-            .upsert(scopes, { onConflict: 'mcp_server_id,scope_name' })
-            .select();
-
-        if (error) {
-            return res.status(500).json({ error: error.message });
-        }
-
-        res.json({ applied: data?.length || 0, scopes: data });
+        res.json({ applied: toolNames.length, scopes: result });
     } catch (e) {
         console.error('[mcp-scopes] Error:', e);
         res.status(500).json({ error: 'Failed to apply template' });
@@ -168,19 +139,15 @@ router.post('/:serverId/scopes/apply-template', async (req, res) => {
  */
 router.delete('/:serverId/scopes/:scopeId', async (req, res) => {
     try {
-        const { scopeId } = req.params;
+        const { serverId } = req.params;
 
-        if (!db?.supabase) {
+        if (!db?.isDatabaseEnabled()) {
             return res.status(500).json({ error: 'Database not available' });
         }
 
-        const { error } = await db.supabase
-            .from('mcp_server_scopes')
-            .delete()
-            .eq('id', scopeId);
-
-        if (error) {
-            return res.status(500).json({ error: error.message });
+        const success = await db.deleteMcpScope(serverId);
+        if (!success) {
+            return res.status(500).json({ error: 'Failed to delete scope' });
         }
 
         res.json({ success: true });

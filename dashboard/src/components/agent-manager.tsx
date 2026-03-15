@@ -167,6 +167,13 @@ interface TemplatesResponse {
     error?: string;
 }
 
+// Helper to normalize category to a known bucket
+function getNormalizedCategory(cat?: string): string {
+    if (!cat) return "utility";
+    const normalized = cat.toLowerCase();
+    return CATEGORY_CONFIG[normalized] ? normalized : "utility";
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -240,7 +247,9 @@ export function AgentManager() {
                 name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 agent.id?.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesCategory = !selectedCategory || agent.category === selectedCategory;
+            
+            const normalizedCat = getNormalizedCategory(agent.category);
+            const matchesCategory = !selectedCategory || normalizedCat === selectedCategory;
             return matchesSearch && matchesCategory;
         });
     }, [agents, searchQuery, selectedCategory]);
@@ -249,21 +258,27 @@ export function AgentManager() {
     const categories = useMemo(() => {
         const cats = new Map<string, AtomicAgent[]>();
 
+        // Group everything by normalized category first
+        const tempGroup = new Map<string, AtomicAgent[]>();
+        filteredAgents.forEach(agent => {
+            const cat = getNormalizedCategory(agent.category);
+            if (!tempGroup.has(cat)) {
+                tempGroup.set(cat, []);
+            }
+            tempGroup.get(cat)!.push(agent);
+        });
+
         // Initialize in order
         CATEGORY_ORDER.forEach(cat => {
-            const matching = filteredAgents.filter(a => a.category === cat);
-            if (matching.length > 0) {
-                cats.set(cat, matching);
+            if (tempGroup.has(cat)) {
+                cats.set(cat, tempGroup.get(cat)!);
+                tempGroup.delete(cat);
             }
         });
 
-        // Add any categories not in the order
-        filteredAgents.forEach(agent => {
-            if (!cats.has(agent.category)) {
-                const list = cats.get(agent.category) || [];
-                list.push(agent);
-                cats.set(agent.category, list);
-            }
+        // Add any remaining categories not in the order
+        tempGroup.forEach((list, cat) => {
+            cats.set(cat, list);
         });
 
         return cats;
@@ -271,7 +286,7 @@ export function AgentManager() {
 
     // Get unique categories for filter
     const availableCategories = useMemo(() => {
-        const cats = [...new Set(agents.map(a => a.category))];
+        const cats = [...new Set(agents.map(a => getNormalizedCategory(a.category)))];
         return cats.sort((a, b) => {
             const aIdx = CATEGORY_ORDER.indexOf(a);
             const bIdx = CATEGORY_ORDER.indexOf(b);

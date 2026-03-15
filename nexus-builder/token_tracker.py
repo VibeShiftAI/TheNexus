@@ -1,7 +1,7 @@
 """
 Token Tracker - Python equivalent of the Node.js token-tracker.js
 
-Tracks AI token usage from LangChain/LangGraph agents and persists to Supabase.
+Tracks AI token usage from LangChain/LangGraph agents and persists to SQLite.
 """
 
 import asyncio
@@ -39,24 +39,18 @@ async def track_usage(
     Track AI token usage asynchronously.
     
     This is a fire-and-forget call - errors are logged but don't propagate.
-    
-    Args:
-        model: The model name (e.g., 'claude-opus-4-5-20251101')
-        input_tokens: Number of input/prompt tokens
-        output_tokens: Number of output/completion tokens
-        task: Optional task identifier for logging
     """
     try:
-        supabase = get_supabase()
-        if not supabase.is_configured():
-            print(f"[TokenTracker] Supabase not configured, skipping tracking")
+        client = get_supabase()
+        if not client.is_configured():
+            print(f"[TokenTracker] SQLite not configured, skipping tracking")
             return
         
         provider = get_provider_from_model(model)
         total_tokens = input_tokens + output_tokens
         
         # Record to database
-        await supabase.record_usage(model, input_tokens, output_tokens)
+        await client.record_usage(model, input_tokens, output_tokens)
         
         # Log for visibility
         print(f"[TokenTracker] {provider}/{model}: {input_tokens}+{output_tokens}={total_tokens} tokens")
@@ -72,69 +66,59 @@ def track_usage_sync(
     task: Optional[str] = None
 ) -> None:
     """
-    Fully synchronous token tracking using requests library.
+    Fully synchronous token tracking using direct sqlite3.
     
     This avoids event loop issues when called from LangChain callbacks.
     """
     import os
-    import requests
+    import sqlite3
+    import uuid
     from datetime import datetime
+    from pathlib import Path
     
     try:
-        supabase_url = os.environ.get("SUPABASE_URL")
-        # Use service key to bypass RLS (anon key blocked by row-level security)
-        supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
+        db_path = os.environ.get("NEXUS_DB_PATH") or str(Path(__file__).parent.parent / "nexus.db")
         
-        if not supabase_url or not supabase_key:
-            print(f"[TokenTracker] Supabase not configured, skipping")
+        if not os.path.exists(db_path):
+            print(f"[TokenTracker] Database not found at {db_path}, skipping")
             return
         
         provider = get_provider_from_model(model)
         total_tokens = input_tokens + output_tokens
         today = datetime.utcnow().strftime("%Y-%m-%d")
         
-        headers = {
-            "apikey": supabase_key,
-            "Authorization": f"Bearer {supabase_key}",
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-        }
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
         
         # Check for existing record
-        check_url = f"{supabase_url}/rest/v1/usage_stats?date=eq.{today}&model=eq.{model}"
-        response = requests.get(check_url, headers=headers)
-        print(f"[TokenTracker] GET {response.status_code}: {len(response.json()) if response.ok else response.text[:100]}")
-        existing = response.json() if response.ok else []
+        cursor.execute(
+            "SELECT * FROM usage_stats WHERE date = ? AND model = ?",
+            (today, model)
+        )
+        existing = cursor.fetchone()
         
-        if existing and len(existing) > 0:
+        if existing:
             # Update existing record
-            record = existing[0]
-            update_data = {
-                "input_tokens": (record.get("input_tokens", 0) or 0) + input_tokens,
-                "output_tokens": (record.get("output_tokens", 0) or 0) + output_tokens,
-                "total_tokens": (record.get("total_tokens", 0) or 0) + total_tokens,
-                "request_count": (record.get("request_count", 0) or 0) + 1
-            }
-            update_url = f"{supabase_url}/rest/v1/usage_stats?id=eq.{record['id']}"
-            result = requests.patch(update_url, json=update_data, headers=headers)
-            if not result.ok:
-                print(f"[TokenTracker] DB update failed: {result.status_code} {result.text[:200]}")
-                return
+            cursor.execute(
+                """UPDATE usage_stats SET
+                    input_tokens = input_tokens + ?,
+                    output_tokens = output_tokens + ?,
+                    total_tokens = total_tokens + ?,
+                    request_count = request_count + 1
+                WHERE id = ?""",
+                (input_tokens, output_tokens, total_tokens, existing["id"])
+            )
         else:
             # Insert new record
-            insert_data = {
-                "date": today,
-                "model": model,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_tokens": total_tokens,
-                "request_count": 1
-            }
-            insert_url = f"{supabase_url}/rest/v1/usage_stats"
-            result = requests.post(insert_url, json=insert_data, headers=headers)
-            if not result.ok:
-                print(f"[TokenTracker] DB insert failed: {result.status_code} {result.text[:200]}")
-                return
+            cursor.execute(
+                """INSERT INTO usage_stats (id, date, model, input_tokens, output_tokens, total_tokens, request_count)
+                VALUES (?, ?, ?, ?, ?, ?, 1)""",
+                (str(uuid.uuid4()), today, model, input_tokens, output_tokens, total_tokens)
+            )
+        
+        conn.commit()
+        conn.close()
         
         print(f"[TokenTracker] {provider}/{model}: {input_tokens}+{output_tokens}={total_tokens} tokens")
         
@@ -182,7 +166,7 @@ try:
                         
                         # Check message.usage_metadata directly (LangChain standard location)
                         if not hasattr(msg, 'usage_metadata') or not msg.usage_metadata:
-                            raise ValueError(f"No usage_metadata on message for {model}. Available attrs: {[a for a in dir(msg) if not a.startswith('_')]}")
+                            raise ValueError(f"No usage_metadata on message for {model}.")
                         
                         usage = msg.usage_metadata
                         # Handle both dict and object access

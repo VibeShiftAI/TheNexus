@@ -70,10 +70,10 @@ export default function CodexPage() {
 
                     <p className="text-slate-400 text-sm">
                         This diagram traces the complete data flow from <span className="text-cyan-400">AI Terminal (Agent Mode)</span> submission,
-                        through the <span className="text-purple-400">8-node System 2 Orchestrator</span> (Chat Router, Architect, Council Review, Plan Revision,{' '}
+                        through the <span className="text-purple-400">8-node Project Plan Generator</span> (Chat Router, Architect, Council Review, Plan Revision,{' '}
                         <span className="text-amber-400">Human-in-the-Loop Review</span>, Compiler, Executor),
-                        to <span className="text-emerald-400">Nexus Project &amp; Task Creation</span> via Supabase.
-                        Infrastructure: <span className="text-purple-300">Blackboard</span> (shared memory), <span className="text-pink-400">Glass Box Broadcasting</span> (WebSocket artifacts).
+                        to <span className="text-emerald-400">Nexus Project &amp; Task Creation</span> via SQLite.
+                        Infrastructure: <span className="text-purple-300">Blackboard</span> (shared memory), <span className="text-pink-400">Glass Box Broadcasting</span> (WebSocket artifacts for real-time visibility).
                     </p>
 
                     <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4 overflow-auto">
@@ -113,7 +113,7 @@ export default function CodexPage() {
                     <p className="text-slate-400 text-sm">
                         This diagram illustrates the cascading structure of The Nexus. Top-level <span className="text-yellow-400">Dashboard Initiatives</span>
                         kick off one or multiple <span className="text-purple-400">Project Level Workflows</span>. These workflows
-                        generate scoped <span className="text-emerald-400">Projects</span> in Supabase, which in turn schedule and execute specific <span className="text-cyan-400">Tasks</span>. End tasks can optionally trigger further nested workflows via a <span className="text-cyan-400">Workflow Selector</span>.
+                        generate scoped <span className="text-emerald-400">Projects</span> in the database, which in turn schedule and execute specific <span className="text-cyan-400">Tasks</span>. End tasks can optionally trigger further nested workflows via a <span className="text-cyan-400">Workflow Selector</span>.
                     </p>
 
                     <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4 overflow-auto">
@@ -145,13 +145,13 @@ export default function CodexPage() {
                             alt="Nexus Dashboard Home"
                             annotations={[
                                 { id: 'nav', x: 60, y: 2.5, title: 'Navigation Bar', description: 'Quick access to the System Monitor, Workflow Builder, The Codex documentation, and the live Cloudflare Tunnel status indicator.', align: 'bottom' },
-                                { id: 'model', x: 28, y: 9, title: 'Model Selector & Agent Mode', description: 'Choose between AI models (Gemini 3.1 Pro, Claude, etc.) and toggle Agent Mode for full System 2 orchestration vs. simple chat.', align: 'bottom' },
+                                { id: 'model', x: 28, y: 9, title: 'Model Selector & Agent Mode', description: 'Choose between AI models from multiple providers and toggle Agent Mode for full orchestration vs. simple chat.', align: 'bottom' },
                                 { id: 'term', x: 40, y: 28, title: 'Nexus Terminal', description: 'The primary AI interface. Submit natural language prompts to trigger the Cortex orchestrator, generate project plans, and execute complex multi-step workflows.', align: 'right' },
                                 { id: 'review', x: 80, y: 11, title: 'Artifacts In Review', description: 'A centralized queue for the Human-in-the-Loop review process. Plans and generated code wait here for your approval before the system proceeds.', align: 'left' },
                                 { id: 'workflows', x: 84, y: 30, title: 'Active Project Workflows', description: 'Live count of currently running System 2 workflows across all projects. Click to monitor their progress in real-time.', align: 'left' },
                                 { id: 'taskstatus', x: 84, y: 43, title: 'Global Task Status', description: 'Aggregated task pipeline across every project — Ideas, Research, Planning, Building, and Done — giving a bird\'s-eye view of total workload.', align: 'left' },
                                 { id: 'projects', x: 18, y: 62, title: 'Active Projects', description: 'Card grid of all managed projects. Each card shows the project type, description, deployment status (Live/Draft), tech stack, and latest Git activity.', align: 'top' },
-                                { id: 'newproject', x: 84, y: 56, title: '+ New Project', description: 'Scaffold a brand-new software project. Creates the Supabase record, initializes a .context directory, and optionally triggers an AI-driven planning workflow.', align: 'left' },
+                                { id: 'newproject', x: 84, y: 56, title: '+ New Project', description: 'Scaffold a brand-new software project. Creates the database record, initializes a .context directory, and optionally triggers an AI-driven planning workflow.', align: 'left' },
                                 { id: 'initiatives', x: 84, y: 62, title: 'Initiatives Panel', description: 'High-level strategic goals that span multiple projects. An Initiative can kick off several Project Workflows in parallel.', align: 'left' },
                                 { id: 'activity', x: 84, y: 82, title: 'Recent Activity Feed', description: 'A chronological stream of commits, context updates, and workflow completions across the entire Nexus ecosystem.', align: 'left' },
                                 { id: 'gitstatus', x: 35, y: 82, title: 'Project Git Info', description: 'Each project card shows branch info, latest commit hash, and a direct link to the GitHub repository for quick navigation.', align: 'top' }
@@ -168,18 +168,18 @@ export default function CodexPage() {
                             src="/project_screenshot.png"
                             alt="Nexus Project Home"
                             annotations={[
-                                { id: 'header', x: 25, y: 9, title: 'Project Header', description: 'Shows the project name, description, type badge (web-app, tool), file path, and vibe mode. Quick links for Production Payload and Source Matrix views.', align: 'bottom' },
+                                { id: 'header', x: 25, y: 9, title: 'Project Header', description: 'Shows the project name, description, type badge (web-app, tool), file path, and vibe mode. Quick links for Production site and Github views.', align: 'bottom' },
                                 { id: 'ctxsidebar', x: 18, y: 22, title: 'Context Sidebar', description: 'Dynamic file browser for the .context/ directory. Select documents like project-context.md, api-reference.md, or tech-stack.md to view and edit.', align: 'right' },
-                                { id: 'ctxeditor', x: 45, y: 22, title: 'Context Editor', description: 'Live markdown editor with Preview/Edit Source toggle. Supports Draft and Published states, Git sync, and direct save to Supabase.', align: 'bottom' },
+                                { id: 'ctxeditor', x: 45, y: 22, title: 'Context Editor', description: 'Live markdown editor with Preview/Edit Source toggle. Supports Draft and Published states, Git sync, and direct save to database. A Copy All Context button enables quick communication about complex projects.', align: 'bottom' },
                                 { id: 'ctxbody', x: 40, y: 42, title: 'Project Context Document', description: 'The AI\'s memory for this project — Vision, Target Audience, Core Value Proposition, and Architecture decisions. This context is injected into every AI interaction scoped to this project.', align: 'right' },
                                 { id: 'git', x: 82, y: 12, title: 'Git Status Panel', description: 'Real-time sync with the local repo: uncommitted changes count, sync status with remote, branch info, and a scrollable list of recent commits.', align: 'left' },
-                                { id: 'workflows', x: 82, y: 30, title: 'Project Workflows', description: 'Trigger full System 2 orchestration workflows scoped to this project. Shows completed and active workflow count with a "+ New Workflow" button.', align: 'left' },
+                                { id: 'workflows', x: 82, y: 30, title: 'Project Workflows', description: 'Trigger full orchestration workflows scoped to this project. Shows completed and active workflow count with a "+ New Workflow" button.', align: 'left' },
                                 { id: 'artifactsreview', x: 82, y: 42, title: 'Artifacts In Review', description: 'Project-scoped and Task-scoped artifact review queue. AI-generated plans and code blocks appear here awaiting human approval before execution.', align: 'left' },
                                 { id: 'taskpanel', x: 82, y: 60, title: 'Task Status Sidebar', description: 'Visual pipeline showing tasks by status: Ideas → Research → Planning → Building → Done. Provides at-a-glance progress for the entire project.', align: 'left' },
                                 { id: 'taskmgr', x: 35, y: 60, title: 'Task Manager', description: 'The main task list with full descriptions, creation dates, and action buttons. Supports Auto Research (AI-driven task expansion) and manual "+ New Task" creation.', align: 'top' },
                                 { id: 'taskcard', x: 40, y: 75, title: 'Task Cards', description: 'Each task shows its title, detailed description, timestamp, and quick-action icons for editing or navigating to the full task detail view.', align: 'top' },
                                 { id: 'archive', x: 82, y: 78, title: 'Archive', description: 'Collapsed section for completed and deprecated tasks. Keeps the workspace clean while preserving full history.', align: 'left' },
-                                { id: 'deleteproj', x: 18, y: 27, title: 'Delete Project', description: 'Danger Zone action with multi-scope confirmation. Removes project data from Supabase, optionally deletes local files and the .context directory.', align: 'right' }
+                                { id: 'deleteproj', x: 18, y: 27, title: 'Delete Project', description: 'Danger Zone action with multi-scope confirmation. Removes project data from the database, optionally deletes local files and the .context directory.', align: 'right' }
                             ]}
                         />
                     </div>

@@ -73,6 +73,13 @@ class ArchitectNode(AtomicNode):
         # Get Nexus context
         project_context = ctx.get_project_context()
         
+        # Load full project context documents
+        try:
+            from ..utility.context_loader import read_project_contexts
+            full_context = read_project_contexts(project_root)
+        except Exception:
+            full_context = ""
+        
         # Pre-load repo structure
         try:
             repo_structure = ArchitectTools.get_repo_structure(project_root)
@@ -90,7 +97,7 @@ class ArchitectNode(AtomicNode):
             "project_root": project_root,
             "task_title": project_context.get("task_id", "Architecture Task"),
             "task_description": user_request[:500],
-            "project_context": "",  # TODO: Load from context service
+            "project_context": full_context,
             "thought_signature": "",
             "draft_spec": None,
             "draft_manifest": None,

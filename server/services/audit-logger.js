@@ -37,15 +37,18 @@ async function logAction({
     wasHumanApproved = false,
     wasRateLimited = false,
 }) {
-    if (!db.supabase) {
+    if (!db.isDatabaseEnabled()) {
         console.log(`[AuditLog] ${actionType}: ${actionName} (DB disabled)`);
         return null;
     }
 
     try {
-        const { data, error } = await db.supabase
-            .from('agent_audit_log')
-            .insert({
+        const result = await db.insertAuditLog({
+            action: actionType,
+            actor: agentId || userId,
+            target_type: actionType,
+            target_id: projectId || workflowId,
+            details: {
                 user_id: userId,
                 project_id: projectId,
                 workflow_id: workflowId,
@@ -62,16 +65,10 @@ async function logAction({
                 error_message: errorMessage,
                 was_human_approved: wasHumanApproved,
                 was_rate_limited: wasRateLimited,
-            })
-            .select('id')
-            .single();
+            },
+        });
 
-        if (error) {
-            console.error('[AuditLog] Failed to log action:', error.message);
-            return null;
-        }
-
-        return data?.id;
+        return result?.id || null;
     } catch (e) {
         console.error('[AuditLog] Error:', e);
         return null;
@@ -144,27 +141,22 @@ async function logRateLimited(context, reason, limit) {
  * Query recent audit logs
  */
 async function getRecentLogs({ userId, projectId, limit = 50, actionType = null } = {}) {
-    if (!db.supabase) return [];
+    if (!db.isDatabaseEnabled()) return [];
 
     try {
-        let query = db.supabase
-            .from('agent_audit_log')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(limit);
+        const filters = { limit };
+        if (actionType) filters.action = actionType;
+        // userId and projectId are stored within the details JSON
+        // For now, return all logs matching action type and limit
+        const logs = await db.getAuditLogs(filters);
 
-        if (userId) query = query.eq('user_id', userId);
-        if (projectId) query = query.eq('project_id', projectId);
-        if (actionType) query = query.eq('action_type', actionType);
-
-        const { data, error } = await query;
-
-        if (error) {
-            console.error('[AuditLog] Query error:', error.message);
-            return [];
-        }
-
-        return data || [];
+        // Filter by userId/projectId from details if needed
+        return logs.filter(log => {
+            const d = log.details || {};
+            if (userId && d.user_id !== userId) return false;
+            if (projectId && d.project_id !== projectId) return false;
+            return true;
+        });
     } catch (e) {
         console.error('[AuditLog] Error:', e);
         return [];
@@ -175,37 +167,36 @@ async function getRecentLogs({ userId, projectId, limit = 50, actionType = null 
  * Get usage summary for a time period
  */
 async function getUsageSummary({ userId, projectId, days = 7 } = {}) {
-    if (!db.supabase) return null;
+    if (!db.isDatabaseEnabled()) return null;
 
     try {
         const since = new Date();
         since.setDate(since.getDate() - days);
+        const sinceStr = since.toISOString();
 
-        let query = db.supabase
-            .from('agent_audit_log')
-            .select('action_type, action_name, tokens_used, cost')
-            .gte('created_at', since.toISOString());
+        // Get all recent logs and filter
+        const logs = await db.getAuditLogs({ limit: 10000 });
+        const data = logs.filter(log => {
+            if (log.created_at < sinceStr) return false;
+            const d = log.details || {};
+            if (userId && d.user_id !== userId) return false;
+            if (projectId && d.project_id !== projectId) return false;
+            return true;
+        });
 
-        if (userId) query = query.eq('user_id', userId);
-        if (projectId) query = query.eq('project_id', projectId);
-
-        const { data, error } = await query;
-
-        if (error || !data) return null;
-
-        // Aggregate
         const summary = {
             totalRequests: data.length,
-            totalTokens: data.reduce((sum, r) => sum + (r.tokens_used || 0), 0),
-            totalCost: data.reduce((sum, r) => sum + parseFloat(r.cost || 0), 0),
+            totalTokens: data.reduce((sum, r) => sum + ((r.details || {}).tokens_used || 0), 0),
+            totalCost: data.reduce((sum, r) => sum + parseFloat((r.details || {}).cost || 0), 0),
             byActionType: {},
             byModel: {},
         };
 
         data.forEach(r => {
-            summary.byActionType[r.action_type] = (summary.byActionType[r.action_type] || 0) + 1;
-            if (r.action_type === 'llm_request') {
-                summary.byModel[r.action_name] = (summary.byModel[r.action_name] || 0) + 1;
+            const d = r.details || {};
+            summary.byActionType[d.action_type] = (summary.byActionType[d.action_type] || 0) + 1;
+            if (d.action_type === 'llm_request') {
+                summary.byModel[d.action_name] = (summary.byModel[d.action_name] || 0) + 1;
             }
         });
 

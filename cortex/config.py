@@ -56,7 +56,8 @@ class Settings(BaseSettings):
 
     # Nexus Integration
     nexus_api_url: str = "http://localhost:4000/api"
-    supabase_service_key: Optional[SecretStr] = Field(default=None, alias="SUPABASE_SERVICE_KEY")
+    nexus_service_key: Optional[SecretStr] = Field(default=None, alias="NEXUS_SERVICE_KEY")
+    supabase_service_key: Optional[SecretStr] = Field(default=None, alias="SUPABASE_SERVICE_KEY")  # backward compat
     nexus_user_id: Optional[str] = Field(default=None, alias="NEXUS_USER_ID")
 
 

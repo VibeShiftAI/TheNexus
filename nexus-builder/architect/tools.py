@@ -13,9 +13,14 @@ class ArchitectTools:
         Generates a tree-like structure of the repo.
         """
         structure = []
+        # Directories to exclude from search (build artifacts, deps, caches)
+        EXCLUDED_DIRS = {
+            'node_modules', 'venv', '__pycache__', 'dist', '.next', 'build',
+            '.git', 'coverage', '.turbo', '.vercel', '.cache'
+        }
         for root, dirs, files in os.walk(root_path):
-            # Skip hidden dirs
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'venv', 'pycache']]
+            # Skip hidden dirs and build artifacts
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in EXCLUDED_DIRS]
             level = root.replace(root_path, '').count(os.sep)
             indent = ' ' * 4 * (level)
             structure.append(f'{indent}{os.path.basename(root)}/')
@@ -56,8 +61,12 @@ class ArchitectTools:
         """
         matches = []
         try:
+            EXCLUDED_DIRS = {
+                'node_modules', 'venv', '__pycache__', 'dist', '.next', 'build',
+                '.git', 'coverage', '.turbo', '.vercel', '.cache'
+            }
             for root, dirs, files in os.walk(root_path):
-                 dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'venv', '__pycache__']]
+                 dirs[:] = [d for d in dirs if not d.startswith('.') and d not in EXCLUDED_DIRS]
                  for file in files:
                     if file.endswith(('.py', '.js', '.ts', '.tsx', '.jsx')):
                         path = os.path.join(root, file)

@@ -31,7 +31,9 @@ class GeneralAgentNode(AtomicNode):
     DEFAULT_TOOLS = [
         "get_project_context",
         "read_file",
-        "list_directory", 
+        "read_multiple_files",
+        "list_directory",
+        "explore_codebase",
         "search_files",
         "search_codebase",
         "git_log",
@@ -114,10 +116,18 @@ class GeneralAgentNode(AtomicNode):
             "."
         )
         
+        # Build a run-scoped log tag for observability
+        run_id = ctx.get_node_parameter("run_id", "") or ""
+        if not run_id:
+            # Try to get from upstream context
+            if items:
+                run_id = items[0].json.get("context", {}).get("run_id", "")
+        log_tag = f"[GeneralAgent][{run_id[:8]}]" if run_id else "[GeneralAgent]"
+        
         if verbose:
-            print(f"[GeneralAgent] Task: {task[:80]}...")
-            print(f"[GeneralAgent] Project root: {project_root}")
-            print(f"[GeneralAgent] Upstream context: {len(upstream_context)} chars")
+            print(f"{log_tag} Task: {task[:80]}...")
+            print(f"{log_tag} Project root: {project_root}")
+            print(f"{log_tag} Upstream context: {len(upstream_context)} chars")
         
         # Get tools from registry
         tool_names = [t.strip() for t in tools_param.split(",") if t.strip()] if tools_param else self.DEFAULT_TOOLS
@@ -127,15 +137,17 @@ class GeneralAgentNode(AtomicNode):
         tools = self._get_tools(tool_names, project_root, project_id)
         
         if verbose:
-            print(f"[GeneralAgent] Tools loaded: {[t.name for t in tools]}")
-            print(f"[GeneralAgent] Project ID: {project_id}")
+            print(f"{log_tag} Tools loaded: {[t.name for t in tools]}")
+            print(f"{log_tag} Project ID: {project_id}")
         
         system_prompt = f"""You are an expert code analyst with access to tools for exploring a codebase.
 
 You have access to these tools:
 - get_project_context: Get ALL existing .context/ documentation — USE THIS FIRST
 - read_file: Read a specific file's contents
+- read_multiple_files: Read multiple files at once (comma-separated paths) — MORE EFFICIENT than reading one at a time
 - list_directory: List files in a directory
+- explore_codebase: Get file tree and structure overview — USE THIS INSTEAD of calling list_directory repeatedly
 - search_files: Search for files by name/pattern
 - search_codebase: Search code content (grep)
 - git_log: View recent commit history
@@ -146,13 +158,14 @@ The project is located at: {project_root}
 
 **Strategy:**
 1. FIRST call get_project_context to see what documentation already exists
-2. Then use list_directory and read_file to explore the actual codebase
-3. Use git_log/git_diff to see what changed recently
-4. Compare what you found against the existing documentation
-5. Produce your analysis
+2. Call explore_codebase to get the full file tree in ONE call (do NOT use list_directory repeatedly)
+3. Use read_multiple_files to batch-read key files (package.json, README.md, etc.) in one call
+4. Use git_log/git_diff to see what changed recently
+5. Compare what you found against the existing documentation
+6. Produce your analysis
 
 When using file tools, use paths relative to the project root.
-Be thorough but efficient — focus on finding real gaps between code and docs."""
+Be thorough but efficient — minimize tool calls by batching reads and using explore_codebase for structure."""
 
         user_prompt = f"""Execute this task:
 
@@ -170,7 +183,7 @@ Use the available tools to gather information, then provide your complete analys
                 # Use ReAct agent with tools
                 result = await self._run_react_agent(
                     llm, tools, system_prompt, user_prompt, 
-                    max_turns, verbose
+                    max_turns, verbose, log_tag
                 )
             else:
                 # Fallback: single-turn without tools
@@ -179,7 +192,7 @@ Use the available tools to gather information, then provide your complete analys
                 )
             
             if verbose:
-                print(f"[GeneralAgent] Result length: {len(result)} chars")
+                print(f"{log_tag} Result length: {len(result)} chars")
             
             return [[NodeExecutionData(
                 json={
@@ -192,7 +205,7 @@ Use the available tools to gather information, then provide your complete analys
             )]]
             
         except Exception as e:
-            print(f"[GeneralAgent] ERROR: {type(e).__name__}: {e}")
+            print(f"{log_tag} ERROR: {type(e).__name__}: {e}")
             import traceback
             traceback.print_exc()
             return [[NodeExecutionData(
@@ -200,7 +213,7 @@ Use the available tools to gather information, then provide your complete analys
                 error=e
             )]]
     
-    async def _run_react_agent(self, llm, tools, system_prompt, user_prompt, max_turns, verbose):
+    async def _run_react_agent(self, llm, tools, system_prompt, user_prompt, max_turns, verbose, log_tag="[GeneralAgent]"):
         """Run a ReAct agent loop with tool calling."""
         from langgraph.prebuilt import create_react_agent
         
@@ -230,7 +243,7 @@ Use the available tools to gather information, then provide your complete analys
                                 for tc in msg.tool_calls:
                                     tool_call_count += 1
                                     args_preview = str(tc.get('args', {}))[:100]
-                                    print(f"[GeneralAgent] 🔧 Tool call #{tool_call_count}: {tc.get('name')} ({args_preview})")
+                                    print(f"{log_tag} 🔧 Tool call #{tool_call_count}: {tc.get('name')} ({args_preview})")
                             elif msg.content:
                                 # Final answer
                                 content = msg.content
@@ -240,13 +253,13 @@ Use the available tools to gather information, then provide your complete analys
                                         for block in content
                                     )
                                 final_content = content
-                                print(f"[GeneralAgent] ✅ Final answer: {len(content)} chars")
+                                print(f"{log_tag} ✅ Final answer: {len(content)} chars")
                         elif msg.type == "tool":
                             result_preview = str(msg.content)[:150]
-                            print(f"[GeneralAgent] 📋 Tool result: {result_preview}...")
+                            print(f"{log_tag} 📋 Tool result: {result_preview}...")
         
         if verbose:
-            print(f"[GeneralAgent] Agent completed: {tool_call_count} tool calls")
+            print(f"{log_tag} Agent completed: {tool_call_count} tool calls")
         
         return final_content
     

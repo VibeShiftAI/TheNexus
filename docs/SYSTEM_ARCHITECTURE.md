@@ -54,7 +54,7 @@ graph TD
     end
 
     subgraph Infrastructure ["Data & Persistence"]
-        DB[(Supabase / PostgreSQL)]
+        DB[(SQLite / nexus.db)]
         LocalFS[(Local Filesystem)]
     end
 
@@ -109,7 +109,7 @@ TheNexus/                       # Flat monorepo
 │   ├── model_registry.yaml     # LLM model configs
 │   ├── prompts.yaml            # System prompts
 │   └── nexus/                  # Nexus-specific config
-├── db/                         # Supabase schema & migrations
+├── db/                         # SQLite schema & database
 └── docker/                     # Dockerfiles & compose files
 ```
 
@@ -189,8 +189,7 @@ OPENAI_API_KEY=...
 
 # Backend Integration
 PYTHON_BACKEND_URL=http://localhost:8000
-SUPABASE_URL=https://...
-SUPABASE_SERVICE_KEY=...
+NEXUS_SERVICE_KEY=...
 ```
 
 ### Model Configuration (`config/model_registry.yaml` & `agent-config.json`)

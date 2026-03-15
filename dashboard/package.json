@@ -10,10 +10,6 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
-    "@supabase/auth-ui-react": "^0.4.7",
-    "@supabase/auth-ui-shared": "^0.1.8",
-    "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.89.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@xyflow/react": "^12.10.0",
     "clsx": "^2.1.1",

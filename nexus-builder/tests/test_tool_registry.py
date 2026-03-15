@@ -29,7 +29,7 @@ class TestToolRegistry:
     def test_expected_tool_count(self):
         """Should have 24 tools from 6 libraries."""
         registry = get_registry()
-        assert len(registry) == 24
+        assert len(registry) == 25
     
     def test_get_tool_by_name(self):
         """Should retrieve tool by name."""
@@ -47,7 +47,7 @@ class TestToolRegistry:
         """list_tools should return ToolMetadata."""
         registry = get_registry()
         tools = registry.list_tools()
-        assert len(tools) == 24
+        assert len(tools) == 25
         assert all(isinstance(t, ToolMetadata) for t in tools)
     
     def test_filter_by_category(self):
@@ -61,7 +61,7 @@ class TestToolRegistry:
         """Should convert all tools to LangChain format."""
         registry = get_registry()
         lc_tools = registry.get_langchain_tools()
-        assert len(lc_tools) == 24
+        assert len(lc_tools) == 25
         # LangChain tools should have name attribute
         assert all(hasattr(t, 'name') for t in lc_tools)
     

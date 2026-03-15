@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Task, TaskStatus, addTask, deleteTask, researchTasks, getResearchStatus, updateTask, updateTaskDetails } from "@/lib/nexus";
-import { Lightbulb, Plus, Search, Rocket, CheckCircle2, Clock, Loader2, ChevronRight, Sparkles, XCircle, Undo2, Pencil, Bug, HelpCircle, AlertTriangle, Fingerprint, Pause } from "lucide-react";
+import { Task, TaskStatus, addTask, deleteTask, researchTasks, getResearchStatus, updateTask, updateTaskDetails, getWorkflowTemplates, WorkflowTemplate, runTaskWithLangGraph } from "@/lib/nexus";
+import { Lightbulb, Plus, Search, Rocket, CheckCircle2, Clock, Loader2, ChevronRight, Sparkles, XCircle, Undo2, Pencil, Bug, HelpCircle, AlertTriangle, Fingerprint, Pause, Play, Workflow } from "lucide-react";
 
 interface TaskManagerProps {
     projectId: string;
@@ -27,10 +27,13 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
     const [showForm, setShowForm] = useState(false);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [researchingId, setResearchingId] = useState<string | null>(null);
     const [isAutoResearching, setIsAutoResearching] = useState(false);
     const [researchError, setResearchError] = useState<string | null>(null);
+    const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+    const [startingWorkflow, setStartingWorkflow] = useState<string | null>(null);
 
     // Edit state
     const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -39,7 +42,10 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
     const [isEditSaving, setIsEditSaving] = useState(false);
     const [editError, setEditError] = useState<string | null>(null);
 
-
+    // Fetch task-level workflow templates
+    useEffect(() => {
+        getWorkflowTemplates('task').then(setTemplates).catch(() => {});
+    }, []);
 
     // Check research status on mount
     useEffect(() => {
@@ -125,9 +131,10 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
 
         setIsSubmitting(true);
         try {
-            await addTask(projectId, title.trim(), description.trim() || undefined);
+            await addTask(projectId, title.trim(), description.trim() || undefined, selectedTemplateId || undefined);
             setTitle('');
             setDescription('');
+            setSelectedTemplateId('');
             setShowForm(false);
             onTasksChange();
         } catch (error) {
@@ -256,8 +263,26 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                         placeholder="Description (optional)..."
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-purple-500/50 resize-none h-20 mb-3"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-purple-500/50 resize-none h-20 mb-2"
                     />
+                    {templates.length > 0 && (
+                        <div className="mb-3">
+                            <label className="block text-xs text-slate-400 mb-1 flex items-center gap-1">
+                                <Workflow size={12} />
+                                Attach Workflow
+                            </label>
+                            <select
+                                value={selectedTemplateId}
+                                onChange={(e) => setSelectedTemplateId(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500/50"
+                            >
+                                <option value="">None</option>
+                                {templates.map(t => (
+                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                     <div className="flex gap-2">
                         <button
                             type="submit"
@@ -268,7 +293,7 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setShowForm(false); setTitle(''); setDescription(''); }}
+                            onClick={() => { setShowForm(false); setTitle(''); setDescription(''); setSelectedTemplateId(''); }}
                             className="px-4 py-2 text-sm rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
                         >
                             Cancel
@@ -379,11 +404,43 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                                             </div>
                                             <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
                                                 <span>{formatDate(task.createdAt)}</span>
+                                                {task.langgraph_template && (
+                                                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                                        <Workflow size={10} />
+                                                        {templates.find(t => t.id === task.langgraph_template)?.name || task.langgraph_template}
+                                                    </span>
+                                                )}
                                                 {task.implementationPlan && (
                                                     <span className="px-1.5 py-0.5 rounded bg-slate-800">Has Plan</span>
                                                 )}
                                                 {task.walkthrough && (
                                                     <span className="px-1.5 py-0.5 rounded bg-slate-800">Has Walkthrough</span>
+                                                )}
+                                                {task.langgraph_template && task.status === 'idea' && !task.langGraph?.runId && (
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            setStartingWorkflow(task.id);
+                                                            try {
+                                                                await runTaskWithLangGraph(projectId, task.id, { templateId: task.langgraph_template || undefined });
+                                                                onTasksChange();
+                                                            } catch (err) {
+                                                                console.error('Failed to start workflow:', err);
+                                                            } finally {
+                                                                setStartingWorkflow(null);
+                                                            }
+                                                        }}
+                                                        disabled={startingWorkflow === task.id}
+                                                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                                                        title="Start attached workflow"
+                                                    >
+                                                        {startingWorkflow === task.id ? (
+                                                            <Loader2 size={10} className="animate-spin" />
+                                                        ) : (
+                                                            <Play size={10} />
+                                                        )}
+                                                        Start
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>

@@ -319,7 +319,8 @@ async def execution_node(state: System2State) -> dict:
                     desc_parts.append(f"\n**Acceptance Criteria:**\n{criteria}")
 
                 task_description = "\n".join(desc_parts) if desc_parts else ""
-                await nexus.add_task(project_id, node.description, task_description)
+                template_id = getattr(node, 'template_id', None)
+                await nexus.add_task(project_id, node.description, task_description, template_id=template_id)
 
             logger.info(f"✅ Project {project_id} created with {len(plan.nodes)} tasks")
 

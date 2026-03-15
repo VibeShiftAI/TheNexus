@@ -9,8 +9,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { AITerminal } from "@/components/ai-terminal";
 import { DashboardInitiatives } from "@/components/dashboard-initiatives";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
-import { createClient } from "@/lib/supabaseClient";
-import { Activity, ShieldCheck, Zap, Folder, Plus, Gauge, X, LogOut, BookOpen } from "lucide-react";
+import { Activity, ShieldCheck, Zap, Folder, Plus, Gauge, X, BookOpen } from "lucide-react";
 
 import Link from "next/link";
 
@@ -21,13 +20,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
-  const supabase = createClient();
   const router = useRouter();
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
 
 
   const loadData = useCallback(async () => {
@@ -111,13 +104,7 @@ export default function Home() {
               <Zap size={16} className="text-yellow-500" />
               <span>VIBE: HIGH</span>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-red-500/20 to-rose-500/20 border border-red-500/30 hover:border-red-500/50 transition-all text-red-400 hover:text-red-300"
-            >
-              <LogOut size={16} />
-              <span>Log Out</span>
-            </button>
+
           </div>
         </div>
       </header>

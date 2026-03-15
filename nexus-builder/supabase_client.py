@@ -1,197 +1,204 @@
 """
-Supabase Client - HTTP REST client for database operations
+SQLite Client - Local database client for nexus-builder operations
 
-Uses the Supabase REST API instead of direct PostgreSQL connection.
-This avoids DNS resolution issues on Windows.
+Replaces the old Supabase HTTP REST client with direct SQLite access via aiosqlite.
+Uses the same nexus.db file as the Node.js server.
 """
 
 import os
-import httpx
+import json
+import uuid
+import sqlite3
+import aiosqlite
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-from dotenv import load_dotenv
 from pathlib import Path
 
-# Load .env from parent directory (project root) if not in current dir
-env_path = Path(__file__).parent.parent / '.env'
-load_dotenv(env_path)
+# Resolve the nexus.db path (same as Node.js server uses)
+_DB_PATH = os.getenv("NEXUS_DB_PATH") or str(Path(__file__).parent.parent / "nexus.db")
 
 
-class SupabaseClient:
+def _now() -> str:
+    return datetime.utcnow().isoformat() + "Z"
+
+
+def _id() -> str:
+    return str(uuid.uuid4())
+
+
+def _parse_json(val: Any) -> Any:
+    """Safely parse JSON strings from SQLite TEXT columns."""
+    if val is None:
+        return None
+    if isinstance(val, (dict, list)):
+        return val
+    try:
+        return json.loads(val)
+    except (json.JSONDecodeError, TypeError):
+        return val
+
+
+def _dict_row(cursor: aiosqlite.Cursor, row: tuple) -> dict:
+    """Row factory that returns dicts instead of tuples."""
+    desc = cursor.description
+    return {col[0]: row[i] for i, col in enumerate(desc)}
+
+
+class SQLiteClient:
     """
-    HTTP client for Supabase database operations.
-    Uses the REST API for CRUD operations.
+    Async SQLite client for nexus-builder database operations.
+    Drop-in replacement for the old SupabaseClient.
     """
-    
+
     def __init__(self):
-        self.url = os.getenv("SUPABASE_URL")
-        # Support SUPABASE_SERVICE_KEY, SUPABASE_SECRET_KEY, or SUPABASE_KEY
-        self.key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_KEY")
-        self._client = None
-        
-        if not self.url or not self.key:
-            print("[Supabase] Warning: Missing SUPABASE_URL or SUPABASE_SECRET_KEY")
-    
-    @property
-    def client(self) -> httpx.AsyncClient:
-        if self._client is None:
-            self._client = httpx.AsyncClient(
-                base_url=f"{self.url}/rest/v1",
-                headers={
-                    "apikey": self.key,
-                    "Authorization": f"Bearer {self.key}",
-                    "Content-Type": "application/json",
-                    "Prefer": "return=representation"
-                },
-                timeout=30.0
-            )
-        return self._client
-    
+        self.db_path = _DB_PATH
+        self._db: Optional[aiosqlite.Connection] = None
+
+    async def _get_db(self) -> aiosqlite.Connection:
+        if self._db is None:
+            self._db = await aiosqlite.connect(self.db_path)
+            self._db.row_factory = _dict_row
+            await self._db.execute("PRAGMA journal_mode=WAL")
+            await self._db.execute("PRAGMA foreign_keys=ON")
+        return self._db
+
     async def close(self):
-        if self._client:
-            await self._client.aclose()
-            self._client = None
-    
+        if self._db:
+            await self._db.close()
+            self._db = None
+
     def is_configured(self) -> bool:
-        return bool(self.url and self.key)
-    
+        return os.path.exists(self.db_path)
+
     # ═══════════════════════════════════════════════════════════════
     # WORKFLOW OPERATIONS
     # ═══════════════════════════════════════════════════════════════
-    
+
     async def insert_workflow(self, workflow: Dict) -> Dict:
-        """Insert a new workflow"""
-        response = await self.client.post("/workflows", json=workflow)
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if isinstance(data, list) else data
-    
+        db = await self._get_db()
+        if "id" not in workflow:
+            workflow["id"] = _id()
+        if "created_at" not in workflow:
+            workflow["created_at"] = _now()
+        cols = ", ".join(workflow.keys())
+        placeholders = ", ".join("?" for _ in workflow)
+        vals = [json.dumps(v) if isinstance(v, (dict, list)) else v for v in workflow.values()]
+        await db.execute(f"INSERT INTO workflows ({cols}) VALUES ({placeholders})", vals)
+        await db.commit()
+        return workflow
+
     async def get_workflows(self, templates_only: bool = False) -> List[Dict]:
-        """Get all workflows"""
-        url = "/workflows?select=*"
+        db = await self._get_db()
+        sql = "SELECT * FROM workflows"
         if templates_only:
-            url += "&is_template=eq.true"
-        url += "&order=created_at.desc"
-        
-        response = await self.client.get(url)
-        response.raise_for_status()
-        return response.json()
-    
+            sql += " WHERE is_template = 1"
+        sql += " ORDER BY created_at DESC"
+        async with db.execute(sql) as cursor:
+            rows = await cursor.fetchall()
+        return [self._deser_row(r) for r in rows]
+
     async def get_workflow(self, workflow_id: str) -> Optional[Dict]:
-        """Get a specific workflow by ID"""
-        response = await self.client.get(f"/workflows?id=eq.{workflow_id}")
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if data else None
-    
+        db = await self._get_db()
+        async with db.execute("SELECT * FROM workflows WHERE id = ?", (workflow_id,)) as cursor:
+            row = await cursor.fetchone()
+        return self._deser_row(row) if row else None
+
     async def update_workflow(self, workflow_id: str, updates: Dict) -> Dict:
-        """Update a workflow"""
-        updates["updated_at"] = datetime.utcnow().isoformat()
-        response = await self.client.patch(
-            f"/workflows?id=eq.{workflow_id}",
-            json=updates
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if data else None
-    
+        updates["updated_at"] = _now()
+        return await self._update("workflows", workflow_id, updates)
+
     async def delete_workflow(self, workflow_id: str) -> bool:
-        """Delete a workflow"""
-        response = await self.client.delete(f"/workflows?id=eq.{workflow_id}")
-        return response.status_code == 200 or response.status_code == 204
-    
+        db = await self._get_db()
+        await db.execute("DELETE FROM workflows WHERE id = ?", (workflow_id,))
+        await db.commit()
+        return True
+
     # ═══════════════════════════════════════════════════════════════
     # RUN OPERATIONS
     # ═══════════════════════════════════════════════════════════════
-    
+
     async def insert_run(self, run: Dict) -> Dict:
-        """Insert a new workflow run"""
-        response = await self.client.post("/runs", json=run)
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if isinstance(data, list) else data
-    
+        db = await self._get_db()
+        if "id" not in run:
+            run["id"] = _id()
+        cols = ", ".join(run.keys())
+        placeholders = ", ".join("?" for _ in run)
+        vals = [json.dumps(v) if isinstance(v, (dict, list)) else v for v in run.values()]
+        await db.execute(f"INSERT INTO runs ({cols}) VALUES ({placeholders})", vals)
+        await db.commit()
+        return run
+
     async def get_run(self, run_id: str) -> Optional[Dict]:
-        """Get a specific run by ID"""
-        response = await self.client.get(f"/runs?id=eq.{run_id}")
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if data else None
-    
+        db = await self._get_db()
+        async with db.execute("SELECT * FROM runs WHERE id = ?", (run_id,)) as cursor:
+            row = await cursor.fetchone()
+        return self._deser_row(row) if row else None
+
     async def get_runs_by_project(self, project_id: str, limit: int = 20) -> List[Dict]:
-        """Get runs for a project"""
-        response = await self.client.get(
-            f"/runs?project_id=eq.{project_id}&order=started_at.desc&limit={limit}"
-        )
-        response.raise_for_status()
-        return response.json()
-    
+        db = await self._get_db()
+        async with db.execute(
+            "SELECT * FROM runs WHERE project_id = ? ORDER BY started_at DESC LIMIT ?",
+            (project_id, limit)
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return [self._deser_row(r) for r in rows]
+
     async def get_runs_by_task(self, project_id: str, task_id: str) -> List[Dict]:
-        """Get runs for a specific task"""
-        response = await self.client.get(
-            f"/runs?project_id=eq.{project_id}&task_id=eq.{task_id}&order=started_at.desc"
-        )
-        response.raise_for_status()
-        return response.json()
-    
+        db = await self._get_db()
+        async with db.execute(
+            "SELECT * FROM runs WHERE project_id = ? AND task_id = ? ORDER BY started_at DESC",
+            (project_id, task_id)
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return [self._deser_row(r) for r in rows]
+
     async def update_run(self, run_id: str, updates: Dict) -> Dict:
-        """Update a run status/context"""
-        response = await self.client.patch(
-            f"/runs?id=eq.{run_id}",
-            json=updates
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if data else None
-    
+        return await self._update("runs", run_id, updates)
+
     # ═══════════════════════════════════════════════════════════════
     # CHECKPOINT OPERATIONS (for time-travel)
     # ═══════════════════════════════════════════════════════════════
-    
+
     async def insert_checkpoint(self, checkpoint: Dict) -> Dict:
-        """Insert a checkpoint for time-travel"""
-        response = await self.client.post("/checkpoints", json=checkpoint)
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if isinstance(data, list) else data
-    
+        db = await self._get_db()
+        if "id" not in checkpoint:
+            checkpoint["id"] = _id()
+        cols = ", ".join(checkpoint.keys())
+        placeholders = ", ".join("?" for _ in checkpoint)
+        vals = [json.dumps(v) if isinstance(v, (dict, list)) else v for v in checkpoint.values()]
+        await db.execute(f"INSERT INTO checkpoints ({cols}) VALUES ({placeholders})", vals)
+        await db.commit()
+        return checkpoint
+
     async def get_checkpoints(self, run_id: str) -> List[Dict]:
-        """Get all checkpoints for a run"""
-        response = await self.client.get(
-            f"/checkpoints?run_id=eq.{run_id}&order=step.asc"
-        )
-        response.raise_for_status()
-        return response.json()
-    
+        db = await self._get_db()
+        async with db.execute(
+            "SELECT * FROM checkpoints WHERE run_id = ? ORDER BY step ASC",
+            (run_id,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return [self._deser_row(r) for r in rows]
+
     async def get_checkpoint(self, checkpoint_id: str) -> Optional[Dict]:
-        """Get a specific checkpoint"""
-        response = await self.client.get(f"/checkpoints?id=eq.{checkpoint_id}")
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if data else None
-    
+        db = await self._get_db()
+        async with db.execute("SELECT * FROM checkpoints WHERE id = ?", (checkpoint_id,)) as cursor:
+            row = await cursor.fetchone()
+        return self._deser_row(row) if row else None
+
     # ═══════════════════════════════════════════════════════════════
     # NEXUS RUN OPERATIONS (workflow state persistence)
     # ═══════════════════════════════════════════════════════════════
-    
+
     async def upsert_nexus_run(
-        self, 
-        run_id: str, 
-        project_id: str, 
-        task_id: str, 
-        state: Dict
+        self, run_id: str, project_id: str, task_id: str, state: Dict
     ) -> Optional[Dict]:
-        """
-        Upsert a Nexus workflow run state.
-        Uses the 'runs' table with state stored in the 'context' JSONB column.
-        """
         run_data = {
             "id": run_id,
             "project_id": project_id,
             "task_id": task_id,
             "status": state.get("status", "running"),
             "current_node": state.get("current_stage"),
-            "context": {
+            "context": json.dumps({
                 "stages_completed": state.get("stages_completed", []),
                 "artifacts": state.get("artifacts", {}),
                 "activity_log": state.get("activity_log", []),
@@ -199,35 +206,27 @@ class SupabaseClient:
                 "status_update": state.get("status_update"),
                 "pending_approval": state.get("pending_approval"),
                 "initial_state": state.get("initial_state")
-            }
+            })
         }
-        
-        # Check if run exists
+
         existing = await self.get_run(run_id)
-        
         if existing:
-            # Update existing run
             return await self.update_run(run_id, {
                 "status": run_data["status"],
                 "current_node": run_data["current_node"],
                 "context": run_data["context"]
             })
         else:
-            # Insert new run
-            run_data["started_at"] = datetime.utcnow().isoformat()
+            run_data["started_at"] = _now()
             return await self.insert_run(run_data)
-    
+
     async def get_nexus_run(self, run_id: str) -> Optional[Dict]:
-        """
-        Get a Nexus workflow run and reconstruct the state dict.
-        Returns the state in the same format as _nexus_runs in-memory store.
-        """
         run = await self.get_run(run_id)
         if not run:
             return None
-        
         context = run.get("context", {}) or {}
-        
+        if isinstance(context, str):
+            context = _parse_json(context) or {}
         return {
             "status": run.get("status", "unknown"),
             "current_stage": run.get("current_node"),
@@ -238,26 +237,19 @@ class SupabaseClient:
             "status_update": context.get("status_update"),
             "pending_approval": context.get("pending_approval"),
             "initial_state": context.get("initial_state"),
-            # Metadata from run record
             "project_id": run.get("project_id"),
             "task_id": run.get("task_id"),
             "started_at": run.get("started_at")
         }
-    
+
     async def get_active_nexus_runs(self) -> List[Dict]:
-        """
-        Get all active (non-completed) Nexus workflow runs.
-        Used on server startup to restore in-memory cache.
-        """
-        response = await self.client.get(
-            "/runs?status=in.(running,paused,pending)&order=started_at.desc"
-        )
-        response.raise_for_status()
-        runs = response.json()
-        
-        # Convert to state format
+        db = await self._get_db()
+        async with db.execute(
+            "SELECT * FROM runs WHERE status IN ('running', 'paused', 'pending') ORDER BY started_at DESC"
+        ) as cursor:
+            rows = await cursor.fetchall()
         result = []
-        for run in runs:
+        for run in [self._deser_row(r) for r in rows]:
             context = run.get("context", {}) or {}
             result.append({
                 "run_id": run.get("id"),
@@ -271,132 +263,143 @@ class SupabaseClient:
                 "task_id": run.get("task_id"),
                 "initial_state": context.get("initial_state")
             })
-        
         return result
-    
+
     async def complete_nexus_run(self, run_id: str, status: str = "completed", error: str = None) -> Optional[Dict]:
-        """Mark a Nexus run as completed or failed"""
-        updates = {
-            "status": status,
-            "completed_at": datetime.utcnow().isoformat()
-        }
+        updates = {"status": status, "completed_at": _now()}
         if error:
             updates["error_message"] = error
-        
         return await self.update_run(run_id, updates)
-    
+
     # ═══════════════════════════════════════════════════════════════
     # TOKEN USAGE TRACKING
     # ═══════════════════════════════════════════════════════════════
-    
-    async def record_usage(
-        self, 
-        model: str, 
-        input_tokens: int, 
-        output_tokens: int
-    ) -> Optional[Dict]:
-        """
-        Record AI token usage to the usage_stats table.
-        Uses upsert with (date, model) as the conflict key, incrementing token counts.
-        This matches the Node.js db.recordUsage() function.
-        """
+
+    async def record_usage(self, model: str, input_tokens: int, output_tokens: int) -> Optional[Dict]:
+        db = await self._get_db()
         today = datetime.utcnow().strftime("%Y-%m-%d")
-        
         try:
-            # First try to get existing record for today + model
-            response = await self.client.get(
-                f"/usage_stats?date=eq.{today}&model=eq.{model}"
-            )
-            response.raise_for_status()
-            existing = response.json()
-            
-            if existing and len(existing) > 0:
-                # Update existing record - increment token counts
-                record = existing[0]
-                update_data = {
-                    "input_tokens": (record.get("input_tokens", 0) or 0) + input_tokens,
-                    "output_tokens": (record.get("output_tokens", 0) or 0) + output_tokens,
-                    "total_tokens": (record.get("total_tokens", 0) or 0) + input_tokens + output_tokens,
-                    "request_count": (record.get("request_count", 0) or 0) + 1
-                }
-                update_response = await self.client.patch(
-                    f"/usage_stats?id=eq.{record['id']}",
-                    json=update_data
+            async with db.execute(
+                "SELECT * FROM usage_stats WHERE date = ? AND model = ?",
+                (today, model)
+            ) as cursor:
+                existing = await cursor.fetchone()
+
+            if existing:
+                await db.execute(
+                    """UPDATE usage_stats SET
+                        input_tokens = input_tokens + ?,
+                        output_tokens = output_tokens + ?,
+                        total_tokens = total_tokens + ?,
+                        request_count = request_count + 1
+                    WHERE id = ?""",
+                    (input_tokens, output_tokens, input_tokens + output_tokens, existing["id"])
                 )
-                update_response.raise_for_status()
-                return update_response.json()[0] if update_response.json() else None
+                await db.commit()
+                return existing
             else:
-                # Insert new record
-                insert_data = {
-                    "date": today,
-                    "model": model,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "total_tokens": input_tokens + output_tokens,
-                    "request_count": 1
-                }
-                insert_response = await self.client.post("/usage_stats", json=insert_data)
-                insert_response.raise_for_status()
-                return insert_response.json()[0] if insert_response.json() else None
-                
+                new_id = _id()
+                await db.execute(
+                    """INSERT INTO usage_stats (id, date, model, input_tokens, output_tokens, total_tokens, request_count)
+                    VALUES (?, ?, ?, ?, ?, ?, 1)""",
+                    (new_id, today, model, input_tokens, output_tokens, input_tokens + output_tokens)
+                )
+                await db.commit()
+                return {"id": new_id, "date": today, "model": model}
         except Exception as e:
-            print(f"[Supabase] Error recording usage: {e}")
+            print(f"[SQLite] Error recording usage: {e}")
             return None
-    
+
     # ═══════════════════════════════════════════════════════════════
     # ARTIFACT COMMENTS (for human-in-the-loop review)
     # ═══════════════════════════════════════════════════════════════
-    
+
     async def insert_comment(self, comment: Dict) -> Dict:
-        """Insert a new artifact comment"""
-        response = await self.client.post("/artifact_comments", json=comment)
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if isinstance(data, list) else data
-    
+        db = await self._get_db()
+        if "id" not in comment:
+            comment["id"] = _id()
+        if "created_at" not in comment:
+            comment["created_at"] = _now()
+        cols = ", ".join(comment.keys())
+        placeholders = ", ".join("?" for _ in comment)
+        vals = [json.dumps(v) if isinstance(v, (dict, list)) else v for v in comment.values()]
+        await db.execute(f"INSERT INTO artifact_comments ({cols}) VALUES ({placeholders})", vals)
+        await db.commit()
+        return comment
+
     async def get_comments_for_artifact(self, artifact_id: str) -> List[Dict]:
-        """Get all comments for an artifact, sorted by line then creation time"""
-        response = await self.client.get(
-            f"/artifact_comments?artifact_id=eq.{artifact_id}&order=line_number.asc,created_at.asc"
-        )
-        response.raise_for_status()
-        return response.json()
-    
+        db = await self._get_db()
+        async with db.execute(
+            "SELECT * FROM artifact_comments WHERE artifact_id = ? ORDER BY line_number ASC, created_at ASC",
+            (artifact_id,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return rows or []
+
     async def get_comment(self, comment_id: str) -> Optional[Dict]:
-        """Get a specific comment by ID"""
-        response = await self.client.get(f"/artifact_comments?id=eq.{comment_id}")
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if data else None
-    
+        db = await self._get_db()
+        async with db.execute("SELECT * FROM artifact_comments WHERE id = ?", (comment_id,)) as cursor:
+            row = await cursor.fetchone()
+        return row
+
     async def update_comment(self, comment_id: str, updates: Dict) -> Optional[Dict]:
-        """Update a comment (e.g., resolve/unresolve)"""
-        response = await self.client.patch(
-            f"/artifact_comments?id=eq.{comment_id}",
-            json=updates
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if data else None
-    
+        return await self._update("artifact_comments", comment_id, updates)
+
     async def delete_comment(self, comment_id: str) -> bool:
-        """Delete a comment"""
-        response = await self.client.delete(f"/artifact_comments?id=eq.{comment_id}")
-        return response.status_code in (200, 204)
-    
+        db = await self._get_db()
+        await db.execute("DELETE FROM artifact_comments WHERE id = ?", (comment_id,))
+        await db.commit()
+        return True
+
     async def delete_artifact_comments(self, artifact_id: str) -> bool:
-        """Delete all comments for an artifact"""
-        response = await self.client.delete(f"/artifact_comments?artifact_id=eq.{artifact_id}")
-        return response.status_code in (200, 204)
+        db = await self._get_db()
+        await db.execute("DELETE FROM artifact_comments WHERE artifact_id = ?", (artifact_id,))
+        await db.commit()
+        return True
+
+    # ═══════════════════════════════════════════════════════════════
+    # Helpers
+    # ═══════════════════════════════════════════════════════════════
+
+    async def _update(self, table: str, row_id: str, updates: Dict) -> Dict:
+        db = await self._get_db()
+        sets = ", ".join(f"{k} = ?" for k in updates)
+        vals = [json.dumps(v) if isinstance(v, (dict, list)) else v for v in updates.values()]
+        vals.append(row_id)
+        await db.execute(f"UPDATE {table} SET {sets} WHERE id = ?", vals)
+        await db.commit()
+        # Return the updated row
+        async with db.execute(f"SELECT * FROM {table} WHERE id = ?", (row_id,)) as cursor:
+            row = await cursor.fetchone()
+        return self._deser_row(row) if row else updates
+
+    def _deser_row(self, row: Optional[Dict]) -> Optional[Dict]:
+        """Deserialize JSON-encoded TEXT columns back into Python dicts/lists."""
+        if not row:
+            return row
+        result = dict(row)
+        json_cols = ("context", "nodes", "edges", "config", "metadata", "settings",
+                     "graph_definition", "allowed_tools", "details")
+        for col in json_cols:
+            if col in result and isinstance(result[col], str):
+                result[col] = _parse_json(result[col])
+        return result
 
 
-# Global instance
-_supabase: Optional[SupabaseClient] = None
+# ═══════════════════════════════════════════════════════════════
+# Global instance + backward-compatible accessor
+# ═══════════════════════════════════════════════════════════════
+
+_client: Optional[SQLiteClient] = None
 
 
-def get_supabase() -> SupabaseClient:
-    """Get the global Supabase client instance"""
-    global _supabase
-    if _supabase is None:
-        _supabase = SupabaseClient()
-    return _supabase
+def get_supabase() -> SQLiteClient:
+    """Get the global SQLite client instance.
+    
+    Named get_supabase() for backward compatibility — all existing
+    callers import get_supabase from this module.
+    """
+    global _client
+    if _client is None:
+        _client = SQLiteClient()
+    return _client

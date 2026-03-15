@@ -1,13 +1,14 @@
 """
-Memory Tools - Phase 6.5: Context Evolution
+Memory Tools - Context Pull Utilities
 
-RAG-enhanced pull tools for agents to query project memory.
+Provides tools for agents to query project memory on demand.
 
 The key insight:
 - OLD WAY: Inject last 15 memories into system prompt (expensive, wastes tokens)
 - NEW WAY: Agent calls search_project_memory when needed (efficient)
 
-This gives agents control over when they "remember" things.
+NOTE: Vector similarity search is not available in this release.
+      Memory search uses simple text matching as a fallback.
 """
 
 from typing import Any, Dict, List, Optional
@@ -34,11 +35,9 @@ class MemorySearchResult:
 
 class SearchProjectMemoryTool:
     """
-    RAG-enhanced memory search tool for LangChain agents.
+    Memory search tool for LangChain agents.
     
-    Phase 6.5: Context Evolution (Hybrid Middleware)
-    
-    This tool allows agents to query project memories using semantic search.
+    Allows agents to query project memories using text search.
     Instead of injecting all memories into the prompt, agents call this
     when they need to remember something.
     
@@ -122,10 +121,7 @@ class SearchProjectMemoryTool:
         memory_types: Optional[List[str]]
     ) -> List[MemorySearchResult]:
         """
-        Search memories in database.
-        
-        TODO: Add vector similarity search with embeddings
-        Currently uses simple text search as fallback.
+        Search memories in database using text matching.
         """
         if not self.supabase:
             return []
@@ -154,7 +150,7 @@ class SearchProjectMemoryTool:
                 MemorySearchResult(
                     content=row.get("content", ""),
                     memory_type=row.get("memory_type", "observation"),
-                    relevance_score=1.0,  # TODO: Calculate actual similarity
+                    relevance_score=1.0,
                     created_at=row.get("created_at", ""),
                     metadata=row.get("metadata", {})
                 )
@@ -191,122 +187,3 @@ class SearchProjectMemoryTool:
             lines.append("")
         
         return "\n".join(lines)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# RETRIEVE CONTEXT TOOL
-# ═══════════════════════════════════════════════════════════════════════════
-
-class RetrieveProjectContextTool:
-    """
-    Tool for agents to retrieve specific project context on demand.
-    
-    Complements SearchProjectMemoryTool by providing structured
-    project information rather than searching memories.
-    """
-    
-    name = "retrieve_project_context"
-    description = (
-        "Get structured project context including file tree, "
-        "coding standards, and project configuration. "
-        "Use this when you need to understand the project structure."
-    )
-    
-    def __init__(self, global_context_service=None):
-        """
-        Initialize the context retrieval tool.
-        
-        Args:
-            global_context_service: The GlobalContextService singleton
-        """
-        self.gcs = global_context_service
-    
-    def retrieve(self, context_type: str = "all") -> str:
-        """
-        Retrieve specific project context.
-        
-        Args:
-            context_type: Type of context to retrieve
-                         ('structure', 'preferences', 'task', 'all')
-        
-        Returns:
-            Formatted context string
-        """
-        if not self.gcs:
-            from .global_context_service import GlobalContextService
-            self.gcs = GlobalContextService()
-        
-        ctx = self.gcs.get_global_context()
-        
-        lines = ["## Project Context\n"]
-        
-        if context_type in ("all", "task"):
-            lines.append("### Current Task")
-            lines.append(f"- **Title**: {ctx.task_title or 'Not specified'}")
-            lines.append(f"- **Description**: {ctx.task_description or 'Not specified'}")
-            lines.append("")
-        
-        if context_type in ("all", "structure"):
-            lines.append("### Project Structure")
-            lines.append(f"- **Path**: {ctx.project_path or 'Not specified'}")
-            lines.append(f"- **Name**: {ctx.get_project_name()}")
-            lines.append("")
-        
-        if context_type in ("all", "preferences"):
-            lines.append("### User Preferences")
-            if ctx.user_preferences:
-                for key, value in ctx.user_preferences.items():
-                    lines.append(f"- **{key}**: {value}")
-            else:
-                lines.append("No preferences configured.")
-            lines.append("")
-        
-        return "\n".join(lines)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# LANGCHAIN TOOL WRAPPERS
-# ═══════════════════════════════════════════════════════════════════════════
-
-def create_memory_tool(supabase_client=None, project_id: Optional[str] = None):
-    """
-    Create a LangChain-compatible memory search tool.
-    
-    Usage:
-        from langchain.tools import Tool
-        
-        memory_tool = create_memory_tool(supabase_client)
-        agent = Agent(tools=[memory_tool])
-    """
-    try:
-        from langchain.tools import Tool
-        
-        searcher = SearchProjectMemoryTool(supabase_client, project_id)
-        
-        return Tool(
-            name=searcher.name,
-            description=searcher.description,
-            func=searcher.search
-        )
-    except ImportError:
-        print("[MemoryTools] LangChain not installed, returning raw tool")
-        return SearchProjectMemoryTool(supabase_client, project_id)
-
-
-def create_context_tool(global_context_service=None):
-    """
-    Create a LangChain-compatible context retrieval tool.
-    """
-    try:
-        from langchain.tools import Tool
-        
-        retriever = RetrieveProjectContextTool(global_context_service)
-        
-        return Tool(
-            name=retriever.name,
-            description=retriever.description,
-            func=retriever.retrieve
-        )
-    except ImportError:
-        print("[MemoryTools] LangChain not installed, returning raw tool")
-        return RetrieveProjectContextTool(global_context_service)

@@ -1,7 +1,7 @@
 /**
  * Token Usage Tracker
  * Centralized logging of AI token consumption
- * Uses Supabase database for persistence
+ * Uses SQLite database for persistence
  */
 
 const db = require('../../db');

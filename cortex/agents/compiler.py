@@ -22,7 +22,50 @@ from cortex.schemas.state import (
 logger = logging.getLogger(__name__)
 
 
-COMPILER_SYSTEM_PROMPT = """You are the Plan Compiler for a web development AI assistant.
+def _load_task_template_catalog() -> str:
+    """
+    Dynamically build the template catalog from config/templates/workflows/*.json.
+    Only includes task-level templates. Falls back to a static catalog on error.
+    """
+    import json
+    from pathlib import Path
+
+    templates_dir = Path(__file__).resolve().parents[2] / "config" / "templates" / "workflows"
+    
+    try:
+        rows = []
+        for f in sorted(templates_dir.glob("*.json")):
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+                if data.get("level") == "task":
+                    desc = data.get("description", data.get("name", f.stem))
+                    rows.append(f"| {data['id']:<20} | {desc[:55]:<55} |")
+            except Exception:
+                continue
+
+        if rows:
+            header = (
+                "| template_id          | Best for                                                  |\n"
+                "|----------------------|-----------------------------------------------------------|"
+            )
+            return header + "\n" + "\n".join(rows)
+    except Exception as e:
+        logger.warning(f"Could not load dynamic template catalog: {e}")
+
+    # Static fallback
+    return (
+        "| template_id          | Best for                                           |\n"
+        "|----------------------|----------------------------------------------------|\n"
+        "| nexus-prime          | General AI-driven implementation (code changes)     |\n"
+        "| refactor             | Code refactoring and cleanup tasks                  |\n"
+        "| code-review-loop     | Code review tasks                                   |\n"
+        "| research-report      | Pure research and analysis (no code output)         |\n"
+        "| supervised-pipeline  | Complex multi-stage tasks needing supervision       |\n"
+        "| doc-writer           | Documentation writing (.context/, README, .md)      |"
+    )
+
+
+COMPILER_SYSTEM_PROMPT_TEMPLATE = """You are the Plan Compiler for a web development AI assistant.
 
 Your job: convert a Markdown project plan into a structured, executable format.
 
@@ -49,17 +92,26 @@ Convert to a ProjectPlan with:
     - "Nexus Prime" → "nexus_prime"
     - "Human Action" → "human_action"
     - "Custom" or "Custom / Direct" → "custom"
+  - **template_id**: (Optional) A LangGraph workflow template ID from the catalog below.
+    ONLY set this when you can UNAMBIGUOUSLY identify the correct template.
+    If unsure, leave it as null — the user will assign one manually later.
   - **goal**: The task's goal (from **Goal** field)
   - **context**: The task's context (from **Context & Execution** field)
   - **acceptance_criteria**: List of strings (from **Acceptance Criteria** bullets)
 - **status**: Always "approved" (compiling after council approval)
+
+## Available Workflow Templates (task-level)
+Use these IDs for the template_id field when the match is clear:
+
+{TEMPLATE_CATALOG}
 
 ## Rules
 1. Extract EVERY distinct task from the Markdown — don't skip any
 2. Preserve task ordering and dependencies
 3. Map workflow types correctly (Nexus Prime → tool, Human Action → human, Custom → reasoning)
 4. Keep goal, context, and acceptance_criteria faithful to the original plan
-5. If a task lacks explicit workflow type, default to "nexus_prime" / "tool" """
+5. If a task lacks explicit workflow type, default to "nexus_prime" / "tool"
+6. Only assign template_id when the task CLEARLY matches one template. When in doubt, leave null """
 
 
 async def compile_plan(state: System2State) -> dict:
@@ -80,13 +132,17 @@ async def compile_plan(state: System2State) -> dict:
     # Use the plan content directly (no Blackboard read dependency)
     plan_content = md_plan.content
 
+    # Build the prompt with a dynamic template catalog
+    template_catalog = _load_task_template_catalog()
+    system_prompt = COMPILER_SYSTEM_PROMPT_TEMPLATE.replace("{TEMPLATE_CATALOG}", template_catalog)
+
     try:
         factory = LLMFactory.get_instance()
         base_model = factory.get_model(ModelRole.PROPOSER)
         model = base_model.with_structured_output(ProjectPlan)
 
         response = await model.ainvoke([
-            SystemMessage(content=COMPILER_SYSTEM_PROMPT),
+            SystemMessage(content=system_prompt),
             HumanMessage(content=f"Convert this Markdown plan to executable JSON:\n\n{plan_content}")
         ])
 
