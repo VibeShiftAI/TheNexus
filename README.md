@@ -30,51 +30,67 @@ The Nexus bridges your local filesystem with an intelligent web dashboard, turni
 
 ```mermaid
 graph TD
-    subgraph Tunnel ["Optional: Cloudflare Tunnel"]
-        CF["cloudflared_config.yml"]
+    User["👤 You"] -->|natural language| Terminal
+
+    subgraph Frontend ["🖥️ Dashboard — Next.js :3000"]
+        Terminal["💬 AI Terminal"]
+        Tasks["📋 Task Manager"]
+        Agents["🤖 Agent Manager"]
+        Monitor["📊 System Monitor"]
+        Codex["📖 The Codex"]
     end
 
-    subgraph Dashboard ["Dashboard — Next.js :3000"]
-        D1["Project Cards"]
-        D2["AI Terminal"]
-        D3["Task Manager"]
-        D4["Agent Manager"]
-        D5["System Monitor"]
-        D6["The Codex"]
-        D7["Activity Feed"]
+    subgraph Backend ["⚡ Node.js API — Express :4000"]
+        REST["REST API\n105 endpoints"]
+        Discovery["🔍 SOTA Model\nDiscovery"]
+        Critic["🔬 Code Critic"]
+        Supervisor["👔 Supervisors"]
     end
 
-    subgraph Node ["Node.js API — Express :4000"]
-        API["REST API"]
-        Services["Services\nModel Discovery\nCritic\nSupervisors"]
+    subgraph Engine ["🧠 AI Engine — FastAPI :8000"]
+        LangGraph["⭐ Nexus Prime\nLangGraph Engine"]
+        Fleets["🛡️ 4 Agent Fleets\n26+ Agents"]
     end
 
-    subgraph Python ["Python API — FastAPI :8000"]
-        FastAPI["FastAPI Routes"]
-        LG["LangGraph\nNexus Prime Engine"]
+    subgraph Persistence ["💾 Data"]
+        DB[("SQLite\nnexus.db")]
+        FS[("Local\nFilesystem")]
     end
 
-    subgraph Data ["Data & Persistence"]
-        SQLite[("SQLite")]
-        FS[("Local Filesystem")]
+    subgraph Providers ["☁️ AI Providers"]
+        Gemini["Google Gemini"]
+        Claude["Anthropic Claude"]
+        GPT["OpenAI GPT"]
+        Grok["xAI Grok"]
     end
 
-    CF -.->|secure remote access| Dashboard
-    Dashboard -->|Proxy| API
-    Dashboard -->|Proxy| FastAPI
-    API --> Services
-    FastAPI --> LG
-    Services --> SQLite
-    Services --> FS
-    LG --> FS
-    Services <-->|HTTP| FastAPI
+    Terminal --> REST
+    Tasks --> REST
+    REST --> Supervisor
+    REST <-->|HTTP Proxy| LangGraph
+    Supervisor --> LangGraph
+    LangGraph --> Fleets
+    Fleets --> Providers
+    Discovery --> Providers
+    REST --> DB
+    REST --> FS
+    LangGraph --> FS
+    Critic -.->|review before write| FS
+
+    style User fill:#0f172a,stroke:#06b6d4,stroke-width:2px,color:#06b6d4
+    style Terminal fill:#0f172a,stroke:#06b6d4,stroke-width:2px,color:#67e8f9
+    style LangGraph fill:#1a1a2e,stroke:#fbbf24,stroke-width:3px,color:#fbbf24
+    style Fleets fill:#0f172a,stroke:#f43f5e,stroke-width:2px,color:#fda4af
+    style Discovery fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#6ee7b7
+    style Critic fill:#0f172a,stroke:#8b5cf6,stroke-width:2px,color:#c4b5fd
+    style DB fill:#1e293b,stroke:#64748b,stroke-width:2px,color:#94a3b8
 ```
 
 ### The Pipeline — End-to-End Data Flow
 
-From your idea to deployed code — the 8-node Project Plan Generator (Chat Router → Architect → Council Review → Plan Revision → Human Review → Compiler → Executor) orchestrates every step. Infrastructure includes the **Blackboard** (shared memory) and **Glass Box Broadcasting** (WebSocket artifacts for real-time visibility).
+From your idea to deployed code — the **8-node Project Plan Generator** orchestrates every step. Infrastructure includes the **Blackboard** (shared memory) and **Glass Box Broadcasting** (WebSocket artifacts for real-time visibility). [See it live →](https://vibeshiftai.com/pipeline)
 
-See the full interactive diagram in [The Codex](#the-codex) or at [vibeshiftai.com/pipeline](https://vibeshiftai.com/pipeline).
+![End-to-End Data Flow — AI Terminal → Chat Router → Architect → Council Review → Plan Revision → Human Review → Compiler → Executor → Project & Tasks](docs/nexus_data_flow.svg)
 
 ### Directory Structure
 
