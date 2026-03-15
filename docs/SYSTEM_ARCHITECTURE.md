@@ -1,8 +1,8 @@
 # The Nexus: System Architecture
 
-**Version:** 4.0 (Nexus Protocol)
+**Version:** 4.0
 **Status:** Operational / Integrated
-**System Type:** Personal Developer Operating System & AI Orchestration Engine
+**System Type:** Personal Agentic Workspace & AI Orchestration Engine
 **Primary Interface:** The Nexus AI Terminal & Dashboard
 
 ---
@@ -168,7 +168,7 @@ graph LR
 | Component | Purpose |
 |-----------|---------|
 | **AI Terminal** | Primary multi-provider chat interface with state inspector. |
-| **Workflow Builder** | Visual React Flow canvas for designing agent workflows (Nexus Protocol). |
+| **Workflow Builder** | Visual React Flow canvas for designing agent workflows. |
 | **Agent Manager** | Dashboard UI for configuring agent behaviors, system prompts, and models. |
 | **System Monitor** | Real-time tracking of CPU, memory, tokens, and active ports. |
 

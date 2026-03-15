@@ -30,4 +30,4 @@ To fix this "problem area," we should refactor `src/services/supervisor.js` to s
 2.  Delegate execution to the Python LangGraph engine via `POST /graph/run`, passing the `featureId`.
 3.  Retire `src/agent/index.js` or repurpose it strictly as a wrapper for the Python engine.
 
-This will unify the entire system under the Nexus Protocol and LangGraph architecture.
+This will unify the entire system under Nexus Prime and the LangGraph architecture.

@@ -1,10 +1,10 @@
 # The Nexus 🌐
 
-**Personal Developer Operating System** — A hybrid local-cloud platform for managing projects, orchestrating AI agents, and automating development workflows.
+**Personal Agentic Workspace** — A hybrid local platform for managing projects, orchestrating AI agents, and automating development workflows through a multi-agent architecture.
 
-[![Live](https://img.shields.io/badge/Live-nexus.vibeshiftai.com-blue)](https://nexus.vibeshiftai.com)
 [![Node.js](https://img.shields.io/badge/Backend-Node.js%2F%20Express-green)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-black)](https://nextjs.org)
+[![Python](https://img.shields.io/badge/AI%20Engine-Python%2F%20LangGraph-blue)](https://langchain-ai.github.io/langgraph/)
 
 ---
 
@@ -17,16 +17,17 @@
 - [Project Discovery](#project-discovery)
 - [API Reference](#api-reference)
 - [AI Integration](#ai-integration)
+- [SOTA Model Discovery](#sota-model-discovery)
+- [Nexus Prime — LangGraph Workflow Engine](#nexus-prime--langgraph-workflow-engine)
 - [Agent Manager](#agent-manager)
-- [Supervisor System](#supervisor-system)
-
 - [System Monitor](#system-monitor)
 - [MCP Server](#mcp-server)
 - [Task Manager](#task-manager)
 - [Multi-Level Workflow System](#multi-level-workflow-system)
 - [Agent System](#agent-system)
+- [The Codex](#the-codex)
 - [Dashboard Components](#dashboard-components)
-- [Cloudflare Tunnel](#cloudflare-tunnel)
+- [Cloudflare Tunnel (Optional)](#cloudflare-tunnel-optional)
 - [Development](#development)
 - [Known Complexities](#known-complexities)
 
@@ -34,105 +35,171 @@
 
 ## Overview
 
-The Nexus transforms a local development machine into a connected fortress, bridging your laptop's filesystem with a web-accessible dashboard. It provides:
+The Nexus transforms a local development machine into a personal agentic workspace, bridging your filesystem with a web-accessible dashboard and a multi-agent AI engine. It provides:
 
 - **Project Discovery** — Auto-detect and display projects from `~/Projects` directory
 - **Git Management** — Initialize repos, add remotes, commit and push with AI-generated messages
 - **AI Terminal** — Multi-provider chat interface (Google Gemini, Anthropic Claude, OpenAI, xAI Grok)
 - **Task Manager** — Full AI-powered workflow: Research → Plan → Implement → Complete
 - **Agent Manager** — Configure and customize AI agents via dashboard UI
-- **Supervisor Agent** — Orchestrates task manager with dynamic intent-based routing
-- **Cortex** — LangGraph-based "System 2" reasoning engine for complex planning with adversarial council review
+- **Nexus Prime** — LangGraph-based multi-agent workflow engine with Architect → Builder → Auditor pipeline and adversarial review
+- **SOTA Model Discovery** — Automatic detection of the latest AI models from all providers at startup
+- **The Codex** — Centralized documentation hub with interactive system architecture visualizations
 - **System Monitor** — Real-time CPU, memory, and port monitoring dashboard
 - **Code Critic** — AI-powered code review before file writes
 - **MCP Server** — Model Context Protocol integration for seamless AI agent interoperability
-- **Secure Access** — Cloudflare Tunnel for Zero Trust access to local resources
-
-### 🚀 Universal Agent Designer (Nexus Protocol)
-
-The Nexus Protocol upgrade transforms the Agent Designer into a universal, cross-domain orchestration platform:
-
-- **MCP Tool Dock** — Drag-and-drop MCP server binding with live tool discovery
-- **Persona Forge Wizard** — 6-step agent configuration (domain, objective, autonomy, personality, output schema, guardrails)
-- **Visual Graph Canvas** — Enhanced node types (ProcessorCard, ActionNode, SuperNode) with Traffic Light edge styling
-- **State Inspector** — Live debugging with schema editor, trace viewer, cost estimation, and "Holodeck" simulation
-- **Starter Templates** — 8 domain-specific templates (Business, Creative, Productivity, Coding, HR, Legal, Finance, Travel)
-- **Governance & Security** — Rate limiting, OAuth-style MCP scopes, comprehensive audit logging
+- **Secure Sandbox** — Containerized code execution environment with session persistence
 
 ---
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        CLOUDFLARE TUNNEL                          │
-│                    nexus.vibeshiftai.com                          │
-└───────────────────────────┬──────────────────────────────────────┘
-                            │
-         ┌──────────────────┴──────────────────┐
-         │                                      │
-         ▼                                      ▼
-┌─────────────────────┐              ┌───────────────────────────────────┐
-│   DASHBOARD (UI)    │              │          BACKEND STACK            │
-│   Next.js:3000      │───REST───▶   │                                   │
-│                     │              │  ┌──────────────┐ ┌────────────┐  │
-│  • Project Cards    │              │  │  LOCAL API   │ │ PYTHON API │  │
-│  • AI Terminal      │              │  │ Express:4000 │ │FastAPI:8000│  │
-│  • Task Manager     │              │  └──────┬───────┘ └──────┬─────┘  │
-│  • Agent Manager    │              │         │                │        │
-│  • System Monitor   │              │         ▼                ▼        │
-│  • Activity Feed    │              │  ┌──────────────┐ ┌────────────┐  │
-│                     │              │  │  Services    │ │ LangGraph  │  │
-│                     │              │  │  Supervisor  │ │ Cortex     │  │
-│                     │              │  │  Critic      │ │ Engine     │  │
-│                     │              │  └──────────────┘ └────────────┘  │
-│                     │              └───────────────────────────────────┘
-└─────────────────────┘
+```mermaid
+graph TD
+    subgraph Tunnel ["Optional: Cloudflare Tunnel"]
+        CF["cloudflared_config.yml"]
+    end
+
+    subgraph Dashboard ["Dashboard — Next.js :3000"]
+        D1["Project Cards"]
+        D2["AI Terminal"]
+        D3["Task Manager"]
+        D4["Agent Manager"]
+        D5["System Monitor"]
+        D6["The Codex"]
+        D7["Activity Feed"]
+    end
+
+    subgraph Node ["Node.js API — Express :4000"]
+        API["REST API"]
+        Services["Services\nModel Discovery\nCritic\nSupervisors"]
+    end
+
+    subgraph Python ["Python API — FastAPI :8000"]
+        FastAPI["FastAPI Routes"]
+        LG["LangGraph\nNexus Prime Engine"]
+    end
+
+    subgraph Data ["Data & Persistence"]
+        SQLite[("SQLite")]
+        FS[("Local Filesystem")]
+    end
+
+    CF -.->|secure remote access| Dashboard
+    Dashboard -->|Proxy| API
+    Dashboard -->|Proxy| FastAPI
+    API --> Services
+    FastAPI --> LG
+    Services --> SQLite
+    Services --> FS
+    LG --> FS
+    Services <-->|HTTP| FastAPI
 ```
 
 ### Directory Structure
 
 ```
-TheNexus/                       # Flat monorepo
-├── server/                     # Node.js Express backend
-│   ├── server.js               # Main API server
-│   ├── scanner.js              # Project discovery engine
-│   ├── mcp.js                  # MCP Server (stdio)
-│   ├── agent/                  # Multi-provider AI agent
-│   ├── services/               # Supervisor, critic, system monitor
-│   ├── tools/                  # Filesystem & command tools
-│   └── utils/                  # Retry utilities
-├── dashboard/                  # Next.js 16 frontend
+TheNexus/                           # Flat monorepo
+├── server/                         # Node.js Express backend
+│   ├── server.js                   # Main API server
+│   ├── scanner.js                  # Project discovery engine
+│   ├── mcp.js                      # MCP Server (stdio)
+│   ├── auto-research.js            # Gemini Deep Research integration
+│   ├── agent/                      # Multi-provider AI agent
+│   ├── routes/                     # Modular route handlers
+│   │   ├── initiatives.js          # Dashboard initiative routes
+│   │   ├── langgraph.js            # LangGraph proxy routes
+│   │   ├── mcp-inline.js           # Inline MCP routes
+│   │   ├── mcp-scopes.js           # MCP scope management
+│   │   ├── memory.js               # Memory management routes
+│   │   ├── tools.js                # Tool routes
+│   │   └── workflows.js            # Workflow routes
+│   ├── services/                   # Business logic services
+│   │   ├── ai-service.js           # AI provider abstraction
+│   │   ├── audit-logger.js         # Audit trail logging
+│   │   ├── auto-documentation.js   # Auto-doc generation
+│   │   ├── conductor.js            # Workflow conductor
+│   │   ├── context-sync.js         # Project context sync
+│   │   ├── critic.js               # Code review service
+│   │   ├── model-discovery.js      # SOTA model auto-detection
+│   │   ├── system-monitor.js       # System resource monitor
+│   │   ├── langgraph-supervisor.js # LangGraph task supervisor
+│   │   ├── dashboard-initiative-supervisor.js
+│   │   ├── project-workflow-supervisor.js
+│   │   └── supervisor-sync.js      # Supervisor state sync
+│   ├── middleware/                  # Express middleware
+│   ├── memory/                     # Memory management
+│   ├── tools/                      # Agent tool definitions
+│   └── utils/                      # Retry & utility helpers
+├── dashboard/                      # Next.js 16 frontend
 │   └── src/
-│       ├── app/                # App Router pages
-│       ├── components/         # AI Terminal, Agent Manager, etc.
-│       └── lib/nexus.ts        # API client
-├── cortex/                     # Python AI Brain (LangGraph)
-│   ├── agents/                 # Planner, Council, Browser, Compiler
-│   ├── api/                    # Terminal bridge, routes
-│   ├── core/                   # Orchestrator graph
-│   ├── schemas/                # Pydantic state models
-│   ├── blackboard/             # Research blackboard
-│   └── llm_factory.py          # Multi-provider LLM routing
-├── nexus-builder/              # Python graph engine & workflow
-│   ├── main.py                 # FastAPI entry point
-│   ├── graph_engine.py         # Workflow graph engine
-│   └── researcher/             # Research agent
-├── sandbox/                    # Secure code execution sandbox
-├── config/                     # Merged configuration
-│   ├── model_registry.yaml     # LLM model configs
-│   ├── prompts.yaml            # System prompts
-│   └── nexus/                  # Nexus-specific config
-├── tests/
-│   ├── cortex/                 # AI brain tests
-│   └── nexus-builder/          # Builder tests
-├── db/                         # Supabase schema & migrations
-├── docker/                     # Sandbox Dockerfiles
-├── docs/                       # Documentation
-├── package.json                # Node.js dependencies (root)
-├── start-nexus.bat             # Windows full startup
-├── start-local.bat             # Local dev startup (no tunnel)
-└── .env                        # Environment variables
+│       ├── app/                    # App Router pages
+│       │   ├── codex/              # The Codex documentation hub
+│       │   ├── project/            # Project detail pages
+│       │   ├── workflow-builder/   # Visual workflow builder
+│       │   ├── system-monitor/     # System monitor page
+│       │   └── login/              # Login page
+│       ├── components/             # UI components
+│       └── lib/                    # API client & utilities
+│           └── nexus.ts            # Centralized API client
+├── nexus-builder/                  # Python graph engine & workflow (Nexus Prime)
+│   ├── main.py                     # FastAPI entry point
+│   ├── graph_engine.py             # LangGraph workflow engine
+│   ├── node_registry.py            # Code-defined node registry
+│   ├── nexus_workflow.py           # Nexus Prime workflow definition
+│   ├── nexus_config.py             # Nexus configuration
+│   ├── model_config.py             # Model configuration
+│   ├── context_injector.py         # Context injection for agents
+│   ├── context_manager.py          # Project context management
+│   ├── token_tracker.py            # Token usage tracking
+│   ├── tools.py                    # Shared tool definitions
+│   ├── architect/                  # Architect agent (planning)
+│   ├── builder/                    # Builder agent (implementation)
+│   ├── auditor/                    # Auditor agent (adversarial review)
+│   ├── supervisor/                 # Supervisor agent (orchestration)
+│   ├── researcher/                 # Research agent
+│   ├── workflow/                   # Workflow definitions & static data
+│   ├── nodes/                      # Custom graph nodes
+│   ├── tools/                      # Agent-specific tools
+│   ├── templates/                  # Project templates
+│   ├── context/                    # Context documents
+│   └── migrations/                 # Database migrations
+├── cortex/                         # Python AI Brain (legacy, being integrated into nexus-builder)
+│   ├── agents/                     # Planner, Council, Browser, Compiler
+│   ├── api/                        # Terminal bridge, routes
+│   ├── core/                       # Orchestrator graph
+│   ├── schemas/                    # Pydantic state models
+│   ├── blackboard/                 # Research blackboard
+│   ├── interface/                  # Agent interface definitions
+│   ├── config.py                   # Cortex configuration
+│   ├── llm_factory.py              # Multi-provider LLM routing
+│   ├── llm_utils.py                # LLM helper utilities
+│   ├── node_registry.py            # Cortex-level node registry
+│   └── usage_callback.py           # Token usage callback handler
+├── sandbox/                        # Secure code execution sandbox
+│   ├── server.py                   # Sandbox API server
+│   ├── executor.py                 # Code execution engine
+│   ├── sessions.py                 # Session management with persistence
+│   ├── database.py                 # Sandbox database
+│   └── models.py                   # Data models
+├── config/                         # Centralized configuration
+│   ├── model_registry.yaml         # LLM model configs
+│   ├── prompts.yaml                # System prompts
+│   ├── ingestion.yaml              # Data ingestion config
+│   ├── nexus/                      # Nexus-specific config
+│   └── templates/                  # Config templates
+├── db/                             # Database schema & migrations (SQLite)
+│   ├── schema-sqlite.sql           # SQLite schema definition
+│   ├── index.js                    # Database access layer
+│   └── migrations/                 # SQL migration files
+├── docker/                         # Sandbox Dockerfiles
+├── docs/                           # Documentation
+├── tests/                          # Test suites
+├── package.json                    # Node.js dependencies (root)
+├── start-nexus.bat                 # Windows full startup (with tunnel)
+├── start-local.bat                 # Local dev startup (recommended)
+├── stop-nexus.bat                  # Stop all services
+└── .env                            # Environment variables
 ```
 
 ---
@@ -141,16 +208,16 @@ TheNexus/                       # Flat monorepo
 
 ### Prerequisites
 
-- **Node.js** 18+ 
-- **npm** or **pnpm**
-- **cloudflared** (for remote access)
-- API keys for AI providers (optional)
+- **Node.js** 18+
+- **Python** 3.10+ (for nexus-builder & cortex)
+- **npm**
+- API keys for AI providers (at least one required for AI features)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/Guatapickl/TheNexus.git
+git clone https://github.com/VIbeShiftAI/TheNexus.git
 cd TheNexus
 
 # Install backend dependencies
@@ -161,43 +228,58 @@ cd dashboard
 npm install
 cd ..
 
+# Set up Python environment for nexus-builder
+cd nexus-builder
+python -m venv venv
+venv\Scripts\activate     # Windows
+pip install -r requirements.txt
+cd ..
+
 # Create environment file
 cp .env.example .env  # Then edit with your API keys
 ```
 
 ### Running
 
-**Option 1: Using the startup script (Windows)**
+**Option 1: Local development startup (recommended)**
+
+```batch
+start-local.bat
+```
+
+This opens three terminal windows:
+1. LangGraph Engine — Python backend (port 8000)
+2. Node.js Backend — Express API (port 4000)
+3. Next.js Dashboard — Frontend (port 3000)
+
+**Option 2: Full startup with Cloudflare Tunnel**
 
 ```batch
 start-nexus.bat
 ```
 
-This opens three windows:
-1. Cloudflare Tunnel (routing traffic)
-2. Backend API (port 4000)
-3. Dashboard (port 3000)
+This opens four terminal windows (adds Cloudflare Tunnel for remote access).
 
-**Option 2: Manual startup**
+**Option 3: Manual startup**
 
 ```bash
-# Terminal 1 - Backend
+# Terminal 1 - Python LangGraph Engine
+cd nexus-builder && venv\Scripts\activate && uvicorn main:app --reload --port 8000
+
+# Terminal 2 - Node.js Backend
 node server/server.js
 
-# Terminal 2 - Dashboard
+# Terminal 3 - Dashboard
 cd dashboard && npm run dev
-
-# Terminal 3 - Tunnel (optional)
-cloudflared tunnel --config cloudflared_config.yml run <your-tunnel-name>
 ```
 
 ### Access Points
 
 | Endpoint | URL |
 |----------|-----|
-| Dashboard (Local) | http://localhost:3000 |
-| API (Local) | http://localhost:4000/api/projects |
-| Dashboard (Public) | https://nexus.vibeshiftai.com |
+| Dashboard | http://localhost:3000 |
+| Node.js API | http://localhost:4000/api/projects |
+| LangGraph API | http://localhost:8000 |
 
 ---
 
@@ -213,40 +295,20 @@ PROJECT_ROOT=C:/Projects
 
 # AI Providers (at least one required for AI features)
 GOOGLE_API_KEY=your-gemini-api-key
-GEMINI_API_KEY=your-gemini-api-key       # Alternative to GOOGLE_API_KEY
 ANTHROPIC_API_KEY=your-claude-api-key
 OPENAI_API_KEY=your-openai-api-key
+XAI_API_KEY=your-xai-api-key
+
+# Frontend URLs
+NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_CORTEX_URL=http://localhost:8000
 ```
 
-> **Important:** `GOOGLE_API_KEY` and `GEMINI_API_KEY` are interchangeable. The system checks both.
+> **Note:** `GOOGLE_API_KEY` and `GEMINI_API_KEY` are interchangeable. The system checks both.
 
 ### AI Model Configuration
 
-The backend uses task-specific model routing defined in `server.js`:
-
-```javascript
-const AI_MODELS = {
-    plan: {
-        provider: 'anthropic',
-        model: 'claude-opus-4-5-20251101',
-        description: 'Detailed Implementation Planning'
-    },
-    research: {
-        provider: 'google',
-        model: 'gemini-3-pro-preview',
-        thinkingEnabled: true,
-        thinkingConfig: { thinking_level: 'HIGH' }
-    },
-    implementation: {
-        provider: 'anthropic',
-        model: 'claude-opus-4-5-20251101'
-    },
-    quick: {
-        provider: 'google',
-        model: 'gemini-2.5-flash'
-    }
-};
-```
+Models are configured via `config/model_registry.yaml` and automatically enhanced by the [SOTA Model Discovery](#sota-model-discovery) service at startup. See the dedicated section below for details.
 
 ---
 
@@ -351,7 +413,6 @@ Each project can store context documents that are injected into AI prompts for b
 | `PUT` | `/api/agents/:id` | Update agent configuration |
 | `PUT` | `/api/agents/critic/toggle` | Enable/disable code critic |
 
-
 ### Pin Management
 
 | Method | Endpoint | Description |
@@ -399,22 +460,21 @@ Each project can store context documents that are injected into AI prompts for b
 The system supports four AI providers with automatic format conversion:
 
 #### Google Gemini
-- Models: `gemini-2.5-flash`, `gemini-3-pro-preview`, `gemini-3-flash`
+- Models: Auto-discovered (latest Pro and Flash)
 - Supports: Thinking config (`thinking_level`, `thinking_budget`)
 - Used for: Research (with thinking), quick tasks
 
 #### Anthropic Claude
-- Models: `claude-sonnet-4-20250514`, `claude-opus-4-5-20251101`
+- Models: Auto-discovered (latest Opus, Sonnet, Haiku)
 - Supports: Extended thinking (`budget_tokens`)
 - Used for: Planning, implementation
 
 #### OpenAI
-- Models: `gpt-4o`, `gpt-5.2`, etc.
+- Models: Auto-discovered (latest GPT)
 - Supports: `reasoning_effort`
-- Note: Full implementation pending in chat endpoint
 
 #### xAI Grok
-- Models: `grok-3`, `grok-3-mini`
+- Models: Auto-discovered (latest Grok)
 - Supports: Standard chat completion format
 - Used for: General-purpose tasks
 
@@ -430,6 +490,130 @@ The dashboard includes a full-featured AI terminal (`dashboard/src/components/ai
 
 ---
 
+## SOTA Model Discovery
+
+The Model Discovery Service (`server/services/model-discovery.js`) ensures The Nexus always uses the latest AI models without manual configuration.
+
+### How It Works
+
+On server startup, the service queries the model listing APIs of all four providers in parallel:
+
+1. **Google** — `generativelanguage.googleapis.com/v1beta/models`
+2. **OpenAI** — `api.openai.com/v1/models`
+3. **Anthropic** — `api.anthropic.com/v1/models`
+4. **xAI** — `api.x.ai/v1/models`
+
+For each provider, it matches raw model IDs against known **model families** (e.g., Gemini Pro, Claude Opus, GPT) using regex patterns, then selects the **highest version** per family:
+
+```
+[Model Discovery] Complete in 1200ms. Summary:
+  → Gemini 3 Pro (Google) [gemini-3-pro] ⚡ Thinking
+  → Gemini 3 Flash (Google) [gemini-3-flash]
+  → GPT-5.2 (OpenAI) [gpt-5.2]
+  → Claude Opus 4.6 (Anthropic) [claude-opus-4-6]
+  → Claude Sonnet 4 (Anthropic) [claude-sonnet-4]
+  → Claude Haiku 4 (Anthropic) [claude-haiku-4]
+  → Grok 3 (xAI) [grok-3]
+```
+
+### Key Features
+
+- **Zero-config model upgrades** — When a provider releases a new model, The Nexus picks it up automatically at next startup
+- **Graceful degradation** — If a provider's API key is missing or the API call fails, that provider is skipped without affecting others
+- **Thinking model detection** — Automatically flags models with reasoning/thinking capabilities
+- **Unified schema** — All discovered models are normalized into a consistent format with `id`, `apiModelId`, `name`, `provider`, and `isThinking` fields
+
+---
+
+## Nexus Prime — LangGraph Workflow Engine
+
+The Nexus Prime pipeline (`nexus-builder/`) is the core multi-agent workflow engine built on LangGraph. It implements a 4-phase fleet architecture where specialized agent teams handle Research, Architecture, Building, and Auditing with adversarial review loops.
+
+### High-Level Flow
+
+```mermaid
+graph TD
+    Task["🎯 Project Task\nRequiring Code"] --> Prime
+
+    Prime{"⭐ NEXUS PRIME\nSupervisor — The CEO & Router"}
+
+    Prime -->|"1. Research"| RF["📚 RESEARCH FLEET\nPhase 0 — Gemini Mesh"]
+    Prime -->|"2. Planning"| AF["📐 ARCHITECT FLEET\nPhase 1 — Gemini Mesh"]
+    Prime -->|"3. Build"| BF["🔨 BUILDER FLEET\nPhase 2 — Implementation"]
+    Prime -->|"4. Audit"| AuF["🛡️ AUDITOR FLEET\nPhase 3 — Adversarial Mesh"]
+
+    RF --> D1["📄 DOSSIER.md"]
+    AF --> D2["📄 BLUEPRINT"]
+    BF --> D3["📄 SOURCE ARTIFACTS"]
+    AuF --> D4["📄 AUDIT REPORT"]
+
+    D4 -->|"✓ APPROVED"| Deploy["🚀 DEPLOY"]
+    D4 -->|"✗ REJECTED"| Prime
+
+    style Prime fill:#1a1a2e,stroke:#fbbf24,stroke-width:3px,color:#fbbf24
+    style Deploy fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#22c55e
+    style RF fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#93c5fd
+    style AF fill:#0f172a,stroke:#8b5cf6,stroke-width:2px,color:#c4b5fd
+    style BF fill:#0f172a,stroke:#f59e0b,stroke-width:2px,color:#fcd34d
+    style AuF fill:#0f172a,stroke:#f43f5e,stroke-width:2px,color:#fda4af
+```
+
+### Phase 0: Research Fleet (Gemini Mesh)
+
+| Agent | Model | Task |
+|-------|-------|------|
+| **Scoper** | Gemini Pro | Define search queries from task |
+| **The Professor** | Gemini Flash | Relevance check on queries (reject → re-scope) |
+| **Executor** | Gemini Pro | Web search & scrape execution |
+| **Synthesizer** | Gemini Pro | Compile research into DOSSIER.md |
+
+**Output:** `DOSSIER.md` — API documentation, design patterns, library versions
+
+### Phase 1: Architect Fleet (Gemini Mesh)
+
+| Agent | Model | Task |
+|-------|-------|------|
+| **Cartographer** | Gemini Pro | Read dossier + repository structure |
+| **Drafter** | Gemini Pro | Write implementation spec |
+| **Grounder** | Gemini Flash | Validate file paths (reject hallucinations → re-draft) |
+
+**Output:** `BLUEPRINT` — SPEC.md (logic), MANIFEST.json (files), DDB.json (audit rules)
+
+### Phase 2: Builder Fleet (Implementation)
+
+| Agent / System | Model | Task |
+|----------------|-------|------|
+| ⚙ **System: Loader** | — | Pre-load files from manifest |
+| **Scout** | Gemini Pro | Navigate symbols & locate insertion points |
+| **Builder** | Gemini Pro | Write code ("Vibe Coding") |
+| ⚙ **System: Syntax** | — | AST check / linter (syntax errors → re-build) |
+
+**Output:** `SOURCE ARTIFACTS` — Updated files, DIFF.patch
+
+### Phase 3: Auditor Fleet (Adversarial Mesh)
+
+| Agent / System | Model | Task |
+|----------------|-------|------|
+| ⚙ **System: Blast Calc** | — | Generate dependency graph |
+| **The Sentinel** | Claude Opus | Security analysis |
+| **The Interrogator** | Claude Opus | Dry-run tests on suspicious changes |
+
+**Output:** `AUDIT REPORT` — Pass/Fail status, blocking issues list, security score
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `graph_engine.py` | Core LangGraph workflow engine |
+| `nexus_workflow.py` | Nexus Prime workflow definition |
+| `supervisor/agent.py` | Supervisor orchestration logic |
+| `architect/agent.py` | Planning agent |
+| `builder/agent.py` | Implementation agent |
+| `auditor/agent.py` | Adversarial review agent |
+| `node_registry.py` | Code-defined atomic node registry |
+
+---
+
 ## Agent Manager
 
 The Agent Manager (`dashboard/src/components/agent-manager.tsx`) provides a dashboard UI for configuring AI agents without editing code.
@@ -442,23 +626,6 @@ The Agent Manager (`dashboard/src/components/agent-manager.tsx`) provides a dash
 - **Toggle Code Critic** on/off globally
 - **Live save** with visual feedback
 
-### Configured Agents
-
-Agents are defined in `agent-config.json`:
-
-| Agent ID | Name | Purpose |
-|----------|------|---------|
-| `chat` | Chat Agent | Interactive terminal chat |
-| `implementation` | Implementation Agent | Autonomous code implementation |
-| `auto-research` | Auto-Research | Suggests new features by analyzing codebase |
-| `quick-research` | Quick Research | Fast feasibility analysis |
-| `deep-research` | Deep Research | Thorough research with Google Deep Research |
-| `plan-generator` | Plan Generator | Creates detailed implementation plans |
-| `failure-analyst` | Failure Analyst | Analyzes implementation failures |
-| `commit-generator` | Commit Generator | Generates git commit messages |
-| `supervisor` | Supervisor Agent | Orchestrates task manager |
-| `critic` | Code Critic | Reviews code before writes |
-
 ### Reasoning Levels
 
 The system supports three reasoning levels:
@@ -468,58 +635,6 @@ The system supports three reasoning levels:
 | **Vibe** | Fast execution for simple tasks | Disabled | LOW | 20 |
 | **Standard** | Single-step reflection for typical tasks | Enabled | MEDIUM | 50 |
 | **Deep** | Multi-path exploration for complex work | Enabled | HIGH | 100 |
-
----
-
-## Supervisor System
-
-The Supervisor Service (`server/services/supervisor.js`) replaces the legacy autopilot with a more robust orchestration pattern.
-
-### Key Concepts
-
-#### Task Ledger
-Tracks completed tasks to prevent re-execution. Each task maintains a ledger of:
-- Completed phases
-- Phase outputs
-- Timestamps
-
-#### Worker Routing
-The Supervisor analyzes task status and routes to the appropriate worker:
-
-```javascript
-const WORKER_ROUTES = {
-    idea: 'research',       // Route ideas to research phase
-    researched: 'planning', // Route researched to planning
-    planned: 'implement',   // Route planned to implementation
-    implementing: 'test',   // Route implementing to testing
-    testing: 'complete'     // Route tested to completion
-};
-```
-
-#### Auto-Approve Mode
-When enabled, the supervisor automatically approves phases without user intervention:
-
-```javascript
-await runSupervisor({
-    projectPath: '/path/to/project',
-    projectId: 'MyProject',
-    taskId: 'task-123',
-    researchLevel: 'quick',  // 'quick' or 'deep'
-    autoApprove: true,       // Full autopilot mode
-    handlers: { ... }
-});
-```
-
-### Supervisor Status
-
-| Status | Description |
-|--------|-------------|
-| `idle` | No active orchestration |
-| `routing` | Determining next task |
-| `delegating` | Dispatching to worker |
-| `monitoring` | Watching worker execution |
-| `completed` | All phases complete |
-| `error` | Error during orchestration |
 
 ---
 
@@ -545,7 +660,7 @@ The Resource Monitor component (`dashboard/src/components/resource-monitor.tsx`)
 ### Known Port Mappings
 
 | Port | Framework |
-|------|-----------|
+|------|-----------| 
 | 3000 | Next.js/React |
 | 3001 | Next.js (alt) |
 | 4000 | Express/API |
@@ -607,34 +722,23 @@ Connect to the Nexus MCP server from Antigravity or other MCP clients:
 
 The Nexus includes a complete AI-powered task development workflow:
 
-```
-┌─────────┐      ┌────────────┐      ┌─────────┐      ┌──────────────┐      ┌──────────┐
-│  IDEA   │ ──▶  │ RESEARCHING│ ──▶  │RESEARCHED│ ──▶ │   PLANNING   │ ──▶  │  PLANNED │
-└─────────┘      └────────────┘      └─────────┘      └──────────────┘      └──────────┘
-                       │                   │                  │                   │
-                   Gemini 3 Pro        User Review      Claude Opus          User Review
-                   Deep Research         ↓                   ↓                   ↓
-                       │            Approve/Reject     Approve/Reject      Approve/Reject
-                       ▼                                                        │
-                  Background                                                    ▼
-                  Polling (4hr max)                                     ┌──────────────┐
-                                                                        │ IMPLEMENTING │
-                                                                        └──────────────┘
-                                                                               │
-                                                                          Claude Agent
-                                                                          with Tools
-                                                                               │
-                                                                               ▼
-                                                                        ┌──────────┐
-                                                                        │ TESTING  │
-                                                                        └──────────┘
-                                                                               │
-                                                                          User Review
-                                                                               │
-                                                                               ▼
-                                                                        ┌──────────┐
-                                                                        │ COMPLETE │
-                                                                        └──────────┘
+```mermaid
+graph LR
+    Idea["💡 Idea"] -->|"Gemini Deep Research"| Researching["🔬 Researching"]
+    Researching -->|"Background Polling\n4hr max"| Researched["📋 Researched"]
+    Researched -->|"👤 Approve"| Planning["📐 Planning"]
+    Researched -.->|"👤 Reject"| Idea
+    Planning -->|"Architect Agent"| Planned["✅ Planned"]
+    Planned -->|"👤 Approve"| Implementing["🔨 Implementing"]
+    Planned -.->|"👤 Reject"| Idea
+    Implementing -->|"Builder Agent\nwith Tools"| Testing["🧪 Testing"]
+    Testing -->|"👤 Approve"| Complete["🚀 Complete"]
+    Testing -.->|"👤 Reject"| Planned
+    Testing -.->|"👤 Cancel"| Cancelled["🗑️ Cancelled"]
+
+    style Idea fill:#334155,stroke:#94a3b8,color:#e2e8f0
+    style Complete fill:#14532d,stroke:#22c55e,color:#22c55e
+    style Cancelled fill:#450a0a,stroke:#ef4444,color:#ef4444
 ```
 
 ### Task Status States
@@ -644,9 +748,9 @@ The Nexus includes a complete AI-powered task development workflow:
 | `idea` | Initial state, no AI work done |
 | `researching` | Deep Research Agent running (background) |
 | `researched` | Research complete, awaiting approval |
-| `planning` | Claude generating implementation plan |
+| `planning` | Architect generating implementation plan |
 | `planned` | Plan complete, awaiting approval |
-| `implementing` | Agent executing the plan |
+| `implementing` | Builder agent executing the plan |
 | `testing` | Implementation done, walkthrough ready |
 | `complete` | Approved, committed, and pushed |
 | `rejected` | Rejected by user, archived |
@@ -691,28 +795,35 @@ async function runDeepResearch(prompt, apiKey, callbacks, existingInteractionId 
 
 The Nexus supports workflows at three hierarchical levels:
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                    DASHBOARD LEVEL                                  │
-│  Cross-project initiatives (Security Sweeps, Dependency Audits)    │
-│  ──────────────────────────────────────────────────────────────────│
-│       ↓               ↓               ↓                            │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐                   │
-│  │  Project A  │ │  Project B  │ │  Project C  │                   │
-│  └─────────────┘ └─────────────┘ └─────────────┘                   │
-└────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Dashboard ["Dashboard Level"]
+        Init["📋 Dashboard Initiative\nSecurity Sweep, Dependency Audit, etc."]
+    end
 
-┌────────────────────────────────────────────────────────────────────┐
-│                    PROJECT LEVEL                                    │
-│  Project-wide workflows (Brand Development, Documentation, Release)│
-│  Uses workflow templates with predefined stages                     │
-└────────────────────────────────────────────────────────────────────┘
+    subgraph Projects ["Project Level"]
+        PA["Project A"]
+        PB["Project B"]
+        PC["Project C"]
+    end
 
-┌────────────────────────────────────────────────────────────────────┐
-│                    FEATURE LEVEL                                    │
-│  Individual feature development (Research → Plan → Implement)      │
-│  Existing Feature Pipeline described above                          │
-└────────────────────────────────────────────────────────────────────┘
+    subgraph Features ["Feature Level"]
+        FA1["Task 1\nResearch → Plan → Build"]
+        FA2["Task 2\nResearch → Plan → Build"]
+        FB1["Task 1\nResearch → Plan → Build"]
+    end
+
+    Init --> PA
+    Init --> PB
+    Init --> PC
+    PA --> FA1
+    PA --> FA2
+    PB --> FB1
+
+    style Init fill:#422006,stroke:#f59e0b,stroke-width:2px,color:#fbbf24
+    style PA fill:#1e1b4b,stroke:#8b5cf6,color:#c4b5fd
+    style PB fill:#1e1b4b,stroke:#8b5cf6,color:#c4b5fd
+    style PC fill:#1e1b4b,stroke:#8b5cf6,color:#c4b5fd
 ```
 
 ### Dashboard Initiatives
@@ -745,15 +856,6 @@ Project-level workflows with predefined templates:
 | **Release** | Changelog → Version Bump → Build → Deploy → Announce |
 
 **Context Passing:** Outputs from previous workflow stages (research reports, plans, walkthroughs) are automatically passed as context to subsequent stages, enabling coherent multi-stage workflows.
-
-### Supervisor Agent
-
-A supervisor agent (`agent_configs.id = 'supervisor'`) orchestrates multi-agent workflows:
-
-- Routes tasks between agents: `researcher → plan-generator → implementation → evaluator`
-- Uses `gemini-3-flash-preview` for fast routing decisions
-- Configurable routing depth and available agents
-- Supports feedback loops (evaluator can route back for re-work)
 
 ### Multi-Level Workflow Endpoints
 
@@ -792,14 +894,14 @@ A supervisor agent (`agent_configs.id = 'supervisor'`) orchestrates multi-agent 
 
 ### Tool-Using Agent
 
-The agent (`src/agent/index.js`) implements a multi-turn tool-using loop:
+The agent (`server/agent/index.js`) implements a multi-turn tool-using loop:
 
 ```javascript
 async function runAgent({ 
     message, 
     history = [], 
     projectRoot, 
-    model = 'gemini-2.0-flash-exp', 
+    model = 'gemini-2.5-flash', 
     scopedProject = null  // Security: restrict access to single project
 }) {
     // 1. Build context with visible projects
@@ -817,9 +919,16 @@ async function runAgent({
 | Tool | Description |
 |------|-------------|
 | `read_file` | Read file contents with offset/range support |
-| `write_file` | Create or overwrite file |
+| `write_file` | Create or overwrite file (with Critic review) |
+| `patch_file` | Replace specific text in file (multi-replacement) |
+| `append_file` | Append content to end of file |
+| `apply_diff` | Apply unified diff for efficient targeted edits |
+| `edit_lines` | Edit specific lines by line number |
 | `list_directory` | List directory contents |
-| `run_command` | Execute shell command |
+| `run_command` | Execute shell command in project directory |
+| `check_ports` | List active listening ports with process info |
+| `kill_process` | Terminate a process by PID or port |
+| `checkpoint_memory` | Save checkpoint context for long-running tasks |
 
 ### Code Critic Integration
 
@@ -840,6 +949,26 @@ The critic can be toggled on/off via the Agent Manager UI.
 
 ---
 
+## The Codex
+
+The Codex (`dashboard/src/app/codex/`) is the centralized documentation hub for The Nexus ecosystem. It provides interactive visualizations of the full system architecture, agent configurations, and data flow patterns.
+
+### Sections
+
+| Section | Type | Description |
+|---------|------|-------------|
+| **End-to-End Data Flow** | SVG Diagram | Traces the complete data flow from AI Terminal submission through the 8-node Project Plan Generator (Chat Router → Architect → Council Review → Plan Revision → Human-in-the-Loop → Compiler → Executor) to Project & Task creation via SQLite. Shows Blackboard (shared memory) and Glass Box Broadcasting (WebSocket artifacts). |
+| **Primary Vibecoding Workflow** | Interactive SVG | Detailed orchestration diagram of Nexus Prime and the 4 specialized fleets (Research, Architect, Builder, Auditor) with all sub-agents, system nodes, rejection loops, and output artifacts. |
+| **Initiative Hierarchy** | SVG Diagram | Cascading structure: Dashboard Initiatives → Project Workflows → Projects → Tasks. Shows how top-level initiatives kick off project workflows which generate scoped tasks with optional nested workflow triggers. |
+| **Interface Overview** | Annotated Screenshots | Interactive annotated screenshots of the Dashboard Home and Project Workspace. Hover over glowing dots to explore feature areas (Navigation, Terminal, Artifacts In Review, Task Pipeline, Git Status, etc.). |
+| **Agent Registry** | Live Component | The full Agent Manager rendered live — browse all agents, fleets, and specialist roles with their configurations. |
+
+### API-Backed Content
+
+The Codex supports dynamic documentation articles via a Python API (`codex.ts` → `http://localhost:8000/codex/docs`). Articles are categorized as Protocol, Pattern, Workflow, Guide, or API and can be browsed at `/codex/[slug]`. The `primary-vibecoding-workflow` slug injects the interactive diagram inline.
+
+---
+
 ## Dashboard Components
 
 ### Main Components
@@ -848,13 +977,17 @@ The critic can be toggled on/off via the Agent Manager UI.
 |-----------|-------------|
 | `project-card.tsx` | Project tile with git status, actions |
 | `ai-terminal.tsx` | Multi-provider AI chat interface |
-| `task-pipeline.tsx` | Task status Kanban board |
+| `task-manager.tsx` | Task management with status pipeline |
 | `task-detail-modal.tsx` | Full task workflow UI |
 | `task-archive.tsx` | View completed/rejected tasks |
 | `agent-manager.tsx` | Configure AI agents |
 | `resource-monitor.tsx` | System monitor (CPU/memory/ports) |
 | `activity-feed.tsx` | Recent commits across projects |
 | `new-project-modal.tsx` | Scaffold new project dialog |
+| `dashboard-initiatives.tsx` | Cross-project initiative management |
+| `project-context-manager.tsx` | Project context document editor |
+| `project-settings.tsx` | Project settings panel |
+| `project-workflows.tsx` | Project-level workflow management |
 
 ### API Client
 
@@ -872,31 +1005,31 @@ export async function approveResearch(projectId: string, featureId: string, feed
 
 ---
 
-## Cloudflare Tunnel
+## Cloudflare Tunnel (Optional)
 
-The Nexus uses [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) for secure, Zero Trust remote access to the local dashboard and API.
+The Nexus includes a template configuration for [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) for optional secure remote access.
 
 ### Configuration
 
-The tunnel is configured in `cloudflared_config.yml`:
+A template is provided in `cloudflared_config.yml`:
 
 ```yaml
-tunnel: <your-tunnel-id>
-credentials-file: /path/to/<your-tunnel-id>.json
+tunnel: YOUR_TUNNEL_ID
+credentials-file: /path/to/your/credentials.json
 
 ingress:
-  - hostname: your-domain.com
-    service: http://localhost:3000
+  - hostname: your-api-hostname.example.com
+    service: http://localhost:4000
   - service: http_status:404
 ```
 
-> **Note:** The tunnel routes to port 3000 (dashboard), which proxies API calls to port 4000.
-
-### Running the Tunnel
+To use, install `cloudflared`, replace the placeholder values with your tunnel credentials, and run:
 
 ```bash
 cloudflared tunnel --config cloudflared_config.yml run <your-tunnel-name>
 ```
+
+> **Note:** The tunnel is entirely optional. Use `start-local.bat` for local-only development without any tunnel dependency.
 
 ---
 
@@ -904,7 +1037,7 @@ cloudflared tunnel --config cloudflared_config.yml run <your-tunnel-name>
 
 ### Adding New API Endpoints
 
-1. Add route handler in `server/server.js`
+1. Add route handler in `server/server.js` or create a module in `server/routes/`
 2. Add TypeScript client function in `dashboard/src/lib/nexus.ts`
 3. Create/update component to use the new endpoint
 
@@ -916,17 +1049,14 @@ cloudflared tunnel --config cloudflared_config.yml run <your-tunnel-name>
 
 ### Adding New AI Models
 
-1. Add model configuration to `agent-config.json` under `availableModels`
-2. Add model option to `MODEL_OPTIONS` in `ai-terminal.tsx`
-3. Handle any provider-specific parameters
+Models are auto-discovered at startup via the [SOTA Model Discovery](#sota-model-discovery) service. To add support for a new model **family**:
 
-### Adding New Scheduled Agent Types
-
-_The scheduler module has been removed. This section is reserved for future re-implementation._
+1. Add a family pattern to `MODEL_FAMILIES` in `server/services/model-discovery.js`
+2. The service will automatically find the latest version at next startup
 
 ### Configuring Agents
 
-Edit `agent-config.json` or use the Agent Manager UI to:
+Use the Agent Manager UI in the dashboard to:
 - Change system prompts
 - Switch default models
 - Adjust thinking budgets
@@ -957,8 +1087,8 @@ Different providers have different thinking parameter formats:
 
 | Provider | Parameter | Format |
 |----------|-----------|--------|
-| Google Gemini 3 Pro | `thinking_config` | `{ thinking_level: 'HIGH' \| 'LOW' }` |
-| Google Gemini 2.5 Flash | `thinking_budget` | Number (tokens) |
+| Google Gemini Pro | `thinking_config` | `{ thinking_level: 'HIGH' \| 'LOW' }` |
+| Google Gemini Flash | `thinking_budget` | Number (tokens) |
 | Anthropic Claude | `thinking` | `{ type: 'enabled', budget_tokens: N }` |
 | OpenAI | `reasoning_effort` | `'low' \| 'medium' \| 'high' \| 'xhigh'` |
 
@@ -997,5 +1127,4 @@ This project is proprietary. See the repo owner for licensing information.
 
 ## Links
 
-- **Live Dashboard:** https://nexus.vibeshiftai.com
-- **GitHub:** https://github.com/Guatapickl/TheNexus
+- **GitHub:** https://github.com/VIbeShiftAI/TheNexus
