@@ -240,7 +240,7 @@ export default function ProjectDetailPage() {
                 {/* Project Overview Row - right column drives height, left fills to match */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Project Details + Context Manager (unified) */}
-                    <div className="lg:col-span-2 relative">
+                    <div className="lg:col-span-2 relative min-w-0">
                         <div className="lg:absolute lg:inset-0 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden flex flex-col">
                             <div className="px-4 py-3 border-b border-slate-800 shrink-0">
                                 <ProjectSettings

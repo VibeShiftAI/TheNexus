@@ -121,15 +121,14 @@ TheNexus/                           # Flat monorepo
 │   ├── auditor/                    # Auditor agent (adversarial review)
 │   ├── supervisor/                 # Supervisor agent (orchestration)
 │   └── researcher/                 # Research agent
-├── cortex/                         # Python AI Brain (legacy)
+├── cortex/                         # Python AI Brain (Pipeline orchestrator)
 ├── sandbox/                        # Secure code execution sandbox
 ├── config/                         # Centralized configuration
 │   ├── model_registry.yaml         # LLM model configs
 │   └── prompts.yaml                # System prompts
 ├── db/                             # SQLite schema & migrations
 ├── .context/                       # Project context docs (for AI agents)
-├── start-local.bat                 # Local dev startup (recommended)
-└── start-nexus.bat                 # Full startup (with tunnel)
+└── start-local.bat                 # Local dev startup (recommended)
 ```
 
 ---

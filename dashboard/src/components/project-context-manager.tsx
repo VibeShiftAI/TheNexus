@@ -223,8 +223,8 @@ export function ProjectContextManager({ project }: ProjectContextManagerProps) {
 
     return (
         <>
-            <div className="flex flex-col h-[500px]">
-                <div className="flex flex-1 min-h-0">
+            <div className="flex flex-col h-[500px] min-w-0">
+                <div className="flex flex-1 min-h-0 min-w-0">
                     <div className="w-48 border-r border-slate-800 bg-slate-950/30 p-2 space-y-1 overflow-y-auto">
                         {loading ? (
                             <div className="flex items-center justify-center py-8 text-slate-500">
@@ -275,7 +275,7 @@ export function ProjectContextManager({ project }: ProjectContextManagerProps) {
                         </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col bg-slate-950">
+                    <div className="flex-1 flex flex-col bg-slate-950 min-w-0">
                         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900/50">
                             <div className="flex items-center gap-2 text-slate-300">
                                 <FileText size={16} className="text-cyan-500" />
@@ -361,7 +361,7 @@ export function ProjectContextManager({ project }: ProjectContextManagerProps) {
                                                     <h4 className="text-sm font-semibold text-slate-300 mt-3 mb-1">{children}</h4>
                                                 ),
                                                 p: ({ children }) => (
-                                                    <p className="text-sm text-slate-300 leading-relaxed mb-3">{children}</p>
+                                                    <div className="text-sm text-slate-300 leading-relaxed mb-3">{children}</div>
                                                 ),
                                                 ul: ({ children }) => (
                                                     <ul className="list-disc list-inside text-sm text-slate-300 space-y-1 mb-3 ml-2">{children}</ul>

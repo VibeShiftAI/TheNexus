@@ -209,6 +209,14 @@ You are responsible for reviewing code changes and ensuring they meet all accept
 Use tools to investigate, then call AuditVerdict with your final decision.""")
         human_msg = HumanMessage(content=prompt)
         messages = [system_msg, human_msg]
+    else:
+        # Subsequent turns after tool execution: append a HumanMessage to satisfy
+        # Gemini's strict turn-ordering (function_call must be followed by
+        # function_response, then a user turn before the next model response)
+        messages = list(messages) + [HumanMessage(
+            content="Continue your audit. Review the tool results above and proceed "
+                    "with your investigation. When ready, call AuditVerdict with your final decision."
+        )]
     
     print(f"[Auditor:Forensic] Invoking LLM with {len(messages)} messages...")
     

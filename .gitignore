@@ -58,3 +58,6 @@ docker/data/neo4j_data/
 
 # Blackboard session data
 data/blackboard/
+
+# Startup scripts (local-only)
+start-nexus.bat
