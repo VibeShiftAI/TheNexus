@@ -9,7 +9,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { AITerminal } from "@/components/ai-terminal";
 import { DashboardInitiatives } from "@/components/dashboard-initiatives";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
-import { Activity, ShieldCheck, Zap, Folder, Plus, Gauge, X, BookOpen } from "lucide-react";
+import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen } from "lucide-react";
 
 import Link from "next/link";
 
@@ -97,10 +97,6 @@ export default function Home() {
               <span>The Codex</span>
             </Link>
             <div className="flex items-center gap-2">
-              <ShieldCheck size={16} className="text-emerald-500" />
-              <span>TUNNEL ACTIVE</span>
-            </div>
-            <div className="flex items-center gap-2">
               <Zap size={16} className="text-yellow-500" />
               <span>VIBE: HIGH</span>
             </div>
@@ -160,7 +156,7 @@ export default function Home() {
             </div>
             <h3 className="mt-4 text-lg font-semibold text-slate-300">No Projects Found</h3>
             <p className="mt-2 text-sm text-slate-500">
-              Scanned path: <code className="rounded bg-slate-900 px-1 py-0.5">c:/Projects</code>
+              Scanned path: <code className="rounded bg-slate-900 px-1 py-0.5">$PROJECT_ROOT</code> — set this in your <code className="rounded bg-slate-900 px-1 py-0.5">.env</code> file
             </p>
           </div>
         ) : (

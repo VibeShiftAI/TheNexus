@@ -1,6 +1,15 @@
 {
+  "name": "the-nexus",
+  "version": "1.0.0",
+  "description": "Personal Agentic Workspace — 26+ specialized AI agents turn ideas into real, manageable projects on your computer.",
+  "author": "VibeShiftAI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VIbeShiftAI/TheNexus"
+  },
+  "license": "SEE LICENSE IN README",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node server/server.js",
     "dev": "nodemon --config nodemon.json",
     "mcp": "nodemon --watch src/mcp.js src/mcp.js",
     "test": "jest",
@@ -8,8 +17,10 @@
     "test:scheduler": "jest src/scheduler"
   },
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@google/genai": "^1.34.0",
     "@modelcontextprotocol/sdk": "^1.24.3",
+    "@napi-rs/canvas": "^0.1.97",
     "better-sqlite3": "^12.6.2",
     "chokidar": "^5.0.0",
     "claude": "^0.1.1",

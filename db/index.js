@@ -72,7 +72,8 @@ const JSON_COLS = new Set([
     'graph_config', 'context', 'checkpoint', 'metadata',
     'agent_configuration', 'parameters', 'capabilities', 'config',
     'trigger_config', 'configuration', 'target_projects', 'progress',
-    'allowed_tools', 'denied_tools', 'details', 'data'
+    'allowed_tools', 'denied_tools', 'details', 'data',
+    'stages', 'outputs'
 ]);
 
 function deserRow(row) {

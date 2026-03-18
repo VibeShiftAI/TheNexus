@@ -295,9 +295,8 @@ class CortexBrainBridge:
                         plan_data = node_data.get("markdown_plan") if node_data else None
                         plan_diff = node_data.get("plan_diff") if node_data else None
                         if plan_data:
-                            # Count council comments from votes (prior_comments in state may be empty)
-                            votes = node_data.get("votes", [])
-                            prior_comments = sum(len(v.line_comments) for v in votes if hasattr(v, 'line_comments') and v.line_comments) if votes else len(node_data.get("prior_comments", []))
+                            # Count council comments from captured council_votes (node_data only has markdown_plan/plan_diff)
+                            prior_comments = sum(len(v.line_comments) for v in council_votes if hasattr(v, 'line_comments') and v.line_comments)
                             print(f"📝 Plan revised: {plan_data.title} (v{plan_data.version}) — {prior_comments} comments addressed")
                             revision_status = {
                                 "status": "revision_done",

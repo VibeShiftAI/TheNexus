@@ -53,11 +53,18 @@ build/
 # Neo4j data files
 docker/data/neo4j_data/
 
-# SQLite databases (checkpoints)
+# SQLite databases and temp files
 *.db
+*.db-shm
+*.db-wal
 
 # Blackboard session data
 data/blackboard/
 
-# Startup scripts (local-only)
+# Local-only files
 start-nexus.bat
+start-local.bat
+stop-nexus.bat
+pinned.json
+TheNexus.code-workspace
+nodemon.json

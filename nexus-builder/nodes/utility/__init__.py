@@ -241,6 +241,7 @@ from .codebase_explorer import CodebaseExplorerNode
 from .plan_architect import PlanArchitectNode
 from .general_agent import GeneralAgentNode
 from .doc_task_creator import DocumentationTaskCreatorNode
+from .security_task_creator import SecurityTaskCreatorNode
 
 
 __all__ = [
@@ -254,5 +255,7 @@ __all__ = [
     "GeneralAgentNode",
     # Documentation workflow
     "DocumentationTaskCreatorNode",
+    # Security sweep workflow
+    "SecurityTaskCreatorNode",
 ]
 

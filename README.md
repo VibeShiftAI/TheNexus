@@ -128,7 +128,7 @@ TheNexus/                           # Flat monorepo
 │   └── prompts.yaml                # System prompts
 ├── db/                             # SQLite schema & migrations
 ├── .context/                       # Project context docs (for AI agents)
-└── start-local.bat                 # Local dev startup (recommended)
+└── start-local.example.bat         # Startup script template (copy to start-local.bat)
 ```
 
 ---
@@ -160,7 +160,8 @@ pip install -r requirements.txt
 cd ..
 
 # Configure
-cp .env.example .env      # Edit with your API keys
+cp .env.example .env                    # Edit with your API keys
+cp start-local.example.bat start-local.bat  # Startup script
 ```
 
 ### Running
@@ -186,7 +187,7 @@ Opens 3 terminal windows:
 
 ```env
 # Required
-PROJECT_ROOT=C:/Projects
+PROJECT_ROOT=/path/to/your/projects
 
 # AI Providers (at least one)
 GOOGLE_API_KEY=your-key
@@ -380,6 +381,44 @@ Detailed architectural docs live in:
 - **`.context/`** — API reference, workflow maps, pipeline architecture, node reference, tech stack
 - **`docs/`** — System architecture, data flow diagrams
 - **The Codex** — Interactive visualizations at `/codex` in the dashboard
+
+---
+
+## Built With
+
+The Nexus stands on the shoulders of outstanding open-source projects:
+
+### AI Engine (Python)
+
+- **[LangGraph](https://langchain-ai.github.io/langgraph/)** — Multi-agent workflow orchestration powering Nexus Prime and the 4 fleet system
+- **[LangChain](https://www.langchain.com/)** — Foundation for AI provider integrations and tool-calling agents
+- **[FastAPI](https://fastapi.tiangolo.com/)** — High-performance async Python API serving the LangGraph engine
+
+### Backend (Node.js)
+
+- **[Express](https://expressjs.com/)** — REST API backbone (105+ endpoints)
+- **[Better-SQLite3](https://github.com/WiseLibs/better-sqlite3)** — Synchronous SQLite driver for persistence
+- **[Socket.IO](https://socket.io/)** — Real-time WebSocket streaming for Glass Box Broadcasting
+- **[Zod](https://zod.dev/)** — Schema validation for agent tool definitions
+- **[simple-git](https://github.com/steveukx/git-js)** — Git integration for project discovery and commit tracking
+- **[Helmet](https://helmetjs.github.io/)** — HTTP security headers
+- **[@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk)** — MCP server integration
+
+### Frontend (Next.js)
+
+- **[Next.js](https://nextjs.org/)** — React framework powering the dashboard (App Router)
+- **[React](https://react.dev/)** — UI component library
+- **[Tailwind CSS](https://tailwindcss.com/)** — Utility-first styling
+- **[Framer Motion](https://motion.dev/)** — Animations and transitions
+- **[Lucide React](https://lucide.dev/)** — Icon system
+- **[React Flow](https://reactflow.dev/)** (`@xyflow/react`) — Interactive node-based visualizations in The Codex
+- **[Monaco Editor](https://microsoft.github.io/monaco-editor/)** — Code editing component
+- **[Recharts](https://recharts.org/)** — Dashboard charts and system monitoring graphs
+- **[react-markdown](https://github.com/remarkjs/react-markdown)** — Markdown rendering with GFM support
+
+### AI Providers
+
+- **[Google Gemini](https://ai.google.dev/)** · **[Anthropic Claude](https://www.anthropic.com/)** · **[OpenAI](https://openai.com/)** · **[xAI Grok](https://x.ai/)**
 
 ---
 

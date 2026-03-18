@@ -1,0 +1,92 @@
+{
+    "id": "security-sweep-project",
+    "name": "Security Sweep (Project)",
+    "description": "Scan a project's codebase for security concerns and generate remediation tasks",
+    "level": "project",
+    "workflow_type": "security-sweep",
+    "is_system": true,
+    "stages": [
+        {
+            "id": "explore",
+            "name": "Explore Codebase",
+            "order": 1,
+            "description": "Scan project structure, key files, and recent changes"
+        },
+        {
+            "id": "analyze",
+            "name": "Security Analysis",
+            "order": 2,
+            "description": "Analyze codebase for security vulnerabilities and concerns"
+        },
+        {
+            "id": "create-tasks",
+            "name": "Generate Tasks",
+            "order": 3,
+            "description": "Create security remediation tasks under the project"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "explore",
+            "data": {
+                "label": "Explore Codebase",
+                "config": {
+                    "query": "structure",
+                    "search_type": "structure",
+                    "thoroughness": "very_thorough",
+                    "max_results": 200
+                }
+            },
+            "type": "codebase_explorer",
+            "position": {
+                "x": 100,
+                "y": 150
+            }
+        },
+        {
+            "id": "analyze",
+            "data": {
+                "label": "Security Analysis",
+                "config": {
+                    "task": "You are a security analyst reviewing this project's codebase. Using the project structure provided and your tool access, perform a thorough security audit.\n\nUse your tools to actively inspect files — read configuration files, search for patterns, and check git history for recent changes.\n\nAreas to investigate:\n- Exposed secrets, API keys, credentials, or tokens in source code\n- Hardcoded passwords or connection strings\n- Unsafe use of eval(), exec(), or dynamic code execution\n- SQL injection, XSS, or command injection vectors\n- Missing input validation on API endpoints or user-facing surfaces\n- Insecure file permissions or path traversal risks\n- Dependencies with known vulnerabilities (check package.json, requirements.txt)\n- Missing security headers (CORS, CSP, rate limiting)\n- Debug or test code left in production paths\n- Insecure deserialization or unsafe data handling\n\nIMPORTANT:\n- Ground every finding in actual code evidence — cite the file path and relevant code.\n- If the codebase is clean, say so. Do NOT fabricate issues.\n- Focus on actionable, real vulnerabilities — not theoretical concerns.\n\nReturn your findings as a JSON array. Each finding should have:\n- title: Short descriptive title for a remediation task\n- severity: \"critical\", \"high\", \"medium\", or \"low\"\n- category: e.g. \"secrets\", \"injection\", \"dependencies\", \"configuration\", \"input-validation\", \"access-control\"\n- description: What the issue is and why it matters\n- files: Array of affected file paths\n- evidence: The relevant code snippet or pattern found\n- remediation: Recommended fix\n\nIf no issues are found, return an empty array: []",
+                    "max_turns": 25,
+                    "model": "gemini-3-pro-preview",
+                    "verbose": true
+                }
+            },
+            "type": "general_agent",
+            "position": {
+                "x": 300,
+                "y": 150
+            }
+        },
+        {
+            "id": "create-tasks",
+            "data": {
+                "label": "Create Security Tasks",
+                "config": {
+                    "source_field": "result",
+                    "max_tasks": 15
+                }
+            },
+            "type": "security_task_creator",
+            "position": {
+                "x": 500,
+                "y": 150
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "explore",
+            "target": "analyze"
+        },
+        {
+            "id": "e2",
+            "source": "analyze",
+            "target": "create-tasks"
+        }
+    ],
+    "conditionalEdges": []
+}

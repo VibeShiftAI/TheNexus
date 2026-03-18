@@ -52,10 +52,6 @@ jobs:
     - name: Build dashboard
       working-directory: dashboard
       run: npm run build
-      env:
-        # Provide dummy values for build (actual values come from Netlify)
-        SUPABASE_URL: https://example.supabase.co
-        SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example
 
   # Deploy job only runs on main branch
   # Actual deployment is handled by Netlify, this is just for status

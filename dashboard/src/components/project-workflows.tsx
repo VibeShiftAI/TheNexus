@@ -34,7 +34,8 @@ import {
     Trash2,
     Eye,
     Clock,
-    Sparkles
+    Sparkles,
+    Shield
 } from "lucide-react";
 
 interface ProjectWorkflowsProps {
@@ -85,6 +86,7 @@ const workflowTypeIcons: Record<ProjectWorkflowType, React.ReactNode> = {
     'brand-development': <Palette size={16} className="text-pink-400" />,
     'logo-development': <Sparkles size={16} className="text-amber-400" />,
     'documentation': <FileText size={16} className="text-cyan-400" />,
+    'security-sweep': <Shield size={16} className="text-orange-400" />,
     'release': <Rocket size={16} className="text-emerald-400" />,
     'custom': <Workflow size={16} className="text-purple-400" />
 };
@@ -217,7 +219,7 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
     };
 
     const getStageProgress = (workflow: ProjectWorkflow) => {
-        if (!workflow.stages || workflow.stages.length === 0) return 0;
+        if (!workflow.stages || !Array.isArray(workflow.stages) || workflow.stages.length === 0) return 0;
         const currentIndex = workflow.stages.findIndex(s => s.id === workflow.current_stage);
         if (currentIndex === -1) return 0;
         return Math.round(((currentIndex + 1) / workflow.stages.length) * 100);
@@ -381,7 +383,7 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
                                         </div>
 
                                         {/* Progress Bar */}
-                                        {workflow.stages && workflow.stages.length > 0 && (
+                                        {workflow.stages && Array.isArray(workflow.stages) && workflow.stages.length > 0 && (
                                             <div className="mt-3">
                                                 <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
                                                     <span>

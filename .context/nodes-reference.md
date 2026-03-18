@@ -1,7 +1,7 @@
 ---
 context_type: nodes-reference
 status: draft
-updated_at: 2026-03-16T23:28:42.236Z
+updated_at: 2026-03-18T22:37:56.236Z
 ---
 
 # Atomic Node Reference

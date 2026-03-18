@@ -138,6 +138,16 @@ graph LR
 - **Agent Memory System**: Episodic memory providing continuity. Stores decisions, observations, feedback, errors, and insights.
 - **Blackboard**: Used during research phases for evidence gathering and fact-checking.
 
+### Initiative Workflows
+
+Dashboard-level initiatives iterate over target projects, triggering project-level LangGraph workflows for each. Project-level templates are auto-discovered from `config/templates/workflows/*.json` by the Python backend.
+
+| Template | Level | Pipeline | Output |
+|----------|-------|----------|--------|
+| `documentation.json` | project | `codebase_explorer` → `general_agent` → `doc_task_creator` | Documentation update tasks |
+| `security-sweep-project.json` | project | `codebase_explorer` → `general_agent` → `security_task_creator` | Security remediation tasks (nexus-prime) |
+| `security-sweep.json` | dashboard | `audit-deps` → `check-secrets` → `review-perms` → `generate-report` | Aggregate security report |
+
 ---
 
 ## 4. Component Reference
