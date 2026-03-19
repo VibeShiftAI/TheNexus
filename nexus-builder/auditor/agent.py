@@ -201,7 +201,8 @@ async def forensic_node(state: AuditorState):
     # If first turn, inject prompt. Otherwise continue.
     # Both Claude and Gemini require at least one HumanMessage, so we use SystemMessage + HumanMessage
     messages = state.get("messages", [])
-    if not messages:
+    first_turn = not messages
+    if first_turn:
         print(f"[Auditor:Forensic] Starting audit for task: {task_title}")
         # System message for role/context, Human message for the actual request
         system_msg = SystemMessage(content="""ROLE: Lead Security Auditor (The Sentinel).
@@ -229,6 +230,11 @@ Use tools to investigate, then call AuditVerdict with your final decision.""")
         try:
             response = await model.ainvoke(messages)
             print(f"[Auditor:Forensic] Response received, tool_calls: {bool(hasattr(response, 'tool_calls') and response.tool_calls)}")
+            # On first turn, persist system + human messages in state alongside the response.
+            # Without this, subsequent turns only see [AI_with_tool_calls, ToolMessage]
+            # and Gemini rejects the call because there's no user turn before the function_call.
+            if first_turn:
+                return {"messages": [system_msg, human_msg, response]}
             return {"messages": [response]}
         except Exception as e:
             error_str = str(e).lower()

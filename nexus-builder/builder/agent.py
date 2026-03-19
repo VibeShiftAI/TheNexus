@@ -757,12 +757,70 @@ If there are serious issues, respond with "ISSUES:" followed by a brief list."""
 
 # --- 3. CONTEXT PRUNING ---
 
+def _ensure_tool_pair_integrity(messages):
+    """Post-pruning safety net: remove orphaned tool_use and tool_result messages.
+    
+    Anthropic requires every tool_use block to have a corresponding tool_result
+    in the immediately following message. Gemini requires function call turns to
+    come after user turns or function response turns. This function strips any
+    orphaned messages that would violate these constraints.
+    
+    Returns the sanitized message list (may be unchanged if no orphans found).
+    """
+    from langchain_core.messages import ToolMessage as _ToolMessage, AIMessage as _AIMessage
+    
+    # Collect all tool_call IDs present on each side of the pairing
+    use_ids = set()   # IDs from AIMessage.tool_calls
+    result_ids = set()  # IDs from ToolMessage.tool_call_id
+    for msg in messages:
+        if hasattr(msg, 'tool_calls') and msg.tool_calls:
+            for tc in msg.tool_calls:
+                use_ids.add(tc['id'])
+        if isinstance(msg, _ToolMessage) and hasattr(msg, 'tool_call_id'):
+            result_ids.add(msg.tool_call_id)
+    
+    orphaned_uses = use_ids - result_ids      # tool_use without tool_result
+    orphaned_results = result_ids - use_ids   # tool_result without tool_use
+    
+    if not orphaned_uses and not orphaned_results:
+        return messages  # All pairs intact
+    
+    cleaned = []
+    for msg in messages:
+        # Drop orphaned tool_result messages
+        if isinstance(msg, _ToolMessage) and msg.tool_call_id in orphaned_results:
+            continue
+        
+        # Handle AI messages whose tool_calls are orphaned
+        if hasattr(msg, 'tool_calls') and msg.tool_calls:
+            if all(tc['id'] in orphaned_uses for tc in msg.tool_calls):
+                # ALL tool_calls are orphaned — preserve any text content as plain AI message
+                text = ""
+                if isinstance(msg.content, str):
+                    text = msg.content.strip()
+                elif isinstance(msg.content, list):
+                    text = " ".join(
+                        b.get("text", "") if isinstance(b, dict) and b.get("type") == "text"
+                        else (str(b) if isinstance(b, str) else "")
+                        for b in msg.content
+                    ).strip()
+                if text:
+                    cleaned.append(_AIMessage(content=text))
+                continue  # Drop the tool_use version
+        
+        cleaned.append(msg)
+    
+    print(f"[Builder:Prune] Pair integrity: removed {len(messages) - len(cleaned)} orphaned messages "
+          f"({len(orphaned_uses)} orphaned tool_use, {len(orphaned_results)} orphaned tool_result)")
+    return cleaned
+
+
 def _prune_scout_messages(state: BuilderState):
     """Compress scout phase messages before transitioning to builder.
     
     Keeps: SystemMessage, HumanMessage prompts, the final READY message.
-    Drops: ToolMessage responses (raw file dumps, grep outputs),
-           intermediate AIMessage tool_calls (no longer needed).
+    Drops: ToolMessage responses AND their corresponding AIMessage tool_calls
+           as matched pairs to prevent orphaned tool_use/tool_result.
     """
     from langchain_core.messages import ToolMessage as _ToolMessage, SystemMessage as _SystemMessage, HumanMessage as _HumanMessage
     
@@ -783,8 +841,8 @@ def _prune_scout_messages(state: BuilderState):
         # Drop tool result messages (raw file reads, grep outputs)
         elif isinstance(msg, _ToolMessage):
             tool_results_dropped += 1
-        # Drop AI messages that only had tool_calls (no reasoning content)
-        elif hasattr(msg, 'tool_calls') and msg.tool_calls and not msg.content:
+        # Drop AI messages with tool_calls (their ToolMessages are also being dropped)
+        elif hasattr(msg, 'tool_calls') and msg.tool_calls:
             tool_results_dropped += 1
         else:
             pruned.append(msg)
@@ -793,6 +851,8 @@ def _prune_scout_messages(state: BuilderState):
         # Inject summary of what was dropped
         summary = _HumanMessage(content=f"[Context: {tool_results_dropped} scout tool outputs pruned to save tokens. Scout phase complete — all file analysis is done.]")
         pruned.insert(-3, summary)  # Before the last 3 messages
+        # Safety net: ensure no orphans remain (e.g. in the kept tail)
+        pruned = _ensure_tool_pair_integrity(pruned)
         state["messages"] = pruned
         print(f"[Builder:Prune] Scout phase: {len(messages)} messages → {len(pruned)} (dropped {tool_results_dropped} tool outputs)")
 
@@ -802,7 +862,12 @@ def _prune_builder_messages(state: BuilderState):
     Strategy: Keep the first 3 messages (system + prompt + initial guidance)
     and the last 10 messages (recent tool calls and results).
     Replace everything in between with a summary.
+    
+    CRITICAL: Head and tail are trimmed at clean boundaries to ensure
+    tool_use/tool_result pairs are never split across the prune cut.
     """
+    from langchain_core.messages import ToolMessage as _ToolMessage
+    
     messages = state.get("messages", [])
     if len(messages) <= 15:
         return  # Not enough to prune
@@ -810,14 +875,29 @@ def _prune_builder_messages(state: BuilderState):
     keep_start = 3   # System prompt + initial context
     keep_end = 10    # Recent tool interactions
     
-    head = messages[:keep_start]
-    tail = messages[-keep_end:]
-    dropped = len(messages) - keep_start - keep_end
+    head = list(messages[:keep_start])
+    tail = list(messages[-keep_end:])
+    
+    # Trim head backward: if it ends with an AIMessage that has tool_calls,
+    # the matching tool_results would be in the pruned middle — remove it.
+    while head and hasattr(head[-1], 'tool_calls') and head[-1].tool_calls:
+        head.pop()
+    
+    # Trim tail forward: if it starts with orphaned ToolMessages whose
+    # matching tool_use AIMessage was in the pruned middle — remove them.
+    while tail and isinstance(tail[0], _ToolMessage):
+        tail.pop(0)
+    
+    dropped = len(messages) - len(head) - len(tail)
+    if dropped <= 0:
+        return  # Nothing useful to prune after boundary trimming
     
     modified_count = len(state.get('modified_files', []))
     summary = HumanMessage(content=f"[Context: {dropped} intermediate messages pruned. {modified_count} files modified so far. Continue implementing.]")
     
-    state["messages"] = head + [summary] + tail
+    # Final safety net: validate all pairs are intact
+    result = _ensure_tool_pair_integrity(head + [summary] + tail)
+    state["messages"] = result
     print(f"[Builder:Prune] Builder phase: {len(messages)} messages → {len(state['messages'])} (dropped {dropped} intermediate)")
 
 # --- 3.5 ROUTING ---
