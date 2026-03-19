@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Helper component for agent nodes within fleets
-const AgentNode = ({ x, y, name, model, task, color = 'slate' }: { x: number; y: number; name: string; model: string; task: string; color?: string }) => {
+const AgentNode = ({ x, y, name, task, color = 'slate' }: { x: number; y: number; name: string; task: string; color?: string }) => {
     const colors: Record<string, { bg: string; border: string; text: string }> = {
         blue: { bg: '#1e3a5f', border: '#3b82f6', text: '#93c5fd' },
         purple: { bg: '#3b1f5c', border: '#8b5cf6', text: '#c4b5fd' },
@@ -15,9 +15,8 @@ const AgentNode = ({ x, y, name, model, task, color = 'slate' }: { x: number; y:
     return (
         <g transform={`translate(${x}, ${y})`}>
             <rect x="-60" y="-32" width="120" height="64" rx="6" fill={c.bg} stroke={c.border} strokeWidth="1.5" />
-            <text x="0" y="-10" textAnchor="middle" fill={c.text} fontWeight="bold" fontSize="10">{name}</text>
-            <text x="0" y="5" textAnchor="middle" fill="#94a3b8" fontSize="8">{model}</text>
-            <text x="0" y="18" textAnchor="middle" fill="#64748b" fontSize="8">{task}</text>
+            <text x="0" y="-4" textAnchor="middle" fill={c.text} fontWeight="bold" fontSize="10">{name}</text>
+            <text x="0" y="12" textAnchor="middle" fill="#64748b" fontSize="8">{task}</text>
         </g>
     );
 };
@@ -105,7 +104,7 @@ export const VibecodingWorkflowDiagram = () => {
                 <g transform="translate(800, 200)">
                     <polygon points="0,-60 80,0 0,60 -80,0" fill="#1a1a2e" stroke="#fbbf24" strokeWidth="3" filter="url(#glow-gold)" />
                     <text x="0" y="-18" textAnchor="middle" fill="#fbbf24" fontWeight="bold" fontSize="13">NEXUS PRIME</text>
-                    <text x="0" y="0" textAnchor="middle" fill="#d4a574" fontSize="9">Claude Opus 4.5</text>
+                    <text x="0" y="0" textAnchor="middle" fill="#d4a574" fontSize="9">Orchestrator</text>
                     <text x="0" y="15" textAnchor="middle" fill="#a78bfa" fontSize="9">The CEO & Router</text>
                 </g>
 
@@ -143,7 +142,7 @@ export const VibecodingWorkflowDiagram = () => {
                 </g>
 
                 {/* ========== PHASE 0: RESEARCH FLEET ========== */}
-                <FleetBox x={20} y={340} width={360} height={460} phase="PHASE 0" name="RESEARCH FLEET" meshType="Gemini Mesh" color="blue">
+                <FleetBox x={20} y={340} width={360} height={460} phase="PHASE 0" name="RESEARCH FLEET" meshType="Multi-Agent Mesh" color="blue">
                     {/* Start node */}
                     <circle cx="50" cy="80" r="22" fill="transparent" stroke="#64748b" strokeWidth="1.5" />
                     <text x="50" y="85" textAnchor="middle" fill="#94a3b8" fontSize="10">Start</text>
@@ -152,16 +151,16 @@ export const VibecodingWorkflowDiagram = () => {
                     <path d="M72,80 L120,80" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
 
                     {/* Scoper */}
-                    <AgentNode x={195} y={80} name="Scoper" model="Gemini 3 Pro" task="Define Queries" color="blue" />
+                    <AgentNode x={195} y={80} name="Scoper" task="Define Queries" color="blue" />
 
                     {/* Main flow from Scoper down to Professor */}
                     <path d="M195,112 L195,145 L100,145 L100,168" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
 
                     {/* Professor (for relevance check) */}
-                    <AgentNode x={100} y={200} name="The Professor" model="Gemini 3 Flash" task="Relevance Check" color="blue" />
+                    <AgentNode x={100} y={200} name="The Professor" task="Relevance Check" color="blue" />
 
                     {/* Executor */}
-                    <AgentNode x={270} y={200} name="Executor" model="Gemini 3 Pro" task="Web Search/Scrape" color="blue" />
+                    <AgentNode x={270} y={200} name="Executor" task="Web Search/Scrape" color="blue" />
 
                     {/* Rejection loopback from Professor to Scoper */}
                     <path d="M40,200 L20,200 Q5,200 5,185 L5,100 Q5,80 25,80 L135,80" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4,3" markerEnd="url(#arrow-red)" fill="none" />
@@ -175,7 +174,7 @@ export const VibecodingWorkflowDiagram = () => {
                     <path d="M270,232 L270,280 L195,280 L195,310" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
 
                     {/* Synthesizer */}
-                    <AgentNode x={195} y={350} name="Synthesizer" model="Gemini 3 Pro" task="Compile Report" color="blue" />
+                    <AgentNode x={195} y={350} name="Synthesizer" task="Compile Report" color="blue" />
 
                     {/* Arrow to DOSSIER */}
                     <path d="M195,382 L195,420" stroke="#f59e0b" strokeWidth="2" markerEnd="url(#arrow-gold)" />
@@ -186,7 +185,7 @@ export const VibecodingWorkflowDiagram = () => {
 
 
                 {/* ========== PHASE 1: ARCHITECT FLEET ========== */}
-                <FleetBox x={410} y={340} width={360} height={460} phase="PHASE 1" name="ARCHITECT FLEET" meshType="Gemini Mesh" color="purple">
+                <FleetBox x={410} y={340} width={360} height={460} phase="PHASE 1" name="ARCHITECT FLEET" meshType="Multi-Agent Mesh" color="purple">
                     {/* Start node */}
                     <circle cx="50" cy="80" r="22" fill="transparent" stroke="#64748b" strokeWidth="1.5" />
                     <text x="50" y="85" textAnchor="middle" fill="#94a3b8" fontSize="10">Start</text>
@@ -195,19 +194,19 @@ export const VibecodingWorkflowDiagram = () => {
                     <path d="M72,80 L130,80" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
 
                     {/* Cartographer */}
-                    <AgentNode x={205} y={80} name="Cartographer" model="Gemini 3 Pro" task="Read Dossier + Repo" color="purple" />
+                    <AgentNode x={205} y={80} name="Cartographer" task="Read Dossier + Repo" color="purple" />
 
                     {/* Arrow to Drafter */}
                     <path d="M205,112 L205,170" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
 
                     {/* Drafter */}
-                    <AgentNode x={205} y={210} name="Drafter" model="Gemini 3 Pro" task="Write Spec" color="purple" />
+                    <AgentNode x={205} y={210} name="Drafter" task="Write Spec" color="purple" />
 
                     {/* Arrow to Grounder */}
                     <path d="M205,242 L205,300" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
 
                     {/* Grounder */}
-                    <AgentNode x={205} y={340} name="Grounder" model="Gemini 3 Flash" task="Validate File Paths" color="purple" />
+                    <AgentNode x={205} y={340} name="Grounder" task="Validate File Paths" color="purple" />
 
                     {/* Hallucination loopback from Grounder to Drafter */}
                     <path d="M145,340 L100,340 Q85,340 85,325 L85,230 Q85,210 105,210 L145,210" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4,3" markerEnd="url(#arrow-red)" fill="none" />
@@ -238,13 +237,13 @@ export const VibecodingWorkflowDiagram = () => {
                     <path d="M205,102 L205,150" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
 
                     {/* Scout */}
-                    <AgentNode x={205} y={190} name="Scout" model="Gemini 3 Pro" task="Navigate Symbols" color="amber" />
+                    <AgentNode x={205} y={190} name="Scout" task="Navigate Symbols" color="amber" />
 
                     {/* Arrow to Builder */}
                     <path d="M205,222 L205,270" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
 
                     {/* Builder */}
-                    <AgentNode x={205} y={310} name="Builder" model="Gemini 3 Pro" task="Vibe Coding" color="amber" />
+                    <AgentNode x={205} y={310} name="Builder" task="Vibe Coding" color="amber" />
 
                     {/* Arrow to Syntax */}
                     <path d="M205,342 L205,385" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
@@ -284,14 +283,14 @@ export const VibecodingWorkflowDiagram = () => {
                     <path d="M215,135 L215,165" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
 
                     {/* The Sentinel */}
-                    <AgentNode x={215} y={205} name="The Sentinel" model="Claude Opus 4.5" task="Security Analysis" color="rose" />
+                    <AgentNode x={215} y={205} name="The Sentinel" task="Security Analysis" color="rose" />
 
                     {/* Arrow to Interrogator */}
                     <path d="M215,237 L215,285" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrow-slate)" />
                     <text x="215" y="268" fill="#f59e0b" fontSize="8" textAnchor="middle">Suspicious?</text>
 
                     {/* The Interrogator */}
-                    <AgentNode x={215} y={325} name="The Interrogator" model="Claude Opus 4.5" task="Dry-Run Tests" color="rose" />
+                    <AgentNode x={215} y={325} name="The Interrogator" task="Dry-Run Tests" color="rose" />
 
                     {/* Test Results label */}
                     <text x="290" y={315} fill="#94a3b8" fontSize="8">Test Results →</text>

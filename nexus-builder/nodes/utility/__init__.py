@@ -242,6 +242,7 @@ from .plan_architect import PlanArchitectNode
 from .general_agent import GeneralAgentNode
 from .doc_task_creator import DocumentationTaskCreatorNode
 from .security_task_creator import SecurityTaskCreatorNode
+from .security_code_review import SecurityCodeReviewNode
 
 
 __all__ = [
@@ -257,5 +258,6 @@ __all__ = [
     "DocumentationTaskCreatorNode",
     # Security sweep workflow
     "SecurityTaskCreatorNode",
+    "SecurityCodeReviewNode",
 ]
 

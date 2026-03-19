@@ -363,6 +363,7 @@ def init_atomic_nodes() -> int:
         DocumentationTaskCreatorNode,
         # Security sweep workflow
         SecurityTaskCreatorNode,
+        SecurityCodeReviewNode,
     )
     # Phase 7: Memory nodes
     from .memory.atomic_nodes import (
@@ -399,6 +400,7 @@ def init_atomic_nodes() -> int:
         DocumentationTaskCreatorNode,
         # Security sweep workflow
         SecurityTaskCreatorNode,
+        SecurityCodeReviewNode,
         # Phase 7: Memory nodes
         MemoryBufferWindowNode,
         MemoryManagerNode,

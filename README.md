@@ -2,7 +2,7 @@
 
 **Personal Agentic Workspace** — Turns your ideas into real, manageable projects on your computer. 26+ specialized AI agents handle everything from research to code to security — you manage the vision, not the syntax.
 
-🌐 [Website](https://vibeshiftai.com/the-nexus) | 🎥 [Watch the Announcement Video](LINK_TO_YOUTUBE) | ☕ [Support on Patreon](LINK_TO_PATREON)
+🌐 [Website](https://vibeshiftai.com/the-nexus) | 🎥 [Watch the Announcement Video](https://youtu.be/L6xs_9zdSf0) | ☕ [Support on Patreon](https://www.patreon.com/c/vibeshiftai/membership)
 
 [![Node.js](https://img.shields.io/badge/Backend-Node.js%2F%20Express-green)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-black)](https://nextjs.org)
