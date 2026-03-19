@@ -2,11 +2,17 @@
 
 **Personal Agentic Workspace** — Turns your ideas into real, manageable projects on your computer. 26+ specialized AI agents handle everything from research to code to security — you manage the vision, not the syntax.
 
-🌐 [vibeshiftai.com/the-nexus](https://vibeshiftai.com/the-nexus)
+🌐 [Website](https://vibeshiftai.com/the-nexus) | 🎥 [Watch the Announcement Video](LINK_TO_YOUTUBE) | ☕ [Support on Patreon](LINK_TO_PATREON)
 
 [![Node.js](https://img.shields.io/badge/Backend-Node.js%2F%20Express-green)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-black)](https://nextjs.org)
 [![Python](https://img.shields.io/badge/AI%20Engine-Python%2F%20LangGraph-blue)](https://langchain-ai.github.io/langgraph/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+---
+
+## 📸 The Command Center
+![The Nexus Dashboard Demo](docs/nexus-dashboard.png)
 
 ---
 
@@ -128,7 +134,8 @@ TheNexus/                           # Flat monorepo
 │   └── prompts.yaml                # System prompts
 ├── db/                             # SQLite schema & migrations
 ├── .context/                       # Project context docs (for AI agents)
-└── start-local.example.bat         # Startup script template (copy to start-local.bat)
+└── start-local.example.bat         # Windows startup template
+└── start-local.example.sh          # macOS/Linux startup template
 ```
 
 ---
@@ -137,7 +144,7 @@ TheNexus/                           # Flat monorepo
 
 ### Prerequisites
 
-- **Node.js** 18+ / **Python** 3.10+ / **npm**
+- **Node.js** 18+ / **Python** 3.10+ / **npm** / **git**
 - API keys for AI providers (at least one)
 
 ### Installation
@@ -145,29 +152,37 @@ TheNexus/                           # Flat monorepo
 ```bash
 git clone https://github.com/VIbeShiftAI/TheNexus.git
 cd TheNexus
-
-# Backend
-npm install
-
-# Dashboard
-cd dashboard && npm install && cd ..
-
-# Python engine
-cd nexus-builder
-python -m venv venv
-venv\Scripts\activate     # Windows
-pip install -r requirements.txt
-cd ..
-
-# Configure
-cp .env.example .env                    # Edit with your API keys
-cp start-local.example.bat start-local.bat  # Startup script
 ```
+
+#### Windows
+
+```batch
+install-windows.bat
+```
+
+#### macOS / Linux
+
+```bash
+chmod +x install-mac.sh
+./install-mac.sh
+```
+
+The installer handles everything: Node.js dependencies, Dashboard build dependencies, Python virtual environment, and configuration file scaffolding.
+
+After installation, edit `.env` with your API keys.
 
 ### Running
 
+#### Windows
+
 ```batch
 start-local.bat
+```
+
+#### macOS / Linux
+
+```bash
+./start-local.sh
 ```
 
 Opens 3 terminal windows:
@@ -424,7 +439,7 @@ The Nexus stands on the shoulders of outstanding open-source projects:
 
 ## License
 
-This project is proprietary. See the repo owner for licensing information.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 

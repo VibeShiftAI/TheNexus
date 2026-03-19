@@ -65,6 +65,8 @@ data/blackboard/
 start-nexus.bat
 start-local.bat
 stop-nexus.bat
+start-local.sh
+stop-nexus.sh
 pinned.json
 TheNexus.code-workspace
 nodemon.json
