@@ -239,6 +239,125 @@ app.use('/api/langgraph', createLangGraphRouter({ db, PROJECT_ROOT, getProjectBy
 app.use('/api/initiatives', createInitiativesRouter({ db }));
 app.use('/api/workflows', createWorkflowsRouter({ db, PROJECT_ROOT, getProjectById }));
 
+// ============================================================================
+// SETTINGS / ENV EDITOR ENDPOINTS
+// ============================================================================
+app.use('/api/settings', authenticate);
+
+/**
+ * Parse a .env file into a key→value map (ignores comments and blank lines)
+ */
+function parseEnvFile(filePath) {
+    const result = {};
+    if (!fs.existsSync(filePath)) return result;
+    const lines = fs.readFileSync(filePath, 'utf-8').split('\n');
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) continue;
+        const key = trimmed.substring(0, eqIdx).trim();
+        const value = trimmed.substring(eqIdx + 1).trim();
+        result[key] = value;
+    }
+    return result;
+}
+
+/**
+ * Write key→value pairs to a .env file, preserving comments and structure
+ * from a template, or creating a clean file if no template exists.
+ */
+function writeEnvFile(filePath, values, templatePath) {
+    // If a template exists, use it as the skeleton (preserving comments)
+    if (templatePath && fs.existsSync(templatePath)) {
+        const templateLines = fs.readFileSync(templatePath, 'utf-8').split('\n');
+        const outputLines = [];
+        for (const line of templateLines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) {
+                outputLines.push(line);
+                continue;
+            }
+            const eqIdx = trimmed.indexOf('=');
+            if (eqIdx === -1) { outputLines.push(line); continue; }
+            const key = trimmed.substring(0, eqIdx).trim();
+            if (key in values) {
+                outputLines.push(`${key}=${values[key]}`);
+            } else {
+                outputLines.push(line);
+            }
+        }
+        fs.writeFileSync(filePath, outputLines.join('\n'), 'utf-8');
+    } else {
+        // No template — write a clean file
+        const lines = Object.entries(values).map(([k, v]) => `${k}=${v}`);
+        fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf-8');
+    }
+}
+
+// Whitelist of keys the dashboard is allowed to read/write
+const ENV_EDITABLE_KEYS = [
+    'PROJECT_ROOT',
+    'GOOGLE_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'XAI_API_KEY'
+];
+
+// GET /api/settings/env — Read current env values (only editable keys)
+app.get('/api/settings/env', (req, res) => {
+    try {
+        const rootEnvPath = path.resolve(__dirname, '..', '.env');
+        const rootValues = parseEnvFile(rootEnvPath);
+
+        const result = {};
+        for (const key of ENV_EDITABLE_KEYS) {
+            result[key] = rootValues[key] || '';
+        }
+        res.json(result);
+    } catch (error) {
+        console.error('[Settings] Error reading .env:', error);
+        res.status(500).json({ error: 'Failed to read environment configuration' });
+    }
+});
+
+// POST /api/settings/env — Write env values to both root and Python .env
+app.post('/api/settings/env', (req, res) => {
+    try {
+        const updates = req.body;
+
+        // Only allow whitelisted keys
+        const filtered = {};
+        for (const key of ENV_EDITABLE_KEYS) {
+            if (key in updates) filtered[key] = updates[key];
+        }
+
+        if (Object.keys(filtered).length === 0) {
+            return res.status(400).json({ error: 'No valid keys provided' });
+        }
+
+        // --- Update root .env ---
+        const rootEnvPath = path.resolve(__dirname, '..', '.env');
+        const rootTemplatePath = path.resolve(__dirname, '..', '.env.example');
+        const rootValues = parseEnvFile(rootEnvPath);
+        Object.assign(rootValues, filtered);
+        writeEnvFile(rootEnvPath, rootValues, rootTemplatePath);
+
+        // --- Update nexus-builder .env (shared keys only) ---
+        const pyEnvPath = path.resolve(__dirname, '..', 'nexus-builder', '.env');
+        const pyTemplatePath = path.resolve(__dirname, '..', 'nexus-builder', '.env.example');
+        const pyValues = parseEnvFile(pyEnvPath);
+        const pySharedKeys = ['GOOGLE_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY'];
+        for (const key of pySharedKeys) {
+            if (key in filtered) pyValues[key] = filtered[key];
+        }
+        writeEnvFile(pyEnvPath, pyValues, pyTemplatePath);
+
+        console.log(`[Settings] Updated .env files (keys: ${Object.keys(filtered).join(', ')})`);
+        res.json({ success: true, updated: Object.keys(filtered) });
+    } catch (error) {
+        console.error('[Settings] Error writing .env:', error);
+        res.status(500).json({ error: 'Failed to save environment configuration' });
+    }
+});
+
 
 // Ensure the root directory exists for testing purposes, or warn
 if (!fs.existsSync(PROJECT_ROOT)) {

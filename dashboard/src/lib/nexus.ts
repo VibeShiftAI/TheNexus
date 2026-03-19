@@ -1913,3 +1913,35 @@ export async function checkWorkflowStage(projectId: string, workflowId: string):
 // The Python endpoint reads from workflow_templates.default_configuration
 // which contains the correct visual layout (nodes, edges, positions).
 
+// ═══════════════════════════════════════════════════════════════
+// SETTINGS / ENV EDITOR API
+// ═══════════════════════════════════════════════════════════════
+
+export interface EnvSettings {
+    PROJECT_ROOT: string;
+    GOOGLE_API_KEY: string;
+    OPENAI_API_KEY: string;
+    ANTHROPIC_API_KEY: string;
+    XAI_API_KEY: string;
+}
+
+export async function getEnvSettings(): Promise<EnvSettings> {
+    const baseUrl = API_URL.replace(/\/projects$/, '');
+    const res = await authFetch(`${baseUrl}/settings/env`);
+    if (!res.ok) throw new Error("Failed to fetch environment settings");
+    return res.json();
+}
+
+export async function saveEnvSettings(settings: Partial<EnvSettings>): Promise<{ success: boolean; updated: string[] }> {
+    const baseUrl = API_URL.replace(/\/projects$/, '');
+    const res = await authFetch(`${baseUrl}/settings/env`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+    });
+    if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save environment settings");
+    }
+    return res.json();
+}

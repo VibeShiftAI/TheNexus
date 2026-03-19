@@ -9,7 +9,8 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { AITerminal } from "@/components/ai-terminal";
 import { DashboardInitiatives } from "@/components/dashboard-initiatives";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
-import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen } from "lucide-react";
+import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen, Settings } from "lucide-react";
+import { SettingsModal } from "@/components/settings-modal";
 
 import Link from "next/link";
 
@@ -19,6 +20,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const router = useRouter();
 
@@ -96,10 +98,13 @@ export default function Home() {
               <BookOpen size={16} />
               <span>The Codex</span>
             </Link>
-            <div className="flex items-center gap-2">
-              <Zap size={16} className="text-yellow-500" />
-              <span>VIBE: HIGH</span>
-            </div>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-slate-500/20 to-slate-400/20 border border-slate-500/30 hover:border-slate-400/50 transition-all text-slate-400 hover:text-slate-300"
+            >
+              <Settings size={16} />
+              <span>Settings</span>
+            </button>
 
           </div>
         </div>
@@ -187,6 +192,11 @@ export default function Home() {
         isOpen={showNewProjectModal}
         onClose={() => setShowNewProjectModal(false)}
         onSuccess={handleNewProjectSuccess}
+      />
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
       />
 
 
