@@ -267,32 +267,55 @@ function parseEnvFile(filePath) {
  * Write key→value pairs to a .env file, preserving comments and structure
  * from a template, or creating a clean file if no template exists.
  */
-function writeEnvFile(filePath, values, templatePath) {
-    // If a template exists, use it as the skeleton (preserving comments)
-    if (templatePath && fs.existsSync(templatePath)) {
-        const templateLines = fs.readFileSync(templatePath, 'utf-8').split('\n');
-        const outputLines = [];
-        for (const line of templateLines) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith('#')) {
-                outputLines.push(line);
-                continue;
-            }
-            const eqIdx = trimmed.indexOf('=');
-            if (eqIdx === -1) { outputLines.push(line); continue; }
-            const key = trimmed.substring(0, eqIdx).trim();
-            if (key in values) {
-                outputLines.push(`${key}=${values[key]}`);
-            } else {
-                outputLines.push(line);
-            }
+/**
+ * Write key→value updates to a .env file, preserving ALL existing content.
+ * Only modifies lines whose keys appear in `updates`. All other lines
+ * (comments, blanks, unknown keys) are kept exactly as they were.
+ * Falls back to the template only if the file doesn't exist yet.
+ */
+function writeEnvFile(filePath, updates, templatePath) {
+    // If the file doesn't exist yet, bootstrap from the template
+    if (!fs.existsSync(filePath)) {
+        if (templatePath && fs.existsSync(templatePath)) {
+            fs.copyFileSync(templatePath, filePath);
+        } else {
+            // No file and no template — write only the updates
+            const lines = Object.entries(updates).map(([k, v]) => `${k}=${v}`);
+            fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf-8');
+            return;
         }
-        fs.writeFileSync(filePath, outputLines.join('\n'), 'utf-8');
-    } else {
-        // No template — write a clean file
-        const lines = Object.entries(values).map(([k, v]) => `${k}=${v}`);
-        fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf-8');
     }
+
+    // Read the EXISTING file (not the template) — this preserves all user-added keys
+    const existingLines = fs.readFileSync(filePath, 'utf-8').split('\n');
+    const updatedKeys = new Set();
+    const outputLines = [];
+
+    for (const line of existingLines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) {
+            outputLines.push(line);
+            continue;
+        }
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) { outputLines.push(line); continue; }
+        const key = trimmed.substring(0, eqIdx).trim();
+        if (key in updates) {
+            outputLines.push(`${key}=${updates[key]}`);
+            updatedKeys.add(key);
+        } else {
+            outputLines.push(line);  // preserve as-is
+        }
+    }
+
+    // Append any new keys that weren't already in the file
+    for (const [key, value] of Object.entries(updates)) {
+        if (!updatedKeys.has(key)) {
+            outputLines.push(`${key}=${value}`);
+        }
+    }
+
+    fs.writeFileSync(filePath, outputLines.join('\n'), 'utf-8');
 }
 
 // Whitelist of keys the dashboard is allowed to read/write
@@ -333,22 +356,20 @@ app.post('/api/settings/env', (req, res) => {
             return res.status(400).json({ error: 'No valid keys provided' });
         }
 
-        // --- Update root .env ---
+        // --- Update root .env (in-place, preserves all existing keys) ---
         const rootEnvPath = path.resolve(__dirname, '..', '.env');
         const rootTemplatePath = path.resolve(__dirname, '..', '.env.example');
-        const rootValues = parseEnvFile(rootEnvPath);
-        Object.assign(rootValues, filtered);
-        writeEnvFile(rootEnvPath, rootValues, rootTemplatePath);
+        writeEnvFile(rootEnvPath, filtered, rootTemplatePath);
 
-        // --- Update nexus-builder .env (shared keys only) ---
+        // --- Update nexus-builder .env (shared keys only, in-place) ---
         const pyEnvPath = path.resolve(__dirname, '..', 'nexus-builder', '.env');
         const pyTemplatePath = path.resolve(__dirname, '..', 'nexus-builder', '.env.example');
-        const pyValues = parseEnvFile(pyEnvPath);
         const pySharedKeys = ['GOOGLE_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY'];
+        const pyFiltered = {};
         for (const key of pySharedKeys) {
-            if (key in filtered) pyValues[key] = filtered[key];
+            if (key in filtered) pyFiltered[key] = filtered[key];
         }
-        writeEnvFile(pyEnvPath, pyValues, pyTemplatePath);
+        writeEnvFile(pyEnvPath, pyFiltered, pyTemplatePath);
 
         console.log(`[Settings] Updated .env files (keys: ${Object.keys(filtered).join(', ')})`);
         res.json({ success: true, updated: Object.keys(filtered) });
