@@ -169,7 +169,12 @@ chmod +x install-mac.sh
 
 The installer handles everything: Node.js dependencies, Dashboard build dependencies, Python virtual environment, and configuration file scaffolding.
 
-After installation, edit `.env` with your API keys.
+After installation, configure your API keys using the guided setup:
+
+```batch
+setup-env.bat          # Windows
+./setup-env.sh         # macOS / Linux
+```
 
 ### Running
 
