@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS projects (
     stack TEXT DEFAULT '{}',           -- JSON object
     urls TEXT DEFAULT '{}',            -- JSON object
     tasks_list TEXT DEFAULT '[]',      -- JSON array of strings
+    user_id TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -42,10 +43,21 @@ CREATE TABLE IF NOT EXISTS tasks (
     plan_metadata TEXT,                -- JSON: { generatedAt, approvedAt, ... }
     walkthrough TEXT,
     task_ledger TEXT DEFAULT '[]',     -- JSON array
+    feedback TEXT,                      -- User feedback on task
+    metadata TEXT DEFAULT '{}',         -- JSON: general task metadata
     langgraph_template TEXT,           -- LangGraph workflow template ID
+    langgraph_run_id TEXT,             -- Active LangGraph run ID
+    langgraph_status TEXT,             -- LangGraph execution status
+    langgraph_node TEXT,               -- Current LangGraph node
+    langgraph_started_at TEXT,         -- When LangGraph run started
+    langgraph_updated_at TEXT,         -- When LangGraph run last updated
+    critic_feedback TEXT,              -- Code review critic feedback
+    initiative_validation TEXT,         -- JSON: validation data from initiative router
     supervisor_status TEXT,
     supervisor_details TEXT,           -- JSON object
     reasoning_level TEXT DEFAULT 'vibe',
+    user_id TEXT,
+    source TEXT,                       -- Origin of the task (e.g. 'cortex', 'manual')
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -239,12 +251,18 @@ CREATE TABLE IF NOT EXISTS project_workflows (
     description TEXT,
     status TEXT DEFAULT 'draft',
     current_stage TEXT,
+    workflow_type TEXT,
     trigger_type TEXT DEFAULT 'manual',
     trigger_config TEXT DEFAULT '{}',    -- JSON
     graph_config TEXT DEFAULT '{}',      -- JSON (React Flow nodes/edges)
     stages TEXT DEFAULT '[]',           -- JSON array of workflow stages
+    template_id TEXT,                   -- Reference to workflow template
+    configuration TEXT DEFAULT '{}',    -- JSON: workflow-specific config
     outputs TEXT DEFAULT '{}',          -- JSON object of stage outputs
     is_active INTEGER DEFAULT 1,        -- boolean
+    supervisor_status TEXT,
+    supervisor_details TEXT,            -- JSON object
+    parent_initiative_id TEXT,          -- Initiative that spawned this workflow
     last_run_at TEXT,
     run_count INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
@@ -280,6 +298,12 @@ CREATE TABLE IF NOT EXISTS initiative_project_status (
     project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'not_started',
     notes TEXT,
+    spawned_workflow_id TEXT,
+    spawned_feature_ids TEXT,          -- JSON array
+    result TEXT,
+    error_message TEXT,
+    started_at TEXT,
+    completed_at TEXT,
     updated_at TEXT DEFAULT (datetime('now')),
     UNIQUE(initiative_id, project_id)
 );
