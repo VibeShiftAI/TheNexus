@@ -66,6 +66,13 @@ class DocFileWriterNode(AtomicNode):
 
         for file_entry in doc_changes.get("files", []):
             path = file_entry.get("path", "")
+            
+            # Sanitize: collapse doubled .context/ segments
+            # LLM sometimes produces paths like /project/.context/.context/tech-stack.md
+            while '/.context/.context/' in path or '\\.context\\.context\\' in path:
+                path = path.replace('/.context/.context/', '/.context/')
+                path = path.replace('\\.context\\.context\\', '\\.context\\')
+            
             hunks = file_entry.get("hunks", [])
             statuses = [h.get("status", "unknown") for h in hunks]
             print(f"[DocFileWriter] File: {path}, {len(hunks)} hunks, statuses: {statuses}")

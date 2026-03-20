@@ -423,6 +423,9 @@ async def write_docs(state: WorkflowState):
     
     for file_entry in doc_changes.get("files", []):
         path = file_entry["path"]
+        # Sanitize: collapse doubled .context/ segments
+        while '/.context/.context/' in path:
+            path = path.replace('/.context/.context/', '/.context/')
         hunks = file_entry.get("hunks", [])
         
         # Check if any hunks are approved

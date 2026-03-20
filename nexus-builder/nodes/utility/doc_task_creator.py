@@ -271,7 +271,12 @@ class DocumentationTaskCreatorNode(AtomicNode):
         
         action = gap.get("action", "update").title()
         file = gap.get("file", "unknown")
-        parts.append(f"**Action:** {action} `.context/{file}`")
+        # Avoid doubling .context/ prefix — the analysis may already include it
+        if file.startswith(".context/"):
+            display_path = file
+        else:
+            display_path = f".context/{file}"
+        parts.append(f"**Action:** {action} `{display_path}`")
         
         if gap.get("description"):
             parts.append(f"\n**Details:**\n{gap['description']}")
