@@ -1038,7 +1038,7 @@ async function getExecutionSteps(projectId, featureId) {
     try {
         let sql = 'SELECT * FROM execution_steps WHERE project_id = ?';
         const params = [projectId];
-        if (featureId) { sql += ' AND feature_id = ?'; params.push(featureId); }
+        if (featureId) { sql += ' AND task_id = ?'; params.push(featureId); }
         sql += ' ORDER BY created_at ASC';
         return deserRows(db.prepare(sql).all(...params));
     } catch (err) {
@@ -1067,7 +1067,7 @@ async function getInlineComments(projectId, featureId) {
     try {
         let sql = 'SELECT * FROM inline_comments WHERE project_id = ?';
         const params = [projectId];
-        if (featureId) { sql += ' AND feature_id = ?'; params.push(featureId); }
+        if (featureId) { sql += ' AND task_id = ?'; params.push(featureId); }
         sql += ' ORDER BY created_at ASC';
         return deserRows(db.prepare(sql).all(...params));
     } catch (err) {

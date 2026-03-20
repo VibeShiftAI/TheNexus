@@ -108,6 +108,9 @@ CREATE TABLE IF NOT EXISTS checkpoints (
     checkpoint TEXT NOT NULL,           -- JSON
     metadata TEXT DEFAULT '{}',         -- JSON
     created_at TEXT DEFAULT (datetime('now')),
+    checkpoint_ns TEXT,                 -- LangGraph checkpoint namespace
+    parent_checkpoint_id TEXT,          -- Parent checkpoint reference
+    type TEXT,                          -- Checkpoint type
     PRIMARY KEY (thread_id, checkpoint_id)
 );
 
