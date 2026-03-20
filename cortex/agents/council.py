@@ -19,7 +19,7 @@ from typing import List, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from cortex.llm_factory import LLMFactory, ModelRole
+from cortex.llm_factory import LLMFactory, LLMConfigurationError, ModelRole
 from cortex.schemas.state import (
     VoteReceipt,
     LineComment,
@@ -248,9 +248,24 @@ async def run_council_review(
 
     member_ids = list(COUNCIL_MEMBERS.keys())
     
-    # Pre-assign unique models to each reviewer
+    # Pre-assign unique models — require at least 2 distinct API providers
     factory = LLMFactory.get_instance()
-    unique_models = factory.get_unique_models(ModelRole.REVIEWER, len(member_ids), labels=member_ids)
+    try:
+        unique_models = factory.get_unique_models(
+            ModelRole.REVIEWER, len(member_ids), labels=member_ids, min_providers=2
+        )
+    except LLMConfigurationError as e:
+        logger.error(f"[Council] Cannot assemble council: {e}")
+        return [VoteReceipt(
+            voter="System",
+            decision="reject",
+            reasoning=(
+                f"⚠️ Council cannot assemble: {e} "
+                f"The reviewer pool requires API keys from at least 2 different providers "
+                f"(e.g., Google + Anthropic, or OpenAI + xAI) to ensure diverse perspectives."
+            ),
+            line_comments=[],
+        )]
 
     tasks = [
         _run_single_review(member_id, plan, prior_comments, assigned_model=model)

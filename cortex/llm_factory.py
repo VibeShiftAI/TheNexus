@@ -139,11 +139,27 @@ class LLMFactory:
             model_id=model_id,
         )
 
-    def get_unique_models(self, role: ModelRole, count: int, labels: Optional[List[str]] = None) -> list:
+    def get_available_providers(self, role: ModelRole) -> set:
+        """Returns the set of provider names with valid API keys for a role's shuffle pool."""
+        role_config = self._registry.get("roles", {}).get(role.value)
+        if not role_config or role_config.get("strategy") != "shuffle":
+            return set()
+        providers = set()
+        for model_id in role_config.get("pool", []):
+            if self._is_model_available(model_id):
+                model_def = self._registry.get("models", {}).get(model_id, {})
+                providers.add(model_def.get("provider", "unknown"))
+        return providers
+
+    def get_unique_models(self, role: ModelRole, count: int, labels: Optional[List[str]] = None, min_providers: int = 0) -> list:
         """Returns `count` unique LLM instances from a shuffle pool.
         
         If the pool has fewer models than `count`, cycles through the pool
         so every model is used before any repeats.
+        
+        Args:
+            min_providers: Minimum number of distinct providers required.
+                           Raises LLMConfigurationError if not met.
         """
         role_key = role.value
         role_config = self._registry.get("roles", {}).get(role_key)
@@ -162,7 +178,18 @@ class LLMFactory:
         # Filter to models with configured API keys
         available = [m for m in pool if self._is_model_available(m)]
         if not available:
-            raise ValueError(f"Role '{role_key}' has no available models (check API keys for: {pool})")
+            raise LLMConfigurationError(f"Role '{role_key}' has no available models (check API keys for: {pool})")
+
+        # Enforce minimum provider diversity
+        if min_providers > 0:
+            available_providers = self.get_available_providers(role)
+            if len(available_providers) < min_providers:
+                configured = ", ".join(sorted(available_providers)) if available_providers else "none"
+                raise LLMConfigurationError(
+                    f"Council requires at least {min_providers} different API providers, "
+                    f"but only found: {configured}. "
+                    f"Please add API keys for more providers in your .env file."
+                )
         
         skipped = set(pool) - set(available)
         if skipped:
