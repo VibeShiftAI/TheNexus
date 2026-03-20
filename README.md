@@ -173,7 +173,7 @@ chmod +x install-mac.sh
 
 The installer handles everything: Node.js dependencies, Dashboard build dependencies, Python virtual environment, and configuration file scaffolding.
 
-After installation, configure your API keys:
+After installation, configure your API keys. Note, I can't guarantee you can get full functionality without both a Google and Anthropic API key, as those were the 2 I started development with:
 
 **Option A — Dashboard Settings (recommended)**
 Once The Nexus is running, click the ⚙️ **Settings** gear icon in the top-right of the dashboard. The settings panel lets you edit your `PROJECT_ROOT` and all API keys — changes are saved to both `.env` files automatically.
