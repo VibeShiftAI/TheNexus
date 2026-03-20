@@ -37,9 +37,12 @@ CREATE TABLE IF NOT EXISTS tasks (
     spec_output TEXT,
     research_output TEXT,
     research_interaction_id TEXT,
+    research_metadata TEXT,            -- JSON: { generatedAt, mode, feedback, ... }
     plan_output TEXT,
+    plan_metadata TEXT,                -- JSON: { generatedAt, approvedAt, ... }
     walkthrough TEXT,
     task_ledger TEXT DEFAULT '[]',     -- JSON array
+    langgraph_template TEXT,           -- LangGraph workflow template ID
     supervisor_status TEXT,
     supervisor_details TEXT,           -- JSON object
     reasoning_level TEXT DEFAULT 'vibe',
@@ -218,6 +221,7 @@ CREATE TABLE IF NOT EXISTS project_contexts (
     project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
     context_type TEXT NOT NULL,
     content TEXT,
+    status TEXT DEFAULT 'draft',
     updated_at TEXT DEFAULT (datetime('now')),
     UNIQUE(project_id, context_type)
 );
@@ -233,9 +237,13 @@ CREATE TABLE IF NOT EXISTS project_workflows (
     project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
+    status TEXT DEFAULT 'draft',
+    current_stage TEXT,
     trigger_type TEXT DEFAULT 'manual',
     trigger_config TEXT DEFAULT '{}',    -- JSON
     graph_config TEXT DEFAULT '{}',      -- JSON (React Flow nodes/edges)
+    stages TEXT DEFAULT '[]',           -- JSON array of workflow stages
+    outputs TEXT DEFAULT '{}',          -- JSON object of stage outputs
     is_active INTEGER DEFAULT 1,        -- boolean
     last_run_at TEXT,
     run_count INTEGER DEFAULT 0,
