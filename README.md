@@ -9,6 +9,8 @@
 [![Python](https://img.shields.io/badge/AI%20Engine-Python%2F%20LangGraph-blue)](https://langchain-ai.github.io/langgraph/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> **⚠️ Disclaimer:** This project was entirely vibecoded by a single person. It is a personal experiment in AI-assisted development and is **not intended for production use**. Expect rough edges, unconventional patterns, and the occasional "it works on my machine" moment. Use at your own risk — and have fun with it.
+
 ---
 
 ## 📸 The Command Center
