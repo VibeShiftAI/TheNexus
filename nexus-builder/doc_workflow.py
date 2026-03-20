@@ -343,7 +343,7 @@ async def review_docs(state: WorkflowState):
     # Sync the doc_changes to the database
     from supervisor.agent import sync_artifacts
     if doc_changes.get("files"):
-        await sync_artifacts(context, {"doc_changes": json.dumps(doc_changes)})
+        await sync_artifacts(context, {"doc_changes": json.dumps(doc_changes)}, node_id="review_docs")
     
     # Create artifact for the ArtifactPanel
     artifact = {
@@ -468,7 +468,7 @@ async def write_docs(state: WorkflowState):
             "written": written_files,
             "skipped": skipped_files
         })
-    })
+    }, node_id="write_docs")
     
     summary = f"Wrote {len(written_files)} files"
     if skipped_files:

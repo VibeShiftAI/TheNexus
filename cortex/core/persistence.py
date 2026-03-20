@@ -1,7 +1,19 @@
 import os
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
 DB_PATH = "data/cortex_state.db"
+
+# Register custom types that appear in LangGraph checkpoints.
+# Without this, deserialization emits warnings like:
+#   "Deserializing unregistered type cortex.schemas.state.MarkdownPlan from checkpoint"
+_ALLOWED_MODULES = [
+    ("cortex.schemas.state", "MarkdownPlan"),
+    ("cortex.schemas.state", "VoteReceipt"),
+    ("cortex.schemas.state", "LineComment"),
+    ("cortex.schemas.state", "ProjectPlan"),
+    ("cortex.schemas.state", "WorkflowNode"),
+]
 
 
 class ConnectionWrapper:
@@ -47,6 +59,9 @@ class CheckpointFactory:
             # Use wrapper to inject is_alive
             wrapped_conn = ConnectionWrapper(conn)
             
-            cls._saver = AsyncSqliteSaver(wrapped_conn)
+            # Create serializer with registered custom types
+            serde = JsonPlusSerializer(allowed_msgpack_modules=_ALLOWED_MODULES)
+            
+            cls._saver = AsyncSqliteSaver(wrapped_conn, serde=serde)
             
         return cls._saver

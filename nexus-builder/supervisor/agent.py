@@ -59,7 +59,7 @@ async def await_research_approval(state: WorkflowState):
     
     # Use sync_artifacts (which uses /api/langgraph/sync-output) instead of direct PATCH
     # The sync endpoint handles setting research_output + status='researched' automatically
-    await sync_artifacts(context, {"research": research_content})
+    await sync_artifacts(context, {"research": research_content}, node_id="research_approval")
     print(f"[Approval Gate] Synced research to task {context.get('task_id')}")
     
     # Note: Status is already set via the PATCH above, no need to call update_task_status again
@@ -115,7 +115,7 @@ async def await_plan_approval(state: WorkflowState):
     # Use sync_artifacts (which uses /api/langgraph/sync-output) instead of direct PATCH
     # The sync endpoint handles setting plan_output + status='planned' automatically
     if plan_content and plan_content != "No plan available":
-        await sync_artifacts(context, {"plan": plan_content})
+        await sync_artifacts(context, {"plan": plan_content}, node_id="plan_approval")
         print(f"[Approval Gate] Synced plan to task {context.get('task_id')}")
     
     # Note: Status is already set via the PATCH above, no need to call update_task_status again
@@ -203,7 +203,7 @@ async def update_task_status(context: Dict, status: str, message: str):
 # --- NODES ---
 
 # --- HELPER: SYNC ARTIFACTS ---
-async def sync_artifacts(context: Dict, outputs: Dict):
+async def sync_artifacts(context: Dict, outputs: Dict, node_id: str = None):
     """Syncs artifacts to the Node.js backend via /api/langgraph/sync-output"""
     task_id = context.get("task_id")
     if not task_id:
@@ -216,6 +216,7 @@ async def sync_artifacts(context: Dict, outputs: Dict):
                 f"{url}/api/langgraph/sync-output",
                 json={
                     "task_id": task_id,
+                    "node_id": node_id,
                     "outputs": outputs,
                     # Optional context
                     "project_id": context.get("project_id"),
@@ -597,7 +598,7 @@ async def call_research_fleet(state: WorkflowState):
             dossier = "## Research Complete\n\nThe research phase determined no additional external research was needed for this task. Proceed with planning based on existing knowledge and project context."
         
         # Sync artifact
-        await sync_artifacts(state["context"], {"research": dossier})
+        await sync_artifacts(state["context"], {"research": dossier}, node_id="research_fleet")
             
         return {
             "outputs": {**state.get("outputs", {}), "research_dossier": dossier}
@@ -666,7 +667,7 @@ async def call_architect_fleet(state: WorkflowState):
         
         # Sync artifact (Plan is the spec_markdown)
         if blueprint["spec_markdown"]:
-             await sync_artifacts(state["context"], {"plan": blueprint["spec_markdown"]})
+             await sync_artifacts(state["context"], {"plan": blueprint["spec_markdown"]}, node_id="architect_fleet")
         
         return {
             "outputs": {
@@ -767,7 +768,7 @@ async def call_builder_fleet(state: WorkflowState):
         # Sync walkthrough to database for UI display
         walkthrough = result.get("walkthrough", "")
         if walkthrough:
-            await sync_artifacts(state["context"], {"walkthrough": walkthrough})
+            await sync_artifacts(state["context"], {"walkthrough": walkthrough}, node_id="builder_fleet")
         
         return_val = {
             "outputs": {
@@ -1028,7 +1029,7 @@ Keep it concise but informative. Focus on WHAT changed and WHY, not implementati
         print(f"[Walkthrough Generator] Generated walkthrough ({len(walkthrough)} chars)")
         
         # Sync to database
-        await sync_artifacts(context, {"walkthrough": walkthrough})
+        await sync_artifacts(context, {"walkthrough": walkthrough}, node_id="walkthrough_generator")
         
         return {
             "outputs": {
@@ -1054,7 +1055,7 @@ Keep it concise but informative. Focus on WHAT changed and WHY, not implementati
 ## Audit Result
 {audit.get('status', 'N/A')}: {audit.get('reasoning', 'No details')}
 """
-        await sync_artifacts(context, {"walkthrough": fallback})
+        await sync_artifacts(context, {"walkthrough": fallback}, node_id="walkthrough_generator")
         
         return {
             "outputs": {

@@ -1973,7 +1973,8 @@ app.patch('/api/tasks/:taskId', async (req, res) => {
             };
         }
 
-        console.log(`[Task Sync] Updating task ${taskId}: status=${status}, has_research=${!!research_output}, has_plan=${!!plan_output}`);
+        const updateKeys = Object.keys(updates).filter(k => k !== 'updated_at');
+        console.log(`[Task Sync] Updating task ${taskId}: ${updateKeys.join(', ')}`);
 
         const updated = await db.updateTask(taskId, updates);
 
