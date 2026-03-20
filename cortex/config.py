@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     )
 
     # API Keys (SecretStr prevents accidental logging)
-    openai_api_key: SecretStr = Field(alias="OPENAI_API_KEY")
+    openai_api_key: Optional[SecretStr] = Field(default=None, alias="OPENAI_API_KEY")
     anthropic_api_key: Optional[SecretStr] = Field(default=None, alias="ANTHROPIC_API_KEY")
     google_api_key: Optional[SecretStr] = Field(default=None, alias="GOOGLE_API_KEY")
     xai_api_key: Optional[SecretStr] = Field(default=None, alias="XAI_API_KEY")

@@ -84,8 +84,19 @@ class LLMFactory:
         except FileNotFoundError:
             raise RuntimeError(f"❌ Config not found at {self._config_path}")
 
+    @staticmethod
+    def _is_placeholder_key(value: str) -> bool:
+        """Detect .env.example placeholder values like 'your-openai-api-key'."""
+        v = value.strip().lower()
+        return (
+            v.startswith("your-")
+            or v.startswith("your_")
+            or v in ("", "changeme", "placeholder", "xxx", "none")
+            or len(v) < 8
+        )
+
     def _is_model_available(self, model_id: str) -> bool:
-        """Check if a model's required API key is configured."""
+        """Check if a model's required API key is configured (not a placeholder)."""
         model_def = self._registry.get("models", {}).get(model_id)
         if not model_def:
             return False
@@ -97,7 +108,11 @@ class LLMFactory:
             "xai": settings.xai_api_key,
         }
         key = key_map.get(provider)
-        return key is not None
+        if key is None:
+            return False
+        # SecretStr: extract the actual value and check for placeholders
+        raw = key.get_secret_value() if hasattr(key, "get_secret_value") else str(key)
+        return not self._is_placeholder_key(raw)
 
     def get_model(self, role: ModelRole) -> BaseChatModel:
         """Returns a configured LangChain ChatModel for the specified role."""
@@ -238,6 +253,8 @@ class LLMFactory:
 
         try:
             if provider == "openai":
+                if not settings.openai_api_key:
+                    raise LLMConfigurationError("OPENAI_API_KEY not configured")
                 return ChatOpenAI(
                     model=model_name,
                     temperature=temperature,
