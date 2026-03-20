@@ -134,8 +134,9 @@ TheNexus/                           # Flat monorepo
 │   └── prompts.yaml                # System prompts
 ├── db/                             # SQLite schema & migrations
 ├── .context/                       # Project context docs (for AI agents)
-└── start-local.example.bat         # Windows startup template
-└── start-local.example.sh          # macOS/Linux startup template
+└── Start The Nexus.example.bat     # Windows startup template (double-click)
+└── Start The Nexus.example.command # macOS startup template (double-click)
+└── start-local.example.sh          # Linux startup template
 ```
 
 ---
@@ -149,11 +150,12 @@ TheNexus/                           # Flat monorepo
 
 ### Installation
 
+Start by right clicking on your main "Projects" folder and click "Open in Terminal", then copy and paste the following commands one by one. Your main Projects folder should not be nested inside Documents, Downloads, or any other system folders.
+
 ```bash
 git clone https://github.com/VIbeShiftAI/TheNexus.git
 cd TheNexus
 ```
-
 #### Windows
 
 ```batch
@@ -185,11 +187,21 @@ setup-env.bat          # Windows
 
 #### Windows
 
+Double-click **`Start The Nexus.bat`** in Explorer, or run from terminal:
+
 ```batch
-start-local.bat
+"Start The Nexus.bat"
 ```
 
-#### macOS / Linux
+#### macOS
+
+Double-click **`Start The Nexus.command`** in Finder, or run from terminal:
+
+```bash
+open "Start The Nexus.command"
+```
+
+#### Linux
 
 ```bash
 ./start-local.sh

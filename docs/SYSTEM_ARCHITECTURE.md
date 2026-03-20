@@ -227,7 +227,7 @@ Starts Cloudflare Tunnel, Node.js API (:4000), and Next.js Dashboard (:3000).
 
 ### Start Locally (No Tunnel)
 ```batch
-start-local.bat
+"Start The Nexus.bat"
 ```
 
 ### MCP Server (Standalone)

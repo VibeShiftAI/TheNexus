@@ -243,12 +243,20 @@ else
     echo "    • nexus-builder/.env already exists, skipping"
 fi
 
-# Startup script
+# Startup script (shell)
 if [ ! -f "start-local.sh" ]; then
     cp start-local.example.sh start-local.sh
     echo "    ✓ Created start-local.sh (from example)"
 else
     echo "    • start-local.sh already exists, skipping"
+fi
+
+# Startup script (macOS double-click)
+if [ ! -f "Start The Nexus.command" ]; then
+    cp "Start The Nexus.example.command" "Start The Nexus.command" 2>/dev/null || true
+    echo '    ✓ Created "Start The Nexus.command" (from example)'
+else
+    echo '    • "Start The Nexus.command" already exists, skipping'
 fi
 
 # Stop script
@@ -258,7 +266,7 @@ if [ ! -f "stop-nexus.sh" ]; then
 fi
 
 # Make scripts executable
-chmod +x start-local.sh stop-nexus.sh start-local.example.sh stop-nexus.example.sh 2>/dev/null || true
+chmod +x start-local.sh stop-nexus.sh start-local.example.sh stop-nexus.example.sh "Start The Nexus.command" "Start The Nexus.example.command" 2>/dev/null || true
 
 echo ""
 echo "  ╔═══════════════════════════════════════════════════════╗"
@@ -271,7 +279,8 @@ echo "  ║   1. Edit .env with your API keys:                    ║"
 echo "  ║      nano .env                                        ║"
 echo "  ║                                                       ║"
 echo "  ║   2. Start The Nexus:                                 ║"
-echo "  ║      ./start-local.sh                                 ║"
+echo "  ║      Double-click \"Start The Nexus.command\"           ║"
+echo "  ║      or run: ./start-local.sh                          ║"
 echo "  ║                                                       ║"
 echo "  ║   URLs (after startup):                               ║"
 echo "  ║   - Dashboard:  http://localhost:3000                  ║"

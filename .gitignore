@@ -63,8 +63,10 @@ data/blackboard/
 
 # Local-only files
 start-nexus.bat
-start-local.bat
+Start The Nexus.bat
+Start The Nexus.command
 stop-nexus.bat
+start-local.bat
 start-local.sh
 stop-nexus.sh
 pinned.json

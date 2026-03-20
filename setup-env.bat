@@ -154,7 +154,7 @@ echo.
 echo  ╔═══════════════════════════════════════════════════════╗
 echo  ║         Configuration saved!                          ║
 echo  ║                                                       ║
-echo  ║   Run start-local.bat to start The Nexus.             ║
+echo  ║   Run "Start The Nexus.bat" to start The Nexus.       ║
 echo  ╚═══════════════════════════════════════════════════════╝
 echo.
 pause

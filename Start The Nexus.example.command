@@ -1,7 +1,7 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-#  THE NEXUS — Local Development Startup (macOS / Linux)
-#  Equivalent of "Start The Nexus.bat" for Windows
+#  THE NEXUS — Local Development Startup (macOS)
+#  Double-click this file to start all services
 # ═══════════════════════════════════════════════════════════════
 
 NEXUS_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -17,25 +17,12 @@ echo ""
 # ───────────────────────────────────────────────────────────────
 echo "  [1/3] Starting LangGraph Engine (port 8000)..."
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS — open a new Terminal.app window
-    osascript -e "
-        tell application \"Terminal\"
-            activate
-            do script \"cd '$NEXUS_DIR/nexus-builder' && source venv/bin/activate && PYTHONPATH='$NEXUS_DIR':\$PYTHONPATH uvicorn main:app --reload --port 8000\"
-        end tell
-    "
-else
-    # Linux — try common terminal emulators
-    if command -v gnome-terminal &>/dev/null; then
-        gnome-terminal --title="LangGraph Engine (8000)" -- bash -c "cd '$NEXUS_DIR/nexus-builder' && source venv/bin/activate && PYTHONPATH='$NEXUS_DIR':\$PYTHONPATH uvicorn main:app --reload --port 8000; exec bash"
-    elif command -v xterm &>/dev/null; then
-        xterm -title "LangGraph Engine (8000)" -e "cd '$NEXUS_DIR/nexus-builder' && source venv/bin/activate && PYTHONPATH='$NEXUS_DIR':\$PYTHONPATH uvicorn main:app --reload --port 8000" &
-    else
-        echo "    ⚠ No supported terminal emulator found. Starting in background..."
-        (cd "$NEXUS_DIR/nexus-builder" && source venv/bin/activate && PYTHONPATH="$NEXUS_DIR":$PYTHONPATH uvicorn main:app --reload --port 8000) &
-    fi
-fi
+osascript -e "
+    tell application \"Terminal\"
+        activate
+        do script \"cd '$NEXUS_DIR/nexus-builder' && source venv/bin/activate && PYTHONPATH='$NEXUS_DIR':\$PYTHONPATH uvicorn main:app --reload --port 8000\"
+    end tell
+"
 
 sleep 1
 
@@ -44,21 +31,11 @@ sleep 1
 # ───────────────────────────────────────────────────────────────
 echo "  [2/3] Starting Node.js Backend (port 4000)..."
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    osascript -e "
-        tell application \"Terminal\"
-            do script \"cd '$NEXUS_DIR' && node server/server.js\"
-        end tell
-    "
-else
-    if command -v gnome-terminal &>/dev/null; then
-        gnome-terminal --title="Nexus Backend (4000)" -- bash -c "cd '$NEXUS_DIR' && node server/server.js; exec bash"
-    elif command -v xterm &>/dev/null; then
-        xterm -title "Nexus Backend (4000)" -e "cd '$NEXUS_DIR' && node server/server.js" &
-    else
-        (cd "$NEXUS_DIR" && node server/server.js) &
-    fi
-fi
+osascript -e "
+    tell application \"Terminal\"
+        do script \"cd '$NEXUS_DIR' && node server/server.js\"
+    end tell
+"
 
 sleep 2
 
@@ -67,21 +44,11 @@ sleep 2
 # ───────────────────────────────────────────────────────────────
 echo "  [3/3] Starting Dashboard (port 3000)..."
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    osascript -e "
-        tell application \"Terminal\"
-            do script \"cd '$NEXUS_DIR/dashboard' && npm run dev\"
-        end tell
-    "
-else
-    if command -v gnome-terminal &>/dev/null; then
-        gnome-terminal --title="Nexus Dashboard (3000)" -- bash -c "cd '$NEXUS_DIR/dashboard' && npm run dev; exec bash"
-    elif command -v xterm &>/dev/null; then
-        xterm -title "Nexus Dashboard (3000)" -e "cd '$NEXUS_DIR/dashboard' && npm run dev" &
-    else
-        (cd "$NEXUS_DIR/dashboard" && npm run dev) &
-    fi
-fi
+osascript -e "
+    tell application \"Terminal\"
+        do script \"cd '$NEXUS_DIR/dashboard' && npm run dev\"
+    end tell
+"
 
 echo ""
 echo "  ==============================================="

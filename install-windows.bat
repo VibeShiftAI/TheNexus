@@ -262,11 +262,11 @@ if not exist "nexus-builder\.env" (
 )
 
 :: Startup script
-if not exist "start-local.bat" (
-    copy "start-local.example.bat" "start-local.bat" >nul
-    echo    ✓ Created start-local.bat (from example)
+if not exist "Start The Nexus.bat" (
+    copy "Start The Nexus.example.bat" "Start The Nexus.bat" >nul
+    echo    ✓ Created "Start The Nexus.bat" (from example)
 ) else (
-    echo    • start-local.bat already exists, skipping
+    echo    • "Start The Nexus.bat" already exists, skipping
 )
 
 echo.
@@ -280,7 +280,7 @@ echo  ║   1. Edit .env with your API keys:                    ║
 echo  ║      notepad .env                                     ║
 echo  ║                                                       ║
 echo  ║   2. Start The Nexus:                                 ║
-echo  ║      start-local.bat                                  ║
+echo  ║      "Start The Nexus.bat"                            ║
 echo  ║                                                       ║
 echo  ║   URLs (after startup):                               ║
 echo  ║   - Dashboard:  http://localhost:3000                  ║
