@@ -25,7 +25,96 @@ try {
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
 
-    // Auto-create tables if the DB is brand new
+    // -----------------------------------------------------------------------
+    // STARTUP MIGRATIONS — run BEFORE schema load so that existing DBs get
+    // column renames applied before CREATE INDEX statements reference them.
+    // On a brand-new DB these are no-ops (tables don't exist yet).
+    // -----------------------------------------------------------------------
+    const hasTable = (table) => {
+        const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
+        return !!row;
+    };
+    const hasColumn = (table, column) => {
+        if (!hasTable(table)) return false;
+        const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+        return cols.some(c => c.name === column);
+    };
+    const addColumnIfMissing = (table, column, type = 'TEXT', dflt = null) => {
+        if (hasTable(table) && !hasColumn(table, column)) {
+            const defaultClause = dflt !== null ? ` DEFAULT ${dflt}` : '';
+            db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}${defaultClause}`);
+            console.log(`[Database] Migration: added ${table}.${column}`);
+        }
+    };
+
+    // 1. Rename feature_id → task_id (legacy column name)
+    const featureIdTables = ['runs', 'tracks', 'execution_steps', 'inline_comments'];
+    for (const table of featureIdTables) {
+        if (hasColumn(table, 'feature_id') && !hasColumn(table, 'task_id')) {
+            db.exec(`ALTER TABLE ${table} RENAME COLUMN feature_id TO task_id`);
+            console.log(`[Database] Migration: renamed ${table}.feature_id → task_id`);
+        }
+    }
+
+    // 2. Add missing columns to tasks table
+    addColumnIfMissing('tasks', 'feedback');
+    addColumnIfMissing('tasks', 'metadata', 'TEXT', "'{}'" );
+    addColumnIfMissing('tasks', 'langgraph_template');
+    addColumnIfMissing('tasks', 'langgraph_run_id');
+    addColumnIfMissing('tasks', 'langgraph_status');
+    addColumnIfMissing('tasks', 'langgraph_node');
+    addColumnIfMissing('tasks', 'langgraph_started_at');
+    addColumnIfMissing('tasks', 'langgraph_updated_at');
+    addColumnIfMissing('tasks', 'critic_feedback');
+    addColumnIfMissing('tasks', 'initiative_validation');
+    addColumnIfMissing('tasks', 'research_metadata');
+    addColumnIfMissing('tasks', 'plan_metadata');
+    addColumnIfMissing('tasks', 'user_id');
+    addColumnIfMissing('tasks', 'source');
+
+    // 3. Add missing columns to runs table
+    addColumnIfMissing('runs', 'task_id');
+    addColumnIfMissing('runs', 'graph_config', 'TEXT', "'{}'" );
+    addColumnIfMissing('runs', 'error');
+    addColumnIfMissing('runs', 'updated_at');
+    addColumnIfMissing('runs', 'user_id');
+
+    // 4. Add missing columns to projects table
+    addColumnIfMissing('projects', 'user_id');
+
+    // 5. Add missing columns to project_contexts table
+    addColumnIfMissing('project_contexts', 'status', 'TEXT', "'draft'" );
+
+    // 6. Add missing columns to project_workflows table
+    addColumnIfMissing('project_workflows', 'status', 'TEXT', "'draft'" );
+    addColumnIfMissing('project_workflows', 'current_stage');
+    addColumnIfMissing('project_workflows', 'workflow_type');
+    addColumnIfMissing('project_workflows', 'stages', 'TEXT', "'[]'" );
+    addColumnIfMissing('project_workflows', 'template_id');
+    addColumnIfMissing('project_workflows', 'configuration', 'TEXT', "'{}'" );
+    addColumnIfMissing('project_workflows', 'outputs', 'TEXT', "'{}'" );
+    addColumnIfMissing('project_workflows', 'supervisor_status');
+    addColumnIfMissing('project_workflows', 'supervisor_details');
+    addColumnIfMissing('project_workflows', 'parent_initiative_id');
+
+    // 7. Add missing columns to initiative_project_status table
+    addColumnIfMissing('initiative_project_status', 'spawned_workflow_id');
+    addColumnIfMissing('initiative_project_status', 'spawned_feature_ids');
+    addColumnIfMissing('initiative_project_status', 'result');
+    addColumnIfMissing('initiative_project_status', 'error_message');
+    addColumnIfMissing('initiative_project_status', 'started_at');
+    addColumnIfMissing('initiative_project_status', 'completed_at');
+
+    // 8. Add missing columns to checkpoints table
+    addColumnIfMissing('checkpoints', 'checkpoint_ns');
+    addColumnIfMissing('checkpoints', 'parent_checkpoint_id');
+    addColumnIfMissing('checkpoints', 'type');
+
+    // -----------------------------------------------------------------------
+    // SCHEMA LOAD — creates tables + indexes for brand-new DBs.
+    // On existing DBs, CREATE TABLE IF NOT EXISTS is a no-op for each table,
+    // but CREATE INDEX IF NOT EXISTS will add any missing indexes.
+    // -----------------------------------------------------------------------
     const schemaPath = path.resolve(__dirname, 'schema-sqlite.sql');
     if (fs.existsSync(schemaPath)) {
         db.exec(fs.readFileSync(schemaPath, 'utf8'));
