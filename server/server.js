@@ -3127,7 +3127,7 @@ server.listen(PORT, async () => {
     if (db.isDatabaseEnabled()) {
         const dbResult = await db.testConnection();
         if (dbResult.success) {
-            console.log(`Database: CONNECTED (Supabase/PostgreSQL)`);
+            console.log(`Database: CONNECTED (SQLite)`);
         } else {
             console.warn(`Database: CONFIGURED but connection failed - ${dbResult.error}`);
         }

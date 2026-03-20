@@ -94,31 +94,19 @@ class CommentStore:
     to in-memory storage (useful for development/testing).
     """
     
-    def __init__(self, use_db: bool = True):
+    def __init__(self, use_db: bool = False):
         """
         Initialize comment store.
         
         Args:
-            use_db: Whether to attempt database persistence (default True)
+            use_db: Reserved for future database persistence (not currently used)
         """
         self._use_db = use_db
         self._supabase = None
         
-        # In-memory fallback storage
+        # In-memory storage (comments are ephemeral per-session)
         self._comments: Dict[str, List[InlineComment]] = {}
         self._comment_index: Dict[str, InlineComment] = {}
-        
-        # Check if Supabase is available
-        if use_db:
-            try:
-                from supabase_client import get_supabase
-                self._supabase = get_supabase()
-                if not self._supabase.is_configured():
-                    print("[CommentStore] Supabase not configured, using in-memory storage")
-                    self._supabase = None
-            except ImportError:
-                print("[CommentStore] Supabase client not available, using in-memory storage")
-                self._supabase = None
     
     @property
     def is_persistent(self) -> bool:
