@@ -1923,6 +1923,7 @@ export interface EnvSettings {
     OPENAI_API_KEY: string;
     ANTHROPIC_API_KEY: string;
     XAI_API_KEY: string;
+    NEXUS_SERVICE_KEY: string;
 }
 
 export async function getEnvSettings(): Promise<EnvSettings> {

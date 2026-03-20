@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
+const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const simpleGit = require('simple-git');
 const { GoogleGenAI } = require('@google/genai');
@@ -321,8 +322,26 @@ function writeEnvFile(filePath, updates, templatePath) {
 // Whitelist of keys the dashboard is allowed to read/write
 const ENV_EDITABLE_KEYS = [
     'PROJECT_ROOT',
-    'GOOGLE_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'XAI_API_KEY'
+    'GOOGLE_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'XAI_API_KEY',
+    'NEXUS_SERVICE_KEY'
 ];
+
+// Auto-generate NEXUS_SERVICE_KEY if missing from .env
+// This is a local shared secret between the Python cortex and Express API.
+(function ensureServiceKey() {
+    const rootEnvPath = path.resolve(__dirname, '..', '.env');
+    if (!fs.existsSync(rootEnvPath)) return;
+    const existing = parseEnvFile(rootEnvPath);
+    if (!existing.NEXUS_SERVICE_KEY || existing.NEXUS_SERVICE_KEY.startsWith('your-')) {
+        const generated = 'nxs_' + crypto.randomBytes(24).toString('hex');
+        writeEnvFile(rootEnvPath, { NEXUS_SERVICE_KEY: generated });
+        // Also write to nexus-builder .env
+        const pyEnvPath = path.resolve(__dirname, '..', 'nexus-builder', '.env');
+        writeEnvFile(pyEnvPath, { NEXUS_SERVICE_KEY: generated });
+        process.env.NEXUS_SERVICE_KEY = generated;
+        console.log('[Settings] 🔑 Auto-generated NEXUS_SERVICE_KEY');
+    }
+})();
 
 // GET /api/settings/env — Read current env values (only editable keys)
 app.get('/api/settings/env', (req, res) => {
@@ -364,7 +383,7 @@ app.post('/api/settings/env', (req, res) => {
         // --- Update nexus-builder .env (shared keys only, in-place) ---
         const pyEnvPath = path.resolve(__dirname, '..', 'nexus-builder', '.env');
         const pyTemplatePath = path.resolve(__dirname, '..', 'nexus-builder', '.env.example');
-        const pySharedKeys = ['GOOGLE_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY'];
+        const pySharedKeys = ['GOOGLE_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'XAI_API_KEY', 'NEXUS_SERVICE_KEY'];
         const pyFiltered = {};
         for (const key of pySharedKeys) {
             if (key in filtered) pyFiltered[key] = filtered[key];

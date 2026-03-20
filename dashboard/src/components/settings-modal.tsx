@@ -189,8 +189,49 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             ))}
 
                             <p className="text-xs text-slate-500 mt-1">
-                                At least one API key is required. Keys are saved to both <code className="px-1 py-0.5 rounded bg-slate-800 text-slate-400">.env</code> and <code className="px-1 py-0.5 rounded bg-slate-800 text-slate-400">nexus-builder/.env</code>
+                                At least 2 API keys required for council diversity. Keys are saved to both <code className="px-1 py-0.5 rounded bg-slate-800 text-slate-400">.env</code> and <code className="px-1 py-0.5 rounded bg-slate-800 text-slate-400">nexus-builder/.env</code>
                             </p>
+
+                            {/* Internal Keys Divider */}
+                            <div className="flex items-center gap-3 pt-2">
+                                <div className="h-px flex-1 bg-slate-800" />
+                                <span className="text-xs font-medium text-slate-500">Internal</span>
+                                <div className="h-px flex-1 bg-slate-800" />
+                            </div>
+
+                            {/* Service Key */}
+                            <div>
+                                <label className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-slate-400">
+                                        Service Key
+                                    </span>
+                                    {hasKey(settings.NEXUS_SERVICE_KEY) && (
+                                        <span className="flex items-center gap-1 text-xs text-emerald-400">
+                                            <CheckCircle2 size={12} />
+                                            Active
+                                        </span>
+                                    )}
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showKeys["NEXUS_SERVICE_KEY"] ? "text" : "password"}
+                                        value={settings.NEXUS_SERVICE_KEY}
+                                        onChange={(e) => updateField("NEXUS_SERVICE_KEY", e.target.value)}
+                                        placeholder="Auto-generated on first run"
+                                        className="w-full px-3 py-2.5 pr-10 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-all font-mono"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleKeyVisibility("NEXUS_SERVICE_KEY")}
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                    >
+                                        {showKeys["NEXUS_SERVICE_KEY"] ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Shared secret between Cortex and the API server. Auto-generated if empty.
+                                </p>
+                            </div>
 
                             {/* Error */}
                             {error && (
