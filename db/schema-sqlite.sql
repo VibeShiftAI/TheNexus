@@ -84,13 +84,17 @@ CREATE TABLE IF NOT EXISTS runs (
     id TEXT PRIMARY KEY,
     workflow_id TEXT REFERENCES workflows(id) ON DELETE SET NULL,
     project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
-    feature_id TEXT,
+    task_id TEXT,
     status TEXT DEFAULT 'running',
     current_node TEXT,
     context TEXT DEFAULT '{}',         -- JSON object
+    graph_config TEXT DEFAULT '{}',    -- JSON: workflow graph configuration
     error_message TEXT,
+    error TEXT,
+    user_id TEXT,
     started_at TEXT DEFAULT (datetime('now')),
-    completed_at TEXT
+    completed_at TEXT,
+    updated_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_runs_workflow ON runs(workflow_id);
@@ -116,7 +120,7 @@ CREATE INDEX IF NOT EXISTS idx_checkpoints_parent ON checkpoints(parent_id);
 
 CREATE TABLE IF NOT EXISTS tracks (
     id TEXT PRIMARY KEY,
-    feature_id TEXT,
+    task_id TEXT,
     project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
@@ -384,7 +388,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_created ON agent_audit_log(created_at);
 CREATE TABLE IF NOT EXISTS execution_steps (
     id TEXT PRIMARY KEY,
     project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
-    feature_id TEXT,
+    task_id TEXT,
     stage TEXT,
     step_type TEXT,
     title TEXT,
@@ -396,12 +400,12 @@ CREATE TABLE IF NOT EXISTS execution_steps (
 );
 
 CREATE INDEX IF NOT EXISTS idx_execution_steps_project ON execution_steps(project_id);
-CREATE INDEX IF NOT EXISTS idx_execution_steps_feature ON execution_steps(feature_id);
+CREATE INDEX IF NOT EXISTS idx_execution_steps_task ON execution_steps(task_id);
 
 CREATE TABLE IF NOT EXISTS inline_comments (
     id TEXT PRIMARY KEY,
     project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
-    feature_id TEXT,
+    task_id TEXT,
     stage TEXT,
     selection_text TEXT,
     selection_start INTEGER,
