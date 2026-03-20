@@ -420,7 +420,7 @@ CREATE TABLE IF NOT EXISTS inline_comments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_inline_comments_project ON inline_comments(project_id);
-CREATE INDEX IF NOT EXISTS idx_inline_comments_feature ON inline_comments(feature_id);
+CREATE INDEX IF NOT EXISTS idx_inline_comments_task ON inline_comments(task_id);
 
 -- ============================================================================
 -- WORKFLOW STATIC DATA (polling cursor persistence)
