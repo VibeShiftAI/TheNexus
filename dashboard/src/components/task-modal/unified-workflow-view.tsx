@@ -120,7 +120,7 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
 
         const fetchGraphConfig = async () => {
             try {
-                const res = await fetch(`http://localhost:8000/runs/${runId}/history`);
+                const res = await fetch(`/runs/${runId}/history`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.graph_config) {
@@ -346,7 +346,7 @@ export function UnifiedWorkflowView({ projectId, taskId, runId, initialStatus, o
                 body.doc_changes = docChanges;
             }
 
-            await fetch(`http://localhost:8000/runs/${runId}/resume`, {
+            await fetch(`/runs/${runId}/resume`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)

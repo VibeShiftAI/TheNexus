@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Settings2, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw, Maximize2 } from "lucide-react";
+import { Send, Bot, User, Settings2, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw, Maximize2, Mic, Square } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -52,6 +52,7 @@ interface ModelConfig {
 const MODES = [
     { id: 'agent', name: 'Agent', description: 'Execute actions on projects' },
     { id: 'chat', name: 'Chat', description: 'Natural conversation' },
+    { id: 'gravity_claw', name: 'Gravity Claw', description: 'Your personal AI supervisor' },
 ];
 
 export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITerminalProps) {
@@ -61,7 +62,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const [loading, setLoading] = useState(false);
     const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
     const [selectedModel, setSelectedModel] = useState<ModelConfig | null>(null);
-    const [selectedMode, setSelectedMode] = useState(MODES[0]); // Agent is first = default
+    const [selectedMode, setSelectedMode] = useState(MODES[0]);
     const [showSettings, setShowSettings] = useState(false);
     const [pendingArtifact, setPendingArtifact] = useState<CortexArtifact | null>(null);
     const [attachedFiles, setAttachedFiles] = useState<File[]>([]); // File upload state
@@ -81,6 +82,16 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const [expandedArtifact, setExpandedArtifact] = useState<number | null>(null);
     // Fullscreen plan review modal state
     const [reviewModalData, setReviewModalData] = useState<{ artifact: CortexArtifact; messageIndex: number } | null>(null);
+    
+    // Voice recording state
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+    const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
+
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null); // Hidden file input
@@ -88,6 +99,16 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const scopedProjectId = typeof params?.id === 'string' ? params.id : null;
 
     // Message persistence and rehydration are now handled by CortexProvider
+
+    // Default to Gravity Claw mode when accessing remotely (e.g. via Cloudflare Tunnel)
+    // Runs after hydration to avoid SSR mismatch
+    useEffect(() => {
+        const isRemote = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+        if (isRemote) {
+            const gcMode = MODES.find(m => m.id === 'gravity_claw');
+            if (gcMode) setSelectedMode(gcMode);
+        }
+    }, []);
 
     // Auto-scroll on new messages (scoped to messages container only)
     useEffect(() => {
@@ -103,7 +124,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
         const maxAttempts = 3;
 
         const fetchModels = () => {
-            fetch('/api/models')
+            fetch(`/api/models?_cb=${Date.now()}`, { credentials: 'include' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.models && data.models.length > 0) {
@@ -189,14 +210,71 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
         setAttachedFiles(prev => prev.filter((_, i) => i !== index));
     }, []);
 
+    // Audio recording functions
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                setAudioBlob(blob);
+                setAudioPreviewUrl(URL.createObjectURL(blob));
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+            setRecordingTime(0);
+            recordingTimerRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            setMessages(prev => [...prev, {
+                role: 'system',
+                content: 'Error: Could not access microphone. Please check permissions.',
+                timestamp: new Date()
+            }]);
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+            }
+        }
+    };
+
+    const clearAudio = () => {
+        setAudioBlob(null);
+        if (audioPreviewUrl) {
+            URL.revokeObjectURL(audioPreviewUrl);
+            setAudioPreviewUrl(null);
+        }
+    };
+
     const handleSend = async () => {
-        if ((!input.trim() && attachedFiles.length === 0) || loading || !selectedModel) return;
+        if ((!input.trim() && attachedFiles.length === 0 && !audioBlob) || loading || !selectedModel) return;
 
         // Build user message content
         let messageContent = input.trim();
         if (attachedFiles.length > 0) {
             messageContent += messageContent ? '\n\n' : '';
             messageContent += `📎 ${attachedFiles.length} file(s) attached: ${attachedFiles.map(f => f.name).join(', ')}`;
+        }
+        if (audioBlob) {
+            messageContent += messageContent ? '\n\n' : '';
+            messageContent += `🎤 Voice memo attached (${recordingTime}s)`;
         }
 
         const userMessage: Message = {
@@ -209,6 +287,8 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
         setInput("");
         const filesToUpload = [...attachedFiles];
         setAttachedFiles([]);
+        const currentAudioBlob = audioBlob;
+        clearAudio(); // Reset recording UI
         setLoading(true);
 
         try {
@@ -225,13 +305,29 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 );
             }
 
-            const response = await fetch('/api/ai/chat', {
+            // Read audio blob to base64
+            let base64Audio = undefined;
+            if (currentAudioBlob) {
+                // We use Buffer in the browser via a polyfill if needed, but arrayBuffer -> base64 can be done via btoa:
+                const buffer = await currentAudioBlob.arrayBuffer();
+                const bytes = new Uint8Array(buffer);
+                let binary = '';
+                // Chunked processing to avoid call stack limits on huge arrays
+                const CHUNK_SIZE = 0x8000;
+                for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+                  binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK_SIZE)));
+                }
+                base64Audio = btoa(binary);
+            }
+
+            const response = await fetch(`/api/ai/chat?_cb=${Date.now()}`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     ...authHeader as any, // Cast to any to assume HeadersInit compatibility
                 },
                 body: JSON.stringify({
-                    message: input.trim() || `Please analyze the attached file(s): ${filesToUpload.map(f => f.name).join(', ')}`,
+                    message: input.trim() || (currentAudioBlob ? "Voice recording attached" : `Please analyze the attached file(s): ${filesToUpload.map(f => f.name).join(', ')}`),
                     // Send full model configuration for proper routing
                     modelConfig: {
                         id: selectedModel.id,
@@ -244,6 +340,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     history: messages.slice(-10), // Last 10 messages for context
                     projectId: scopedProjectId, // Send scope if available
                     files: fileContents, // Include file contents
+                    audio: base64Audio, // Include base64 voice recording if any
                 }),
             });
 
@@ -257,6 +354,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 role: 'assistant',
                 content: data.response || 'No response received',
                 timestamp: new Date(),
+                voiceData: data.voiceData, // Attach any voice responses
             };
 
             setMessages(prev => [...prev, assistantMessage]);
@@ -464,8 +562,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                                                         formData.append('action', 'REJECT');
                                                         formData.append('comment', critiqueFeedback.text);
                                                         try {
-                                                            const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
-                                                            const response = await fetch(`${cortexUrl}/api/terminal/interact`, {
+                                                            const response = await fetch(`/api/terminal/interact`, {
                                                                 method: 'POST',
                                                                 body: formData
                                                             });
@@ -520,8 +617,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                                                     formData.append('action', 'APPROVE');
                                                     formData.append('comment', 'Plan approved by user');
                                                     try {
-                                                        const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
-                                                        const response = await fetch(`${cortexUrl}/api/terminal/interact`, {
+                                                        const response = await fetch(`/api/terminal/interact`, {
                                                             method: 'POST',
                                                             body: formData
                                                         });
@@ -802,8 +898,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                                                         formData.append('action', 'APPROVE');
                                                         formData.append('comment', 'Plan approved by user');
                                                         try {
-                                                            const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
-                                                            const response = await fetch(`${cortexUrl}/api/terminal/interact`, {
+                                                            const response = await fetch(`/api/terminal/interact`, {
                                                                 method: 'POST',
                                                                 body: formData
                                                             });
@@ -867,8 +962,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                                                             formData.append('action', 'REJECT');
                                                             formData.append('comment', critiqueFeedback.text);
                                                             try {
-                                                                const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
-                                                                const response = await fetch(`${cortexUrl}/api/terminal/interact`, {
+                                                                const response = await fetch(`/api/terminal/interact`, {
                                                                     method: 'POST',
                                                                     body: formData
                                                                 });
@@ -991,6 +1085,22 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                                         </div>
                                     </div>
                                 )}
+                                {/* Render Voice Data */}
+                                {msg.voiceData && msg.voiceData.map((v, vidx) => (
+                                    <div key={vidx} className="mt-3 p-2 rounded-lg bg-black/20 border border-purple-500/20 w-fit">
+                                        <div className="flex items-center gap-2 mb-1 px-1">
+                                            <Mic size={12} className="text-purple-400" />
+                                            <span className="text-[10px] uppercase tracking-wider text-purple-400 font-bold">Voice Message</span>
+                                        </div>
+                                        <audio 
+                                            src={`data:${v.mimeType};base64,${v.audio}`} 
+                                            controls 
+                                            autoPlay={vidx === 0 && i === messages.length - 1} // Autoplay only the latest incoming voice message
+                                            className="h-8 max-w-[220px] [&::-webkit-media-controls-enclosure]:bg-transparent" 
+                                        />
+                                    </div>
+                                ))}
+
                                 <span className="text-[10px] text-slate-500 mt-1 block">
                                     {msg.timestamp.toLocaleTimeString()}
                                 </span>
@@ -1055,30 +1165,75 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     </div>
                 )}
 
-                <div className="flex gap-2">
-                    {/* Upload button */}
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={loading}
-                        className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Attach files"
-                    >
-                        <Paperclip size={18} />
-                    </button>
+                {/* Audio Preview Chip */}
+                {audioPreviewUrl && (
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 mb-3 w-fit text-sm">
+                        <Mic size={14} className="text-red-400 font-bold" />
+                        <span className="text-red-300 font-mono">{recordingTime}s</span>
+                        <audio src={audioPreviewUrl} controls className="h-6 w-48 [&::-webkit-media-controls-enclosure]:bg-transparent [&::-webkit-media-controls-panel]:bg-transparent" />
+                        <button onClick={clearAudio} className="text-slate-400 hover:text-red-400 transition-colors ml-2">
+                            <XCircle size={16} />
+                        </button>
+                    </div>
+                )}
 
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={attachedFiles.length > 0 ? "Add a message (optional)..." : "Tell me your idea and we'll work on a Project Plan for you"}
-                        className="flex-1 rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
-                        disabled={loading}
-                    />
+                <div className="flex gap-2">
+                    {/* Audio Record button — only in Gravity Claw mode */}
+                    {selectedMode.id === 'gravity_claw' && !isRecording && !audioBlob && (
+                        <button
+                            onClick={startRecording}
+                            disabled={loading || isDragging}
+                            className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Record voice memo"
+                        >
+                            <Mic size={18} />
+                        </button>
+                    )}
+
+                    {isRecording && (
+                        <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 animate-pulse">
+                            <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                            <span className="text-red-400 font-mono text-sm font-medium">
+                                {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                            </span>
+                            <button
+                                onClick={stopRecording}
+                                className="ml-2 text-slate-300 hover:text-red-400 transition-colors"
+                                title="Stop recording"
+                            >
+                                <Square size={16} className="fill-current" />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Upload button — hide when recording */}
+                    {!isRecording && (
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={loading}
+                            className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Attach files"
+                        >
+                            <Paperclip size={18} />
+                        </button>
+                    )}
+
+                    {!isRecording && (
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder={audioBlob ? "Add a message (optional)..." : (attachedFiles.length > 0 ? "Add a message (optional)..." : "Tell me your idea and we'll work on a Project Plan for you")}
+                            className="flex-1 rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+                            disabled={loading}
+                        />
+                    )}
+                    
                     <button
                         onClick={handleSend}
-                        disabled={loading || (!input.trim() && attachedFiles.length === 0)}
+                        disabled={loading || (!input.trim() && attachedFiles.length === 0 && !audioBlob) || isRecording}
                         className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium hover:from-cyan-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                         {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}

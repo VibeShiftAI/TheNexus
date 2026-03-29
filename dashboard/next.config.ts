@@ -38,11 +38,42 @@ const nextConfig: NextConfig = {
         source: "/api/agents",
         destination: `${pythonUrl}/agents`,
       },
-      // Route LangGraph API to Python
+      // Route LangGraph graph/runs/artifacts to Python
+      {
+        source: "/graph/:path*",
+        destination: `${pythonUrl}/graph/:path*`,
+      },
+      {
+        source: "/runs/:path*",
+        destination: `${pythonUrl}/runs/:path*`,
+      },
+      {
+        source: "/api/artifacts/:path*",
+        destination: `${pythonUrl}/api/artifacts/:path*`,
+      },
+      {
+        source: "/api/comments/:path*",
+        destination: `${pythonUrl}/api/comments/:path*`,
+      },
+      {
+        source: "/api/terminal/:path*",
+        destination: `${pythonUrl}/api/terminal/:path*`,
+      },
+      {
+        source: "/api/codex/:path*",
+        destination: `${pythonUrl}/codex/:path*`,
+      },
+      {
+        source: "/api/codex",
+        destination: `${pythonUrl}/codex`,
+      },
+      // Route LangGraph API to Node.js backend
       {
         source: "/api/langgraph/:path*",
         destination: `${apiUrl}/api/langgraph/:path*`,
       },
+      // Socket.IO is routed directly by Cloudflare Tunnel to port 4000
+      // (path-based ingress rule in ~/.cloudflared/config.yml)
       // Everything else to Node.js
       {
         source: "/api/:path*",

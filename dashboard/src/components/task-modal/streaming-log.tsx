@@ -103,7 +103,7 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
 
         const fetchHistory = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/runs/${runId}/history`);
+                const response = await fetch(`/runs/${runId}/history`);
                 if (response.ok) {
                     const data = await response.json();
 
@@ -170,7 +170,7 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
             eventSourceRef.current.close();
         }
 
-        const eventSource = new EventSource(`http://localhost:8000/runs/${runId}/stream`);
+        const eventSource = new EventSource(`/runs/${runId}/stream`);
 
         setConnectionStatus('connecting');
 
@@ -224,7 +224,7 @@ export function StreamingLog({ runId, projectId, taskId, onInterrupt, onStateUpd
             // Fetch the walkthrough artifact and pass it up for ArtifactPanel review
             if (onWorkflowCompleteWithArtifact && runId) {
                 try {
-                    const res = await fetch(`http://localhost:8000/graph/nexus/${runId}/artifacts`);
+                    const res = await fetch(`/graph/nexus/${runId}/artifacts`);
                     if (res.ok) {
                         const data = await res.json();
                         // Try walkthrough from artifacts, or from the task data

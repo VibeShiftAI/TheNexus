@@ -68,7 +68,7 @@ export function ArtifactPanel({ artifact, isOpen, onClose, onApprove, onReject, 
     useEffect(() => {
         if (artifact?.id && isOpen) {
             setIsLoading(true);
-            fetch(`http://localhost:8000/api/artifacts/${artifact.id}/comments`)
+            fetch(`/api/artifacts/${artifact.id}/comments`)
                 .then(r => r.json())
                 .then(data => {
                     setComments(data.comments || []);
@@ -93,7 +93,7 @@ export function ArtifactPanel({ artifact, isOpen, onClose, onApprove, onReject, 
 
     const handleAddComment = async (lineNumber: number, content: string) => {
         try {
-            const res = await fetch(`http://localhost:8000/api/artifacts/${artifact.id}/comments`, {
+            const res = await fetch(`/api/artifacts/${artifact.id}/comments`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ line_number: lineNumber, content }),
@@ -113,8 +113,8 @@ export function ArtifactPanel({ artifact, isOpen, onClose, onApprove, onReject, 
         if (!comment) return;
 
         const endpoint = comment.resolved
-            ? `http://localhost:8000/api/comments/${commentId}/unresolve`
-            : `http://localhost:8000/api/comments/${commentId}/resolve`;
+            ? `/api/comments/${commentId}/unresolve`
+            : `/api/comments/${commentId}/resolve`;
 
         try {
             await fetch(endpoint, { method: "POST" });
@@ -128,7 +128,7 @@ export function ArtifactPanel({ artifact, isOpen, onClose, onApprove, onReject, 
 
     const handleAddReply = async (commentId: string, content: string) => {
         try {
-            const res = await fetch(`http://localhost:8000/api/comments/${commentId}/reply`, {
+            const res = await fetch(`/api/comments/${commentId}/reply`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ content }),

@@ -1,8 +1,6 @@
 import { getAuthHeader } from './auth';
 
-const CODEX_API_URL = process.env.NEXT_PUBLIC_LANGGRAPH_API_URL
-    ? `${process.env.NEXT_PUBLIC_LANGGRAPH_API_URL}/codex`
-    : 'http://localhost:8000/codex';
+const CODEX_API_URL = '/api/codex';
 
 export interface CodexDoc {
     id: string;

@@ -12,6 +12,7 @@ export interface Message {
     content: string;
     timestamp: Date;
     artifact?: CortexArtifact;
+    voiceData?: { audio: string; mimeType: string }[];
 }
 
 export interface CortexArtifact {
@@ -120,8 +121,7 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         // Check for pending Cortex state (rehydration)
         const lastThreadId = localStorage.getItem('cortex_thread_id');
         if (lastThreadId) {
-            const cortexUrl = process.env.NEXT_PUBLIC_CORTEX_URL || 'http://localhost:8001';
-            fetch(`${cortexUrl}/api/terminal/state/${lastThreadId}`)
+            fetch(`/api/terminal/state/${lastThreadId}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.is_paused && data.current_plan) {
@@ -154,8 +154,19 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         if (initialised.current) return;
         initialised.current = true;
 
-        const nexusUrl = process.env.NEXT_PUBLIC_NEXUS_API_URL || 'http://localhost:4000';
-        const socket: Socket = io(nexusUrl, { transports: ['websocket', 'polling'] });
+        // Connect to the Socket.IO backend.
+        // - Local: direct to localhost:4000 (the Node.js backend)
+        // - Remote: same origin — Cloudflare Tunnel has a path-based ingress
+        //   rule that routes /socket.io/* directly to port 4000
+        const isLocal = typeof window !== 'undefined' &&
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+        const socketUrl = isLocal ? 'http://localhost:4000' : undefined; // undefined = same origin
+        const socket: Socket = io(socketUrl as string, {
+            path: '/socket.io/',
+            reconnectionAttempts: 5,
+            reconnectionDelay: 3000,
+        });
         socketRef.current = socket;
 
         socket.on('connect', () => {

@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import routers
 from cortex.api.routes.terminal_routes import router as terminal_router
+from cortex.api.routes.blackboard_routes import router as blackboard_router
+from cortex.api.routes.council_routes import router as council_router
 
 app = FastAPI(
     title="Cortex API",
@@ -27,6 +29,8 @@ app.add_middleware(
 
 # Mount routers
 app.include_router(terminal_router, prefix="/api", tags=["terminal"])
+app.include_router(blackboard_router, prefix="/api", tags=["blackboard"])
+app.include_router(council_router, prefix="/api", tags=["council"])
 
 
 @app.get("/health")

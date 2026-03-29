@@ -42,11 +42,12 @@ const app = express();
 app.set('trust proxy', 1); // Trust first proxy hop (fixes express-rate-limit X-Forwarded-For validation)
 const server = http.createServer(app);
 
-// CORS: restrict to known origins (add production domain when deployed)
+// CORS: restrict to known origins
 const ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:4000',
-    'http://localhost:8000'
+    'http://localhost:8000',
+    'https://nexus.vibeshiftai.com'
 ];
 const io = new Server(server, { cors: { origin: ALLOWED_ORIGINS } });
 const PORT = process.env.PORT || 4000;
@@ -97,7 +98,7 @@ async function getAvailableModels() {
 // Security middleware
 app.use(helmet());
 app.use(cors({ origin: ALLOWED_ORIGINS }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 // Rate limiting: 1000 requests per 15 minutes per IP
 // Dashboard loads fire 10+ API calls per page view (projects, pins, activity,
@@ -1216,7 +1217,7 @@ app.delete('/api/projects/:id/pin', (req, res) => {
 // AI Chat endpoint
 // Supports new modelConfig object with provider-specific thinking configurations
 app.post('/api/ai/chat', async (req, res) => {
-    const { message, modelConfig, model, mode, history, projectId, session_id, files } = req.body || {};
+    const { message, modelConfig, model, mode, history, projectId, session_id, files, audio } = req.body || {};
 
     console.log(`\n?? [AI Chat] Request Details:`);
     console.log(`   � Mode: ${mode}`);
@@ -1305,6 +1306,58 @@ app.post('/api/ai/chat', async (req, res) => {
             // Let's return a specific error so the user knows Cortex is down
             return res.json({
                 response: `?? **Connection to The Cortex Failed**\n\nI couldn't reach the Python engine (Port 8000). Ensure \`launch_system.bat\` is running.\n\nError: ${error.message}`,
+                model: 'system-error',
+                provider: 'System',
+                mode: mode
+            });
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // PROXY TO GRAVITY CLAW (for Remote Control Chat)
+    // ---------------------------------------------------------------
+    if (mode === 'gravity_claw') {
+        try {
+            console.log(`[AI Chat] Proxying 'gravity_claw' request to Webhook (Port 54322)...`);
+            
+            const gcPayload = {
+                message,
+                history,
+                projectId,
+                audio // Forward base64 audio directly to GravityClaw webhook
+            };
+
+            const gcResponse = await fetch('http://127.0.0.1:54322/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(gcPayload),
+                signal: AbortSignal.timeout(120000), // 2 min timeout
+            });
+
+            if (!gcResponse.ok) {
+                const errorText = await gcResponse.text();
+                throw new Error(`Gravity Claw webhook error: ${gcResponse.status} ${errorText}`);
+            }
+
+            const data = await gcResponse.json();
+
+            // Append Debug Footer
+            const debugFooter = `\n\n_—_\n*🤖 Relayed by Gravity Claw*`;
+
+            return res.json({
+                response: (data.response || "No response") + debugFooter,
+                model: 'gravity-claw-agent',
+                provider: 'Antigravity',
+                mode: 'gravity_claw',
+                isThinking: false,
+                tokenUsage: { total: 0 },
+                artifacts: [], // No Glass Box artifacts from Gravity Claw yet
+                voiceData: data.voiceData // Pass through voice responses
+            });
+        } catch (error) {
+            console.error(`[AI Chat] Gravity Claw Proxy Error:`, error);
+            return res.json({
+                response: `⚠️ **Connection to Gravity Claw Failed**\n\nI couldn't reach the Gravity Claw daemon (Port 54322). Ensure the background service is running.\n\nError: ${error.message}`,
                 model: 'system-error',
                 provider: 'System',
                 mode: mode

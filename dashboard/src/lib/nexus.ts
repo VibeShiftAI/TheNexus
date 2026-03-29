@@ -131,20 +131,21 @@ export interface GitStatus {
 // This is critical for production where the browser can't access localhost directly
 import { getAuthHeader } from './auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL
-    ? `${process.env.NEXT_PUBLIC_API_URL}/api/projects`
-    : '/api/projects'; // Fallback to relative path which Netlify/Next proxies
+const API_URL = '/api/projects';
 
-const MEMORY_API = process.env.NEXT_PUBLIC_API_URL
-    ? `${process.env.NEXT_PUBLIC_API_URL}/api/memory`
-    : '/api/memory';
+const MEMORY_API = '/api/memory';
 
 // Helper for authenticated fetch
 async function authFetch(url: string, options: RequestInit = {}) {
     const headers = await getAuthHeader();
     // Use the native fetch here, avoiding recursion
-    return fetch(url, {
+    // credentials: 'include' ensures Cloudflare Access cookies are sent
+    // when accessing via the Cloudflare Tunnel (nexus.vibeshiftai.com)
+    // Add a cache-buster query param to bypass stuck 308 Permanent Redirects cached by the browser
+    const urlWithCacheBuster = url.includes('?') ? `${url}&_cb=${Date.now()}` : `${url}?_cb=${Date.now()}`;
+    return fetch(urlWithCacheBuster, {
         ...options,
+        credentials: 'include',
         headers: {
             ...headers,
             ...options.headers,
@@ -1619,9 +1620,7 @@ export interface WorkflowTemplate {
 // DASHBOARD INITIATIVES API
 // ─────────────────────────────────────────────────────────────────
 
-const INITIATIVES_API = process.env.NEXT_PUBLIC_API_URL
-    ? `${process.env.NEXT_PUBLIC_API_URL}/api/initiatives`
-    : '/api/initiatives';
+const INITIATIVES_API = '/api/initiatives';
 
 /**
  * Get all dashboard initiatives

@@ -334,7 +334,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                 const isApproval = action.toLowerCase().includes('approve');
                 const feedbackMsg = feedback || (isApproval ? 'Looks good' : 'Please revise');
                 try {
-                    await fetch(`http://localhost:8000/graph/nexus/${langGraphRunId}/resume`, {
+                    await fetch(`/graph/nexus/${langGraphRunId}/resume`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

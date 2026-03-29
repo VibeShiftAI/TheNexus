@@ -1,7 +1,7 @@
 ---
 context_type: product-guidelines
 status: active
-updated_at: 2026-03-18T22:37:56.226Z
+updated_at: 2026-03-24T11:48:54.691Z
 ---
 
 # Product Guidelines: The Nexus
