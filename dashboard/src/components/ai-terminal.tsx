@@ -52,7 +52,7 @@ interface ModelConfig {
 const MODES = [
     { id: 'agent', name: 'Agent', description: 'Execute actions on projects' },
     { id: 'chat', name: 'Chat', description: 'Natural conversation' },
-    { id: 'gravity_claw', name: 'Gravity Claw', description: 'Your personal AI supervisor' },
+    { id: 'praxis', name: 'Praxis', description: 'Your personal AI supervisor' },
 ];
 
 export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITerminalProps) {
@@ -62,7 +62,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const [loading, setLoading] = useState(false);
     const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
     const [selectedModel, setSelectedModel] = useState<ModelConfig | null>(null);
-    const [selectedMode, setSelectedMode] = useState(MODES[0]);
+    const [selectedMode, setSelectedMode] = useState(MODES[2]);
     const [showSettings, setShowSettings] = useState(false);
     const [pendingArtifact, setPendingArtifact] = useState<CortexArtifact | null>(null);
     const [attachedFiles, setAttachedFiles] = useState<File[]>([]); // File upload state
@@ -100,15 +100,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
 
     // Message persistence and rehydration are now handled by CortexProvider
 
-    // Default to Gravity Claw mode when accessing remotely (e.g. via Cloudflare Tunnel)
-    // Runs after hydration to avoid SSR mismatch
-    useEffect(() => {
-        const isRemote = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-        if (isRemote) {
-            const gcMode = MODES.find(m => m.id === 'gravity_claw');
-            if (gcMode) setSelectedMode(gcMode);
-        }
-    }, []);
+    // Praxis is now the default mode everywhere (no remote-only override needed)
 
     // Auto-scroll on new messages (scoped to messages container only)
     useEffect(() => {
@@ -130,14 +122,14 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     if (data.models && data.models.length > 0) {
                         setAvailableModels(data.models);
                         setSelectedModel(data.models[0]);
-                        console.log(`[Nexus Terminal] Loaded ${data.models.length} models from discovery API`);
+                        console.log(`[Praxis Terminal] Loaded ${data.models.length} models from discovery API`);
                     } else if (++attempts < maxAttempts) {
                         // Discovery may still be running — retry after 2s
                         setTimeout(fetchModels, 2000);
                     }
                 })
                 .catch(err => {
-                    console.warn('[Nexus Terminal] Model discovery unavailable:', err.message);
+                    console.warn('[Praxis Terminal] Model discovery unavailable:', err.message);
                     if (++attempts < maxAttempts) {
                         setTimeout(fetchModels, 2000);
                     }
@@ -168,7 +160,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
 
         if (validFiles.length > 0) {
             setAttachedFiles(prev => [...prev, ...validFiles].slice(0, 5)); // Max 5 files
-            console.log('[Nexus Terminal] Files attached:', validFiles.map(f => f.name));
+            console.log('[Praxis Terminal] Files attached:', validFiles.map(f => f.name));
         }
     }, []);
 
@@ -363,7 +355,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             // In Agent mode, artifacts stream via WebSocket — the HTTP response is just a summary.
             // Don't show a scary error if the pipeline is actually working via Glass Box.
             if (selectedMode.id === 'agent') {
-                console.warn('[Nexus Terminal] HTTP response failed in Agent mode — artifacts may still be streaming via WebSocket.');
+                console.warn('[Praxis Terminal] HTTP response failed in Agent mode — artifacts may still be streaming via WebSocket.');
                 // Only show error if no artifacts have arrived (i.e., Cortex is truly down)
                 const hasRecentArtifact = messages.some(m =>
                     m.artifact && m.timestamp && (Date.now() - new Date(m.timestamp).getTime()) < 120000
@@ -659,7 +651,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                         <Bot size={20} className="text-cyan-400" />
-                        <span className="font-bold text-white">Nexus Terminal</span>
+                        <span className="font-bold text-white">Praxis Terminal</span>
                         {scopedProjectId && (
                             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                                 <Lock size={10} />
@@ -688,7 +680,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                             setMessages([]);
                             localStorage.removeItem('cortex_chat_history');
                             localStorage.removeItem('cortex_thread_id');
-                            console.log('[Nexus Terminal] New chat started');
+                            console.log('[Praxis Terminal] New chat started');
                         }}
                         className="p-1.5 rounded text-slate-400 hover:text-cyan-400 hover:bg-slate-700 transition-colors"
                         title="New Chat (clears history and starts fresh)"
@@ -766,8 +758,8 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 {messages.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full text-center text-slate-500">
                         <MessageSquare size={48} className="mb-4 opacity-50" />
-                        <p className="text-lg font-medium">Welcome to Nexus Terminal</p>
-                        <p className="text-sm mt-1">Your AI-powered web development assistant</p>
+                        <p className="text-lg font-medium">Welcome to Praxis Terminal</p>
+                        <p className="text-sm mt-1">Your direct line to Praxis</p>
                         <p className="text-xs mt-4 opacity-70">
                             Try: "Build me a landing page for my SaaS" or "Create a new web-app called MyProject"
                         </p>
@@ -1178,8 +1170,8 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 )}
 
                 <div className="flex gap-2">
-                    {/* Audio Record button — only in Gravity Claw mode */}
-                    {selectedMode.id === 'gravity_claw' && !isRecording && !audioBlob && (
+                    {/* Audio Record button — only in Praxis mode */}
+                    {selectedMode.id === 'praxis' && !isRecording && !audioBlob && (
                         <button
                             onClick={startRecording}
                             disabled={loading || isDragging}

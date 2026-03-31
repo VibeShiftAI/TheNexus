@@ -1,7 +1,7 @@
 """
 Council Spawner API Routes — REST endpoint for on-demand Council deliberations.
 
-Allows external agents (like GravityClaw/Praxis) to spawn their own
+Allows external agents (like Praxis) to spawn their own
 Council of 4 deliberation on any topic.
 """
 

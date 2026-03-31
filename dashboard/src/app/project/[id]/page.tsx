@@ -180,7 +180,7 @@ export default function ProjectDetailPage() {
                             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30 hover:border-purple-500/50 transition-all text-purple-400 hover:text-purple-300"
                         >
                             <Bot size={16} />
-                            <span>AI Terminal</span>
+                            <span>Praxis Terminal</span>
                         </button>
                         <Link
                             href="/agents"

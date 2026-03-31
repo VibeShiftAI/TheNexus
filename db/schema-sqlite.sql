@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     supervisor_status TEXT,
     supervisor_details TEXT,           -- JSON object
     reasoning_level TEXT DEFAULT 'vibe',
+    antigravity_payload TEXT,              -- JSON: machine-layer execution instructions for AntiGravity
+    dependencies TEXT DEFAULT '[]',        -- JSON array of task IDs that must be complete before this task is unblocked
     user_id TEXT,
     source TEXT,                       -- Origin of the task (e.g. 'cortex', 'manual')
     created_at TEXT DEFAULT (datetime('now')),

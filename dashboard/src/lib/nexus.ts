@@ -25,12 +25,22 @@ export interface SystemInfo {
     };
 }
 
+export interface PraxisTelemetry {
+    status: string;
+    model: string;
+    mcpToolCount: number;
+    neo4jNodes: number;
+    pineconeVectors: number;
+    port: number;
+}
+
 export interface SystemStatus {
     timestamp: string;
     system: SystemInfo;
     ports: PortInfo[];
     portCount: number;
     error?: string;
+    praxis?: PraxisTelemetry | null;
 }
 
 export interface TokenUsageEntry {
@@ -138,7 +148,6 @@ const MEMORY_API = '/api/memory';
 // Helper for authenticated fetch
 async function authFetch(url: string, options: RequestInit = {}) {
     const headers = await getAuthHeader();
-    // Use the native fetch here, avoiding recursion
     // credentials: 'include' ensures Cloudflare Access cookies are sent
     // when accessing via the Cloudflare Tunnel (nexus.vibeshiftai.com)
     // Add a cache-buster query param to bypass stuck 308 Permanent Redirects cached by the browser

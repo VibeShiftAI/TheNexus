@@ -1,7 +1,7 @@
 """
 Blackboard API Routes — Exposes the Blackboard as REST endpoints.
 
-Allows external agents (like GravityClaw/Praxis) to observe and interact
+Allows external agents (like Praxis) to observe and interact
 with the Council of 4's blackboard sessions.
 """
 

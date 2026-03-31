@@ -1314,50 +1314,50 @@ app.post('/api/ai/chat', async (req, res) => {
     }
 
     // ---------------------------------------------------------------
-    // PROXY TO GRAVITY CLAW (for Remote Control Chat)
+    // PROXY TO PRAXIS (Personal AI Supervisor)
     // ---------------------------------------------------------------
-    if (mode === 'gravity_claw') {
+    if (mode === 'praxis') {
         try {
-            console.log(`[AI Chat] Proxying 'gravity_claw' request to Webhook (Port 54322)...`);
+            console.log(`[AI Chat] Proxying '${mode}' request to Praxis Agent (Port 54322)...`);
             
-            const gcPayload = {
+            const praxisPayload = {
                 message,
                 history,
                 projectId,
-                audio // Forward base64 audio directly to GravityClaw webhook
+                audio // Forward base64 audio directly to Praxis webhook
             };
 
-            const gcResponse = await fetch('http://127.0.0.1:54322/api/chat', {
+            const praxisResponse = await fetch('http://127.0.0.1:54322/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(gcPayload),
-                signal: AbortSignal.timeout(120000), // 2 min timeout
+                body: JSON.stringify(praxisPayload),
+                signal: AbortSignal.timeout(300000), // 5 min timeout for heavy AI workloads
             });
 
-            if (!gcResponse.ok) {
-                const errorText = await gcResponse.text();
-                throw new Error(`Gravity Claw webhook error: ${gcResponse.status} ${errorText}`);
+            if (!praxisResponse.ok) {
+                const errorText = await praxisResponse.text();
+                throw new Error(`Praxis webhook error: ${praxisResponse.status} ${errorText}`);
             }
 
-            const data = await gcResponse.json();
+            const data = await praxisResponse.json();
 
             // Append Debug Footer
-            const debugFooter = `\n\n_—_\n*🤖 Relayed by Gravity Claw*`;
+            const debugFooter = `\n\n_—_\n*🤖 Relayed by Praxis*`;
 
             return res.json({
                 response: (data.response || "No response") + debugFooter,
-                model: 'gravity-claw-agent',
-                provider: 'Antigravity',
-                mode: 'gravity_claw',
+                model: 'praxis-agent',
+                provider: 'Praxis',
+                mode: mode,
                 isThinking: false,
                 tokenUsage: { total: 0 },
-                artifacts: [], // No Glass Box artifacts from Gravity Claw yet
+                artifacts: [],
                 voiceData: data.voiceData // Pass through voice responses
             });
         } catch (error) {
-            console.error(`[AI Chat] Gravity Claw Proxy Error:`, error);
+            console.error(`[AI Chat] Praxis Proxy Error:`, error);
             return res.json({
-                response: `⚠️ **Connection to Gravity Claw Failed**\n\nI couldn't reach the Gravity Claw daemon (Port 54322). Ensure the background service is running.\n\nError: ${error.message}`,
+                response: `⚠️ **Connection to Praxis Failed**\n\nI couldn't reach the Praxis daemon (Port 54322). Ensure the background service is running.\n\nError: ${error.message}`,
                 model: 'system-error',
                 provider: 'System',
                 mode: mode

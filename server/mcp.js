@@ -321,6 +321,566 @@ server.tool(
     }
 );
 
+// ============================================================================
+// EXECUTIVE PLANNING TOOLS (Phase 1: Dual-Payload Task Management)
+// ============================================================================
+
+// Valid task statuses — free transitions, but must be one of these
+const VALID_TASK_STATUSES = [
+    'idea', 'planning', 'blocked', 'ready',
+    'implementing', 'testing', 'review',
+    'scheduled',
+    'complete', 'done', 'cancelled', 'archived'
+];
+
+/**
+ * nexus_get_board_state — Read project/task state with dependency resolution.
+ * Returns active projects with their tasks annotated with `is_unblocked` status.
+ */
+server.tool(
+    "nexus_get_board_state",
+    {
+        project_id: z.string().optional().describe(
+            "Optional project ID to filter. Omit to get all active projects."
+        )
+    },
+    async ({ project_id }) => {
+        try {
+            const boardState = await db.getBoardState(project_id || undefined);
+
+            if (boardState.length === 0) {
+                return {
+                    content: [{
+                        type: "text",
+                        text: project_id
+                            ? `No project found with ID '${project_id}'.`
+                            : "No active projects found."
+                    }],
+                    isError: false
+                };
+            }
+
+            return {
+                content: [{
+                    type: "text",
+                    text: JSON.stringify(boardState, null, 2)
+                }]
+            };
+        } catch (error) {
+            return {
+                content: [{ type: "text", text: `Failed to get board state: ${error.message}` }],
+                isError: true
+            };
+        }
+    }
+);
+
+/**
+ * nexus_batch_create_tasks — Create multiple tasks in a single atomic transaction.
+ * Supports dual-payload: human layer (title/description) + machine layer (antigravity_payload).
+ */
+server.tool(
+    "nexus_batch_create_tasks",
+    {
+        project_id: z.string().describe("The project ID to create tasks in."),
+        tasks: z.array(z.object({
+            name: z.string().describe("Human-readable task title."),
+            description: z.string().optional().describe("Human-readable task description."),
+            status: z.string().optional().default("planning").describe(
+                "Initial status. Default: 'planning'."
+            ),
+            priority: z.number().optional().default(1).describe(
+                "Priority (1=normal, 2=high, 3=critical). Default: 1."
+            ),
+            antigravity_payload: z.object({
+                prompt: z.string().describe("The exact, hyper-specific prompt for AntiGravity."),
+                workspace: z.string().optional().describe("Target workspace path."),
+                target_files: z.array(z.string()).optional().describe("Files to create/modify."),
+                context_files: z.array(z.string()).optional().describe("Files to read for context."),
+                commands: z.array(z.string()).optional().describe("CLI commands to run (build, test, etc.)."),
+                acceptance_criteria: z.array(z.string()).optional().describe("How to verify success.")
+            }).optional().describe("Machine-layer execution instructions for AntiGravity."),
+            dependencies: z.array(z.string()).optional().default([]).describe(
+                "Array of task IDs (from this batch or existing) that must complete first. " +
+                "Use stable placeholder IDs like 'task-1', 'task-2' for within-batch references."
+            ),
+            stable_id: z.string().optional().describe(
+                "Optional stable ID for within-batch dependency references. " +
+                "Other tasks in this batch can reference this ID in their dependencies array."
+            )
+        })).describe("Array of tasks to create (max 50 per batch).")
+    },
+    async ({ project_id, tasks }) => {
+        try {
+            // Validate project exists
+            const project = await db.getProject(project_id);
+            if (!project) {
+                return {
+                    content: [{ type: "text", text: `Project '${project_id}' not found.` }],
+                    isError: true
+                };
+            }
+
+            // Cap batch size
+            if (tasks.length > 50) {
+                return {
+                    content: [{ type: "text", text: `Batch too large (${tasks.length}). Max 50 tasks per batch.` }],
+                    isError: true
+                };
+            }
+
+            // Resolve stable_id references to real UUIDs
+            const { v4: uuidv4 } = require('uuid');
+            const stableIdToRealId = new Map();
+
+            // Pre-assign real IDs for tasks with stable_id
+            const preparedTasks = tasks.map(task => {
+                const realId = uuidv4();
+                if (task.stable_id) {
+                    stableIdToRealId.set(task.stable_id, realId);
+                }
+                return { ...task, id: realId, project_id };
+            });
+
+            // Resolve dependency references
+            for (const task of preparedTasks) {
+                if (task.dependencies && task.dependencies.length > 0) {
+                    task.dependencies = task.dependencies.map(depId =>
+                        stableIdToRealId.get(depId) || depId  // Resolve or keep as-is (existing task ID)
+                    );
+                }
+                // Remove stable_id before DB insert (not a real column)
+                delete task.stable_id;
+            }
+
+            // Batch insert
+            const created = await db.batchCreateTasks(preparedTasks);
+
+            return {
+                content: [{
+                    type: "text",
+                    text: JSON.stringify({
+                        success: true,
+                        project: project.name,
+                        created_count: created.length,
+                        tasks: created.map(t => ({
+                            id: t.id,
+                            name: t.name,
+                            status: t.status,
+                            has_payload: !!t.antigravity_payload,
+                            dependencies: t.dependencies || []
+                        }))
+                    }, null, 2)
+                }]
+            };
+        } catch (error) {
+            return {
+                content: [{ type: "text", text: `Failed to batch-create tasks: ${error.message}` }],
+                isError: true
+            };
+        }
+    }
+);
+
+/**
+ * nexus_update_project — Update a project's metadata (status, priority, description, etc.)
+ * Used by the chief-of-staff skill to manage daily focus rotation.
+ */
+const VALID_PROJECT_STATUSES = ['active', 'paused', 'archived'];
+
+server.tool(
+    "nexus_update_project",
+    {
+        project_id: z.string().describe("The project ID to update."),
+        status: z.string().optional().describe(
+            `Project status. Valid: ${VALID_PROJECT_STATUSES.join(', ')}`
+        ),
+        priority: z.number().optional().describe(
+            "Numeric priority (higher = more important). Used for daily focus selection."
+        ),
+        description: z.string().optional().describe("Updated project description.")
+    },
+    async ({ project_id, status, priority, description }) => {
+        try {
+            // Validate project exists
+            const existing = await db.getProject(project_id);
+            if (!existing) {
+                return {
+                    content: [{ type: "text", text: `Project '${project_id}' not found.` }],
+                    isError: true
+                };
+            }
+
+            // Validate status if provided
+            if (status && !VALID_PROJECT_STATUSES.includes(status)) {
+                return {
+                    content: [{
+                        type: "text",
+                        text: `Invalid status '${status}'. Valid: ${VALID_PROJECT_STATUSES.join(', ')}`
+                    }],
+                    isError: true
+                };
+            }
+
+            // Build updates object
+            const updates = {};
+            if (status) updates.status = status;
+            if (priority !== undefined) updates.priority = priority;
+            if (description) updates.description = description;
+
+            if (Object.keys(updates).length === 0) {
+                return {
+                    content: [{ type: "text", text: "No updates provided. Specify at least one of: status, priority, description." }],
+                    isError: true
+                };
+            }
+
+            const updated = await db.updateProject(project_id, updates);
+            if (!updated) {
+                return {
+                    content: [{ type: "text", text: `Failed to update project '${project_id}'.` }],
+                    isError: true
+                };
+            }
+
+            return {
+                content: [{
+                    type: "text",
+                    text: JSON.stringify({
+                        success: true,
+                        project: {
+                            id: updated.id,
+                            name: updated.name,
+                            status: updated.status,
+                            priority: updated.priority,
+                            updated_at: updated.updated_at
+                        }
+                    }, null, 2)
+                }]
+            };
+        } catch (error) {
+            return {
+                content: [{ type: "text", text: `Failed to update project: ${error.message}` }],
+                isError: true
+            };
+        }
+    }
+);
+
+/**
+ * nexus_update_task_status — Update a task's status with validation.
+ * Free transitions allowed, but status must be a known value.
+ */
+server.tool(
+    "nexus_update_task_status",
+    {
+        task_id: z.string().describe("The task ID to update."),
+        status: z.string().describe(
+            `New status. Valid values: ${VALID_TASK_STATUSES.join(', ')}`
+        ),
+        note: z.string().optional().describe(
+            "Optional note explaining the status change (stored in description append)."
+        )
+    },
+    async ({ task_id, status, note }) => {
+        try {
+            // Validate status
+            if (!VALID_TASK_STATUSES.includes(status)) {
+                return {
+                    content: [{
+                        type: "text",
+                        text: `Invalid status '${status}'. Valid: ${VALID_TASK_STATUSES.join(', ')}`
+                    }],
+                    isError: true
+                };
+            }
+
+            // Check task exists
+            const existing = await db.getTask(task_id);
+            if (!existing) {
+                return {
+                    content: [{ type: "text", text: `Task '${task_id}' not found.` }],
+                    isError: true
+                };
+            }
+
+            const updates = { status };
+
+            // Append note to description if provided
+            if (note) {
+                const timestamp = new Date().toISOString();
+                const existingDesc = existing.description || '';
+                updates.description = existingDesc +
+                    `\n\n---\n**[${timestamp}]** Status → ${status}: ${note}`;
+            }
+
+            const updated = await db.updateTask(task_id, updates);
+
+            return {
+                content: [{
+                    type: "text",
+                    text: JSON.stringify({
+                        success: true,
+                        task_id: updated.id,
+                        name: updated.name,
+                        previous_status: existing.status,
+                        new_status: updated.status,
+                        project_id: updated.project_id
+                    }, null, 2)
+                }]
+            };
+        } catch (error) {
+            return {
+                content: [{ type: "text", text: `Failed to update task status: ${error.message}` }],
+                isError: true
+            };
+        }
+    }
+);
+
+// ============================================================================
+// QA INSPECTION TOOLS (Phase 2: CEO Review Loop)
+// ============================================================================
+
+/**
+ * nexus_get_task — Retrieve a single task by ID.
+ * Used by the QA reviewer to read acceptance_criteria without pulling full board state.
+ */
+server.tool(
+    "nexus_get_task",
+    {
+        task_id: z.string().describe("The task ID (UUID) to retrieve.")
+    },
+    async ({ task_id }) => {
+        try {
+            const task = await db.getTask(task_id);
+            if (!task) {
+                return {
+                    content: [{ type: "text", text: `Task '${task_id}' not found.` }],
+                    isError: true
+                };
+            }
+
+            return {
+                content: [{
+                    type: "text",
+                    text: JSON.stringify(task, null, 2)
+                }]
+            };
+        } catch (error) {
+            return {
+                content: [{ type: "text", text: `Failed to get task: ${error.message}` }],
+                isError: true
+            };
+        }
+    }
+);
+
+/**
+ * git_get_diff — Read uncommitted code changes in a workspace.
+ * Runs `git diff HEAD` for modifications and `git ls-files --others --exclude-standard`
+ * for new untracked files. Output is truncated to ~10,000 chars to protect LLM context.
+ */
+server.tool(
+    "git_get_diff",
+    {
+        project_path: z.string().describe(
+            "Absolute path to the workspace/project directory (e.g., '/Volumes/Projects/TheNexus')."
+        )
+    },
+    async ({ project_path }) => {
+        const { execSync } = require('child_process');
+        const MAX_CHARS = 10000;
+
+        // Validate the path exists and has a .git directory
+        const gitDir = path.join(project_path, '.git');
+        if (!fs.existsSync(gitDir)) {
+            return {
+                content: [{ type: "text", text: `No git repository found at '${project_path}'.` }],
+                isError: true
+            };
+        }
+
+        try {
+            // Get staged + unstaged modifications
+            let diff = '';
+            try {
+                diff = execSync('git diff HEAD', {
+                    cwd: project_path,
+                    encoding: 'utf-8',
+                    maxBuffer: 1024 * 1024, // 1MB buffer
+                    timeout: 15000
+                });
+            } catch (e) {
+                // git diff HEAD fails on repos with no commits yet — try git diff --cached
+                diff = execSync('git diff --cached', {
+                    cwd: project_path,
+                    encoding: 'utf-8',
+                    maxBuffer: 1024 * 1024,
+                    timeout: 15000
+                });
+            }
+
+            // Get new untracked files
+            const untracked = execSync('git ls-files --others --exclude-standard', {
+                cwd: project_path,
+                encoding: 'utf-8',
+                maxBuffer: 512 * 1024,
+                timeout: 10000
+            }).trim();
+
+            // Build combined output
+            let output = '';
+
+            if (diff) {
+                output += `=== MODIFIED FILES (git diff HEAD) ===\n\n${diff}`;
+            }
+
+            if (untracked) {
+                const files = untracked.split('\n').filter(Boolean);
+                output += `\n\n=== NEW UNTRACKED FILES (${files.length}) ===\n`;
+                output += files.map(f => `  + ${f}`).join('\n');
+            }
+
+            if (!output.trim()) {
+                return {
+                    content: [{ type: "text", text: "No uncommitted changes found in this workspace." }]
+                };
+            }
+
+            // Truncation safeguard
+            let truncated = false;
+            if (output.length > MAX_CHARS) {
+                output = output.substring(0, MAX_CHARS);
+                output += '\n\n--- [TRUNCATED: Output exceeded 10,000 characters] ---';
+                truncated = true;
+            }
+
+            return {
+                content: [{
+                    type: "text",
+                    text: truncated
+                        ? `⚠️ Output truncated to ${MAX_CHARS} chars. Full diff is larger.\n\n${output}`
+                        : output
+                }]
+            };
+        } catch (error) {
+            return {
+                content: [{ type: "text", text: `Failed to get git diff: ${error.message}` }],
+                isError: true
+            };
+        }
+    }
+);
+
+// ============================================================================
+// RESOURCE TELEMETRY (Phase 3: Dynamic Calendar)
+// ============================================================================
+
+/**
+ * nexus_get_system_resources — Token budget dashboard.
+ * Queries usage_stats (today's burn), usage_quotas (daily limits/resets),
+ * and models (available routing options). Returns a budget summary.
+ */
+server.tool(
+    "nexus_get_system_resources",
+    "Get token budget, quota resets, and available models for resource-aware scheduling.",
+    {},
+    async () => {
+        try {
+            // 1. Today's token burn — aggregate across all models
+            const today = new Date().toISOString().split('T')[0];
+            const usageRows = await db.getUsageStats(today, today);
+            let tokensUsedToday = 0;
+            let inputTokensToday = 0;
+            let outputTokensToday = 0;
+            let requestCountToday = 0;
+            const breakdownByModel = {};
+
+            for (const row of usageRows) {
+                const total = Number(row.total_tokens) || 0;
+                tokensUsedToday += total;
+                inputTokensToday += Number(row.input_tokens) || 0;
+                outputTokensToday += Number(row.output_tokens) || 0;
+                requestCountToday += Number(row.request_count) || 0;
+                if (row.model) {
+                    breakdownByModel[row.model] = (breakdownByModel[row.model] || 0) + total;
+                }
+            }
+
+            // 2. Quota data — check for daily limits
+            //    Try common endpoint names; gracefully degrade if none exist
+            let dailyLimit = 1_000_000; // default fallback
+            let nextResetTimestamp = null;
+            let quotaSource = 'default';
+
+            const quotaEndpoints = ['anthropic', 'google', 'openai', 'default'];
+            for (const endpoint of quotaEndpoints) {
+                const quota = await db.getQuota(endpoint, 'daily');
+                if (quota) {
+                    dailyLimit = Number(quota.max_requests) || dailyLimit;
+                    // If quota has a reset_at field, use it
+                    if (quota.reset_at) {
+                        nextResetTimestamp = quota.reset_at;
+                    }
+                    quotaSource = endpoint;
+                    break;
+                }
+            }
+
+            // Default: next reset is midnight UTC
+            if (!nextResetTimestamp) {
+                const tomorrow = new Date();
+                tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+                tomorrow.setUTCHours(0, 0, 0, 0);
+                nextResetTimestamp = tomorrow.toISOString();
+            }
+
+            // 3. Available models
+            let availableModels = [];
+            try {
+                const models = await db.getModels(true);
+                availableModels = models.map(m => ({
+                    id: m.id,
+                    name: m.name || m.id,
+                    provider: m.provider || 'unknown',
+                    is_default: !!m.is_default
+                }));
+            } catch {
+                // Models table might not have data
+            }
+
+            // 4. Compute budget status
+            const budgetPercentage = Math.round((tokensUsedToday / dailyLimit) * 1000) / 10;
+            const budgetStatus = budgetPercentage >= 80 ? 'critical' : 'safe';
+
+            const result = {
+                tokens_used_today: tokensUsedToday,
+                input_tokens_today: inputTokensToday,
+                output_tokens_today: outputTokensToday,
+                request_count_today: requestCountToday,
+                daily_limit: dailyLimit,
+                budget_percentage: budgetPercentage,
+                budget_status: budgetStatus,
+                quota_source: quotaSource,
+                next_reset_timestamp: nextResetTimestamp,
+                available_models: availableModels,
+                breakdown_by_model: breakdownByModel,
+                assessed_at: new Date().toISOString()
+            };
+
+            return {
+                content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+            };
+        } catch (error) {
+            return {
+                content: [{ type: "text", text: `Failed to get system resources: ${error.message}` }],
+                isError: true
+            };
+        }
+    }
+);
+
 // Start the server
 async function main() {
     const transport = new StdioServerTransport();

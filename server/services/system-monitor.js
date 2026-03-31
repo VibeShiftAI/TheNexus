@@ -130,11 +130,50 @@ async function getSystemStatus(forceRefresh = false) {
                   'other'
         }));
         
+        // Fetch Praxis statistics using http module
+        let praxisStats = null;
+        try {
+            console.log('[SystemMonitor] Fetching Praxis stats...');
+            const http = require('http');
+            praxisStats = await new Promise((resolve) => {
+                const req = http.get('http://127.0.0.1:54322/api/praxis/stats', (res) => {
+                    if (res.statusCode !== 200) {
+                        console.error(`[SystemMonitor] Praxis API returned ${res.statusCode}`);
+                        resolve(null);
+                        return;
+                    }
+                    let data = '';
+                    res.on('data', (chunk) => { data += chunk; });
+                    res.on('end', () => {
+                        try {
+                            const parsed = JSON.parse(data);
+                            console.log('[SystemMonitor] Praxis stats fetched successfully:', parsed);
+                            resolve(parsed);
+                        } catch (e) {
+                            console.error('[SystemMonitor] Error parsing Praxis stats JSON', e.message);
+                            resolve(null);
+                        }
+                    });
+                });
+                req.on('error', (err) => {
+                    console.error('[SystemMonitor] Error fetching Praxis stats:', err.message);
+                    resolve(null);
+                });
+                req.setTimeout(1000, () => {
+                    req.destroy();
+                    resolve(null);
+                });
+            });
+        } catch (err) {
+            console.error('[SystemMonitor] Exception fetching Praxis stats:', err.stack);
+        }
+
         cachedStatus = {
             timestamp: new Date().toISOString(),
             system: systemInfo,
             ports: enrichedPorts,
-            portCount: enrichedPorts.length
+            portCount: enrichedPorts.length,
+            praxis: praxisStats
         };
         cacheTimestamp = now;
         

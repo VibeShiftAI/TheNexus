@@ -210,7 +210,7 @@ The system uses role-based model assignments, configurable via the Agent Manager
 
 ## 6. Security & Infrastructure
 
-- **Cloudflare Tunnel:** Exposes the dashboard (port 3000) securely via Zero Trust.
+- **Cloudflare Tunnel:** Exposes the dashboard (port 3001) securely via Zero Trust.
 - **Sandbox Execution:** Code implementation and scheduled tasks run in isolated, timeout-restricted environments.
 - **Command Blocking:** Destructive commands (`rm -rf`, `format`) are automatically blocked.
 - **Project Scoping:** Context and tool execution can be restricted to a specific `projectId`.

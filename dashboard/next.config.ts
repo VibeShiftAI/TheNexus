@@ -20,6 +20,8 @@ dotenvConfig({ path: parentEnvPath });
 // No environment variable validation needed — auth removed, local SQLite only.
 
 const nextConfig: NextConfig = {
+  // Allow Cloudflare Tunnel domain to access Next.js dev server
+  allowedDevOrigins: ['nexus.vibeshiftai.com'],
   env: {
     // No Supabase env vars needed — auth removed
   },

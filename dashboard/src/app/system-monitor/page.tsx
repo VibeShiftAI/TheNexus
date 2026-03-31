@@ -18,7 +18,11 @@ import {
     Brain,
     Clock,
     ArrowLeft,
-    ShieldCheck
+    ShieldCheck,
+    Database,
+    Network,
+    Box,
+    Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -341,6 +345,119 @@ export default function SystemMonitorPage() {
                         </div>
                         <div className="text-xs text-slate-500">
                             {filteredPorts.length} relevant dev servers
+                        </div>
+                    </div>
+                </div>
+
+                {/* Praxis Core Area - Futuristic Layout */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900/40 via-slate-900/80 to-cyan-900/40 border border-indigo-500/30 p-1">
+                    <div className="absolute top-0 right-0 p-4 opacity-20 pointer-events-none">
+                        <Brain className="w-48 h-48 text-cyan-400" />
+                    </div>
+                    {/* Inner glowing border effect */}
+                    <div className="bg-slate-950/80 backdrop-blur-xl rounded-xl p-6 relative z-10 w-full h-full">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                                <Sparkles className="w-5 h-5 text-indigo-400" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
+                                    Praxis Agent Engine
+                                </h2>
+                                <p className="text-xs text-slate-400 font-mono tracking-wider">PRAXIS // ACTIVE</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* Intelligence Model */}
+                            <div className="border border-slate-800/60 bg-slate-900/40 rounded-lg p-4 hover:border-indigo-500/50 transition-colors group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150"></div>
+                                <div className="flex items-center gap-3 mb-3 relative z-10">
+                                    <Brain className="w-5 h-5 text-indigo-400 group-hover:animate-pulse" />
+                                    <span className="text-sm font-medium text-slate-300">Intelligence Core</span>
+                                </div>
+                                <div className="text-lg font-bold text-white tracking-wide relative z-10 truncate" title={systemStatus?.praxis?.model || "Offline"}>
+                                    {systemStatus?.praxis?.model || "Offline"}
+                                </div>
+                                <div className="text-xs text-indigo-400/80 font-mono mt-2 flex items-center gap-1.5 relative z-10">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${systemStatus?.praxis?.status === 'online' ? 'bg-indigo-500 animate-[pulse_2s_ease-in-out_infinite] shadow-[0_0_5px_rgba(99,102,241,0.5)]' : 'bg-slate-500'}`}></span>
+                                    Active Version
+                                </div>
+                            </div>
+
+                            {/* MCP Toolset */}
+                            <div className="border border-slate-800/60 bg-slate-900/40 rounded-lg p-4 hover:border-cyan-500/50 transition-colors group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150"></div>
+                                <div className="flex items-center gap-3 mb-3 relative z-10">
+                                    <Box className="w-5 h-5 text-cyan-400 group-hover:rotate-12 transition-transform" />
+                                    <span className="text-sm font-medium text-slate-300">MCP Toolset</span>
+                                </div>
+                                <div className="flex items-baseline gap-2 relative z-10">
+                                    <span className="text-3xl font-bold text-white">{systemStatus?.praxis?.mcpToolCount ?? 0}</span>
+                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                        AVAILABLE
+                                    </span>
+                                </div>
+                                <div className="text-xs text-slate-400 mt-2 font-mono relative z-10">
+                                    Nexus + Github + Local
+                                </div>
+                            </div>
+
+                            {/* Memory Database */}
+                            <div className="border border-slate-800/60 bg-slate-900/40 rounded-lg p-4 hover:border-fuchsia-500/50 transition-colors group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-fuchsia-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150"></div>
+                                <div className="flex items-center gap-3 mb-3 relative z-10">
+                                    <Database className="w-5 h-5 text-fuchsia-400" />
+                                    <span className="text-sm font-medium text-slate-300">Memory Graph</span>
+                                </div>
+                                <div className="flex flex-col gap-2.5 relative z-10">
+                                    <div>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-[10px] text-fuchsia-400/80 uppercase tracking-wider">Neo4j Nodes</span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-fuchsia-500 animate-pulse shadow-[0_0_8px_rgba(217,70,239,0.6)]"></div>
+                                                <span className="text-base text-white font-medium font-mono">{formatNumber(systemStatus?.praxis?.neo4jNodes ?? 0)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-full h-[1px] bg-gradient-to-r from-fuchsia-500/10 via-fuchsia-400/40 to-fuchsia-500/10 mt-1"></div>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-[10px] text-pink-400/80 uppercase tracking-wider">Pinecone Vecs</span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-pink-500 animate-pulse shadow-[0_0_8px_rgba(236,72,153,0.6)]" style={{ animationDelay: '500ms' }}></div>
+                                                <span className="text-base text-white font-medium font-mono">{formatNumber(systemStatus?.praxis?.pineconeVectors ?? 0)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-full h-[1px] bg-gradient-to-r from-pink-500/10 via-pink-400/40 to-pink-500/10 mt-1"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Webhook Tunnels */}
+                            <div className="border border-slate-800/60 bg-slate-900/40 rounded-lg p-4 hover:border-emerald-500/50 transition-colors group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150"></div>
+                                <div className="flex items-center gap-3 mb-3 relative z-10">
+                                    <Network className="w-5 h-5 text-emerald-400" />
+                                    <span className="text-sm font-medium text-slate-300">Praxis Tunnels</span>
+                                </div>
+                                <div className="flex flex-col gap-2 relative z-10">
+                                    <div className="flex items-center justify-between bg-slate-950/60 px-2 py-1.5 rounded border border-slate-800/80">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <span className={`w-1.5 h-1.5 rounded-full ${systemStatus?.praxis?.status === 'online' ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]'}`}></span>
+                                            <span className="text-slate-200 font-mono tracking-wider">{systemStatus?.praxis?.port || 54322}</span>
+                                        </div>
+                                        <span className="text-[10px] text-emerald-400 uppercase tracking-wider">Orchestrator</span>
+                                    </div>
+                                    <div className="flex items-center justify-between bg-slate-950/60 px-2 py-1.5 rounded border border-slate-800/80">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <span className={`w-1.5 h-1.5 rounded-full ${systemStatus?.praxis?.status === 'online' ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'bg-slate-500'}`}></span>
+                                            <span className="text-slate-200 font-mono tracking-wider">54321</span>
+                                        </div>
+                                        <span className="text-[10px] text-emerald-400 uppercase tracking-wider">Nexus Webhook</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

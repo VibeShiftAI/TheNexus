@@ -112,9 +112,9 @@ export default function Home() {
 
       {/* Content Grid */}
       <div className="container mx-auto p-6">
-        {/* AI Terminal & Dashboard Sidebar */}
+        {/* Praxis Terminal & Dashboard Sidebar */}
         <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_380px]">
-          {/* Left: AI Terminal — absolute-positioned so sidebar drives row height */}
+          {/* Left: Praxis Terminal — absolute-positioned so sidebar drives row height */}
           <div className="relative min-h-[400px]">
             <div className="absolute inset-0">
               <AITerminal mode="inline" />

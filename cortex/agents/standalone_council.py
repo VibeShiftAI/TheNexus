@@ -1,7 +1,7 @@
 """
 Standalone Council Spawner — On-demand deliberation for external agents.
 
-Allows Praxis (GravityClaw) or other agents to spin up an ad-hoc
+Allows Praxis or other agents to spin up an ad-hoc
 Council of 4 on any topic. Unlike the orchestrator's council (which
 reviews MarkdownPlans), this council performs open-ended analysis.
 

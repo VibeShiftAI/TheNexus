@@ -73,7 +73,8 @@ const JSON_COLS = new Set([
     'agent_configuration', 'parameters', 'capabilities', 'config',
     'trigger_config', 'configuration', 'target_projects', 'progress',
     'allowed_tools', 'denied_tools', 'details', 'data',
-    'stages', 'outputs'
+    'stages', 'outputs',
+    'antigravity_payload', 'dependencies'
 ]);
 
 function deserRow(row) {
@@ -424,6 +425,124 @@ async function deleteTask(taskId) {
     } catch (err) {
         console.error('[Database] Error deleting task:', err.message);
         return false;
+    }
+}
+
+// ============================================================================
+// DUAL-PAYLOAD TASK OPERATIONS (Executive Planning)
+// ============================================================================
+
+/**
+ * Batch-create tasks in a single SQLite transaction.
+ * Each task supports the dual-payload structure:
+ *   - human layer: name, description, status, priority
+ *   - machine layer: antigravity_payload (JSON), dependencies (JSON array)
+ *
+ * @param {Array} tasks - Array of task objects
+ * @returns {Array} Created tasks with IDs
+ */
+async function batchCreateTasks(tasks) {
+    if (!db) return [];
+    try {
+        const insertMany = db.transaction((items) => {
+            const results = [];
+            for (const task of items) {
+                if (!task.id) task.id = uuid();
+                if (!task.created_at) task.created_at = now();
+                task.updated_at = now();
+
+                // Serialize JSON fields for storage
+                if (task.antigravity_payload && typeof task.antigravity_payload === 'object') {
+                    task.antigravity_payload = JSON.stringify(task.antigravity_payload);
+                }
+                if (task.dependencies && Array.isArray(task.dependencies)) {
+                    task.dependencies = JSON.stringify(task.dependencies);
+                }
+
+                const { sql, values } = buildInsert('tasks', task);
+                db.prepare(sql).run(...values);
+                results.push(deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(task.id)));
+            }
+            return results;
+        });
+        return insertMany(tasks);
+    } catch (err) {
+        console.error('[Database] Error batch-creating tasks:', err.message);
+        return [];
+    }
+}
+
+/**
+ * Get the "board state" — active projects with their tasks and unblocked status.
+ * A task is "unblocked" if all task IDs in its `dependencies` array have status='complete'.
+ *
+ * @param {string} [projectId] - Optional filter by project ID
+ * @returns {Array} Projects with tasks annotated with `is_unblocked` flag
+ */
+async function getBoardState(projectId) {
+    if (!db) return [];
+    try {
+        // Get projects
+        let projects;
+        if (projectId) {
+            const p = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+            projects = p ? [deserRow(p)] : [];
+        } else {
+            projects = deserRows(
+                db.prepare("SELECT * FROM projects WHERE status != 'archived' ORDER BY updated_at DESC").all()
+            );
+        }
+
+        // Get all tasks for these projects in one query
+        const projectIds = projects.map(p => p.id);
+        if (projectIds.length === 0) return [];
+
+        const placeholders = projectIds.map(() => '?').join(',');
+        const allTasks = deserRows(
+            db.prepare(`SELECT * FROM tasks WHERE project_id IN (${placeholders}) ORDER BY priority DESC, created_at ASC`).all(...projectIds)
+        );
+
+        // Build a status lookup map for dependency resolution
+        const taskStatusMap = new Map();
+        for (const task of allTasks) {
+            taskStatusMap.set(task.id, task.status);
+        }
+
+        // Annotate each task with is_unblocked
+        for (const task of allTasks) {
+            const deps = task.dependencies || [];
+            if (deps.length === 0) {
+                task.is_unblocked = true;
+            } else {
+                task.is_unblocked = deps.every(depId => {
+                    const depStatus = taskStatusMap.get(depId);
+                    return depStatus === 'complete' || depStatus === 'done';
+                });
+            }
+        }
+
+        // Group tasks by project
+        const tasksByProject = new Map();
+        for (const task of allTasks) {
+            if (!tasksByProject.has(task.project_id)) {
+                tasksByProject.set(task.project_id, []);
+            }
+            tasksByProject.get(task.project_id).push(task);
+        }
+
+        // Assemble result
+        return projects.map(project => ({
+            ...project,
+            tasks: tasksByProject.get(project.id) || [],
+            task_summary: {
+                total: (tasksByProject.get(project.id) || []).length,
+                unblocked: (tasksByProject.get(project.id) || []).filter(t => t.is_unblocked && t.status !== 'complete' && t.status !== 'done').length,
+                complete: (tasksByProject.get(project.id) || []).filter(t => t.status === 'complete' || t.status === 'done').length,
+            }
+        }));
+    } catch (err) {
+        console.error('[Database] Error getting board state:', err.message);
+        return [];
     }
 }
 
@@ -1172,5 +1291,8 @@ module.exports = {
     insertExecutionStep,
     getInlineComments,
     insertInlineComment,
-    updateInlineComment
+    updateInlineComment,
+    // Dual-Payload Task Operations (Phase 1: Executive Planning)
+    batchCreateTasks,
+    getBoardState
 };
