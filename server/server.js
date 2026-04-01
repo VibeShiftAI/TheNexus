@@ -929,7 +929,7 @@ app.patch('/api/projects/:id', async (req, res) => {
     const updates = req.body;
 
     // Validate updates
-    const allowedFields = ['name', 'description', 'type', 'vibe', 'stack', 'urls', 'path'];
+    const allowedFields = ['name', 'description', 'type', 'vibe', 'stack', 'urls', 'path', 'end_state'];
     const filteredUpdates = {};
 
     for (const key of Object.keys(updates)) {
@@ -3163,6 +3163,321 @@ app.post('/api/broadcast', (req, res) => {
         clients: io.engine.clientsCount,
         timestamp: new Date().toISOString()
     });
+});
+
+// ============================================================================
+// EXECUTIVE PLANNING API ENDPOINTS (Long-Horizon Planning)
+// ============================================================================
+
+/**
+ * GET /api/board-state — Board state with dependency resolution.
+ * Returns active projects with tasks annotated with `is_unblocked`.
+ */
+app.get('/api/board-state', async (req, res) => {
+    try {
+        const projectId = req.query.project_id;
+        const boardState = await db.getBoardState(projectId || undefined);
+        res.json(boardState);
+    } catch (error) {
+        console.error('Error getting board state:', error);
+        res.status(500).json({ error: 'Failed to get board state: ' + error.message });
+    }
+});
+
+/**
+ * POST /api/tasks/batch — Atomic batch task creation with dependency resolution.
+ * Supports stable_id references for within-batch dependencies.
+ */
+app.post('/api/tasks/batch', async (req, res) => {
+    const { project_id, tasks } = req.body;
+
+    if (!project_id || !tasks || !Array.isArray(tasks)) {
+        return res.status(400).json({ error: 'project_id and tasks array are required' });
+    }
+
+    if (tasks.length > 50) {
+        return res.status(400).json({ error: `Batch too large (${tasks.length}). Max 50 tasks per batch.` });
+    }
+
+    try {
+        // Verify project exists
+        const project = await db.getProject(project_id);
+        if (!project) {
+            return res.status(404).json({ error: `Project '${project_id}' not found.` });
+        }
+
+        // Resolve stable_id references
+        const crypto = require('crypto');
+        const stableIdToRealId = new Map();
+
+        const preparedTasks = tasks.map(task => {
+            const realId = crypto.randomUUID();
+            if (task.stable_id) {
+                stableIdToRealId.set(task.stable_id, realId);
+            }
+            return { ...task, id: realId, project_id };
+        });
+
+        // Resolve dependency references
+        for (const task of preparedTasks) {
+            if (task.dependencies && task.dependencies.length > 0) {
+                task.dependencies = task.dependencies.map(depId =>
+                    stableIdToRealId.get(depId) || depId
+                );
+            }
+            delete task.stable_id;
+        }
+
+        const created = await db.batchCreateTasks(preparedTasks);
+
+        res.status(201).json({
+            success: true,
+            project: project.name,
+            created_count: created.length,
+            tasks: created.map(t => ({
+                id: t.id,
+                name: t.name,
+                status: t.status,
+                sort_order: t.sort_order,
+                has_payload: !!t.antigravity_payload,
+                dependencies: t.dependencies || []
+            }))
+        });
+    } catch (error) {
+        console.error('Error batch-creating tasks:', error);
+        res.status(500).json({ error: 'Failed to batch-create tasks: ' + error.message });
+    }
+});
+
+/**
+ * PATCH /api/tasks/reorder — Bulk reorder tasks within a project.
+ * Accepts array of { id, sort_order } pairs.
+ */
+app.patch('/api/tasks/reorder', async (req, res) => {
+    const { ordering } = req.body;
+
+    if (!ordering || !Array.isArray(ordering)) {
+        return res.status(400).json({ error: 'ordering array is required' });
+    }
+
+    try {
+        const success = await db.reorderTasks(ordering);
+        if (!success) {
+            return res.status(500).json({ error: 'Failed to reorder tasks.' });
+        }
+
+        res.json({ success: true, reordered_count: ordering.length });
+    } catch (error) {
+        console.error('Error reordering tasks:', error);
+        res.status(500).json({ error: 'Failed to reorder tasks: ' + error.message });
+    }
+});
+
+/**
+ * GET /api/system/resources — Token budget dashboard.
+ * Returns today's usage, quota limits, and available models.
+ */
+app.get('/api/system/resources', async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const usageRows = await db.getUsageStats(today, today) || [];
+
+        let tokensUsedToday = 0;
+        let inputTokensToday = 0;
+        let outputTokensToday = 0;
+        let requestCountToday = 0;
+        const breakdownByModel = {};
+
+        for (const row of usageRows) {
+            const total = Number(row.total_tokens) || 0;
+            tokensUsedToday += total;
+            inputTokensToday += Number(row.input_tokens) || 0;
+            outputTokensToday += Number(row.output_tokens) || 0;
+            requestCountToday += Number(row.request_count) || 0;
+            if (row.model) {
+                breakdownByModel[row.model] = (breakdownByModel[row.model] || 0) + total;
+            }
+        }
+
+        // Quota data
+        let dailyLimit = 1_000_000;
+        let nextResetTimestamp = null;
+        let quotaSource = 'default';
+
+        const quotaEndpoints = ['anthropic', 'google', 'openai', 'default'];
+        for (const endpoint of quotaEndpoints) {
+            const quota = await db.getQuota(endpoint, 'daily');
+            if (quota) {
+                dailyLimit = Number(quota.max_requests) || dailyLimit;
+                if (quota.reset_at) nextResetTimestamp = quota.reset_at;
+                quotaSource = endpoint;
+                break;
+            }
+        }
+
+        if (!nextResetTimestamp) {
+            const tomorrow = new Date();
+            tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+            tomorrow.setUTCHours(0, 0, 0, 0);
+            nextResetTimestamp = tomorrow.toISOString();
+        }
+
+        // Available models
+        let availableModels = [];
+        try {
+            const models = await db.getModels(true);
+            availableModels = models.map(m => ({
+                id: m.id,
+                name: m.name || m.id,
+                provider: m.provider || 'unknown',
+                is_default: !!m.is_default
+            }));
+        } catch { /* Models table might not have data */ }
+
+        const budgetPercentage = Math.round((tokensUsedToday / dailyLimit) * 1000) / 10;
+        const budgetStatus = budgetPercentage >= 80 ? 'critical' : 'safe';
+
+        res.json({
+            tokens_used_today: tokensUsedToday,
+            input_tokens_today: inputTokensToday,
+            output_tokens_today: outputTokensToday,
+            request_count_today: requestCountToday,
+            daily_limit: dailyLimit,
+            budget_percentage: budgetPercentage,
+            budget_status: budgetStatus,
+            quota_source: quotaSource,
+            next_reset_timestamp: nextResetTimestamp,
+            available_models: availableModels,
+            breakdown_by_model: breakdownByModel,
+            assessed_at: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error getting system resources:', error);
+        res.status(500).json({ error: 'Failed to get system resources: ' + error.message });
+    }
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOTES API (Agent Scratchpad / Daily Journal)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/notes — Get global (non-project) notes
+ */
+app.get('/api/notes', async (req, res) => {
+    try {
+        const notes = await db.getNotes(null);
+        res.json({ notes });
+    } catch (error) {
+        console.error('Error fetching global notes:', error);
+        res.status(500).json({ error: 'Failed to fetch notes' });
+    }
+});
+
+/**
+ * POST /api/notes — Create a global note
+ */
+app.post('/api/notes', async (req, res) => {
+    try {
+        const { content, category, source } = req.body;
+        if (!content || !content.trim()) {
+            return res.status(400).json({ error: 'Content is required' });
+        }
+        const note = await db.createNote({
+            project_id: null,
+            content: content.trim(),
+            category: category || 'daily-log',
+            source: source || 'operator'
+        });
+        if (!note) {
+            return res.status(500).json({ error: 'Failed to create note' });
+        }
+        res.status(201).json({ success: true, note });
+    } catch (error) {
+        console.error('Error creating global note:', error);
+        res.status(500).json({ error: 'Failed to create note' });
+    }
+});
+
+/**
+ * GET /api/projects/:id/notes — Get notes for a specific project
+ */
+app.get('/api/projects/:id/notes', async (req, res) => {
+    try {
+        const notes = await db.getNotes(req.params.id);
+        res.json({ notes });
+    } catch (error) {
+        console.error(`Error fetching notes for project ${req.params.id}:`, error);
+        res.status(500).json({ error: 'Failed to fetch notes' });
+    }
+});
+
+/**
+ * POST /api/projects/:id/notes — Create a note for a specific project
+ */
+app.post('/api/projects/:id/notes', async (req, res) => {
+    try {
+        const { content, category, source } = req.body;
+        if (!content || !content.trim()) {
+            return res.status(400).json({ error: 'Content is required' });
+        }
+        const note = await db.createNote({
+            project_id: req.params.id,
+            content: content.trim(),
+            category: category || 'general',
+            source: source || 'operator'
+        });
+        if (!note) {
+            return res.status(500).json({ error: 'Failed to create note' });
+        }
+        res.status(201).json({ success: true, note });
+    } catch (error) {
+        console.error(`Error creating note for project ${req.params.id}:`, error);
+        res.status(500).json({ error: 'Failed to create note' });
+    }
+});
+
+/**
+ * PATCH /api/notes/:noteId — Update a note
+ */
+app.patch('/api/notes/:noteId', async (req, res) => {
+    try {
+        const allowedFields = ['content', 'category', 'pinned'];
+        const updates = {};
+        for (const key of Object.keys(req.body)) {
+            if (allowedFields.includes(key)) {
+                updates[key] = req.body[key];
+            }
+        }
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ error: 'No valid fields to update' });
+        }
+        const note = await db.updateNote(req.params.noteId, updates);
+        if (!note) {
+            return res.status(404).json({ error: 'Note not found' });
+        }
+        res.json({ success: true, note });
+    } catch (error) {
+        console.error(`Error updating note ${req.params.noteId}:`, error);
+        res.status(500).json({ error: 'Failed to update note' });
+    }
+});
+
+/**
+ * DELETE /api/notes/:noteId — Delete a note
+ */
+app.delete('/api/notes/:noteId', async (req, res) => {
+    try {
+        const deleted = await db.deleteNote(req.params.noteId);
+        if (!deleted) {
+            return res.status(404).json({ error: 'Note not found or delete failed' });
+        }
+        res.json({ success: true });
+    } catch (error) {
+        console.error(`Error deleting note ${req.params.noteId}:`, error);
+        res.status(500).json({ error: 'Failed to delete note' });
+    }
 });
 
 

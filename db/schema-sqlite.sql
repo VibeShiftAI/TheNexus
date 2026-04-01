@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS projects (
     stack TEXT DEFAULT '{}',           -- JSON object
     urls TEXT DEFAULT '{}',            -- JSON object
     tasks_list TEXT DEFAULT '[]',      -- JSON array of strings
+    end_state TEXT,                    -- The desired end-state for the project (goal-regression)
     user_id TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
@@ -58,6 +59,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     reasoning_level TEXT DEFAULT 'vibe',
     antigravity_payload TEXT,              -- JSON: machine-layer execution instructions for AntiGravity
     dependencies TEXT DEFAULT '[]',        -- JSON array of task IDs that must be complete before this task is unblocked
+    sort_order INTEGER DEFAULT 0,          -- Explicit sequencing within a project
     user_id TEXT,
     source TEXT,                       -- Origin of the task (e.g. 'cortex', 'manual')
     created_at TEXT DEFAULT (datetime('now')),
@@ -66,6 +68,24 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+
+-- ============================================================================
+-- NOTES (Agent scratchpad — project-specific and global daily journal)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS notes (
+    id TEXT PRIMARY KEY,
+    project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,  -- NULL = global/daily note
+    content TEXT NOT NULL,
+    category TEXT DEFAULT 'general',   -- 'general', 'decision', 'blocker', 'reminder', 'daily-log'
+    source TEXT DEFAULT 'praxis',      -- 'praxis' or 'operator'
+    pinned INTEGER DEFAULT 0,          -- Pin important notes to top
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_notes_project ON notes(project_id);
+CREATE INDEX IF NOT EXISTS idx_notes_category ON notes(category);
 
 -- ============================================================================
 -- WORKFLOW ENGINE TABLES

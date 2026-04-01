@@ -28,10 +28,16 @@ export interface SystemInfo {
 export interface PraxisTelemetry {
     status: string;
     model: string;
+    provider: string;
     mcpToolCount: number;
     neo4jNodes: number;
     pineconeVectors: number;
     port: number;
+    quota?: {
+        date: string;
+        resetTime: string;
+        providers: Record<string, { requestsToday: number }>;
+    };
 }
 
 export interface SystemStatus {
@@ -103,9 +109,21 @@ export interface Project {
         production?: string;
         repo?: string;
     };
+    end_state?: string;
     stats?: {
         pending_reviews?: number;
     };
+}
+
+export interface Note {
+    id: string;
+    project_id: string | null;
+    content: string;
+    category: 'general' | 'decision' | 'blocker' | 'reminder' | 'daily-log';
+    source: 'praxis' | 'operator';
+    pinned: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface GitStatus {
@@ -1953,4 +1971,66 @@ export async function saveEnvSettings(settings: Partial<EnvSettings>): Promise<{
         throw new Error(data.error || "Failed to save environment settings");
     }
     return res.json();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Notes API
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function getProjectNotes(projectId: string): Promise<Note[]> {
+    const baseUrl = API_URL.replace(/\/projects$/, '');
+    const res = await authFetch(`${baseUrl}/projects/${projectId}/notes`);
+    if (!res.ok) throw new Error('Failed to fetch project notes');
+    const data = await res.json();
+    return data.notes || [];
+}
+
+export async function getGlobalNotes(): Promise<Note[]> {
+    const baseUrl = API_URL.replace(/\/projects$/, '');
+    const res = await authFetch(`${baseUrl}/notes`);
+    if (!res.ok) throw new Error('Failed to fetch global notes');
+    const data = await res.json();
+    return data.notes || [];
+}
+
+export async function createNote(
+    content: string,
+    category: string = 'general',
+    projectId?: string | null
+): Promise<Note> {
+    const baseUrl = API_URL.replace(/\/projects$/, '');
+    const url = projectId
+        ? `${baseUrl}/projects/${projectId}/notes`
+        : `${baseUrl}/notes`;
+    const res = await authFetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, category, source: 'operator' }),
+    });
+    if (!res.ok) throw new Error('Failed to create note');
+    const data = await res.json();
+    return data.note;
+}
+
+export async function updateNote(
+    noteId: string,
+    updates: { content?: string; category?: string; pinned?: number }
+): Promise<Note> {
+    const baseUrl = API_URL.replace(/\/projects$/, '');
+    const res = await authFetch(`${baseUrl}/notes/${noteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error('Failed to update note');
+    const data = await res.json();
+    return data.note;
+}
+
+export async function deleteNote(noteId: string): Promise<void> {
+    const baseUrl = API_URL.replace(/\/projects$/, '');
+    const res = await authFetch(`${baseUrl}/notes/${noteId}`, {
+        method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete note');
 }

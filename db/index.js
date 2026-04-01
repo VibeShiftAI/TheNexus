@@ -84,7 +84,7 @@ function deserRow(row) {
             row[key] = deser(row[key]);
         }
         // SQLite booleans back to JS booleans
-        if (key === 'is_template' || key === 'is_active' || key === 'is_enabled' || key === 'resolved') {
+        if (key === 'is_template' || key === 'is_active' || key === 'is_enabled' || key === 'resolved' || key === 'pinned') {
             row[key] = row[key] === 1 || row[key] === true;
         }
     }
@@ -543,6 +543,31 @@ async function getBoardState(projectId) {
     } catch (err) {
         console.error('[Database] Error getting board state:', err.message);
         return [];
+    }
+}
+
+/**
+ * Reorder tasks within a project by updating sort_order values.
+ * Accepts an array of { id, sort_order } pairs and updates them atomically.
+ *
+ * @param {Array} ordering - Array of { id: string, sort_order: number }
+ * @returns {boolean} true if reorder succeeded
+ */
+async function reorderTasks(ordering) {
+    if (!db) return false;
+    try {
+        const reorder = db.transaction((items) => {
+            const stmt = db.prepare('UPDATE tasks SET sort_order = ?, updated_at = ? WHERE id = ?');
+            const timestamp = now();
+            for (const item of items) {
+                stmt.run(item.sort_order, timestamp, item.id);
+            }
+        });
+        reorder(ordering);
+        return true;
+    } catch (err) {
+        console.error('[Database] Error reordering tasks:', err.message);
+        return false;
     }
 }
 
@@ -1222,6 +1247,78 @@ async function updateInlineComment(commentId, updates) {
 }
 
 // ============================================================================
+// NOTES (Agent Scratchpad)
+// ============================================================================
+
+/**
+ * Get notes, optionally filtered by project.
+ * If projectId is null/undefined, returns global notes (project_id IS NULL).
+ * If projectId is a string, returns notes for that project.
+ * If projectId is '__all__', returns all notes.
+ */
+async function getNotes(projectId) {
+    if (!db) return [];
+    try {
+        if (projectId === '__all__') {
+            return deserRows(db.prepare('SELECT * FROM notes ORDER BY pinned DESC, created_at DESC').all());
+        } else if (projectId) {
+            return deserRows(db.prepare('SELECT * FROM notes WHERE project_id = ? ORDER BY pinned DESC, created_at DESC').all(projectId));
+        } else {
+            return deserRows(db.prepare('SELECT * FROM notes WHERE project_id IS NULL ORDER BY pinned DESC, created_at DESC').all());
+        }
+    } catch (err) {
+        console.error('[Database] Error fetching notes:', err.message);
+        return [];
+    }
+}
+
+async function createNote({ project_id, content, category, source }) {
+    if (!db) return null;
+    try {
+        const note = {
+            id: crypto.randomUUID(),
+            project_id: project_id || null,
+            content,
+            category: category || 'general',
+            source: source || 'praxis',
+            pinned: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        const { sql, values } = buildInsert('notes', note);
+        db.prepare(sql).run(...values);
+        return deserRow(db.prepare('SELECT * FROM notes WHERE id = ?').get(note.id));
+    } catch (err) {
+        console.error('[Database] Error creating note:', err.message);
+        return null;
+    }
+}
+
+async function updateNote(noteId, updates) {
+    if (!db) return null;
+    try {
+        updates.updated_at = new Date().toISOString();
+        const { sql, values } = buildUpdate('notes', { ...updates }, 'id', noteId);
+        db.prepare(sql).run(...values);
+        return deserRow(db.prepare('SELECT * FROM notes WHERE id = ?').get(noteId));
+    } catch (err) {
+        console.error('[Database] Error updating note:', err.message);
+        return null;
+    }
+}
+
+async function deleteNote(noteId) {
+    if (!db) return false;
+    try {
+        db.prepare('DELETE FROM notes WHERE id = ?').run(noteId);
+        return true;
+    } catch (err) {
+        console.error('[Database] Error deleting note:', err.message);
+        return false;
+    }
+}
+
+// ============================================================================
 // EXPORTS
 // ============================================================================
 
@@ -1294,5 +1391,12 @@ module.exports = {
     updateInlineComment,
     // Dual-Payload Task Operations (Phase 1: Executive Planning)
     batchCreateTasks,
-    getBoardState
+    getBoardState,
+    reorderTasks,
+    // Notes (Agent Scratchpad)
+    getNotes,
+    createNote,
+    updateNote,
+    deleteNote
 };
+

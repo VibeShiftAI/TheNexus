@@ -46,9 +46,34 @@ import { getSystemStatus, getUsageStats, SystemStatus, UsageStats, PortInfo } fr
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 const PROVIDER_COLORS: Record<string, string> = {
     'google': '#3b82f6', // blue-500
+    'google-biz': '#6366f1', // indigo-500
     'anthropic': '#f59e0b', // amber-500
     'openai': '#22c55e', // green-500
+    'xai': '#ec4899', // pink-500
+    'openrouter': '#8b5cf6', // violet-500
     'other': '#94a3b8' // slate-400
+};
+
+// Known daily quota limits per provider (RPD = requests per day)
+const PROVIDER_QUOTA_LIMITS: Record<string, number> = {
+    'google': 500,
+    'google-biz': 500,
+    'openai': 10000,
+    'anthropic': 4000,
+    'xai': 1000,
+    'openrouter': 5000,
+};
+
+const PROVIDER_LABELS: Record<string, string> = {
+    'google': 'Google (Personal)',
+    'google-biz': 'Google (Business)',
+    'openai': 'OpenAI',
+    'anthropic': 'Anthropic',
+    'xai': 'xAI / Grok',
+    'openrouter': 'OpenRouter',
+    'deepseek': 'DeepSeek',
+    'groq': 'Groq',
+    'local': 'Local LLM',
 };
 
 export default function SystemMonitorPage() {
@@ -461,6 +486,108 @@ export default function SystemMonitorPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* API Quota Tracker */}
+                {systemStatus?.praxis?.quota && (
+                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+                        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-500/15 rounded-lg border border-amber-500/20">
+                                    <Zap className="w-5 h-5 text-amber-400" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-white">API Quota Tracker</h3>
+                                    <p className="text-xs text-slate-400">
+                                        Daily requests per provider &bull; Resets at midnight PT
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700">
+                                <Clock size={14} className="text-amber-400" />
+                                <span className="text-xs font-mono text-amber-300">
+                                    Reset in {systemStatus.praxis.quota.resetTime}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="p-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {Object.entries(systemStatus.praxis.quota.providers)
+                                    .sort(([a], [b]) => {
+                                        // Sort: google first, google-biz second, then alphabetical
+                                        const order = ['google', 'google-biz', 'openai', 'anthropic', 'xai', 'openrouter'];
+                                        return (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b));
+                                    })
+                                    .map(([provider, data]) => {
+                                        const limit = PROVIDER_QUOTA_LIMITS[provider] || 500;
+                                        const pct = Math.min((data.requestsToday / limit) * 100, 100);
+                                        const color = PROVIDER_COLORS[provider] || PROVIDER_COLORS['other'];
+                                        const isWarning = pct >= 80;
+                                        const isCritical = pct >= 95;
+                                        const label = PROVIDER_LABELS[provider] || provider;
+
+                                        return (
+                                            <div
+                                                key={provider}
+                                                className={`relative bg-slate-950/60 rounded-lg p-4 border transition-colors ${
+                                                    isCritical ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.1)]' :
+                                                    isWarning ? 'border-amber-500/30' :
+                                                    'border-slate-800/60 hover:border-slate-700'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            className="w-2.5 h-2.5 rounded-full"
+                                                            style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}60` }}
+                                                        />
+                                                        <span className="text-sm font-medium text-slate-200">{label}</span>
+                                                    </div>
+                                                    {isCritical && (
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
+                                                            QUOTA LOW
+                                                        </span>
+                                                    )}
+                                                    {isWarning && !isCritical && (
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                                            WARNING
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-baseline gap-1.5 mb-3">
+                                                    <span className="text-2xl font-bold text-white font-mono">
+                                                        {data.requestsToday}
+                                                    </span>
+                                                    <span className="text-xs text-slate-500">
+                                                        / {limit} RPD
+                                                    </span>
+                                                </div>
+
+                                                {/* Progress bar */}
+                                                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-1000 ease-out"
+                                                        style={{
+                                                            width: `${pct}%`,
+                                                            background: isCritical
+                                                                ? 'linear-gradient(90deg, #ef4444, #f87171)'
+                                                                : isWarning
+                                                                ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
+                                                                : `linear-gradient(90deg, ${color}, ${color}cc)`,
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="flex justify-between mt-1.5">
+                                                    <span className="text-[10px] text-slate-500">{pct.toFixed(0)}% used</span>
+                                                    <span className="text-[10px] text-slate-500">{limit - data.requestsToday} remaining</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Graphs Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

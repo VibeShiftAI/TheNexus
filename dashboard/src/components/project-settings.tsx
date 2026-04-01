@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Project, updateProject } from "@/lib/nexus";
-import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen } from "lucide-react";
+import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen, Target } from "lucide-react";
 
 interface ProjectSettingsProps {
     project: Project;
@@ -57,7 +57,8 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                 path: editedProject.path,
                 vibe: editedProject.vibe,
                 urls: editedProject.urls,
-                stack: editedProject.stack
+                stack: editedProject.stack,
+                end_state: editedProject.end_state
             });
             setIsEditing(false);
             onUpdate();
@@ -133,6 +134,17 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                         )}
                     </div>
                 )}
+
+                {/* End State display */}
+                {project.end_state && (
+                    <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 border border-emerald-500/20">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Target size={14} className="text-emerald-400" />
+                            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">End State</span>
+                        </div>
+                        <p className="text-sm text-slate-300 leading-relaxed">{project.end_state}</p>
+                    </div>
+                )}
             </div>
         );
     }
@@ -204,6 +216,20 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                         onChange={(e) => handleChange('description', e.target.value)}
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition-colors h-24 resize-none"
                     />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-emerald-400 uppercase flex items-center gap-2">
+                        <Target size={12} />
+                        End State — Goal Regression Target
+                    </label>
+                    <textarea
+                        value={editedProject.end_state || ''}
+                        onChange={(e) => handleChange('end_state', e.target.value)}
+                        placeholder="Describe the desired end state of this project. Praxis will use this to backward-chain tasks and evaluate progress."
+                        className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-400 transition-colors h-28 resize-none placeholder:text-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Praxis uses this to evaluate progress, identify gaps, and auto-generate missing tasks.</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

@@ -14,6 +14,7 @@ import { ProjectContextManager } from "@/components/project-context-manager";
 import { ProjectWorkflows } from "@/components/project-workflows";
 import { ArtifactsList } from "@/components/artifacts-list";
 import { TaskStatusTiles } from "@/components/task-status-tiles";
+import { ProjectNotes } from "@/components/project-notes";
 
 export default function ProjectDetailPage() {
     const params = useParams();
@@ -336,6 +337,9 @@ export default function ProjectDetailPage() {
                         />
                     </div>
                 </div>
+
+                {/* Project Notes */}
+                <ProjectNotes projectId={projectId} />
 
                 {/* README Section */}
                 {readme.exists && readme.content && (

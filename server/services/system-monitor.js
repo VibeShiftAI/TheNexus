@@ -97,10 +97,29 @@ async function getSystemStatus(forceRefresh = false) {
     }
     
     try {
-        const [ports, systemInfo] = await Promise.all([
-            getListeningPorts(),
-            getBasicSystemInfo()
-        ]);
+        // Wrap system calls with a timeout to prevent hanging
+        // (systeminformation uses sysctl which may not be on LaunchAgent PATH)
+        const withTimeout = (promise, ms = 3000) => {
+            let timer;
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => {
+                    timer = setTimeout(() => reject(new Error('System info timed out')), ms);
+                })
+            ]).finally(() => clearTimeout(timer));
+        };
+
+        let ports = [];
+        let systemInfo = { cpu: { usage: 0, cores: 0 }, memory: { total: 0, used: 0, free: 0, usagePercent: 0 } };
+
+        try {
+            [ports, systemInfo] = await Promise.all([
+                withTimeout(getListeningPorts()),
+                withTimeout(getBasicSystemInfo())
+            ]);
+        } catch (sysErr) {
+            console.warn('[SystemMonitor] System info collection timed out or failed:', sysErr.message);
+        }
         
         // Identify common dev server ports
         const knownDevPorts = {
@@ -159,7 +178,7 @@ async function getSystemStatus(forceRefresh = false) {
                     console.error('[SystemMonitor] Error fetching Praxis stats:', err.message);
                     resolve(null);
                 });
-                req.setTimeout(1000, () => {
+                req.setTimeout(3000, () => {
                     req.destroy();
                     resolve(null);
                 });
