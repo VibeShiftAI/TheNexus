@@ -1,7 +1,7 @@
 ---
 context_type: task-pipeline-map
 status: active
-updated_at: 2026-03-31T01:20:31.210Z
+updated_at: 2026-04-01T12:53:38.060Z
 ---
 
 # Task Pipeline Architecture

@@ -6,9 +6,11 @@ import { getProjects, getPins, Project } from "@/lib/nexus";
 import { ProjectCard } from "@/components/project-card";
 import { NewProjectModal } from "@/components/new-project-modal";
 import { ActivityFeed } from "@/components/activity-feed";
+import { AntigravityMonitor } from "@/components/antigravity-monitor";
 import { AITerminal } from "@/components/ai-terminal";
 import { DashboardInitiatives } from "@/components/dashboard-initiatives";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
+import { DailyJournal } from "@/components/daily-journal";
 import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen, Settings } from "lucide-react";
 import { SettingsModal } from "@/components/settings-modal";
 
@@ -127,6 +129,10 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Full-width Praxis Journal under Terminal & Sidebar */}
+        <div className="mb-8">
+          <DailyJournal />
+        </div>
 
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -181,6 +187,7 @@ export default function Home() {
 
             {/* Initiatives + Activity Sidebar */}
             <div className="lg:sticky lg:top-24 lg:h-fit space-y-6">
+              <AntigravityMonitor />
               <DashboardInitiatives onRefresh={loadData} />
               <ActivityFeed />
             </div>

@@ -1,0 +1,211 @@
+[dotenv@17.2.3] injecting env (7) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+[Database] Connected to SQLite: /Volumes/Projects/TheNexus/nexus.db
+[SupervisorSync] Starting watcher on /Volumes/Projects/**/supervisor/*.md
+[Resume Research] Checking for in-progress research tasks...
+[Resume Implementations] Checking for stuck implementations...
+Local Nexus running on http://localhost:4000
+Scanning directory: /Volumes/Projects
+Critic code review: ENABLED
+Reasoning level: STANDARD
+Database: CONNECTED (SQLite)
+[Model Discovery] Starting model discovery across all providers...
+[Model Discovery] Querying google...
+[Model Discovery] Querying openai...
+[Model Discovery] Querying anthropic...
+[Model Discovery] Querying xai...
+[Model Discovery] xai: found 14 raw models
+[Model Discovery] google: found 50 raw models
+[Model Discovery] anthropic: found 9 raw models
+[Model Discovery] openai: found 120 raw models
+[Model Discovery] google raw IDs: models/gemini-2.5-flash, models/gemini-2.5-pro, models/gemini-2.0-flash, models/gemini-2.0-flash-001, models/gemini-2.0-flash-lite-001, models/gemini-2.0-flash-lite, models/gemini-2.5-flash-preview-tts, models/gemini-2.5-pro-preview-tts, models/gemma-3-1b-it, models/gemma-3-4b-it, models/gemma-3-12b-it, models/gemma-3-27b-it, models/gemma-3n-e4b-it, models/gemma-3n-e2b-it, models/gemma-4-26b-a4b-it, models/gemma-4-31b-it, models/gemini-flash-latest, models/gemini-flash-lite-latest, models/gemini-pro-latest, models/gemini-2.5-flash-lite, models/gemini-2.5-flash-image, models/gemini-3-pro-preview, models/gemini-3-flash-preview, models/gemini-3.1-pro-preview, models/gemini-3.1-pro-preview-customtools, models/gemini-3.1-flash-lite-preview, models/gemini-3-pro-image-preview, models/nano-banana-pro-preview, models/gemini-3.1-flash-image-preview, models/lyria-3-clip-preview
+[Model Discovery] openai raw IDs: gpt-4-0613, gpt-4, gpt-3.5-turbo, gpt-5.4-mini, gpt-5.4, gpt-5.4-nano-2026-03-17, gpt-5.4-nano, gpt-5.4-mini-2026-03-17, davinci-002, babbage-002, gpt-3.5-turbo-instruct, gpt-3.5-turbo-instruct-0914, dall-e-3, dall-e-2, gpt-3.5-turbo-1106, tts-1-hd, tts-1-1106, tts-1-hd-1106, text-embedding-3-small, text-embedding-3-large, gpt-3.5-turbo-0125, gpt-4-turbo, gpt-4-turbo-2024-04-09, gpt-4o, gpt-4o-2024-05-13, gpt-4o-mini-2024-07-18, gpt-4o-mini, gpt-4o-2024-08-06, gpt-4o-audio-preview, gpt-4o-realtime-preview
+[Model Discovery] anthropic raw IDs: claude-sonnet-4-6, claude-opus-4-6, claude-opus-4-5-20251101, claude-haiku-4-5-20251001, claude-sonnet-4-5-20250929, claude-opus-4-1-20250805, claude-opus-4-20250514, claude-sonnet-4-20250514, claude-3-haiku-20240307
+[Model Discovery] xai raw IDs: grok-3, grok-3-mini, grok-4-0709, grok-4-1-fast-non-reasoning, grok-4-1-fast-reasoning, grok-4-fast-non-reasoning, grok-4-fast-reasoning, grok-4.20-0309-non-reasoning, grok-4.20-0309-reasoning, grok-4.20-multi-agent-0309, grok-code-fast-1, grok-imagine-image, grok-imagine-image-pro, grok-imagine-video
+[Model Discovery] Complete in 772ms. Summary: {
+  google: '2 models (from 50 raw)',
+  openai: '1 models (from 120 raw)',
+  anthropic: '3 models (from 9 raw)',
+  xai: '1 models (from 14 raw)'
+}
+[Model Discovery] Final model list (7 models):
+  → Gemini 3.1 Pro (Google) [gemini-3.1-pro-preview]
+  → Gemini 3.1 Flash (Google) [gemini-3.1-flash-lite-preview]
+  → GPT-5.4 (OpenAI) [gpt-5.4]
+  → Claude Opus 4.6 (Anthropic) [claude-opus-4-6]
+  → Claude Sonnet 4.6 (Anthropic) [claude-sonnet-4-6]
+  → Claude Haiku 4.5 (Anthropic) [claude-haiku-4-5-20251001]
+  → Grok 4 (xAI) [grok-4-0709]
+Model Discovery: 7 latest models ready
+[Chat Files] Uploaded: test-upload.txt → becb27ba-4097-4ec5-bcea-2017e1bf817c.txt (0.0 KB)
+[Task Sync] Updating task c43dbbd3-e515-4efd-b55a-d84dc5d552fc: status
+[Task Sync] Updating task c43dbbd3-e515-4efd-b55a-d84dc5d552fc: plan_output, metadata
+[Task Sync] Updating task c43dbbd3-e515-4efd-b55a-d84dc5d552fc: walkthrough, metadata
+[Task Sync] Updating task c43dbbd3-e515-4efd-b55a-d84dc5d552fc: walkthrough, metadata
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[Projects] Scanning for new projects (Root: /Volumes/Projects)...
+[Auth] Bypassing auth for: /api/ai/usage
+[AG Stream] info: 1 task(s) queued → 2 clients
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: 1 task(s) queued → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: 1 task(s) queued → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: 1 task(s) queued → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: 1 task(s) queued → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: 1 task(s) queued → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[SystemMonitor] Fetching Praxis stats...
+[AG Stream] info: 1 task(s) queued → 3 clients
+[SystemMonitor] Error fetching Praxis stats: socket hang up
+[SystemMonitor] Fetching Praxis stats...
+[SystemMonitor] Error fetching Praxis stats: socket hang up
+[SystemMonitor] Fetching Praxis stats...
+[SystemMonitor] Error fetching Praxis stats: socket hang up
+[SystemMonitor] Fetching Praxis stats...
+[SystemMonitor] Error fetching Praxis stats: socket hang up
+[SystemMonitor] Fetching Praxis stats...
+[SystemMonitor] Error fetching Praxis stats: socket hang up
+
+?? [AI Chat] Request Details:
+   � Mode: praxis
+   � Model: undefined
+   � Message: "How's your token budget and queue? Toss another ta..."
+   � Files: 0 attached
+[AI Chat] Proxying 'praxis' request to Praxis Agent (Port 54322)...
+[SystemMonitor] Fetching Praxis stats...
+[SystemMonitor] Error fetching Praxis stats: socket hang up
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[Task Sync] Updating task 7557e915-a07f-4ef4-ab7e-9d19f262d38c: status
+[AG Stream] info: Task dispatched: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[Auth] Bypassing auth for: /api/ai/usage
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[SystemMonitor] Fetching Praxis stats...
+[SystemMonitor] Error fetching Praxis stats: socket hang up
+[SystemMonitor] Fetching Praxis stats...
+[SystemMonitor] Error fetching Praxis stats: socket hang up
+[SystemMonitor] Fetching Praxis stats...
+[SystemMonitor] Error fetching Praxis stats: socket hang up
+
+?? [AI Chat] Request Details:
+   � Mode: praxis
+   � Model: undefined
+   � Message: "How's your token budget and queue? Toss another ta..."
+   � Files: 0 attached
+[AI Chat] Proxying 'praxis' request to Praxis Agent (Port 54322)...
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AI Chat] Praxis Proxy Error: DOMException [TimeoutError]: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:13502:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /Volumes/Projects/TheNexus/server/server.js:1477:36
+[AG Stream] info: Task dispatched: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[Task Sync] Updating task d93e4840-b091-40ae-b86e-33e19b514eb3: status
+[Auth] Bypassing auth for: /api/ai/usage
+[AG Stream] info: Working on 2 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 2 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 2 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[SystemMonitor] Fetching Praxis stats...
+[SystemMonitor] Error fetching Praxis stats: socket hang up
+[Projects] Scanning for new projects (Root: /Volumes/Projects)...
+[AG Stream] info: Working on 2 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 2 task(s) → 2 clients
+[Projects] Scanning for new projects (Root: /Volumes/Projects)...
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 2 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Build send_file tool for mobile app attachments → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 2 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[Task Sync] Updating task 7557e915-a07f-4ef4-ab7e-9d19f262d38c: status
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[Auth] Bypassing auth for: /api/ai/usage
+[Task Sync] Updating task c43dbbd3-e515-4efd-b55a-d84dc5d552fc: status
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[AG Stream] info: In progress: Nexus Task 7557e915-a07f-4ef4-ab7e-9d19f262d38c → 2 clients
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[AG Stream] info: In progress: Nexus Task d93e4840-b091-40ae-b86e-33e19b514eb3 → 2 clients
+[AG Stream] info: Working on 1 task(s) → 2 clients
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[Auth] Bypassing auth for: /api/ai/usage
+[AG Stream] info: 1 task(s) queued → 2 clients
+[Auth] Bypassing auth for: /api/ai/usage

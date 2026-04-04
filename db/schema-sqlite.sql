@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS notes (
     category TEXT DEFAULT 'general',   -- 'general', 'decision', 'blocker', 'reminder', 'daily-log'
     source TEXT DEFAULT 'praxis',      -- 'praxis' or 'operator'
     pinned INTEGER DEFAULT 0,          -- Pin important notes to top
+    cortex_ingested_at TEXT,           -- NULL = not sent, ISO timestamp = when dispatched to Cortex
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -458,6 +459,77 @@ CREATE TABLE IF NOT EXISTS workflow_static_data (
 );
 
 CREATE INDEX IF NOT EXISTS idx_wsd_workflow ON workflow_static_data(workflow_id);
+
+-- ============================================================================
+-- CHAT CONVERSATIONS & MESSAGES (persistent Praxis / terminal chat history)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS chat_conversations (
+    id TEXT PRIMARY KEY,
+    title TEXT DEFAULT 'New Conversation',
+    mode TEXT DEFAULT 'praxis',          -- 'praxis' | 'chat' | 'agent'
+    is_active INTEGER DEFAULT 1,         -- boolean: currently selected conversation
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_conversations_mode ON chat_conversations(mode);
+CREATE INDEX IF NOT EXISTS idx_chat_conversations_active ON chat_conversations(is_active);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,                   -- 'user' | 'assistant' | 'system'
+    content TEXT NOT NULL,
+    mode TEXT DEFAULT 'praxis',           -- 'praxis' | 'chat' | 'agent'
+    metadata TEXT DEFAULT '{}',           -- JSON: voiceData, artifact info, model/provider
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_mode ON chat_messages(mode);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at);
+
+-- ============================================================================
+-- ANTIGRAVITY EVENT STREAM (zero-cost monitoring)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS ag_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type TEXT NOT NULL,            -- 'task_dispatched', 'task_pickup', 'task_progress', 'task_complete', 'approval_needed', 'error', 'stall_detected', 'task_aborted', 'health_check', 'extension_lifecycle'
+    severity TEXT DEFAULT 'info',        -- 'info', 'warning', 'critical'
+    title TEXT NOT NULL,
+    message TEXT,
+    task_id TEXT,
+    source TEXT DEFAULT 'extension',     -- 'extension', 'praxis', 'nexus'
+    metadata TEXT DEFAULT '{}',          -- JSON blob for extra context
+    requires_action INTEGER DEFAULT 0,   -- 1 if user needs to act (e.g., click away a dialog)
+    action_taken INTEGER DEFAULT 0,      -- 1 once user/agent has handled it
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ag_events_type ON ag_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_ag_events_created ON ag_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_ag_events_action ON ag_events(requires_action, action_taken);
+
+-- ─── Push Notification Tokens ───────────────────────────────
+
+CREATE TABLE IF NOT EXISTS push_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT NOT NULL UNIQUE,
+    device_id TEXT,
+    platform TEXT DEFAULT 'android',
+    label TEXT,
+    enabled INTEGER DEFAULT 1,
+    last_success_at TEXT,
+    last_error TEXT,
+    error_count INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_tokens_enabled ON push_tokens(enabled);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_token ON push_tokens(token);
 
 -- ============================================================================
 -- DONE! Local SQLite database is ready.

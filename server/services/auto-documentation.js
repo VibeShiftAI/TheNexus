@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { GoogleGenAI } = require('@google/genai');
 const db = require('../../db');
+const { trackUsage } = require('../utils/token-tracker');
 
 /**
  * Get agent configuration from environment (no longer uses database)
@@ -158,6 +159,16 @@ Example:
                 config: { responseMimeType: 'application/json' }
             });
             responseText = getResponseText(response);
+
+            // Track usage from response metadata
+            const usage = response.usageMetadata || {};
+            trackUsage({
+                provider: 'google',
+                model: model,
+                inputTokens: usage.promptTokenCount || 0,
+                outputTokens: usage.candidatesTokenCount || 0,
+                task: 'auto-documentation'
+            });
         } catch (err) {
             console.error(`[AutoDoc] Gemini generation failed with model ${model}:`, err.message);
             throw err; // Fail loudly as requested

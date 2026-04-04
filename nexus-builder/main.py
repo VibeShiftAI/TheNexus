@@ -29,6 +29,7 @@ from nodes.registry import NodeRegistry, get_registry
 from supabase_client import get_supabase
 from stream_manager import StreamManager
 from fastapi.responses import StreamingResponse
+from cortex.api.routes.council_routes import router as council_router
 
 
 
@@ -89,6 +90,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount cortex routers
+app.include_router(council_router, prefix="/api", tags=["council"])
 
 
 

@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { ArtifactsList } from "./artifacts-list";
 import { TaskStatusTiles } from "./task-status-tiles";
-import { DailyJournal } from "./daily-journal";
 
 interface DashboardSidebarProps {
     onRefresh?: () => void;
@@ -45,9 +44,6 @@ export function DashboardSidebar({ onRefresh }: DashboardSidebarProps) {
 
     return (
         <div className="space-y-4 pr-1">
-            {/* Praxis Daily Journal */}
-            <DailyJournal />
-
             {/* Artifacts In Review */}
             <ArtifactsList
                 items={stats.artifactsInReview.items}

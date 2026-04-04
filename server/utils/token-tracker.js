@@ -61,7 +61,7 @@ function trackUsage({ provider, model, inputTokens, outputTokens, projectId = nu
 
     // Record to database (async, fire-and-forget)
     if (db.isDatabaseEnabled()) {
-        db.recordUsage(model, inputTokens, outputTokens).catch(err => {
+        db.recordUsage(model, inputTokens, outputTokens, 'nexus').catch(err => {
             console.error('[TokenTracker] Database error:', err.message);
         });
     }

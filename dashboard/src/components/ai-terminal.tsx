@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Settings2, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw, Maximize2, Mic, Square } from "lucide-react";
+import { Send, Bot, User, Settings2, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw, Maximize2, Mic, Square, Plus, History, ChevronRight, Download, Image, Film, Music, FileArchive, Volume2, Save } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -57,7 +57,7 @@ const MODES = [
 
 export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITerminalProps) {
     const isInline = mode === 'inline';
-    const { messages, setMessages, readyForReview, setReadyForReview } = useCortex();
+    const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory } = useCortex();
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
@@ -66,7 +66,9 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const [showSettings, setShowSettings] = useState(false);
     const [pendingArtifact, setPendingArtifact] = useState<CortexArtifact | null>(null);
     const [attachedFiles, setAttachedFiles] = useState<File[]>([]); // File upload state
+    const [attachedPreviews, setAttachedPreviews] = useState<{ name: string; size: number; type: string; previewUrl?: string }[]>([]); // Rich preview state
     const [isDragging, setIsDragging] = useState(false); // Drag-and-drop state
+    const [showConversations, setShowConversations] = useState(false); // Conversation history panel
     const dragCounter = useRef(0); // Counter to properly track drag enter/leave across child elements
     // Inline critique feedback state
     const [critiqueFeedback, setCritiqueFeedback] = useState<{ messageIndex: number | null; text: string; loading: boolean }>({
@@ -92,9 +94,36 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
     const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
 
+    // Voice message dismiss/listened tracking
+    // Keys are "msgIdx-voiceIdx", values track state
+    const [dismissedVoice, setDismissedVoice] = useState<Set<string>>(new Set());
+    const [listenedVoice, setListenedVoice] = useState<Set<string>>(new Set());
+
+    // Save voice memo to disk (browser download)
+    const saveVoiceMemo = useCallback((audio: string, mimeType: string, msgIndex: number, voiceIndex: number) => {
+        const ext = mimeType.includes('mpeg') ? 'mp3' : mimeType.includes('ogg') ? 'ogg' : mimeType.includes('wav') ? 'wav' : 'mp3';
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const filename = `praxis-voice-${timestamp}.${ext}`;
+        const byteChars = atob(audio);
+        const byteNumbers = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) {
+            byteNumbers[i] = byteChars.charCodeAt(i);
+        }
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, []);
+
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null); // Hidden file input
+    const fileInputRef = useRef<HTMLInputElement>(null); // Hidden file input (all types)
+    const mediaInputRef = useRef<HTMLInputElement>(null); // Hidden media input (camera/gallery)
     const params = useParams();
     const scopedProjectId = typeof params?.id === 'string' ? params.id : null;
 
@@ -151,16 +180,28 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     // File handling functions
     const handleFileDrop = useCallback((files: FileList | File[]) => {
         const fileArray = Array.from(files);
-        // Filter for allowed file types
-        const allowedTypes = ['.txt', '.md', '.json', '.py', '.js', '.ts', '.tsx', '.yaml', '.yml', '.csv'];
-        const validFiles = fileArray.filter(file => {
-            const ext = '.' + file.name.split('.').pop()?.toLowerCase();
-            return allowedTypes.includes(ext) || file.type.startsWith('text/');
-        });
+        // Accept all file types up to 25 MB each
+        const MAX_SIZE = 25 * 1024 * 1024;
+        const validFiles = fileArray.filter(f => f.size <= MAX_SIZE);
 
         if (validFiles.length > 0) {
             setAttachedFiles(prev => [...prev, ...validFiles].slice(0, 5)); // Max 5 files
-            console.log('[Praxis Terminal] Files attached:', validFiles.map(f => f.name));
+
+            // Generate preview metadata for chips
+            const previews = validFiles.map(f => {
+                const preview: { name: string; size: number; type: string; previewUrl?: string } = {
+                    name: f.name,
+                    size: f.size,
+                    type: f.type,
+                };
+                // Generate image thumbnails
+                if (f.type.startsWith('image/')) {
+                    preview.previewUrl = URL.createObjectURL(f);
+                }
+                return preview;
+            });
+            setAttachedPreviews(prev => [...prev, ...previews].slice(0, 5));
+            console.log('[Praxis Terminal] Files attached:', validFiles.map(f => `${f.name} (${(f.size / 1024).toFixed(0)} KB)`));
         }
     }, []);
 
@@ -200,6 +241,11 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
 
     const removeFile = useCallback((index: number) => {
         setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+        setAttachedPreviews(prev => {
+            const removed = prev[index];
+            if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+            return prev.filter((_, i) => i !== index);
+        });
     }, []);
 
     // Audio recording functions
@@ -258,6 +304,69 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const handleSend = async () => {
         if ((!input.trim() && attachedFiles.length === 0 && !audioBlob) || loading || !selectedModel) return;
 
+        // ---------------------------------------------------------------
+        // SLASH COMMAND: /ingest <url_or_text>
+        // Directly ingests a link or text without invoking Praxis
+        // ---------------------------------------------------------------
+        const trimmed = input.trim();
+        if (trimmed.startsWith('/ingest ') || trimmed === '/ingest') {
+            const payload = trimmed.replace(/^\/ingest\s*/, '').trim();
+            if (!payload) {
+                setMessages(prev => [...prev, {
+                    role: 'system',
+                    content: '⚠️ Usage: /ingest <url> or /ingest <text to save>',
+                    timestamp: new Date()
+                }]);
+                return;
+            }
+
+            // Show user message
+            const isUrl = /^https?:\/\//i.test(payload);
+            setMessages(prev => [...prev, {
+                role: 'user',
+                content: `📥 /ingest ${isUrl ? payload : payload.substring(0, 80) + (payload.length > 80 ? '...' : '')}`,
+                timestamp: new Date()
+            }]);
+            setInput('');
+            setLoading(true);
+
+            try {
+                const authHeader = await getAuthHeader();
+                const body = isUrl
+                    ? { url: payload, projectId: scopedProjectId }
+                    : { text: payload, projectId: scopedProjectId };
+
+                const response = await fetch('/api/ingest', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json', ...authHeader as any },
+                    body: JSON.stringify(body),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Ingestion failed');
+                }
+
+                const cortexNote = data.cortex === 'dispatched' ? ' → Cortex 🧠' : '';
+                setMessages(prev => [...prev, {
+                    role: 'system',
+                    content: `✅ Ingested: "${data.title}" — ${data.contentLength?.toLocaleString()} chars ${data.contentType ? `(${data.contentType}) ` : ''}saved to notes${cortexNote}`,
+                    timestamp: new Date()
+                }]);
+            } catch (err: any) {
+                setMessages(prev => [...prev, {
+                    role: 'system',
+                    content: `❌ Ingestion failed: ${err.message}`,
+                    timestamp: new Date()
+                }]);
+            } finally {
+                setLoading(false);
+            }
+            return; // Don't continue to normal chat flow
+        }
+
         // Build user message content
         let messageContent = input.trim();
         if (attachedFiles.length > 0) {
@@ -279,6 +388,9 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
         setInput("");
         const filesToUpload = [...attachedFiles];
         setAttachedFiles([]);
+        // Clean up preview URLs
+        attachedPreviews.forEach(p => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
+        setAttachedPreviews([]);
         const currentAudioBlob = audioBlob;
         clearAudio(); // Reset recording UI
         setLoading(true);
@@ -286,15 +398,42 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
         try {
             const authHeader = await getAuthHeader();
 
-            // Read file contents if any files attached
+            // Upload files to the Nexus file endpoint
             let fileContents: { name: string; content: string; type: string }[] = [];
+            let uploadedAttachments: { fileId: string; url: string; mimeType: string; originalName: string; size: number }[] = [];
             if (filesToUpload.length > 0) {
-                fileContents = await Promise.all(
-                    filesToUpload.map(async (file) => {
+                const authHeader = await getAuthHeader();
+                // Upload binary files (images, audio, etc.) to the file endpoint
+                // and read text files inline for context
+                const uploadPromises = filesToUpload.map(async (file) => {
+                    const isTextFile = file.type.startsWith('text/') || /\.(txt|md|json|py|js|ts|tsx|jsx|yaml|yml|csv|xml|html|css|sql|sh|bat|log|cfg|ini|toml|env)$/i.test(file.name);
+                    
+                    if (isTextFile && file.size < 512 * 1024) {
+                        // Small text files: read inline for LLM context
                         const content = await file.text();
-                        return { name: file.name, content, type: file.type || 'text/plain' };
-                    })
-                );
+                        fileContents.push({ name: file.name, content, type: file.type || 'text/plain' });
+                    }
+
+                    // All files: upload to file storage for persistence and serving
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        const uploadRes = await fetch('/api/chat/files/upload', {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData,
+                        });
+                        if (uploadRes.ok) {
+                            const data = await uploadRes.json();
+                            uploadedAttachments.push(data);
+                        } else {
+                            console.error(`[Praxis Terminal] File upload failed for ${file.name}:`, await uploadRes.text());
+                        }
+                    } catch (err) {
+                        console.error(`[Praxis Terminal] File upload error for ${file.name}:`, err);
+                    }
+                });
+                await Promise.all(uploadPromises);
             }
 
             // Read audio blob to base64
@@ -312,32 +451,70 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 base64Audio = btoa(binary);
             }
 
-            const response = await fetch(`/api/ai/chat?_cb=${Date.now()}`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    ...authHeader as any, // Cast to any to assume HeadersInit compatibility
+            // Retry-on-connection-reset wrapper: Next.js Fast Refresh (HMR) full reloads
+            // destroy all in-flight proxy connections, causing ECONNRESET / "socket hang up".
+            // This is transient — the backend is still processing — so retry once.
+            const MAX_RETRIES = 1;
+            let lastError: Error | null = null;
+            let response: Response | null = null;
+
+            const requestBody = JSON.stringify({
+                message: input.trim() || (currentAudioBlob ? "Voice recording attached" : `Please analyze the attached file(s): ${filesToUpload.map(f => f.name).join(', ')}`),
+                // Send full model configuration for proper routing
+                modelConfig: {
+                    id: selectedModel.id,
+                    apiModelId: selectedModel.apiModelId,
+                    provider: selectedModel.provider,
+                    isThinking: selectedModel.isThinking || false,
+                    parameters: selectedModel.parameters || {},
                 },
-                body: JSON.stringify({
-                    message: input.trim() || (currentAudioBlob ? "Voice recording attached" : `Please analyze the attached file(s): ${filesToUpload.map(f => f.name).join(', ')}`),
-                    // Send full model configuration for proper routing
-                    modelConfig: {
-                        id: selectedModel.id,
-                        apiModelId: selectedModel.apiModelId,
-                        provider: selectedModel.provider,
-                        isThinking: selectedModel.isThinking || false,
-                        parameters: selectedModel.parameters || {},
-                    },
-                    mode: selectedMode.id,
-                    history: messages.slice(-10), // Last 10 messages for context
-                    projectId: scopedProjectId, // Send scope if available
-                    files: fileContents, // Include file contents
-                    audio: base64Audio, // Include base64 voice recording if any
-                }),
+                mode: selectedMode.id,
+                history: messages.slice(-10), // Last 10 messages for context
+                projectId: scopedProjectId, // Send scope if available
+                files: fileContents, // Include text file contents for LLM context
+                audio: base64Audio, // Include base64 voice recording if any
+                attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined, // Uploaded file refs
             });
 
+            for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    response = await fetch(`/api/ai/chat?_cb=${Date.now()}`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            ...authHeader as any,
+                        },
+                        body: requestBody,
+                    });
+                    lastError = null;
+                    break; // Success — exit retry loop
+                } catch (fetchErr: any) {
+                    lastError = fetchErr;
+                    const isTransient = fetchErr?.message?.includes('fetch') ||
+                                        fetchErr?.message?.includes('network') ||
+                                        fetchErr?.message?.includes('Failed to fetch') ||
+                                        fetchErr?.name === 'TypeError'; // Network errors in browsers are TypeErrors
+                    if (isTransient && attempt < MAX_RETRIES) {
+                        console.warn(`[Praxis Terminal] Connection reset (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying in 2s...`);
+                        await new Promise(r => setTimeout(r, 2000));
+                        continue;
+                    }
+                    throw fetchErr; // Not transient or out of retries
+                }
+            }
+
+            if (!response) {
+                throw lastError || new Error('No response received');
+            }
+
             if (!response.ok) {
-                throw new Error('Failed to get response');
+                // Try to extract a meaningful error from the response body
+                let detail = `HTTP ${response.status}`;
+                try {
+                    const errBody = await response.json();
+                    if (errBody?.error) detail = errBody.error;
+                } catch { /* ignore parse errors */ }
+                throw new Error(`Server returned ${detail}`);
             }
 
             const data = await response.json();
@@ -350,7 +527,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             };
 
             setMessages(prev => [...prev, assistantMessage]);
-        } catch (error) {
+        } catch (error: any) {
             console.error('AI Chat error:', error);
             // In Agent mode, artifacts stream via WebSocket — the HTTP response is just a summary.
             // Don't show a scary error if the pipeline is actually working via Glass Box.
@@ -368,9 +545,18 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     }]);
                 }
             } else {
+                // Show a diagnostic error instead of the misleading "429 Rate Limit"
+                const errMsg = error?.message || String(error);
+                const isNetworkError = errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('Failed to fetch') || error?.name === 'TypeError';
+                const isRateLimit = errMsg.includes('429') || errMsg.includes('Too many');
+                const userMessage = isRateLimit
+                    ? 'Rate limit exceeded (429). Your API quota may be exhausted — try again in a few minutes.'
+                    : isNetworkError
+                    ? 'Connection lost — the server may be restarting. Please try again in a moment.'
+                    : `Error: ${errMsg}`;
                 setMessages(prev => [...prev, {
                     role: 'system',
-                    content: 'Error: Could not connect to AI service. Make sure the server has an API key configured.',
+                    content: userMessage,
                     timestamp: new Date(),
                 }]);
             }
@@ -674,18 +860,26 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                         {selectedMode.name}
                     </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={async () => {
+                            await startNewConversation();
+                            console.log('[Praxis Terminal] New conversation started');
+                        }}
+                        className="p-1.5 rounded text-slate-400 hover:text-emerald-400 hover:bg-slate-700 transition-colors"
+                        title="New Conversation"
+                    >
+                        <Plus size={18} />
+                    </button>
                     <button
                         onClick={() => {
-                            setMessages([]);
-                            localStorage.removeItem('cortex_chat_history');
-                            localStorage.removeItem('cortex_thread_id');
-                            console.log('[Praxis Terminal] New chat started');
+                            setShowConversations(!showConversations);
+                            if (!showConversations) loadConversations();
                         }}
-                        className="p-1.5 rounded text-slate-400 hover:text-cyan-400 hover:bg-slate-700 transition-colors"
-                        title="New Chat (clears history and starts fresh)"
+                        className={`p-1.5 rounded transition-colors ${showConversations ? 'text-cyan-400 bg-slate-700' : 'text-slate-400 hover:text-cyan-400 hover:bg-slate-700'}`}
+                        title="Conversation History"
                     >
-                        <RotateCcw size={18} />
+                        <History size={18} />
                     </button>
                     <button
                         onClick={() => setShowSettings(!showSettings)}
@@ -736,6 +930,55 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 </div>
             )}
 
+            {/* Conversation History Panel */}
+            {showConversations && (
+                <div className="border-b border-slate-700 bg-slate-800/50 max-h-64 overflow-y-auto">
+                    <div className="px-3 py-2 text-xs text-slate-400 font-medium border-b border-slate-700/50 sticky top-0 bg-slate-800/90 backdrop-blur-sm">
+                        Conversations
+                    </div>
+                    {conversations.length === 0 ? (
+                        <div className="px-4 py-6 text-center text-sm text-slate-500">No conversations yet</div>
+                    ) : (
+                        conversations.map(conv => (
+                            <div
+                                key={conv.id}
+                                className={`group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors border-l-2 ${
+                                    conv.id === conversationId
+                                        ? 'bg-cyan-500/10 border-cyan-500 text-white'
+                                        : 'border-transparent hover:bg-slate-700/50 text-slate-300 hover:text-white'
+                                }`}
+                                onClick={() => {
+                                    switchConversation(conv.id);
+                                    setShowConversations(false);
+                                }}
+                            >
+                                <ChevronRight size={14} className={`flex-shrink-0 transition-transform ${
+                                    conv.id === conversationId ? 'text-cyan-400 rotate-90' : 'text-slate-500'
+                                }`} />
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-sm truncate">{conv.title}</div>
+                                    <div className="text-[10px] text-slate-500">
+                                        {conv.message_count || 0} messages · {new Date(conv.updated_at).toLocaleDateString()}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (confirm('Delete this conversation?')) {
+                                            deleteConversation(conv.id);
+                                        }
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                    title="Delete conversation"
+                                >
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
+
             {/* Messages - with drag-and-drop support */}
             <div
                 ref={messagesContainerRef}
@@ -763,6 +1006,10 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                         <p className="text-xs mt-4 opacity-70">
                             Try: "Build me a landing page for my SaaS" or "Create a new web-app called MyProject"
                         </p>
+                        <div className="flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
+                            <Download size={12} className="text-cyan-400" />
+                            <p className="text-[11px] text-cyan-400 font-mono">/ingest &lt;url&gt; — save articles directly</p>
+                        </div>
                     </div>
                 )}
 
@@ -1078,20 +1325,51 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                                     </div>
                                 )}
                                 {/* Render Voice Data */}
-                                {msg.voiceData && msg.voiceData.map((v, vidx) => (
-                                    <div key={vidx} className="mt-3 p-2 rounded-lg bg-black/20 border border-purple-500/20 w-fit">
-                                        <div className="flex items-center gap-2 mb-1 px-1">
-                                            <Mic size={12} className="text-purple-400" />
-                                            <span className="text-[10px] uppercase tracking-wider text-purple-400 font-bold">Voice Message</span>
+                                {msg.voiceData && msg.voiceData.map((v, vidx) => {
+                                    const voiceKey = `${i}-${vidx}`;
+                                    if (dismissedVoice.has(voiceKey)) return null;
+                                    const isListened = listenedVoice.has(voiceKey);
+                                    return (
+                                        <div 
+                                            key={vidx} 
+                                            className={`mt-3 p-3 rounded-lg w-fit transition-all duration-500 ${
+                                                isListened 
+                                                    ? 'bg-black/20 border border-purple-500/10' 
+                                                    : 'bg-purple-950/30 border border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.15)]'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2 mb-2 px-1">
+                                                <Volume2 size={12} className={`${isListened ? 'text-purple-400/50' : 'text-purple-400 animate-pulse'}`} />
+                                                <span className={`text-[10px] uppercase tracking-wider font-bold ${isListened ? 'text-purple-400/50' : 'text-purple-400'}`}>
+                                                    {isListened ? 'Voice Message' : '🔔 New Voice Message'}
+                                                </span>
+                                                <div className="flex items-center gap-1 ml-auto">
+                                                    <button
+                                                        onClick={() => saveVoiceMemo(v.audio, v.mimeType, i, vidx)}
+                                                        className="p-1 rounded hover:bg-purple-500/20 text-purple-400/60 hover:text-purple-300 transition-colors"
+                                                        title="Save voice memo"
+                                                    >
+                                                        <Save size={12} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDismissedVoice(prev => new Set([...prev, voiceKey]))}
+                                                        className="p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-colors"
+                                                        title="Dismiss"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <audio 
+                                                src={`data:${v.mimeType};base64,${v.audio}`} 
+                                                controls 
+                                                autoPlay={vidx === 0 && i === messages.length - 1 && !isListened}
+                                                onEnded={() => setListenedVoice(prev => new Set([...prev, voiceKey]))}
+                                                className="h-8 max-w-[260px] [&::-webkit-media-controls-enclosure]:bg-transparent" 
+                                            />
                                         </div>
-                                        <audio 
-                                            src={`data:${v.mimeType};base64,${v.audio}`} 
-                                            controls 
-                                            autoPlay={vidx === 0 && i === messages.length - 1} // Autoplay only the latest incoming voice message
-                                            className="h-8 max-w-[220px] [&::-webkit-media-controls-enclosure]:bg-transparent" 
-                                        />
-                                    </div>
-                                ))}
+                                    );
+                                })}
 
                                 <span className="text-[10px] text-slate-500 mt-1 block">
                                     {msg.timestamp.toLocaleTimeString()}
@@ -1120,40 +1398,82 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             </div>
 
             {/* Input */}
-            < div className="p-4 border-t border-slate-700 bg-slate-800/50" >
-                {/* Hidden file input */}
-                < input
+            <div className="p-4 border-t border-slate-700 bg-slate-800/50">
+                {/* Hidden file input — any file type */}
+                <input
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept=".txt,.md,.json,.py,.js,.ts,.tsx,.yaml,.yml,.csv"
+                    accept="*/*"
                     className="hidden"
                     onChange={(e) => {
-                        if (e.target.files) {
-                            handleFileDrop(e.target.files);
-                        }
-                        e.target.value = ''; // Reset to allow re-selecting same file
+                        if (e.target.files) handleFileDrop(e.target.files);
+                        e.target.value = '';
+                    }}
+                />
+                {/* Hidden media input — camera/gallery (images + video) */}
+                <input
+                    ref={mediaInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                        if (e.target.files) handleFileDrop(e.target.files);
+                        e.target.value = '';
                     }}
                 />
 
-                {/* File preview chips */}
-                {attachedFiles.length > 0 && (
+                {/* Attachment preview chips */}
+                {attachedPreviews.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-3">
-                        {attachedFiles.map((file, idx) => (
-                            <div
-                                key={idx}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-sm"
-                            >
-                                <FileText size={14} />
-                                <span className="max-w-[150px] truncate">{file.name}</span>
-                                <button
-                                    onClick={() => removeFile(idx)}
-                                    className="text-cyan-400 hover:text-red-400 transition-colors"
+                        {attachedPreviews.map((file, idx) => {
+                            const isImage = file.type.startsWith('image/');
+                            const isVideo = file.type.startsWith('video/');
+                            const isAudio = file.type.startsWith('audio/');
+                            const sizeStr = file.size < 1024 ? `${file.size} B`
+                                : file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(0)} KB`
+                                : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+                            return (
+                                <div
+                                    key={idx}
+                                    className={`group relative flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg border text-sm transition-all ${
+                                        isImage ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                                        : isVideo ? 'bg-pink-500/10 border-pink-500/30 text-pink-300'
+                                        : isAudio ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                                        : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
+                                    }`}
                                 >
-                                    <XCircle size={14} />
-                                </button>
-                            </div>
-                        ))}
+                                    {/* Image thumbnail */}
+                                    {isImage && file.previewUrl ? (
+                                        <img
+                                            src={file.previewUrl}
+                                            alt={file.name}
+                                            className="w-8 h-8 rounded object-cover border border-white/10"
+                                        />
+                                    ) : (
+                                        <div className="w-8 h-8 rounded bg-black/20 flex items-center justify-center">
+                                            {isVideo ? <Film size={14} />
+                                            : isAudio ? <Music size={14} />
+                                            : file.type.includes('zip') || file.type.includes('archive') ? <FileArchive size={14} />
+                                            : <FileText size={14} />}
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="max-w-[140px] truncate text-xs font-medium">{file.name}</span>
+                                        <span className="text-[10px] opacity-60">{sizeStr}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => removeFile(idx)}
+                                        className="ml-1 opacity-50 hover:opacity-100 hover:text-red-400 transition-all"
+                                    >
+                                        <XCircle size={14} />
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 
@@ -1170,7 +1490,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 )}
 
                 <div className="flex gap-2">
-                    {/* Audio Record button — only in Praxis mode */}
+                    {/* Voice Record button — only in Praxis mode */}
                     {selectedMode.id === 'praxis' && !isRecording && !audioBlob && (
                         <button
                             onClick={startRecording}
@@ -1198,13 +1518,25 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                         </div>
                     )}
 
-                    {/* Upload button — hide when recording */}
+                    {/* Camera/Gallery picker — hide when recording */}
+                    {!isRecording && (
+                        <button
+                            onClick={() => mediaInputRef.current?.click()}
+                            disabled={loading}
+                            className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-violet-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Photo / Gallery"
+                        >
+                            <Image size={18} />
+                        </button>
+                    )}
+
+                    {/* General file picker — hide when recording */}
                     {!isRecording && (
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={loading}
-                            className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Attach files"
+                            className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-cyan-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Attach file"
                         >
                             <Paperclip size={18} />
                         </button>
@@ -1217,7 +1549,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={audioBlob ? "Add a message (optional)..." : (attachedFiles.length > 0 ? "Add a message (optional)..." : "Tell me your idea and we'll work on a Project Plan for you")}
+                            placeholder={audioBlob ? "Add a message (optional)..." : (attachedFiles.length > 0 ? "Add a message (optional)..." : "Message Praxis...")}
                             className="flex-1 rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
                             disabled={loading}
                         />

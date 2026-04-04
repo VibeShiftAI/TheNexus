@@ -9,16 +9,15 @@ interface TaskManagerProps {
     onTaskSelect: (task: Task) => void;
 }
 
-const statusConfig: Record<TaskStatus, { label: string; icon: React.ReactNode; color: string; bgColor: string; borderColor: string }> = {
+/** Known status display config. Ad-hoc statuses are auto-styled via fallback in the rendering code. */
+const statusConfig: Record<string, { label: string; icon: React.ReactNode; color: string; bgColor: string; borderColor: string }> = {
     idea: { label: 'Ideas', icon: <Lightbulb size={18} />, color: 'text-blue-600', bgColor: 'bg-blue-600/10', borderColor: 'border-blue-600/20' },
-    researching: { label: 'Researching', icon: <Search size={18} />, color: 'text-cyan-400', bgColor: 'bg-cyan-400/10', borderColor: 'border-cyan-400/20' },
-    researched: { label: 'Researched', icon: <Sparkles size={18} />, color: 'text-cyan-400', bgColor: 'bg-cyan-400/10', borderColor: 'border-cyan-400/20' },
+    todo: { label: 'To Do', icon: <Clock size={18} />, color: 'text-slate-400', bgColor: 'bg-slate-400/10', borderColor: 'border-slate-800' },
     planning: { label: 'Planning', icon: <Rocket size={18} />, color: 'text-purple-400', bgColor: 'bg-purple-400/10', borderColor: 'border-purple-400/20' },
-    planned: { label: 'Planned', icon: <Clock size={18} />, color: 'text-purple-400', bgColor: 'bg-purple-400/10', borderColor: 'border-purple-400/20' },
-    awaiting_approval: { label: 'Awaiting Approval', icon: <Pause size={18} />, color: 'text-amber-400', bgColor: 'bg-amber-400/10', borderColor: 'border-amber-400/20' },
-    implementing: { label: 'In Progress', icon: <Loader2 size={18} className="animate-spin" />, color: 'text-emerald-400', bgColor: 'bg-emerald-400/10', borderColor: 'border-emerald-400/20' },
-    testing: { label: 'Testing', icon: <CheckCircle2 size={18} />, color: 'text-emerald-400', bgColor: 'bg-emerald-400/10', borderColor: 'border-emerald-400/20' },
-    complete: { label: 'Complete', icon: <CheckCircle2 size={18} />, color: 'text-slate-400', bgColor: 'bg-slate-400/5', borderColor: 'border-slate-800' },
+    building: { label: 'Building', icon: <Loader2 size={18} className="animate-spin" />, color: 'text-emerald-400', bgColor: 'bg-emerald-400/10', borderColor: 'border-emerald-400/20' },
+    testing: { label: 'Testing', icon: <Search size={18} />, color: 'text-amber-400', bgColor: 'bg-amber-400/10', borderColor: 'border-amber-400/20' },
+    ready_for_review: { label: 'Ready for Review', icon: <Sparkles size={18} />, color: 'text-cyan-400', bgColor: 'bg-cyan-400/10', borderColor: 'border-cyan-400/20' },
+    complete: { label: 'Complete', icon: <CheckCircle2 size={18} />, color: 'text-slate-500', bgColor: 'bg-slate-500/5', borderColor: 'border-slate-800' },
     rejected: { label: 'Rejected', icon: <XCircle size={18} />, color: 'text-red-400', bgColor: 'bg-red-400/10', borderColor: 'border-red-400/20' },
     cancelled: { label: 'Cancelled', icon: <Undo2 size={18} />, color: 'text-slate-500', bgColor: 'bg-slate-500/10', borderColor: 'border-slate-800' }
 };
@@ -195,9 +194,9 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
         if (!acc[task.status]) acc[task.status] = [];
         acc[task.status].push(task);
         return acc;
-    }, {} as Record<TaskStatus, Task[]>);
+    }, {} as Record<string, Task[]>);
 
-    const statusOrder: TaskStatus[] = ['idea', 'researching', 'researched', 'planning', 'planned', 'awaiting_approval', 'implementing', 'testing'];
+
 
 
     return (
@@ -321,8 +320,14 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
 
             ) : (
                 <div className="space-y-6">
-                    {/* Render all status groups dynamically - no whitelist needed */}
-                    {Object.entries(groupedTasks).map(([status, statusTasks]) => {
+                    {/* Render known statuses in order first, then ad-hoc statuses alphabetically */}
+                    {(() => {
+                        const knownOrder = ['idea', 'todo', 'planning', 'building', 'testing', 'ready_for_review'];
+                        const adHocStatuses = Object.keys(groupedTasks).filter(s => !knownOrder.includes(s)).sort();
+                        const renderOrder = [...knownOrder.filter(s => groupedTasks[s]?.length), ...adHocStatuses];
+                        return renderOrder;
+                    })().map(status => {
+                        const statusTasks = groupedTasks[status];
                         if (!statusTasks || statusTasks.length === 0) return null;
 
                         // Get config, fallback to a default for unknown statuses

@@ -242,7 +242,7 @@ server.tool(
             try {
                 const tasks = await db.getTasks(project.id);
                 const activeTasks = (tasks || []).filter(t =>
-                    ['implementing', 'testing', 'complete'].includes(t.status)
+                    ['building', 'testing', 'ready_for_review', 'complete'].includes(t.status)
                 );
                 const missingWalkthrough = activeTasks.filter(t => !t.walkthrough);
 
@@ -325,12 +325,9 @@ server.tool(
 // EXECUTIVE PLANNING TOOLS (Phase 1: Dual-Payload Task Management)
 // ============================================================================
 
-// Valid task statuses — free transitions, but must be one of these
-const VALID_TASK_STATUSES = [
-    'idea', 'planning', 'blocked', 'ready',
-    'implementing', 'testing', 'review',
-    'scheduled',
-    'complete', 'done', 'cancelled', 'archived'
+// Standard task statuses — any string is accepted, but these are the defaults
+const STANDARD_TASK_STATUSES = [
+    'idea', 'todo', 'planning', 'building', 'testing', 'ready_for_review', 'complete', 'rejected', 'cancelled'
 ];
 
 /**
@@ -576,7 +573,7 @@ server.tool(
     {
         task_id: z.string().describe("The task ID to update."),
         status: z.string().describe(
-            `New status. Valid values: ${VALID_TASK_STATUSES.join(', ')}`
+            `New status. Standard stages: ${STANDARD_TASK_STATUSES.join(', ')}. Custom ad-hoc stages are also accepted.`
         ),
         note: z.string().optional().describe(
             "Optional note explaining the status change (stored in description append)."
@@ -584,15 +581,9 @@ server.tool(
     },
     async ({ task_id, status, note }) => {
         try {
-            // Validate status
-            if (!VALID_TASK_STATUSES.includes(status)) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Invalid status '${status}'. Valid: ${VALID_TASK_STATUSES.join(', ')}`
-                    }],
-                    isError: true
-                };
+            // Log a warning for non-standard statuses, but allow them
+            if (!STANDARD_TASK_STATUSES.includes(status)) {
+                console.log(`[MCP] nexus_update_task_status: Using custom ad-hoc status '${status}' for task ${task_id}`);
             }
 
             // Check task exists
@@ -781,6 +772,7 @@ server.tool(
  * nexus_get_system_resources — Token budget dashboard.
  * Queries usage_stats (today's burn), usage_quotas (daily limits/resets),
  * and models (available routing options). Returns a budget summary.
+ * Budget % is based on PRAXIS-ONLY usage.
  */
 server.tool(
     "nexus_get_system_resources",
@@ -788,7 +780,7 @@ server.tool(
     {},
     async () => {
         try {
-            // 1. Today's token burn — aggregate across all models
+            // 1. Today's token burn — aggregate across all models and sources
             const today = new Date().toISOString().split('T')[0];
             const usageRows = await db.getUsageStats(today, today);
             let tokensUsedToday = 0;
@@ -797,21 +789,45 @@ server.tool(
             let requestCountToday = 0;
             const breakdownByModel = {};
 
+            let praxisTokensToday = 0;
+            let praxisInputToday = 0;
+            let praxisOutputToday = 0;
+            let praxisRequestsToday = 0;
+            const breakdownBySource = {};
+
             for (const row of usageRows) {
                 const total = Number(row.total_tokens) || 0;
+                const input = Number(row.input_tokens) || 0;
+                const output = Number(row.output_tokens) || 0;
+                const requests = Number(row.request_count) || 0;
+                const source = row.source || 'unknown';
+
                 tokensUsedToday += total;
-                inputTokensToday += Number(row.input_tokens) || 0;
-                outputTokensToday += Number(row.output_tokens) || 0;
-                requestCountToday += Number(row.request_count) || 0;
+                inputTokensToday += input;
+                outputTokensToday += output;
+                requestCountToday += requests;
                 if (row.model) {
                     breakdownByModel[row.model] = (breakdownByModel[row.model] || 0) + total;
+                }
+
+                if (!breakdownBySource[source]) {
+                    breakdownBySource[source] = { tokens: 0, input: 0, output: 0, requests: 0 };
+                }
+                breakdownBySource[source].tokens += total;
+                breakdownBySource[source].input += input;
+                breakdownBySource[source].output += output;
+                breakdownBySource[source].requests += requests;
+
+                if (source === 'praxis') {
+                    praxisTokensToday += total;
+                    praxisInputToday += input;
+                    praxisOutputToday += output;
+                    praxisRequestsToday += requests;
                 }
             }
 
             // 2. Quota data — check for daily limits
-            //    Try common endpoint names; gracefully degrade if none exist
-            let dailyLimit = 1_000_000; // default fallback
-            let nextResetTimestamp = null;
+            let dailyLimit = 2_000_000; // default fallback
             let quotaSource = 'default';
 
             const quotaEndpoints = ['anthropic', 'google', 'openai', 'default'];
@@ -819,22 +835,16 @@ server.tool(
                 const quota = await db.getQuota(endpoint, 'daily');
                 if (quota) {
                     dailyLimit = Number(quota.max_requests) || dailyLimit;
-                    // If quota has a reset_at field, use it
-                    if (quota.reset_at) {
-                        nextResetTimestamp = quota.reset_at;
-                    }
                     quotaSource = endpoint;
                     break;
                 }
             }
 
-            // Default: next reset is midnight UTC
-            if (!nextResetTimestamp) {
-                const tomorrow = new Date();
-                tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-                tomorrow.setUTCHours(0, 0, 0, 0);
-                nextResetTimestamp = tomorrow.toISOString();
-            }
+            // Always compute fresh reset time (tomorrow midnight UTC)
+            const tomorrow = new Date();
+            tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+            tomorrow.setUTCHours(0, 0, 0, 0);
+            const nextResetTimestamp = tomorrow.toISOString();
 
             // 3. Available models
             let availableModels = [];
@@ -850,11 +860,15 @@ server.tool(
                 // Models table might not have data
             }
 
-            // 4. Compute budget status
-            const budgetPercentage = Math.round((tokensUsedToday / dailyLimit) * 1000) / 10;
+            // 4. Budget based on PRAXIS-ONLY usage
+            const budgetPercentage = Math.round((praxisTokensToday / dailyLimit) * 1000) / 10;
             const budgetStatus = budgetPercentage >= 80 ? 'critical' : 'safe';
 
             const result = {
+                praxis_tokens_today: praxisTokensToday,
+                praxis_input_today: praxisInputToday,
+                praxis_output_today: praxisOutputToday,
+                praxis_requests_today: praxisRequestsToday,
                 tokens_used_today: tokensUsedToday,
                 input_tokens_today: inputTokensToday,
                 output_tokens_today: outputTokensToday,
@@ -866,6 +880,7 @@ server.tool(
                 next_reset_timestamp: nextResetTimestamp,
                 available_models: availableModels,
                 breakdown_by_model: breakdownByModel,
+                breakdown_by_source: breakdownBySource,
                 assessed_at: new Date().toISOString()
             };
 

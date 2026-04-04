@@ -20,7 +20,6 @@ import {
     ArrowLeft,
     ShieldCheck,
     Database,
-    Network,
     Box,
     Sparkles
 } from 'lucide-react';
@@ -459,28 +458,56 @@ export default function SystemMonitorPage() {
                                 </div>
                             </div>
 
-                            {/* Webhook Tunnels */}
-                            <div className="border border-slate-800/60 bg-slate-900/40 rounded-lg p-4 hover:border-emerald-500/50 transition-colors group relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150"></div>
+                            {/* Daily API Call Counter */}
+                            <div className="border border-slate-800/60 bg-slate-900/40 rounded-lg p-4 hover:border-amber-500/50 transition-colors group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150"></div>
                                 <div className="flex items-center gap-3 mb-3 relative z-10">
-                                    <Network className="w-5 h-5 text-emerald-400" />
-                                    <span className="text-sm font-medium text-slate-300">Praxis Tunnels</span>
+                                    <Zap className={`w-5 h-5 ${
+                                        (systemStatus?.praxis?.dailyCallCount ?? 0) >= 800 ? 'text-red-400 animate-pulse' :
+                                        (systemStatus?.praxis?.dailyCallCount ?? 0) >= 500 ? 'text-amber-400' :
+                                        'text-emerald-400'
+                                    }`} />
+                                    <span className="text-sm font-medium text-slate-300">API Calls Today</span>
                                 </div>
-                                <div className="flex flex-col gap-2 relative z-10">
-                                    <div className="flex items-center justify-between bg-slate-950/60 px-2 py-1.5 rounded border border-slate-800/80">
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <span className={`w-1.5 h-1.5 rounded-full ${systemStatus?.praxis?.status === 'online' ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]'}`}></span>
-                                            <span className="text-slate-200 font-mono tracking-wider">{systemStatus?.praxis?.port || 54322}</span>
-                                        </div>
-                                        <span className="text-[10px] text-emerald-400 uppercase tracking-wider">Orchestrator</span>
-                                    </div>
-                                    <div className="flex items-center justify-between bg-slate-950/60 px-2 py-1.5 rounded border border-slate-800/80">
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <span className={`w-1.5 h-1.5 rounded-full ${systemStatus?.praxis?.status === 'online' ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'bg-slate-500'}`}></span>
-                                            <span className="text-slate-200 font-mono tracking-wider">54321</span>
-                                        </div>
-                                        <span className="text-[10px] text-emerald-400 uppercase tracking-wider">Nexus Webhook</span>
-                                    </div>
+                                <div className="flex items-baseline gap-2 relative z-10">
+                                    <span className={`text-3xl font-bold font-mono ${
+                                        (systemStatus?.praxis?.dailyCallCount ?? 0) >= 800 ? 'text-red-400' :
+                                        (systemStatus?.praxis?.dailyCallCount ?? 0) >= 500 ? 'text-amber-400' :
+                                        'text-white'
+                                    }`}>{systemStatus?.praxis?.dailyCallCount ?? 0}</span>
+                                    <span className="text-xs text-slate-500">/ 1,200</span>
+                                </div>
+                                {/* Progress bar */}
+                                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-3 relative z-10">
+                                    <div
+                                        className="h-full rounded-full transition-all duration-1000 ease-out"
+                                        style={{
+                                            width: `${Math.min(((systemStatus?.praxis?.dailyCallCount ?? 0) / 1200) * 100, 100)}%`,
+                                            background: (systemStatus?.praxis?.dailyCallCount ?? 0) >= 800
+                                                ? 'linear-gradient(90deg, #ef4444, #f87171)'
+                                                : (systemStatus?.praxis?.dailyCallCount ?? 0) >= 500
+                                                ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
+                                                : 'linear-gradient(90deg, #10b981, #34d399)',
+                                        }}
+                                    />
+                                </div>
+                                <div className="text-xs mt-2 font-mono relative z-10">
+                                    {(systemStatus?.praxis?.dailyCallCount ?? 0) >= 800 ? (
+                                        <span className="text-red-400 flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                            BUDGET CRITICAL
+                                        </span>
+                                    ) : (systemStatus?.praxis?.dailyCallCount ?? 0) >= 500 ? (
+                                        <span className="text-amber-400 flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                            APPROACHING LIMIT
+                                        </span>
+                                    ) : (
+                                        <span className="text-emerald-400/80 flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
+                                            WITHIN BUDGET
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>

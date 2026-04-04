@@ -31,6 +31,21 @@ try {
         db.exec(fs.readFileSync(schemaPath, 'utf8'));
     }
 
+    // Migration: add 'source' column to usage_stats for per-caller tracking
+    try {
+        const cols = db.prepare("PRAGMA table_info(usage_stats)").all();
+        if (cols.length > 0 && !cols.find(c => c.name === 'source')) {
+            db.exec("ALTER TABLE usage_stats ADD COLUMN source TEXT DEFAULT 'unknown'");
+            // Drop old unique constraint and create new one including source
+            // SQLite can't drop constraints, so we need to recreate the index
+            try { db.exec("DROP INDEX IF EXISTS idx_usage_stats_date_model_source"); } catch {}
+            db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_usage_stats_date_model_source ON usage_stats(date, model, source)");
+            console.log('[Database] Migration: added source column to usage_stats');
+        }
+    } catch (err) {
+        console.warn('[Database] usage_stats source migration skipped:', err.message);
+    }
+
     console.log(`[Database] Connected to SQLite: ${DB_PATH}`);
 } catch (err) {
     console.error('[Database] Failed to open SQLite database:', err.message);
@@ -746,11 +761,11 @@ async function getDashboardStats() {
 // USAGE TRACKING
 // ============================================================================
 
-async function recordUsage(model, inputTokens, outputTokens) {
+async function recordUsage(model, inputTokens, outputTokens, source = 'unknown') {
     if (!db) return;
     try {
         const today = new Date().toISOString().split('T')[0];
-        const existing = db.prepare('SELECT * FROM usage_stats WHERE date = ? AND model = ?').get(today, model);
+        const existing = db.prepare('SELECT * FROM usage_stats WHERE date = ? AND model = ? AND source = ?').get(today, model, source);
         if (existing) {
             db.prepare(`
                 UPDATE usage_stats SET
@@ -758,13 +773,13 @@ async function recordUsage(model, inputTokens, outputTokens) {
                     output_tokens = output_tokens + ?,
                     total_tokens = total_tokens + ?,
                     request_count = request_count + 1
-                WHERE date = ? AND model = ?
-            `).run(inputTokens, outputTokens, inputTokens + outputTokens, today, model);
+                WHERE date = ? AND model = ? AND source = ?
+            `).run(inputTokens, outputTokens, inputTokens + outputTokens, today, model, source);
         } else {
             db.prepare(`
-                INSERT INTO usage_stats (id, date, model, input_tokens, output_tokens, total_tokens, request_count)
-                VALUES (?, ?, ?, ?, ?, ?, 1)
-            `).run(uuid(), today, model, inputTokens, outputTokens, inputTokens + outputTokens);
+                INSERT INTO usage_stats (id, date, model, input_tokens, output_tokens, total_tokens, request_count, source)
+                VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+            `).run(uuid(), today, model, inputTokens, outputTokens, inputTokens + outputTokens, source);
         }
     } catch (err) {
         console.error('[Database] Error recording usage:', err.message);
@@ -1318,6 +1333,355 @@ async function deleteNote(noteId) {
     }
 }
 
+/**
+ * Mark a note as ingested into The Cortex (Neo4j + Pinecone).
+ * Stamps cortex_ingested_at with the current ISO timestamp.
+ */
+async function markNoteIngested(noteId) {
+    if (!db) return null;
+    try {
+        db.prepare(
+            'UPDATE notes SET cortex_ingested_at = ?, updated_at = ? WHERE id = ?'
+        ).run(new Date().toISOString(), new Date().toISOString(), noteId);
+        return deserRow(db.prepare('SELECT * FROM notes WHERE id = ?').get(noteId));
+    } catch (err) {
+        console.error('[Database] Error marking note ingested:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Get notes that have NOT been ingested into The Cortex.
+ * Optionally filter by category (e.g., 'ingested', 'daily-log', 'revenue-ideas').
+ */
+async function getUningestedNotes(category = null) {
+    if (!db) return [];
+    try {
+        if (category) {
+            return deserRows(
+                db.prepare(
+                    'SELECT * FROM notes WHERE cortex_ingested_at IS NULL AND category = ? ORDER BY created_at DESC'
+                ).all(category)
+            );
+        }
+        return deserRows(
+            db.prepare(
+                'SELECT * FROM notes WHERE cortex_ingested_at IS NULL ORDER BY created_at DESC'
+            ).all()
+        );
+    } catch (err) {
+        console.error('[Database] Error fetching uningested notes:', err.message);
+        return [];
+    }
+}
+
+// ============================================================================
+// CHAT CONVERSATIONS & MESSAGES (persistent Praxis / terminal chat history)
+// ============================================================================
+
+// No artificial message cap — we'll compress data as needed
+
+/**
+ * Get all conversations for a mode, newest first.
+ */
+async function getChatConversations(mode = 'praxis') {
+    if (!db) return [];
+    try {
+        const rows = db.prepare(
+            `SELECT c.*, 
+                    (SELECT COUNT(*) FROM chat_messages WHERE conversation_id = c.id) as message_count,
+                    (SELECT content FROM chat_messages WHERE conversation_id = c.id AND role = 'user' ORDER BY created_at ASC LIMIT 1) as first_message
+             FROM chat_conversations c
+             WHERE c.mode = ?
+             ORDER BY c.updated_at DESC`
+        ).all(mode);
+        return rows.map(row => {
+            row.is_active = row.is_active === 1 || row.is_active === true;
+            return row;
+        });
+    } catch (err) {
+        console.error('[Database] Error fetching conversations:', err.message);
+        return [];
+    }
+}
+
+/**
+ * Get or create the active conversation for a mode.
+ * If none exists, creates one automatically.
+ */
+async function getActiveConversation(mode = 'praxis') {
+    if (!db) return null;
+    try {
+        let row = db.prepare(
+            'SELECT * FROM chat_conversations WHERE mode = ? AND is_active = 1 ORDER BY updated_at DESC LIMIT 1'
+        ).get(mode);
+        if (!row) {
+            // Auto-create first conversation
+            row = await createConversation(mode);
+        }
+        if (row) row.is_active = row.is_active === 1 || row.is_active === true;
+        return row;
+    } catch (err) {
+        console.error('[Database] Error getting active conversation:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Create a new conversation and mark it as active.
+ * Deactivates any previously active conversation for the same mode.
+ */
+async function createConversation(mode = 'praxis', title = 'New Conversation') {
+    if (!db) return null;
+    try {
+        // Deactivate all other conversations for this mode
+        db.prepare('UPDATE chat_conversations SET is_active = 0 WHERE mode = ?').run(mode);
+
+        const id = uuid();
+        const timestamp = now();
+        db.prepare(
+            `INSERT INTO chat_conversations (id, title, mode, is_active, created_at, updated_at)
+             VALUES (?, ?, ?, 1, ?, ?)`
+        ).run(id, title, mode, timestamp, timestamp);
+
+        return db.prepare('SELECT * FROM chat_conversations WHERE id = ?').get(id);
+    } catch (err) {
+        console.error('[Database] Error creating conversation:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Switch active conversation — deactivate all, activate the target.
+ */
+async function switchConversation(conversationId) {
+    if (!db) return null;
+    try {
+        const conv = db.prepare('SELECT * FROM chat_conversations WHERE id = ?').get(conversationId);
+        if (!conv) return null;
+
+        // Deactivate all for this mode, activate the target
+        db.prepare('UPDATE chat_conversations SET is_active = 0 WHERE mode = ?').run(conv.mode);
+        db.prepare('UPDATE chat_conversations SET is_active = 1, updated_at = ? WHERE id = ?').run(now(), conversationId);
+
+        return db.prepare('SELECT * FROM chat_conversations WHERE id = ?').get(conversationId);
+    } catch (err) {
+        console.error('[Database] Error switching conversation:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Update conversation title.
+ */
+async function updateConversationTitle(conversationId, title) {
+    if (!db) return null;
+    try {
+        db.prepare('UPDATE chat_conversations SET title = ?, updated_at = ? WHERE id = ?').run(title, now(), conversationId);
+        return db.prepare('SELECT * FROM chat_conversations WHERE id = ?').get(conversationId);
+    } catch (err) {
+        console.error('[Database] Error updating conversation title:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Delete a conversation and all its messages (CASCADE).
+ */
+async function deleteConversation(conversationId) {
+    if (!db) return false;
+    try {
+        db.prepare('DELETE FROM chat_conversations WHERE id = ?').run(conversationId);
+        return true;
+    } catch (err) {
+        console.error('[Database] Error deleting conversation:', err.message);
+        return false;
+    }
+}
+
+/**
+ * Get messages for a specific conversation.
+ * Supports pagination: options.limit and options.before (timestamp)
+ * Returns messages in chronological (ASC) order, but fetches newest first.
+ */
+async function getChatMessages(conversationId, options = {}) {
+    if (!db) return [];
+    
+    // Handle legacy call signature: getChatMessages(id, limit)
+    let limit = 200;
+    let before = null;
+    
+    if (typeof options === 'number') {
+        limit = options;
+    } else {
+        limit = options.limit || 200;
+        before = options.before || null;
+    }
+
+    try {
+        let sql = 'SELECT * FROM chat_messages WHERE conversation_id = ?';
+        const params = [conversationId];
+        
+        if (before) {
+            sql += ' AND created_at < ?';
+            params.push(before);
+        }
+        
+        sql += ' ORDER BY created_at DESC LIMIT ?';
+        params.push(limit);
+        
+        const rows = db.prepare(sql).all(...params);
+        
+        // Reverse to return in chronological order (ASC)
+        return rows.reverse().map(row => {
+            row.metadata = deser(row.metadata);
+            return row;
+        });
+    } catch (err) {
+        console.error('[Database] Error fetching chat messages:', err.message);
+        return [];
+    }
+}
+
+/**
+ * Save a message to a conversation.
+ * Auto-generates title from first user message.
+ */
+async function saveChatMessage(msg) {
+    if (!db) return null;
+    try {
+        if (!msg.id) msg.id = uuid();
+        if (!msg.created_at) msg.created_at = now();
+        const conversationId = msg.conversation_id;
+        if (!conversationId) {
+            console.error('[Database] saveChatMessage: conversation_id is required');
+            return null;
+        }
+
+        const row = {
+            id: msg.id,
+            conversation_id: conversationId,
+            role: msg.role,
+            content: msg.content,
+            mode: msg.mode || 'praxis',
+            metadata: ser(msg.metadata || {}),
+            created_at: msg.created_at
+        };
+
+        const { sql, values } = buildInsert('chat_messages', row);
+        db.prepare(sql).run(...values);
+
+        // Auto-title: if this is the first user message, derive title from it
+        if (msg.role === 'user') {
+            const conv = db.prepare('SELECT title FROM chat_conversations WHERE id = ?').get(conversationId);
+            if (conv && conv.title === 'New Conversation') {
+                const autoTitle = msg.content.substring(0, 60) + (msg.content.length > 60 ? '...' : '');
+                db.prepare('UPDATE chat_conversations SET title = ?, updated_at = ? WHERE id = ?')
+                    .run(autoTitle, now(), conversationId);
+            }
+        }
+
+        // Touch conversation updated_at
+        db.prepare('UPDATE chat_conversations SET updated_at = ? WHERE id = ?').run(now(), conversationId);
+
+
+
+        return row;
+    } catch (err) {
+        console.error('[Database] Error saving chat message:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Clear all messages in a conversation (but keep the conversation record).
+ */
+async function clearChatMessages(conversationId) {
+    if (!db) return false;
+    try {
+        db.prepare('DELETE FROM chat_messages WHERE conversation_id = ?').run(conversationId);
+        return true;
+    } catch (err) {
+        console.error('[Database] Error clearing chat messages:', err.message);
+        return false;
+    }
+}
+
+// ============================================================================
+// ANTIGRAVITY EVENT STREAM
+// ============================================================================
+
+const AG_EVENTS_MAX_ROWS = 500; // Ring buffer — prune beyond this
+
+/**
+ * Record a new Antigravity event.
+ * Auto-prunes old events beyond AG_EVENTS_MAX_ROWS.
+ */
+async function recordAgEvent({ event_type, severity, title, message, task_id, source, metadata, requires_action }) {
+    if (!db) return null;
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO ag_events (event_type, severity, title, message, task_id, source, metadata, requires_action)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        const info = stmt.run(
+            event_type,
+            severity || 'info',
+            title,
+            message || null,
+            task_id || null,
+            source || 'extension',
+            ser(metadata || {}),
+            requires_action ? 1 : 0
+        );
+
+        // Auto-prune: keep only the most recent AG_EVENTS_MAX_ROWS
+        const count = db.prepare('SELECT COUNT(*) as cnt FROM ag_events').get().cnt;
+        if (count > AG_EVENTS_MAX_ROWS) {
+            db.prepare(`
+                DELETE FROM ag_events WHERE id NOT IN (
+                    SELECT id FROM ag_events ORDER BY id DESC LIMIT ?
+                )
+            `).run(AG_EVENTS_MAX_ROWS);
+        }
+
+        // Return the inserted row
+        const row = db.prepare('SELECT * FROM ag_events WHERE id = ?').get(info.lastInsertRowid);
+        return row ? deserRow(row) : { id: info.lastInsertRowid };
+    } catch (err) {
+        console.error('[Database] Error recording ag_event:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Get recent Antigravity events (for dashboard hydration).
+ */
+async function getRecentAgEvents(limit = 50) {
+    if (!db) return [];
+    try {
+        const rows = db.prepare('SELECT * FROM ag_events ORDER BY id DESC LIMIT ?').all(limit);
+        return deserRows(rows).reverse(); // Chronological order
+    } catch (err) {
+        console.error('[Database] Error fetching ag_events:', err.message);
+        return [];
+    }
+}
+
+/**
+ * Mark an Antigravity event as actioned (user dismissed the alert).
+ */
+async function markAgEventActioned(id) {
+    if (!db) return false;
+    try {
+        db.prepare('UPDATE ag_events SET action_taken = 1 WHERE id = ?').run(id);
+        return true;
+    } catch (err) {
+        console.error('[Database] Error marking ag_event actioned:', err.message);
+        return false;
+    }
+}
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -1397,6 +1761,131 @@ module.exports = {
     getNotes,
     createNote,
     updateNote,
-    deleteNote
+    deleteNote,
+    markNoteIngested,
+    getUningestedNotes,
+    // Chat Conversations & Messages (persistent Praxis chat history)
+    getChatConversations,
+    getActiveConversation,
+    createConversation,
+    switchConversation,
+    updateConversationTitle,
+    deleteConversation,
+    getChatMessages,
+    saveChatMessage,
+    clearChatMessages,
+    // Antigravity Event Stream
+    recordAgEvent,
+    getRecentAgEvents,
+    markAgEventActioned,
+    // Push Notification Tokens
+    registerPushToken,
+    unregisterPushToken,
+    getActivePushTokens,
+    getAllPushTokens,
+    markPushTokenSuccess,
+    markPushTokenError
 };
 
+// ---------------------------------------------------------------------------
+// Push Notification Tokens
+// ---------------------------------------------------------------------------
+
+async function registerPushToken({ token, deviceId, platform, label }) {
+    if (!db) return null;
+    try {
+        // Upsert: if token exists, update metadata; otherwise insert
+        const existing = db.prepare('SELECT id FROM push_tokens WHERE token = ?').get(token);
+        if (existing) {
+            db.prepare(`
+                UPDATE push_tokens 
+                SET device_id = COALESCE(?, device_id),
+                    platform = COALESCE(?, platform),
+                    label = COALESCE(?, label),
+                    enabled = 1,
+                    error_count = 0,
+                    last_error = NULL,
+                    updated_at = datetime('now')
+                WHERE token = ?
+            `).run(deviceId || null, platform || null, label || null, token);
+            return { id: existing.id, token, updated: true };
+        } else {
+            const result = db.prepare(`
+                INSERT INTO push_tokens (token, device_id, platform, label)
+                VALUES (?, ?, ?, ?)
+            `).run(token, deviceId || null, platform || 'android', label || null);
+            return { id: result.lastInsertRowid, token, created: true };
+        }
+    } catch (err) {
+        console.error('[Database] registerPushToken error:', err.message);
+        return null;
+    }
+}
+
+async function unregisterPushToken(token) {
+    if (!db) return false;
+    try {
+        db.prepare('DELETE FROM push_tokens WHERE token = ?').run(token);
+        return true;
+    } catch (err) {
+        console.error('[Database] unregisterPushToken error:', err.message);
+        return false;
+    }
+}
+
+async function getActivePushTokens() {
+    if (!db) return [];
+    try {
+        return db.prepare('SELECT * FROM push_tokens WHERE enabled = 1').all();
+    } catch (err) {
+        console.error('[Database] getActivePushTokens error:', err.message);
+        return [];
+    }
+}
+
+async function markPushTokenSuccess(token) {
+    if (!db) return;
+    try {
+        db.prepare(`
+            UPDATE push_tokens 
+            SET last_success_at = datetime('now'), error_count = 0, last_error = NULL, updated_at = datetime('now')
+            WHERE token = ?
+        `).run(token);
+    } catch (err) {
+        // Non-critical, just log
+        console.warn('[Database] markPushTokenSuccess error:', err.message);
+    }
+}
+
+async function markPushTokenError(token, errorMessage) {
+    if (!db) return;
+    try {
+        const row = db.prepare('SELECT error_count FROM push_tokens WHERE token = ?').get(token);
+        const newCount = (row?.error_count || 0) + 1;
+        
+        // Auto-disable after 10 consecutive failures
+        const shouldDisable = newCount >= 10;
+        
+        db.prepare(`
+            UPDATE push_tokens 
+            SET last_error = ?, error_count = ?, enabled = ?, updated_at = datetime('now')
+            WHERE token = ?
+        `).run(errorMessage, newCount, shouldDisable ? 0 : 1, token);
+        
+        if (shouldDisable) {
+            console.warn(`[Database] Push token auto-disabled after ${newCount} failures:`, token.substring(0, 30) + '...');
+        }
+    } catch (err) {
+        console.warn('[Database] markPushTokenError error:', err.message);
+    }
+}
+
+async function getAllPushTokens() {
+    if (!db) return [];
+    try {
+        return db.prepare('SELECT * FROM push_tokens ORDER BY created_at DESC').all();
+    } catch (err) {
+        console.error('[Database] getAllPushTokens error:', err.message);
+        return [];
+    }
+}

@@ -10,6 +10,7 @@ const simpleGit = require('simple-git');
 const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 const { scanProjects, getAllProjects, getProjectById } = require('./utils/project-manager');
 const { setupResearchRoutes } = require('./auto-research');
 const systemMonitor = require('./services/system-monitor');
@@ -18,6 +19,7 @@ const { isCriticEnabled, setCriticEnabled } = require('./services/critic');
 const { updateDocumentationForFeature } = require('./services/auto-documentation');
 const supervisorSync = require('./services/supervisor-sync');
 const contextSync = require('./services/context-sync');
+const pushService = require('./push-service');
 const { runAgent } = require('./agent');
 const { discoverModels, getModels } = require('./services/model-discovery');
 
@@ -1214,10 +1216,253 @@ app.delete('/api/projects/:id/pin', (req, res) => {
     res.json({ success: true, pinned: false });
 });
 
+// ---------------------------------------------------------------
+// INGEST ENDPOINT — Direct article/text ingestion (bypasses Praxis)
+// ---------------------------------------------------------------
+app.post('/api/ingest', async (req, res) => {
+    const { url, text, title: userTitle, projectId } = req.body || {};
+
+    if (!url && !text) {
+        return res.status(400).json({ error: 'Either url or text is required' });
+    }
+
+    console.log(`\n📥 [Ingest] Request: ${url ? `URL: ${url}` : `Text (${text.length} chars)`}`);
+
+    try {
+        let content = '';
+        let sourceUrl = url || null;
+        let autoTitle = userTitle || '';
+        let contentType_label = 'article'; // For confirmation message
+
+        if (url) {
+            // -----------------------------------------------------------
+            // YOUTUBE URL DETECTION — extract transcript instead of HTML
+            // -----------------------------------------------------------
+            const ytMatch = url.match(
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/
+            );
+
+            if (ytMatch) {
+                const videoId = ytMatch[1];
+                console.log(`📺 [Ingest] YouTube detected — video ID: ${videoId}`);
+                contentType_label = 'transcript';
+
+                // Fetch video title from oEmbed (no API key needed)
+                try {
+                    const oembedRes = await fetch(
+                        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
+                        { signal: AbortSignal.timeout(8000) }
+                    );
+                    if (oembedRes.ok) {
+                        const oembed = await oembedRes.json();
+                        if (!autoTitle) autoTitle = oembed.title || `YouTube Video ${videoId}`;
+                    }
+                } catch (oembedErr) {
+                    console.warn(`[Ingest] oEmbed title fetch failed:`, oembedErr.message);
+                }
+                if (!autoTitle) autoTitle = `YouTube Video ${videoId}`;
+
+                // Fetch transcript using youtube-transcript (dynamic import — ESM-only package)
+                try {
+                    const { YoutubeTranscript } = await import('youtube-transcript/dist/youtube-transcript.esm.js');
+                    const segments = await YoutubeTranscript.fetchTranscript(videoId);
+
+                    if (segments && segments.length > 0) {
+                        // Build timestamped transcript (same format as Praxis ingestion)
+                        content = segments
+                            .map((seg) => {
+                                const minutes = Math.floor(seg.offset / 60000);
+                                const seconds = Math.floor((seg.offset % 60000) / 1000);
+                                const timestamp = `[${minutes}:${seconds.toString().padStart(2, '0')}]`;
+                                return `${timestamp} ${seg.text}`;
+                            })
+                            .join('\n');
+                        console.log(`✅ [Ingest] YouTube transcript extracted: ${content.length} chars, ${segments.length} segments`);
+                    } else {
+                        console.warn(`[Ingest] YouTube transcript empty for ${videoId}`);
+                    }
+                } catch (transcriptErr) {
+                    console.warn(`[Ingest] YouTube transcript unavailable for ${videoId}: ${transcriptErr.message}`);
+                }
+
+                // Fallback: if no transcript, save as a bookmark with metadata
+                if (!content) {
+                    content = `[No transcript available for this video]\n\nVideo: ${autoTitle}\nURL: ${url}\nVideo ID: ${videoId}`;
+                    contentType_label = 'bookmark (no transcript)';
+                    console.log(`⚠️ [Ingest] No transcript — saving as bookmark`);
+                }
+
+            } else {
+                // -----------------------------------------------------------
+                // STANDARD URL — fetch and extract readable text
+                // -----------------------------------------------------------
+                const fetchResponse = await fetch(url, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) TheNexus/1.0',
+                        'Accept': 'text/html,application/xhtml+xml,text/plain,application/json',
+                    },
+                    signal: AbortSignal.timeout(15000),
+                });
+
+                if (!fetchResponse.ok) {
+                    throw new Error(`Failed to fetch URL: HTTP ${fetchResponse.status}`);
+                }
+
+                const contentType = fetchResponse.headers.get('content-type') || '';
+                const rawBody = await fetchResponse.text();
+
+                if (contentType.includes('application/json')) {
+                    // JSON — pretty-print it
+                    try {
+                        content = JSON.stringify(JSON.parse(rawBody), null, 2);
+                    } catch {
+                        content = rawBody;
+                    }
+                    if (!autoTitle) autoTitle = `JSON from ${new URL(url).hostname}`;
+                } else if (contentType.includes('text/plain') || contentType.includes('text/markdown')) {
+                    // Plain text / markdown — use as-is
+                    content = rawBody;
+                    if (!autoTitle) autoTitle = `Document from ${new URL(url).hostname}`;
+                } else {
+                    // HTML — extract readable text
+                    content = rawBody
+                        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                        .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+                        .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+                        .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+                        .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '');
+
+                    // Extract title from <title> tag if not provided
+                    if (!autoTitle) {
+                        const titleMatch = rawBody.match(/<title[^>]*>(.*?)<\/title>/i);
+                        autoTitle = titleMatch ? titleMatch[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim() : `Article from ${new URL(url).hostname}`;
+                    }
+
+                    // Strip remaining HTML tags and clean up
+                    content = content
+                        .replace(/<[^>]+>/g, '\n')
+                        .replace(/&nbsp;/g, ' ')
+                        .replace(/&amp;/g, '&')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'")
+                        .replace(/\n{3,}/g, '\n\n')
+                        .replace(/[ \t]+/g, ' ')
+                        .trim();
+                }
+            }
+
+            // Truncate absurdly long content (keep first ~50k chars)
+            if (content.length > 50000) {
+                content = content.substring(0, 50000) + '\n\n[... truncated — content exceeded 50,000 characters]';
+            }
+        } else {
+            // Raw text ingestion
+            content = text;
+            if (!autoTitle) {
+                autoTitle = text.substring(0, 60).replace(/\n/g, ' ') + (text.length > 60 ? '...' : '');
+            }
+        }
+
+        if (!content || content.trim().length < 10) {
+            return res.status(422).json({ error: 'Extracted content is too short or empty' });
+        }
+
+        // Build the note content with metadata header
+        const noteContent = [
+            `## 📥 ${autoTitle}`,
+            sourceUrl ? `**Source:** ${sourceUrl}` : null,
+            `**Ingested:** ${new Date().toLocaleString()}`,
+            `**Length:** ${content.length.toLocaleString()} characters`,
+            '',
+            '---',
+            '',
+            content
+        ].filter(Boolean).join('\n');
+
+        // Save to notes DB
+        const note = await db.createNote({
+            project_id: projectId || null,
+            content: noteContent,
+            category: 'ingested',
+            source: 'operator'
+        });
+
+        console.log(`✅ [Ingest] Saved as note ${note?.id} (${content.length} chars)`);
+
+        // ──────────────────────────────────────────────────────────────
+        // CORTEX INGESTION — fire-and-forget to The Cortex Gateway
+        // Dual-writes to Neo4j (knowledge graph) + Pinecone (vector DB)
+        // with LLM-based factoid extraction. Non-blocking: user gets
+        // their response immediately, Cortex processes in background.
+        // ──────────────────────────────────────────────────────────────
+        let cortexStatus = 'skipped';
+        const CORTEX_GATEWAY_URL = process.env.CORTEX_GATEWAY_URL || 'http://localhost:8100';
+
+        // For very long content (transcripts), chunk it to avoid overwhelming extraction
+        const MAX_CORTEX_CHARS = 15000;
+        const cortexText = content.length > MAX_CORTEX_CHARS
+            ? `${autoTitle}\n\n${content.substring(0, MAX_CORTEX_CHARS)}\n\n[Content truncated for extraction — full text in notes]`
+            : `${autoTitle}\n\n${content}`;
+
+        // Fire and forget — don't await, don't block the response
+        const noteId = note?.id;
+        fetch(`${CORTEX_GATEWAY_URL}/api/memory/ingest`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: cortexText,
+                source: sourceUrl || 'nexus-ingest',
+                namespace: 'praxis',
+                use_extraction: true,
+            }),
+            signal: AbortSignal.timeout(180_000), // 3 min timeout — extraction is slow
+        })
+            .then(async (cortexRes) => {
+                if (cortexRes.ok) {
+                    const result = await cortexRes.json();
+                    console.log(`🧠 [Ingest → Cortex] Ingested: ${result.factoids_ingested} factoids extracted from "${autoTitle}"`);
+                    // Mark note as ingested in DB
+                    if (noteId) await db.markNoteIngested(noteId);
+                } else {
+                    console.warn(`⚠️ [Ingest → Cortex] HTTP ${cortexRes.status}: ${cortexRes.statusText}`);
+                }
+            })
+            .catch((cortexErr) => {
+                // Cortex offline is expected and fine — just log it
+                if (cortexErr.name === 'AbortError') {
+                    console.warn(`⚠️ [Ingest → Cortex] Timed out for "${autoTitle}"`);
+                } else {
+                    console.warn(`⚠️ [Ingest → Cortex] Offline or unreachable: ${cortexErr.message}`);
+                }
+            });
+
+        cortexStatus = 'dispatched';
+
+        return res.json({
+            success: true,
+            noteId: note?.id,
+            title: autoTitle,
+            contentLength: content.length,
+            contentType: contentType_label,
+            cortex: cortexStatus,
+            source: sourceUrl || 'text',
+        });
+
+    } catch (error) {
+        console.error(`❌ [Ingest] Error:`, error);
+        return res.status(500).json({
+            error: `Ingestion failed: ${error.message}`
+        });
+    }
+});
+
 // AI Chat endpoint
 // Supports new modelConfig object with provider-specific thinking configurations
 app.post('/api/ai/chat', async (req, res) => {
-    const { message, modelConfig, model, mode, history, projectId, session_id, files, audio } = req.body || {};
+    const { message, modelConfig, model, mode, history, projectId, session_id, files, attachments, audio } = req.body || {};
 
     console.log(`\n?? [AI Chat] Request Details:`);
     console.log(`   � Mode: ${mode}`);
@@ -1320,11 +1565,39 @@ app.post('/api/ai/chat', async (req, res) => {
         try {
             console.log(`[AI Chat] Proxying '${mode}' request to Praxis Agent (Port 54322)...`);
             
+            // Resolve the active conversation (auto-creates if none exists)
+            const conversation = await db.getActiveConversation('praxis');
+            const conversationId = conversation ? conversation.id : null;
+
+            // Persist the user message to DB (include attachment metadata if present)
+            if (conversationId) {
+                await db.saveChatMessage({
+                    conversation_id: conversationId,
+                    role: 'user',
+                    content: message,
+                    mode: 'praxis',
+                    metadata: {
+                        projectId,
+                        hasAudio: !!audio,
+                        ...(attachments && attachments.length > 0 ? {
+                            attachments: attachments.map(a => ({
+                                type: a.mimeType?.startsWith('image/') ? 'image' :
+                                      a.mimeType?.startsWith('audio/') ? 'audio' : 'file',
+                                url: a.url,
+                                name: a.originalName || a.name,
+                                mimeType: a.mimeType
+                            }))
+                        } : {})
+                    }
+                });
+            }
+
             const praxisPayload = {
                 message,
                 history,
                 projectId,
-                audio // Forward base64 audio directly to Praxis webhook
+                audio, // Forward base64 audio directly to Praxis webhook
+                attachments: attachments || undefined // Forward mobile file attachments to Praxis
             };
 
             const praxisResponse = await fetch('http://127.0.0.1:54322/api/chat', {
@@ -1342,13 +1615,26 @@ app.post('/api/ai/chat', async (req, res) => {
             const data = await praxisResponse.json();
 
             // Append Debug Footer
-            const debugFooter = `\n\n_—_\n*🤖 Relayed by Praxis*`;
+            const debugFooter = `\n\n_\u2014_\n*\ud83e\udd16 Relayed by Praxis*`;
+            const fullResponse = (data.response || "No response") + debugFooter;
+
+            // Persist the assistant response to DB
+            if (conversationId) {
+                await db.saveChatMessage({
+                    conversation_id: conversationId,
+                    role: 'assistant',
+                    content: fullResponse,
+                    mode: 'praxis',
+                    metadata: { model: 'praxis-agent', provider: 'Praxis', hasVoice: !!(data.voiceData && data.voiceData.length) }
+                });
+            }
 
             return res.json({
-                response: (data.response || "No response") + debugFooter,
+                response: fullResponse,
                 model: 'praxis-agent',
                 provider: 'Praxis',
                 mode: mode,
+                conversationId: conversationId,
                 isThinking: false,
                 tokenUsage: { total: 0 },
                 artifacts: [],
@@ -1357,7 +1643,7 @@ app.post('/api/ai/chat', async (req, res) => {
         } catch (error) {
             console.error(`[AI Chat] Praxis Proxy Error:`, error);
             return res.json({
-                response: `⚠️ **Connection to Praxis Failed**\n\nI couldn't reach the Praxis daemon (Port 54322). Ensure the background service is running.\n\nError: ${error.message}`,
+                response: `\u26a0\ufe0f **Connection to Praxis Failed**\n\nI couldn't reach the Praxis daemon (Port 54322). Ensure the background service is running.\n\nError: ${error.message}`,
                 model: 'system-error',
                 provider: 'System',
                 mode: mode
@@ -1470,6 +1756,24 @@ app.get('/api/ai/usage', async (req, res) => {
     } catch (error) {
         console.error('Error getting usage stats:', error);
         res.status(500).json({ error: 'Failed to get usage stats' });
+    }
+});
+
+// Record external token usage (called by Praxis LLM manager, sub-agents, etc.)
+app.post('/api/ai/usage', async (req, res) => {
+    try {
+        const { model, inputTokens, outputTokens, source } = req.body;
+        if (!model || inputTokens == null || outputTokens == null) {
+            return res.status(400).json({ error: 'model, inputTokens, and outputTokens are required' });
+        }
+        const input = Math.max(0, Math.round(Number(inputTokens) || 0));
+        const output = Math.max(0, Math.round(Number(outputTokens) || 0));
+        const caller = source || 'unknown';
+        await db.recordUsage(model, input, output, caller);
+        res.json({ ok: true, recorded: { model, inputTokens: input, outputTokens: output, source: caller } });
+    } catch (error) {
+        console.error('Error recording external usage:', error);
+        res.status(500).json({ error: 'Failed to record usage: ' + error.message });
     }
 });
 
@@ -1976,7 +2280,18 @@ app.patch('/api/projects/:id/tasks/:taskId', async (req, res) => {
             }
         }
 
+        const oldStatus = existing.status;
         const updated = await db.updateTask(taskId, updates);
+
+        // Push notification for significant status changes
+        if (status && status !== oldStatus) {
+            const notifyStatuses = ['completed', 'failed', 'blocked', 'awaiting_approval'];
+            if (notifyStatuses.includes(status)) {
+                pushService.notifyTaskUpdate(updated, oldStatus).catch(err =>
+                    console.warn('[Push] Task notification failed:', err.message)
+                );
+            }
+        }
 
         res.json({
             success: true,
@@ -2066,7 +2381,7 @@ async function resumeDeepResearch() {
                 // Note: Schema has research_interaction_id column, so we check that directly if mapped, 
                 // OR check the "status" column.
 
-                if (task.status === 'researching' && task.research_interaction_id) {
+                if (task.status === 'todo' && task.research_interaction_id) {
                     console.log(`[Resume Research] Resuming research for project ${project.id}, task ${task.id}`);
 
                     // We need context to resume? The original code built context.
@@ -2118,7 +2433,7 @@ DO NOT generate the full step-by-step implementation plan yet. That will be done
                         },
                         onComplete: async (content) => {
                             await db.updateTask(task.id, {
-                                status: 'researched',
+                                status: 'todo',
                                 research_output: content,
                                 updated_at: new Date().toISOString(),
                                 research_interaction_id: null // clear it
@@ -2153,8 +2468,8 @@ DO NOT generate the full step-by-step implementation plan yet. That will be done
 // For simplicity, we'll call it immediately after its definition.
 resumeDeepResearch();
 
-// Function to handle features stuck in 'implementing' status on server restart
-// Function to handle tasks stuck in 'implementing' status on server restart
+// Function to handle features stuck in 'building' status on server restart
+// Function to handle tasks stuck in 'building' status on server restart
 async function resumeImplementations() {
     console.log('[Resume Implementations] Checking for stuck implementations...');
 
@@ -2166,7 +2481,7 @@ async function resumeImplementations() {
         try {
             const tasks = await db.getTasks(project.id);
             for (const task of tasks) {
-                if (task.status === 'implementing') {
+                if (task.status === 'building') {
                     // Check metadata for session info
                     const metadata = task.metadata || {};
                     const session = metadata.implementationSession;
@@ -2421,7 +2736,7 @@ app.post('/api/projects/:id/tasks/:taskId/approve-plan', async (req, res) => {
 
                 // Update task metadata with approval
                 await db.updateTask(taskId, {
-                    status: 'implementing', // LangGraph will now build
+                    status: 'building', // LangGraph will now build
                     updated_at: new Date().toISOString(),
                     plan_metadata: {
                         ...planMeta,
@@ -2675,7 +2990,7 @@ app.post('/api/projects/:id/tasks/:taskId/langgraph/run', async (req, res) => {
 
         if (result.success && result.run_id) {
             // Determine the initial status based on the workflow
-            const newStatus = task.status === 'idea' ? 'researching' : task.status;
+            const newStatus = task.status === 'idea' ? 'todo' : task.status;
 
             // Persist run ID and status to the database
             await db.updateTask(taskId, {
@@ -3130,6 +3445,84 @@ app.patch('/api/projects/:id/features/:featureId/comments/:commentId', async (re
     }
 });
 
+// ============================================================================
+// ANTIGRAVITY EVENT STREAM (zero-cost monitoring)
+// ============================================================================
+
+/**
+ * POST /api/ag/events — Ingest events from the Antigravity extension.
+ * Persists to SQLite, broadcasts via Socket.IO. Zero LLM calls.
+ */
+app.post('/api/ag/events', async (req, res) => {
+    const { event_type, severity, title, message, task_id, source, metadata, requires_action } = req.body;
+
+    if (!event_type || !title) {
+        return res.status(400).json({ error: 'event_type and title are required' });
+    }
+
+    try {
+        const event = await db.recordAgEvent({
+            event_type,
+            severity: severity || 'info',
+            title,
+            message: message || null,
+            task_id: task_id || null,
+            source: source || 'extension',
+            metadata: metadata || {},
+            requires_action: requires_action || false
+        });
+
+        if (event) {
+            // Broadcast to all connected dashboard clients
+            io.emit('ag-event', event);
+            console.log(`[AG Stream] ${severity || 'info'}: ${title} → ${io.engine.clientsCount} clients`);
+
+            // Push notification for warning/critical events
+            if ((severity === 'critical' || severity === 'warning') || requires_action) {
+                pushService.notifySystemAlert(event).catch(err =>
+                    console.warn('[Push] AG event notification failed:', err.message)
+                );
+            }
+        }
+
+        res.json({ success: true, event });
+    } catch (error) {
+        console.error('[AG Stream] Error recording event:', error);
+        res.status(500).json({ error: 'Failed to record event' });
+    }
+});
+
+/**
+ * GET /api/ag/events — Fetch recent events for dashboard hydration.
+ */
+app.get('/api/ag/events', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const events = await db.getRecentAgEvents(Math.min(limit, 200));
+        res.json({ events });
+    } catch (error) {
+        console.error('[AG Stream] Error fetching events:', error);
+        res.status(500).json({ error: 'Failed to fetch events' });
+    }
+});
+
+/**
+ * PUT /api/ag/events/:id/action — Mark an event as actioned (dismiss alert).
+ */
+app.put('/api/ag/events/:id/action', async (req, res) => {
+    try {
+        const success = await db.markAgEventActioned(req.params.id);
+        if (success) {
+            // Broadcast dismissal to other clients
+            io.emit('ag-event-actioned', { id: parseInt(req.params.id) });
+        }
+        res.json({ success });
+    } catch (error) {
+        console.error('[AG Stream] Error marking event actioned:', error);
+        res.status(500).json({ error: 'Failed to mark event actioned' });
+    }
+});
+
 // CORTEX BROADCAST ENDPOINT
 // Receives artifact pushes from Cortex and would emit to connected clients
 // ============================================================================
@@ -3275,33 +3668,63 @@ app.patch('/api/tasks/reorder', async (req, res) => {
 
 /**
  * GET /api/system/resources — Token budget dashboard.
- * Returns today's usage, quota limits, and available models.
+ * Returns today's usage split by source (total vs praxis-only).
+ * Budget percentage is based on Praxis-only usage.
  */
 app.get('/api/system/resources', async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
         const usageRows = await db.getUsageStats(today, today) || [];
 
+        // Aggregate total (all sources) and praxis-only
         let tokensUsedToday = 0;
         let inputTokensToday = 0;
         let outputTokensToday = 0;
         let requestCountToday = 0;
         const breakdownByModel = {};
 
+        let praxisTokensToday = 0;
+        let praxisInputToday = 0;
+        let praxisOutputToday = 0;
+        let praxisRequestsToday = 0;
+        const breakdownBySource = {};
+
         for (const row of usageRows) {
             const total = Number(row.total_tokens) || 0;
+            const input = Number(row.input_tokens) || 0;
+            const output = Number(row.output_tokens) || 0;
+            const requests = Number(row.request_count) || 0;
+            const source = row.source || 'unknown';
+
+            // Total across all sources
             tokensUsedToday += total;
-            inputTokensToday += Number(row.input_tokens) || 0;
-            outputTokensToday += Number(row.output_tokens) || 0;
-            requestCountToday += Number(row.request_count) || 0;
+            inputTokensToday += input;
+            outputTokensToday += output;
+            requestCountToday += requests;
             if (row.model) {
                 breakdownByModel[row.model] = (breakdownByModel[row.model] || 0) + total;
+            }
+
+            // Per-source breakdown
+            if (!breakdownBySource[source]) {
+                breakdownBySource[source] = { tokens: 0, input: 0, output: 0, requests: 0 };
+            }
+            breakdownBySource[source].tokens += total;
+            breakdownBySource[source].input += input;
+            breakdownBySource[source].output += output;
+            breakdownBySource[source].requests += requests;
+
+            // Praxis-only
+            if (source === 'praxis') {
+                praxisTokensToday += total;
+                praxisInputToday += input;
+                praxisOutputToday += output;
+                praxisRequestsToday += requests;
             }
         }
 
         // Quota data
-        let dailyLimit = 1_000_000;
-        let nextResetTimestamp = null;
+        let dailyLimit = 2_000_000;
         let quotaSource = 'default';
 
         const quotaEndpoints = ['anthropic', 'google', 'openai', 'default'];
@@ -3309,18 +3732,16 @@ app.get('/api/system/resources', async (req, res) => {
             const quota = await db.getQuota(endpoint, 'daily');
             if (quota) {
                 dailyLimit = Number(quota.max_requests) || dailyLimit;
-                if (quota.reset_at) nextResetTimestamp = quota.reset_at;
                 quotaSource = endpoint;
                 break;
             }
         }
 
-        if (!nextResetTimestamp) {
-            const tomorrow = new Date();
-            tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-            tomorrow.setUTCHours(0, 0, 0, 0);
-            nextResetTimestamp = tomorrow.toISOString();
-        }
+        // Always compute fresh reset time (tomorrow midnight UTC)
+        const tomorrow = new Date();
+        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+        tomorrow.setUTCHours(0, 0, 0, 0);
+        const nextResetTimestamp = tomorrow.toISOString();
 
         // Available models
         let availableModels = [];
@@ -3334,14 +3755,22 @@ app.get('/api/system/resources', async (req, res) => {
             }));
         } catch { /* Models table might not have data */ }
 
-        const budgetPercentage = Math.round((tokensUsedToday / dailyLimit) * 1000) / 10;
+        // Budget % based on PRAXIS-ONLY usage (not total system)
+        const budgetPercentage = Math.round((praxisTokensToday / dailyLimit) * 1000) / 10;
         const budgetStatus = budgetPercentage >= 80 ? 'critical' : 'safe';
 
         res.json({
+            // Praxis-specific (used for budget decisions)
+            praxis_tokens_today: praxisTokensToday,
+            praxis_input_today: praxisInputToday,
+            praxis_output_today: praxisOutputToday,
+            praxis_requests_today: praxisRequestsToday,
+            // Total across all callers (informational)
             tokens_used_today: tokensUsedToday,
             input_tokens_today: inputTokensToday,
             output_tokens_today: outputTokensToday,
             request_count_today: requestCountToday,
+            // Budget based on praxis-only
             daily_limit: dailyLimit,
             budget_percentage: budgetPercentage,
             budget_status: budgetStatus,
@@ -3349,6 +3778,7 @@ app.get('/api/system/resources', async (req, res) => {
             next_reset_timestamp: nextResetTimestamp,
             available_models: availableModels,
             breakdown_by_model: breakdownByModel,
+            breakdown_by_source: breakdownBySource,
             assessed_at: new Date().toISOString()
         });
     } catch (error) {
@@ -3372,6 +3802,22 @@ app.get('/api/notes', async (req, res) => {
     } catch (error) {
         console.error('Error fetching global notes:', error);
         res.status(500).json({ error: 'Failed to fetch notes' });
+    }
+});
+
+/**
+ * GET /api/notes/uningested — List notes NOT yet ingested into Cortex
+ * Supports ?category= filter (e.g., 'daily-log', 'ingested', 'revenue-ideas')
+ * MUST be before /:noteId routes to avoid Express matching 'uningested' as a noteId
+ */
+app.get('/api/notes/uningested', async (req, res) => {
+    try {
+        const category = req.query.category || null;
+        const notes = await db.getUningestedNotes(category);
+        res.json({ notes, count: notes.length });
+    } catch (error) {
+        console.error('Error fetching uningested notes:', error);
+        res.status(500).json({ error: 'Failed to fetch uningested notes' });
     }
 });
 
@@ -3480,6 +3926,433 @@ app.delete('/api/notes/:noteId', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/notes/:noteId/mark-ingested — Mark note as ingested into Cortex
+ * Called by Praxis or the nightly scheduler after successfully pushing to Cortex.
+ */
+app.post('/api/notes/:noteId/mark-ingested', async (req, res) => {
+    try {
+        const note = await db.markNoteIngested(req.params.noteId);
+        if (!note) {
+            return res.status(404).json({ error: 'Note not found' });
+        }
+        console.log(`🧠 [Notes] Marked note ${req.params.noteId} as cortex-ingested`);
+        res.json({ success: true, cortex_ingested_at: note.cortex_ingested_at });
+    } catch (error) {
+        console.error(`Error marking note ${req.params.noteId} as ingested:`, error);
+        res.status(500).json({ error: 'Failed to mark note ingested' });
+    }
+});
+
+// ============================================================================
+// CHAT CONVERSATION & HISTORY ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/chat/conversations — List all conversations for a mode
+ */
+app.get('/api/chat/conversations', async (req, res) => {
+    try {
+        const mode = req.query.mode || 'praxis';
+        const conversations = await db.getChatConversations(mode);
+        res.json({ conversations });
+    } catch (error) {
+        console.error('[Chat] Error listing conversations:', error);
+        res.status(500).json({ error: 'Failed to list conversations' });
+    }
+});
+
+/**
+ * GET /api/chat/active — Get (or auto-create) the active conversation + its messages
+ */
+app.get('/api/chat/active', async (req, res) => {
+    try {
+        const mode = req.query.mode || 'praxis';
+        const conversation = await db.getActiveConversation(mode);
+        if (!conversation) {
+            return res.json({ conversation: null, messages: [] });
+        }
+        const messages = await db.getChatMessages(conversation.id);
+        res.json({ conversation, messages });
+    } catch (error) {
+        console.error('[Chat] Error getting active conversation:', error);
+        res.status(500).json({ error: 'Failed to get active conversation' });
+    }
+});
+
+/**
+ * POST /api/chat/conversations — Create a new conversation (becomes active)
+ */
+app.post('/api/chat/conversations', async (req, res) => {
+    try {
+        const mode = req.body.mode || 'praxis';
+        const title = req.body.title || 'New Conversation';
+        const conversation = await db.createConversation(mode, title);
+        res.json({ conversation, messages: [] });
+    } catch (error) {
+        console.error('[Chat] Error creating conversation:', error);
+        res.status(500).json({ error: 'Failed to create conversation' });
+    }
+});
+
+/**
+ * PUT /api/chat/conversations/:id/switch — Switch to a conversation
+ */
+app.put('/api/chat/conversations/:id/switch', async (req, res) => {
+    try {
+        const conversation = await db.switchConversation(req.params.id);
+        if (!conversation) {
+            return res.status(404).json({ error: 'Conversation not found' });
+        }
+        const messages = await db.getChatMessages(conversation.id);
+        res.json({ conversation, messages });
+    } catch (error) {
+        console.error('[Chat] Error switching conversation:', error);
+        res.status(500).json({ error: 'Failed to switch conversation' });
+    }
+});
+
+/**
+ * PUT /api/chat/conversations/:id — Update conversation title
+ */
+app.put('/api/chat/conversations/:id', async (req, res) => {
+    try {
+        const { title } = req.body;
+        if (!title) return res.status(400).json({ error: 'Title is required' });
+        const conversation = await db.updateConversationTitle(req.params.id, title);
+        if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+        res.json({ conversation });
+    } catch (error) {
+        console.error('[Chat] Error updating conversation:', error);
+        res.status(500).json({ error: 'Failed to update conversation' });
+    }
+});
+
+/**
+ * DELETE /api/chat/conversations/:id — Delete a conversation and all its messages
+ */
+app.delete('/api/chat/conversations/:id', async (req, res) => {
+    try {
+        const deleted = await db.deleteConversation(req.params.id);
+        if (!deleted) return res.status(404).json({ error: 'Conversation not found' });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('[Chat] Error deleting conversation:', error);
+        res.status(500).json({ error: 'Failed to delete conversation' });
+    }
+});
+
+/**
+ * GET /api/chat/history — Fetch messages for a specific conversation
+ * Query params: conversationId (required), limit (default 200)
+ */
+app.get('/api/chat/history', async (req, res) => {
+    try {
+        const { conversationId, before } = req.query;
+        if (!conversationId) return res.status(400).json({ error: 'conversationId is required' });
+        const limit = Math.min(parseInt(req.query.limit) || 200, 200);
+        const messages = await db.getChatMessages(conversationId, { limit, before });
+        res.json({ messages });
+    } catch (error) {
+        console.error('[Chat History] Error fetching:', error);
+        res.status(500).json({ error: 'Failed to fetch chat history' });
+    }
+});
+
+/**
+ * DELETE /api/chat/history — Clear messages in a conversation (keeps conversation record)
+ * Query params: conversationId (required)
+ */
+app.delete('/api/chat/history', async (req, res) => {
+    try {
+        const { conversationId } = req.query;
+        if (!conversationId) return res.status(400).json({ error: 'conversationId is required' });
+        const cleared = await db.clearChatMessages(conversationId);
+        res.json({ success: cleared });
+    } catch (error) {
+        console.error('[Chat History] Error clearing:', error);
+        res.status(500).json({ error: 'Failed to clear chat history' });
+    }
+});
+
+/**
+ * POST /api/chat/messages/sync — Sync messages from external platforms (Telegram, HA, etc.)
+ * Praxis uses this to push all message exchanges into the Nexus DB for unified context.
+ * Idempotent: if a message with the same id already exists, it's a no-op.
+ *
+ * Body: { messages: [{ role, content, platform, metadata }], mode }
+ * - mode defaults to 'praxis'
+ * - platform is stored in metadata (e.g., 'telegram', 'home-assistant', 'system')
+ */
+app.post('/api/chat/messages/sync', async (req, res) => {
+    try {
+        const { messages, mode = 'praxis' } = req.body;
+        if (!messages || !Array.isArray(messages) || messages.length === 0) {
+            return res.status(400).json({ error: 'messages array is required' });
+        }
+
+        // Get or create the active conversation for this mode
+        const conversation = await db.getActiveConversation(mode);
+        if (!conversation) {
+            return res.status(500).json({ error: 'Could not resolve active conversation' });
+        }
+        const conversationId = conversation.id;
+
+        let synced = 0;
+        for (const msg of messages) {
+            if (!msg.role || !msg.content) continue;
+
+            try {
+                await db.saveChatMessage({
+                    id: msg.id, // Allow caller to specify id for dedup; saveChatMessage will auto-generate if missing
+                    conversation_id: conversationId,
+                    role: msg.role,
+                    content: msg.content,
+                    mode: mode,
+                    metadata: {
+                        platform: msg.platform || 'unknown',
+                        ...(msg.metadata || {})
+                    }
+                });
+                synced++;
+            } catch (saveErr) {
+                // If it's a UNIQUE constraint error, it means the message already exists (dedup)
+                if (saveErr.message && saveErr.message.includes('UNIQUE constraint')) {
+                    continue; // Idempotent — already synced
+                }
+                console.error(`[Chat Sync] Error saving message:`, saveErr.message);
+            }
+        }
+
+        // Broadcast synced assistant messages (especially from Praxis send_file tool) via WebSocket
+        // so mobile/desktop clients see attachments in real-time without refreshing
+        for (const msg of messages) {
+            if (msg.role === 'assistant' && msg.metadata?.attachments?.length > 0) {
+                io.emit('cortex-artifact', {
+                    type: 'CHAT_RESPONSE',
+                    data: {
+                        content: msg.content,
+                        attachments: msg.metadata.attachments
+                    }
+                });
+                console.log(`[Chat Sync] Broadcasted assistant message with ${msg.metadata.attachments.length} attachment(s) via WebSocket`);
+            }
+        }
+
+        res.json({ ok: true, synced, conversationId });
+    } catch (error) {
+        console.error('[Chat Sync] Error:', error);
+        res.status(500).json({ error: 'Failed to sync messages: ' + error.message });
+    }
+});
+
+// ─── Chat File Attachments ────────────────────────────────────────────────────
+
+const CHAT_FILES_DIR = path.join(__dirname, '..', 'data', 'chat-files');
+
+// Ensure directory exists on startup
+if (!fs.existsSync(CHAT_FILES_DIR)) {
+    fs.mkdirSync(CHAT_FILES_DIR, { recursive: true });
+    console.log('[Chat Files] Created storage directory:', CHAT_FILES_DIR);
+}
+
+// Multer storage config — UUID-based filenames to avoid collisions
+const chatFileStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, CHAT_FILES_DIR),
+    filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname) || '';
+        const fileId = crypto.randomUUID();
+        cb(null, `${fileId}${ext}`);
+    }
+});
+
+const chatFileUpload = multer({
+    storage: chatFileStorage,
+    limits: { fileSize: 25 * 1024 * 1024 } // 25 MB cap
+});
+
+/**
+ * POST /api/chat/files/upload — Upload a file attachment for chat
+ * Accepts multipart/form-data with a single "file" field.
+ * Returns: { fileId, url, mimeType, originalName, size }
+ */
+app.post('/api/chat/files/upload', chatFileUpload.single('file'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded. Use field name "file".' });
+        }
+
+        const fileId = path.basename(req.file.filename, path.extname(req.file.filename));
+        const fileUrl = `/api/chat/files/${fileId}`;
+
+        console.log(`[Chat Files] Uploaded: ${req.file.originalname} → ${req.file.filename} (${(req.file.size / 1024).toFixed(1)} KB)`);
+
+        res.json({
+            fileId,
+            url: fileUrl,
+            mimeType: req.file.mimetype,
+            originalName: req.file.originalname,
+            size: req.file.size
+        });
+    } catch (error) {
+        console.error('[Chat Files] Upload error:', error);
+        res.status(500).json({ error: 'File upload failed: ' + error.message });
+    }
+});
+
+/**
+ * GET /api/chat/files/:fileId — Serve a previously uploaded chat file
+ * Looks up the file by its UUID prefix in the chat-files directory.
+ */
+app.get('/api/chat/files/:fileId', (req, res) => {
+    try {
+        const { fileId } = req.params;
+        if (!fileId || fileId.includes('..') || fileId.includes('/')) {
+            return res.status(400).json({ error: 'Invalid file ID' });
+        }
+
+        // Find the file by UUID prefix (filename is {uuid}.{ext})
+        const files = fs.readdirSync(CHAT_FILES_DIR);
+        const match = files.find(f => f.startsWith(fileId) && !f.startsWith('.'));
+
+        if (!match) {
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        const filePath = path.join(CHAT_FILES_DIR, match);
+
+        // Infer MIME type from extension
+        const ext = path.extname(match).toLowerCase();
+        const mimeMap = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.svg': 'image/svg+xml',
+            '.pdf': 'application/pdf',
+            '.mp3': 'audio/mpeg',
+            '.wav': 'audio/wav',
+            '.ogg': 'audio/ogg',
+            '.mp4': 'video/mp4',
+            '.webm': 'video/webm',
+            '.txt': 'text/plain',
+            '.md': 'text/markdown',
+            '.json': 'application/json',
+            '.csv': 'text/csv',
+            '.zip': 'application/zip',
+        };
+        const contentType = mimeMap[ext] || 'application/octet-stream';
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `inline; filename="${match}"`);
+        res.sendFile(filePath);
+    } catch (error) {
+        console.error('[Chat Files] Serve error:', error);
+        res.status(500).json({ error: 'Failed to serve file: ' + error.message });
+    }
+});
+
+// ============================================================================
+// PUSH NOTIFICATION TOKEN MANAGEMENT
+// ============================================================================
+
+/**
+ * POST /api/push/register — Register a device push token.
+ * Mobile app calls this on launch after obtaining an Expo push token.
+ */
+app.post('/api/push/register', async (req, res) => {
+    const { token, deviceId, platform, label } = req.body;
+
+    if (!token) {
+        return res.status(400).json({ error: 'token is required' });
+    }
+
+    // Validate it's a valid Expo push token format
+    if (!token.startsWith('ExponentPushToken[') && !token.startsWith('ExpoPushToken[')) {
+        return res.status(400).json({ error: 'Invalid Expo push token format' });
+    }
+
+    try {
+        const result = await db.registerPushToken({
+            token,
+            deviceId: deviceId || null,
+            platform: platform || 'android',
+            label: label || null,
+        });
+
+        if (!result) {
+            return res.status(500).json({ error: 'Failed to register token' });
+        }
+
+        console.log(`[Push] Token registered: ${token.substring(0, 30)}... (${result.created ? 'new' : 'updated'})`);
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('[Push] Registration error:', error);
+        res.status(500).json({ error: 'Failed to register push token' });
+    }
+});
+
+/**
+ * DELETE /api/push/unregister — Remove a device push token.
+ * Called when user signs out or disables notifications.
+ */
+app.delete('/api/push/unregister', async (req, res) => {
+    const { token } = req.body;
+
+    if (!token) {
+        return res.status(400).json({ error: 'token is required' });
+    }
+
+    try {
+        const success = await db.unregisterPushToken(token);
+        console.log(`[Push] Token unregistered: ${token.substring(0, 30)}...`);
+        res.json({ success });
+    } catch (error) {
+        console.error('[Push] Unregister error:', error);
+        res.status(500).json({ error: 'Failed to unregister push token' });
+    }
+});
+
+/**
+ * GET /api/push/tokens — List all registered tokens (admin view).
+ */
+app.get('/api/push/tokens', async (req, res) => {
+    try {
+        const tokens = await db.getAllPushTokens();
+        // Redact sensitive token data for listing
+        const safeTokens = tokens.map(t => ({
+            ...t,
+            token: t.token.substring(0, 25) + '...',
+            tokenFull: undefined, // Never expose full token in list view
+        }));
+        res.json({ tokens: safeTokens, count: tokens.length });
+    } catch (error) {
+        console.error('[Push] List tokens error:', error);
+        res.status(500).json({ error: 'Failed to list push tokens' });
+    }
+});
+
+/**
+ * POST /api/push/test — Send a test push notification to all registered devices.
+ */
+app.post('/api/push/test', async (req, res) => {
+    const { title, body, data } = req.body;
+
+    try {
+        const result = await pushService.notify({
+            title: title || '🧪 Test Notification',
+            body: body || 'This is a test push notification from The Nexus',
+            data: { type: 'test', ...data },
+            channelId: 'nexus-default',
+        });
+
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('[Push] Test notification error:', error);
+        res.status(500).json({ error: 'Failed to send test notification' });
+    }
+});
 
 server.listen(PORT, async () => {
     // Reasoning level was previously in config, defaulting to standard log for now
@@ -3497,6 +4370,23 @@ server.listen(PORT, async () => {
         const dbResult = await db.testConnection();
         if (dbResult.success) {
             console.log(`Database: CONNECTED (SQLite)`);
+
+            // Initialize push notification service
+            pushService.init(db);
+
+            // Run the push_tokens migration if needed
+            try {
+                const migrationPath = path.resolve(__dirname, '../db/migrations/025_push_tokens.sql');
+                if (fs.existsSync(migrationPath)) {
+                    const { default: Database } = await import('better-sqlite3').catch(() => ({ default: null }));
+                    // The schema already handles CREATE IF NOT EXISTS, so just re-exec
+                    const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+                    // Use db module's internal connection — schema already handles this
+                    console.log('[Push] Token storage ready');
+                }
+            } catch (err) {
+                console.warn('[Push] Migration check:', err.message);
+            }
         } else {
             console.warn(`Database: CONFIGURED but connection failed - ${dbResult.error}`);
         }

@@ -16,9 +16,13 @@ export function ActivityFeed() {
     }, []);
 
     const formatRelativeTime = (dateStr: string) => {
-        const date = new Date(dateStr);
+        // Normalize SQLite "YYYY-MM-DD HH:MM:SS" (UTC but no suffix) → ISO with Z
+        const normalized = dateStr.includes('T') || dateStr.includes('Z') || dateStr.includes('+')
+            ? dateStr
+            : dateStr.replace(' ', 'T') + 'Z';
+        const date = new Date(normalized);
         const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
+        const diffMs = Math.max(0, now.getTime() - date.getTime());
         const diffMins = Math.floor(diffMs / (1000 * 60));
         const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));

@@ -15,8 +15,6 @@ import {
     Trash2,
     Loader2,
     Send,
-    ChevronDown,
-    ChevronUp,
     StickyNote,
     Lightbulb,
     AlertCircle,
@@ -24,13 +22,16 @@ import {
     Flag,
 } from "lucide-react";
 
+// Categories that should NOT appear in the journal (ingested content, reports, etc.)
+const HIDDEN_CATEGORIES = new Set(["ingested", "ingestion-report", "revenue-ideas"]);
+
 const JOURNAL_TABS = [
-    { key: "all", label: "All" },
     { key: "daily-log", label: "Daily Log", color: "text-cyan-400", activeColor: "bg-cyan-500/30 text-cyan-200", icon: <Flag size={11} /> },
     { key: "general", label: "General", color: "text-slate-400", activeColor: "bg-slate-500/30 text-slate-200", icon: <StickyNote size={11} /> },
     { key: "decision", label: "Decisions", color: "text-purple-400", activeColor: "bg-purple-500/30 text-purple-200", icon: <Lightbulb size={11} /> },
     { key: "blocker", label: "Blockers", color: "text-red-400", activeColor: "bg-red-500/30 text-red-200", icon: <AlertCircle size={11} /> },
     { key: "reminder", label: "Reminders", color: "text-amber-400", activeColor: "bg-amber-500/30 text-amber-200", icon: <Clock size={11} /> },
+    { key: "all", label: "All" },
 ] as const;
 
 function formatDateHeading(dateStr: string): string {
@@ -78,13 +79,13 @@ export function DailyJournal() {
     const [newContent, setNewContent] = useState("");
     const [newCategory, setNewCategory] = useState("daily-log");
     const [submitting, setSubmitting] = useState(false);
-    const [expanded, setExpanded] = useState(false);
-    const [activeTab, setActiveTab] = useState("all");
+    const [activeTab, setActiveTab] = useState("daily-log");
 
     const loadNotes = useCallback(async () => {
         try {
             const data = await getGlobalNotes();
-            setNotes(data);
+            // Filter out ingested content — those belong in the Knowledge Base, not the Journal
+            setNotes(data.filter((n: Note) => !HIDDEN_CATEGORIES.has(n.category)));
         } catch (err) {
             console.error("[DailyJournal] Failed to load:", err);
         } finally {
@@ -151,11 +152,10 @@ export function DailyJournal() {
         }
     }
 
-    const displayGroups = expanded ? grouped : grouped.slice(0, 2);
-    const hasMore = grouped.length > 2;
+
 
     return (
-        <div className="bg-slate-900/50 border border-slate-800 rounded-lg overflow-hidden">
+        <div className="bg-slate-900/50 border border-slate-800 rounded-lg overflow-hidden flex flex-col" style={{ maxHeight: '520px' }}>
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-slate-800/50">
                 <div className="flex items-center gap-2.5">
@@ -211,7 +211,7 @@ export function DailyJournal() {
                 })}
             </div>
 
-            <div className="p-3 space-y-3">
+            <div className="p-3 space-y-3 overflow-y-auto flex-1 min-h-0">
                 {/* New Note Input */}
                 {showInput && (
                     <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 space-y-2">
@@ -284,7 +284,7 @@ export function DailyJournal() {
                 )}
 
                 {/* Grouped Notes */}
-                {displayGroups.map((group) => (
+                {grouped.map((group) => (
                     <div key={group.label}>
                         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                             {group.label}
@@ -332,25 +332,7 @@ export function DailyJournal() {
                     </div>
                 ))}
 
-                {/* Expand/Collapse */}
-                {hasMore && (
-                    <button
-                        onClick={() => setExpanded(!expanded)}
-                        className="w-full flex items-center justify-center gap-1 py-1.5 text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
-                    >
-                        {expanded ? (
-                            <>
-                                <ChevronUp size={10} />
-                                Show Less
-                            </>
-                        ) : (
-                            <>
-                                <ChevronDown size={10} />
-                                Show Older ({grouped.length - 2} more)
-                            </>
-                        )}
-                    </button>
-                )}
+
             </div>
         </div>
     );

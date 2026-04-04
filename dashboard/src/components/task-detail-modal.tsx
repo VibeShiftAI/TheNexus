@@ -23,22 +23,18 @@ interface TaskDetailModalProps {
 
 type Tab = 'overview' | 'spec' | 'research' | 'plan' | 'walkthrough' | 'workflow';
 
-const statusActions: Record<TaskStatus, { action: string; nextStatus: string }[]> = {
-    idea: [], // Legacy 'Research & Plan' removed
-    researching: [],
-    researched: [
-        { action: 'Approve & Plan', nextStatus: 'planning' },
-        { action: 'Reject Research', nextStatus: 'idea' }
-    ],
+/** Actions available for each known status. Ad-hoc statuses get no actions by default. */
+const statusActions: Record<string, { action: string; nextStatus: string }[]> = {
+    idea: [],
+    todo: [],
     planning: [],
-    planned: [], // 'Approve & Implement' removed - now handled by Live Workflow overlay
-    awaiting_approval: [], // 'Approve & Implement' removed - now handled by Live Workflow overlay
-    implementing: [],
+    building: [],
     testing: [
         { action: 'Approve & Commit', nextStatus: 'complete' },
-        { action: 'Revise & Advise', nextStatus: 'implementing' },
+        { action: 'Revise & Advise', nextStatus: 'building' },
         { action: 'Cancel & Undo', nextStatus: 'cancelled' }
     ],
+    ready_for_review: [],
     complete: [],
     rejected: [],
     cancelled: []
@@ -46,22 +42,25 @@ const statusActions: Record<TaskStatus, { action: string; nextStatus: string }[]
 
 
 
-// Simplified StatusBadge component for internal use
+// Simplified StatusBadge component for internal use — renders any status, known or ad-hoc
 function StatusBadge({ status }: { status: TaskStatus }) {
-    const statusConfig: Record<TaskStatus, { label: string; color: string; bgColor: string }> = {
+    const knownConfig: Record<string, { label: string; color: string; bgColor: string }> = {
         idea: { label: 'Idea', color: 'text-yellow-400', bgColor: 'bg-yellow-400/10' },
-        researching: { label: 'Researching', color: 'text-cyan-400', bgColor: 'bg-cyan-400/10' },
-        researched: { label: 'Researched', color: 'text-cyan-400', bgColor: 'bg-cyan-400/10' },
+        todo: { label: 'To Do', color: 'text-cyan-400', bgColor: 'bg-cyan-400/10' },
         planning: { label: 'Planning', color: 'text-purple-400', bgColor: 'bg-purple-400/10' },
-        planned: { label: 'Planned', color: 'text-purple-400', bgColor: 'bg-purple-400/10' },
-        awaiting_approval: { label: 'Awaiting Approval', color: 'text-amber-400', bgColor: 'bg-amber-400/10' },
-        implementing: { label: 'Implementing', color: 'text-emerald-400', bgColor: 'bg-emerald-400/10' },
-        testing: { label: 'Testing', color: 'text-emerald-400', bgColor: 'bg-emerald-400/10' },
+        building: { label: 'Building', color: 'text-emerald-400', bgColor: 'bg-emerald-400/10' },
+        testing: { label: 'Testing', color: 'text-blue-400', bgColor: 'bg-blue-400/10' },
+        ready_for_review: { label: 'Ready for Review', color: 'text-amber-400', bgColor: 'bg-amber-400/10' },
         complete: { label: 'Complete', color: 'text-slate-400', bgColor: 'bg-slate-400/10' },
         rejected: { label: 'Rejected', color: 'text-red-400', bgColor: 'bg-red-400/10' },
         cancelled: { label: 'Cancelled', color: 'text-slate-500', bgColor: 'bg-slate-500/10' }
     };
-    const config = statusConfig[status] || statusConfig.idea;
+    // Fallback: auto-generate label and styling for ad-hoc statuses
+    const config = knownConfig[status] || {
+        label: status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        color: 'text-indigo-400',
+        bgColor: 'bg-indigo-400/10'
+    };
 
     return (
         <span className={`px-2 py-0.5 rounded text-xs font-medium border border-transparent ${config.color} ${config.bgColor}`}>
@@ -226,8 +225,8 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
     const canEdit = task?.status === 'idea' || task?.status === 'planning';
 
     // Check if LangGraph can be used (for idea, researched, or planned tasks, OR if already running)
-    const canUseLangGraph = task?.status === 'idea' || task?.status === 'researched' || task?.status === 'planned' ||
-        task?.status === 'researching' || task?.status === 'planning' || task?.status === 'implementing' || task?.status === 'testing';
+    const canUseLangGraph = task?.status === 'idea' || task?.status === 'todo' ||
+        task?.status === 'planning' || task?.status === 'building' || task?.status === 'testing' || task?.status === 'ready_for_review';
 
     // Load LangGraph available workflows (templates)
     useEffect(() => {
@@ -302,15 +301,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
 
         try {
             switch (action) {
-                // 'Research & Plan' case removed
-                case 'Approve & Plan':
-                    await approveResearch(projectId, task.id, feedback);
-                    setActiveTab('plan');
-                    break;
-                case 'Reject Research':
-                    await rejectResearch(projectId, task.id, feedback);
-                    setActiveTab('overview');
-                    break;
+                // 'Approve & Plan' case removed
                 // Note: 'Approve & Implement' and 'Reject Plan' removed - now handled by Live Workflow overlay
                 case 'Approve & Commit':
                     await approveWalkthrough(projectId, task.id, feedback);
@@ -479,12 +470,12 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
 
 
     const actions = statusActions[task.status] || [];
-    const isPending = !langGraphRunId && (task.status === 'researching' || task.status === 'planning' || task.status === 'implementing');
+    const isPending = !langGraphRunId && (task.status === 'todo' || task.status === 'planning' || task.status === 'building');
 
     // Show feedback for any approval/rejection stage
     const showFeedbackInput =
-        (activeTab === 'research' && task.status === 'researched') ||
-        (activeTab === 'plan' && (task.status === 'planned' || task.status === 'awaiting_approval')) ||
+        (activeTab === 'research' && task.status === 'todo') ||
+        (activeTab === 'plan' && task.status === 'planning') ||
         (activeTab === 'walkthrough' && task.status === 'testing');
 
     // Get current feedback based on active tab
@@ -500,7 +491,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
         { id: 'overview', label: 'Overview', icon: <Lightbulb size={16} /> },
         { id: 'spec', label: 'Spec', icon: <FileText size={16} /> }, // Spec is always available for viewing/editing
         { id: 'workflow', label: 'Live Workflow', icon: <Zap size={16} />, disabled: !langGraphRunId },
-        { id: 'research', label: 'Research', icon: <Search size={16} />, disabled: !task.researchReport && task.status !== 'researching' },
+        { id: 'research', label: 'Research', icon: <Search size={16} />, disabled: !task.researchReport && task.status !== 'todo' },
         { id: 'plan', label: 'Plan', icon: <Rocket size={16} />, disabled: !task.implementationPlan && task.status !== 'planning' },
         { id: 'walkthrough', label: 'Walkthrough', icon: <BookOpen size={16} />, disabled: !task.walkthrough }
     ];
@@ -728,7 +719,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                     stage="research"
                                     taskId={task.id}
                                     projectId={projectId}
-                                    readOnly={task.status !== 'researched'}
+                                    readOnly={task.status !== 'todo'}
                                 />
                             </div>
 
@@ -764,7 +755,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                     stage="plan"
                                     taskId={task.id}
                                     projectId={projectId}
-                                    readOnly={task.status !== 'planned'}
+                                    readOnly={task.status !== 'planning'}
                                 />
                             </div>
 
@@ -823,7 +814,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                         <div className="flex flex-col items-center justify-center py-8 text-slate-400">
                             <Loader2 size={32} className="animate-spin mb-4" />
                             <p className="text-lg font-medium text-white">
-                                {task.status === 'researching' ? 'AI is researching...' :
+                                {task.status === 'todo' ? 'AI is researching...' :
                                     task.status === 'planning' ? 'AI is creating implementation plan...' :
                                         'AI is implementing changes...'}
                             </p>

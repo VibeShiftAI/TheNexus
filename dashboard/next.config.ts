@@ -22,6 +22,8 @@ dotenvConfig({ path: parentEnvPath });
 const nextConfig: NextConfig = {
   // Allow Cloudflare Tunnel domain to access Next.js dev server
   allowedDevOrigins: ['nexus.vibeshiftai.com'],
+  // Transpile local shared package (raw TypeScript source)
+  transpilePackages: ['nexus-shared'],
   env: {
     // No Supabase env vars needed — auth removed
   },

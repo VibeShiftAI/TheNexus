@@ -14,25 +14,20 @@ export type TaskTab = 'overview' | 'spec' | 'research' | 'plan' | 'walkthrough';
  * Maps each task status to the appropriate tab to display.
  * 
  * Logic:
- * - idea: Show overview (task hasn't started workflow yet)
- * - researching: Show research tab (in progress)
- * - researched: Show research tab (awaiting approval)
- * - planning: Show plan tab (in progress)
- * - planned: Show plan tab (awaiting approval)
- * - implementing: Show walkthrough tab (in progress)
- * - testing: Show walkthrough tab (awaiting approval)
+ * - idea/todo: Show overview (task hasn't started planning yet)
+ * - planning: Show plan tab (in progress or pending approval)
+ * - building: Show walkthrough tab (in progress)
+ * - testing/ready_for_review: Show walkthrough tab (awaiting approval)
  * - complete: Show walkthrough tab (final state of the workflow)
  * - rejected/cancelled: Show overview (workflow ended early)
  */
-const STATUS_TO_TAB_MAP: Record<TaskStatus, TaskTab> = {
+const STATUS_TO_TAB_MAP: Record<string, TaskTab> = {
     idea: 'overview',
-    researching: 'research',
-    researched: 'research',
+    todo: 'overview',
     planning: 'plan',
-    planned: 'plan',
-    awaiting_approval: 'overview',  // Generic approval state
-    implementing: 'walkthrough',
+    building: 'walkthrough',
     testing: 'walkthrough',
+    ready_for_review: 'walkthrough',
     complete: 'walkthrough',
     rejected: 'overview',
     cancelled: 'overview',

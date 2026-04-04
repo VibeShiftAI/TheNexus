@@ -1,11 +1,25 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useRef, ReactNode, Dispatch, SetStateAction } from "react";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode, Dispatch, SetStateAction, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 
 // ────────────────────────────────────────────────────────────
 // Shared types (also used by ai-terminal.tsx)
 // ────────────────────────────────────────────────────────────
+
+export interface AgEvent {
+    id: number;
+    event_type: string;
+    severity: 'info' | 'warning' | 'critical';
+    title: string;
+    message?: string;
+    task_id?: string;
+    source?: string;
+    metadata?: Record<string, any>;
+    requires_action?: boolean;
+    action_taken?: boolean;
+    created_at: string;
+}
 
 export interface Message {
     role: 'user' | 'assistant' | 'system';
@@ -74,6 +88,21 @@ export interface UnknownArtifactData {
 }
 
 // ────────────────────────────────────────────────────────────
+// Conversation type
+// ────────────────────────────────────────────────────────────
+
+export interface ChatConversation {
+    id: string;
+    title: string;
+    mode: string;
+    is_active: boolean;
+    message_count?: number;
+    first_message?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+// ────────────────────────────────────────────────────────────
 // Context shape
 // ────────────────────────────────────────────────────────────
 
@@ -82,6 +111,17 @@ interface CortexContextValue {
     setMessages: Dispatch<SetStateAction<Message[]>>;
     readyForReview: Set<string>;
     setReadyForReview: Dispatch<SetStateAction<Set<string>>>;
+    // Conversation management
+    conversationId: string | null;
+    conversations: ChatConversation[];
+    startNewConversation: () => Promise<void>;
+    switchConversation: (id: string) => Promise<void>;
+    loadConversations: () => Promise<void>;
+    deleteConversation: (id: string) => Promise<void>;
+    isLoadingHistory: boolean;
+    // Antigravity event stream
+    agEvents: AgEvent[];
+    dismissAgEvent: (id: number) => Promise<void>;
 }
 
 const CortexContext = createContext<CortexContextValue | null>(null);
@@ -93,35 +133,70 @@ export function useCortex(): CortexContextValue {
 }
 
 // ────────────────────────────────────────────────────────────
+// Helper: build API base URL
+// ────────────────────────────────────────────────────────────
+
+function apiBase(): string {
+    if (typeof window === 'undefined') return '';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    return isLocal ? 'http://localhost:4000' : '';
+}
+
+// ────────────────────────────────────────────────────────────
 // Provider — owns the Socket.IO connection for the app lifetime
 // ────────────────────────────────────────────────────────────
 
 export function CortexProvider({ children }: { children: ReactNode }) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [readyForReview, setReadyForReview] = useState<Set<string>>(new Set());
+    const [conversationId, setConversationId] = useState<string | null>(null);
+    const [conversations, setConversations] = useState<ChatConversation[]>([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+    const [agEvents, setAgEvents] = useState<AgEvent[]>([]);
     const socketRef = useRef<Socket | null>(null);
     const initialised = useRef(false);
 
-    // ── Rehydrate persisted chat history on mount ──
+    // ── Fetch active conversation + history from server on mount ──
     useEffect(() => {
-        const stored = localStorage.getItem('cortex_chat_history');
-        if (stored) {
+        const base = apiBase();
+
+        async function loadActiveConversation() {
             try {
-                const parsed = JSON.parse(stored);
-                const restored = parsed.map((m: any) => ({
-                    ...m,
-                    timestamp: new Date(m.timestamp)
-                }));
-                setMessages(restored);
+                setIsLoadingHistory(true);
+                const res = await fetch(`${base}/api/chat/active?mode=praxis`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                if (data.conversation) {
+                    setConversationId(data.conversation.id);
+                    const restored: Message[] = (data.messages || []).map((m: any) => ({
+                        role: m.role,
+                        content: m.content,
+                        timestamp: new Date(m.created_at),
+                    }));
+                    setMessages(restored);
+                }
             } catch (e) {
-                console.warn('[CortexProvider] Failed to restore chat history:', e);
+                console.warn('[CortexProvider] Failed to load chat history from server:', e);
+                // Fallback: try localStorage for backward compat
+                const stored = localStorage.getItem('cortex_chat_history');
+                if (stored) {
+                    try {
+                        const parsed = JSON.parse(stored);
+                        setMessages(parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })));
+                    } catch { /* ignore */ }
+                }
+            } finally {
+                setIsLoadingHistory(false);
             }
         }
+
+        loadActiveConversation();
 
         // Check for pending Cortex state (rehydration)
         const lastThreadId = localStorage.getItem('cortex_thread_id');
         if (lastThreadId) {
-            fetch(`/api/terminal/state/${lastThreadId}`)
+            fetch(`${base}/api/terminal/state/${lastThreadId}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.is_paused && data.current_plan) {
@@ -141,12 +216,78 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    // ── Persist messages to localStorage ──
-    useEffect(() => {
-        if (messages.length > 0) {
-            localStorage.setItem('cortex_chat_history', JSON.stringify(messages.slice(-100)));
+    // ── Load conversation list ──
+    const loadConversations = useCallback(async () => {
+        try {
+            const base = apiBase();
+            const res = await fetch(`${base}/api/chat/conversations?mode=praxis`);
+            if (!res.ok) return;
+            const data = await res.json();
+            setConversations(data.conversations || []);
+        } catch (e) {
+            console.warn('[CortexProvider] Failed to load conversations:', e);
         }
-    }, [messages]);
+    }, []);
+
+    // ── Start a new conversation (old one stays in history) ──
+    const startNewConversation = useCallback(async () => {
+        try {
+            const base = apiBase();
+            const res = await fetch(`${base}/api/chat/conversations`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'praxis' }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setConversationId(data.conversation.id);
+            setMessages([]); // Fresh conversation — no messages yet
+            await loadConversations(); // Refresh the sidebar list
+        } catch (e) {
+            console.error('[CortexProvider] Failed to start new conversation:', e);
+        }
+    }, [loadConversations]);
+
+    // ── Switch to an existing conversation ──
+    const switchConversationFn = useCallback(async (id: string) => {
+        try {
+            const base = apiBase();
+            const res = await fetch(`${base}/api/chat/conversations/${id}/switch`, {
+                method: 'PUT',
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setConversationId(data.conversation.id);
+            const restored: Message[] = (data.messages || []).map((m: any) => ({
+                role: m.role,
+                content: m.content,
+                timestamp: new Date(m.created_at),
+            }));
+            setMessages(restored);
+            await loadConversations();
+        } catch (e) {
+            console.error('[CortexProvider] Failed to switch conversation:', e);
+        }
+    }, [loadConversations]);
+
+    // ── Delete a conversation ──
+    const deleteConversationFn = useCallback(async (id: string) => {
+        try {
+            const base = apiBase();
+            const res = await fetch(`${base}/api/chat/conversations/${id}`, {
+                method: 'DELETE',
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            // If we deleted the active one, start a new conversation
+            if (id === conversationId) {
+                await startNewConversation();
+            } else {
+                await loadConversations();
+            }
+        } catch (e) {
+            console.error('[CortexProvider] Failed to delete conversation:', e);
+        }
+    }, [conversationId, startNewConversation, loadConversations]);
 
     // ── Persistent Socket.IO connection ──
     useEffect(() => {
@@ -219,6 +360,16 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             }]);
         });
 
+        // ── Antigravity Event Stream ──
+        socket.on('ag-event', (event: AgEvent) => {
+            console.log('[CortexProvider] AG Event:', event.event_type, event.title);
+            setAgEvents(prev => [...prev.slice(-99), event]); // Keep last 100
+        });
+
+        socket.on('ag-event-actioned', ({ id }: { id: number }) => {
+            setAgEvents(prev => prev.map(e => e.id === id ? { ...e, action_taken: true } : e));
+        });
+
         socket.on('disconnect', () => {
             console.warn('[CortexProvider] WebSocket disconnected');
         });
@@ -234,8 +385,41 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         };
     }, []);
 
+    // ── Hydrate AG events on mount ──
+    useEffect(() => {
+        const base = apiBase();
+        fetch(`${base}/api/ag/events?limit=50`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.events) setAgEvents(data.events);
+            })
+            .catch(() => { /* silent */ });
+    }, []);
+
+    // ── Dismiss AG event callback ──
+    const dismissAgEvent = useCallback(async (id: number) => {
+        try {
+            const base = apiBase();
+            await fetch(`${base}/api/ag/events/${id}/action`, { method: 'PUT' });
+            setAgEvents(prev => prev.map(e => e.id === id ? { ...e, action_taken: true } : e));
+        } catch (e) {
+            console.warn('[CortexProvider] Failed to dismiss AG event:', e);
+        }
+    }, []);
+
     return (
-        <CortexContext.Provider value={{ messages, setMessages, readyForReview, setReadyForReview }}>
+        <CortexContext.Provider value={{
+            messages, setMessages,
+            readyForReview, setReadyForReview,
+            conversationId, conversations,
+            startNewConversation,
+            switchConversation: switchConversationFn,
+            loadConversations,
+            deleteConversation: deleteConversationFn,
+            isLoadingHistory,
+            agEvents,
+            dismissAgEvent,
+        }}>
             {children}
         </CortexContext.Provider>
     );

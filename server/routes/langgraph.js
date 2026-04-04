@@ -291,16 +291,16 @@ module.exports = function createLangGraphRouter({ db, PROJECT_ROOT, getProjectBy
             const researchContent = outputs.research || outputs.quick_research;
             if (researchContent) {
                 updates.research_output = researchContent;
-                updates.status = 'researched';
-                console.log(`[LangGraph Sync] Setting research_output and status=researched`);
+                updates.status = 'todo';
+                console.log(`[LangGraph Sync] Setting research_output and status=todo`);
             }
 
             // Plan output (supports: plan, plan_generator)
             const planContent = outputs.plan || outputs.plan_generator;
             if (planContent) {
                 updates.plan_output = planContent;
-                updates.status = 'planned';
-                console.log(`[LangGraph Sync] Setting plan_output and status=planned`);
+                updates.status = 'planning';
+                console.log(`[LangGraph Sync] Setting plan_output and status=planning`);
             }
 
             // Implementation node synced
@@ -444,9 +444,9 @@ Follow the plan above and implement the changes. Use your tools to:
 Be thorough and implement ALL changes from the plan.
 `;
 
-            // Update task status to implementing
+            // Update task status to building
             await db.updateTask(targetTaskId, {
-                status: 'implementing',
+                status: 'building',
                 updated_at: new Date().toISOString()
             });
 
@@ -493,7 +493,7 @@ Be thorough and implement ALL changes from the plan.
 
             try {
                 await db.updateTask(targetTaskId, {
-                    status: 'planned',
+                    status: 'planning',
                     updated_at: new Date().toISOString()
                 });
             } catch (e) {

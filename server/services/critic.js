@@ -7,6 +7,7 @@
  */
 
 const path = require('path');
+const { trackUsage } = require('../utils/token-tracker');
 
 /**
  * Get critic configuration from environment/defaults
@@ -107,6 +108,16 @@ Review this code and respond with JSON only.
         });
 
         const data = await response.json();
+
+        // Track usage regardless of success/failure
+        const usageMeta = data.usageMetadata || {};
+        trackUsage({
+            provider: 'google',
+            model: modelId,
+            inputTokens: usageMeta.promptTokenCount || 0,
+            outputTokens: usageMeta.candidatesTokenCount || 0,
+            task: 'critic'
+        });
 
         if (data.error) {
             console.error('[Critic] API error:', data.error.message);

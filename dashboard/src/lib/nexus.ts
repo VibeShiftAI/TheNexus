@@ -1,53 +1,25 @@
 // ═══════════════════════════════════════════════════════════════
-// SYSTEM MONITORING TYPES
+// SYSTEM MONITORING TYPES (from nexus-shared)
 // ═══════════════════════════════════════════════════════════════
 
-export interface PortInfo {
-    port: number;
-    pid: number;
-    process: string;
-    address: string;
-    protocol: string;
-    hint: string | null;
-    type: 'node' | 'python' | 'java' | 'other';
-}
+import type {
+  PortInfo as _PortInfo,
+  SystemInfo as _SystemInfo,
+  PraxisTelemetry as _PraxisTelemetry,
+  SystemStatus as _SystemStatus,
+} from 'nexus-shared';
 
-export interface SystemInfo {
-    cpu: {
-        usage: number;
-        cores: number;
-    };
-    memory: {
-        total: number;
-        used: number;
-        free: number;
-        usagePercent: number;
-    };
-}
+export type PortInfo = _PortInfo;
+export type SystemInfo = _SystemInfo;
+export type PraxisTelemetry = _PraxisTelemetry;
+export type SystemStatus = _SystemStatus;
 
-export interface PraxisTelemetry {
-    status: string;
-    model: string;
-    provider: string;
-    mcpToolCount: number;
-    neo4jNodes: number;
-    pineconeVectors: number;
-    port: number;
-    quota?: {
-        date: string;
-        resetTime: string;
-        providers: Record<string, { requestsToday: number }>;
-    };
-}
-
-export interface SystemStatus {
-    timestamp: string;
-    system: SystemInfo;
-    ports: PortInfo[];
-    portCount: number;
-    error?: string;
-    praxis?: PraxisTelemetry | null;
-}
+/** Daily API call budget thresholds (mirrored from nexus-shared/src/system.ts) */
+export const API_BUDGET = {
+  WARNING: 500,
+  AUTONOMOUS_LIMIT: 800,
+  HARD_LIMIT: 1200,
+} as const;
 
 export interface TokenUsageEntry {
     timestamp: string;
@@ -468,7 +440,12 @@ export async function generateCommitMessage(id: string, taskId?: string): Promis
 // TASK MANAGER API
 // ═══════════════════════════════════════════════════════════════
 
-export type TaskStatus = 'idea' | 'researching' | 'researched' | 'planning' | 'planned' | 'awaiting_approval' | 'implementing' | 'testing' | 'complete' | 'rejected' | 'cancelled';
+/** Standard task lifecycle stages. Projects may define additional ad-hoc stages. */
+export const STANDARD_STATUSES = ['idea', 'todo', 'planning', 'building', 'testing', 'ready_for_review', 'complete', 'rejected', 'cancelled'] as const;
+export type StandardTaskStatus = typeof STANDARD_STATUSES[number];
+
+/** TaskStatus accepts any string — the standard stages above are defaults, but projects can use custom stages ad-hoc. */
+export type TaskStatus = StandardTaskStatus | (string & {});
 
 export interface Feedback {
     id: string;
