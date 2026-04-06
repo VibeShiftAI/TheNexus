@@ -173,6 +173,7 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                         role: m.role,
                         content: m.content,
                         timestamp: new Date(m.created_at),
+                        voiceData: Array.isArray(m.voiceData) ? m.voiceData : undefined,
                     }));
                     setMessages(restored);
                 }
@@ -262,6 +263,7 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                 role: m.role,
                 content: m.content,
                 timestamp: new Date(m.created_at),
+                voiceData: Array.isArray(m.voiceData) ? m.voiceData : undefined,
             }));
             setMessages(restored);
             await loadConversations();

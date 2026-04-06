@@ -21,6 +21,7 @@ const supervisorSync = require('./services/supervisor-sync');
 const contextSync = require('./services/context-sync');
 const pushService = require('./push-service');
 const { runAgent } = require('./agent');
+const { buildPraxisAssistantMetadata, formatStoredChatMessage } = require('./chat-message-format');
 const { discoverModels, getModels } = require('./services/model-discovery');
 
 const { getDefaultMemoryManager } = require('./memory');
@@ -1625,7 +1626,7 @@ app.post('/api/ai/chat', async (req, res) => {
                     role: 'assistant',
                     content: fullResponse,
                     mode: 'praxis',
-                    metadata: { model: 'praxis-agent', provider: 'Praxis', hasVoice: !!(data.voiceData && data.voiceData.length) }
+                    metadata: buildPraxisAssistantMetadata(data),
                 });
             }
 
@@ -3972,7 +3973,7 @@ app.get('/api/chat/active', async (req, res) => {
         if (!conversation) {
             return res.json({ conversation: null, messages: [] });
         }
-        const messages = await db.getChatMessages(conversation.id);
+        const messages = (await db.getChatMessages(conversation.id)).map(formatStoredChatMessage);
         res.json({ conversation, messages });
     } catch (error) {
         console.error('[Chat] Error getting active conversation:', error);
@@ -4004,7 +4005,7 @@ app.put('/api/chat/conversations/:id/switch', async (req, res) => {
         if (!conversation) {
             return res.status(404).json({ error: 'Conversation not found' });
         }
-        const messages = await db.getChatMessages(conversation.id);
+        const messages = (await db.getChatMessages(conversation.id)).map(formatStoredChatMessage);
         res.json({ conversation, messages });
     } catch (error) {
         console.error('[Chat] Error switching conversation:', error);
@@ -4051,7 +4052,7 @@ app.get('/api/chat/history', async (req, res) => {
         const { conversationId, before } = req.query;
         if (!conversationId) return res.status(400).json({ error: 'conversationId is required' });
         const limit = Math.min(parseInt(req.query.limit) || 200, 200);
-        const messages = await db.getChatMessages(conversationId, { limit, before });
+        const messages = (await db.getChatMessages(conversationId, { limit, before })).map(formatStoredChatMessage);
         res.json({ messages });
     } catch (error) {
         console.error('[Chat History] Error fetching:', error);
