@@ -251,6 +251,327 @@ async function getNexusArtifacts(runId) {
     }
 }
 
+/**
+ * Shared proxy helper for LangGraph Python backend requests.
+ * Replaces duplicate helpers in routes/langgraph.js and routes/workflows.js.
+ */
+async function proxyToLangGraph(urlPath, options = {}) {
+    const url = `${LANGGRAPH_URL}${urlPath}`;
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+    return response.json();
+}
+
+// ─── Callback Handlers (extracted from routes/langgraph.js) ──────────────────
+
+/**
+ * Handle workflow-complete callback from Python LangGraph.
+ * Updates workflow status in DB and syncs context files.
+ */
+async function handleWorkflowComplete({ run_id, workflow_id, project_id, status, error }, { db, getProjectById, PROJECT_ROOT, contextSync }) {
+    console.log(`[LangGraph Complete] Workflow ${workflow_id} run ${run_id}: ${status}`);
+
+    if (!workflow_id) {
+        return { success: false, error: 'Missing workflow_id' };
+    }
+
+    if (status === 'completed') {
+        const workflow = await db.getProjectWorkflow(workflow_id);
+        const completedOutputs = {};
+        for (const stage of (workflow?.stages || [])) {
+            completedOutputs[stage.id] = {
+                status: 'complete',
+                completedAt: new Date().toISOString(),
+                mode: 'langgraph'
+            };
+        }
+
+        await db.updateProjectWorkflow(workflow_id, {
+            status: 'complete',
+            current_stage: null,
+            outputs: completedOutputs,
+            supervisor_status: 'completed',
+            supervisor_details: {
+                langgraph_run_id: run_id,
+                completedAt: new Date().toISOString(),
+                mode: 'langgraph'
+            }
+        });
+        console.log(`[LangGraph Complete] Workflow ${workflow_id} marked as complete`);
+
+        // Auto-sync .context/ files to DB
+        if (project_id) {
+            try {
+                const project = await getProjectById(PROJECT_ROOT, project_id);
+                if (project) {
+                    const contextFiles = contextSync.readAllContextFiles(project.path);
+                    if (contextFiles.length > 0) {
+                        for (const ctx of contextFiles) {
+                            await db.updateProjectContext(project_id, ctx.type, ctx.content, ctx.status);
+                        }
+                        console.log(`[LangGraph Complete] Synced ${contextFiles.length} context file(s) to DB for project ${project_id}`);
+                    }
+                }
+            } catch (syncErr) {
+                console.error('[LangGraph Complete] Context sync failed (non-fatal):', syncErr.message);
+            }
+        }
+    } else {
+        // Failed — reset to idea so user can retry
+        await db.updateProjectWorkflow(workflow_id, {
+            status: 'idea',
+            supervisor_status: 'error',
+            supervisor_details: {
+                langgraph_run_id: run_id,
+                error: error || 'Unknown error',
+                failedAt: new Date().toISOString()
+            }
+        });
+        console.log(`[LangGraph Complete] Workflow ${workflow_id} failed, reset to idea`);
+    }
+
+    return { success: true };
+}
+
+/**
+ * Handle sync-output callback from Python LangGraph.
+ * Maps node outputs (research, plan, implementation, review, critic, walkthrough)
+ * to task fields and updates the database.
+ */
+async function handleSyncOutput({ run_id, node_id, project_id, task_id, feature_id, outputs }, { db, getProjectById, PROJECT_ROOT, contextSync }) {
+    const targetTaskId = task_id || feature_id;
+
+    console.log(`[LangGraph Sync] Received outputs from node ${node_id || 'unknown'} for task ${targetTaskId}`);
+
+    if (!targetTaskId || !outputs) {
+        return { success: false, error: 'Missing task_id or outputs' };
+    }
+
+    const updates = {};
+
+    // Research output (supports: research, quick_research)
+    const researchContent = outputs.research || outputs.quick_research;
+    if (researchContent) {
+        updates.research_output = researchContent;
+        updates.status = 'todo';
+        console.log(`[LangGraph Sync] Setting research_output and status=todo`);
+    }
+
+    // Plan output (supports: plan, plan_generator)
+    const planContent = outputs.plan || outputs.plan_generator;
+    if (planContent) {
+        updates.plan_output = planContent;
+        updates.status = 'planning';
+        console.log(`[LangGraph Sync] Setting plan_output and status=planning`);
+    }
+
+    // Implementation node synced
+    const implementationContent = outputs.implementation || outputs.coder;
+    if (implementationContent) {
+        console.log(`[LangGraph Sync] Implementation output received (${typeof implementationContent === 'string' ? implementationContent.length : 'non-string'} chars)`);
+        updates.walkthrough = JSON.stringify({
+            content: typeof implementationContent === 'string' ? implementationContent : JSON.stringify(implementationContent),
+            generatedAt: new Date().toISOString()
+        });
+        updates.status = 'testing';
+    }
+
+    // Review output (only if no implementation)
+    if (outputs.review && !implementationContent) {
+        updates.walkthrough = JSON.stringify({
+            content: typeof outputs.review === 'string' ? outputs.review : JSON.stringify(outputs.review),
+            generatedAt: new Date().toISOString()
+        });
+        console.log(`[LangGraph Sync] Setting walkthrough from review`);
+    }
+
+    // Direct walkthrough output from builder fleet
+    if (outputs.walkthrough && !updates.walkthrough) {
+        let walkthroughText = outputs.walkthrough;
+        if (typeof walkthroughText !== 'string') {
+            if (Array.isArray(walkthroughText)) {
+                walkthroughText = walkthroughText
+                    .map(p => (typeof p === 'string' ? p : (p.text || p.content || '')))
+                    .join('\n');
+            } else if (typeof walkthroughText === 'object' && walkthroughText !== null) {
+                walkthroughText = walkthroughText.text || walkthroughText.content || JSON.stringify(walkthroughText);
+            }
+        }
+        // Handle Python repr stringified arrays
+        if (typeof walkthroughText === 'string' && walkthroughText.trimStart().startsWith("[{")) {
+            try {
+                const fixed = walkthroughText.replace(/'/g, '"');
+                const parsed = JSON.parse(fixed);
+                if (Array.isArray(parsed)) {
+                    walkthroughText = parsed
+                        .map(p => (typeof p === 'string' ? p : (p.text || p.content || '')))
+                        .join('\n');
+                }
+            } catch (e) {
+                // Not parseable, use as-is
+            }
+        }
+        updates.walkthrough = JSON.stringify({
+            content: walkthroughText,
+            generatedAt: new Date().toISOString()
+        });
+        updates.status = 'testing';
+        console.log(`[LangGraph Sync] Setting walkthrough from builder (${walkthroughText.length} chars)`);
+    }
+
+    // Critic output
+    if (outputs.critic) {
+        updates.critic_feedback = outputs.critic;
+        console.log(`[LangGraph Sync] Setting critic_feedback`);
+
+        // Auto-promote to complete if the critic approved the changes
+        let isApproved = false;
+        if (typeof outputs.critic === 'object' && outputs.critic !== null) {
+            isApproved = outputs.critic.approved === true;
+        } else if (typeof outputs.critic === 'string') {
+            try {
+                const parsed = JSON.parse(outputs.critic);
+                isApproved = parsed.approved === true;
+            } catch (e) {
+                isApproved = outputs.critic.includes('"approved": true') ||
+                             outputs.critic.includes('"approved":true');
+            }
+        }
+
+        if (isApproved) {
+            updates.status = 'complete';
+            console.log(`[LangGraph Sync] Critic approved -> auto-promoting task status to 'complete'`);
+        }
+    }
+
+    // Log files written if coder produced any
+    if (outputs.files_written && outputs.files_written.length > 0) {
+        console.log(`[LangGraph Sync] Files written:`, outputs.files_written);
+    }
+
+    // Update in database if we have updates
+    if (Object.keys(updates).length > 0) {
+        const updatedTask = await db.updateTask(targetTaskId, updates);
+        if (updatedTask) {
+            console.log(`[LangGraph Sync] Updated task ${targetTaskId} in database`);
+        } else {
+            console.log(`[LangGraph Sync] Database update returned null (task may not exist in DB)`);
+        }
+    }
+
+    // Post-response: sync .context/ files to DB only after file-writing nodes
+    const FILE_WRITING_NODES = ['write_docs', 'coder', 'implementation', 'doc_file_writer'];
+    if (project_id && FILE_WRITING_NODES.includes(node_id)) {
+        try {
+            const project = await getProjectById(PROJECT_ROOT, project_id);
+            if (project) {
+                const contextFiles = contextSync.readAllContextFiles(project.path);
+                if (contextFiles.length > 0) {
+                    for (const ctx of contextFiles) {
+                        await db.updateProjectContext(project_id, ctx.type, ctx.content, ctx.status);
+                    }
+                    console.log(`[LangGraph Sync] Auto-synced ${contextFiles.length} context file(s) for project ${project_id}`);
+                }
+            }
+        } catch (syncErr) {
+            console.error('[LangGraph Sync] Context sync failed (non-fatal):', syncErr.message);
+        }
+    }
+
+    return { success: true, updates_applied: Object.keys(updates) };
+}
+
+/**
+ * Handle implement callback from Python LangGraph.
+ * Runs the Node.js agent with file tools to execute an approved plan.
+ */
+async function handleImplement({ project_id, feature_id, task_id, plan, feature_title, task_title, feature_description, task_description }, { db, runAgent, getProjectById, PROJECT_ROOT }) {
+    const path = require('path');
+
+    const targetTaskId = task_id || feature_id;
+    const targetTitle = task_title || feature_title;
+
+    console.log(`[LangGraph Implement] Received request for project=${project_id}, task=${targetTaskId}`);
+    console.log(`[LangGraph Implement] Plan length: ${plan?.length || 0} chars`);
+
+    const project = await getProjectById(PROJECT_ROOT, project_id);
+    if (!project) {
+        throw Object.assign(new Error('Project not found'), { statusCode: 404 });
+    }
+
+    const model = process.env.IMPLEMENTATION_MODEL || 'gemini-2.5-pro';
+    const maxTurns = parseInt(process.env.IMPLEMENTATION_MAX_TURNS || '100');
+
+    console.log(`[LangGraph Implement] Using model: ${model}, maxTurns: ${maxTurns}`);
+
+    const implementPrompt = `You are implementing a new task for the project "${project.name}".
+
+## APPROVED IMPLEMENTATION PLAN
+
+${plan}
+
+---
+
+## YOUR TASK
+
+Follow the plan above and implement the changes. Use your tools to:
+1. Read existing files to understand the current code
+2. Write/modify files as specified in the plan
+3. Run commands if needed (e.g., to verify the build)
+
+Be thorough and implement ALL changes from the plan.
+`;
+
+    // Update task status to building
+    await db.updateTask(targetTaskId, {
+        status: 'building',
+        updated_at: new Date().toISOString()
+    });
+
+    // Run the agent with full tool access
+    const agentResult = await runAgent({
+        message: implementPrompt,
+        history: [],
+        projectRoot: PROJECT_ROOT,
+        model: model,
+        scopedProject: path.basename(project.path),
+        projectId: project_id,
+        maxTurns: maxTurns,
+        projectPath: project.path,
+        taskId: targetTaskId,
+        taskTitle: targetTitle,
+        onProgress: async (action) => {
+            console.log(`[LangGraph Implement] Progress: ${action}`);
+        },
+        onToolExecuted: async (tool) => {
+            console.log(`[LangGraph Implement] Tool: ${tool}`);
+        }
+    });
+
+    console.log(`[LangGraph Implement] Agent completed`);
+
+    const walkthroughContent = agentResult.response || 'Implementation completed.';
+    await db.updateTask(targetTaskId, {
+        status: 'testing',
+        walkthrough: JSON.stringify({
+            content: walkthroughContent,
+            generatedAt: new Date().toISOString()
+        }),
+        updated_at: new Date().toISOString()
+    });
+
+    return {
+        success: true,
+        walkthrough: agentResult.response || 'Implementation completed.',
+        files_written: agentResult.filesWritten || []
+    };
+}
+
 module.exports = {
     isLangGraphAvailable,
     runLangGraphWorkflow,
@@ -259,6 +580,9 @@ module.exports = {
     cancelLangGraphRun,
     getDefaultTaskPipeline,
     getNexusArtifacts,
+    proxyToLangGraph,
+    handleWorkflowComplete,
+    handleSyncOutput,
+    handleImplement,
     LANGGRAPH_URL
 };
-

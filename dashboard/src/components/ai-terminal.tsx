@@ -508,12 +508,24 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             }
 
             if (!response.ok) {
-                // Try to extract a meaningful error from the response body
+                // Try to extract a meaningful error + fallback response from the body
                 let detail = `HTTP ${response.status}`;
+                let fallbackResponse: string | null = null;
                 try {
                     const errBody = await response.json();
                     if (errBody?.error) detail = errBody.error;
+                    if (errBody?.response) fallbackResponse = errBody.response;
                 } catch { /* ignore parse errors */ }
+                // If the server included a user-facing response (e.g., Praxis proxy error),
+                // show it instead of a raw error so the user gets context
+                if (fallbackResponse) {
+                    setMessages(prev => [...prev, {
+                        role: 'assistant',
+                        content: fallbackResponse,
+                        timestamp: new Date(),
+                    }]);
+                    return;
+                }
                 throw new Error(`Server returned ${detail}`);
             }
 
