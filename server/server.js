@@ -146,6 +146,50 @@ app.use('/api/tasks', tasksRouter);      // top-level: POST /, PATCH /:taskId, P
 app.use('/api/projects', tasksRouter);   // project-scoped: GET /:id/tasks, POST /:id/tasks/:taskId/..., etc.
 app.use('/api/projects', createProjectWorkflowsRouter({ db, getProjectById, PROJECT_ROOT }));
 
+// ─── Board State (Praxis executive planning) ───────────────────────────
+// Returns projects annotated with tasks + summary counts.
+// Praxis uses this for autonomous planning and prioritization.
+app.get('/api/board-state', authenticate, async (req, res) => {
+    const { project_id } = req.query;
+    try {
+        const projects = await getAllProjects(PROJECT_ROOT);
+        const filtered = project_id
+            ? projects.filter(p => p.id === project_id)
+            : projects;
+
+        const result = await Promise.all(filtered.map(async (project) => {
+            const tasks = await db.getTasks(project.id);
+            const complete = tasks.filter(t => t.status === 'completed' || t.status === 'done').length;
+            // A task is "unblocked" if it has no unfinished dependencies
+            const unblocked = tasks.filter(t => {
+                if (t.status === 'completed' || t.status === 'done') return false;
+                const deps = t.dependencies || [];
+                if (deps.length === 0) return true;
+                return deps.every(depId => {
+                    const dep = tasks.find(d => d.id === depId);
+                    return dep && (dep.status === 'completed' || dep.status === 'done');
+                });
+            }).length;
+
+            return {
+                id: project.id,
+                name: project.name,
+                description: project.description,
+                status: project.status,
+                priority: project.priority,
+                end_state: project.end_state,
+                tasks: tasks.map(t => ({ ...t, title: t.name, createdAt: t.created_at, updatedAt: t.updated_at, is_unblocked: true })),
+                task_summary: { total: tasks.length, unblocked, complete },
+            };
+        }));
+
+        res.json(result);
+    } catch (err) {
+        console.error('[Board State] Error:', err);
+        res.status(500).json({ error: 'Failed to compute board state' });
+    }
+});
+
 // AI & chat
 app.use('/api/ai/chat',  createAIChatRouter({ db, callAI, pushService, io }));
 app.use('/api/ingest',   createIngestRouter({ db }));

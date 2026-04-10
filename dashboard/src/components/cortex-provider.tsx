@@ -119,6 +119,10 @@ interface CortexContextValue {
     loadConversations: () => Promise<void>;
     deleteConversation: (id: string) => Promise<void>;
     isLoadingHistory: boolean;
+    // Pagination
+    hasMoreMessages: boolean;
+    isLoadingMore: boolean;
+    loadMoreMessages: () => Promise<void>;
     // Antigravity event stream
     agEvents: AgEvent[];
     dismissAgEvent: (id: number) => Promise<void>;
@@ -152,6 +156,8 @@ export function CortexProvider({ children }: { children: ReactNode }) {
     const [conversationId, setConversationId] = useState<string | null>(null);
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+    const [hasMoreMessages, setHasMoreMessages] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [agEvents, setAgEvents] = useState<AgEvent[]>([]);
     const socketRef = useRef<Socket | null>(null);
     const initialised = useRef(false);
@@ -176,6 +182,7 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                         voiceData: Array.isArray(m.voiceData) ? m.voiceData : undefined,
                     }));
                     setMessages(restored);
+                    setHasMoreMessages(data.hasMore ?? false);
                 }
             } catch (e) {
                 console.warn('[CortexProvider] Failed to load chat history from server:', e);
@@ -266,6 +273,7 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                 voiceData: Array.isArray(m.voiceData) ? m.voiceData : undefined,
             }));
             setMessages(restored);
+            setHasMoreMessages(data.hasMore ?? false);
             await loadConversations();
         } catch (e) {
             console.error('[CortexProvider] Failed to switch conversation:', e);
@@ -290,6 +298,35 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             console.error('[CortexProvider] Failed to delete conversation:', e);
         }
     }, [conversationId, startNewConversation, loadConversations]);
+
+    // ── Load older messages (scroll-up pagination) ──
+    const loadMoreMessages = useCallback(async () => {
+        if (!conversationId || !hasMoreMessages || isLoadingMore) return;
+        setIsLoadingMore(true);
+        try {
+            const base = apiBase();
+            const oldestMessage = messages[0];
+            const before = oldestMessage?.timestamp?.toISOString();
+            const url = `${base}/api/chat/history?conversationId=${conversationId}&limit=10${before ? `&before=${encodeURIComponent(before)}` : ''}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const older: Message[] = (data.messages || []).map((m: any) => ({
+                role: m.role,
+                content: m.content,
+                timestamp: new Date(m.created_at),
+                voiceData: Array.isArray(m.voiceData) ? m.voiceData : undefined,
+            }));
+            if (older.length > 0) {
+                setMessages(prev => [...older, ...prev]);
+            }
+            setHasMoreMessages(data.hasMore ?? false);
+        } catch (e) {
+            console.warn('[CortexProvider] Failed to load more messages:', e);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [conversationId, hasMoreMessages, isLoadingMore, messages]);
 
     // ── Persistent Socket.IO connection ──
     useEffect(() => {
@@ -419,6 +456,9 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             loadConversations,
             deleteConversation: deleteConversationFn,
             isLoadingHistory,
+            hasMoreMessages,
+            isLoadingMore,
+            loadMoreMessages,
             agEvents,
             dismissAgEvent,
         }}>

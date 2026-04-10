@@ -57,7 +57,7 @@ const MODES = [
 
 export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITerminalProps) {
     const isInline = mode === 'inline';
-    const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory } = useCortex();
+    const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages } = useCortex();
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
@@ -131,13 +131,43 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
 
     // Praxis is now the default mode everywhere (no remote-only override needed)
 
-    // Auto-scroll on new messages (scoped to messages container only)
+    // Track previous message count to detect newly prepended messages
+    const prevMessageCountRef = useRef(messages.length);
+    const prevScrollHeightRef = useRef(0);
+
+    // Auto-scroll on new messages appended to bottom (not when prepending older ones)
     useEffect(() => {
         const container = messagesContainerRef.current;
-        if (container) {
-            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        if (!container) return;
+        const newCount = messages.length;
+        const prevCount = prevMessageCountRef.current;
+        if (newCount > prevCount) {
+            // Check if messages were prepended (older messages loaded) or appended (new messages)
+            const wereMessagesPrepended = prevCount > 0 && prevScrollHeightRef.current > 0;
+            if (wereMessagesPrepended && container.scrollTop < 100) {
+                // Messages were prepended — preserve scroll position
+                const newScrollHeight = container.scrollHeight;
+                const scrollDelta = newScrollHeight - prevScrollHeightRef.current;
+                container.scrollTop = scrollDelta;
+            } else {
+                // Messages were appended — scroll to bottom
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            }
         }
+        prevMessageCountRef.current = newCount;
+        prevScrollHeightRef.current = container.scrollHeight;
     }, [messages]);
+
+    // Scroll-to-top detection for loading older messages
+    const handleMessagesScroll = useCallback(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        // When scrolled near the top (within 50px), load more
+        if (container.scrollTop < 50 && hasMoreMessages && !isLoadingMore) {
+            prevScrollHeightRef.current = container.scrollHeight;
+            loadMoreMessages();
+        }
+    }, [hasMoreMessages, isLoadingMore, loadMoreMessages]);
 
     // Fetch available models from the model discovery API
     useEffect(() => {
@@ -999,6 +1029,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
+                onScroll={handleMessagesScroll}
             >
                 {/* Drag overlay */}
                 {isDragging && (
@@ -1022,6 +1053,21 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                             <Download size={12} className="text-cyan-400" />
                             <p className="text-[11px] text-cyan-400 font-mono">/ingest &lt;url&gt; — save articles directly</p>
                         </div>
+                    </div>
+                )}
+
+                {/* Loading older messages indicator */}
+                {isLoadingMore && (
+                    <div className="flex items-center justify-center py-3">
+                        <Loader2 size={16} className="text-cyan-500/60 animate-spin mr-2" />
+                        <span className="text-xs text-slate-500">Loading older messages...</span>
+                    </div>
+                )}
+
+                {/* Scroll-up hint when more messages exist */}
+                {hasMoreMessages && !isLoadingMore && messages.length > 0 && (
+                    <div className="flex items-center justify-center py-2">
+                        <span className="text-[11px] text-slate-600">↑ Scroll up for older messages</span>
                     </div>
                 )}
 

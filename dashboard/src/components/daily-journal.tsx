@@ -22,8 +22,7 @@ import {
     Flag,
 } from "lucide-react";
 
-// Categories that should NOT appear in the journal (ingested content, reports, etc.)
-const HIDDEN_CATEGORIES = new Set(["ingested", "ingestion-report", "revenue-ideas"]);
+const HIDDEN_CATEGORIES = new Set(["ingested", "ingestion-report"]);
 
 const JOURNAL_TABS = [
     { key: "daily-log", label: "Daily Log", color: "text-cyan-400", activeColor: "bg-cyan-500/30 text-cyan-200", icon: <Flag size={11} /> },
@@ -31,6 +30,7 @@ const JOURNAL_TABS = [
     { key: "decision", label: "Decisions", color: "text-purple-400", activeColor: "bg-purple-500/30 text-purple-200", icon: <Lightbulb size={11} /> },
     { key: "blocker", label: "Blockers", color: "text-red-400", activeColor: "bg-red-500/30 text-red-200", icon: <AlertCircle size={11} /> },
     { key: "reminder", label: "Reminders", color: "text-amber-400", activeColor: "bg-amber-500/30 text-amber-200", icon: <Clock size={11} /> },
+    { key: "revenue-ideas", label: "LARS Ideas", color: "text-emerald-400", activeColor: "bg-emerald-500/30 text-emerald-200", icon: <Lightbulb size={11} /> },
     { key: "all", label: "All" },
 ] as const;
 
@@ -70,6 +70,7 @@ const CATEGORY_BADGE: Record<string, { label: string; color: string }> = {
     decision: { label: "Decision", color: "text-purple-400 bg-purple-500/10" },
     blocker: { label: "Blocker", color: "text-red-400 bg-red-500/10" },
     reminder: { label: "Reminder", color: "text-amber-400 bg-amber-500/10" },
+    "revenue-ideas": { label: "LARS Idea", color: "text-emerald-400 bg-emerald-500/10" },
 };
 
 export function DailyJournal() {

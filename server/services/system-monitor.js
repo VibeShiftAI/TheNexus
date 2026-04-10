@@ -11,6 +11,11 @@ let cachedStatus = null;
 let cacheTimestamp = 0;
 const CACHE_TTL_MS = 2000; // 2 second cache
 
+// Praxis fetch error deduplication — log each distinct error only once per minute
+let lastPraxisError = '';
+let lastPraxisErrorTime = 0;
+const PRAXIS_ERROR_DEDUP_MS = 60000;
+
 /**
  * Get listening ports with associated process information
  * @returns {Promise<Array>} Array of port info objects
@@ -152,12 +157,10 @@ async function getSystemStatus(forceRefresh = false) {
         // Fetch Praxis statistics using http module
         let praxisStats = null;
         try {
-            console.log('[SystemMonitor] Fetching Praxis stats...');
             const http = require('http');
             praxisStats = await new Promise((resolve) => {
                 const req = http.get('http://127.0.0.1:54322/api/praxis/stats', (res) => {
                     if (res.statusCode !== 200) {
-                        console.error(`[SystemMonitor] Praxis API returned ${res.statusCode}`);
                         resolve(null);
                         return;
                     }
@@ -165,17 +168,20 @@ async function getSystemStatus(forceRefresh = false) {
                     res.on('data', (chunk) => { data += chunk; });
                     res.on('end', () => {
                         try {
-                            const parsed = JSON.parse(data);
-                            console.log('[SystemMonitor] Praxis stats fetched successfully:', parsed);
-                            resolve(parsed);
+                            resolve(JSON.parse(data));
                         } catch (e) {
-                            console.error('[SystemMonitor] Error parsing Praxis stats JSON', e.message);
                             resolve(null);
                         }
                     });
                 });
                 req.on('error', (err) => {
-                    console.error('[SystemMonitor] Error fetching Praxis stats:', err.message);
+                    // Deduplicate: only log once per distinct error per minute
+                    const now = Date.now();
+                    if (err.message !== lastPraxisError || (now - lastPraxisErrorTime) > PRAXIS_ERROR_DEDUP_MS) {
+                        console.warn('[SystemMonitor] Praxis unreachable:', err.message);
+                        lastPraxisError = err.message;
+                        lastPraxisErrorTime = now;
+                    }
                     resolve(null);
                 });
                 req.setTimeout(3000, () => {

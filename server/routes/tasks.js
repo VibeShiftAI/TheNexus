@@ -9,6 +9,32 @@ const crypto = require('crypto');
 function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, runDeepResearch, validateInitiativeRequest, pushService }) {
     const router = express.Router();
 
+    // ─── List tasks by project_id (Praxis compatibility) ────────────────
+    // Praxis calls GET /api/tasks?project_id=xxx — this was project-scoped
+    // (GET /api/projects/:id/tasks) after the refactor but Praxis still
+    // expects the flat endpoint.
+    router.get('/', async (req, res) => {
+        const { project_id } = req.query;
+        if (!project_id) return res.status(400).json({ error: 'project_id query parameter is required' });
+        try {
+            const tasks = await db.getTasks(project_id);
+            res.json({ tasks: tasks.map(t => ({ ...t, title: t.name, createdAt: t.created_at, updatedAt: t.updated_at })) });
+        } catch (err) {
+            res.status(500).json({ error: 'Database error' });
+        }
+    });
+
+    // ─── Get single task by ID (Praxis compatibility) ───────────────────
+    router.get('/:taskId', async (req, res) => {
+        try {
+            const task = await db.getTask(req.params.taskId);
+            if (!task) return res.status(404).json({ error: 'Task not found' });
+            res.json({ ...task, title: task.name, createdAt: task.created_at, updatedAt: task.updated_at });
+        } catch (err) {
+            res.status(500).json({ error: 'Database error' });
+        }
+    });
+
     // ─── Create Task (top-level) ─────────────────────────────────────────
     router.post('/', async (req, res) => {
         const { project_id, title, status, priority, description, templateId } = req.body;

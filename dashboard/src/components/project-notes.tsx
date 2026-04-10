@@ -146,9 +146,12 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
     return (
         <div className="rounded-xl border border-slate-800 bg-slate-900/50 overflow-hidden">
             {/* Header */}
-            <button
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setCollapsed(!collapsed)}
-                className="w-full flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCollapsed(!collapsed); } }}
+                className="w-full flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors cursor-pointer"
             >
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400">
@@ -183,7 +186,7 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
                         <ChevronUp size={16} className="text-slate-500" />
                     )}
                 </div>
-            </button>
+            </div>
 
             {!collapsed && (
                 <div className="px-4 pb-4 space-y-3">

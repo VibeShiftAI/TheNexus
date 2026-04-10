@@ -17,13 +17,17 @@ function createChatHistoryRouter({ db, io }) {
         }
     });
 
-    // GET active conversation + messages
+    // GET active conversation + messages (paginated, newest first)
     router.get('/active', async (req, res) => {
         try {
             const conversation = await db.getActiveConversation(req.query.mode || 'praxis');
-            if (!conversation) return res.json({ conversation: null, messages: [] });
-            const messages = (await db.getChatMessages(conversation.id)).map(formatStoredChatMessage);
-            res.json({ conversation, messages });
+            if (!conversation) return res.json({ conversation: null, messages: [], hasMore: false, total_count: 0 });
+            const limit = Math.min(parseInt(req.query.limit) || 10, 200);
+            const messages = (await db.getChatMessages(conversation.id, { limit })).map(formatStoredChatMessage);
+            // Get total count to determine if there are older messages
+            const allMessages = await db.getChatMessages(conversation.id);
+            const total_count = allMessages.length;
+            res.json({ conversation, messages, hasMore: total_count > messages.length, total_count });
         } catch (error) {
             res.status(500).json({ error: 'Failed to get active conversation' });
         }
@@ -39,13 +43,16 @@ function createChatHistoryRouter({ db, io }) {
         }
     });
 
-    // PUT switch conversation
+    // PUT switch conversation (paginated, newest first)
     router.put('/conversations/:id/switch', async (req, res) => {
         try {
             const conversation = await db.switchConversation(req.params.id);
             if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
-            const messages = (await db.getChatMessages(conversation.id)).map(formatStoredChatMessage);
-            res.json({ conversation, messages });
+            const limit = Math.min(parseInt(req.query.limit) || 10, 200);
+            const messages = (await db.getChatMessages(conversation.id, { limit })).map(formatStoredChatMessage);
+            const allMessages = await db.getChatMessages(conversation.id);
+            const total_count = allMessages.length;
+            res.json({ conversation, messages, hasMore: total_count > messages.length, total_count });
         } catch (error) {
             res.status(500).json({ error: 'Failed to switch conversation' });
         }
@@ -75,14 +82,16 @@ function createChatHistoryRouter({ db, io }) {
         }
     });
 
-    // GET chat history
+    // GET chat history (paginated, for scroll-up loading)
     router.get('/history', async (req, res) => {
         try {
             const { conversationId, before } = req.query;
             if (!conversationId) return res.status(400).json({ error: 'conversationId is required' });
-            const limit = Math.min(parseInt(req.query.limit) || 200, 200);
+            const limit = Math.min(parseInt(req.query.limit) || 10, 200);
             const messages = (await db.getChatMessages(conversationId, { limit, before })).map(formatStoredChatMessage);
-            res.json({ messages });
+            // Check if there are even older messages beyond what we returned
+            const hasMore = messages.length === limit;
+            res.json({ messages, hasMore });
         } catch (error) {
             res.status(500).json({ error: 'Failed to fetch chat history' });
         }
