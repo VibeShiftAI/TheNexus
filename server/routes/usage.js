@@ -28,15 +28,19 @@ function createUsageRouter({ db, tokenTracker }) {
     // POST /api/ai/usage — Record external token usage
     router.post('/', async (req, res) => {
         try {
-            const { model, inputTokens, outputTokens, source } = req.body;
+            const { model, inputTokens, outputTokens, cachedTokens, source } = req.body;
             if (!model || inputTokens == null || outputTokens == null) {
                 return res.status(400).json({ error: 'model, inputTokens, and outputTokens are required' });
             }
             const input = Math.max(0, Math.round(Number(inputTokens) || 0));
             const output = Math.max(0, Math.round(Number(outputTokens) || 0));
+            const cached = Math.max(0, Math.round(Number(cachedTokens) || 0));
             const caller = source || 'unknown';
             await db.recordUsage(model, input, output, caller);
-            res.json({ ok: true, recorded: { model, inputTokens: input, outputTokens: output, source: caller } });
+            if (cached > 0) {
+                console.log(`[Usage] ${caller}/${model}: ${input} new + ${cached} cached input, ${output} output`);
+            }
+            res.json({ ok: true, recorded: { model, inputTokens: input, outputTokens: output, cachedTokens: cached, source: caller } });
         } catch (error) {
             console.error('Error recording external usage:', error);
             res.status(500).json({ error: 'Failed to record usage: ' + error.message });

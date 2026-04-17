@@ -24,6 +24,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['nexus.vibeshiftai.com'],
   // Transpile local shared package (raw TypeScript source)
   transpilePackages: ['nexus-shared'],
+  experimental: {
+    proxyTimeout: 600000,
+  },
   env: {
     // No Supabase env vars needed — auth removed
   },

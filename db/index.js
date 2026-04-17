@@ -89,7 +89,8 @@ const JSON_COLS = new Set([
     'trigger_config', 'configuration', 'target_projects', 'progress',
     'allowed_tools', 'denied_tools', 'details', 'data',
     'stages', 'outputs',
-    'antigravity_payload', 'dependencies'
+    'antigravity_payload', 'dependencies',
+    'suspended_context', 'resume_action'
 ]);
 
 function deserRow(row) {
@@ -551,8 +552,9 @@ async function getBoardState(projectId) {
             tasks: tasksByProject.get(project.id) || [],
             task_summary: {
                 total: (tasksByProject.get(project.id) || []).length,
-                unblocked: (tasksByProject.get(project.id) || []).filter(t => t.is_unblocked && t.status !== 'complete' && t.status !== 'done').length,
+                unblocked: (tasksByProject.get(project.id) || []).filter(t => t.is_unblocked && t.status !== 'complete' && t.status !== 'done' && t.status !== 'suspended').length,
                 complete: (tasksByProject.get(project.id) || []).filter(t => t.status === 'complete' || t.status === 'done').length,
+                suspended: (tasksByProject.get(project.id) || []).filter(t => t.status === 'suspended').length,
             }
         }));
     } catch (err) {
@@ -1683,12 +1685,75 @@ async function markAgEventActioned(id) {
 }
 
 // ============================================================================
+// CALENDAR SYSTEM
+// ============================================================================
+
+async function getCalendarEvents(startTime, endTime) {
+    if (!db) return [];
+    try {
+        let sql = 'SELECT * FROM calendar_events ORDER BY start_time ASC';
+        let params = [];
+        if (startTime && endTime) {
+            sql = 'SELECT * FROM calendar_events WHERE start_time >= ? AND start_time <= ? ORDER BY start_time ASC';
+            params = [startTime, endTime];
+        }
+        return deserRows(db.prepare(sql).all(...params));
+    } catch (err) {
+        console.error('[Database] Error fetching calendar events:', err.message);
+        return [];
+    }
+}
+
+async function createCalendarEvent(event) {
+    if (!db) return null;
+    try {
+        if (!event.id) event.id = uuid();
+        if (!event.created_at) event.created_at = now();
+        event.updated_at = now();
+        const { sql, values } = buildInsert('calendar_events', event);
+        db.prepare(sql).run(...values);
+        return deserRow(db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(event.id));
+    } catch (err) {
+        console.error('[Database] Error creating calendar event:', err.message);
+        return null;
+    }
+}
+
+async function updateCalendarEvent(eventId, updates) {
+    if (!db) return null;
+    try {
+        const { sql, values } = buildUpdate('calendar_events', { ...updates }, 'id', eventId);
+        db.prepare(sql).run(...values);
+        return deserRow(db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(eventId));
+    } catch (err) {
+        console.error('[Database] Error updating calendar event:', err.message);
+        return null;
+    }
+}
+
+async function deleteCalendarEvent(eventId) {
+    if (!db) return false;
+    try {
+        db.prepare('DELETE FROM calendar_events WHERE id = ?').run(eventId);
+        return true;
+    } catch (err) {
+        console.error('[Database] Error deleting calendar event:', err.message);
+        return false;
+    }
+}
+
+// ============================================================================
 // EXPORTS
 // ============================================================================
 
 module.exports = {
     isDatabaseEnabled,
     testConnection,
+    // Calendar
+    getCalendarEvents,
+    createCalendarEvent,
+    updateCalendarEvent,
+    deleteCalendarEvent,
     // Projects
     getProjects,
     getProject,

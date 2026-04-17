@@ -534,3 +534,25 @@ CREATE INDEX IF NOT EXISTS idx_push_tokens_token ON push_tokens(token);
 -- ============================================================================
 -- DONE! Local SQLite database is ready.
 -- ============================================================================
+
+-- ============================================================================
+-- CALENDAR SYSTEM
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS calendar_events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    start_time TEXT,
+    end_time TEXT,
+    status TEXT DEFAULT 'scheduled',
+    event_type TEXT DEFAULT 'praxis_task',
+    project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+    task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+    result TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_events_start ON calendar_events(start_time);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_status ON calendar_events(status);

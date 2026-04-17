@@ -197,7 +197,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const oldStatus = existing.status;
             const updated = await db.updateTask(taskId, updates);
             if (status && status !== oldStatus) {
-                const notifyStatuses = ['completed', 'failed', 'blocked', 'awaiting_approval'];
+                const notifyStatuses = ['completed', 'failed', 'blocked', 'awaiting_approval', 'suspended'];
                 if (notifyStatuses.includes(status)) {
                     pushService.notifyTaskUpdate(updated, oldStatus).catch(err => console.warn('[Push] Task notification failed:', err.message));
                 }
@@ -359,6 +359,81 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (!comment) return res.status(404).json({ error: 'Comment not found' });
             res.json({ success: true, comment });
         } catch (error) { res.status(500).json({ error: 'Failed to update comment' }); }
+    });
+
+    // ─── Resume suspended task ───────────────────────────────────────────
+    router.post('/:id/tasks/:taskId/resume', async (req, res) => {
+        const { taskId } = req.params;
+        const { humanInput, action } = req.body;
+        // action: "resume" (default) | "cancel"
+        try {
+            const task = await db.getTask(taskId);
+            if (!task) return res.status(404).json({ error: 'Task not found' });
+            if (task.status !== 'suspended') {
+                return res.status(400).json({ error: `Task is not suspended (current status: ${task.status})` });
+            }
+
+            if (action === 'cancel') {
+                await db.updateTask(taskId, {
+                    status: 'cancelled',
+                    suspended_at: null,
+                    suspended_reason: null,
+                    suspended_context: null,
+                    resume_action: null,
+                    updated_at: new Date().toISOString(),
+                });
+                return res.json({ success: true, action: 'cancelled' });
+            }
+
+            // Build resume instructions from human input + original context
+            const context = task.suspended_context || {};
+            const resumeAction = task.resume_action || {};
+            const resumeInstructions =
+                `[RESUMED FROM SUSPENSION]\n` +
+                `Previous context: ${context.partialResult || 'none'}\n` +
+                `Question asked: ${context.question || 'none'}\n` +
+                `Human answer: ${humanInput || '(no input provided)'}\n\n` +
+                `Continue the task with this guidance.`;
+
+            // Clear suspension metadata and set back to in-progress
+            await db.updateTask(taskId, {
+                status: 'in-progress',
+                suspended_at: null,
+                suspended_reason: null,
+                suspended_context: null,
+                resume_action: null,
+                updated_at: new Date().toISOString(),
+            });
+
+            // Re-dispatch to Praxis if the resume action says to
+            if (resumeAction.type === 'redispatch' || !resumeAction.type) {
+                try {
+                    await fetch('http://127.0.0.1:54322/resume-task', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            nexusTaskId: taskId,
+                            workspace: resumeAction.workspace || context.workspace,
+                            instructions: resumeInstructions,
+                            modelOverride: resumeAction.modelOverride,
+                        }),
+                    });
+                } catch (fetchErr) {
+                    console.warn('[Tasks] Resume dispatch to Praxis failed:', fetchErr.message);
+                    // Task is already set to in-progress — Praxis just won't auto-dispatch
+                }
+            }
+
+            const updated = await db.getTask(taskId);
+            res.json({
+                success: true,
+                action: 'resumed',
+                task: { ...updated, title: updated.name, createdAt: updated.created_at, updatedAt: updated.updated_at },
+            });
+        } catch (err) {
+            console.error('[Tasks] Error resuming task:', err);
+            res.status(500).json({ error: 'Failed to resume task: ' + err.message });
+        }
     });
 
     return router;

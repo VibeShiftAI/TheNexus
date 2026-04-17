@@ -22,6 +22,7 @@ const tokenTracker = require('./utils/token-tracker');
 const { isCriticEnabled, setCriticEnabled } = require('./services/critic');
 const contextSync = require('./services/context-sync');
 const pushService = require('./push-service');
+const calendarScheduler = require('./services/calendar-scheduler');
 const { runAgent } = require('./agent');
 const { discoverModels, getModels } = require('./services/model-discovery');
 const { getDefaultMemoryManager } = require('./memory');
@@ -125,6 +126,7 @@ const createPushRouter      = require('./routes/push');
 const createProjectWorkflowsRouter = require('./routes/project-workflows');
 const createAgEventsRouter  = require('./routes/ag-events');
 const createBroadcastRouter = require('./routes/broadcast');
+const createCalendarRouter  = require('./routes/calendar');
 
 // Health & system
 app.use('/api/health',    createHealthRouter());
@@ -133,6 +135,7 @@ app.use('/api/settings',  createSettingsRouter());
 app.use('/api/dashboard', createDashboardRouter({ db }));
 app.use('/api',        createSystemRouter({ db, systemMonitor, tokenTracker, isCriticEnabled, setCriticEnabled }));
 app.use('/api/ai/usage',  createUsageRouter({ db, tokenTracker }));
+app.use('/api/calendar',  createCalendarRouter({ db }));
 
 // Projects & tasks
 const projectsRouter = createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync });
@@ -228,6 +231,9 @@ server.listen(PORT, async () => {
     } else {
         console.log(`Database: NOT CONFIGURED (using file-based storage)`);
     }
+
+    // Start Calendar polling
+    calendarScheduler.start(db);
 
     // Model discovery (non-blocking)
     discoverModels().then(models => {

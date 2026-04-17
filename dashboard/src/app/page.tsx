@@ -11,7 +11,7 @@ import { AITerminal } from "@/components/ai-terminal";
 import { DashboardInitiatives } from "@/components/dashboard-initiatives";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { DailyJournal } from "@/components/daily-journal";
-import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen, Settings } from "lucide-react";
+import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen, Settings, Calendar } from "lucide-react";
 import { SettingsModal } from "@/components/settings-modal";
 
 import Link from "next/link";
@@ -92,6 +92,13 @@ export default function Home() {
             >
               <Zap size={16} />
               <span>Workflow Builder</span>
+            </Link>
+            <Link
+              href="/calendar"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-teal-500/20 to-emerald-500/20 border border-teal-500/30 hover:border-teal-500/50 transition-all text-teal-400 hover:text-teal-300"
+            >
+              <Calendar size={16} />
+              <span>Calendar</span>
             </Link>
             <Link
               href="/codex"
