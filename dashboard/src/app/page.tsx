@@ -10,6 +10,7 @@ import { AntigravityMonitor } from "@/components/antigravity-monitor";
 import { AITerminal } from "@/components/ai-terminal";
 import { DashboardInitiatives } from "@/components/dashboard-initiatives";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
+import { DashboardWorkSummary } from "@/components/dashboard-work-summary";
 import { DailyJournal } from "@/components/daily-journal";
 import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen, Settings, Calendar } from "lucide-react";
 import { SettingsModal } from "@/components/settings-modal";
@@ -140,6 +141,8 @@ export default function Home() {
         <div className="mb-8">
           <DailyJournal />
         </div>
+
+        <DashboardWorkSummary onRefresh={loadData} />
 
         <div className="mb-8 flex items-center justify-between">
           <div>

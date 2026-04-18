@@ -3,33 +3,36 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Plus, X, Calendar as CalendarIcon, Save, Clock, AlignLeft, CheckCircle2 } from "lucide-react";
+import {
+    calendarEventsUrl,
+    emptyCalendarEventForm,
+    parseCalendarEventStatus,
+    toDatetimeLocalValue,
+    type CalendarEvent,
+    type CalendarEventForm,
+} from "@/lib/calendar";
 
 export default function CalendarPage() {
-    const [events, setEvents] = useState([]);
+    const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedEvent, setSelectedEvent] = useState(null);
+    const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     // Form state
-    const [editForm, setEditForm] = useState({
-        title: "",
-        start_time: "",
-        end_time: "",
-        description: "",
-        result: "",
-        status: "scheduled"
-    });
+    const [editForm, setEditForm] = useState<CalendarEventForm>(emptyCalendarEventForm());
 
     const loadEvents = async () => {
         try {
             const today = new Date();
             const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
             const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString();
-            const res = await fetch(`http://localhost:4000/api/calendar?start=${startOfDay}&end=${endOfDay}`);
+            const res = await fetch(calendarEventsUrl(startOfDay, endOfDay), { cache: "no-store" });
+            if (!res.ok) throw new Error(`Calendar API returned ${res.status}`);
             const data = await res.json();
-            setEvents(data);
+            setEvents(Array.isArray(data) ? data : []);
         } catch (e) {
             console.error("Failed to load events", e);
+            setEvents([]);
         } finally {
             setLoading(false);
         }
@@ -41,12 +44,12 @@ export default function CalendarPage() {
 
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
-    const openEditModal = (event = null, hour = null) => {
+    const openEditModal = (event: CalendarEvent | null = null, hour: number | null = null) => {
         if (event) {
             setSelectedEvent(event);
             setEditForm({
                 title: event.title,
-                start_time: event.start_time,
+                start_time: toDatetimeLocalValue(new Date(event.start_time)),
                 end_time: event.end_time || "",
                 description: event.description || "",
                 result: event.result || "",
@@ -59,17 +62,11 @@ export default function CalendarPage() {
                 now.setHours(hour, 0, 0, 0);
             }
             const endTime = new Date(now.getTime() + 60 * 60 * 1000);
-            
-            // Format to basic string to fit datetime-local input safely
-            const toLocalISO = (d) => {
-                const pad = n => n.toString().padStart(2, '0');
-                return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-            };
-            
+
             setEditForm({
                 title: "",
-                start_time: toLocalISO(now),
-                end_time: toLocalISO(endTime),
+                start_time: toDatetimeLocalValue(now),
+                end_time: toDatetimeLocalValue(endTime),
                 description: "",
                 result: "",
                 status: "scheduled"
@@ -83,7 +80,7 @@ export default function CalendarPage() {
             const payload = {
                 title: editForm.title,
                 start_time: new Date(editForm.start_time).toISOString(),
-                end_time: new Date(editForm.end_time).toISOString(),
+                end_time: editForm.end_time ? new Date(editForm.end_time).toISOString() : null,
                 description: editForm.description,
                 result: editForm.result,
                 status: editForm.status,
@@ -91,13 +88,13 @@ export default function CalendarPage() {
             };
 
             if (selectedEvent) {
-                await fetch(`http://localhost:4000/api/calendar/${selectedEvent.id}`, {
+                await fetch(`/api/calendar/${selectedEvent.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
             } else {
-                await fetch(`http://localhost:4000/api/calendar`, {
+                await fetch(`/api/calendar`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -111,7 +108,7 @@ export default function CalendarPage() {
     };
 
     // Helper to calculate top and height of an event block visually
-    const getEventStyle = (event) => {
+    const getEventStyle = (event: CalendarEvent) => {
         const start = new Date(event.start_time);
         const end = event.end_time ? new Date(event.end_time) : new Date(start.getTime() + 3600000);
         
@@ -297,7 +294,7 @@ export default function CalendarPage() {
                                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Status</label>
                                 <select 
                                     value={editForm.status}
-                                    onChange={e => setEditForm({...editForm, status: e.target.value})}
+                                    onChange={e => setEditForm({...editForm, status: parseCalendarEventStatus(e.target.value)})}
                                     className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
                                 >
                                     <option value="scheduled">Scheduled</option>

@@ -188,7 +188,7 @@ export default function SystemMonitorPage() {
     };
 
     // Filter ports
-    const filteredPorts = (systemStatus?.ports || []).filter((port: any) => {
+    const filteredPorts = (systemStatus?.ports || []).filter((port: PortInfo) => {
         if (showAllPorts) return true;
         // Show known dev stats
         return ['node', 'python', 'java'].includes(port.type) ||
