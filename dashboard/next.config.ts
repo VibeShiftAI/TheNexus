@@ -22,8 +22,8 @@ dotenvConfig({ path: parentEnvPath });
 const nextConfig: NextConfig = {
   // Allow Cloudflare Tunnel domain to access Next.js dev server
   allowedDevOrigins: ['nexus.vibeshiftai.com'],
-  // Transpile local shared package (raw TypeScript source)
-  transpilePackages: ['nexus-shared'],
+  // Transpile local shared package
+  transpilePackages: ['@praxis/contract'],
   experimental: {
     proxyTimeout: 600000,
   },

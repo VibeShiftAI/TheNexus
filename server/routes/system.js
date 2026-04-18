@@ -75,7 +75,7 @@ function createSystemRouter({ db, systemMonitor, isCriticEnabled, setCriticEnabl
                 }
             }
 
-            let dailyLimit = 2_000_000;
+            let dailyLimit = 4_000_000;
             let quotaSource = 'default';
 
             const quotaEndpoints = ['anthropic', 'google', 'openai', 'default'];

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// SYSTEM MONITORING TYPES (from nexus-shared)
+// SYSTEM MONITORING TYPES (from @praxis/contract)
 // ═══════════════════════════════════════════════════════════════
 
 import type {
@@ -7,14 +7,14 @@ import type {
   SystemInfo as _SystemInfo,
   PraxisTelemetry as _PraxisTelemetry,
   SystemStatus as _SystemStatus,
-} from 'nexus-shared';
+} from '@praxis/contract';
 
 export type PortInfo = _PortInfo;
 export type SystemInfo = _SystemInfo;
 export type PraxisTelemetry = _PraxisTelemetry;
 export type SystemStatus = _SystemStatus;
 
-/** Daily API call budget thresholds (mirrored from nexus-shared/src/system.ts) */
+/** Daily API call budget thresholds (mirrored from @praxis/contract) */
 export const API_BUDGET = {
   WARNING: 500,
   AUTONOMOUS_LIMIT: 800,

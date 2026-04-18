@@ -827,7 +827,7 @@ server.tool(
             }
 
             // 2. Quota data — check for daily limits
-            let dailyLimit = 2_000_000; // default fallback
+            let dailyLimit = 4_000_000; // default fallback
             let quotaSource = 'default';
 
             const quotaEndpoints = ['anthropic', 'google', 'openai', 'default'];

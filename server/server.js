@@ -127,6 +127,7 @@ const createProjectWorkflowsRouter = require('./routes/project-workflows');
 const createAgEventsRouter  = require('./routes/ag-events');
 const createBroadcastRouter = require('./routes/broadcast');
 const createCalendarRouter  = require('./routes/calendar');
+const createPraxisStreamRouter = require('./routes/praxis-stream');
 
 // Health & system
 app.use('/api/health',    createHealthRouter());
@@ -136,6 +137,7 @@ app.use('/api/dashboard', createDashboardRouter({ db }));
 app.use('/api',        createSystemRouter({ db, systemMonitor, tokenTracker, isCriticEnabled, setCriticEnabled }));
 app.use('/api/ai/usage',  createUsageRouter({ db, tokenTracker }));
 app.use('/api/calendar',  createCalendarRouter({ db }));
+app.use('/api/praxis',    createPraxisStreamRouter({ io, pushService }));
 
 // Projects & tasks
 const projectsRouter = createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync });
