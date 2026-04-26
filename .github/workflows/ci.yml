@@ -45,6 +45,10 @@ jobs:
     - name: Install root dependencies
       run: npm ci
     
+    - name: Build @praxis/contract
+      working-directory: packages/contract
+      run: npm install && npm run build
+    
     - name: Install dashboard dependencies
       working-directory: dashboard
       run: npm ci
