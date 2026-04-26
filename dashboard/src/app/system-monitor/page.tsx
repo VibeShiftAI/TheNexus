@@ -544,7 +544,7 @@ export default function SystemMonitorPage() {
                                         const order = ['google', 'google-biz', 'openai', 'anthropic', 'xai', 'openrouter'];
                                         return (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b));
                                     })
-                                    .map(([provider, data]) => {
+                                    .map(([provider, data]: [string, { requestsToday: number }]) => {
                                         const limit = PROVIDER_QUOTA_LIMITS[provider] || 500;
                                         const pct = Math.min((data.requestsToday / limit) * 100, 100);
                                         const color = PROVIDER_COLORS[provider] || PROVIDER_COLORS['other'];
