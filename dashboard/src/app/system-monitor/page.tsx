@@ -538,13 +538,13 @@ export default function SystemMonitorPage() {
                         </div>
                         <div className="p-5">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {Object.entries(systemStatus.praxis.quota.providers)
+                                {(Object.entries(systemStatus.praxis.quota.providers) as [string, { requestsToday: number }][])
                                     .sort(([a], [b]) => {
                                         // Sort: google first, google-biz second, then alphabetical
                                         const order = ['google', 'google-biz', 'openai', 'anthropic', 'xai', 'openrouter'];
                                         return (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b));
                                     })
-                                    .map(([provider, data]: [string, { requestsToday: number }]) => {
+                                    .map(([provider, data]) => {
                                         const limit = PROVIDER_QUOTA_LIMITS[provider] || 500;
                                         const pct = Math.min((data.requestsToday / limit) * 100, 100);
                                         const color = PROVIDER_COLORS[provider] || PROVIDER_COLORS['other'];
