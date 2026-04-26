@@ -188,13 +188,13 @@ export default function SystemMonitorPage() {
     };
 
     // Filter ports
-    const filteredPorts = (systemStatus?.ports || []).filter((port: PortInfo) => {
+    const filteredPorts: PortInfo[] = (systemStatus?.ports || []).filter((port: PortInfo) => {
         if (showAllPorts) return true;
         // Show known dev stats
         return ['node', 'python', 'java'].includes(port.type) ||
             // Or show interesting ports
             [3000, 8000, 8080, 5173, 4200].includes(port.port);
-    }) || [];
+    });
 
     if (isLoading && !systemStatus) {
         return (
