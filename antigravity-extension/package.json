@@ -1,0 +1,7 @@
+{
+  "name": "antigravity-extension",
+  "version": "1.0.0",
+  "scripts": {
+    "test-api-abort": "node test-api-abort.js"
+  }
+}

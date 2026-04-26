@@ -22,11 +22,14 @@ export interface AgEvent {
 }
 
 export interface Message {
+    id?: string;
+    conversation_id?: string;
     role: 'user' | 'assistant' | 'system';
     content: string;
     timestamp: Date;
     artifact?: CortexArtifact;
     voiceData?: { audio: string; mimeType: string }[];
+    metadata?: Record<string, any>;
 }
 
 export interface CortexArtifact {
@@ -100,6 +103,20 @@ export interface ChatConversation {
     first_message?: string;
     created_at: string;
     updated_at: string;
+}
+
+interface ChatMessageEvent {
+    conversationId?: string;
+    mode?: string;
+    message?: {
+        id?: string;
+        conversation_id?: string;
+        role?: 'user' | 'assistant' | 'system';
+        content?: string;
+        created_at?: string;
+        metadata?: Record<string, any>;
+        voiceData?: { audio: string; mimeType: string }[];
+    };
 }
 
 // ────────────────────────────────────────────────────────────
@@ -344,8 +361,9 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         const socketUrl = isLocal ? 'http://localhost:4000' : undefined; // undefined = same origin
         const socket: Socket = io(socketUrl as string, {
             path: '/socket.io/',
-            reconnectionAttempts: 5,
+            reconnectionAttempts: Infinity,   // Backend restarts are normal (self_upgrade, launchd)
             reconnectionDelay: 3000,
+            reconnectionDelayMax: 15000,      // Back off to 15s max between retries
         });
         socketRef.current = socket;
 
@@ -399,6 +417,30 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             }]);
         });
 
+        // ── Praxis Chat Stream ──
+        socket.on('chat-message', (event: ChatMessageEvent) => {
+            if (event?.mode && event.mode !== 'praxis') return;
+            const incoming = event?.message;
+            if (!incoming?.role || !incoming.content) return;
+
+            const nextMessage: Message = {
+                id: incoming.id,
+                conversation_id: incoming.conversation_id || event.conversationId,
+                role: incoming.role,
+                content: incoming.content,
+                timestamp: incoming.created_at ? new Date(incoming.created_at) : new Date(),
+                voiceData: Array.isArray(incoming.voiceData) ? incoming.voiceData : undefined,
+                metadata: incoming.metadata,
+            };
+
+            setMessages(prev => {
+                if (nextMessage.id && prev.some(message => message.id === nextMessage.id)) {
+                    return prev;
+                }
+                return [...prev, nextMessage];
+            });
+        });
+
         // ── Antigravity Event Stream ──
         socket.on('ag-event', (event: AgEvent) => {
             console.log('[CortexProvider] AG Event:', event.event_type, event.title);
@@ -414,7 +456,10 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         });
 
         socket.on('connect_error', (error: Error) => {
-            console.error('[CortexProvider] WebSocket connection failed:', error.message);
+            // Downgraded from console.error — backend restarts are routine
+            // (self_upgrade, launchd respawn, model changes). The socket
+            // will auto-reconnect with exponential backoff.
+            console.warn('[CortexProvider] WebSocket connection failed:', error.message);
         });
 
         return () => {

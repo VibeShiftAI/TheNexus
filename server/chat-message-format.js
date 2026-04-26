@@ -20,6 +20,17 @@ function normalizePraxisVoiceData(voiceData) {
         }));
 }
 
+function parseMetadata(metadata) {
+    if (!metadata) return {};
+    if (typeof metadata !== 'string') return metadata;
+    try {
+        const parsed = JSON.parse(metadata);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
 function defaultVoiceFileName(mimeType) {
     if (mimeType === 'audio/ogg') return 'praxis-voice-reply.ogg';
     if (mimeType === 'audio/wav') return 'praxis-voice-reply.wav';
@@ -50,7 +61,7 @@ function buildPraxisAssistantMetadata(data = {}) {
 }
 
 function formatStoredChatMessage(message) {
-    const metadata = message?.metadata || {};
+    const metadata = parseMetadata(message?.metadata);
     const voiceData = normalizePraxisVoiceData(metadata.voiceData);
     const attachments = Array.isArray(metadata.attachments) && metadata.attachments.length > 0
         ? metadata.attachments
@@ -64,7 +75,17 @@ function formatStoredChatMessage(message) {
     };
 }
 
+function buildChatMessageEvent(message) {
+    const formatted = formatStoredChatMessage(message);
+    return {
+        conversationId: formatted.conversation_id,
+        mode: formatted.mode || 'praxis',
+        message: formatted,
+    };
+}
+
 module.exports = {
+    buildChatMessageEvent,
     buildPraxisAssistantMetadata,
     buildVoiceAttachments,
     formatStoredChatMessage,

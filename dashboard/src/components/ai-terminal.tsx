@@ -55,6 +55,13 @@ const MODES = [
     { id: 'praxis', name: 'Praxis', description: 'Your personal AI supervisor' },
 ];
 
+function createClientMessageId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITerminalProps) {
     const isInline = mode === 'inline';
     const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages } = useCortex();
@@ -408,7 +415,9 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             messageContent += `🎤 Voice memo attached (${recordingTime}s)`;
         }
 
+        const clientMessageId = createClientMessageId();
         const userMessage: Message = {
+            id: clientMessageId,
             role: 'user',
             content: messageContent,
             timestamp: new Date(),
@@ -501,6 +510,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 mode: selectedMode.id,
                 history: messages.slice(-10), // Last 10 messages for context
                 projectId: scopedProjectId, // Send scope if available
+                clientMessageId,
                 files: fileContents, // Include text file contents for LLM context
                 audio: base64Audio, // Include base64 voice recording if any
                 attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined, // Uploaded file refs
@@ -562,13 +572,19 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             const data = await response.json();
 
             const assistantMessage: Message = {
+                id: data.assistantMessageId,
                 role: 'assistant',
                 content: data.response || 'No response received',
                 timestamp: new Date(),
                 voiceData: data.voiceData, // Attach any voice responses
             };
 
-            setMessages(prev => [...prev, assistantMessage]);
+            setMessages(prev => {
+                if (assistantMessage.id && prev.some(message => message.id === assistantMessage.id)) {
+                    return prev;
+                }
+                return [...prev, assistantMessage];
+            });
         } catch (error: any) {
             console.error('AI Chat error:', error);
             // In Agent mode, artifacts stream via WebSocket — the HTTP response is just a summary.

@@ -40,3 +40,10 @@ graphiti-core>=0.1.0
 # Cortex Brain (System 2)
 fastmcp>=3.0.0
 ruamel.yaml>=0.18.0
+
+# Media adapters (YouTube channel workflow)
+# YouTube upload adapter uses googleapiclient; OAuth via google-auth-oauthlib.
+# Install before running `python -m tools.media.youtube --authorize`.
+google-api-python-client>=2.0.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0

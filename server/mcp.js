@@ -495,9 +495,10 @@ server.tool(
         priority: z.number().optional().describe(
             "Numeric priority (higher = more important). Used for daily focus selection."
         ),
-        description: z.string().optional().describe("Updated project description.")
+        description: z.string().optional().describe("Updated project description."),
+        end_state: z.string().optional().describe("Desired end-state for goal-regression planning.")
     },
-    async ({ project_id, status, priority, description }) => {
+    async ({ project_id, status, priority, description, end_state }) => {
         try {
             // Validate project exists
             const existing = await db.getProject(project_id);
@@ -524,10 +525,11 @@ server.tool(
             if (status) updates.status = status;
             if (priority !== undefined) updates.priority = priority;
             if (description) updates.description = description;
+            if (end_state) updates.end_state = end_state;
 
             if (Object.keys(updates).length === 0) {
                 return {
-                    content: [{ type: "text", text: "No updates provided. Specify at least one of: status, priority, description." }],
+                    content: [{ type: "text", text: "No updates provided. Specify at least one of: status, priority, description, end_state." }],
                     isError: true
                 };
             }
@@ -550,6 +552,7 @@ server.tool(
                             name: updated.name,
                             status: updated.status,
                             priority: updated.priority,
+                            end_state: updated.end_state,
                             updated_at: updated.updated_at
                         }
                     }, null, 2)

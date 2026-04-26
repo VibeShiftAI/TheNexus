@@ -40,6 +40,7 @@ class ToolCategory(str, Enum):
     WORKFLOW = "workflow"  # AI Workflow Builder tools
     BLACKBOARD = "blackboard"  # Shared state management tools
     VERIFICATION = "verification"  # Fact checking and validation tools
+    MEDIA = "media"  # Image/video/audio generation, assembly, and publishing
 
 
 class ToolMetadata(BaseModel):

@@ -169,7 +169,13 @@ class ToolRegistry:
             git_tools.register_tools(self)
         except ImportError:
             pass
-        
+
+        try:
+            from . import media
+            media.register_tools(self)
+        except ImportError:
+            pass
+
         self._initialized = True
     
     def __len__(self) -> int:

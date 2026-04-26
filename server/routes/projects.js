@@ -237,7 +237,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     // ─── Update project ──────────────────────────────────────────────────
     router.patch('/:id', async (req, res) => {
         const { id } = req.params;
-        const allowedFields = ['name', 'description', 'type', 'vibe', 'stack', 'urls', 'path', 'end_state'];
+        const allowedFields = ['name', 'description', 'type', 'vibe', 'stack', 'urls', 'path', 'status', 'priority', 'end_state'];
         const filteredUpdates = {};
         for (const key of Object.keys(req.body)) {
             if (allowedFields.includes(key)) filteredUpdates[key] = req.body[key];

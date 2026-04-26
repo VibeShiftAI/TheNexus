@@ -6,7 +6,7 @@ const express = require('express');
 
 function createChatHistoryRouter({ db, io }) {
     const router = express.Router();
-    const { formatStoredChatMessage } = require('../chat-message-format');
+    const { buildChatMessageEvent, formatStoredChatMessage } = require('../chat-message-format');
 
     // GET conversations
     router.get('/conversations', async (req, res) => {
@@ -123,10 +123,13 @@ function createChatHistoryRouter({ db, io }) {
             for (const msg of messages) {
                 if (!msg.role || !msg.content) continue;
                 try {
-                    await db.saveChatMessage({
+                    const savedMessage = await db.saveChatMessage({
                         id: msg.id, conversation_id: conversationId, role: msg.role, content: msg.content, mode,
                         metadata: { platform: msg.platform || 'unknown', ...(msg.metadata || {}) }
                     });
+                    if (savedMessage && io) {
+                        io.emit('chat-message', buildChatMessageEvent(savedMessage));
+                    }
                     synced++;
                 } catch (saveErr) {
                     if (saveErr.message?.includes('UNIQUE constraint')) continue;

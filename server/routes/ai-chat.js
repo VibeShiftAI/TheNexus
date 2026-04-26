@@ -6,10 +6,10 @@ const express = require('express');
 
 function createAIChatRouter({ db, callAI, pushService, io }) {
     const router = express.Router();
-    const { buildPraxisAssistantMetadata, formatStoredChatMessage } = require('../chat-message-format');
+    const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
 
     router.post('/', async (req, res) => {
-        const { message, modelConfig, model, mode, history, projectId, session_id, files, attachments, audio } = req.body || {};
+        const { message, modelConfig, model, mode, history, projectId, session_id, files, attachments, audio, clientMessageId } = req.body || {};
 
         console.log(`\n🤖 [AI Chat] Request Details:`);
         console.log(`   → Mode: ${mode}`);
@@ -71,13 +71,17 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                 conversationId = conversation ? conversation.id : null;
 
                 if (conversationId) {
-                    await db.saveChatMessage({
+                    const savedUserMessage = await db.saveChatMessage({
+                        id: clientMessageId,
                         conversation_id: conversationId, role: 'user', content: message, mode: 'praxis',
                         metadata: {
                             projectId, hasAudio: !!audio,
                             ...(attachments?.length > 0 ? { attachments: attachments.map(a => ({ type: a.mimeType?.startsWith('image/') ? 'image' : a.mimeType?.startsWith('audio/') ? 'audio' : 'file', url: a.url, name: a.originalName || a.name, mimeType: a.mimeType })) } : {})
                         }
                     });
+                    if (savedUserMessage && io) {
+                        io.emit('chat-message', buildChatMessageEvent(savedUserMessage));
+                    }
                 }
 
                 const praxisPayload = { message, history, projectId, audio, attachments: attachments || undefined };
@@ -95,16 +99,21 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
 
                 const debugFooter = `\n\n_\u2014_\n*\ud83e\udd16 Relayed by Praxis*`;
                 const fullResponse = (data.response || "No response") + debugFooter;
+                let assistantMessageId = null;
 
                 if (conversationId) {
                     try {
-                        await db.saveChatMessage({ conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata(data) });
+                        const savedAssistantMessage = await db.saveChatMessage({ conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata(data) });
+                        assistantMessageId = savedAssistantMessage?.id || null;
+                        if (savedAssistantMessage && io) {
+                            io.emit('chat-message', buildChatMessageEvent(savedAssistantMessage));
+                        }
                     } catch (dbErr) {
                         console.error(`[AI Chat] Failed to persist Praxis response to DB (non-fatal):`, dbErr.message);
                     }
                 }
 
-                return res.json({ response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode, conversationId, isThinking: false, tokenUsage: { total: 0 }, artifacts: [], voiceData: data.voiceData });
+                return res.json({ response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode, conversationId, assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: [], voiceData: data.voiceData });
             } catch (error) {
                 console.error(`[AI Chat] Praxis Proxy Error:`, error);
                 if (res.headersSent) return;
