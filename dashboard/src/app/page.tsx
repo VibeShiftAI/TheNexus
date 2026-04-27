@@ -12,7 +12,7 @@ import { DashboardInitiatives } from "@/components/dashboard-initiatives";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { DashboardWorkSummary } from "@/components/dashboard-work-summary";
 import { DailyJournal } from "@/components/daily-journal";
-import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen, Settings, Calendar } from "lucide-react";
+import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen, Settings, Calendar, Table2 } from "lucide-react";
 import { SettingsModal } from "@/components/settings-modal";
 
 import Link from "next/link";
@@ -80,6 +80,13 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-6 text-sm font-medium text-slate-400">
+            <Link
+              href="/task-board"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 hover:border-cyan-500/50 transition-all text-cyan-400 hover:text-cyan-300"
+            >
+              <Table2 size={16} />
+              <span>Task Board</span>
+            </Link>
             <Link
               href="/system-monitor"
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 hover:border-amber-500/50 transition-all text-amber-400 hover:text-amber-300"

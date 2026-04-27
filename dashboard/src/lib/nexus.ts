@@ -130,6 +130,7 @@ export interface GitStatus {
 // Use relative URL to allow Next.js rewrites to proxy requests to localhost:4000
 // This is critical for production where the browser can't access localhost directly
 import { getAuthHeader } from './auth';
+import type { BoardProject } from './task-board';
 
 const API_URL = '/api/projects';
 
@@ -808,6 +809,16 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const res = await authFetch(`${API_URL.replace('/api/projects', '/api/dashboard/stats')}`);
     if (!res.ok) {
         throw new Error("Failed to fetch dashboard stats");
+    }
+    return res.json();
+}
+
+export async function getBoardState(projectId?: string): Promise<BoardProject[]> {
+    const baseUrl = API_URL.replace('/projects', '');
+    const params = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+    const res = await authFetch(`${baseUrl}/board-state${params}`);
+    if (!res.ok) {
+        throw new Error("Failed to fetch board state");
     }
     return res.json();
 }
