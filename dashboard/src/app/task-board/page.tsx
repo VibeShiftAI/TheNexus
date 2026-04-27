@@ -5,22 +5,16 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
-  Ban,
-  CheckCircle2,
   CircleDot,
   ExternalLink,
   Filter,
   Loader2,
   MessageSquareText,
-  PauseCircle,
-  Play,
   RefreshCw,
-  RotateCcw,
   Search,
-  ShieldAlert,
   Table2,
 } from "lucide-react";
-import { getBoardState, updateTask } from "@/lib/nexus";
+import { getBoardState } from "@/lib/nexus";
 import {
   BOARD_LANES,
   filterBoardTasks,
@@ -34,19 +28,6 @@ import {
 
 const POLL_MS = 12_000;
 
-const ACTIONS: Array<{
-  label: string;
-  status: string;
-  icon: typeof Play;
-  className: string;
-}> = [
-  { label: "Start", status: "in_progress", icon: Play, className: "hover:border-violet-400/50 hover:text-violet-200" },
-  { label: "Block", status: "blocked", icon: Ban, className: "hover:border-rose-400/50 hover:text-rose-200" },
-  { label: "Suspend", status: "suspended", icon: PauseCircle, className: "hover:border-amber-300/50 hover:text-amber-100" },
-  { label: "Complete", status: "done", icon: CheckCircle2, className: "hover:border-emerald-400/50 hover:text-emerald-200" },
-  { label: "Reopen", status: "planning", icon: RotateCcw, className: "hover:border-sky-400/50 hover:text-sky-200" },
-];
-
 export default function TaskBoardPage() {
   const [projects, setProjects] = useState<BoardProject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +36,6 @@ export default function TaskBoardPage() {
   const [query, setQuery] = useState("");
   const [projectId, setProjectId] = useState("all");
   const [laneId, setLaneId] = useState<BoardFilterLaneId>("all");
-  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
   const loadBoard = useCallback(async (mode: "initial" | "refresh" = "refresh") => {
     if (mode === "initial") {
@@ -104,21 +84,6 @@ export default function TaskBoardPage() {
     const latest = timestamps.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
     return formatBoardTime(latest);
   }, [projects]);
-
-  const moveTask = async (task: BoardTask, status: string) => {
-    const taskProjectId = task.projectId || task.project_id;
-    if (!taskProjectId) return;
-
-    setUpdatingTaskId(task.id);
-    try {
-      await updateTask(taskProjectId, task.id, { status });
-      await loadBoard("refresh");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update task");
-    } finally {
-      setUpdatingTaskId(null);
-    }
-  };
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30">
@@ -230,8 +195,6 @@ export default function TaskBoardPage() {
               <LaneColumn
                 key={lane.id}
                 lane={lane}
-                updatingTaskId={updatingTaskId}
-                onMoveTask={moveTask}
               />
             ))}
           </section>
@@ -243,12 +206,8 @@ export default function TaskBoardPage() {
 
 function LaneColumn({
   lane,
-  updatingTaskId,
-  onMoveTask,
 }: {
   lane: BoardLane;
-  updatingTaskId: string | null;
-  onMoveTask: (task: BoardTask, status: string) => void;
 }) {
   return (
     <div className="min-h-[520px] rounded-lg border border-slate-800 bg-slate-950">
@@ -272,8 +231,6 @@ function LaneColumn({
             <TaskCard
               key={task.id}
               task={task}
-              updating={updatingTaskId === task.id}
-              onMoveTask={onMoveTask}
             />
           ))
         )}
@@ -284,16 +241,13 @@ function LaneColumn({
 
 function TaskCard({
   task,
-  updating,
-  onMoveTask,
 }: {
   task: BoardTask;
-  updating: boolean;
-  onMoveTask: (task: BoardTask, status: string) => void;
 }) {
   const title = task.title || task.name || "Untitled task";
   const taskProjectId = task.projectId || task.project_id;
   const updated = task.updated_at || task.updatedAt || task.created_at || task.createdAt;
+  const description = task.description?.trim();
   const metadata = task.metadata || {};
   const hasTranscript = Boolean(metadata.codex_transcript_path || metadata.praxis_transcript_path || metadata.transcript_path);
   const detailHref = taskProjectId ? `/project/${taskProjectId}?taskId=${task.id}` : "/";
@@ -310,7 +264,6 @@ function TaskCard({
           </Link>
           <p className="mt-1 truncate text-xs text-slate-500">{task.projectName || "Unknown project"}</p>
         </div>
-        {updating && <Loader2 size={16} className="shrink-0 animate-spin text-cyan-300" />}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
@@ -320,10 +273,6 @@ function TaskCard({
         <span className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-400">
           P{task.priority ?? 0}
         </span>
-        <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 ${task.is_unblocked === false ? "border-rose-400/40 text-rose-200" : "border-emerald-400/30 text-emerald-200"}`}>
-          {task.is_unblocked === false ? <ShieldAlert size={12} /> : <CircleDot size={12} />}
-          {task.is_unblocked === false ? "blocked" : "unblocked"}
-        </span>
         {hasTranscript && (
           <span className="inline-flex items-center gap-1 rounded-md border border-cyan-400/30 px-2 py-1 text-cyan-200">
             <MessageSquareText size={12} />
@@ -332,26 +281,18 @@ function TaskCard({
         )}
       </div>
 
+      {description ? (
+        <p className="mt-3 line-clamp-4 text-xs leading-5 text-slate-400">
+          {description}
+        </p>
+      ) : (
+        <p className="mt-3 text-xs italic text-slate-600">
+          No description
+        </p>
+      )}
+
       <div className="mt-3 text-xs text-slate-500">
         Updated {formatBoardTime(updated)}
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-1.5">
-        {ACTIONS.map((action) => {
-          const Icon = action.icon;
-          return (
-            <button
-              key={action.status}
-              onClick={() => onMoveTask(task, action.status)}
-              disabled={updating}
-              className={`flex h-8 items-center justify-center gap-1 rounded-md border border-slate-800 bg-slate-950 text-xs text-slate-400 transition-colors disabled:opacity-50 ${action.className}`}
-              title={action.label}
-            >
-              <Icon size={13} />
-              <span>{action.label}</span>
-            </button>
-          );
-        })}
       </div>
     </article>
   );
