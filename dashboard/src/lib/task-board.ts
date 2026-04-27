@@ -96,7 +96,7 @@ const ATTENTION_STATUSES = new Set(["blocked", "suspended", "failed", "awaiting_
 const COMPLETE_STATUSES = new Set(["done", "complete", "completed"]);
 
 export function getBoardLaneId(task: Pick<BoardTask, "status" | "is_unblocked">): BoardLaneId {
-  const status = (task.status || "").toLowerCase();
+  const status = normalizeStatus(task.status);
 
   if (COMPLETE_STATUSES.has(status)) return "complete";
   if (ATTENTION_STATUSES.has(status)) return "needs_attention";
@@ -105,6 +105,10 @@ export function getBoardLaneId(task: Pick<BoardTask, "status" | "is_unblocked">)
   if (task.is_unblocked === false) return "needs_attention";
 
   return "ready";
+}
+
+export function normalizeStatus(status?: string): string {
+  return (status || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
 }
 
 export function groupBoardTasks(projects: BoardProject[]): Record<BoardLaneId, BoardLane> {
