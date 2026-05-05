@@ -1,0 +1,106 @@
+<h2>Daily Task Board: Layout Direction</h2>
+<p class="subtitle">A system-level Kanban page for seeing everything Praxis, Codex, Antigravity, and you are moving through today.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">/task-board</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;min-height:260px">
+            <div style="border:1px solid #334155;border-radius:8px;padding:8px;background:#0f172a">
+              <strong style="color:#bae6fd">New</strong>
+              <div class="placeholder" style="height:42px;margin-top:10px">Task</div>
+              <div class="placeholder" style="height:42px">Task</div>
+            </div>
+            <div style="border:1px solid #334155;border-radius:8px;padding:8px;background:#0f172a">
+              <strong style="color:#fde68a">Ready</strong>
+              <div class="placeholder" style="height:42px;margin-top:10px">Task</div>
+            </div>
+            <div style="border:1px solid #334155;border-radius:8px;padding:8px;background:#0f172a">
+              <strong style="color:#c4b5fd">In Progress</strong>
+              <div class="placeholder" style="height:42px;margin-top:10px">Codex</div>
+              <div class="placeholder" style="height:42px">Praxis</div>
+            </div>
+            <div style="border:1px solid #334155;border-radius:8px;padding:8px;background:#0f172a">
+              <strong style="color:#fca5a5">Blocked</strong>
+              <div class="placeholder" style="height:42px;margin-top:10px">Needs input</div>
+            </div>
+            <div style="border:1px solid #334155;border-radius:8px;padding:8px;background:#0f172a">
+              <strong style="color:#86efac">Done</strong>
+              <div class="placeholder" style="height:42px;margin-top:10px">Complete</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Dedicated Command Board</h3>
+      <p>A new top-nav page that shows the full day across all active projects. Best if this becomes the main operational view while Praxis is dispatching work.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Dashboard band</div>
+        <div class="mockup-body">
+          <div class="placeholder" style="height:48px">Praxis Terminal</div>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px">
+            <div class="placeholder" style="height:130px">New</div>
+            <div class="placeholder" style="height:130px">Doing</div>
+            <div class="placeholder" style="height:130px">Blocked</div>
+            <div class="placeholder" style="height:130px">Done</div>
+          </div>
+          <div class="placeholder" style="height:48px;margin-top:10px">Projects</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Home Dashboard Section</h3>
+      <p>Adds a compact board to the current dashboard. Fast to scan, but it competes with terminal, journal, project cards, and review widgets.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">/system-monitor/tasks</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:220px 1fr;gap:12px;min-height:260px">
+            <div class="mock-sidebar">
+              System<br>Agents<br><strong>Tasks</strong><br>Resources
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+              <div class="placeholder">Queue</div>
+              <div class="placeholder">Active</div>
+              <div class="placeholder">Attention</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. System Monitor Tab</h3>
+      <p>Keeps it with infrastructure status. Useful if the board is mostly for agent health, less ideal if it should be the daily work cockpit.</p>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons">
+  <div class="pros">
+    <h4>Recommendation</h4>
+    <ul>
+      <li>Pick A: a dedicated command board.</li>
+      <li>Use existing /api/board-state data first.</li>
+      <li>Add live Praxis/Codex transcript indicators as task metadata once the board exists.</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>Scope Control</h4>
+    <ul>
+      <li>First pass: view, filtering, status moves.</li>
+      <li>Later pass: drag-and-drop ordering and live transcript drawer.</li>
+    </ul>
+  </div>
+</div>

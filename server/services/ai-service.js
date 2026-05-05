@@ -59,6 +59,8 @@ async function getAIModelConfig(taskType) {
                         provider = 'anthropic';
                     } else if (modelId.startsWith('gpt') || modelId.includes('openai')) {
                         provider = 'openai';
+                    } else if (modelId.startsWith('local/') || modelId.includes('local')) {
+                        provider = 'local';
                     }
 
                     console.log(`[AI Config] Task '${taskType}' using agent-config.json '${agentId}' -> ${provider}/${modelId}`);
@@ -386,6 +388,88 @@ async function callXAI(message, config, systemPrompt, history, apiKey) {
     };
 }
 
+// ═══════════════════════════════════════════════════════════════
+// LOCAL AI HANDLER — OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, etc.)
+// ═══════════════════════════════════════════════════════════════
+async function callLocal(message, config, systemPrompt, history) {
+    const modelId = config.apiModelId;
+    const params = config.parameters || {};
+
+    // Resolve endpoint: explicit config > env var > Ollama default
+    const baseUrl = params.base_url
+        || process.env.LOCAL_AI_URL
+        || 'http://localhost:11434/v1';
+
+    console.log(`[Local AI] Endpoint: ${baseUrl}, Model: ${modelId}`);
+
+    const messages = [
+        { role: 'system', content: systemPrompt }
+    ];
+
+    if (history && history.length > 0) {
+        for (const msg of history) {
+            messages.push({
+                role: msg.role === 'assistant' ? 'assistant' : 'user',
+                content: msg.content
+            });
+        }
+    }
+
+    messages.push({ role: 'user', content: message });
+
+    const requestBody = {
+        model: modelId,
+        messages,
+    };
+
+    // Forward any additional params the local server supports
+    if (params.temperature !== undefined) requestBody.temperature = params.temperature;
+    if (params.max_tokens !== undefined) requestBody.max_tokens = params.max_tokens;
+    if (params.top_p !== undefined) requestBody.top_p = params.top_p;
+
+    // Build headers — local servers typically don't require auth,
+    // but some (e.g., vLLM) accept a bearer token
+    const headers = { 'Content-Type': 'application/json' };
+    const localApiKey = process.env.LOCAL_AI_API_KEY;
+    if (localApiKey) {
+        headers['Authorization'] = `Bearer ${localApiKey}`;
+    }
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Local AI error: ${response.status} - ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || 'No response from local model';
+
+    const usage = data.usage || {};
+
+    // Track usage for resource monitor (tokens are free but still useful to track)
+    tokenTracker.trackUsage({
+        provider: 'local',
+        model: modelId,
+        inputTokens: usage.prompt_tokens || 0,
+        outputTokens: usage.completion_tokens || 0,
+        task: 'chat'
+    });
+
+    return {
+        text,
+        usage: {
+            inputTokens: usage.prompt_tokens || 0,
+            outputTokens: usage.completion_tokens || 0,
+            totalTokens: usage.total_tokens || 0
+        }
+    };
+}
+
 /**
  * Unified AI call router - THE SINGLE ENTRY POINT for all AI calls
  * 
@@ -434,7 +518,7 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
         console.log(`[callAI] Direct: Provider: ${provider}, Model: ${modelId}`);
     }
 
-    // Get API key for the provider
+    // Get API key for the provider (local provider doesn't require one)
     const apiKeys = {
         google: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
         openai: process.env.OPENAI_API_KEY,
@@ -443,7 +527,9 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
     };
 
     const apiKey = apiKeys[provider];
-    if (!apiKey) throw new Error(`No API key configured for provider: ${provider}`);
+    if (!apiKey && provider !== 'local') {
+        throw new Error(`No API key configured for provider: ${provider}`);
+    }
 
     // Build config object expected by the main handlers
     const config = {
@@ -465,6 +551,9 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
             break;
         case 'xai':
             result = await callXAI(userPrompt, config, systemPrompt, history, apiKey);
+            break;
+        case 'local':
+            result = await callLocal(userPrompt, config, systemPrompt, history);
             break;
         default:
             throw new Error(`Unsupported provider: ${provider}`);
@@ -542,6 +631,7 @@ module.exports = {
     callOpenAI,
     callAnthropic,
     callXAI,
+    callLocal,
     getAIModelConfig,
     callAI,
     runDeepResearch

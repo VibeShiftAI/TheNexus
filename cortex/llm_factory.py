@@ -101,6 +101,9 @@ class LLMFactory:
         if not model_def:
             return False
         provider = model_def.get("provider", "")
+        # Local provider is always available — no cloud API key required
+        if provider == "local":
+            return True
         key_map = {
             "openai": settings.openai_api_key,
             "anthropic": settings.anthropic_api_key,
@@ -252,7 +255,24 @@ class LLMFactory:
         callbacks = [usage_cb]
 
         try:
-            if provider == "openai":
+            if provider == "local":
+                # Local provider: OpenAI-compatible endpoint (Ollama, LM Studio, vLLM)
+                base_url = settings.local_ai_url
+                api_key = "not-needed"  # Ollama doesn't require a key
+                if settings.local_ai_api_key:
+                    raw = settings.local_ai_api_key.get_secret_value() if hasattr(settings.local_ai_api_key, "get_secret_value") else str(settings.local_ai_api_key)
+                    if not self._is_placeholder_key(raw):
+                        api_key = raw
+                logger.info(f"🏠 [Local] Using {model_name} at {base_url}")
+                return ChatOpenAI(
+                    model=model_name,
+                    temperature=temperature,
+                    max_retries=retries,
+                    base_url=base_url,
+                    api_key=api_key,
+                    callbacks=callbacks,
+                )
+            elif provider == "openai":
                 if not settings.openai_api_key:
                     raise LLMConfigurationError("OPENAI_API_KEY not configured")
                 return ChatOpenAI(

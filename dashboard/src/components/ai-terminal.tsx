@@ -1089,17 +1089,42 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
 
                 {messages.map((msg, i) => (
                     msg.role === 'system' ? (
-                        /* System messages: compact activity log line */
-                        <div key={i} className="flex items-center gap-2 py-1 px-2">
-                            {loading && i === messages.length - 1 ? (
-                                <Loader2 size={12} className="text-cyan-500/60 animate-spin flex-shrink-0" />
-                            ) : (
-                                <div className="w-3 h-3 flex items-center justify-center flex-shrink-0">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50" />
+                        /* Multi-line / pre-formatted system events (e.g. [MORNING PLAN])
+                           render as a card with markdown. Single-line events stay compact. */
+                        (msg.content && msg.content.includes('\n')) ? (
+                            <div key={i} className="flex gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-cyan-500/10 text-cyan-400">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/70" />
                                 </div>
-                            )}
-                            <span className="text-xs text-slate-400">{msg.content}</span>
-                        </div>
+                                <div className="max-w-[80%] rounded-lg px-4 py-3 bg-slate-800/60 border border-cyan-500/20 text-slate-200">
+                                    <div className="prose prose-invert prose-sm max-w-none
+                                        prose-p:my-1 prose-p:text-slate-200 prose-p:leading-relaxed
+                                        prose-strong:text-cyan-300 prose-strong:font-semibold
+                                        prose-headings:text-cyan-300 prose-headings:font-semibold prose-h1:text-base prose-h2:text-sm prose-h3:text-sm prose-h1:mt-0 prose-h2:mt-2 prose-h3:mt-2
+                                        prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-li:text-slate-200
+                                        prose-code:text-cyan-300 prose-code:bg-slate-900/60 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:before:content-none prose-code:after:content-none
+                                        prose-table:text-xs prose-th:text-cyan-300 prose-th:bg-slate-900/40 prose-th:px-2 prose-th:py-1 prose-td:text-slate-200 prose-td:px-2 prose-td:py-1 prose-td:border-slate-700/50
+                                        prose-hr:border-slate-700/50 prose-hr:my-3
+                                    ">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {msg.content}
+                                        </ReactMarkdown>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            /* System messages: compact activity log line */
+                            <div key={i} className="flex items-center gap-2 py-1 px-2">
+                                {loading && i === messages.length - 1 ? (
+                                    <Loader2 size={12} className="text-cyan-500/60 animate-spin flex-shrink-0" />
+                                ) : (
+                                    <div className="w-3 h-3 flex items-center justify-center flex-shrink-0">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50" />
+                                    </div>
+                                )}
+                                <span className="text-xs text-slate-400">{msg.content}</span>
+                            </div>
+                        )
                     ) : (
                         <div
                             key={i}

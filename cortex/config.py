@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[SecretStr] = Field(default=None, alias="ANTHROPIC_API_KEY")
     google_api_key: Optional[SecretStr] = Field(default=None, alias="GOOGLE_API_KEY")
     xai_api_key: Optional[SecretStr] = Field(default=None, alias="XAI_API_KEY")
+
+    # Local AI (Ollama, LM Studio, vLLM — OpenAI-compatible endpoint)
+    local_ai_url: str = Field(default="http://localhost:11434/v1", alias="LOCAL_AI_URL")
+    local_ai_api_key: Optional[SecretStr] = Field(default=None, alias="LOCAL_AI_API_KEY")
+    local_ai_model: str = Field(default="qwen3:32b", alias="LOCAL_AI_MODEL")
     
     # Paths (using module-level _CORTEX_ROOT for cross-project compatibility)
     @property

@@ -133,9 +133,10 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
             OpenAI: process.env.OPENAI_API_KEY,
             Anthropic: process.env.ANTHROPIC_API_KEY,
             xAI: process.env.XAI_API_KEY,
+            Local: 'local', // Local provider doesn't require a cloud API key
         };
 
-        if (!apiKeys[config.provider]) {
+        if (!apiKeys[config.provider] && config.provider !== 'Local') {
             return res.json({ response: `Praxis Terminal is ready! To enable ${config.provider} models, add the appropriate API key to your .env file.`, model: config.apiModelId, provider: config.provider, mode });
         }
 
