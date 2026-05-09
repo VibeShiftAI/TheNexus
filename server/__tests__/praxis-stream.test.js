@@ -93,6 +93,32 @@ describe('praxis-stream route', () => {
     ]);
   });
 
+  it('serves the Praxis snapshot at both dashboard and mobile paths', async () => {
+    const praxis = express();
+    praxis.get('/presence', (_req, res) => {
+      res.json({ activity: 'idle', summary: 'Idle' });
+    });
+    praxisHandle = await listen(praxis);
+    process.env.PRAXIS_URL = praxisHandle.baseUrl;
+
+    const createPraxisStreamRouter = require('../routes/praxis-stream');
+    const nexus = express();
+    nexus.use('/api/praxis', createPraxisStreamRouter());
+    nexusHandle = await listen(nexus);
+    const nexusBaseUrl = nexusHandle.baseUrl;
+
+    const expected = {
+      status: 200,
+      body: {
+        presence: { activity: 'idle', summary: 'Idle' },
+        upstream: { connected: false, lastEventId: null },
+      },
+    };
+
+    await expect(requestJson(`${nexusBaseUrl}/api/praxis/snapshot`)).resolves.toEqual(expected);
+    await expect(requestJson(`${nexusBaseUrl}/api/praxis/stream/snapshot`)).resolves.toEqual(expected);
+  });
+
   it('sends a mobile push notification when Praxis emits hitl.created', async () => {
     const event = {
       type: 'hitl.created',

@@ -18,6 +18,7 @@ const parentEnvPath = path.resolve(__dirname, "..", ".env");
 dotenvConfig({ path: parentEnvPath });
 
 // No environment variable validation needed — auth removed, local SQLite only.
+const praxisChatTimeoutMs = Number.parseInt(process.env.PRAXIS_CHAT_TIMEOUT_MS || "", 10) || 20 * 60 * 1000;
 
 const nextConfig: NextConfig = {
   // Allow Cloudflare Tunnel domain to access Next.js dev server
@@ -25,7 +26,7 @@ const nextConfig: NextConfig = {
   // Transpile local shared package
   transpilePackages: ['@praxis/contract'],
   experimental: {
-    proxyTimeout: 600000,
+    proxyTimeout: praxisChatTimeoutMs + 60 * 1000,
   },
   env: {
     // No Supabase env vars needed — auth removed

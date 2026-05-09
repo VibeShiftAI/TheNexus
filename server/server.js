@@ -38,6 +38,9 @@ process.on('unhandledRejection', (reason) => console.error('!!! UNHANDLED REJECT
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
+const { configureLongRunningRequestTimeouts } = require('./utils/http-timeouts');
+const PRAXIS_CHAT_TIMEOUT_MS = Number.parseInt(process.env.PRAXIS_CHAT_TIMEOUT_MS || '', 10) || 20 * 60 * 1000;
+configureLongRunningRequestTimeouts(server, { praxisChatTimeoutMs: PRAXIS_CHAT_TIMEOUT_MS });
 
 const ALLOWED_ORIGINS = [
     'http://localhost:3000', 'http://localhost:4000',

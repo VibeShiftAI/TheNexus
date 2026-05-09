@@ -239,7 +239,7 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
     });
 
     // ── Snapshot bootstrap ───────────────────────────────────────
-    router.get('/snapshot', async (_req, res) => {
+    async function handleSnapshot(_req, res) {
         try {
             const response = await fetch(`${PRAXIS_URL}${SNAPSHOT_PATH}`);
             if (!response.ok) {
@@ -250,7 +250,10 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
         } catch (err) {
             res.status(502).json({ error: err.message || 'Praxis unreachable' });
         }
-    });
+    }
+
+    router.get('/snapshot', handleSnapshot);
+    router.get('/stream/snapshot', handleSnapshot);
 
     // ── HITL Inbox Proxy (Phase 4) ─────────────────────────────────
     router.get('/hitl/pending', (req, res) => proxyJson(req, res, '/hitl/pending'));

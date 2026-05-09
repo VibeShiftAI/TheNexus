@@ -62,6 +62,47 @@ function createClientMessageId(): string {
     return `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+async function readPraxisEventStream(
+    response: Response,
+    onDelta: (delta: string) => void,
+): Promise<any> {
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('Streaming response did not include a readable body');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finalEvent: any = null;
+
+    const handleFrame = (frame: string) => {
+        const data = frame
+            .split(/\r?\n/)
+            .filter(line => line.startsWith('data:'))
+            .map(line => line.slice(5).trimStart())
+            .join('\n');
+        if (!data || data === '[DONE]') return;
+
+        const event = JSON.parse(data);
+        if (event.type === 'delta' && typeof event.delta === 'string') {
+            onDelta(event.delta);
+        } else if (event.type === 'final') {
+            finalEvent = event;
+        }
+    };
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split(/\r?\n\r?\n/);
+        buffer = frames.pop() || '';
+        frames.forEach(handleFrame);
+    }
+
+    buffer += decoder.decode();
+    if (buffer.trim()) handleFrame(buffer);
+    return finalEvent;
+}
+
 export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITerminalProps) {
     const isInline = mode === 'inline';
     const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages } = useCortex();
@@ -497,6 +538,8 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             let lastError: Error | null = null;
             let response: Response | null = null;
 
+            const canStreamPraxis = selectedMode.id === 'praxis' && !base64Audio && uploadedAttachments.length === 0;
+            const streamingAssistantId = canStreamPraxis ? createClientMessageId() : null;
             const requestBody = JSON.stringify({
                 message: input.trim() || (currentAudioBlob ? "Voice recording attached" : `Please analyze the attached file(s): ${filesToUpload.map(f => f.name).join(', ')}`),
                 // Send full model configuration for proper routing
@@ -514,6 +557,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 files: fileContents, // Include text file contents for LLM context
                 audio: base64Audio, // Include base64 voice recording if any
                 attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined, // Uploaded file refs
+                stream: canStreamPraxis,
             });
 
             for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -522,6 +566,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                         method: 'POST',
                         credentials: 'include',
                         headers: {
+                            ...(canStreamPraxis ? { Accept: 'text/event-stream' } : {}),
                             ...authHeader as any,
                         },
                         body: requestBody,
@@ -567,6 +612,41 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     return;
                 }
                 throw new Error(`Server returned ${detail}`);
+            }
+
+            const responseContentType = response.headers.get('content-type') || '';
+            if (streamingAssistantId && responseContentType.includes('text/event-stream')) {
+                setMessages(prev => [...prev, {
+                    id: streamingAssistantId,
+                    role: 'assistant',
+                    content: '',
+                    timestamp: new Date(),
+                }]);
+
+                const finalEvent = await readPraxisEventStream(response, (delta) => {
+                    setMessages(prev => prev.map(message =>
+                        message.id === streamingAssistantId
+                            ? { ...message, content: `${message.content}${delta}` }
+                            : message
+                    ));
+                });
+
+                const finalMessage: Message = {
+                    id: finalEvent?.assistantMessageId || streamingAssistantId,
+                    role: 'assistant',
+                    content: finalEvent?.response || 'No response received',
+                    timestamp: new Date(),
+                    voiceData: finalEvent?.voiceData,
+                };
+
+                setMessages(prev => {
+                    const withoutStreaming = prev.filter(message => message.id !== streamingAssistantId);
+                    if (finalMessage.id && withoutStreaming.some(message => message.id === finalMessage.id)) {
+                        return withoutStreaming;
+                    }
+                    return [...withoutStreaming, finalMessage];
+                });
+                return;
             }
 
             const data = await response.json();

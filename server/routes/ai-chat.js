@@ -4,6 +4,120 @@
  */
 const express = require('express');
 
+const DEFAULT_PRAXIS_CHAT_TIMEOUT_MS = 20 * 60 * 1000;
+
+function getPraxisChatTimeoutMs() {
+    const configured = Number.parseInt(process.env.PRAXIS_CHAT_TIMEOUT_MS || '', 10);
+    return Number.isFinite(configured) && configured > 0
+        ? configured
+        : DEFAULT_PRAXIS_CHAT_TIMEOUT_MS;
+}
+
+function wantsEventStream(req) {
+    if (req.body?.stream === true) return true;
+    return /\btext\/event-stream\b/i.test(req.get('accept') || '');
+}
+
+async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversationId, fullResponsePrefix = '', metadata = {} }) {
+    const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
+    const decoder = new TextDecoder();
+    const reader = praxisResponse.body?.getReader?.();
+    if (!reader) {
+        throw new Error('Praxis stream response did not include a readable body');
+    }
+
+    let buffer = '';
+    let streamedResponse = '';
+    let finalResponse = '';
+    let voiceData = [];
+
+    async function handleFrame(frame) {
+        const dataLines = frame
+            .split(/\r?\n/)
+            .filter((line) => line.startsWith('data:'))
+            .map((line) => line.slice(5).trimStart());
+        if (dataLines.length === 0) return false;
+        const data = dataLines.join('\n');
+        if (data === '[DONE]') return true;
+
+        let event;
+        try {
+            event = JSON.parse(data);
+        } catch {
+            return false;
+        }
+
+        const delta = event.delta ?? event.choices?.[0]?.delta?.content ?? '';
+        if (delta) {
+            streamedResponse += delta;
+            res.write(`data: ${JSON.stringify({ type: 'delta', delta })}\n\n`);
+        }
+
+        if (event.type === 'final' || event.response) {
+            finalResponse = event.response || streamedResponse;
+            voiceData = Array.isArray(event.voiceData) ? event.voiceData : [];
+        }
+
+        return false;
+    }
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split(/\r?\n\r?\n/);
+        buffer = frames.pop() || '';
+        for (const frame of frames) {
+            const upstreamDone = await handleFrame(frame);
+            if (upstreamDone) {
+                buffer = '';
+                break;
+            }
+        }
+    }
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+        await handleFrame(buffer);
+    }
+
+    const responseBody = finalResponse || streamedResponse || 'No response';
+    const fullResponse = responseBody + fullResponsePrefix;
+    let assistantMessageId = null;
+
+    if (conversationId) {
+        try {
+            const savedAssistantMessage = await db.saveChatMessage({
+                conversation_id: conversationId,
+                role: 'assistant',
+                content: fullResponse,
+                mode: 'praxis',
+                metadata: buildPraxisAssistantMetadata({ ...metadata, voiceData }),
+            });
+            assistantMessageId = savedAssistantMessage?.id || null;
+            if (savedAssistantMessage && io) {
+                io.emit('chat-message', buildChatMessageEvent(savedAssistantMessage));
+            }
+        } catch (dbErr) {
+            console.error(`[AI Chat] Failed to persist streamed Praxis response to DB (non-fatal):`, dbErr.message);
+        }
+    }
+
+    res.write(`data: ${JSON.stringify({
+        type: 'final',
+        response: fullResponse,
+        model: 'praxis-agent',
+        provider: 'Praxis',
+        mode: 'praxis',
+        conversationId,
+        assistantMessageId,
+        isThinking: false,
+        tokenUsage: { total: 0 },
+        artifacts: [],
+        voiceData,
+    })}\n\n`);
+    res.write('data: [DONE]\n\n');
+}
+
 function createAIChatRouter({ db, callAI, pushService, io }) {
     const router = express.Router();
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
@@ -84,10 +198,11 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                     }
                 }
 
-                const praxisPayload = { message, history, projectId, audio, attachments: attachments || undefined };
+                const canStream = wantsEventStream(req) && !audio && !(attachments?.length > 0);
+                const praxisPayload = { message, history, projectId, audio, attachments: attachments || undefined, ...(canStream ? { stream: true } : {}) };
                 const praxisResponse = await fetch('http://127.0.0.1:54322/api/chat', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(praxisPayload), signal: AbortSignal.timeout(600000), // 10 min — agent loops with tool calls can be long
+                    method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}) },
+                    body: JSON.stringify(praxisPayload), signal: AbortSignal.timeout(getPraxisChatTimeoutMs()), // local agent loops can be long
                 });
 
                 if (!praxisResponse.ok) {
@@ -95,6 +210,31 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                     console.error(`[AI Chat] Praxis returned ${praxisResponse.status}: ${errorText}`);
                     throw new Error(`Praxis returned ${praxisResponse.status}: ${errorText}`);
                 }
+
+                if (canStream) {
+                    res.setHeader('Content-Type', 'text/event-stream');
+                    res.setHeader('Cache-Control', 'no-cache');
+                    res.setHeader('Connection', 'keep-alive');
+                    res.setHeader('X-Accel-Buffering', 'no');
+                    res.flushHeaders?.();
+                    res.socket?.setNoDelay(true);
+                    try {
+                        await writePraxisStreamToClient({
+                            praxisResponse,
+                            res,
+                            db,
+                            io,
+                            conversationId,
+                            fullResponsePrefix: `\n\n_\u2014_\n*\ud83e\udd16 Relayed by Praxis*`,
+                        });
+                    } catch (streamErr) {
+                        console.error(`[AI Chat] Praxis stream relay error:`, streamErr);
+                        res.write(`data: ${JSON.stringify({ type: 'error', error: streamErr.message || 'Praxis stream failed' })}\n\n`);
+                        res.write('data: [DONE]\n\n');
+                    }
+                    return res.end();
+                }
+
                 const data = await praxisResponse.json();
 
                 const debugFooter = `\n\n_\u2014_\n*\ud83e\udd16 Relayed by Praxis*`;
@@ -158,3 +298,5 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
 }
 
 module.exports = createAIChatRouter;
+module.exports.getPraxisChatTimeoutMs = getPraxisChatTimeoutMs;
+module.exports.wantsEventStream = wantsEventStream;
