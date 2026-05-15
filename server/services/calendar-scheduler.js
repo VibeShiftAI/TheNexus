@@ -39,6 +39,16 @@ function notifyPraxis(event) {
     req.end();
 }
 
+function shouldDispatchCalendarEvent(event, now = new Date()) {
+    if (event.status !== 'scheduled') return false;
+    if (String(event.event_type || '').startsWith('local_llm:')) return false;
+
+    const startTime = new Date(event.start_time);
+    const timeDiffMs = startTime.getTime() - now.getTime();
+
+    return timeDiffMs <= 60000 && timeDiffMs >= -300000;
+}
+
 async function checkUpcomingEvents() {
     if (!dbRef) return;
     
@@ -52,13 +62,8 @@ async function checkUpcomingEvents() {
     const events = await dbRef.getCalendarEvents(startOfDay, endOfDay);
     
     events.forEach(event => {
-        if (event.status !== 'scheduled') return; // Only process scheduled
-        
-        const startTime = new Date(event.start_time);
-        const timeDiffMs = startTime.getTime() - now.getTime();
-        
         // If event is starting within the next minute (or is up to 5 min late but still scheduled)
-        if (timeDiffMs <= 60000 && timeDiffMs >= -300000) {
+        if (shouldDispatchCalendarEvent(event, now)) {
             notifyPraxis(event);
         }
     });
@@ -82,4 +87,4 @@ function stop() {
     }
 }
 
-module.exports = { start, stop };
+module.exports = { start, stop, shouldDispatchCalendarEvent };

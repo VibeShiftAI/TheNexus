@@ -12,7 +12,7 @@ import { DashboardInitiatives } from "@/components/dashboard-initiatives";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { DashboardWorkSummary } from "@/components/dashboard-work-summary";
 import { DailyJournal } from "@/components/daily-journal";
-import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen, Settings, Calendar, Table2 } from "lucide-react";
+import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen, Settings, Calendar, Table2, ListRestart } from "lucide-react";
 import { SettingsModal } from "@/components/settings-modal";
 
 import Link from "next/link";
@@ -107,6 +107,13 @@ export default function Home() {
             >
               <Calendar size={16} />
               <span>Calendar</span>
+            </Link>
+            <Link
+              href="/local-queue"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-sky-500/20 to-cyan-500/20 border border-sky-500/30 hover:border-sky-500/50 transition-all text-sky-400 hover:text-sky-300"
+            >
+              <ListRestart size={16} />
+              <span>Local Queue</span>
             </Link>
             <Link
               href="/codex"

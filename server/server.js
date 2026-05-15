@@ -86,7 +86,7 @@ function authenticate(req, res, next) {
 
 // Apply auth to protected route prefixes
 ['/api/projects', '/api/tasks', '/api/ai', '/api/pins', '/api/models',
- '/api/activity', '/api/dashboard', '/api/mcp', '/api/initiatives'
+ '/api/activity', '/api/dashboard', '/api/mcp', '/api/initiatives', '/api/local-queue'
 ].forEach(prefix => app.use(prefix, authenticate));
 
 // ─── Shared Dependencies (injected into route factories) ────────────────────
@@ -131,6 +131,7 @@ const createAgEventsRouter  = require('./routes/ag-events');
 const createBroadcastRouter = require('./routes/broadcast');
 const createCalendarRouter  = require('./routes/calendar');
 const createPraxisStreamRouter = require('./routes/praxis-stream');
+const createLocalQueueRouter = require('./routes/local-queue');
 
 // Health & system
 app.use('/api/health',    createHealthRouter());
@@ -141,6 +142,7 @@ app.use('/api',        createSystemRouter({ db, systemMonitor, tokenTracker, isC
 app.use('/api/ai/usage',  createUsageRouter({ db, tokenTracker }));
 app.use('/api/calendar',  createCalendarRouter({ db }));
 app.use('/api/praxis',    createPraxisStreamRouter({ io, pushService }));
+app.use('/api/local-queue', createLocalQueueRouter());
 
 // Projects & tasks
 const projectsRouter = createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync });

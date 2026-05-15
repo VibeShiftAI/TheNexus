@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, Plus, X, Calendar as CalendarIcon, Save, Clock, AlignLeft, CheckCircle2 } from "lucide-react";
 import {
     calendarEventsUrl,
+    calendarEventTone,
     emptyCalendarEventForm,
     parseCalendarEventStatus,
     toDatetimeLocalValue,
@@ -188,22 +189,14 @@ export default function CalendarPage() {
                                 <div className="absolute top-4 left-20 right-4 bottom-0 pointer-events-none">
                                     <div className="relative w-full h-full">
                                         {events.map((event, i) => (
-                                            <div 
+                                            <div
                                                 key={event.id || i}
-                                                className={`pointer-events-auto rounded-md shadow-lg border p-3 flex flex-col transition-transform hover:scale-[1.01] hover:z-10 cursor-pointer overflow-hidden ${
-                                                    event.status === 'in_progress' ? 'bg-amber-500/20 border-amber-500/50 shadow-amber-500/10' :
-                                                    event.status === 'completed' ? 'bg-emerald-500/20 border-emerald-500/50 shadow-emerald-500/10' :
-                                                    'bg-cyan-500/20 border-cyan-500/50 shadow-cyan-500/10'
-                                                }`}
+                                                className={`pointer-events-auto rounded-md shadow-lg border p-3 flex flex-col transition-transform hover:scale-[1.01] hover:z-10 cursor-pointer overflow-hidden ${calendarEventTone(event).block}`}
                                                 style={getEventStyle(event)}
                                                 onClick={() => openEditModal(event)}
                                             >
                                                 <div className="flex justify-between items-start gap-2">
-                                                    <h3 className={`font-bold text-sm line-clamp-1 ${
-                                                        event.status === 'in_progress' ? 'text-amber-300' :
-                                                        event.status === 'completed' ? 'text-emerald-300' :
-                                                        'text-cyan-300'
-                                                    }`}>{event.title}</h3>
+                                                    <h3 className={`font-bold text-sm line-clamp-1 ${calendarEventTone(event).title}`}>{event.title}</h3>
                                                     <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded opacity-70 bg-black/40">
                                                         {event.status}
                                                     </span>
