@@ -148,7 +148,7 @@ async def compliance_review(state: YouTubeWorkflowState) -> Dict[str, Any]:
         blocks_publish=False,
         warnings=["AI-generated media disclosure review is required before upload."],
     )
-    return {"compliance": report}
+    return {"compliance": report, **clear_pending_approval()}
 
 
 async def final_gate(state: YouTubeWorkflowState) -> Dict[str, Any]:
@@ -169,6 +169,10 @@ def route_review(state: YouTubeWorkflowState) -> Literal["approve", "revise", "r
     return state.get("review_decision") or "reject"
 
 
+async def finish(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    return clear_pending_approval()
+
+
 def build_youtube_graph(checkpointer=None):
     builder = StateGraph(YouTubeWorkflowState)
     builder.add_node("load_channel_profile", load_channel_profile)
@@ -181,6 +185,7 @@ def build_youtube_graph(checkpointer=None):
     builder.add_node(GATE_COST, cost_gate)
     builder.add_node("compliance_review", compliance_review)
     builder.add_node(GATE_FINAL, final_gate)
+    builder.add_node("finish", finish)
 
     builder.add_edge(START, "load_channel_profile")
     builder.add_edge("load_channel_profile", "research")
@@ -189,26 +194,27 @@ def build_youtube_graph(checkpointer=None):
     builder.add_conditional_edges(
         GATE_CONCEPT,
         route_review,
-        {"approve": "write_script", "revise": "draft_concept", "reject": END},
+        {"approve": "write_script", "revise": "draft_concept", "reject": "finish"},
     )
     builder.add_edge("write_script", GATE_SCRIPT)
     builder.add_conditional_edges(
         GATE_SCRIPT,
         route_review,
-        {"approve": "production_plan", "revise": "write_script", "reject": END},
+        {"approve": "production_plan", "revise": "write_script", "reject": "finish"},
     )
     builder.add_edge("production_plan", GATE_COST)
     builder.add_conditional_edges(
         GATE_COST,
         route_review,
-        {"approve": "compliance_review", "revise": "production_plan", "reject": END},
+        {"approve": "compliance_review", "revise": "production_plan", "reject": "finish"},
     )
     builder.add_edge("compliance_review", GATE_FINAL)
     builder.add_conditional_edges(
         GATE_FINAL,
         route_review,
-        {"approve": END, "revise": "production_plan", "reject": END},
+        {"approve": "finish", "revise": "production_plan", "reject": "finish"},
     )
+    builder.add_edge("finish", END)
 
     return builder.compile(
         checkpointer=checkpointer or MemorySaver(),
