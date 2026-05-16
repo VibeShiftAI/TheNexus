@@ -17,6 +17,7 @@ from .models import (
 )
 from .profiles import get_channel_profile
 from .provider_router import ProviderRouter
+from .praxis_research import gather_praxis_research
 from .state import YouTubeWorkflowState, clear_pending_approval
 
 
@@ -33,30 +34,32 @@ async def load_channel_profile(state: YouTubeWorkflowState) -> Dict[str, Any]:
 
 async def research(state: YouTubeWorkflowState) -> Dict[str, Any]:
     workflow_input = state["input"]
-    return {
-        "research_brief": {
-            "summary": f"Dry-run research brief for: {workflow_input.prompt}",
-            "sources": [],
-        }
-    }
+    return {"research_brief": await gather_praxis_research(workflow_input.prompt)}
 
 
 async def draft_concept(state: YouTubeWorkflowState) -> Dict[str, Any]:
     workflow_input = state["input"]
     profile = state["channel_profile"]
+    research_brief = state["research_brief"]
+    evidence_titles = [item.title for item in research_brief.evidence[:3]]
     concept = Concept(
-        title="Nexus Architecture Explainer",
-        logline=f"A useful video about {workflow_input.prompt}.",
+        title="Praxis Introduction",
+        logline=f"A grounded introduction to Praxis through the lens of: {workflow_input.prompt}.",
         audience="Builders and operators using The Nexus.",
-        promise="Show the viewer what the system does and why the workflow matters.",
-        retention_hook="Open with the concrete outcome before explaining the machinery.",
+        promise="Show what Praxis can actually inspect, reason about, and produce inside The Nexus.",
+        retention_hook="Open with Praxis researching himself before explaining the workflow machinery.",
         outline=[
-            "State the practical problem.",
-            "Show the workflow shape.",
-            "Explain where human review protects quality.",
-            "Close with the next action.",
+            research_brief.summary,
+            "Show the internal faculties Praxis used: tools, code evidence, workflow templates, and project history.",
+            "Turn those findings into a creator-facing explanation of how Praxis works.",
+            "Explain where human review protects quality before any expensive media generation or upload.",
         ],
-        risk_notes=list(profile.style_rules),
+        risk_notes=[
+            *profile.style_rules,
+            "Concept is grounded in internal Praxis evidence, not generic web research.",
+            *(f"Evidence: {title}" for title in evidence_titles),
+            *research_brief.gaps,
+        ],
     )
     return {"concept": concept, **clear_pending_approval()}
 

@@ -14,6 +14,7 @@ from .models import (
     Concept,
     CostEntry,
     ProductionPlan,
+    ResearchBrief,
     ReviewDecision,
     RevisionTarget,
     Script,
@@ -73,7 +74,7 @@ class YouTubeWorkflowState(TypedDict, total=False):
     messages: Annotated[List[AnyMessage], add_messages]
     input: WorkflowInput
     channel_profile: ChannelProfile
-    research_brief: Dict[str, Any]
+    research_brief: ResearchBrief
     concept: Concept
     script: Script
     production_plan: ProductionPlan

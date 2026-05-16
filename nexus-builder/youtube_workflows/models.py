@@ -9,6 +9,15 @@ PublishMode = Literal["export", "private_upload"]
 ReviewDecision = Literal["approve", "revise", "reject"]
 RevisionTarget = Literal["concept", "script", "production_plan", "assets", "compliance"]
 ProviderName = Literal["dry_run", "local", "existing_adapter", "veo"]
+ResearchSourceType = Literal[
+    "context",
+    "tool_registry",
+    "codebase",
+    "git",
+    "workflow",
+    "memory",
+    "fallback",
+]
 
 
 class WorkflowInput(BaseModel):
@@ -49,6 +58,23 @@ class Concept(BaseModel):
     retention_hook: str = Field(min_length=1)
     outline: List[str] = Field(min_length=1)
     risk_notes: List[str] = Field(default_factory=list)
+
+
+class ResearchEvidence(BaseModel):
+    source_type: ResearchSourceType
+    title: str = Field(min_length=1)
+    path: Optional[str] = None
+    excerpt: str = Field(min_length=1, max_length=500)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ResearchBrief(BaseModel):
+    source_scope: Literal["praxis_internal"] = "praxis_internal"
+    summary: str = Field(min_length=1)
+    evidence: List[ResearchEvidence] = Field(default_factory=list)
+    claims: List[str] = Field(default_factory=list)
+    gaps: List[str] = Field(default_factory=list)
+    angle_notes: List[str] = Field(default_factory=list)
 
 
 class SceneScript(BaseModel):

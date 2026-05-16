@@ -12,6 +12,8 @@ async def test_graph_reaches_concept_gate_in_dry_run():
     result = await graph.ainvoke(state, {"configurable": {"thread_id": "yt-test-concept"}})
     assert result["pending_approval"].gate == "concept"
     assert result["concept"].title
+    assert result["research_brief"].source_scope == "praxis_internal"
+    assert any("internal Praxis evidence" in note for note in result["concept"].risk_notes)
 
 
 @pytest.mark.asyncio
