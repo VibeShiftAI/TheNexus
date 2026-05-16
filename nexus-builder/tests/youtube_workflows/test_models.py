@@ -30,6 +30,15 @@ def test_channel_profile_blocks_public_auto_publish():
     assert profile.publish_policy["privacy_status"] == "private"
 
 
+def test_channel_profile_rejects_public_upload_policy():
+    with pytest.raises(ValidationError):
+        ChannelProfile(
+            id="test",
+            name="Test Channel",
+            publish_policy={"privacy_status": "public", "allow_public_upload": True},
+        )
+
+
 def test_scene_requires_positive_duration():
     with pytest.raises(ValidationError):
         SceneScript(
@@ -44,6 +53,26 @@ def test_scene_requires_positive_duration():
 def test_script_requires_at_least_one_scene():
     with pytest.raises(ValidationError):
         Script(title="Empty", scenes=[])
+
+
+def test_script_rejects_duplicate_scene_ids():
+    scene1 = SceneScript(
+        scene_id="s1",
+        narration="A short line.",
+        visual_prompt="A clean studio shot.",
+        motion_prompt="Slow push in.",
+        duration_s=5,
+    )
+    scene2 = SceneScript(
+        scene_id="s1",
+        narration="Another short line.",
+        visual_prompt="A second clean studio shot.",
+        motion_prompt="Slow pull back.",
+        duration_s=5,
+    )
+
+    with pytest.raises(ValidationError):
+        Script(title="Dupes", scenes=[scene1, scene2])
 
 
 def test_production_plan_cost_rollup():
