@@ -136,6 +136,32 @@ function createProjectWorkflowsRouter({ db, getProjectById, PROJECT_ROOT }) {
         }
     });
 
+    // POST resume workflow approval
+    router.post('/:id/workflows/:workflowId/approval', async (req, res) => {
+        try {
+            const workflow = await db.getProjectWorkflow(req.params.workflowId);
+            if (!workflow) return res.status(404).json({ error: 'Workflow not found' });
+
+            const { decision = 'approve', notes = '', revision_target } = req.body || {};
+            if (workflow.workflow_type !== 'youtube-production') {
+                return res.status(400).json({ error: 'Approval resume is only implemented for YouTube project workflows' });
+            }
+
+            const { resumeYoutubeWorkflowApproval } = require('../services/project-workflow-supervisor');
+            const result = await resumeYoutubeWorkflowApproval({
+                db,
+                workflow,
+                decision,
+                notes,
+                revisionTarget: revision_target,
+            });
+            const updatedWorkflow = await db.getProjectWorkflow(req.params.workflowId);
+            res.json({ success: true, message: result.message, workflow: updatedWorkflow, pendingApproval: result.pendingApproval || null });
+        } catch (error) {
+            res.status(500).json({ error: error.message || 'Failed to resume workflow approval' });
+        }
+    });
+
     // POST check workflow stage
     router.post('/:id/workflows/:workflowId/check', async (req, res) => {
         try {

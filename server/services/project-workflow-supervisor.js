@@ -185,6 +185,151 @@ async function updateWorkflowSupervisorStatus(workflowId, status, details = {}) 
     });
 }
 
+function getApprovalStage(pendingApproval, fallback = null) {
+    return pendingApproval?.gate || fallback;
+}
+
+async function handleYoutubeWorkflowStart({ db: database = db, workflow, context, langGraphUrl }) {
+    const url = langGraphUrl || process.env.LANGGRAPH_URL || process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+    const project = workflow.project || await database.getProject?.(workflow.project_id);
+    const prompt = context || workflow.configuration?.goal || workflow.description || 'Create a reviewed YouTube video.';
+
+    const response = await fetch(`${url}/api/youtube/runs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            prompt,
+            project_id: workflow.project_id,
+            desired_duration_s: workflow.configuration?.desired_duration_s || 90,
+            channel_profile_id: workflow.configuration?.channel_profile_id || 'default',
+            dry_run: workflow.configuration?.dry_run !== false,
+            publish_mode: workflow.configuration?.publish_mode || 'export',
+            max_cost_usd: workflow.configuration?.max_cost_usd || 0,
+            project_path: project?.path || project?.local_path || '',
+            project_name: project?.name || '',
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`YouTube LangGraph run failed: ${response.status}`);
+    }
+
+    const runData = await response.json();
+    if (!runData.success) {
+        throw new Error(`YouTube LangGraph run returned error: ${runData.error || 'unknown'}`);
+    }
+
+    const pendingApproval = runData.pending_approval || runData.state?.pending_approval || null;
+    const currentStage = getApprovalStage(pendingApproval, workflow.current_stage || 'concept');
+
+    await database.updateProjectWorkflow(workflow.id, {
+        status: pendingApproval ? 'review' : 'in_progress',
+        current_stage: currentStage,
+        outputs: {
+            ...(workflow.outputs || {}),
+            [currentStage]: {
+                status: pendingApproval ? 'awaiting_approval' : 'complete',
+                mode: 'youtube-langgraph',
+                updatedAt: new Date().toISOString(),
+                artifact: pendingApproval?.artifact || null,
+            },
+        },
+        supervisor_status: pendingApproval ? WORKFLOW_STATUS.AWAITING_APPROVAL : WORKFLOW_STATUS.RUNNING,
+        supervisor_details: {
+            ...(workflow.supervisor_details || {}),
+            youtube_run_id: runData.run_id,
+            langgraph_run_id: runData.run_id,
+            pending_approval: pendingApproval,
+            youtube_state: runData.state || null,
+            startedAt: new Date().toISOString(),
+            mode: 'youtube-langgraph',
+        },
+    });
+
+    return {
+        success: true,
+        message: pendingApproval ? 'YouTube workflow waiting for approval' : 'YouTube workflow started',
+        runId: runData.run_id,
+        pendingApproval,
+        mode: 'youtube-langgraph',
+    };
+}
+
+async function resumeYoutubeWorkflowApproval({
+    db: database = db,
+    workflow,
+    decision = 'approve',
+    notes = '',
+    revisionTarget = undefined,
+    langGraphUrl,
+}) {
+    const url = langGraphUrl || process.env.LANGGRAPH_URL || process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+    const runId = workflow.supervisor_details?.youtube_run_id || workflow.supervisor_details?.langgraph_run_id;
+    if (!runId) {
+        throw new Error('No YouTube LangGraph run id found for workflow');
+    }
+
+    const response = await fetch(`${url}/api/youtube/runs/${runId}/resume`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            review_decision: decision,
+            review_notes: notes || undefined,
+            revision_target: revisionTarget,
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`YouTube LangGraph resume failed: ${response.status}`);
+    }
+
+    const runData = await response.json();
+    if (!runData.success) {
+        throw new Error(`YouTube LangGraph resume returned error: ${runData.error || 'unknown'}`);
+    }
+
+    const pendingApproval = runData.pending_approval || runData.state?.pending_approval || null;
+    const complete = !pendingApproval && runData.state?.final_output;
+    const currentStage = getApprovalStage(pendingApproval, complete ? null : workflow.current_stage);
+
+    await database.updateProjectWorkflow(workflow.id, {
+        status: complete ? 'complete' : (pendingApproval ? 'review' : 'in_progress'),
+        current_stage: currentStage,
+        outputs: {
+            ...(workflow.outputs || {}),
+            ...(currentStage ? {
+                [currentStage]: {
+                    status: pendingApproval ? 'awaiting_approval' : 'complete',
+                    mode: 'youtube-langgraph',
+                    updatedAt: new Date().toISOString(),
+                    artifact: pendingApproval?.artifact || null,
+                },
+            } : {}),
+            ...(complete ? { final: { status: 'complete', output: runData.state.final_output } } : {}),
+        },
+        supervisor_status: complete ? WORKFLOW_STATUS.COMPLETED : (pendingApproval ? WORKFLOW_STATUS.AWAITING_APPROVAL : WORKFLOW_STATUS.RUNNING),
+        supervisor_details: {
+            ...(workflow.supervisor_details || {}),
+            youtube_run_id: runId,
+            langgraph_run_id: runId,
+            pending_approval: pendingApproval,
+            youtube_state: runData.state || null,
+            lastDecision: decision,
+            lastReviewNotes: notes || null,
+            updatedAt: new Date().toISOString(),
+            mode: 'youtube-langgraph',
+        },
+    });
+
+    return {
+        success: true,
+        message: pendingApproval ? 'YouTube workflow waiting for approval' : 'YouTube workflow resumed',
+        runId,
+        pendingApproval,
+        complete,
+    };
+}
+
 /**
  * Gather context from completed tasks in previous stages
  * This includes research outputs, plan outputs, and any comments
@@ -551,6 +696,10 @@ async function handleStartWorkflow(workflow, context) {
     }
 
     try {
+        if (workflowType === 'youtube-production') {
+            return await handleYoutubeWorkflowStart({ workflow, context, langGraphUrl });
+        }
+
         // Fetch project-level templates from Python backend
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -798,6 +947,8 @@ module.exports = {
     checkStageCompletion,
     advanceToNextStage,
     generateStageTasks,
+    handleYoutubeWorkflowStart,
+    resumeYoutubeWorkflowApproval,
     WORKFLOW_STATUS,
     STAGE_TASK_GENERATORS
 };

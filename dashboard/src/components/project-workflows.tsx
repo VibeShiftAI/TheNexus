@@ -3,18 +3,16 @@
 import { useState, useEffect, useCallback } from "react";
 import {
     ProjectWorkflow,
+    ProjectWorkflowApprovalPayload,
     ProjectWorkflowStatus,
     ProjectWorkflowType,
     WorkflowTemplate,
-    WorkflowStage,
     getProjectWorkflows,
     createProjectWorkflow,
-    updateProjectWorkflow,
     deleteProjectWorkflow,
     runProjectWorkflow,
-    getWorkflowProgress,
+    resumeProjectWorkflowApproval,
     advanceWorkflow,
-    checkWorkflowStage,
     getWorkflowTemplates
 } from "@/lib/nexus";
 import {
@@ -111,6 +109,7 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isRunning, setIsRunning] = useState<string | null>(null);
     const [isAdvancing, setIsAdvancing] = useState<string | null>(null);
+    const [isApproving, setIsApproving] = useState<string | null>(null);
 
     const fetchWorkflows = useCallback(async () => {
         try {
@@ -212,6 +211,23 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
             setError(err instanceof Error ? err.message : 'Failed to advance workflow');
         } finally {
             setIsAdvancing(null);
+        }
+    };
+
+    const handleApproval = async (
+        workflowId: string,
+        decision: 'approve' | 'revise' | 'reject',
+        revisionTarget?: string
+    ) => {
+        setIsApproving(`${workflowId}:${decision}`);
+        try {
+            await resumeProjectWorkflowApproval(projectId, workflowId, decision, undefined, revisionTarget);
+            await fetchWorkflows();
+        } catch (err) {
+            console.error('Failed to resume workflow approval:', err);
+            setError(err instanceof Error ? err.message : 'Failed to resume workflow approval');
+        } finally {
+            setIsApproving(null);
         }
     };
 
@@ -406,6 +422,75 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
                                             <Clock size={12} />
                                             <span>Created {formatDate(workflow.created_at)}</span>
                                         </div>
+
+                                        {(() => {
+                                            const pendingApproval = workflow.supervisor_details?.pending_approval as ProjectWorkflowApprovalPayload | null | undefined;
+                                            if (!pendingApproval) return null;
+                                            const revisionTarget = pendingApproval.revision_targets?.[0];
+                                            const artifact = pendingApproval.artifact;
+                                            const title = typeof artifact?.title === 'string'
+                                                ? artifact.title
+                                                : typeof artifact?.gate === 'string'
+                                                    ? artifact.gate
+                                                    : pendingApproval.gate;
+                                            const summary = typeof artifact?.logline === 'string'
+                                                ? artifact.logline
+                                                : typeof artifact?.summary === 'string'
+                                                    ? artifact.summary
+                                                    : pendingApproval.message;
+
+                                            return (
+                                                <div className="mt-3 border-t border-amber-400/20 pt-3">
+                                                    <div className="flex items-start gap-3">
+                                                        <Pause size={15} className="mt-0.5 text-amber-300" />
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs font-semibold uppercase text-amber-300">
+                                                                    Awaiting {pendingApproval.gate} approval
+                                                                </span>
+                                                            </div>
+                                                            <p className="mt-1 text-sm font-medium text-white">{title}</p>
+                                                            <p className="mt-1 text-xs leading-5 text-slate-300 line-clamp-3">{summary}</p>
+                                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleApproval(workflow.id, 'approve');
+                                                                    }}
+                                                                    disabled={isApproving === `${workflow.id}:approve`}
+                                                                    className="inline-flex items-center gap-1.5 rounded-md border border-emerald-400/30 bg-emerald-500/15 px-2.5 py-1.5 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
+                                                                >
+                                                                    {isApproving === `${workflow.id}:approve` ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                                                                    <span>Approve</span>
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleApproval(workflow.id, 'revise', revisionTarget);
+                                                                    }}
+                                                                    disabled={isApproving === `${workflow.id}:revise`}
+                                                                    className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/30 bg-amber-500/15 px-2.5 py-1.5 text-xs font-medium text-amber-300 transition-colors hover:bg-amber-500/25 disabled:opacity-50"
+                                                                >
+                                                                    {isApproving === `${workflow.id}:revise` ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
+                                                                    <span>Request Revision</span>
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleApproval(workflow.id, 'reject');
+                                                                    }}
+                                                                    disabled={isApproving === `${workflow.id}:reject`}
+                                                                    className="inline-flex items-center gap-1.5 rounded-md border border-red-400/30 bg-red-500/15 px-2.5 py-1.5 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/25 disabled:opacity-50"
+                                                                >
+                                                                    {isApproving === `${workflow.id}:reject` ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                                                                    <span>Reject</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 );
                             })}

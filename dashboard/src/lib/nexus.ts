@@ -1716,6 +1716,14 @@ export interface ProjectWorkflow {
     project?: { id: string; name: string; path: string };
 }
 
+export interface ProjectWorkflowApprovalPayload {
+    gate: 'concept' | 'script' | 'cost' | 'final' | string;
+    message: string;
+    artifact?: Record<string, unknown>;
+    decisions?: string[];
+    revision_targets?: string[];
+}
+
 // Workflow Template Types
 export type TemplateLevel = 'dashboard' | 'project' | 'task';
 
@@ -1932,6 +1940,32 @@ export async function runProjectWorkflow(projectId: string, workflowId: string, 
     });
     if (!res.ok) {
         throw new Error('Failed to run workflow');
+    }
+    return res.json();
+}
+
+/**
+ * Resume a project workflow waiting at a human approval gate.
+ */
+export async function resumeProjectWorkflowApproval(
+    projectId: string,
+    workflowId: string,
+    decision: 'approve' | 'revise' | 'reject',
+    notes?: string,
+    revisionTarget?: string
+): Promise<{ success: boolean; message: string; workflow: ProjectWorkflow; pendingApproval?: ProjectWorkflowApprovalPayload | null }> {
+    const res = await authFetch(`${API_URL}/${projectId}/workflows/${workflowId}/approval`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            decision,
+            notes,
+            revision_target: revisionTarget,
+        }),
+    });
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || 'Failed to resume workflow approval');
     }
     return res.json();
 }
