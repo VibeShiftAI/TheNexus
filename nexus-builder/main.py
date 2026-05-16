@@ -30,6 +30,7 @@ from supabase_client import get_supabase
 from stream_manager import StreamManager
 from fastapi.responses import StreamingResponse
 from cortex.api.routes.council_routes import router as council_router
+from youtube_workflows.api import router as youtube_workflows_router
 
 
 
@@ -93,6 +94,7 @@ app.add_middleware(
 
 # Mount cortex routers
 app.include_router(council_router, prefix="/api", tags=["council"])
+app.include_router(youtube_workflows_router, prefix="/api/youtube", tags=["youtube-workflows"])
 
 
 

@@ -106,6 +106,36 @@ module.exports = function createLangGraphRouter({ db, PROJECT_ROOT, getProjectBy
         catch (error) { res.status(503).json({ error: 'LangGraph engine unavailable' }); }
     });
 
+    router.post('/youtube/runs', async (req, res) => {
+        try {
+            res.json(await lgService.proxyToLangGraph('/api/youtube/runs', {
+                method: 'POST',
+                body: JSON.stringify(req.body)
+            }));
+        } catch (error) {
+            res.status(503).json({ error: 'YouTube workflow engine unavailable' });
+        }
+    });
+
+    router.get('/youtube/runs/:runId', async (req, res) => {
+        try {
+            res.json(await lgService.proxyToLangGraph(`/api/youtube/runs/${req.params.runId}`));
+        } catch (error) {
+            res.status(503).json({ error: 'YouTube workflow engine unavailable' });
+        }
+    });
+
+    router.post('/youtube/runs/:runId/resume', async (req, res) => {
+        try {
+            res.json(await lgService.proxyToLangGraph(`/api/youtube/runs/${req.params.runId}/resume`, {
+                method: 'POST',
+                body: JSON.stringify(req.body)
+            }));
+        } catch (error) {
+            res.status(503).json({ error: 'YouTube workflow engine unavailable' });
+        }
+    });
+
     // ─── Business Logic Callbacks (delegate to service handlers) ─────────
 
     router.post('/workflow-complete', async (req, res) => {
