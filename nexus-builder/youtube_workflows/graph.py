@@ -7,8 +7,10 @@ from langgraph.graph import END, START, StateGraph
 
 from .models import (
     ApprovalPayload,
+    AssetRecord,
     ComplianceReport,
     Concept,
+    CostEntry,
     ProductionPlan,
     SceneScript,
     Script,
@@ -142,6 +144,62 @@ async def cost_gate(state: YouTubeWorkflowState) -> Dict[str, Any]:
     return {"pending_approval": payload}
 
 
+async def fanout_assets(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    assets = []
+    costs = []
+    for scene in state["script"].scenes:
+        assets.extend(
+            [
+                AssetRecord(
+                    scene_id=scene.scene_id,
+                    asset_type="voiceover",
+                    path=f"/tmp/nexus-youtube/{scene.scene_id}.aiff",
+                    provider="dry_run",
+                ),
+                AssetRecord(
+                    scene_id=scene.scene_id,
+                    asset_type="still",
+                    path=f"/tmp/nexus-youtube/{scene.scene_id}.png",
+                    provider="dry_run",
+                ),
+                AssetRecord(
+                    scene_id=scene.scene_id,
+                    asset_type="clip",
+                    path=f"/tmp/nexus-youtube/{scene.scene_id}.mp4",
+                    provider="dry_run",
+                    metadata={"duration_s": scene.duration_s},
+                ),
+            ]
+        )
+        costs.append(
+            CostEntry(
+                provider="dry_run",
+                operation="scene_assets",
+                usd=0.0,
+                scene_id=scene.scene_id,
+            )
+        )
+    return {"assets": assets, "costs": costs}
+
+
+async def reduce_assets(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    return {}
+
+
+async def assemble_video(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    final = AssetRecord(
+        scene_id="final",
+        asset_type="final_video",
+        path="/tmp/nexus-youtube/final.mp4",
+        provider="dry_run",
+        metadata={"scene_count": len(state["script"].scenes)},
+    )
+    return {
+        "assets": [final],
+        "final_output": {"video_path": final.path, "dry_run": True},
+    }
+
+
 async def compliance_review(state: YouTubeWorkflowState) -> Dict[str, Any]:
     report = ComplianceReport(
         disclosure_required=True,
@@ -183,6 +241,9 @@ def build_youtube_graph(checkpointer=None):
     builder.add_node(GATE_SCRIPT, script_gate)
     builder.add_node("production_plan", production_plan)
     builder.add_node(GATE_COST, cost_gate)
+    builder.add_node("fanout_assets", fanout_assets)
+    builder.add_node("reduce_assets", reduce_assets)
+    builder.add_node("assemble_video", assemble_video)
     builder.add_node("compliance_review", compliance_review)
     builder.add_node(GATE_FINAL, final_gate)
     builder.add_node("finish", finish)
@@ -206,8 +267,11 @@ def build_youtube_graph(checkpointer=None):
     builder.add_conditional_edges(
         GATE_COST,
         route_review,
-        {"approve": "compliance_review", "revise": "production_plan", "reject": "finish"},
+        {"approve": "fanout_assets", "revise": "production_plan", "reject": "finish"},
     )
+    builder.add_edge("fanout_assets", "reduce_assets")
+    builder.add_edge("reduce_assets", "assemble_video")
+    builder.add_edge("assemble_video", "compliance_review")
     builder.add_edge("compliance_review", GATE_FINAL)
     builder.add_conditional_edges(
         GATE_FINAL,
