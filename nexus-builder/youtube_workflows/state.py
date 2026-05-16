@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Annotated, Any, Dict, List, Optional, TypedDict
 
 from langchain_core.messages import AnyMessage
@@ -24,14 +25,41 @@ def append_assets(
     existing: Optional[List[AssetRecord]],
     incoming: Optional[List[AssetRecord]],
 ) -> List[AssetRecord]:
-    return [*(existing or []), *(incoming or [])]
+    merged: List[AssetRecord] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for asset in [*(existing or []), *(incoming or [])]:
+        identity = (asset.scene_id, asset.asset_type, asset.path, asset.provider)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        merged.append(asset)
+    return merged
 
 
 def append_costs(
     existing: Optional[List[CostEntry]],
     incoming: Optional[List[CostEntry]],
 ) -> List[CostEntry]:
-    return [*(existing or []), *(incoming or [])]
+    merged: List[CostEntry] = []
+    seen: set[tuple[str, str, float, Optional[str], str]] = set()
+    for cost in [*(existing or []), *(incoming or [])]:
+        metadata_json = json.dumps(
+            cost.metadata,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        identity = (
+            cost.provider,
+            cost.operation,
+            cost.usd,
+            cost.scene_id,
+            metadata_json,
+        )
+        if identity in seen:
+            continue
+        seen.add(identity)
+        merged.append(cost)
+    return merged
 
 
 def append_warnings(

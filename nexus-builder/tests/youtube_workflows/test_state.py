@@ -29,12 +29,69 @@ def test_append_assets_preserves_existing_records():
     assert [item.asset_type for item in merged] == ["still", "clip"]
 
 
+def test_append_assets_deduplicates_asset_identity():
+    existing = [
+        AssetRecord(
+            scene_id="s1",
+            asset_type="still",
+            path="/tmp/a.png",
+            provider="dry_run",
+        )
+    ]
+    duplicate = AssetRecord(
+        scene_id="s1",
+        asset_type="still",
+        path="/tmp/a.png",
+        provider="dry_run",
+    )
+    new_asset = AssetRecord(
+        scene_id="s1",
+        asset_type="clip",
+        path="/tmp/a.mp4",
+        provider="dry_run",
+    )
+
+    merged = append_assets(existing, [duplicate, new_asset, duplicate])
+
+    assert merged == [existing[0], new_asset]
+
+
 def test_append_costs_preserves_zero_cost_entries():
     existing = [CostEntry(provider="dry_run", operation="still", usd=0.0, scene_id="s1")]
     incoming = [CostEntry(provider="dry_run", operation="clip", usd=0.0, scene_id="s1")]
     merged = append_costs(existing, incoming)
     assert len(merged) == 2
     assert sum(item.usd for item in merged) == 0.0
+
+
+def test_append_costs_deduplicates_stable_cost_identity():
+    existing = [
+        CostEntry(
+            provider="dry_run",
+            operation="scene_assets",
+            usd=0.0,
+            scene_id="s1",
+            metadata={"duration_s": 5, "quality": "draft"},
+        )
+    ]
+    duplicate = CostEntry(
+        provider="dry_run",
+        operation="scene_assets",
+        usd=0.0,
+        scene_id="s1",
+        metadata={"quality": "draft", "duration_s": 5},
+    )
+    new_cost = CostEntry(
+        provider="dry_run",
+        operation="scene_assets",
+        usd=0.0,
+        scene_id="s2",
+        metadata={"duration_s": 5, "quality": "draft"},
+    )
+
+    merged = append_costs(existing, [duplicate, new_cost, duplicate])
+
+    assert merged == [existing[0], new_cost]
 
 
 def test_append_reducers_accept_none_inputs():
