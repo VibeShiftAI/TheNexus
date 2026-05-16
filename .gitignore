@@ -67,6 +67,7 @@ docker/data/neo4j_data/
 data/blackboard/
 
 # Local-only files
+.worktrees/
 start-nexus.bat
 Start The Nexus.bat
 Start The Nexus.command
