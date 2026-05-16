@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import re
+import sys
+from pathlib import Path
 from typing import Literal
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 from cortex.llm_factory import ModelRole, get_llm_for_role
 
@@ -17,7 +23,7 @@ YouTubeRole = Literal[
 
 
 _THOUGHT_PATTERNS = [
-    re.compile(r"<\|channel\>thought\n.*?<channel\|>\s*", re.DOTALL),
+    re.compile(r"<\|channel>\s*thought\s*.*?<channel\|>\s*", re.DOTALL | re.IGNORECASE),
     re.compile(r"<think>.*?</think>\s*", re.DOTALL | re.IGNORECASE),
 ]
 

@@ -1,14 +1,14 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-
 from youtube_workflows.llm import strip_thought_blocks, youtube_role_to_model_role
 
 
 def test_strip_thought_blocks_removes_gemma_thought_channel():
     text = "<|channel>thought\nprivate notes<channel|>\nFinal answer"
     assert strip_thought_blocks(text).strip() == "Final answer"
+
+
+def test_strip_thought_blocks_handles_channel_whitespace_and_case():
+    text = "<|CHANNEL> thought\r\nprivate notes<channel|>\nVisible"
+    assert strip_thought_blocks(text).strip() == "Visible"
 
 
 def test_strip_thought_blocks_removes_xml_think_block():
