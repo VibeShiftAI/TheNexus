@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Dict, List, Optional, TypedDict
 
+from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
 from .models import (
@@ -41,7 +42,7 @@ def append_warnings(
 
 
 class YouTubeWorkflowState(TypedDict, total=False):
-    messages: Annotated[List[Dict[str, Any]], add_messages]
+    messages: Annotated[List[AnyMessage], add_messages]
     input: WorkflowInput
     channel_profile: ChannelProfile
     research_brief: Dict[str, Any]
