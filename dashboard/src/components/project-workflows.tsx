@@ -35,7 +35,8 @@ import {
     Eye,
     Clock,
     Sparkles,
-    Shield
+    Shield,
+    Video
 } from "lucide-react";
 
 interface ProjectWorkflowsProps {
@@ -88,6 +89,7 @@ const workflowTypeIcons: Record<ProjectWorkflowType, React.ReactNode> = {
     'documentation': <FileText size={16} className="text-cyan-400" />,
     'security-sweep': <Shield size={16} className="text-orange-400" />,
     'release': <Rocket size={16} className="text-emerald-400" />,
+    'youtube-production': <Video size={16} className="text-rose-300" />,
     'custom': <Workflow size={16} className="text-purple-400" />
 };
 

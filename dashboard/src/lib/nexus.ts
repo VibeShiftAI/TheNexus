@@ -1686,7 +1686,7 @@ export interface InitiativeSummary {
 
 // Project Workflow Types
 export type ProjectWorkflowStatus = 'idea' | 'planning' | 'in_progress' | 'review' | 'complete' | 'cancelled';
-export type ProjectWorkflowType = 'brand-development' | 'logo-development' | 'documentation' | 'security-sweep' | 'release' | 'custom';
+export type ProjectWorkflowType = 'brand-development' | 'logo-development' | 'documentation' | 'security-sweep' | 'release' | 'youtube-production' | 'custom';
 
 export interface WorkflowStage {
     id: string;
