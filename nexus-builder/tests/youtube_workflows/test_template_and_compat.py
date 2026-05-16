@@ -12,6 +12,14 @@ def test_youtube_template_exists_and_is_dashboard_level():
     assert data["level"] == "project"
 
 
+def test_youtube_template_stages_match_existing_shape():
+    path = Path(__file__).resolve().parents[3] / "config" / "templates" / "workflows" / "youtube-production.json"
+    stages = json.loads(path.read_text())["stages"]
+    assert [stage["id"] for stage in stages] == ["concept", "script", "cost", "assets", "final"]
+    assert [stage["order"] for stage in stages] == [1, 2, 3, 4, 5]
+    assert all(stage["name"] for stage in stages)
+
+
 def test_legacy_initial_state_still_has_channel_plan():
     state = create_initial_state(dry_run=True)
     assert state["channel_plan"] == {}

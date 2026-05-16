@@ -5,11 +5,31 @@
   "level": "project",
   "workflow_type": "youtube-production",
   "stages": [
-    "concept",
-    "script",
-    "cost",
-    "assets",
-    "final"
+    {
+      "id": "concept",
+      "name": "Concept",
+      "order": 1
+    },
+    {
+      "id": "script",
+      "name": "Script",
+      "order": 2
+    },
+    {
+      "id": "cost",
+      "name": "Cost Review",
+      "order": 3
+    },
+    {
+      "id": "assets",
+      "name": "Assets",
+      "order": 4
+    },
+    {
+      "id": "final",
+      "name": "Final Review",
+      "order": 5
+    }
   ],
   "nodes": [
     {
