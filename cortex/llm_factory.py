@@ -43,6 +43,12 @@ class ModelRole(str, Enum):
     # Legacy — kept for backward compat with model_registry.yaml
     ENTITY_EXTRACTOR = "entity_extractor"
     ORCHESTRATOR = "orchestrator"
+    YOUTUBE_ROUTER = "youtube_router"
+    YOUTUBE_RESEARCHER = "youtube_researcher"
+    YOUTUBE_STRATEGIST = "youtube_strategist"
+    YOUTUBE_SCRIPTWRITER = "youtube_scriptwriter"
+    YOUTUBE_PRODUCER = "youtube_producer"
+    YOUTUBE_COMPLIANCE = "youtube_compliance"
 
 
 class LLMConfigurationError(Exception):

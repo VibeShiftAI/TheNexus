@@ -154,6 +154,42 @@ roles:
     temperature: 0.2
     description: "Meta-reasoning and task decomposition — local model"
 
+  youtube_router:
+    strategy: fixed
+    model: local-default
+    temperature: 0.0
+    description: "YouTube workflow request classification and channel/profile routing"
+
+  youtube_researcher:
+    strategy: fixed
+    model: local-default
+    temperature: 0.2
+    description: "YouTube workflow research summarization with local-first context"
+
+  youtube_strategist:
+    strategy: fixed
+    model: local-default
+    temperature: 0.5
+    description: "YouTube concept, audience, promise, and retention structure"
+
+  youtube_scriptwriter:
+    strategy: fixed
+    model: local-default
+    temperature: 0.7
+    description: "YouTube scene-by-scene scriptwriting"
+
+  youtube_producer:
+    strategy: fixed
+    model: local-default
+    temperature: 0.3
+    description: "YouTube production plans and render prompts"
+
+  youtube_compliance:
+    strategy: fixed
+    model: local-default
+    temperature: 0.1
+    description: "YouTube AI disclosure, originality, cadence, and upload policy checks"
+
   # ── CORTEX COUNCIL — Cloud diversity preserved ───────────────
   # The reviewer pool keeps multi-provider shuffle for anti-groupthink.
   # min_providers=2 is enforced by council.py at call time.
