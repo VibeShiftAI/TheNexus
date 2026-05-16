@@ -377,6 +377,7 @@ def init_atomic_nodes() -> int:
         DocReviewGateNode,
         DocFileWriterNode,
     )
+    from .youtube_production import YouTubeProductionNode
     
     # Register all built-in nodes
     for node_class in [
@@ -409,6 +410,7 @@ def init_atomic_nodes() -> int:
         DocDrafterNode,
         DocReviewGateNode,
         DocFileWriterNode,
+        YouTubeProductionNode,
         # Nexus Prime workflow nodes
         WalkthroughGeneratorNode,
         ApprovalGateNode,

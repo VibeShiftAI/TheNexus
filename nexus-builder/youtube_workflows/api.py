@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import uuid
 from collections import OrderedDict
 from typing import Any, Dict, Optional
@@ -29,7 +30,18 @@ def _remember_run(run_id: str, run: Dict[str, Any]) -> None:
     _runs[run_id] = run
     _runs.move_to_end(run_id)
     while len(_runs) > MAX_IN_MEMORY_RUNS:
-        _runs.popitem(last=False)
+        evictable_id = next(
+            (
+                key
+                for key, value in _runs.items()
+                if not value.get("state", {}).get("pending_approval")
+            ),
+            None,
+        )
+        if evictable_id is None:
+            _runs.popitem(last=False)
+        else:
+            _runs.pop(evictable_id)
 
 
 def _jsonable_state(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -38,6 +50,11 @@ def _jsonable_state(state: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.post("/runs")
 async def start_run(workflow_input: WorkflowInput):
+    if not workflow_input.dry_run and os.getenv("NEXUS_YOUTUBE_LIVE_ENABLED") != "1":
+        raise HTTPException(
+            status_code=403,
+            detail="Live YouTube production runs require NEXUS_YOUTUBE_LIVE_ENABLED=1",
+        )
     run_id = f"yt-{uuid.uuid4().hex[:10]}"
     config = {"configurable": {"thread_id": run_id}}
     result = await _graph.ainvoke(initial_state(workflow_input), config)

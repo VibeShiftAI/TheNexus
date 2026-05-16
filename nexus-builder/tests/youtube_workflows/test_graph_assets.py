@@ -1,7 +1,7 @@
 import pytest
 
-from youtube_workflows.graph import build_youtube_graph
-from youtube_workflows.models import WorkflowInput
+from youtube_workflows.graph import build_youtube_graph, fanout_assets
+from youtube_workflows.models import ProductionPlan, ProductionScene, Script, SceneScript, WorkflowInput
 from youtube_workflows.state import initial_state
 
 
@@ -51,3 +51,53 @@ async def test_final_gate_revise_does_not_duplicate_dry_run_assets():
     ]
     assert len(identity) == len(set(identity))
     assert len(identity) == len(first_final["assets"])
+
+
+@pytest.mark.asyncio
+async def test_cost_gate_approval_is_persisted_before_asset_generation():
+    graph = build_youtube_graph()
+    config = {"configurable": {"thread_id": "yt-test-cost-approved"}}
+    state = initial_state(WorkflowInput(prompt="Explain The Nexus architecture"))
+
+    await graph.ainvoke(state, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+    await graph.ainvoke(None, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+    await graph.ainvoke(None, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+    result = await graph.ainvoke(None, config)
+
+    assert result["production_plan"].cost_approved is True
+    assert result["pending_approval"].gate == "final"
+
+
+@pytest.mark.asyncio
+async def test_paid_asset_generation_fails_closed_without_cost_approval():
+    scene = SceneScript(
+        scene_id="s1",
+        narration="Line",
+        visual_prompt="Cinematic lab",
+        motion_prompt="Camera orbit",
+        duration_s=5,
+        requires_sota=True,
+    )
+    state = initial_state(WorkflowInput(prompt="Demo", dry_run=False, max_cost_usd=2.0))
+    state["script"] = Script(title="Demo", scenes=[scene])
+    state["production_plan"] = ProductionPlan(
+        scenes=[
+            ProductionScene(
+                scene_id="s1",
+                provider="veo",
+                visual_prompt=scene.visual_prompt,
+                motion_prompt=scene.motion_prompt,
+                duration_s=5,
+                estimated_cost_usd=1.5,
+                requires_cost_approval=True,
+            )
+        ],
+        total_estimated_cost_usd=1.5,
+        cost_approved=False,
+    )
+
+    with pytest.raises(RuntimeError, match="Cost approval is required"):
+        await fanout_assets(state)

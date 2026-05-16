@@ -24,40 +24,41 @@ from .core import (
 )
 from .core.fleet import FleetAgentNode
 
-from .research import (
-    ResearcherNode,
-    ScoperNode, 
-    VetterNode,
-    ResearchExecutorNode,
-    SynthesizerNode,
-)
-from .planning import (
-    ArchitectNode,
-    CartographerNode,
-    DrafterNode,
-    GrounderNode,
-)
-from .implementation import (
-    BuilderNode,
-    ScoutNode,
-    CoderNode,
-    CheckerNode,
-)
-from .review import (
-    AuditorNode,
-    ForensicNode,
-    VerdictNode,
-)
-from .orchestration import (
-    NexusPrimeNode,
-    HumanApprovalNode,
-    ApprovalGateNode,
-)
-from .utility import (
-    SummarizerNode,
-    GitCommitNode,
-    AggregateResultsNode,
-)
+_LAZY_EXPORTS = {
+    "ResearcherNode": (".research", "ResearcherNode"),
+    "ScoperNode": (".research", "ScoperNode"),
+    "VetterNode": (".research", "VetterNode"),
+    "ResearchExecutorNode": (".research", "ResearchExecutorNode"),
+    "SynthesizerNode": (".research", "SynthesizerNode"),
+    "ArchitectNode": (".planning", "ArchitectNode"),
+    "CartographerNode": (".planning", "CartographerNode"),
+    "DrafterNode": (".planning", "DrafterNode"),
+    "GrounderNode": (".planning", "GrounderNode"),
+    "BuilderNode": (".implementation", "BuilderNode"),
+    "ScoutNode": (".implementation", "ScoutNode"),
+    "CoderNode": (".implementation", "CoderNode"),
+    "CheckerNode": (".implementation", "CheckerNode"),
+    "AuditorNode": (".review", "AuditorNode"),
+    "ForensicNode": (".review", "ForensicNode"),
+    "VerdictNode": (".review", "VerdictNode"),
+    "NexusPrimeNode": (".orchestration", "NexusPrimeNode"),
+    "HumanApprovalNode": (".orchestration", "HumanApprovalNode"),
+    "ApprovalGateNode": (".orchestration", "ApprovalGateNode"),
+    "SummarizerNode": (".utility", "SummarizerNode"),
+    "GitCommitNode": (".utility", "GitCommitNode"),
+    "AggregateResultsNode": (".utility", "AggregateResultsNode"),
+}
+
+
+def __getattr__(name):
+    if name not in _LAZY_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    from importlib import import_module
+
+    module_name, attr_name = _LAZY_EXPORTS[name]
+    attr = getattr(import_module(module_name, __name__), attr_name)
+    globals()[name] = attr
+    return attr
 
 __all__ = [
     # Core
@@ -101,4 +102,3 @@ __all__ = [
     "GitCommitNode",
     "AggregateResultsNode",
 ]
-

@@ -1,11 +1,30 @@
 from __future__ import annotations
 
+import os
+
 from .models import ChannelProfile, ProviderDecision, SceneScript, WorkflowInput
 
 
 class ProviderRouter:
-    def __init__(self, *, veo_usd_per_second: float = 0.30):
+    def __init__(
+        self,
+        *,
+        veo_usd_per_second: float = 0.30,
+        available_providers: set[str] | None = None,
+    ):
         self.veo_usd_per_second = veo_usd_per_second
+        self.available_providers = (
+            available_providers
+            if available_providers is not None
+            else self._detect_available_providers()
+        )
+
+    @staticmethod
+    def _detect_available_providers() -> set[str]:
+        providers = {"dry_run", "local", "existing_adapter"}
+        if os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("VEO_API_KEY"):
+            providers.add("veo")
+        return providers
 
     def choose_scene_provider(
         self,
@@ -30,7 +49,12 @@ class ProviderRouter:
         wants_veo = scene.requires_sota or scene.provider_preference == "veo"
         estimated_veo = round(scene.duration_s * self.veo_usd_per_second, 4)
 
-        if wants_veo and allow_sota and estimated_veo <= max_cost:
+        if (
+            wants_veo
+            and allow_sota
+            and "veo" in self.available_providers
+            and estimated_veo <= max_cost
+        ):
             return ProviderDecision(
                 scene_id=scene.scene_id,
                 provider="veo",
@@ -42,6 +66,8 @@ class ProviderRouter:
 
         if wants_veo and estimated_veo > max_cost:
             reason = f"Veo estimate ${estimated_veo:.2f} exceeds cost ceiling ${max_cost:.2f}"
+        elif wants_veo and "veo" not in self.available_providers:
+            reason = "Veo provider is not configured"
         elif wants_veo and not allow_sota:
             reason = "profile does not allow SOTA video providers"
         else:

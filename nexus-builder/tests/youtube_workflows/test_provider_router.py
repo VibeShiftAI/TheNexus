@@ -30,7 +30,7 @@ def test_dry_run_forces_zero_cost_provider():
 
 
 def test_veo_scene_requires_cost_approval_when_allowed():
-    router = ProviderRouter(veo_usd_per_second=0.30)
+    router = ProviderRouter(veo_usd_per_second=0.30, available_providers={"veo"})
     profile = get_channel_profile("default")
     decision = router.choose_scene_provider(
         SceneScript(
@@ -50,7 +50,7 @@ def test_veo_scene_requires_cost_approval_when_allowed():
 
 
 def test_cost_ceiling_falls_back_to_existing_adapter():
-    router = ProviderRouter(veo_usd_per_second=0.30)
+    router = ProviderRouter(veo_usd_per_second=0.30, available_providers={"veo"})
     profile = get_channel_profile("default")
     decision = router.choose_scene_provider(
         SceneScript(
@@ -69,7 +69,7 @@ def test_cost_ceiling_falls_back_to_existing_adapter():
 
 
 def test_explicit_zero_cost_ceiling_blocks_profile_paid_default():
-    router = ProviderRouter(veo_usd_per_second=0.30)
+    router = ProviderRouter(veo_usd_per_second=0.30, available_providers={"veo"})
     profile = get_channel_profile("praxis")
     decision = router.choose_scene_provider(
         SceneScript(
@@ -86,3 +86,22 @@ def test_explicit_zero_cost_ceiling_blocks_profile_paid_default():
     assert decision.provider == "existing_adapter"
     assert decision.estimated_cost_usd == 0.0
     assert "cost ceiling" in decision.reason
+
+
+def test_missing_veo_credentials_fall_back_to_existing_adapter():
+    router = ProviderRouter(veo_usd_per_second=0.30, available_providers=set())
+    profile = get_channel_profile("default")
+    decision = router.choose_scene_provider(
+        SceneScript(
+            scene_id="s1",
+            narration="Line",
+            visual_prompt="Cinematic lab",
+            motion_prompt="Camera orbit",
+            duration_s=5,
+            requires_sota=True,
+        ),
+        WorkflowInput(prompt="Demo", dry_run=False, max_cost_usd=2.0),
+        profile,
+    )
+    assert decision.provider == "existing_adapter"
+    assert "not configured" in decision.reason

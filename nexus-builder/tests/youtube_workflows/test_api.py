@@ -73,6 +73,15 @@ def test_start_response_state_is_json_serializable(client):
     json.dumps(data["state"])
 
 
+def test_live_runs_require_explicit_server_enablement(client):
+    response = client.post(
+        "/api/youtube/runs",
+        json={"prompt": "Explain The Nexus", "dry_run": False, "max_cost_usd": 2.0},
+    )
+
+    assert response.status_code == 403
+
+
 def test_in_memory_run_store_is_bounded(client):
     for index in range(MAX_IN_MEMORY_RUNS + 1):
         _remember_run(f"run-{index}", {"state": {}})
@@ -80,3 +89,18 @@ def test_in_memory_run_store_is_bounded(client):
     assert len(_runs) == MAX_IN_MEMORY_RUNS
     assert "run-0" not in _runs
     assert f"run-{MAX_IN_MEMORY_RUNS}" in _runs
+
+
+def test_in_memory_run_store_prefers_evicting_non_approval_runs(client):
+    for index in range(MAX_IN_MEMORY_RUNS - 1):
+        _remember_run(
+            f"approval-{index}",
+            {"state": {"pending_approval": {"gate": "concept"}}},
+        )
+    _remember_run("finished", {"state": {"pending_approval": None}})
+    _remember_run("new-approval", {"state": {"pending_approval": {"gate": "script"}}})
+
+    assert len(_runs) == MAX_IN_MEMORY_RUNS
+    assert "finished" not in _runs
+    assert "approval-0" in _runs
+    assert "new-approval" in _runs

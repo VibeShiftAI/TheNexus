@@ -144,38 +144,50 @@ async def cost_gate(state: YouTubeWorkflowState) -> Dict[str, Any]:
     return {"pending_approval": payload}
 
 
+async def mark_cost_approved(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    plan = state["production_plan"].model_copy(update={"cost_approved": True})
+    return {"production_plan": plan, **clear_pending_approval()}
+
+
 async def fanout_assets(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    plan = state["production_plan"]
+    paid_approval_required = any(scene.requires_cost_approval for scene in plan.scenes)
+    if paid_approval_required and not plan.cost_approved:
+        raise RuntimeError("Cost approval is required before asset generation")
+
     assets = []
     costs = []
+    plan_by_scene = {scene.scene_id: scene for scene in plan.scenes}
     for scene in state["script"].scenes:
+        provider = plan_by_scene[scene.scene_id].provider
         assets.extend(
             [
                 AssetRecord(
                     scene_id=scene.scene_id,
                     asset_type="voiceover",
                     path=f"/tmp/nexus-youtube/{scene.scene_id}.aiff",
-                    provider="dry_run",
+                    provider="dry_run" if state["input"].dry_run else "local",
                 ),
                 AssetRecord(
                     scene_id=scene.scene_id,
                     asset_type="still",
                     path=f"/tmp/nexus-youtube/{scene.scene_id}.png",
-                    provider="dry_run",
+                    provider=provider,
                 ),
                 AssetRecord(
                     scene_id=scene.scene_id,
                     asset_type="clip",
                     path=f"/tmp/nexus-youtube/{scene.scene_id}.mp4",
-                    provider="dry_run",
+                    provider=provider,
                     metadata={"duration_s": scene.duration_s},
                 ),
             ]
         )
         costs.append(
             CostEntry(
-                provider="dry_run",
+                provider=provider,
                 operation="scene_assets",
-                usd=0.0,
+                usd=plan_by_scene[scene.scene_id].estimated_cost_usd,
                 scene_id=scene.scene_id,
             )
         )
@@ -196,7 +208,7 @@ async def assemble_video(state: YouTubeWorkflowState) -> Dict[str, Any]:
     )
     return {
         "assets": [final],
-        "final_output": {"video_path": final.path, "dry_run": True},
+        "final_output": {"video_path": final.path, "dry_run": state["input"].dry_run},
     }
 
 
@@ -241,6 +253,7 @@ def build_youtube_graph(checkpointer=None):
     builder.add_node(GATE_SCRIPT, script_gate)
     builder.add_node("production_plan", production_plan)
     builder.add_node(GATE_COST, cost_gate)
+    builder.add_node("mark_cost_approved", mark_cost_approved)
     builder.add_node("fanout_assets", fanout_assets)
     builder.add_node("reduce_assets", reduce_assets)
     builder.add_node("assemble_video", assemble_video)
@@ -267,8 +280,9 @@ def build_youtube_graph(checkpointer=None):
     builder.add_conditional_edges(
         GATE_COST,
         route_review,
-        {"approve": "fanout_assets", "revise": "production_plan", "reject": "finish"},
+        {"approve": "mark_cost_approved", "revise": "production_plan", "reject": "finish"},
     )
+    builder.add_edge("mark_cost_approved", "fanout_assets")
     builder.add_edge("fanout_assets", "reduce_assets")
     builder.add_edge("reduce_assets", "assemble_video")
     builder.add_edge("assemble_video", "compliance_review")
