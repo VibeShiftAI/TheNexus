@@ -16,6 +16,25 @@ module.exports = function createLangGraphRouter({ db, PROJECT_ROOT, getProjectBy
 
     // ─── Proxy Routes (thin pass-through to Python backend) ─────────────
 
+    async function proxyYoutubeToLangGraph(res, urlPath, options = {}) {
+        const langgraphUrl = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+        try {
+            const response = await fetch(`${langgraphUrl}${urlPath}`, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            });
+            const text = await response.text();
+            res.status(response.status);
+            res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
+            res.send(text);
+        } catch (error) {
+            res.status(503).json({ error: 'YouTube workflow engine unavailable' });
+        }
+    }
+
     router.get('/health', async (req, res) => {
         try {
             res.json(await lgService.proxyToLangGraph('/health'));
@@ -107,33 +126,21 @@ module.exports = function createLangGraphRouter({ db, PROJECT_ROOT, getProjectBy
     });
 
     router.post('/youtube/runs', async (req, res) => {
-        try {
-            res.json(await lgService.proxyToLangGraph('/api/youtube/runs', {
-                method: 'POST',
-                body: JSON.stringify(req.body)
-            }));
-        } catch (error) {
-            res.status(503).json({ error: 'YouTube workflow engine unavailable' });
-        }
+        await proxyYoutubeToLangGraph(res, '/api/youtube/runs', {
+            method: 'POST',
+            body: JSON.stringify(req.body)
+        });
     });
 
     router.get('/youtube/runs/:runId', async (req, res) => {
-        try {
-            res.json(await lgService.proxyToLangGraph(`/api/youtube/runs/${req.params.runId}`));
-        } catch (error) {
-            res.status(503).json({ error: 'YouTube workflow engine unavailable' });
-        }
+        await proxyYoutubeToLangGraph(res, `/api/youtube/runs/${req.params.runId}`);
     });
 
     router.post('/youtube/runs/:runId/resume', async (req, res) => {
-        try {
-            res.json(await lgService.proxyToLangGraph(`/api/youtube/runs/${req.params.runId}/resume`, {
-                method: 'POST',
-                body: JSON.stringify(req.body)
-            }));
-        } catch (error) {
-            res.status(503).json({ error: 'YouTube workflow engine unavailable' });
-        }
+        await proxyYoutubeToLangGraph(res, `/api/youtube/runs/${req.params.runId}/resume`, {
+            method: 'POST',
+            body: JSON.stringify(req.body)
+        });
     });
 
     // ─── Business Logic Callbacks (delegate to service handlers) ─────────
