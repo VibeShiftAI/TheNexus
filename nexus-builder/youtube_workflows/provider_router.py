@@ -26,8 +26,6 @@ class ProviderRouter:
         policy = profile.provider_policy
         allow_sota = bool(policy.get("allow_sota", False))
         max_cost = workflow_input.max_cost_usd
-        if max_cost <= 0:
-            max_cost = float(policy.get("max_cost_usd", 0.0) or 0.0)
 
         wants_veo = scene.requires_sota or scene.provider_preference == "veo"
         estimated_veo = round(scene.duration_s * self.veo_usd_per_second, 4)
