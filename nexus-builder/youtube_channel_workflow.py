@@ -67,6 +67,8 @@ from tools.media.nano_banana import NanoBananaGenerateTool, NANO_BANANA_USD_PER_
 from tools.media.tts import TTSGenerateTool
 from tools.media.veo import VeoAnimateTool, VEO_USD_PER_SECOND
 from tools.media.youtube import YouTubeUploadTool
+from youtube_workflows.models import WorkflowInput
+from youtube_workflows.state import initial_state as reusable_initial_state
 
 logger = logging.getLogger(__name__)
 
@@ -919,6 +921,19 @@ def create_initial_state(*, dry_run: bool = True) -> YouTubeChannelState:
         "revision_target": None,
         "dry_run": dry_run,
     }
+
+
+def create_praxis_reusable_initial_state(*, dry_run: bool = True):
+    """Initial reusable workflow state for the Praxis channel profile."""
+    return reusable_initial_state(
+        WorkflowInput(
+            prompt="Produce the next Praxis self-narrated YouTube episode.",
+            channel_profile_id="praxis",
+            dry_run=dry_run,
+            publish_mode="private_upload",
+            max_cost_usd=5.0,
+        )
+    )
 
 
 async def run_episode(*, thread_id: Optional[str] = None, dry_run: bool = True):

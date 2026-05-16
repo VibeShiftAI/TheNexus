@@ -1,0 +1,34 @@
+{
+  "id": "youtube-production",
+  "name": "YouTube Production",
+  "description": "Create a reviewed YouTube video using local-first cognition, human review gates, dry-run media generation, and optional approved SOTA provider escalation.",
+  "level": "project",
+  "workflow_type": "youtube-production",
+  "stages": [
+    "concept",
+    "script",
+    "cost",
+    "assets",
+    "final"
+  ],
+  "nodes": [
+    {
+      "id": "youtube-production",
+      "type": "youtube_production",
+      "position": {
+        "x": 250,
+        "y": 120
+      },
+      "data": {
+        "label": "YouTube Production",
+        "config": {
+          "channel_profile_id": "default",
+          "dry_run": true,
+          "publish_mode": "export"
+        }
+      }
+    }
+  ],
+  "edges": [],
+  "conditionalEdges": []
+}
