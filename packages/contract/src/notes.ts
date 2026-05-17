@@ -12,6 +12,8 @@ export type NoteCategory =
   | 'blocker'
   | 'reminder'
   | 'daily-log'
+  | 'stock-analysis'
+  | 'youtube-scripts'
   | 'idea'
   | 'bug';
 

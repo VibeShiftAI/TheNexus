@@ -20,6 +20,8 @@ import {
     AlertCircle,
     Clock,
     Flag,
+    ChartCandlestick,
+    Clapperboard,
 } from "lucide-react";
 
 const HIDDEN_CATEGORIES = new Set(["ingested", "ingestion-report"]);
@@ -31,6 +33,8 @@ const JOURNAL_TABS = [
     { key: "blocker", label: "Blockers", color: "text-red-400", activeColor: "bg-red-500/30 text-red-200", icon: <AlertCircle size={11} /> },
     { key: "reminder", label: "Reminders", color: "text-amber-400", activeColor: "bg-amber-500/30 text-amber-200", icon: <Clock size={11} /> },
     { key: "revenue-ideas", label: "LARS Ideas", color: "text-emerald-400", activeColor: "bg-emerald-500/30 text-emerald-200", icon: <Lightbulb size={11} /> },
+    { key: "stock-analysis", label: "Stock Analysis", color: "text-lime-400", activeColor: "bg-lime-500/30 text-lime-200", icon: <ChartCandlestick size={11} /> },
+    { key: "youtube-scripts", label: "YouTube Scripts", color: "text-rose-400", activeColor: "bg-rose-500/30 text-rose-200", icon: <Clapperboard size={11} /> },
     { key: "all", label: "All" },
 ] as const;
 
@@ -71,6 +75,8 @@ const CATEGORY_BADGE: Record<string, { label: string; color: string }> = {
     blocker: { label: "Blocker", color: "text-red-400 bg-red-500/10" },
     reminder: { label: "Reminder", color: "text-amber-400 bg-amber-500/10" },
     "revenue-ideas": { label: "LARS Idea", color: "text-emerald-400 bg-emerald-500/10" },
+    "stock-analysis": { label: "Stock Analysis", color: "text-lime-400 bg-lime-500/10" },
+    "youtube-scripts": { label: "YouTube Script", color: "text-rose-400 bg-rose-500/10" },
 };
 
 export function DailyJournal() {
@@ -240,6 +246,8 @@ export function DailyJournal() {
                                 <option value="decision">Decision</option>
                                 <option value="blocker">Blocker</option>
                                 <option value="reminder">Reminder</option>
+                                <option value="stock-analysis">Stock Analysis</option>
+                                <option value="youtube-scripts">YouTube Scripts</option>
                             </select>
                             <div className="flex items-center gap-2">
                                 <button
