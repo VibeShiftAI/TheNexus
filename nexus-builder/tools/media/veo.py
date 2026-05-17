@@ -43,6 +43,7 @@ import httpx
 from ..interface import NexusTool, ToolCategory, ToolMetadata
 from .cost_ledger import record_usage
 from .credentials import resolve_google_key
+from .runtime import resolve_executable
 
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "media" / "clips"
@@ -260,11 +261,13 @@ def _find_inline_video(obj: Any) -> Optional[bytes]:
 
 
 async def _loop_still_as_clip(src: Path, out: Path, duration_s: float) -> tuple[bool, str]:
-    if shutil.which("ffmpeg") is None:
+    ffmpeg = resolve_executable("ffmpeg")
+    if ffmpeg is None:
         return False, "ffmpeg not on PATH — can't produce dry-run clip"
     cmd = [
-        "ffmpeg", "-y", "-loop", "1", "-i", str(src),
+        ffmpeg, "-y", "-loop", "1", "-i", str(src),
         "-t", f"{duration_s}", "-r", "30",
+        "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1",
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an",
         str(out),
     ]

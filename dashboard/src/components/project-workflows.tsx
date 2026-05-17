@@ -243,6 +243,19 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
         return Math.round(((currentIndex + 1) / workflow.stages.length) * 100);
     };
 
+    const getFinalVideoPath = (workflow: ProjectWorkflow) => {
+        const details = workflow.supervisor_details as Record<string, unknown> | undefined;
+        const youtubeState = details?.youtube_state as Record<string, unknown> | undefined;
+        const finalOutput = youtubeState?.final_output as Record<string, unknown> | undefined;
+        const directPath = finalOutput?.video_path;
+        if (typeof directPath === 'string') return directPath;
+
+        const outputs = workflow.outputs as Record<string, unknown> | undefined;
+        const final = outputs?.final as Record<string, unknown> | undefined;
+        const output = final?.output as Record<string, unknown> | undefined;
+        return typeof output?.video_path === 'string' ? output.video_path : null;
+    };
+
     // Filter active workflows (not completed/cancelled)
     const activeWorkflows = workflows.filter(w => w.status !== 'complete' && w.status !== 'cancelled');
     const completedWorkflows = workflows.filter(w => w.status === 'complete' || w.status === 'cancelled');
@@ -503,6 +516,21 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
                             <p className="text-xs text-slate-500">
                                 {completedWorkflows.length} completed workflow{completedWorkflows.length !== 1 ? 's' : ''}
                             </p>
+                            <div className="mt-2 space-y-2">
+                                {completedWorkflows.slice(0, 3).map(workflow => {
+                                    const finalVideoPath = getFinalVideoPath(workflow);
+                                    if (!finalVideoPath) return null;
+                                    return (
+                                        <div key={workflow.id} className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+                                            <div className="flex items-center gap-2 text-xs font-medium text-emerald-300">
+                                                <CheckCircle2 size={12} />
+                                                <span>{workflow.name} output ready</span>
+                                            </div>
+                                            <p className="mt-1 break-all font-mono text-[11px] leading-4 text-slate-300">{finalVideoPath}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
                 </div>

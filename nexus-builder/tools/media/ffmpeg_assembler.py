@@ -42,6 +42,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..interface import NexusTool, ToolCategory, ToolMetadata
+from .runtime import resolve_executable
 
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "media" / "assembled"
@@ -81,7 +82,8 @@ class FfmpegAssembleTool(NexusTool):
         resolution: str = "1920x1080",
         fps: int = 30,
     ) -> Dict[str, Any]:
-        if shutil.which("ffmpeg") is None:
+        ffmpeg = resolve_executable("ffmpeg")
+        if ffmpeg is None:
             return {"success": False, "error": "ffmpeg not found on PATH"}
         if not scenes:
             return {"success": False, "error": "No scenes provided"}
@@ -98,14 +100,14 @@ class FfmpegAssembleTool(NexusTool):
             scene_clips: List[Path] = []
             for idx, sc in enumerate(scenes):
                 out_clip = tmp_dir / f"scene_{idx:03d}.mp4"
-                ok, err = await _render_scene(sc, out_clip, resolution, fps)
+                ok, err = await _render_scene(sc, out_clip, resolution, fps, ffmpeg)
                 if not ok:
                     return {"success": False, "error": f"scene {idx} render failed: {err[:300]}"}
                 scene_clips.append(out_clip)
 
             # 2. Concat scene MP4s (stream copy — all scenes share codec params)
             video_music_track = tmp_dir / "video_music.mp4"
-            ok, err = await _concat_mp4s(scene_clips, video_music_track)
+            ok, err = await _concat_mp4s(scene_clips, video_music_track, ffmpeg)
             if not ok:
                 return {"success": False, "error": f"concat failed: {err[:300]}"}
 
@@ -117,14 +119,14 @@ class FfmpegAssembleTool(NexusTool):
                 per_scene_narration = [Path(sc["audio_path"]) for sc in scenes if sc.get("audio_path")]
                 if per_scene_narration:
                     narration_track = tmp_dir / "narration.m4a"
-                    ok, err = await _concat_audio(per_scene_narration, narration_track)
+                    ok, err = await _concat_audio(per_scene_narration, narration_track, ffmpeg)
                     if not ok:
                         return {"success": False, "error": f"narration concat failed: {err[:300]}"}
 
             # 4. Final mux — mix narration over music, or passthrough if no narration
             if narration_track:
                 ok, err = await _mix_narration_over_music(
-                    video_music_track, narration_track, final_path,
+                    video_music_track, narration_track, final_path, ffmpeg,
                 )
                 if not ok:
                     return {"success": False, "error": f"mix failed: {err[:300]}"}
@@ -132,7 +134,7 @@ class FfmpegAssembleTool(NexusTool):
                 shutil.copy(video_music_track, final_path)
 
             # 5. Thumbnail
-            ok, err = await _grab_thumbnail(final_path, thumb_path, thumbnail_at_s)
+            ok, err = await _grab_thumbnail(final_path, thumb_path, thumbnail_at_s, ffmpeg)
             if not ok:
                 return {"success": False, "error": f"thumbnail failed: {err[:300]}"}
 
@@ -150,7 +152,7 @@ class FfmpegAssembleTool(NexusTool):
         }
 
 
-async def _render_scene(sc: Dict[str, Any], out: Path, resolution: str, fps: int) -> tuple[bool, str]:
+async def _render_scene(sc: Dict[str, Any], out: Path, resolution: str, fps: int, ffmpeg: str) -> tuple[bool, str]:
     """
     Normalize one scene to a fixed-codec MP4 with both video and audio streams.
 
@@ -163,14 +165,15 @@ async def _render_scene(sc: Dict[str, Any], out: Path, resolution: str, fps: int
     has_src_audio = bool(sc.get("has_source_audio")) and visual.suffix.lower() not in IMAGE_EXTS
     is_image = visual.suffix.lower() in IMAGE_EXTS
 
+    width, height = resolution.lower().split("x", 1)
     scale_filter = (
-        f"scale={resolution}:force_original_aspect_ratio=decrease,"
-        f"pad={resolution}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps}"
+        f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps}"
     )
 
     if is_image:
         cmd = [
-            "ffmpeg", "-y",
+            ffmpeg, "-y",
             "-loop", "1", "-i", str(visual),
             "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
             "-t", f"{dur}",
@@ -182,7 +185,7 @@ async def _render_scene(sc: Dict[str, Any], out: Path, resolution: str, fps: int
         ]
     elif has_src_audio:
         cmd = [
-            "ffmpeg", "-y",
+            ffmpeg, "-y",
             "-i", str(visual),
             "-t", f"{dur}",
             "-vf", scale_filter,
@@ -192,7 +195,7 @@ async def _render_scene(sc: Dict[str, Any], out: Path, resolution: str, fps: int
         ]
     else:
         cmd = [
-            "ffmpeg", "-y",
+            ffmpeg, "-y",
             "-i", str(visual),
             "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
             "-t", f"{dur}",
@@ -207,26 +210,26 @@ async def _render_scene(sc: Dict[str, Any], out: Path, resolution: str, fps: int
     return await _run(cmd)
 
 
-async def _concat_mp4s(clips: List[Path], out: Path) -> tuple[bool, str]:
+async def _concat_mp4s(clips: List[Path], out: Path, ffmpeg: str) -> tuple[bool, str]:
     list_file = out.parent / f"concat_{out.stem}.txt"
     list_file.write_text("".join(f"file '{p}'\n" for p in clips))
     return await _run([
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+        ffmpeg, "-y", "-f", "concat", "-safe", "0",
         "-i", str(list_file), "-c", "copy", str(out),
     ])
 
 
-async def _concat_audio(tracks: List[Path], out: Path) -> tuple[bool, str]:
+async def _concat_audio(tracks: List[Path], out: Path, ffmpeg: str) -> tuple[bool, str]:
     list_file = out.parent / f"concat_audio_{out.stem}.txt"
     list_file.write_text("".join(f"file '{p}'\n" for p in tracks))
     return await _run([
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+        ffmpeg, "-y", "-f", "concat", "-safe", "0",
         "-i", str(list_file), "-c:a", "aac", "-ar", "44100", "-ac", "2", str(out),
     ])
 
 
 async def _mix_narration_over_music(
-    video_music: Path, narration: Path, out: Path,
+    video_music: Path, narration: Path, out: Path, ffmpeg: str,
 ) -> tuple[bool, str]:
     filter_complex = (
         f"[0:a]volume={VOLUME_MUSIC}[music];"
@@ -234,7 +237,7 @@ async def _mix_narration_over_music(
         f"[music][voice]amix=inputs=2:duration=longest:dropout_transition=0[aout]"
     )
     return await _run([
-        "ffmpeg", "-y",
+        ffmpeg, "-y",
         "-i", str(video_music),
         "-i", str(narration),
         "-filter_complex", filter_complex,
@@ -247,9 +250,9 @@ async def _mix_narration_over_music(
     ])
 
 
-async def _grab_thumbnail(video: Path, out: Path, at_s: float) -> tuple[bool, str]:
+async def _grab_thumbnail(video: Path, out: Path, at_s: float, ffmpeg: str) -> tuple[bool, str]:
     return await _run([
-        "ffmpeg", "-y", "-ss", f"{at_s}", "-i", str(video),
+        ffmpeg, "-y", "-ss", f"{at_s}", "-i", str(video),
         "-frames:v", "1", "-q:v", "2", str(out),
     ])
 

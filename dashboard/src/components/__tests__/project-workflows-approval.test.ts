@@ -13,5 +13,7 @@ test("project workflows render pending approval controls", () => {
   assert.ok(component.includes("Approve"), "component should render an approve action");
   assert.ok(component.includes("Request Revision"), "component should render a revision action");
   assert.ok(component.includes("resumeProjectWorkflowApproval"), "component should call the resume approval API");
+  assert.ok(component.includes("output ready"), "component should show completed workflow output");
+  assert.ok(component.includes("video_path"), "component should read the final video path");
   assert.ok(api.includes("resumeProjectWorkflowApproval"), "nexus API should expose project workflow approval resume");
 });

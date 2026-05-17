@@ -37,6 +37,7 @@ import httpx
 from ..interface import NexusTool, ToolCategory, ToolMetadata
 from .cost_ledger import record_usage
 from .credentials import resolve_elevenlabs_key, resolve_elevenlabs_voice_id
+from .runtime import resolve_executable
 
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "media" / "tts"
@@ -247,12 +248,13 @@ async def _synthesize_macos_say(
 
 
 def _probe_duration_s(path: Path) -> float:
-    if shutil.which("ffprobe") is None:
+    ffprobe = resolve_executable("ffprobe")
+    if ffprobe is None:
         return 0.0
     try:
         out = subprocess.run(
             [
-                "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                ffprobe, "-v", "error", "-show_entries", "format=duration",
                 "-of", "default=noprint_wrappers=1:nokey=1", str(path),
             ],
             capture_output=True, text=True, timeout=10,

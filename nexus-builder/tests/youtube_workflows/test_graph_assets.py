@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 
 from youtube_workflows.graph import build_youtube_graph, fanout_assets
 from youtube_workflows.models import ProductionPlan, ProductionScene, Script, SceneScript, WorkflowInput
@@ -22,6 +23,10 @@ async def test_graph_reaches_final_gate_with_dry_run_assets():
     assert result["pending_approval"].gate == "final"
     asset_types = {asset.asset_type for asset in result["assets"]}
     assert {"voiceover", "still", "clip", "final_video"}.issubset(asset_types)
+    final_video = next(asset for asset in result["assets"] if asset.asset_type == "final_video")
+    assert Path(final_video.path).exists()
+    assert Path(final_video.path).stat().st_size > 0
+    assert result["final_output"]["video_path"] == final_video.path
 
 
 @pytest.mark.asyncio

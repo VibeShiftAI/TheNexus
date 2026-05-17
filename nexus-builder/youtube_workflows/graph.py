@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Literal
+from typing import Any, Dict, List, Literal
+
+from tools import get_registry
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -158,31 +160,91 @@ async def fanout_assets(state: YouTubeWorkflowState) -> Dict[str, Any]:
     if paid_approval_required and not plan.cost_approved:
         raise RuntimeError("Cost approval is required before asset generation")
 
+    registry = get_registry()
+    media_context = {"project_root": state["input"].project_id or ""}
+    episode_slug = f"youtube_{state['input'].project_id or 'local'}"
     assets = []
     costs = []
     plan_by_scene = {scene.scene_id: scene for scene in plan.scenes}
+    existing_assets_by_scene: Dict[str, set[str]] = {}
+    for asset in state.get("assets", []):
+        existing_assets_by_scene.setdefault(asset.scene_id, set()).add(asset.asset_type)
     for scene in state["script"].scenes:
-        provider = plan_by_scene[scene.scene_id].provider
+        if {"voiceover", "still", "clip"}.issubset(existing_assets_by_scene.get(scene.scene_id, set())):
+            continue
+        plan_scene = plan_by_scene[scene.scene_id]
+        provider = plan_scene.provider
+        still_result = await registry.get("nano_banana_generate").execute(
+            media_context,
+            prompt=scene.visual_prompt,
+            episode_slug=episode_slug,
+            scene_id=scene.scene_id,
+            dry_run=state["input"].dry_run,
+        )
+        if not still_result.get("success"):
+            raise RuntimeError(f"Still generation failed for {scene.scene_id}: {still_result.get('error')}")
+        still = still_result["result"]
+
+        tts_tool = registry.get("tts_generate")
+        tts_provider = "macos_say" if state["input"].dry_run else "elevenlabs"
+        voiceover_result = await tts_tool.execute(
+            media_context,
+            text=scene.narration,
+            episode_slug=episode_slug,
+            scene_id=scene.scene_id,
+            provider=tts_provider,
+        )
+        if not voiceover_result.get("success") and tts_provider != "macos_say":
+            voiceover_result = await tts_tool.execute(
+                media_context,
+                text=scene.narration,
+                episode_slug=episode_slug,
+                scene_id=scene.scene_id,
+                provider="macos_say",
+            )
+        if not voiceover_result.get("success"):
+            raise RuntimeError(f"Voiceover generation failed for {scene.scene_id}: {voiceover_result.get('error')}")
+        voiceover = voiceover_result["result"]
+
+        clip_result = await registry.get("veo_animate").execute(
+            media_context,
+            source_image_path=still["image_path"],
+            motion_prompt=scene.motion_prompt,
+            duration_s=scene.duration_s,
+            episode_slug=episode_slug,
+            scene_id=scene.scene_id,
+            dry_run=state["input"].dry_run or provider != "veo",
+        )
+        if not clip_result.get("success"):
+            raise RuntimeError(f"Clip generation failed for {scene.scene_id}: {clip_result.get('error')}")
+        clip = clip_result["result"]
+
         assets.extend(
             [
                 AssetRecord(
                     scene_id=scene.scene_id,
                     asset_type="voiceover",
-                    path=f"/tmp/nexus-youtube/{scene.scene_id}.aiff",
-                    provider="dry_run" if state["input"].dry_run else "local",
+                    path=voiceover["audio_path"],
+                    provider=voiceover["provider"],
+                    metadata={"duration_s": voiceover.get("duration_s", 0)},
                 ),
                 AssetRecord(
                     scene_id=scene.scene_id,
                     asset_type="still",
-                    path=f"/tmp/nexus-youtube/{scene.scene_id}.png",
-                    provider=provider,
+                    path=still["image_path"],
+                    provider=still["model"],
+                    metadata={"dry_run": still.get("dry_run", False)},
                 ),
                 AssetRecord(
                     scene_id=scene.scene_id,
                     asset_type="clip",
-                    path=f"/tmp/nexus-youtube/{scene.scene_id}.mp4",
+                    path=clip["video_path"],
                     provider=provider,
-                    metadata={"duration_s": scene.duration_s},
+                    metadata={
+                        "duration_s": clip.get("duration_s", scene.duration_s),
+                        "has_source_audio": clip.get("has_source_audio", False),
+                        "dry_run": clip.get("dry_run", False),
+                    },
                 ),
             ]
         )
@@ -190,7 +252,7 @@ async def fanout_assets(state: YouTubeWorkflowState) -> Dict[str, Any]:
             CostEntry(
                 provider=provider,
                 operation="scene_assets",
-                usd=plan_by_scene[scene.scene_id].estimated_cost_usd,
+                usd=plan_scene.estimated_cost_usd,
                 scene_id=scene.scene_id,
             )
         )
@@ -202,16 +264,70 @@ async def reduce_assets(state: YouTubeWorkflowState) -> Dict[str, Any]:
 
 
 async def assemble_video(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    existing_final = next(
+        (asset for asset in state.get("assets", []) if asset.asset_type == "final_video"),
+        None,
+    )
+    if existing_final:
+        return {
+            "assets": [existing_final],
+            "final_output": {
+                "video_path": existing_final.path,
+                "thumbnail_path": existing_final.metadata.get("thumbnail_path"),
+                "dry_run": state["input"].dry_run,
+                "scene_count": existing_final.metadata.get("scene_count"),
+            },
+        }
+
+    assets_by_scene: Dict[str, Dict[str, AssetRecord]] = {}
+    for asset in state.get("assets", []):
+        assets_by_scene.setdefault(asset.scene_id, {})[asset.asset_type] = asset
+
+    scenes: List[Dict[str, Any]] = []
+    for scene in state["script"].scenes:
+        scene_assets = assets_by_scene.get(scene.scene_id, {})
+        clip = scene_assets.get("clip")
+        voiceover = scene_assets.get("voiceover")
+        if not clip:
+            raise RuntimeError(f"Missing clip asset for {scene.scene_id}")
+        scenes.append(
+            {
+                "scene_id": scene.scene_id,
+                "visual_path": clip.path,
+                "audio_path": voiceover.path if voiceover else None,
+                "duration_s": scene.duration_s,
+                "has_source_audio": bool(clip.metadata.get("has_source_audio")),
+            }
+        )
+
+    episode_slug = f"youtube_{state['input'].project_id or 'local'}"
+    assembled = await get_registry().get("ffmpeg_assemble").execute(
+        {"project_root": state["input"].project_id or ""},
+        scenes=scenes,
+        episode_slug=episode_slug,
+    )
+    if not assembled.get("success"):
+        raise RuntimeError(f"Video assembly failed: {assembled.get('error')}")
+    result = assembled["result"]
     final = AssetRecord(
         scene_id="final",
         asset_type="final_video",
-        path="/tmp/nexus-youtube/final.mp4",
-        provider="dry_run",
-        metadata={"scene_count": len(state["script"].scenes)},
+        path=result["video_path"],
+        provider="ffmpeg",
+        metadata={
+            "scene_count": len(state["script"].scenes),
+            "thumbnail_path": result.get("thumbnail_path"),
+            "had_narration": result.get("had_narration", False),
+        },
     )
     return {
         "assets": [final],
-        "final_output": {"video_path": final.path, "dry_run": state["input"].dry_run},
+        "final_output": {
+            "video_path": final.path,
+            "thumbnail_path": result.get("thumbnail_path"),
+            "dry_run": state["input"].dry_run,
+            "scene_count": result.get("scene_count"),
+        },
     }
 
 
