@@ -22,8 +22,8 @@ def test_youtube_template_exists_and_is_dashboard_level():
 def test_youtube_template_stages_match_existing_shape():
     path = Path(__file__).resolve().parents[3] / "config" / "templates" / "workflows" / "youtube-production.json"
     stages = json.loads(path.read_text())["stages"]
-    assert [stage["id"] for stage in stages] == ["concept", "script", "cost", "assets", "final"]
-    assert [stage["order"] for stage in stages] == [1, 2, 3, 4, 5]
+    assert [stage["id"] for stage in stages] == ["research", "concept", "script", "cost", "assets", "final"]
+    assert [stage["order"] for stage in stages] == [1, 2, 3, 4, 5, 6]
     assert all(stage["name"] for stage in stages)
 
 
@@ -54,7 +54,7 @@ async def test_youtube_template_node_starts_reusable_graph():
     result = await node.execute(ctx, [NodeExecutionData(json={"context": {"run_id": "yt-node-test"}})])
 
     output = result[0][0].json
-    assert output["pending_approval"].gate == "concept"
+    assert output["pending_approval"].gate == "research"
     assert output["outputs"]["youtube_workflow"]["input"].prompt == "Explain The Nexus"
 
 

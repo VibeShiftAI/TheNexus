@@ -18,6 +18,8 @@ async def test_graph_reaches_final_gate_with_dry_run_assets():
     await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
     await graph.ainvoke(None, config)
     await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+    await graph.ainvoke(None, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
     result = await graph.ainvoke(None, config)
 
     assert result["pending_approval"].gate == "final"
@@ -36,6 +38,8 @@ async def test_final_gate_revise_does_not_duplicate_dry_run_assets():
     state = initial_state(WorkflowInput(prompt="Explain The Nexus architecture"))
 
     await graph.ainvoke(state, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+    await graph.ainvoke(None, config)
     await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
     await graph.ainvoke(None, config)
     await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
@@ -65,6 +69,8 @@ async def test_cost_gate_approval_is_persisted_before_asset_generation():
     state = initial_state(WorkflowInput(prompt="Explain The Nexus architecture"))
 
     await graph.ainvoke(state, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+    await graph.ainvoke(None, config)
     await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
     await graph.ainvoke(None, config)
     await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List, Literal
 
 from tools import get_registry
@@ -17,34 +18,79 @@ from .models import (
     SceneScript,
     Script,
 )
+from .llm import get_youtube_llm, strip_thought_blocks
 from .profiles import get_channel_profile
 from .provider_router import ProviderRouter
 from .praxis_research import gather_praxis_research
 from .state import YouTubeWorkflowState, clear_pending_approval
 
 
+GATE_RESEARCH = "research_gate"
 GATE_CONCEPT = "concept_gate"
 GATE_SCRIPT = "script_gate"
 GATE_COST = "cost_gate"
 GATE_FINAL = "final_gate"
 
 
-async def load_channel_profile(state: YouTubeWorkflowState) -> Dict[str, Any]:
-    workflow_input = state["input"]
-    return {"channel_profile": get_channel_profile(workflow_input.channel_profile_id)}
+def _extract_json_object(text: str) -> Dict[str, Any]:
+    cleaned = strip_thought_blocks(text).strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`")
+        if cleaned.lower().startswith("json"):
+            cleaned = cleaned[4:].strip()
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start == -1 or end == -1 or end <= start:
+            raise
+        parsed = json.loads(cleaned[start : end + 1])
+    if not isinstance(parsed, dict):
+        raise ValueError("YouTube strategist concept response must be a JSON object")
+    return parsed
 
 
-async def research(state: YouTubeWorkflowState) -> Dict[str, Any]:
-    workflow_input = state["input"]
-    return {"research_brief": await gather_praxis_research(workflow_input.prompt)}
+def _stringify_list_item(item: Any) -> str:
+    if isinstance(item, str):
+        return item.strip()
+    if isinstance(item, dict):
+        preferred_keys = ("beat", "point", "note", "title", "purpose", "description", "detail")
+        values = [str(item[key]).strip() for key in preferred_keys if item.get(key)]
+        if values:
+            return " ".join(values)
+    return str(item).strip()
 
 
-async def draft_concept(state: YouTubeWorkflowState) -> Dict[str, Any]:
-    workflow_input = state["input"]
-    profile = state["channel_profile"]
-    research_brief = state["research_brief"]
+def _normalize_concept_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = dict(payload)
+    for key in ("outline", "risk_notes"):
+        value = normalized.get(key)
+        if isinstance(value, list):
+            normalized[key] = [
+                text
+                for item in value
+                if (text := _stringify_list_item(item))
+            ]
+    return normalized
+
+
+def _fallback_concept(
+    workflow_input: Any,
+    profile: Any,
+    research_brief: Any,
+    reason: str | None = None,
+) -> Concept:
     evidence_titles = [item.title for item in research_brief.evidence[:3]]
-    concept = Concept(
+    risk_notes = [
+        *profile.style_rules,
+        "Concept is grounded in internal Praxis evidence, not generic web research.",
+        *(f"Evidence: {title}" for title in evidence_titles),
+        *research_brief.gaps,
+    ]
+    if reason:
+        risk_notes.append(f"Strategist fallback used: {reason}")
+    return Concept(
         title="Praxis Introduction",
         logline=f"A grounded introduction to Praxis through the lens of: {workflow_input.prompt}.",
         audience="Builders and operators using The Nexus.",
@@ -56,13 +102,93 @@ async def draft_concept(state: YouTubeWorkflowState) -> Dict[str, Any]:
             "Turn those findings into a creator-facing explanation of how Praxis works.",
             "Explain where human review protects quality before any expensive media generation or upload.",
         ],
-        risk_notes=[
-            *profile.style_rules,
-            "Concept is grounded in internal Praxis evidence, not generic web research.",
-            *(f"Evidence: {title}" for title in evidence_titles),
-            *research_brief.gaps,
-        ],
+        risk_notes=risk_notes,
     )
+
+
+async def _draft_concept_with_strategist(
+    workflow_input: Any,
+    profile: Any,
+    research_brief: Any,
+) -> Concept:
+    evidence = [
+        {
+            "source_type": item.source_type,
+            "title": item.title,
+            "path": item.path,
+            "excerpt": item.excerpt,
+        }
+        for item in research_brief.evidence[:8]
+    ]
+    prompt = f"""
+You are Praxis's YouTube content strategist inside The Nexus.
+
+Create a concrete approval-ready YouTube concept for this request:
+{workflow_input.prompt}
+
+Use this internal Praxis research brief as source material:
+summary: {research_brief.summary}
+claims: {json.dumps(research_brief.claims, ensure_ascii=False)}
+angle_notes: {json.dumps(research_brief.angle_notes, ensure_ascii=False)}
+gaps: {json.dumps(research_brief.gaps, ensure_ascii=False)}
+evidence: {json.dumps(evidence, ensure_ascii=False)}
+
+Channel style rules:
+{json.dumps(profile.style_rules, ensure_ascii=False)}
+
+Return only JSON with exactly these keys:
+title, logline, audience, promise, retention_hook, outline, risk_notes.
+
+Requirements:
+- Do not echo the user request as the logline.
+- Make Praxis the subject of the video, not a generic automation product.
+- Ground every major claim in the provided internal evidence.
+- Keep outline to 4-6 specific beats.
+- Include risk_notes for any claims that need human review.
+"""
+    response = await get_youtube_llm("youtube_strategist").ainvoke(prompt)
+    payload = _normalize_concept_payload(_extract_json_object(str(getattr(response, "content", response))))
+    concept = Concept.model_validate(payload)
+    concept.risk_notes = [
+        *profile.style_rules,
+        *concept.risk_notes,
+        "Concept drafted by youtube_strategist from internal Praxis evidence.",
+    ]
+    return concept
+
+
+async def load_channel_profile(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    workflow_input = state["input"]
+    return {"channel_profile": get_channel_profile(workflow_input.channel_profile_id)}
+
+
+async def research(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    workflow_input = state["input"]
+    return {"research_brief": await gather_praxis_research(workflow_input.prompt, via_chat=True), **clear_pending_approval()}
+
+
+async def research_gate(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    payload = ApprovalPayload(
+        gate="research",
+        message="Approve the Praxis research brief before drafting the concept.",
+        artifact=state["research_brief"].model_dump(),
+        decisions=["approve", "revise", "reject"],
+        revision_targets=["research"],
+    )
+    return {"pending_approval": payload}
+
+
+async def draft_concept(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    workflow_input = state["input"]
+    profile = state["channel_profile"]
+    research_brief = state["research_brief"]
+    if workflow_input.dry_run:
+        concept = _fallback_concept(workflow_input, profile, research_brief)
+    else:
+        try:
+            concept = await _draft_concept_with_strategist(workflow_input, profile, research_brief)
+        except Exception as exc:
+            concept = _fallback_concept(workflow_input, profile, research_brief, str(exc))
     return {"concept": concept, **clear_pending_approval()}
 
 
@@ -366,6 +492,7 @@ def build_youtube_graph(checkpointer=None):
     builder = StateGraph(YouTubeWorkflowState)
     builder.add_node("load_channel_profile", load_channel_profile)
     builder.add_node("research", research)
+    builder.add_node(GATE_RESEARCH, research_gate)
     builder.add_node("draft_concept", draft_concept)
     builder.add_node(GATE_CONCEPT, concept_gate)
     builder.add_node("write_script", write_script)
@@ -382,7 +509,12 @@ def build_youtube_graph(checkpointer=None):
 
     builder.add_edge(START, "load_channel_profile")
     builder.add_edge("load_channel_profile", "research")
-    builder.add_edge("research", "draft_concept")
+    builder.add_edge("research", GATE_RESEARCH)
+    builder.add_conditional_edges(
+        GATE_RESEARCH,
+        route_review,
+        {"approve": "draft_concept", "revise": "research", "reject": "finish"},
+    )
     builder.add_edge("draft_concept", GATE_CONCEPT)
     builder.add_conditional_edges(
         GATE_CONCEPT,
@@ -415,5 +547,5 @@ def build_youtube_graph(checkpointer=None):
 
     return builder.compile(
         checkpointer=checkpointer or MemorySaver(),
-        interrupt_after=[GATE_CONCEPT, GATE_SCRIPT, GATE_COST, GATE_FINAL],
+        interrupt_after=[GATE_RESEARCH, GATE_CONCEPT, GATE_SCRIPT, GATE_COST, GATE_FINAL],
     )

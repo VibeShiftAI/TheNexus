@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
+
+import httpx
 
 from tools import get_registry
 from tools.interface import ToolCategory, ToolMetadata
@@ -11,6 +15,7 @@ from .models import ResearchBrief, ResearchEvidence
 
 MAX_EVIDENCE_ITEMS = 12
 MAX_EXCERPT_CHARS = 500
+DEFAULT_NEXUS_CHAT_URL = "http://127.0.0.1:4000/api/ai/chat"
 
 
 def default_project_root() -> Path:
@@ -201,10 +206,113 @@ def _build_summary(prompt: str, evidence: Iterable[ResearchEvidence]) -> str:
     )
 
 
+def _research_chat_prompt(prompt: str) -> str:
+    return f"""
+Praxis, this is the research phase for a YouTube workflow about you.
+
+User video request:
+{prompt}
+
+Please use your regular tools and faculties to research what this episode should say about Praxis.
+Focus on internal, verifiable evidence: your capabilities, available tools, project/workflow context,
+memory where relevant, and anything in The Nexus that would help make the video truthful.
+
+Return a concise research brief with:
+- summary
+- strongest evidence or findings
+- claims that are safe to make
+- gaps or things that need human review
+- angle notes for the later concept writer
+
+Do not draft the video concept yet. This is only the research handoff.
+""".strip()
+
+
+def _parse_praxis_response(raw_response: str) -> Dict[str, Any]:
+    cleaned = raw_response.strip()
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end > start:
+        try:
+            parsed = json.loads(cleaned[start : end + 1])
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+    return {"summary": cleaned}
+
+
+async def gather_praxis_chat_research(prompt: str, project_root: Optional[Path] = None) -> ResearchBrief:
+    chat_url = os.getenv("NEXUS_PRAXIS_CHAT_URL", DEFAULT_NEXUS_CHAT_URL)
+    root = (project_root or default_project_root()).resolve()
+    payload = {
+        "message": _research_chat_prompt(prompt),
+        "mode": "praxis",
+        "projectId": str(root),
+        "history": [],
+        "stream": False,
+    }
+    async with httpx.AsyncClient(timeout=1200.0) as client:
+        response = await client.post(chat_url, json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+    raw_response = str(data.get("response") or data.get("message") or "").strip()
+    parsed = _parse_praxis_response(raw_response)
+    summary = _compact(parsed.get("summary") or raw_response, 1200)
+    findings = parsed.get("findings") or parsed.get("evidence") or parsed.get("strongest_evidence") or []
+    if isinstance(findings, str):
+        findings = [findings]
+    if not isinstance(findings, list):
+        findings = []
+
+    evidence = [
+        ResearchEvidence(
+            source_type="praxis_chat",
+            title="Praxis chat research response",
+            excerpt=_compact(raw_response),
+            metadata={
+                "conversation_id": data.get("conversationId"),
+                "assistant_message_id": data.get("assistantMessageId"),
+                "chat_url": chat_url,
+            },
+        )
+    ]
+    for index, item in enumerate(findings[:5], start=1):
+        evidence.append(
+            ResearchEvidence(
+                source_type="praxis_chat",
+                title=f"Praxis chat finding {index}",
+                excerpt=_compact(item),
+            )
+        )
+
+    claims = parsed.get("claims") or []
+    gaps = parsed.get("gaps") or []
+    angle_notes = parsed.get("angle_notes") or parsed.get("angles") or []
+    return ResearchBrief(
+        summary=summary,
+        evidence=evidence,
+        claims=claims if isinstance(claims, list) else [str(claims)],
+        gaps=gaps if isinstance(gaps, list) else [str(gaps)],
+        angle_notes=angle_notes if isinstance(angle_notes, list) else [str(angle_notes)],
+    )
+
+
 async def gather_praxis_research(
     prompt: str,
     project_root: Optional[Path] = None,
+    *,
+    via_chat: bool = False,
 ) -> ResearchBrief:
+    if via_chat:
+        try:
+            return await gather_praxis_chat_research(prompt, project_root)
+        except Exception as exc:
+            fallback = await gather_praxis_research(prompt, project_root, via_chat=False)
+            fallback.gaps.append(f"Praxis chat research failed: {exc}")
+            return fallback
+
     root = (project_root or default_project_root()).resolve()
     evidence: List[ResearchEvidence] = []
     claims: List[str] = []

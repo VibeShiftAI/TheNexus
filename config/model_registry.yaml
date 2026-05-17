@@ -15,7 +15,7 @@ models:
   local-default:
     provider: local
     family: Local
-    model_name: qwen3:32b
+    model_name: gemma4:latest
     context_window: 131072
     capabilities: ["reasoning", "code", "tool_use"]
     cost_per_1k_input: 0.0

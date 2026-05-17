@@ -4,7 +4,26 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from youtube_workflows import graph as graph_module
 from youtube_workflows.api import MAX_IN_MEMORY_RUNS, _remember_run, _runs, router
+from youtube_workflows.models import ResearchBrief, ResearchEvidence
+
+
+@pytest.fixture(autouse=True)
+def fake_research(monkeypatch):
+    async def _fake_gather(prompt, *args, **kwargs):
+        return ResearchBrief(
+            summary=f"Praxis chat research for {prompt}",
+            evidence=[
+                ResearchEvidence(
+                    source_type="praxis_chat",
+                    title="Praxis chat research response",
+                    excerpt="Praxis researched through the regular chat channel.",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(graph_module, "gather_praxis_research", _fake_gather)
 
 
 @pytest.fixture
@@ -22,7 +41,7 @@ def test_start_youtube_workflow_returns_run_id_and_gate(client):
     data = response.json()
     assert data["success"] is True
     assert data["run_id"].startswith("yt-")
-    assert data["pending_approval"]["gate"] == "concept"
+    assert data["pending_approval"]["gate"] == "research"
 
 
 def test_get_unknown_youtube_run_returns_404(client):
@@ -48,12 +67,31 @@ def test_resume_invalid_decision_returns_422(client):
     assert response.status_code == 422
 
 
-def test_resume_approve_concept_returns_script_gate(client):
+def test_resume_approve_research_returns_concept_gate(client):
     response = client.post("/api/youtube/runs", json={"prompt": "Explain The Nexus"})
     start = response.json()
 
     response = client.post(
         f"/api/youtube/runs/{start['run_id']}/resume",
+        json={"review_decision": "approve"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["run_id"] == start["run_id"]
+    assert data["pending_approval"]["gate"] == "concept"
+
+
+def test_resume_approve_concept_returns_script_gate(client):
+    start = client.post("/api/youtube/runs", json={"prompt": "Explain The Nexus"}).json()
+    concept = client.post(
+        f"/api/youtube/runs/{start['run_id']}/resume",
+        json={"review_decision": "approve"},
+    ).json()
+
+    response = client.post(
+        f"/api/youtube/runs/{concept['run_id']}/resume",
         json={"review_decision": "approve"},
     )
 

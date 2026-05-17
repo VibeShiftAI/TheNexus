@@ -12,29 +12,34 @@
   },
   "stages": [
     {
+      "id": "research",
+      "name": "Research",
+      "order": 1
+    },
+    {
       "id": "concept",
       "name": "Concept",
-      "order": 1
+      "order": 2
     },
     {
       "id": "script",
       "name": "Script",
-      "order": 2
+      "order": 3
     },
     {
       "id": "cost",
       "name": "Cost Review",
-      "order": 3
+      "order": 4
     },
     {
       "id": "assets",
       "name": "Assets",
-      "order": 4
+      "order": 5
     },
     {
       "id": "final",
       "name": "Final Review",
-      "order": 5
+      "order": 6
     }
   ],
   "nodes": [

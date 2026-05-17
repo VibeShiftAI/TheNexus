@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 PublishMode = Literal["export", "private_upload"]
 ReviewDecision = Literal["approve", "revise", "reject"]
-RevisionTarget = Literal["concept", "script", "production_plan", "assets", "compliance"]
+RevisionTarget = Literal["research", "concept", "script", "production_plan", "assets", "compliance"]
 ProviderName = Literal["dry_run", "local", "existing_adapter", "veo"]
 ResearchSourceType = Literal[
     "context",
@@ -16,6 +16,7 @@ ResearchSourceType = Literal[
     "git",
     "workflow",
     "memory",
+    "praxis_chat",
     "fallback",
 ]
 
@@ -176,7 +177,7 @@ class ComplianceReport(BaseModel):
 
 
 class ApprovalPayload(BaseModel):
-    gate: Literal["concept", "script", "cost", "final"]
+    gate: Literal["research", "concept", "script", "cost", "final"]
     message: str
     artifact: Dict[str, Any]
     decisions: List[ReviewDecision]
