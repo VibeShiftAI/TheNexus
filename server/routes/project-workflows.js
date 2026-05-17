@@ -38,12 +38,15 @@ function createProjectWorkflowsRouter({ db, getProjectById, PROJECT_ROOT }) {
             if (!name || !workflow_type) return res.status(400).json({ error: 'Name and workflow_type are required' });
 
             let stages = [];
+            let templateConfig = {};
             if (template_id) {
                 const fs = require('fs');
                 const path = require('path');
                 const templatePath = path.resolve(__dirname, '../../config/templates/workflows', `${template_id}.json`);
                 if (fs.existsSync(templatePath)) {
-                    stages = JSON.parse(fs.readFileSync(templatePath, 'utf8')).stages || [];
+                    const template = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+                    stages = template.stages || [];
+                    templateConfig = template.default_configuration || {};
                 } else {
                     return res.status(400).json({ error: `Template not found: ${template_id}` });
                 }
@@ -51,7 +54,7 @@ function createProjectWorkflowsRouter({ db, getProjectById, PROJECT_ROOT }) {
 
             const workflow = await db.createProjectWorkflow({
                 project_id: project.id, name, description: description || '', workflow_type,
-                template_id: null, stages, configuration: { ...(configuration || {}), template_name: template_id || null },
+                template_id: null, stages, configuration: { ...templateConfig, ...(configuration || {}), template_name: template_id || null },
                 parent_initiative_id: parent_initiative_id || null, status: 'idea',
                 current_stage: stages.length > 0 ? stages[0].id : null
             });

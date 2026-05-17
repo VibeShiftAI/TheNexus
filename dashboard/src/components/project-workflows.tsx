@@ -150,7 +150,8 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
                 name: newWorkflowName.trim(),
                 description: newWorkflowDescription.trim() || undefined,
                 workflow_type: selectedTemplate.workflow_type as ProjectWorkflowType,
-                template_id: selectedTemplate.id
+                template_id: selectedTemplate.id,
+                configuration: selectedTemplate.default_configuration || {}
             });
 
             setShowCreateModal(false);

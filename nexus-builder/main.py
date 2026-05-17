@@ -607,6 +607,7 @@ async def get_workflow_templates(level: str = None):
                         "level": template.get("level", "task"),
                         "workflow_type": template.get("workflow_type"),
                         "stages": template.get("stages", []),
+                        "default_configuration": template.get("default_configuration", {}),
                         "nodes": template.get("nodes", []),
                         "edges": template.get("edges", []),
                         "conditionalEdges": template.get("conditionalEdges", [])

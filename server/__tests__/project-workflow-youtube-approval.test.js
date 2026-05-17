@@ -44,6 +44,10 @@ describe('project workflow YouTube approval plumbing', () => {
       method: 'POST',
       body: expect.stringContaining('Create an introduction video about Praxis'),
     }));
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual(expect.objectContaining({
+      dry_run: true,
+      max_cost_usd: 0,
+    }));
     expect(db.updateProjectWorkflow).toHaveBeenCalledWith('wf-1', expect.objectContaining({
       status: 'review',
       current_stage: 'concept',
@@ -52,6 +56,39 @@ describe('project workflow YouTube approval plumbing', () => {
         youtube_run_id: 'yt-123',
         pending_approval: { gate: 'concept', message: 'Approve concept' },
       }),
+    }));
+  });
+
+  it('passes live generation configuration from the project workflow', async () => {
+    const { handleYoutubeWorkflowStart } = require('../services/project-workflow-supervisor');
+    const db = {
+      updateProjectWorkflow: jest.fn().mockResolvedValue({}),
+    };
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        run_id: 'yt-live',
+        pending_approval: { gate: 'concept', message: 'Approve concept' },
+        state: {},
+      }),
+    });
+
+    await handleYoutubeWorkflowStart({
+      db,
+      workflow: {
+        id: 'wf-live',
+        project_id: 'project-1',
+        configuration: { dry_run: false, max_cost_usd: 5, publish_mode: 'export' },
+      },
+      context: 'Live intro',
+      langGraphUrl: 'http://python.test',
+    });
+
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual(expect.objectContaining({
+      dry_run: false,
+      max_cost_usd: 5,
+      publish_mode: 'export',
     }));
   });
 

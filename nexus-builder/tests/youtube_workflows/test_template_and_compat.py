@@ -15,6 +15,8 @@ def test_youtube_template_exists_and_is_dashboard_level():
     assert data["id"] == "youtube-production"
     assert data["workflow_type"] == "youtube-production"
     assert data["level"] == "project"
+    assert data["default_configuration"]["dry_run"] is False
+    assert data["default_configuration"]["max_cost_usd"] > 0
 
 
 def test_youtube_template_stages_match_existing_shape():

@@ -46,7 +46,11 @@ class ProviderRouter:
         allow_sota = bool(policy.get("allow_sota", False))
         max_cost = workflow_input.max_cost_usd
 
-        wants_veo = scene.requires_sota or scene.provider_preference == "veo"
+        wants_veo = (
+            scene.requires_sota
+            or scene.provider_preference == "veo"
+            or (allow_sota and "veo" in self.available_providers and max_cost > 0)
+        )
         estimated_veo = round(scene.duration_s * self.veo_usd_per_second, 4)
 
         if (
@@ -58,7 +62,7 @@ class ProviderRouter:
             return ProviderDecision(
                 scene_id=scene.scene_id,
                 provider="veo",
-                reason="scene requests SOTA video and cost is within ceiling",
+                reason="live video generation is configured and cost is within ceiling",
                 estimated_cost_usd=estimated_veo,
                 requires_cost_approval=True,
                 fallback_provider="existing_adapter",

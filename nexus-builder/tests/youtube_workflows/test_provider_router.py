@@ -49,6 +49,26 @@ def test_veo_scene_requires_cost_approval_when_allowed():
     assert decision.requires_cost_approval is True
 
 
+def test_live_routine_scene_uses_veo_when_allowed_and_budgeted():
+    router = ProviderRouter(veo_usd_per_second=0.30, available_providers={"veo"})
+    profile = get_channel_profile("default")
+    decision = router.choose_scene_provider(
+        SceneScript(
+            scene_id="s1",
+            narration="Line",
+            visual_prompt="Operational dashboard",
+            motion_prompt="Slow push",
+            duration_s=5,
+            requires_sota=False,
+        ),
+        WorkflowInput(prompt="Demo", dry_run=False, max_cost_usd=2.0),
+        profile,
+    )
+    assert decision.provider == "veo"
+    assert decision.estimated_cost_usd == 1.5
+    assert decision.requires_cost_approval is True
+
+
 def test_cost_ceiling_falls_back_to_existing_adapter():
     router = ProviderRouter(veo_usd_per_second=0.30, available_providers={"veo"})
     profile = get_channel_profile("default")
