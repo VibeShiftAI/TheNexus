@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getBoardState } from "@/lib/nexus";
-import { groupBoardTasks, type BoardTask, type BoardLaneId } from "@/lib/task-board";
+import { groupBoardTasks, type BoardTask, type BoardLaneId, type BoardProject } from "@/lib/task-board";
 import { FolderGit2, ChevronDown, ChevronUp, Clock, AlertTriangle, Play, ExternalLink } from "lucide-react";
 
 interface CompactTaskBoardProps {
@@ -12,30 +12,31 @@ interface CompactTaskBoardProps {
 type TabId = "active" | "next" | "attention";
 
 export function CompactTaskBoard({ onSelectTask }: CompactTaskBoardProps) {
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<BoardProject[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("active");
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchBoard = async (active: boolean) => {
-    try {
-      const boardState = await getBoardState();
-      if (active) {
-        setProjects(boardState || []);
-      }
-    } catch (e) {
-      console.error("Failed to fetch board state:", e);
-    } finally {
-      if (active) {
-        setLoading(false);
-      }
-    }
-  };
-
   useEffect(() => {
     let active = true;
-    fetchBoard(active);
-    const interval = setInterval(() => fetchBoard(active), 10000);
+
+    const fetchBoard = async () => {
+      try {
+        const boardState = await getBoardState();
+        if (active) {
+          setProjects(boardState || []);
+        }
+      } catch (e) {
+        console.error("Failed to fetch board state:", e);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchBoard();
+    const interval = setInterval(fetchBoard, 10000);
     return () => {
       active = false;
       clearInterval(interval);
@@ -78,11 +79,11 @@ export function CompactTaskBoard({ onSelectTask }: CompactTaskBoardProps) {
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg flex flex-col h-full">
       {/* Header */}
       <div className="bg-slate-950/60 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FolderGit2 size={16} className="text-cyan-400" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Task Board</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <FolderGit2 size={16} className="text-cyan-400 shrink-0" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 truncate">Task Board</span>
         </div>
-        <span className="text-xs text-slate-500 font-medium">
+        <span className="text-xs text-slate-500 font-medium shrink-0 ml-2">
           {tabTasks.length} tasks
         </span>
       </div>
@@ -153,22 +154,22 @@ export function CompactTaskBoard({ onSelectTask }: CompactTaskBoardProps) {
                   role="button"
                   tabIndex={0}
                   aria-expanded={isExpanded}
-                  className="p-3 flex items-center justify-between cursor-pointer focus:outline-none focus:ring-1 focus:ring-cyan-500 rounded-t-lg"
+                  className="p-3 flex items-center justify-between cursor-pointer focus:outline-none focus:ring-1 focus:ring-cyan-500 rounded-t-lg min-w-0"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
                     {activeTab === "active" && <Play size={14} className="text-violet-400 animate-pulse shrink-0" />}
                     {activeTab === "next" && <Clock size={14} className="text-sky-400 shrink-0" />}
                     {activeTab === "attention" && <AlertTriangle size={14} className="text-rose-400 shrink-0" />}
-                    <div className="text-left">
-                      <h4 className="text-sm font-semibold text-slate-200">
-                        {cleanTitle.length > 28 ? `${cleanTitle.slice(0, 28)}...` : cleanTitle}
+                    <div className="text-left min-w-0 flex-1">
+                      <h4 className="text-sm font-semibold text-slate-200 truncate">
+                        {cleanTitle}
                       </h4>
-                      <span className="text-[10px] text-slate-500 truncate block max-w-[180px]">
+                      <span className="text-[10px] text-slate-500 truncate block">
                         {task.projectName || "Unknown Project"}
                       </span>
                     </div>
                   </div>
-                  {isExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                  {isExpanded ? <ChevronUp size={16} className="text-slate-400 shrink-0" /> : <ChevronDown size={16} className="text-slate-400 shrink-0" />}
                 </div>
 
                 {/* Collapsible details */}
@@ -177,7 +178,7 @@ export function CompactTaskBoard({ onSelectTask }: CompactTaskBoardProps) {
                     onClick={(e) => e.stopPropagation()}
                     className="px-3 pb-3 pt-1 border-t border-slate-800/40 text-xs text-slate-400 space-y-2.5 bg-slate-950/40 rounded-b-lg text-left"
                   >
-                    {task.description && (
+                    {task.description && task.description.trim() && (
                       <div>
                         <span className="font-semibold text-slate-300">Description:</span>
                         <p 
