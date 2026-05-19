@@ -2,31 +2,39 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { getProjects, getPins, Project } from "@/lib/nexus";
+import { getProjects, getPins, getTasks, type Project, type Task } from "@/lib/nexus";
 import { ProjectCard } from "@/components/project-card";
 import { NewProjectModal } from "@/components/new-project-modal";
-import { ActivityFeed } from "@/components/activity-feed";
-import { AntigravityMonitor } from "@/components/antigravity-monitor";
 import { AITerminal } from "@/components/ai-terminal";
-import { DashboardInitiatives } from "@/components/dashboard-initiatives";
-import { DashboardSidebar } from "@/components/dashboard-sidebar";
-import { DashboardWorkSummary } from "@/components/dashboard-work-summary";
-import { DailyJournal } from "@/components/daily-journal";
-import { Activity, Zap, Folder, Plus, Gauge, X, BookOpen, Settings, Calendar, Table2, ListRestart } from "lucide-react";
+import { AntigravityMonitor } from "@/components/antigravity-monitor";
 import { SettingsModal } from "@/components/settings-modal";
-
-import Link from "next/link";
+import { NavSidebar } from "@/components/nav-sidebar";
+import { ScheduleTimeline } from "@/components/schedule-timeline";
+import { LocalQueueList } from "@/components/local-queue-list";
+import { CompactTaskBoard } from "@/components/compact-task-board";
+import { DetailDrawer } from "@/components/detail-drawer";
+import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-react";
 
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [pins, setPins] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Navigation / Modals State
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  const router = useRouter();
+  // Inspector Drawer State
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [inspectingTask, setInspectingTask] = useState<Task | null>(null);
+  const [inspectingProjectId, setInspectingProjectId] = useState<string | null>(null);
+  
+  // Refresh signals
+  const [boardRefreshKey, setBoardRefreshKey] = useState(0);
 
+  const router = useRouter();
 
   const loadData = useCallback(async () => {
     try {
@@ -34,8 +42,9 @@ export default function Home() {
         getProjects(),
         getPins()
       ]);
-      setProjects(projectsData);
-      setPins(pinsData);
+      setProjects(projectsData || []);
+      setPins(pinsData || []);
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Filesystem Error");
     } finally {
@@ -59,6 +68,38 @@ export default function Home() {
     }
   };
 
+  // Select a task to inspect in detail drawer
+  const handleSelectTask = async (taskId: string, projectId: string) => {
+    setInspectingProjectId(projectId);
+    setInspectingTask(null);
+    setInspectorOpen(true);
+    try {
+      const res = await getTasks(projectId);
+      const foundTask = res.tasks?.find(t => t.id === taskId);
+      if (foundTask) {
+        setInspectingTask(foundTask);
+      }
+    } catch (err) {
+      console.error("Error loading task details for inspector:", err);
+    }
+  };
+
+  // Called when a task is updated in the inspector (e.g. description edit saved)
+  const handleTaskChanged = () => {
+    setBoardRefreshKey(prev => prev + 1);
+    if (inspectingTask && inspectingProjectId) {
+      // Re-fetch detail task to show updated information in the drawer
+      getTasks(inspectingProjectId)
+        .then(res => {
+          const foundTask = res.tasks?.find(t => t.id === inspectingTask.id);
+          if (foundTask) {
+            setInspectingTask(foundTask);
+          }
+        })
+        .catch(err => console.error("Error updating drawer task details:", err));
+    }
+  };
+
   // Sort projects: pinned first
   const sortedProjects = [...projects].sort((a, b) => {
     const aPinned = pins.includes(a.id);
@@ -69,135 +110,102 @@ export default function Home() {
   });
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30">
+    <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 flex flex-col">
       {/* Header HUD */}
-      <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md shrink-0">
         <div className="container mx-auto flex h-16 items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
-            <h1 className="text-xl font-bold tracking-tight text-white">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsNavOpen(true)}
+              className="p-1.5 rounded-lg border border-slate-800 bg-slate-900/50 hover:bg-slate-800 text-slate-400 hover:text-white transition-all mr-1"
+              aria-label="Open navigation menu"
+            >
+              <Menu size={20} />
+            </button>
+            <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse shrink-0" />
+            <h1 className="text-lg font-bold tracking-tight text-white flex items-baseline gap-1.5">
               THE <span className="text-cyan-400">NEXUS</span>
+              <span className="text-[10px] text-slate-500 font-mono font-medium border border-slate-800/80 px-1.5 py-0.5 rounded bg-slate-950">
+                Praxis Dashboard
+              </span>
             </h1>
           </div>
-          <div className="flex items-center gap-6 text-sm font-medium text-slate-400">
-            <Link
-              href="/task-board"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 hover:border-cyan-500/50 transition-all text-cyan-400 hover:text-cyan-300"
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowNewProjectModal(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/30 hover:border-cyan-500/50 px-3.5 py-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-all shadow-lg shadow-cyan-500/5"
             >
-              <Table2 size={16} />
-              <span>Task Board</span>
-            </Link>
-            <Link
-              href="/system-monitor"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 hover:border-amber-500/50 transition-all text-amber-400 hover:text-amber-300"
-            >
-              <Gauge size={16} />
-              <span>System Monitor</span>
-            </Link>
-            <Link
-              href="/workflow-builder"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 hover:border-indigo-500/50 transition-all text-indigo-400 hover:text-indigo-300"
-            >
-              <Zap size={16} />
-              <span>Workflow Builder</span>
-            </Link>
-            <Link
-              href="/calendar"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-teal-500/20 to-emerald-500/20 border border-teal-500/30 hover:border-teal-500/50 transition-all text-teal-400 hover:text-teal-300"
-            >
-              <Calendar size={16} />
-              <span>Calendar</span>
-            </Link>
-            <Link
-              href="/local-queue"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-sky-500/20 to-cyan-500/20 border border-sky-500/30 hover:border-sky-500/50 transition-all text-sky-400 hover:text-sky-300"
-            >
-              <ListRestart size={16} />
-              <span>Local Queue</span>
-            </Link>
-            <Link
-              href="/codex"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-pink-500/20 to-rose-500/20 border border-pink-500/30 hover:border-pink-500/50 transition-all text-pink-400 hover:text-pink-300"
-            >
-              <BookOpen size={16} />
-              <span>The Codex</span>
-            </Link>
+              <Plus size={14} />
+              <span>New Project</span>
+            </button>
             <button
               onClick={() => setShowSettings(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-slate-500/20 to-slate-400/20 border border-slate-500/30 hover:border-slate-400/50 transition-all text-slate-400 hover:text-slate-300"
+              className="p-1.5 rounded-lg border border-slate-800 bg-slate-900/50 hover:bg-slate-800 text-slate-400 hover:text-white transition-all"
+              aria-label="Open settings"
             >
-              <Settings size={16} />
-              <span>Settings</span>
+              <Settings size={18} />
             </button>
-
           </div>
         </div>
       </header>
 
-      {/* Content Grid */}
-      <div className="container mx-auto p-6">
-        {/* Praxis Terminal & Dashboard Sidebar */}
-        <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_380px]">
-          {/* Left: Praxis Terminal — absolute-positioned so sidebar drives row height */}
-          <div className="relative min-h-[400px]">
-            <div className="absolute inset-0">
-              <AITerminal mode="inline" />
-            </div>
-          </div>
-
-          {/* Right: Consolidated Sidebar — its content determines the row height */}
-          <div>
-            <DashboardSidebar onRefresh={loadData} />
-          </div>
-        </div>
-
-        {/* Full-width Praxis Journal under Terminal & Sidebar */}
-        <div className="mb-8">
-          <DailyJournal />
-        </div>
-
-        <DashboardWorkSummary onRefresh={loadData} />
-
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-2">Active Projects</h2>
-            <div className="h-1 w-24 bg-gradient-to-r from-cyan-500 to-transparent" />
-          </div>
-          <button
-            onClick={() => setShowNewProjectModal(true)}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 px-4 py-2 text-sm font-medium text-white hover:from-cyan-600 hover:to-purple-600 transition-all shadow-lg shadow-cyan-500/20"
-          >
-            <Plus size={18} />
-            <span>New Project</span>
-          </button>
-        </div>
-
+      {/* Main Workspace */}
+      <div className="container mx-auto p-6 flex-1 flex flex-col min-h-0">
         {error && (
-          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-400 mb-6">
-            <p className="font-bold">Connection Error</p>
-            <p className="text-sm">{error}</p>
-            <p className="text-xs mt-2 opacity-70">Make sure the Local Nexus backend is running.</p>
+          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-400 mb-6 flex items-start gap-2.5 text-left">
+            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-sm">Connection Error</p>
+              <p className="text-xs mt-0.5 opacity-90">{error}</p>
+            </div>
           </div>
         )}
 
-        {loading ? (
-          <div className="flex h-64 items-center justify-center">
-            <Activity className="animate-spin text-cyan-500" size={32} />
-          </div>
-        ) : sortedProjects.length === 0 && !error ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-800 py-20 text-center">
-            <div className="rounded-full bg-slate-900 p-4 text-slate-500">
-              <Folder size={32} />
+        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr] xl:grid-cols-[1.6fr_1fr] items-start">
+          {/* Left Side: Praxis Chat (AITerminal) & CompactTaskBoard */}
+          <div className="space-y-6 flex flex-col min-w-0">
+            {/* Praxis Terminal Chat Container */}
+            <div className="h-[550px] lg:h-[600px] w-full shrink-0">
+              <AITerminal mode="inline" />
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-slate-300">No Projects Found</h3>
-            <p className="mt-2 text-sm text-slate-500">
-              Scanned path: <code className="rounded bg-slate-900 px-1 py-0.5">$PROJECT_ROOT</code> — set this in your <code className="rounded bg-slate-900 px-1 py-0.5">.env</code> file
-            </p>
+            
+            {/* Tasks Board Widget */}
+            <CompactTaskBoard key={boardRefreshKey} onSelectTask={handleSelectTask} />
           </div>
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-            {/* Projects Grid */}
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+
+          {/* Right Side: Widgets & Schedule */}
+          <div className="space-y-6 min-w-0">
+            {/* Today's Schedule */}
+            <ScheduleTimeline />
+            
+            {/* Local LLM Queue Monitor */}
+            <LocalQueueList />
+            
+            {/* Antigravity background task monitor */}
+            <AntigravityMonitor />
+          </div>
+        </div>
+
+        {/* Pinned / Active Projects Section */}
+        <div className="mt-12 pt-8 border-t border-slate-800/80 text-left shrink-0">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FolderOpen size={18} className="text-cyan-400" />
+              <h2 className="text-lg font-bold text-white tracking-tight">PROJECT REFERENCE</h2>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex h-32 items-center justify-center">
+              <Activity className="animate-spin text-cyan-500" size={24} />
+            </div>
+          ) : sortedProjects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-800 py-12 text-center bg-slate-900/10">
+              <span className="text-xs text-slate-500">No active projects detected.</span>
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {sortedProjects.map((p) => (
                 <ProjectCard
                   key={p.id}
@@ -208,17 +216,27 @@ export default function Home() {
                 />
               ))}
             </div>
-
-            {/* Initiatives + Activity Sidebar */}
-            <div className="lg:sticky lg:top-24 lg:h-fit space-y-6">
-              <AntigravityMonitor />
-              <DashboardInitiatives onRefresh={loadData} />
-              <ActivityFeed />
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
+      {/* Global Slide-over Nav Menu */}
+      <NavSidebar
+        isOpen={isNavOpen}
+        onClose={() => setIsNavOpen(false)}
+        onOpenSettings={() => setShowSettings(true)}
+      />
+
+      {/* Global Right Slide-over Task Inspector Drawer */}
+      <DetailDrawer
+        task={inspectingTask}
+        projectId={inspectingProjectId}
+        isOpen={inspectorOpen}
+        onClose={() => setInspectorOpen(false)}
+        onTaskChange={handleTaskChanged}
+      />
+
+      {/* Modals */}
       <NewProjectModal
         isOpen={showNewProjectModal}
         onClose={() => setShowNewProjectModal(false)}
@@ -229,8 +247,7 @@ export default function Home() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
-
-
     </main>
   );
 }
+
