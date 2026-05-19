@@ -9,31 +9,34 @@ export function ScheduleTimeline() {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchTodayEvents = async () => {
-    try {
-      const today = new Date();
-      const start = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-      const end = new Date(today.setHours(23, 59, 59, 999)).toISOString();
-      const res = await fetch(calendarEventsUrl(start, end));
-      if (res.ok) {
-        const data = await res.json();
-        // Sort chronologically
-        const sorted = (data || []).sort((a: CalendarEvent, b: CalendarEvent) => 
-          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-        );
-        setEvents(sorted);
-      }
-    } catch (e) {
-      console.error("Failed to fetch schedule events:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+    const fetchTodayEvents = async () => {
+      try {
+        const today = new Date();
+        const start = new Date(new Date(today).setHours(0, 0, 0, 0)).toISOString();
+        const end = new Date(new Date(today).setHours(23, 59, 59, 999)).toISOString();
+        const res = await fetch(calendarEventsUrl(start, end));
+        if (res.ok && active) {
+          const data = await res.json();
+          const sorted = (data || []).sort((a: CalendarEvent, b: CalendarEvent) => 
+            new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+          );
+          setEvents(sorted);
+        }
+      } catch (e) {
+        console.error("Failed to fetch schedule events:", e);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
     fetchTodayEvents();
     const interval = setInterval(fetchTodayEvents, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const toggleExpand = (id: string) => {
@@ -67,10 +70,21 @@ export function ScheduleTimeline() {
             return (
               <div 
                 key={event.id}
-                className={`border rounded-lg transition-all ${tone.block} cursor-pointer`}
-                onClick={() => toggleExpand(event.id)}
+                className={`border rounded-lg transition-all ${tone.block}`}
               >
-                <div className="p-3 flex items-center justify-between">
+                <div 
+                  className="p-3 flex items-center justify-between cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50 rounded-lg"
+                  onClick={() => toggleExpand(event.id)}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleExpand(event.id);
+                    }
+                  }}
+                >
                   <div className="flex items-center gap-3">
                     {event.status === "completed" && <CheckCircle size={16} className="text-emerald-400" />}
                     {event.status === "in_progress" && <Play size={16} className="text-amber-400 animate-pulse" />}
