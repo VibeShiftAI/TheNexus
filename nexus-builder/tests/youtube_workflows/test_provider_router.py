@@ -69,7 +69,7 @@ def test_live_routine_scene_uses_veo_when_allowed_and_budgeted():
     assert decision.requires_cost_approval is True
 
 
-def test_cost_ceiling_falls_back_to_existing_adapter():
+def test_cost_ceiling_uses_existing_adapter():
     router = ProviderRouter(veo_usd_per_second=0.30, available_providers={"veo"})
     profile = get_channel_profile("default")
     decision = router.choose_scene_provider(
@@ -108,7 +108,7 @@ def test_explicit_zero_cost_ceiling_blocks_profile_paid_default():
     assert "cost ceiling" in decision.reason
 
 
-def test_missing_veo_credentials_fall_back_to_existing_adapter():
+def test_missing_veo_credentials_uses_existing_adapter():
     router = ProviderRouter(veo_usd_per_second=0.30, available_providers=set())
     profile = get_channel_profile("default")
     decision = router.choose_scene_provider(

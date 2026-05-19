@@ -21,7 +21,7 @@ models:
     cost_per_1k_input: 0.0
     cost_per_1k_output: 0.0
 
-  # ── Cloud Models (Council & Fallback) ────────────────────────
+  # ── Cloud Models (Council) ───────────────────────────────────
   gpt-5.2:
     provider: openai
     family: GPT

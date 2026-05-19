@@ -1,0 +1,10 @@
+{
+  "name": "praxis-mind-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing Praxis's vault, Cortex memory, brain, and Nexus tasks to coding agents.",
+  "private": true,
+  "main": "stdio.js",
+  "scripts": {
+    "start": "node stdio.js"
+  }
+}

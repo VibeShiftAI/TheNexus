@@ -16,6 +16,9 @@ module.exports = function createCalendarRouter({ db }) {
     router.post('/', async (req, res) => {
         try {
             const event = await db.createCalendarEvent(req.body);
+            if (!event) {
+                return res.status(500).json({ error: 'Failed to create calendar event' });
+            }
             res.status(201).json(event);
         } catch (error) {
             res.status(500).json({ error: error.message });

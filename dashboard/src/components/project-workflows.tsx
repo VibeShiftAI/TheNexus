@@ -34,7 +34,8 @@ import {
     Clock,
     Sparkles,
     Shield,
-    Video
+    Video,
+    ExternalLink
 } from "lucide-react";
 
 interface ProjectWorkflowsProps {
@@ -452,6 +453,7 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
                                                 : typeof artifact?.summary === 'string'
                                                     ? artifact.summary
                                                     : pendingApproval.message;
+                                            const artifactHref = `/project/${projectId}/workflows/${workflow.id}/approval-artifact`;
 
                                             return (
                                                 <div className="mt-3 border-t border-amber-400/20 pt-3">
@@ -466,6 +468,16 @@ export function ProjectWorkflows({ projectId, onWorkflowSelect }: ProjectWorkflo
                                                             <p className="mt-1 text-sm font-medium text-white">{title}</p>
                                                             <p className="mt-1 text-xs leading-5 text-slate-300 line-clamp-3">{summary}</p>
                                                             <div className="mt-3 flex flex-wrap gap-2">
+                                                                <a
+                                                                    href={artifactHref}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/30 bg-cyan-500/15 px-2.5 py-1.5 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-500/25"
+                                                                >
+                                                                    <ExternalLink size={12} />
+                                                                    <span>Open Artifact</span>
+                                                                </a>
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();

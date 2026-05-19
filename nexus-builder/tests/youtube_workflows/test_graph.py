@@ -56,6 +56,44 @@ class FakeStrategistWithObjectOutline:
         )()
 
 
+class FakeScriptwriter:
+    def __init__(self):
+        self.prompts = []
+
+    async def ainvoke(self, prompt):
+        self.prompts.append(prompt)
+        return type(
+            "Response",
+            (),
+            {
+                "content": """
+                {
+                  "title": "Meet Praxis: The Nexus Operator",
+                  "scenes": [
+                    {
+                      "scene_id": "s1",
+                      "narration": "I begin by researching my own tools inside The Nexus so the audience sees evidence before claims.",
+                      "visual_prompt": "Praxis inspecting internal research notes, code paths, and workflow gates on a focused operations dashboard.",
+                      "motion_prompt": "Slow camera move across the research evidence, ending on the YouTube workflow graph.",
+                      "duration_s": 8,
+                      "requires_sota": false,
+                      "provider_preference": "local"
+                    }
+                  ],
+                  "metadata": {
+                    "source": "youtube_scriptwriter"
+                  }
+                }
+                """,
+            },
+        )()
+
+
+class FailingLLM:
+    async def ainvoke(self, prompt):
+        raise RuntimeError("local model unavailable")
+
+
 @pytest.fixture(autouse=True)
 def fake_research(monkeypatch):
     async def _fake_gather(prompt, *args, **kwargs):
@@ -151,6 +189,21 @@ async def test_draft_concept_normalizes_object_outline_from_local_llm(monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_draft_concept_raises_when_strategist_llm_fails(monkeypatch):
+    monkeypatch.setattr(graph_module, "get_youtube_llm", lambda role: FailingLLM())
+
+    graph = build_youtube_graph()
+    config = {"configurable": {"thread_id": "yt-test-strategist-error"}}
+    state = initial_state(WorkflowInput(prompt="Explain The Nexus architecture"))
+
+    await graph.ainvoke(state, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+
+    with pytest.raises(RuntimeError, match="youtube_strategist failed"):
+        await graph.ainvoke(None, config)
+
+
+@pytest.mark.asyncio
 async def test_graph_can_resume_to_script_gate():
     graph = build_youtube_graph()
     config = {"configurable": {"thread_id": "yt-test-script"}}
@@ -162,6 +215,62 @@ async def test_graph_can_resume_to_script_gate():
     result = await graph.ainvoke(None, config)
     assert result["pending_approval"].gate == "script"
     assert len(result["script"].scenes) >= 1
+
+
+@pytest.mark.asyncio
+async def test_write_script_sends_research_and_concept_to_scriptwriter_llm(monkeypatch):
+    scriptwriter = FakeScriptwriter()
+
+    def _fake_get_youtube_llm(role):
+        if role == "youtube_strategist":
+            return FakeStrategist()
+        if role == "youtube_scriptwriter":
+            return scriptwriter
+        raise AssertionError(f"Unexpected YouTube LLM role: {role}")
+
+    monkeypatch.setattr(graph_module, "get_youtube_llm", _fake_get_youtube_llm)
+
+    graph = build_youtube_graph()
+    config = {"configurable": {"thread_id": "yt-test-llm-script"}}
+    state = initial_state(WorkflowInput(prompt="Explain The Nexus architecture"))
+
+    await graph.ainvoke(state, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+    await graph.ainvoke(None, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+    result = await graph.ainvoke(None, config)
+
+    assert result["pending_approval"].gate == "script"
+    assert len(scriptwriter.prompts) == 1
+    prompt = scriptwriter.prompts[0]
+    assert "Praxis chat research for Explain The Nexus architecture" in prompt
+    assert "Meet Praxis: The Nexus Operator" in prompt
+    assert result["script"].scenes[0].narration.startswith("I begin by researching my own tools")
+    assert result["script"].metadata["source"] == "youtube_scriptwriter"
+
+
+@pytest.mark.asyncio
+async def test_write_script_raises_when_scriptwriter_llm_fails(monkeypatch):
+    def _fake_get_youtube_llm(role):
+        if role == "youtube_strategist":
+            return FakeStrategist()
+        if role == "youtube_scriptwriter":
+            return FailingLLM()
+        raise AssertionError(f"Unexpected YouTube LLM role: {role}")
+
+    monkeypatch.setattr(graph_module, "get_youtube_llm", _fake_get_youtube_llm)
+
+    graph = build_youtube_graph()
+    config = {"configurable": {"thread_id": "yt-test-scriptwriter-error"}}
+    state = initial_state(WorkflowInput(prompt="Explain The Nexus architecture"))
+
+    await graph.ainvoke(state, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+    await graph.ainvoke(None, config)
+    await graph.aupdate_state(config, {"review_decision": "approve", "pending_approval": None})
+
+    with pytest.raises(RuntimeError, match="youtube_scriptwriter failed"):
+        await graph.ainvoke(None, config)
 
 
 @pytest.mark.asyncio

@@ -198,7 +198,7 @@ def _workflow_file_evidence(project_root: Path) -> List[ResearchEvidence]:
 
 def _build_summary(prompt: str, evidence: Iterable[ResearchEvidence]) -> str:
     source_types = sorted({item.source_type for item in evidence})
-    sources = ", ".join(source_types) if source_types else "fallback notes"
+    sources = ", ".join(source_types) if source_types else "internal diagnostics"
     return (
         f"Praxis researched '{prompt}' using internal Praxis evidence from {sources}. "
         "The brief is designed for a YouTube concept about what Praxis can actually do, "
@@ -309,9 +309,7 @@ async def gather_praxis_research(
         try:
             return await gather_praxis_chat_research(prompt, project_root)
         except Exception as exc:
-            fallback = await gather_praxis_research(prompt, project_root, via_chat=False)
-            fallback.gaps.append(f"Praxis chat research failed: {exc}")
-            return fallback
+            raise RuntimeError(f"Praxis chat research failed: {exc}") from exc
 
     root = (project_root or default_project_root()).resolve()
     evidence: List[ResearchEvidence] = []
@@ -329,13 +327,7 @@ async def gather_praxis_research(
     evidence.extend(_workflow_file_evidence(root))
 
     if not evidence:
-        evidence.append(
-            ResearchEvidence(
-                source_type="fallback",
-                title="Praxis internal research fallback",
-                excerpt="No internal evidence sources were available during this run.",
-            )
-        )
+        raise RuntimeError("Praxis internal research produced no evidence")
 
     gaps = []
     if not any(item.source_type == "context" for item in evidence):

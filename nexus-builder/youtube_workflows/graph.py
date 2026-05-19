@@ -15,7 +15,6 @@ from .models import (
     Concept,
     CostEntry,
     ProductionPlan,
-    SceneScript,
     Script,
 )
 from .llm import get_youtube_llm, strip_thought_blocks
@@ -75,35 +74,41 @@ def _normalize_concept_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     return normalized
 
 
-def _fallback_concept(
-    workflow_input: Any,
-    profile: Any,
-    research_brief: Any,
-    reason: str | None = None,
-) -> Concept:
-    evidence_titles = [item.title for item in research_brief.evidence[:3]]
-    risk_notes = [
-        *profile.style_rules,
-        "Concept is grounded in internal Praxis evidence, not generic web research.",
-        *(f"Evidence: {title}" for title in evidence_titles),
-        *research_brief.gaps,
-    ]
-    if reason:
-        risk_notes.append(f"Strategist fallback used: {reason}")
-    return Concept(
-        title="Praxis Introduction",
-        logline=f"A grounded introduction to Praxis through the lens of: {workflow_input.prompt}.",
-        audience="Builders and operators using The Nexus.",
-        promise="Show what Praxis can actually inspect, reason about, and produce inside The Nexus.",
-        retention_hook="Open with Praxis researching himself before explaining the workflow machinery.",
-        outline=[
-            research_brief.summary,
-            "Show the internal faculties Praxis used: tools, code evidence, workflow templates, and project history.",
-            "Turn those findings into a creator-facing explanation of how Praxis works.",
-            "Explain where human review protects quality before any expensive media generation or upload.",
-        ],
-        risk_notes=risk_notes,
-    )
+def _normalize_script_payload(payload: Dict[str, Any], concept: Concept) -> Dict[str, Any]:
+    normalized = dict(payload)
+    normalized["title"] = str(normalized.get("title") or concept.title).strip()
+    metadata = normalized.get("metadata")
+    normalized["metadata"] = metadata if isinstance(metadata, dict) else {}
+
+    scenes: List[Dict[str, Any]] = []
+    for index, raw_scene in enumerate(normalized.get("scenes") or [], start=1):
+        if not isinstance(raw_scene, dict):
+            continue
+        visual_plan = raw_scene.get("visual_plan") if isinstance(raw_scene.get("visual_plan"), dict) else {}
+        images = visual_plan.get("images") if isinstance(visual_plan.get("images"), list) else []
+        clips = visual_plan.get("clips") if isinstance(visual_plan.get("clips"), list) else []
+        first_image = images[0] if images and isinstance(images[0], dict) else {}
+        first_clip = clips[0] if clips and isinstance(clips[0], dict) else {}
+        scenes.append(
+            {
+                "scene_id": str(raw_scene.get("scene_id") or f"s{index}").strip(),
+                "narration": str(raw_scene.get("narration") or "").strip(),
+                "visual_prompt": str(
+                    raw_scene.get("visual_prompt") or first_image.get("prompt") or ""
+                ).strip(),
+                "motion_prompt": str(
+                    raw_scene.get("motion_prompt")
+                    or first_clip.get("motion")
+                    or first_clip.get("motion_prompt")
+                    or ""
+                ).strip(),
+                "duration_s": raw_scene.get("duration_s") or first_clip.get("duration_s") or 6,
+                "requires_sota": bool(raw_scene.get("requires_sota", False)),
+                "provider_preference": raw_scene.get("provider_preference"),
+            }
+        )
+    normalized["scenes"] = scenes
+    return normalized
 
 
 async def _draft_concept_with_strategist(
@@ -157,6 +162,69 @@ Requirements:
     return concept
 
 
+async def _write_script_with_scriptwriter(
+    workflow_input: Any,
+    profile: Any,
+    research_brief: Any,
+    concept: Concept,
+) -> Script:
+    evidence = [
+        {
+            "source_type": item.source_type,
+            "title": item.title,
+            "path": item.path,
+            "excerpt": item.excerpt,
+        }
+        for item in research_brief.evidence[:8]
+    ]
+    prompt = f"""
+You are Praxis's YouTube scriptwriter inside The Nexus.
+
+Write a scene-by-scene script for this approved concept:
+{json.dumps(concept.model_dump(), ensure_ascii=False)}
+
+Original request:
+{workflow_input.prompt}
+
+Use this internal Praxis research brief as source material:
+summary: {research_brief.summary}
+claims: {json.dumps(research_brief.claims, ensure_ascii=False)}
+angle_notes: {json.dumps(research_brief.angle_notes, ensure_ascii=False)}
+gaps: {json.dumps(research_brief.gaps, ensure_ascii=False)}
+evidence: {json.dumps(evidence, ensure_ascii=False)}
+
+Channel style rules:
+{json.dumps(profile.style_rules, ensure_ascii=False)}
+
+Target duration: {workflow_input.desired_duration_s} seconds.
+
+Return only JSON with exactly these keys:
+title, scenes, metadata.
+
+Each scene must include:
+scene_id, narration, visual_prompt, motion_prompt, duration_s, requires_sota, provider_preference.
+
+Requirements:
+- Make Praxis the subject and narrator where natural.
+- Ground narration in the provided research brief and approved concept.
+- Do not invent external claims beyond the research evidence.
+- Use 4-7 scenes unless the target duration clearly calls for fewer.
+- Keep provider_preference one of: dry_run, local, existing_adapter, veo, or null.
+"""
+    response = await get_youtube_llm("youtube_scriptwriter").ainvoke(prompt)
+    payload = _normalize_script_payload(
+        _extract_json_object(str(getattr(response, "content", response))),
+        concept,
+    )
+    script = Script.model_validate(payload)
+    script.metadata = {
+        **script.metadata,
+        "source": script.metadata.get("source", "youtube_scriptwriter"),
+        "research_summary": research_brief.summary,
+    }
+    return script
+
+
 async def load_channel_profile(state: YouTubeWorkflowState) -> Dict[str, Any]:
     workflow_input = state["input"]
     return {"channel_profile": get_channel_profile(workflow_input.channel_profile_id)}
@@ -182,13 +250,10 @@ async def draft_concept(state: YouTubeWorkflowState) -> Dict[str, Any]:
     workflow_input = state["input"]
     profile = state["channel_profile"]
     research_brief = state["research_brief"]
-    if workflow_input.dry_run:
-        concept = _fallback_concept(workflow_input, profile, research_brief)
-    else:
-        try:
-            concept = await _draft_concept_with_strategist(workflow_input, profile, research_brief)
-        except Exception as exc:
-            concept = _fallback_concept(workflow_input, profile, research_brief, str(exc))
+    try:
+        concept = await _draft_concept_with_strategist(workflow_input, profile, research_brief)
+    except Exception as exc:
+        raise RuntimeError(f"youtube_strategist failed to draft a concept: {exc}") from exc
     return {"concept": concept, **clear_pending_approval()}
 
 
@@ -204,27 +269,14 @@ async def concept_gate(state: YouTubeWorkflowState) -> Dict[str, Any]:
 
 
 async def write_script(state: YouTubeWorkflowState) -> Dict[str, Any]:
+    workflow_input = state["input"]
+    profile = state["channel_profile"]
+    research_brief = state["research_brief"]
     concept = state["concept"]
-    script = Script(
-        title=concept.title,
-        scenes=[
-            SceneScript(
-                scene_id="s1",
-                narration="The Nexus turns a rough idea into a reviewed, trackable workflow.",
-                visual_prompt="A dark operational dashboard with task cards and workflow lines.",
-                motion_prompt="Slow push across the dashboard with subtle parallax.",
-                duration_s=5,
-            ),
-            SceneScript(
-                scene_id="s2",
-                narration="Local models handle routine reasoning while premium providers stay behind approval gates.",
-                visual_prompt="A local workstation connected to labeled model providers.",
-                motion_prompt="Camera moves from the local node toward a highlighted cloud node.",
-                duration_s=5,
-                requires_sota=True,
-            ),
-        ],
-    )
+    try:
+        script = await _write_script_with_scriptwriter(workflow_input, profile, research_brief, concept)
+    except Exception as exc:
+        raise RuntimeError(f"youtube_scriptwriter failed to write a script: {exc}") from exc
     return {"script": script, **clear_pending_approval()}
 
 

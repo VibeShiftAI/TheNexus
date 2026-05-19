@@ -39,7 +39,6 @@ class ProviderRouter:
                 reason="dry_run is enabled",
                 estimated_cost_usd=0.0,
                 requires_cost_approval=False,
-                fallback_provider="dry_run",
             )
 
         policy = profile.provider_policy
@@ -65,7 +64,6 @@ class ProviderRouter:
                 reason="live video generation is configured and cost is within ceiling",
                 estimated_cost_usd=estimated_veo,
                 requires_cost_approval=True,
-                fallback_provider="existing_adapter",
             )
 
         if wants_veo and estimated_veo > max_cost:
@@ -83,5 +81,4 @@ class ProviderRouter:
             reason=reason,
             estimated_cost_usd=0.0,
             requires_cost_approval=False,
-            fallback_provider="dry_run",
         )

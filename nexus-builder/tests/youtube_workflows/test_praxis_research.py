@@ -83,3 +83,28 @@ async def test_praxis_chat_research_posts_to_regular_chat_channel(monkeypatch):
     assert brief.evidence[0].source_type == "praxis_chat"
     assert brief.evidence[0].metadata["conversation_id"] == "conv-1"
     assert "tool registry evidence" in brief.summary
+
+
+@pytest.mark.asyncio
+async def test_praxis_chat_research_failure_stops_workflow(monkeypatch):
+    class FakeClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def post(self, url, json):
+            raise RuntimeError("chat unavailable")
+
+    monkeypatch.setattr(praxis_research.httpx, "AsyncClient", FakeClient)
+
+    with pytest.raises(RuntimeError, match="Praxis chat research failed"):
+        await gather_praxis_research(
+            prompt="Create an introduction video about Praxis",
+            project_root=Path(__file__).resolve().parents[2],
+            via_chat=True,
+        )

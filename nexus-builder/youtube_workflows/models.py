@@ -17,7 +17,6 @@ ResearchSourceType = Literal[
     "workflow",
     "memory",
     "praxis_chat",
-    "fallback",
 ]
 
 
@@ -108,7 +107,6 @@ class ProviderDecision(BaseModel):
     reason: str
     estimated_cost_usd: float = Field(ge=0.0)
     requires_cost_approval: bool
-    fallback_provider: ProviderName = "dry_run"
 
 
 class ProductionScene(BaseModel):

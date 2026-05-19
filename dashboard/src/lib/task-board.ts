@@ -91,8 +91,8 @@ export const BOARD_LANES: BoardLaneDefinition[] = [
 ];
 
 const NEW_STATUSES = new Set(["idea", "planning"]);
-const ACTIVE_STATUSES = new Set(["building", "in_progress", "review", "implementing", "researching"]);
-const ATTENTION_STATUSES = new Set(["blocked", "suspended", "failed", "awaiting_approval", "rejected"]);
+const ACTIVE_STATUSES = new Set(["building", "in_progress", "review", "implementing", "researching", "scheduled"]);
+const ATTENTION_STATUSES = new Set(["blocked", "suspended", "failed", "awaiting_approval", "rejected", "cancelled", "archived"]);
 const COMPLETE_STATUSES = new Set(["done", "complete", "completed"]);
 
 export function getBoardLaneId(task: Pick<BoardTask, "status" | "is_unblocked">): BoardLaneId {
