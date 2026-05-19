@@ -9,25 +9,26 @@ export function LocalQueueList() {
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchQueue = async (active: boolean) => {
-    try {
-      const queueState = await getLocalLlmQueue();
-      if (active) {
-        setJobs(queueState?.jobs || []);
-      }
-    } catch (e) {
-      console.error("Failed to fetch LLM queue:", e);
-    } finally {
-      if (active) {
-        setLoading(false);
-      }
-    }
-  };
-
   useEffect(() => {
     let active = true;
-    fetchQueue(active);
-    const interval = setInterval(() => fetchQueue(active), 5000);
+
+    const fetchQueue = async () => {
+      try {
+        const queueState = await getLocalLlmQueue();
+        if (active) {
+          setJobs(queueState?.jobs || []);
+        }
+      } catch (e) {
+        console.error("Failed to fetch LLM queue:", e);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchQueue();
+    const interval = setInterval(fetchQueue, 5000);
     return () => {
       active = false;
       clearInterval(interval);
@@ -78,6 +79,8 @@ export function LocalQueueList() {
             const isExpanded = expandedJobId === job.id;
             const statusStyle = getStatusStyle(job.status);
             const jobPrompt = getJobPrompt(job);
+            const cleanPrompt = jobPrompt.replace(/\s+/g, " ");
+            const displayPrompt = cleanPrompt.length > 30 ? `${cleanPrompt.slice(0, 30)}...` : cleanPrompt;
 
             const handleKeyDown = (e: React.KeyboardEvent) => {
               if (e.key === "Enter" || e.key === " ") {
@@ -106,12 +109,12 @@ export function LocalQueueList() {
                     </span>
                     <div className="text-left">
                       <h4 className="text-sm font-semibold text-slate-200 font-mono">
-                        {jobPrompt.length > 30 ? `${jobPrompt.slice(0, 30)}...` : jobPrompt}
+                        {displayPrompt}
                       </h4>
                       <span className="text-[10px] text-slate-500">Attempts: {job.attempts || 1} • Priority: {job.priority || 0}</span>
                     </div>
                   </div>
-                  {isExpanded ? <ChevronUp size={16} className="text-slate-400 animate-fadeIn" /> : <ChevronDown size={16} className="text-slate-400" />}
+                  {isExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                 </div>
 
                 {/* Collapsible details (stops click propagation to parent wrapper) */}
@@ -137,7 +140,7 @@ export function LocalQueueList() {
                         <span className="font-semibold text-emerald-300 flex items-center gap-1">
                           <CheckCircle size={12} /> Output:
                         </span>
-                        <p className="mt-0.5 bg-emerald-950/20 p-2 rounded border border-emerald-500/20 font-mono text-[10px] max-h-[120px] overflow-y-auto whitespace-pre-wrap">{job.result}</p>
+                        <p tabIndex={0} aria-label="Job output logs" className="mt-0.5 bg-emerald-950/20 p-2 rounded border border-emerald-500/20 font-mono text-[10px] max-h-[120px] overflow-y-auto whitespace-pre-wrap">{job.result}</p>
                       </div>
                     )}
                   </div>
