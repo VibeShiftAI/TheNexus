@@ -119,6 +119,43 @@ function register(server, ctx) {
   );
 
   server.tool(
+    'nexus_task_update',
+    'Update an existing Nexus task by id. Supply only the fields you want to change. USE FOR: changing status (e.g. retiring/cancelling a task), repointing dependencies, adjusting priority, or editing the description. Does NOT create tasks — use nexus_task_create for that.',
+    {
+      task_id: z.string().describe('Task UUID (from nexus_tasks_read / nexus_task_status).'),
+      status: z.string().optional().describe('New status, e.g. "todo", "in-progress", "completed", "blocked", "cancelled".'),
+      priority: z.number().int().min(0).max(2).optional().describe('0=low, 1=normal, 2=high.'),
+      description: z.string().optional().describe('Replacement description / context.'),
+      dependencies: z.array(z.string()).optional().describe('Replacement list of task IDs this task depends on. Replaces the existing list entirely.'),
+    },
+    async ({ task_id, status, priority, description, dependencies }) => {
+      const auth = checkPrivilege(ctx.caller, 'nexus.task_update');
+      if (auth) return auth;
+      const rl = checkAndIncrement(ctx.caller.identity, 'nexus_task_update', ctx.caller.rate_limits_per_hour?.['nexus.task_update']);
+      if (!rl.allowed) {
+        return { content: [{ type: 'text', text: `Rate limit exceeded for nexus_task_update: ${rl.count}/${rl.limit} this hour.` }], isError: true };
+      }
+      const patch = {};
+      if (status !== undefined) patch.status = status;
+      if (priority !== undefined) patch.priority = priority;
+      if (description !== undefined) patch.description = description;
+      if (dependencies !== undefined) patch.dependencies = dependencies;
+      if (Object.keys(patch).length === 0) {
+        return { content: [{ type: 'text', text: 'No fields to update. Specify at least one of: status, priority, description, dependencies.' }], isError: true };
+      }
+      const started = Date.now();
+      try {
+        const data = await backends.nexusTaskUpdate(task_id, patch);
+        ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_update', success: true, latency_ms: Date.now() - started });
+        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+      } catch (e) {
+        ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_update', success: false, latency_ms: Date.now() - started, error: e.message });
+        return { content: [{ type: 'text', text: `nexus_task_update failed: ${e.message}` }], isError: true };
+      }
+    },
+  );
+
+  server.tool(
     'nexus_task_status',
     'Read full status of one task by id (all phase outputs, supervisor status, antigravity_payload).',
     { task_id: z.string().describe('Task UUID.') },

@@ -126,6 +126,15 @@ async function nexusTaskCreate({ project_id, name, description = '', status = 'i
   });
 }
 
+async function nexusTaskUpdate(taskId, patch) {
+  // PATCH /api/tasks/:taskId — partial update. Only the keys present in `patch`
+  // are changed (status, priority, description, dependencies).
+  return httpJSON(`${cfg.NEXUS}/api/tasks/${encodeURIComponent(taskId)}`, {
+    method: 'PATCH',
+    body: patch,
+  });
+}
+
 module.exports = {
   httpJSON,
   cortexSearch,
@@ -137,4 +146,5 @@ module.exports = {
   nexusTasksByProject,
   nexusTaskById,
   nexusTaskCreate,
+  nexusTaskUpdate,
 };

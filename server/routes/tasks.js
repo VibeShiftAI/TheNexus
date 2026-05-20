@@ -54,7 +54,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // ─── PATCH update task by ID (LangGraph workflow sync) ───────────────
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { status, research_output, plan_output, walkthrough, status_message } = req.body;
+        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, description } = req.body;
         try {
             const existing = await db.getTask(taskId);
             if (!existing) return res.status(404).json({ error: 'Task not found' });
@@ -63,6 +63,10 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (research_output !== undefined) updates.research_output = research_output;
             if (plan_output !== undefined) updates.plan_output = plan_output;
             if (walkthrough !== undefined) updates.walkthrough = walkthrough;
+            if (priority !== undefined) updates.priority = priority;
+            if (description !== undefined) updates.description = description;
+            // ser() in the db layer JSON-encodes arrays; deserRow parses it back.
+            if (dependencies !== undefined) updates.dependencies = Array.isArray(dependencies) ? dependencies : [];
             if (status_message !== undefined) {
                 updates.metadata = { ...(existing.metadata || {}), status_message };
             }
