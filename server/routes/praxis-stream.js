@@ -261,6 +261,12 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
     router.get('/hitl/:id', (req, res) => proxyJson(req, res, `/hitl/${encodeURIComponent(req.params.id)}`));
     router.post('/hitl/:id/resolve', (req, res) => proxyJson(req, res, `/hitl/${encodeURIComponent(req.params.id)}/resolve`));
 
+    // ── LLM usage log proxy ("who is calling which AI") ────────────
+    router.get('/llm-log', (req, res) => {
+        const qs = new URLSearchParams(req.query).toString();
+        return proxyJson(req, res, `/api/llm-log${qs ? `?${qs}` : ''}`);
+    });
+
     return router;
 }
 

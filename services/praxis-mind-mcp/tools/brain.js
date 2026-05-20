@@ -39,7 +39,7 @@ function register(server, ctx) {
       }
       const started = Date.now();
       try {
-        const data = await backends.praxisChat({ messages, system, max_tokens, depth: 1 });
+        const data = await backends.praxisChat({ messages, system, max_tokens, depth: 1, caller: ctx.caller.identity });
         const text = data?.choices?.[0]?.message?.content || JSON.stringify(data);
         const usage = data?.usage || {};
         ledger.record({
@@ -81,7 +81,7 @@ function register(server, ctx) {
           ...(context && context.length ? [{ role: 'user', content: `Context:\n${context.join('\n---\n')}` }] : []),
           { role: 'user', content: question },
         ];
-        const data = await backends.praxisChat({ messages, system, max_tokens: depth === 'deep' ? 6000 : 3000, depth: 1 });
+        const data = await backends.praxisChat({ messages, system, max_tokens: depth === 'deep' ? 6000 : 3000, depth: 1, caller: ctx.caller.identity });
         const text = data?.choices?.[0]?.message?.content || JSON.stringify(data);
         const usage = data?.usage || {};
         ledger.record({

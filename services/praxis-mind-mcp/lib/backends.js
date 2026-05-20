@@ -73,10 +73,11 @@ async function cortexIngestAtoms(payload) {
 
 // ─────────────────── Praxis ───────────────────
 
-async function praxisChat({ messages, system = null, max_tokens = 2048, depth = 1 }) {
+async function praxisChat({ messages, system = null, max_tokens = 2048, depth = 1, caller = 'unknown' }) {
   // /v1/brain/chat is the external-caller endpoint added in Wave 5.
   // Praxis strips tools server-side and forces tier=reasoning — three layers
   // of loop prevention (client-side, server-side, depth header).
+  // X-MCP-Caller attributes the downstream LLM call in the usage log.
   const body = {
     messages,
     system: system || undefined,
@@ -84,7 +85,7 @@ async function praxisChat({ messages, system = null, max_tokens = 2048, depth = 
   };
   return httpJSON(`${cfg.PRAXIS}/v1/brain/chat`, {
     method: 'POST',
-    headers: { 'X-Brain-Depth': String(depth) },
+    headers: { 'X-Brain-Depth': String(depth), 'X-MCP-Caller': caller },
     body,
     timeout: cfg.BRAIN_TIMEOUT_MS,
   });

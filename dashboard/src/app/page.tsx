@@ -13,6 +13,7 @@ import { ScheduleTimeline } from "@/components/schedule-timeline";
 import { LocalQueueList } from "@/components/local-queue-list";
 import { CompactTaskBoard } from "@/components/compact-task-board";
 import { DetailDrawer } from "@/components/detail-drawer";
+import { LLMActivityWidget } from "@/components/llm-activity-widget";
 import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-react";
 
 export default function Home() {
@@ -178,10 +179,13 @@ export default function Home() {
           <div className="space-y-6 min-w-0">
             {/* Today's Schedule */}
             <ScheduleTimeline />
-            
+
+            {/* LLM activity — who is calling which AI */}
+            <LLMActivityWidget />
+
             {/* Local LLM Queue Monitor */}
             <LocalQueueList />
-            
+
             {/* Antigravity background task monitor */}
             <AntigravityMonitor />
           </div>
