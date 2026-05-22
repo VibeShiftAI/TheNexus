@@ -169,4 +169,47 @@ describe('model control route', () => {
             offset: 0
         });
     });
+
+    test('runs manual model discovery for the control center', async () => {
+        const db = {};
+        const discoverModelRegistry = jest.fn(async ({ db: injectedDb }) => ({
+            models: [{ id: 'anthropic-claude-sonnet', provider: 'Anthropic', apiModelId: 'claude-sonnet-4-6' }],
+            providers: [
+                { provider: 'anthropic', status: 'ok', rawCount: 1, modelCount: 1 },
+                { provider: 'openai', status: 'skipped', rawCount: 0, modelCount: 0, message: 'no API key' }
+            ],
+            summary: {
+                anthropic: '1 models (from 1 raw)',
+                openai: 'SKIPPED (no key)'
+            },
+            elapsedMs: 12,
+            discoveredAt: '2026-05-22T12:00:00.000Z',
+            dbInjected: injectedDb === db
+        }));
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db, discoverModelRegistry }));
+        handle = await listen(app);
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/discover`, { method: 'POST' }))
+            .resolves.toEqual({
+                status: 200,
+                body: {
+                    models: [{ id: 'anthropic-claude-sonnet', provider: 'Anthropic', apiModelId: 'claude-sonnet-4-6' }],
+                    providers: [
+                        { provider: 'anthropic', status: 'ok', rawCount: 1, modelCount: 1 },
+                        { provider: 'openai', status: 'skipped', rawCount: 0, modelCount: 0, message: 'no API key' }
+                    ],
+                    summary: {
+                        anthropic: '1 models (from 1 raw)',
+                        openai: 'SKIPPED (no key)'
+                    },
+                    elapsedMs: 12,
+                    discoveredAt: '2026-05-22T12:00:00.000Z',
+                    dbInjected: true
+                }
+            });
+        expect(discoverModelRegistry).toHaveBeenCalledWith({ db });
+    });
 });

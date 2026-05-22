@@ -40,11 +40,25 @@ export function ModelAliasManager({ projectId = null, compact = false }: ModelAl
             value: `model:${model.id}`,
             label: model.display_name || model.name || model.id,
         }));
+        const dynamicFamilies = Array.from(new Map((state.models || [])
+            .filter(model => model.provider && model.family)
+            .map(model => {
+                const provider = String(model.provider).toLowerCase();
+                const family = String(model.family);
+                return [`family_latest:${provider}/${family}`, {
+                    value: `family_latest:${provider}/${family}`,
+                    label: `latest ${family} (${provider})`,
+                }];
+            })).values());
+        const dynamicCapabilities = ["chat", "reasoning", "coding", "vision", "local"].map(capability => ({
+            value: `capability_best:${capability}`,
+            label: `best ${capability}`,
+        }));
         const aliases = (state.aliases || []).map(item => ({
             value: `alias:${item.alias}`,
             label: `alias:${item.alias}`,
         }));
-        return [...models, ...aliases.filter(item => item.value !== `alias:${alias}`)];
+        return [...dynamicFamilies, ...dynamicCapabilities, ...models, ...aliases.filter(item => item.value !== `alias:${alias}`)];
     }, [state, alias]);
 
     const projectAliases = state.projectAliases || [];

@@ -85,6 +85,22 @@ export interface ModelExecutionResponse {
     offset: number;
 }
 
+export interface ModelDiscoveryProviderStatus {
+    provider: string;
+    status: "ok" | "skipped" | "error" | string;
+    rawCount: number;
+    modelCount: number;
+    message?: string;
+}
+
+export interface ModelDiscoveryResult {
+    models: ModelControlModel[];
+    providers: ModelDiscoveryProviderStatus[];
+    summary: Record<string, string>;
+    elapsedMs: number;
+    discoveredAt: string;
+}
+
 export async function getModelControlState(projectId?: string | null): Promise<ModelControlOptionsResponse> {
     const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
     const response = await fetch(`/api/model-control/options${query}`, {
@@ -161,6 +177,16 @@ export async function getModelExecutionSnapshots(filters: {
         cache: "no-store",
     });
     if (!response.ok) throw new Error(`Failed to load model execution snapshots: ${response.status}`);
+    return response.json();
+}
+
+export async function runModelDiscovery(): Promise<ModelDiscoveryResult> {
+    const response = await fetch("/api/model-control/discover", {
+        method: "POST",
+        credentials: "include",
+        headers: { ...getAuthHeader() as any },
+    });
+    if (!response.ok) throw new Error(`Failed to run model discovery: ${response.status}`);
     return response.json();
 }
 

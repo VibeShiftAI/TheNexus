@@ -35,7 +35,7 @@ describe('model discovery registry upsert', () => {
             getModel: jest.fn(async () => null),
             upsertModel: jest.fn(async record => record)
         };
-        const { discoverModels } = require('../services/model-discovery');
+        const { discoverModels, discoverModelRegistry } = require('../services/model-discovery');
 
         const models = await discoverModels({ db });
 
@@ -53,5 +53,24 @@ describe('model discovery registry upsert', () => {
             discovered_at: expect.any(String),
             last_seen_at: expect.any(String)
         }));
+
+        global.fetch = jest.fn()
+            .mockResolvedValueOnce(jsonResponse({ models: [{ name: 'models/gemini-3-pro' }] }))
+            .mockResolvedValueOnce(jsonResponse({ data: [{ id: 'gpt-5' }] }))
+            .mockResolvedValueOnce(jsonResponse({ data: [{ id: 'claude-sonnet-4-6' }] }))
+            .mockResolvedValueOnce(jsonResponse({ data: [{ id: 'grok-4' }] }));
+
+        const result = await discoverModelRegistry({ db });
+
+        expect(result.models.length).toBeGreaterThan(0);
+        expect(result.providers).toEqual(expect.arrayContaining([
+            expect.objectContaining({ provider: 'google', status: 'ok', rawCount: 1, modelCount: 1 }),
+            expect.objectContaining({ provider: 'openai', status: 'ok', rawCount: 1, modelCount: 1 }),
+            expect.objectContaining({ provider: 'anthropic', status: 'ok', rawCount: 1, modelCount: 1 }),
+            expect.objectContaining({ provider: 'xai', status: 'ok', rawCount: 1, modelCount: 1 }),
+        ]));
+        expect(result.summary.google).toBe('1 models (from 1 raw)');
+        expect(result.elapsedMs).toEqual(expect.any(Number));
+        expect(result.discoveredAt).toEqual(expect.any(String));
     });
 });

@@ -25,7 +25,10 @@ import {
     getModelControlState,
     getModelExecutionSnapshots,
     resolveModelAssignment,
+    runModelDiscovery,
     setLocalOnlyMode,
+    type ModelDiscoveryResult,
+    type ModelDiscoveryProviderStatus,
     type ModelControlModel,
     type ModelControlOptionsResponse,
     type ModelExecutionSnapshot,
@@ -52,6 +55,21 @@ function formatTarget(value?: string | null) {
 
 function modelLabel(model: ModelControlModel) {
     return model.display_name || model.name || model.api_model_id || model.id;
+}
+
+function ageInHours(value?: string | null) {
+    if (!value) return Number.POSITIVE_INFINITY;
+    const time = new Date(value).getTime();
+    if (Number.isNaN(time)) return Number.POSITIVE_INFINITY;
+    return (Date.now() - time) / (1000 * 60 * 60);
+}
+
+function isNewModel(model: ModelControlModel) {
+    return ageInHours(model.discovered_at) <= 72;
+}
+
+function isStaleModel(model: ModelControlModel) {
+    return ageInHours(model.last_seen_at) > 24 * 14;
 }
 
 function providerTone(provider?: string | null) {
@@ -120,9 +138,11 @@ export default function ModelControlPage() {
     const [projectId, setProjectId] = useState<string>("");
     const [history, setHistory] = useState<ModelExecutionSnapshot[]>([]);
     const [roleResolutions, setRoleResolutions] = useState<Record<string, ResolvedModelControl>>({});
+    const [discovery, setDiscovery] = useState<ModelDiscoveryResult | null>(null);
     const [localReason, setLocalReason] = useState("manual_override");
     const [loading, setLoading] = useState(true);
     const [savingLocal, setSavingLocal] = useState(false);
+    const [discovering, setDiscovering] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
@@ -171,8 +191,22 @@ export default function ModelControlPage() {
             providers: providers.size,
             aliases: (state.aliases || []).length + (state.projectAliases || []).length,
             fallbacks: history.filter(item => item.fallback_used).length,
+            stale: models.filter(isStaleModel).length,
+            fresh: models.filter(isNewModel).length,
+            lastSeen: models
+                .map(model => model.last_seen_at)
+                .filter(Boolean)
+                .sort()
+                .at(-1) || null,
         };
     }, [state, history]);
+
+    const providerStatuses: ModelDiscoveryProviderStatus[] = discovery?.providers || ["google", "openai", "anthropic", "xai"].map(provider => ({
+        provider,
+        status: (state.models || []).some(model => model.provider === provider) ? "registry" : "unknown",
+        rawCount: 0,
+        modelCount: (state.models || []).filter(model => model.provider === provider).length,
+    }));
 
     const toggleLocalOnly = async () => {
         const enabled = !(state.localOnly?.enabled);
@@ -185,6 +219,19 @@ export default function ModelControlPage() {
             setError(err instanceof Error ? err.message : "Failed to update local-only mode");
         } finally {
             setSavingLocal(false);
+        }
+    };
+
+    const runDiscovery = async () => {
+        setDiscovering(true);
+        try {
+            const result = await runModelDiscovery();
+            setDiscovery(result);
+            await load();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to run model discovery");
+        } finally {
+            setDiscovering(false);
         }
     };
 
@@ -239,6 +286,55 @@ export default function ModelControlPage() {
                     <StatCard icon={<Cpu size={18} />} label="Providers" value={String(stats.providers)} />
                     <StatCard icon={<GitBranch size={18} />} label="Role aliases" value={String(stats.aliases)} />
                     <StatCard icon={<Shield size={18} />} label="Recent fallbacks" value={String(stats.fallbacks)} />
+                </section>
+
+                <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-2 text-cyan-300">
+                                <Sparkles size={18} />
+                            </div>
+                            <div>
+                                <div className="font-semibold text-white">Model Discovery</div>
+                                <div className="text-sm text-slate-500">
+                                    {discovery
+                                        ? `Last manual scan ${formatDate(discovery.discoveredAt)} in ${discovery.elapsedMs}ms`
+                                        : stats.lastSeen
+                                            ? `Registry last saw a model ${formatDate(stats.lastSeen)}`
+                                            : "Registry has not recorded a discovery scan"}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {stats.fresh > 0 && <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200">{stats.fresh} new</span>}
+                            {stats.stale > 0 && <span className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-200">{stats.stale} stale</span>}
+                            <button
+                                type="button"
+                                onClick={runDiscovery}
+                                disabled={discovering || loading}
+                                className="inline-flex items-center gap-2 rounded border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50"
+                            >
+                                {discovering ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+                                Discover Now
+                            </button>
+                        </div>
+                    </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        {providerStatuses.map(provider => (
+                            <div key={provider.provider} className="rounded border border-slate-800 bg-slate-950/70 px-3 py-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-medium text-slate-200">{provider.provider}</span>
+                                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${provider.status === "ok" || provider.status === "registry" ? "bg-emerald-500/10 text-emerald-200" : provider.status === "skipped" ? "bg-slate-800 text-slate-400" : "bg-red-500/10 text-red-200"}`}>
+                                        {provider.status}
+                                    </span>
+                                </div>
+                                <div className="mt-1 text-xs text-slate-500">
+                                    {provider.modelCount} models{provider.rawCount ? ` from ${provider.rawCount} raw` : ""}
+                                </div>
+                                {provider.message && <div className="mt-1 truncate text-[11px] text-slate-600">{provider.message}</div>}
+                            </div>
+                        ))}
+                    </div>
                 </section>
 
                 <section className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -310,6 +406,11 @@ export default function ModelControlPage() {
                                             <div className="truncate text-xs text-slate-500">{model.api_model_id || model.apiModelId || model.id}</div>
                                         </div>
                                         <span className={`shrink-0 rounded border px-2 py-0.5 text-xs ${providerTone(model.provider)}`}>{model.provider || "model"}</span>
+                                    </div>
+                                    <div className="mb-2 flex flex-wrap gap-1.5">
+                                        {model.family && <span className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-200">latest {model.family}</span>}
+                                        {isNewModel(model) && <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200">new</span>}
+                                        {isStaleModel(model) && <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200">stale</span>}
                                     </div>
                                     <div className="flex flex-wrap gap-1.5">
                                         {(caps.length ? caps : ["chat"]).slice(0, 5).map(capability => (

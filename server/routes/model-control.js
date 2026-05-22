@@ -1,7 +1,7 @@
 const express = require('express');
 const { resolveModelAssignment } = require('../services/model-control');
 
-function createModelControlRouter({ db }) {
+function createModelControlRouter({ db, discoverModelRegistry }) {
     const router = express.Router();
 
     router.get('/options', async (req, res) => {
@@ -50,6 +50,18 @@ function createModelControlRouter({ db }) {
         } catch (error) {
             console.error('[Model Control] Failed to load execution snapshots:', error);
             res.status(500).json({ error: 'Failed to load model execution snapshots: ' + error.message });
+        }
+    });
+
+    router.post('/discover', async (_req, res) => {
+        try {
+            if (typeof discoverModelRegistry !== 'function') {
+                return res.status(503).json({ error: 'Model discovery is not configured' });
+            }
+            res.json(await discoverModelRegistry({ db }));
+        } catch (error) {
+            console.error('[Model Control] Failed to run model discovery:', error);
+            res.status(500).json({ error: 'Failed to run model discovery: ' + error.message });
         }
     });
 

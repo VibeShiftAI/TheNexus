@@ -217,7 +217,7 @@ async function upsertDiscoveredModels(registryDb, models) {
 /**
  * Main discovery function — call on server startup
  */
-async function discoverModels(options = {}) {
+async function discoverModelRegistry(options = {}) {
     console.log('[Model Discovery] Starting model discovery across all providers...');
     const startTime = Date.now();
 
@@ -226,14 +226,29 @@ async function discoverModels(options = {}) {
 
     const allModels = [];
     const summary = {};
+    const providerStatuses = [];
 
     for (const result of results) {
         if (result.skipped) {
             summary[result.provider] = 'SKIPPED (no key)';
+            providerStatuses.push({
+                provider: result.provider,
+                status: 'skipped',
+                rawCount: 0,
+                modelCount: 0,
+                message: 'no API key'
+            });
             continue;
         }
         if (result.error) {
             summary[result.provider] = `ERROR: ${result.error}`;
+            providerStatuses.push({
+                provider: result.provider,
+                status: 'error',
+                rawCount: 0,
+                modelCount: 0,
+                message: result.error
+            });
             continue;
         }
 
@@ -243,6 +258,12 @@ async function discoverModels(options = {}) {
         const filtered = filterLatestPerFamily(result.provider, result.models);
         allModels.push(...filtered);
         summary[result.provider] = `${filtered.length} models (from ${result.models.length} raw)`;
+        providerStatuses.push({
+            provider: result.provider,
+            status: 'ok',
+            rawCount: result.models.length,
+            modelCount: filtered.length
+        });
     }
 
     const elapsed = Date.now() - startTime;
@@ -253,7 +274,18 @@ async function discoverModels(options = {}) {
     await upsertDiscoveredModels(options.db, allModels);
 
     discoveredModels = allModels;
-    return allModels;
+    return {
+        models: allModels,
+        providers: providerStatuses,
+        summary,
+        elapsedMs: elapsed,
+        discoveredAt: new Date().toISOString()
+    };
+}
+
+async function discoverModels(options = {}) {
+    const result = await discoverModelRegistry(options);
+    return result.models;
 }
 
 /**
@@ -265,6 +297,7 @@ function getModels() {
 
 module.exports = {
     discoverModels,
+    discoverModelRegistry,
     getModels,
     filterLatestPerFamily,
 };
