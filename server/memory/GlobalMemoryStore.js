@@ -94,6 +94,7 @@ class GlobalMemoryStore {
       } catch (error) {
         if (error.code === 'ENOENT') {
           this.memory = this.createDefaultMemory();
+          this.isDirty = true;
           await this.save();
         } else {
           throw error;

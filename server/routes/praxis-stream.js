@@ -151,6 +151,11 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
                 scheduleReconnect();
             });
             res.on('error', (err) => {
+                if (err?.message === 'aborted') {
+                    upstreamAlive = false;
+                    upstreamReq = null;
+                    return;
+                }
                 console.warn(`[PraxisStream] upstream error: ${err.message}`);
                 upstreamAlive = false;
                 upstreamReq = null;

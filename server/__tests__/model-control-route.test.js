@@ -74,4 +74,43 @@ describe('model control route', () => {
             body: { enabled: true, reason: 'offline' }
         });
     });
+
+    test('updates global and project role aliases', async () => {
+        const db = {
+            upsertModelAlias: jest.fn(async (record) => ({ alias: record.alias, ...record })),
+            upsertProjectModelAlias: jest.fn(async (projectId, record) => ({ project_id: projectId, alias: record.alias, ...record })),
+        };
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db }));
+        handle = await listen(app);
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/aliases/coder`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target: 'model:anthropic-claude-sonnet', description: 'Default coding model' })
+        })).resolves.toEqual({
+            status: 200,
+            body: {
+                alias: 'coder',
+                target: 'model:anthropic-claude-sonnet',
+                description: 'Default coding model'
+            }
+        });
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/projects/project-1/aliases/coder`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target: 'model:local-llama', description: 'Offline project coder' })
+        })).resolves.toEqual({
+            status: 200,
+            body: {
+                project_id: 'project-1',
+                alias: 'coder',
+                target: 'model:local-llama',
+                description: 'Offline project coder'
+            }
+        });
+    });
 });

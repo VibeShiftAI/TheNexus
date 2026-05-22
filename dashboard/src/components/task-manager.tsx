@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Task, TaskStatus, addTask, deleteTask, researchTasks, getResearchStatus, updateTask, updateTaskDetails, getWorkflowTemplates, WorkflowTemplate, runTaskWithLangGraph } from "@/lib/nexus";
 import { Lightbulb, Plus, Search, Rocket, CheckCircle2, Clock, Loader2, ChevronRight, Sparkles, XCircle, Undo2, Pencil, Bug, HelpCircle, AlertTriangle, Fingerprint, Pause, Play, Workflow } from "lucide-react";
 import { ModelAssignmentControl } from "@/components/model-assignment-control";
+import { ModelAliasManager } from "@/components/model-alias-manager";
 
 interface TaskManagerProps {
     projectId: string;
@@ -35,6 +36,7 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
     const [researchError, setResearchError] = useState<string | null>(null);
     const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
     const [startingWorkflow, setStartingWorkflow] = useState<string | null>(null);
+    const [showAliasManager, setShowAliasManager] = useState(false);
 
     // Edit state
     const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -235,6 +237,12 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                         )}
                     </button>
                     <button
+                        onClick={() => setShowAliasManager(!showAliasManager)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all"
+                    >
+                        Model Aliases
+                    </button>
+                    <button
                         onClick={() => setShowForm(!showForm)}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-gradient-to-r from-purple-500/20 to-cyan-500/20 text-purple-400 border border-purple-500/30 hover:border-purple-500/50 transition-all"
                     >
@@ -248,6 +256,12 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
             {researchError && (
                 <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                     <p className="text-sm text-red-400">Research failed: {researchError}</p>
+                </div>
+            )}
+
+            {showAliasManager && (
+                <div className="mb-4">
+                    <ModelAliasManager projectId={projectId} />
                 </div>
             )}
 

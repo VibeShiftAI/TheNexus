@@ -5,6 +5,7 @@ import { X, BookOpen, Gauge, Zap, FolderGit2, Settings, Cpu, WifiOff } from "luc
 import Link from "next/link";
 import { getProjects, type Project } from "@/lib/nexus";
 import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
+import { ModelAliasManager } from "@/components/model-alias-manager";
 
 interface NavSidebarProps {
   isOpen: boolean;
@@ -127,6 +128,10 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
                   <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${localOnly.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
+            </div>
+
+            <div className="mt-3">
+              <ModelAliasManager compact />
             </div>
 
             {/* Active Projects Section */}

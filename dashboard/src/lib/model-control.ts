@@ -21,20 +21,42 @@ export interface ResolvedModelControl {
     fallbackReason?: string | null;
 }
 
-interface ModelControlOptionsResponse {
-    models?: Array<{ id: string; name?: string; display_name?: string; provider?: string; api_model_id?: string; apiModelId?: string }>;
-    aliases?: Array<{ alias: string; target: string; description?: string }>;
-    projectAliases?: Array<{ alias: string; target: string; description?: string }>;
+export interface ModelControlAlias {
+    alias: string;
+    target: string;
+    description?: string | null;
+    is_active?: boolean;
+    project_id?: string;
 }
 
-export async function getModelControlOptions(projectId?: string | null): Promise<ModelControlOption[]> {
+export interface ModelControlModel {
+    id: string;
+    name?: string;
+    display_name?: string;
+    provider?: string;
+    api_model_id?: string;
+    apiModelId?: string;
+}
+
+export interface ModelControlOptionsResponse {
+    models?: Array<{ id: string; name?: string; display_name?: string; provider?: string; api_model_id?: string; apiModelId?: string }>;
+    aliases?: ModelControlAlias[];
+    projectAliases?: ModelControlAlias[];
+    localOnly?: { enabled: boolean; reason: string | null };
+}
+
+export async function getModelControlState(projectId?: string | null): Promise<ModelControlOptionsResponse> {
     const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
     const response = await fetch(`/api/model-control/options${query}`, {
         credentials: "include",
         headers: { ...getAuthHeader() as any },
     });
-    if (!response.ok) throw new Error(`Failed to load model options: ${response.status}`);
-    const data = await response.json() as ModelControlOptionsResponse;
+    if (!response.ok) throw new Error(`Failed to load model-control state: ${response.status}`);
+    return response.json();
+}
+
+export async function getModelControlOptions(projectId?: string | null): Promise<ModelControlOption[]> {
+    const data = await getModelControlState(projectId);
 
     const projectAliases = (data.projectAliases || []).map(alias => ({
         value: `alias:${alias.alias}`,
@@ -86,14 +108,30 @@ export async function setLocalOnlyMode(enabled: boolean, reason?: string | null)
 }
 
 export async function getLocalOnlyMode(projectId?: string | null): Promise<{ enabled: boolean; reason: string | null }> {
-    const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
-    const response = await fetch(`/api/model-control/options${query}`, {
-        credentials: "include",
-        headers: { ...getAuthHeader() as any },
-    });
-    if (!response.ok) throw new Error(`Failed to load local-only mode: ${response.status}`);
-    const data = await response.json();
+    const data = await getModelControlState(projectId);
     return data.localOnly || { enabled: false, reason: null };
+}
+
+export async function upsertGlobalModelAlias(alias: string, input: { target: string; description?: string | null; is_active?: boolean }): Promise<ModelControlAlias> {
+    const response = await fetch(`/api/model-control/aliases/${encodeURIComponent(alias)}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify(input),
+    });
+    if (!response.ok) throw new Error(`Failed to save global alias: ${response.status}`);
+    return response.json();
+}
+
+export async function upsertProjectModelAlias(projectId: string, alias: string, input: { target: string; description?: string | null }): Promise<ModelControlAlias> {
+    const response = await fetch(`/api/model-control/projects/${encodeURIComponent(projectId)}/aliases/${encodeURIComponent(alias)}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify(input),
+    });
+    if (!response.ok) throw new Error(`Failed to save project alias: ${response.status}`);
+    return response.json();
 }
 
 export function formatResolvedModel(resolved?: ResolvedModelControl | null): string {
