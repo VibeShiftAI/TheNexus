@@ -566,7 +566,7 @@ export function WorkflowBuilder({
               setNodes((nds) =>
                 nds.map((n) =>
                   n.id === selectedNode.id
-                    ? { ...n, data: { ...n.data, config } }
+                    ? { ...n, data: { ...n.data, config, model: String(config.model_label || config.model_assignment || config.model || (n.data as any).model || '') } }
                     : n
                 )
               );

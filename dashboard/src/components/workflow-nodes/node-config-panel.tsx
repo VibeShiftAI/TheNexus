@@ -20,6 +20,7 @@
 
 import React, { useState, useCallback, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
+import { formatResolvedModel, getModelControlOptions, resolveModelAssignment, type ModelControlOption } from '@/lib/model-control';
 
 // Dynamically import Monaco to avoid SSR issues
 const MonacoEditor = dynamic(() => import('@monaco-editor/react').then(mod => mod.default), {
@@ -630,29 +631,26 @@ function MultiOptionsInput({ property, value, onChange }: PropertyInputProps) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function ModelSelectorInput({ property, value, onChange }: PropertyInputProps) {
-    const [models, setModels] = useState<{ name: string; value: string }[]>([
-        { name: 'Gemini Flash', value: 'gemini-3-flash-preview' },
-        { name: 'Gemini Pro', value: 'gemini-3-pro-preview' },
-        { name: 'Claude Opus', value: 'claude-sonnet-4-20250514' },
-        { name: 'GPT-4', value: 'gpt-4-turbo-preview' },
+    const [models, setModels] = useState<ModelControlOption[]>([
+        { label: 'Gemini Flash', value: 'model:google-gemini-flash' },
+        { label: 'Gemini Pro', value: 'model:google-gemini-pro' },
+        { label: 'Claude Sonnet', value: 'model:anthropic-claude-sonnet' },
+        { label: 'GPT', value: 'model:openai-gpt' },
     ]);
     const [loading, setLoading] = useState(false);
+    const selected = value === undefined || value === null || value === ''
+        ? ''
+        : String(value).startsWith('model:') || String(value).startsWith('alias:')
+            ? String(value)
+            : `model:${value}`;
 
     // Fetch models from API on mount
     useEffect(() => {
         async function fetchModels() {
             try {
                 setLoading(true);
-                const res = await fetch('/api/models');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (Array.isArray(data) && data.length > 0) {
-                        setModels(data.map((m: any) => ({
-                            name: m.display_name || m.name || m.id,
-                            value: m.id || m.name
-                        })));
-                    }
-                }
+                const options = await getModelControlOptions();
+                if (options.length > 0) setModels(options);
             } catch (e) {
                 console.warn('Could not fetch models from API, using defaults');
             } finally {
@@ -662,8 +660,20 @@ export function ModelSelectorInput({ property, value, onChange }: PropertyInputP
         fetchModels();
     }, []);
 
-    // Use empty string to represent "use default" (no override)
-    const selected = value === undefined || value === null || value === '' ? '' : value;
+    useEffect(() => {
+        if (!selected) return;
+        let cancelled = false;
+        resolveModelAssignment({ model_assignment: selected, role: 'workflow_node' })
+            .then(resolved => {
+                if (cancelled) return;
+                onChange('__merge__', {
+                    model_assignment: selected,
+                    model_label: formatResolvedModel(resolved)
+                });
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [selected]);
 
     return (
         <div className="model-selector-wrapper">
@@ -672,8 +682,13 @@ export function ModelSelectorInput({ property, value, onChange }: PropertyInputP
                 value={selected}
                 onChange={(e) => {
                     const val = e.target.value;
-                    // If "use default" is selected, pass empty string to clear the override
-                    onChange(property.name, val === '' ? '' : val);
+                    const legacyModel = val.startsWith('model:') ? val.slice('model:'.length) : val;
+                    const option = models.find(m => m.value === val);
+                    onChange('__merge__', {
+                        [property.name]: val === '' ? '' : legacyModel,
+                        model_assignment: val === '' ? '' : val,
+                        model_label: option?.label || legacyModel
+                    });
                 }}
                 disabled={loading}
                 title="Override the agent's default model for this workflow node only"
@@ -686,7 +701,7 @@ export function ModelSelectorInput({ property, value, onChange }: PropertyInputP
                         <option disabled>──────────</option>
                         {models.map((m) => (
                             <option key={m.value} value={m.value}>
-                                {m.name}
+                                {m.label}
                             </option>
                         ))}
                     </>
@@ -983,10 +998,12 @@ export function NodeConfigPanel({
     }, [nodeId, values]);
 
     const handlePropertyChange = useCallback((name: string, value: any) => {
-        const newValues = {
-            ...localValues,
-            [name]: value,
-        };
+        const newValues = name === '__merge__'
+            ? { ...localValues, ...(value || {}) }
+            : {
+                ...localValues,
+                [name]: value,
+            };
         setLocalValues(newValues);  // Update local state immediately
         onChange(newValues);        // Propagate to parent
     }, [localValues, onChange]);

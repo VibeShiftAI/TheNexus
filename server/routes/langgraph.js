@@ -11,8 +11,63 @@ const express = require('express');
 module.exports = function createLangGraphRouter({ db, PROJECT_ROOT, getProjectById, contextSync, runAgent }) {
     const router = express.Router();
     const lgService = require('../services/langgraph-supervisor');
+    const { resolveModelAssignment, recordModelExecutionSnapshot } = require('../services/model-control');
 
     const deps = { db, getProjectById, PROJECT_ROOT, contextSync };
+
+    async function resolveGraphModelAssignments(payload = {}) {
+        const graphConfig = payload.graph_config || payload.graphConfig;
+        if (!graphConfig?.nodes?.length) return payload;
+
+        const projectId = payload.project_id || payload.projectId || payload.input_data?.project_id || null;
+        const workflowId = payload.workflow_id || payload.workflowId || null;
+        const resolvedNodes = await Promise.all(graphConfig.nodes.map(async (node) => {
+            const config = node.data?.config || {};
+            const assignment = config.model_assignment;
+            if (!assignment) return node;
+
+            const resolved = await resolveModelAssignment(db, {
+                model_assignment: assignment,
+                projectId,
+                project_id: projectId,
+                workflowId,
+                nodeId: node.id,
+                role: 'workflow_node'
+            });
+            await recordModelExecutionSnapshot(db, resolved, {
+                project_id: projectId,
+                workflow_id: workflowId,
+                node_id: node.id
+            });
+
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    model: resolved.label || resolved.apiModelId,
+                    config: {
+                        ...config,
+                        resolved_model: {
+                            provider: resolved.provider,
+                            api_model_id: resolved.apiModelId,
+                            parameters: resolved.parameters || {},
+                            source: resolved.source,
+                            local_only_active: !!resolved.localOnlyActive,
+                            fallback_used: !!resolved.fallbackUsed,
+                            fallback_reason: resolved.fallbackReason || null
+                        }
+                    }
+                }
+            };
+        }));
+
+        const nextGraphConfig = { ...graphConfig, nodes: resolvedNodes };
+        return {
+            ...payload,
+            graph_config: nextGraphConfig,
+            ...(payload.graphConfig ? { graphConfig: nextGraphConfig } : {})
+        };
+    }
 
     // ─── Proxy Routes (thin pass-through to Python backend) ─────────────
 
@@ -101,7 +156,10 @@ module.exports = function createLangGraphRouter({ db, PROJECT_ROOT, getProjectBy
     });
 
     router.post('/run', async (req, res) => {
-        try { res.json(await lgService.proxyToLangGraph('/graph/run', { method: 'POST', body: JSON.stringify(req.body) })); }
+        try {
+            const payload = await resolveGraphModelAssignments(req.body);
+            res.json(await lgService.proxyToLangGraph('/graph/run', { method: 'POST', body: JSON.stringify(payload) }));
+        }
         catch (error) { res.status(503).json({ error: 'LangGraph engine unavailable' }); }
     });
 

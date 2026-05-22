@@ -606,19 +606,23 @@ class NodeRegistry:
     # NODE HANDLERS
     # ═══════════════════════════════════════════════════════════════
     
-    def _get_llm(self, model: str):
-        """Get an LLM instance based on model name"""
-        if model.startswith("gemini"):
+    def _get_llm(self, model: str = None, config: Optional[Dict[str, Any]] = None):
+        """Get an LLM instance from resolved model-control config or a legacy model name."""
+        resolved = (config or {}).get("resolved_model") or {}
+        provider = (resolved.get("provider") or "").lower()
+        model = resolved.get("api_model_id") or model or (config or {}).get("model") or "gemini-3-flash-preview"
+
+        if provider == "google" or (not provider and model.startswith("gemini")):
             return ChatGoogleGenerativeAI(
                 model=model,
                 google_api_key=os.getenv("GOOGLE_API_KEY")
             )
-        elif model.startswith("claude"):
+        elif provider == "anthropic" or (not provider and model.startswith("claude")):
             return ChatAnthropic(
                 model=model,
                 anthropic_api_key=os.getenv("ANTHROPIC_API_KEY")
             )
-        elif model.startswith("gpt"):
+        elif provider == "openai" or (not provider and model.startswith("gpt")):
             return ChatOpenAI(
                 model=model,
                 openai_api_key=os.getenv("OPENAI_API_KEY")
@@ -840,7 +844,7 @@ class NodeRegistry:
         """Create a summarizer node handler"""
         async def handler(state: Dict) -> Dict:
             model = config.get("model", "gemini-3-flash-preview")
-            llm = self._get_llm(model)
+            llm = self._get_llm(model, config)
             
             outputs = state.get("outputs", {})
             
@@ -915,7 +919,7 @@ Provide a brief summary of what was accomplished.
                 model = config.get("model") or agent_config.get("defaultModel", "gemini-3-flash-preview")
                 print(f"[AgentHandler] Using model: {model}")
                 
-                llm = self._get_llm(model)
+                llm = self._get_llm(model, config)
                 
                 # Get system prompt from agent config
                 system_prompt = agent_config.get("systemPrompt", "You are a helpful AI assistant.")
@@ -1246,7 +1250,7 @@ Provide a brief summary of what was accomplished.
             from langchain_core.messages import AIMessage
             
             model = config.get("model", "gemini-3-flash-preview")
-            llm = self._get_llm(model)
+            llm = self._get_llm(model, config)
             
             outputs = state.get("outputs", {})
             project_results = outputs.get("project_results", [])
@@ -1397,7 +1401,7 @@ Provide your decision and brief reasoning."""
             from langchain_core.messages import AIMessage
             
             model = config.get("model", "gemini-2.5-flash")
-            llm = self._get_llm(model)
+            llm = self._get_llm(model, config)
             
             context = state.get("context", {})
             outputs = state.get("outputs", {})
@@ -1440,4 +1444,3 @@ Provide your decision and reasoning."""
             }
         
         return handler
-
