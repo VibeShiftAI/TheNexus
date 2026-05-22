@@ -121,13 +121,55 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
 function createAIChatRouter({ db, callAI, pushService, io }) {
     const router = express.Router();
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
+    const {
+        resolveModelAssignment,
+        recordModelExecutionSnapshot,
+        writeModelSystemMessage
+    } = require('../services/model-control');
+
+    async function resolveTerminalAssignment({ modelAssignment, projectId, mode, conversationId }) {
+        if (!modelAssignment) return null;
+        const resolved = await resolveModelAssignment(db, {
+            requestedAssignment: modelAssignment,
+            model_assignment: modelAssignment,
+            projectId,
+            project_id: projectId,
+            role: mode === 'praxis' ? 'praxis' : 'chat'
+        });
+        await recordModelExecutionSnapshot(db, resolved, {
+            project_id: projectId || null,
+            conversation_id: conversationId || null
+        });
+        if (resolved.localOnlyActive || resolved.fallbackUsed) {
+            const reason = resolved.localOnlyActive
+                ? `local-only mode${resolved.localOnlyReason ? ` (${resolved.localOnlyReason})` : ''}`
+                : `fallback (${resolved.fallbackReason || 'requested model unavailable'})`;
+            await writeModelSystemMessage(
+                db,
+                io,
+                `Model control redirected this terminal request to ${resolved.label || resolved.apiModelId} via ${reason}.`,
+                { modelControl: { resolved, modelAssignment } }
+            );
+        }
+        return resolved;
+    }
+
+    function toModelOverride(resolved) {
+        if (!resolved) return null;
+        return {
+            provider: resolved.provider,
+            apiModelId: resolved.apiModelId,
+            parameters: resolved.parameters || {}
+        };
+    }
 
     router.post('/', async (req, res) => {
-        const { message, modelConfig, model, mode, history, projectId, session_id, files, attachments, audio, clientMessageId } = req.body || {};
+        const { message, modelConfig, model, mode, history, projectId, session_id, files, attachments, audio, clientMessageId, model_assignment, modelAssignment } = req.body || {};
+        const requestedModelAssignment = model_assignment || modelAssignment || null;
 
         console.log(`\n🤖 [AI Chat] Request Details:`);
         console.log(`   → Mode: ${mode}`);
-        console.log(`   → Model: ${model || (modelConfig && modelConfig.id)}`);
+        console.log(`   → Model: ${requestedModelAssignment || model || (modelConfig && modelConfig.id)}`);
         console.log(`   → Message: "${message ? message.substring(0, 50) : 'None'}..."`);
         console.log(`   → Files: ${files ? files.length : 0} attached`);
 
@@ -183,6 +225,12 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                 console.log(`[AI Chat] Proxying '${mode}' request to Praxis Agent (Port 54322)...`);
                 const conversation = await db.getActiveConversation('praxis');
                 conversationId = conversation ? conversation.id : null;
+                const resolvedModel = await resolveTerminalAssignment({
+                    modelAssignment: requestedModelAssignment,
+                    projectId,
+                    mode,
+                    conversationId
+                });
 
                 if (conversationId) {
                     const savedUserMessage = await db.saveChatMessage({
@@ -190,6 +238,8 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                         conversation_id: conversationId, role: 'user', content: message, mode: 'praxis',
                         metadata: {
                             projectId, hasAudio: !!audio,
+                            modelAssignment: requestedModelAssignment,
+                            resolvedModel,
                             ...(attachments?.length > 0 ? { attachments: attachments.map(a => ({ type: a.mimeType?.startsWith('image/') ? 'image' : a.mimeType?.startsWith('audio/') ? 'audio' : 'file', url: a.url, name: a.originalName || a.name, mimeType: a.mimeType })) } : {})
                         }
                     });
@@ -199,7 +249,17 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                 }
 
                 const canStream = wantsEventStream(req) && !audio && !(attachments?.length > 0);
-                const praxisPayload = { message, history, projectId, audio, attachments: attachments || undefined, ...(canStream ? { stream: true } : {}) };
+                const praxisPayload = {
+                    message,
+                    history,
+                    projectId,
+                    audio,
+                    attachments: attachments || undefined,
+                    modelAssignment: requestedModelAssignment,
+                    resolvedModel,
+                    modelOverride: toModelOverride(resolvedModel),
+                    ...(canStream ? { stream: true } : {})
+                };
                 const praxisResponse = await fetch('http://127.0.0.1:54322/api/chat', {
                     method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}) },
                     body: JSON.stringify(praxisPayload), signal: AbortSignal.timeout(getPraxisChatTimeoutMs()), // local agent loops can be long
@@ -226,6 +286,7 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                             io,
                             conversationId,
                             fullResponsePrefix: `\n\n_\u2014_\n*\ud83e\udd16 Relayed by Praxis*`,
+                            metadata: { modelAssignment: requestedModelAssignment, resolvedModel },
                         });
                     } catch (streamErr) {
                         console.error(`[AI Chat] Praxis stream relay error:`, streamErr);
@@ -243,7 +304,7 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
 
                 if (conversationId) {
                     try {
-                        const savedAssistantMessage = await db.saveChatMessage({ conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata(data) });
+                        const savedAssistantMessage = await db.saveChatMessage({ conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata({ ...data, modelAssignment: requestedModelAssignment, resolvedModel }) });
                         assistantMessageId = savedAssistantMessage?.id || null;
                         if (savedAssistantMessage && io) {
                             io.emit('chat-message', buildChatMessageEvent(savedAssistantMessage));
@@ -253,7 +314,7 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                     }
                 }
 
-                return res.json({ response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode, conversationId, assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: [], voiceData: data.voiceData });
+                return res.json({ response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode, conversationId, assistantMessageId, resolvedModel, isThinking: false, tokenUsage: { total: 0 }, artifacts: [], voiceData: data.voiceData });
             } catch (error) {
                 console.error(`[AI Chat] Praxis Proxy Error:`, error);
                 if (res.headersSent) return;
@@ -267,6 +328,8 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
 
         // ─── STANDARD LLM ROUTING ────────────────────────────────────────
         const config = modelConfig || { id: model || 'gemini-2.5-flash', apiModelId: model || 'gemini-2.5-flash', provider: 'Google', isThinking: false, parameters: {} };
+        let resolvedModel = null;
+        let executionConfig = config;
 
         const apiKeys = {
             Google: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
@@ -276,21 +339,35 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
             Local: 'local', // Local provider doesn't require a cloud API key
         };
 
-        if (!apiKeys[config.provider] && config.provider !== 'Local') {
-            return res.json({ response: `Praxis Terminal is ready! To enable ${config.provider} models, add the appropriate API key to your .env file.`, model: config.apiModelId, provider: config.provider, mode });
-        }
-
         try {
+            if (requestedModelAssignment) {
+                resolvedModel = await resolveTerminalAssignment({
+                    modelAssignment: requestedModelAssignment,
+                    projectId,
+                    mode,
+                    conversationId: null
+                });
+                executionConfig = {
+                    id: resolvedModel.resolvedModelId,
+                    apiModelId: resolvedModel.apiModelId,
+                    provider: resolvedModel.provider,
+                    isThinking: !!resolvedModel.parameters?.thinking_config,
+                    parameters: resolvedModel.parameters || {}
+                };
+            } else if (!apiKeys[config.provider] && config.provider !== 'Local') {
+                return res.json({ response: `Praxis Terminal is ready! To enable ${config.provider} models, add the appropriate API key to your .env file.`, model: config.apiModelId, provider: config.provider, mode });
+            }
+
             const systemPrompt = 'You are a helpful AI assistant for a developer dashboard called The Nexus.';
-            const aiResponse = await callAI(config, message, systemPrompt, history, { returnFullResult: true });
+            const aiResponse = await callAI(executionConfig, message, systemPrompt, history || [], { returnFullResult: true });
             let debugFooter = `\n\n_—_\n*🔧 Debug: Native Node.js Route (Chat Mode).*`;
             if (message.toLowerCase().includes('autopilot') || message.toLowerCase().includes('cortex') || message.toLowerCase().includes('debate')) {
                 debugFooter += `\n*💡 Tip: Switch to "Agent" mode to access Cortex Tools (Autopilot, Debates).*`;
             }
-            return res.json({ response: aiResponse.text + debugFooter, model: config.apiModelId, provider: config.provider, mode, isThinking: config.isThinking, tokenUsage: aiResponse.usage });
+            return res.json({ response: aiResponse.text + debugFooter, model: executionConfig.apiModelId, provider: executionConfig.provider, mode, resolvedModel, isThinking: executionConfig.isThinking, tokenUsage: aiResponse.usage });
         } catch (error) {
-            console.error(`[AI Chat] Error with ${config.provider}:`, error);
-            return res.status(500).json({ error: `Failed to get response from ${config.provider}: ${error.message}`, model: config.apiModelId });
+            console.error(`[AI Chat] Error with ${executionConfig.provider}:`, error);
+            return res.status(500).json({ error: `Failed to get response from ${executionConfig.provider}: ${error.message}`, model: executionConfig.apiModelId });
         }
     });
 

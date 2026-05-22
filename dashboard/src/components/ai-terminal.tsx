@@ -11,6 +11,7 @@ import { useParams } from "next/navigation";
 import { getAuthHeader } from "@/lib/auth";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 import { useCortex } from "@/components/cortex-provider";
+import { ModelAssignmentControl } from "@/components/model-assignment-control";
 import type { Message, CortexArtifact, PlanDraftData, CompiledPlanData, ChatResponseData, LineCommentData, VoteSummaryData, StatusUpdateData, UnknownArtifactData } from "@/components/cortex-provider";
 
 // Types are now imported from cortex-provider.tsx
@@ -27,7 +28,7 @@ interface ModelConfig {
     id: string;           // Internal identifier for UI
     apiModelId: string;   // Actual API model ID to send
     name: string;         // Display name
-    provider: 'Google' | 'Anthropic' | 'OpenAI';
+    provider: string;
     isThinking?: boolean; // Whether this is a "thinking" variant
     parameters?: {
         // Google Gemini thinking config
@@ -110,6 +111,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const [loading, setLoading] = useState(false);
     const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
     const [selectedModel, setSelectedModel] = useState<ModelConfig | null>(null);
+    const [selectedModelAssignment, setSelectedModelAssignment] = useState<string>("");
     const [selectedMode, setSelectedMode] = useState(MODES[2]);
     const [showSettings, setShowSettings] = useState(false);
     const [pendingArtifact, setPendingArtifact] = useState<CortexArtifact | null>(null);
@@ -229,6 +231,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     if (data.models && data.models.length > 0) {
                         setAvailableModels(data.models);
                         setSelectedModel(data.models[0]);
+                        setSelectedModelAssignment(`model:${data.models[0].id}`);
                         console.log(`[Praxis Terminal] Loaded ${data.models.length} models from discovery API`);
                     } else if (++attempts < maxAttempts) {
                         // Discovery may still be running — retry after 2s
@@ -550,6 +553,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     isThinking: selectedModel.isThinking || false,
                     parameters: selectedModel.parameters || {},
                 },
+                model_assignment: selectedModelAssignment || `model:${selectedModel.id}`,
                 mode: selectedMode.id,
                 history: messages.slice(-10), // Last 10 messages for context
                 projectId: scopedProjectId, // Send scope if available
@@ -1044,13 +1048,26 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                             <label className="block text-xs text-slate-400 mb-1">Model</label>
                             <select
                                 value={selectedModel?.id || ''}
-                                onChange={(e) => setSelectedModel(availableModels.find((m: ModelConfig) => m.id === e.target.value) || availableModels[0])}
+                                onChange={(e) => {
+                                    const nextModel = availableModels.find((m: ModelConfig) => m.id === e.target.value) || availableModels[0];
+                                    setSelectedModel(nextModel);
+                                    if (nextModel) setSelectedModelAssignment(`model:${nextModel.id}`);
+                                }}
                                 className="w-full rounded bg-slate-800 border border-slate-600 px-3 py-1.5 text-sm text-white focus:border-cyan-500 focus:outline-none"
                             >
                                 {availableModels.map((m: ModelConfig) => (
                                     <option key={m.id} value={m.id}>{m.name} ({m.provider})</option>
                                 ))}
                             </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs text-slate-400 mb-1">Assignment</label>
+                            <ModelAssignmentControl
+                                value={selectedModelAssignment}
+                                projectId={scopedProjectId}
+                                role={selectedMode.id}
+                                onChange={setSelectedModelAssignment}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs text-slate-400 mb-1">Mode</label>
