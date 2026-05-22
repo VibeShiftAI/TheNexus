@@ -14,6 +14,7 @@ import { LocalQueueList } from "@/components/local-queue-list";
 import { CompactTaskBoard } from "@/components/compact-task-board";
 import { DetailDrawer } from "@/components/detail-drawer";
 import { LLMActivityWidget } from "@/components/llm-activity-widget";
+import { PraxisStatusPanel } from "@/components/praxis-status-panel";
 import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-react";
 
 export default function Home() {
@@ -170,7 +171,10 @@ export default function Home() {
             <div className="h-[550px] lg:h-[600px] w-full shrink-0">
               <AITerminal mode="inline" />
             </div>
-            
+
+            {/* Praxis status + action panel */}
+            <PraxisStatusPanel />
+
             {/* Tasks Board Widget */}
             <CompactTaskBoard key={boardRefreshKey} onSelectTask={handleSelectTask} />
           </div>
