@@ -4,9 +4,15 @@
  * starting right now.
  */
 const http = require('http');
+const {
+    resolveModelAssignment,
+    recordModelExecutionSnapshot,
+    writeModelSystemMessage
+} = require('./model-control');
 
 let dbRef = null;
 let intervalId = null;
+let notifyPraxisImpl = notifyPraxis;
 
 function notifyPraxis(event) {
     const payload = JSON.stringify(event);
@@ -49,24 +55,62 @@ function shouldDispatchCalendarEvent(event, now = new Date()) {
     return timeDiffMs <= 60000 && timeDiffMs >= -300000;
 }
 
-async function checkUpcomingEvents() {
-    if (!dbRef) return;
+async function dispatchCalendarEvent(db, event) {
+    const resolved = await resolveModelAssignment(db, {
+        requestedAssignment: event.model_assignment,
+        model_assignment: event.model_assignment,
+        projectId: event.project_id,
+        project_id: event.project_id,
+        calendarEventId: event.id,
+        role: 'scheduled_activity'
+    });
+    await recordModelExecutionSnapshot(db, resolved, {
+        project_id: event.project_id || null,
+        task_id: event.task_id || null,
+        calendar_event_id: event.id
+    });
+
+    if (resolved.localOnlyActive || resolved.fallbackUsed) {
+        const reason = resolved.localOnlyActive
+            ? `local-only mode${resolved.localOnlyReason ? ` (${resolved.localOnlyReason})` : ''}`
+            : `fallback (${resolved.fallbackReason || 'requested model unavailable'})`;
+        await writeModelSystemMessage(
+            db,
+            null,
+            `Model control redirected scheduled event "${event.title}" to ${resolved.label || resolved.apiModelId} via ${reason}.`,
+            { modelControl: { resolved, modelAssignment: event.model_assignment, calendarEventId: event.id } }
+        );
+    }
+
+    return notifyPraxisImpl({
+        ...event,
+        modelAssignment: event.model_assignment,
+        resolvedModel: resolved,
+        modelOverride: {
+            provider: resolved.provider,
+            apiModelId: resolved.apiModelId,
+            parameters: resolved.parameters || {}
+        }
+    });
+}
+
+async function checkUpcomingEvents(db = dbRef, now = new Date()) {
+    if (!db) return;
     
     // Check events scheduled for today
-    const now = new Date();
     // Start of day
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     // End of day
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
     
-    const events = await dbRef.getCalendarEvents(startOfDay, endOfDay);
+    const events = await db.getCalendarEvents(startOfDay, endOfDay);
     
-    events.forEach(event => {
+    await Promise.all(events.map(async event => {
         // If event is starting within the next minute (or is up to 5 min late but still scheduled)
         if (shouldDispatchCalendarEvent(event, now)) {
-            notifyPraxis(event);
+            await dispatchCalendarEvent(db, event);
         }
-    });
+    }));
 }
 
 function start(db) {
@@ -87,4 +131,8 @@ function stop() {
     }
 }
 
-module.exports = { start, stop, shouldDispatchCalendarEvent };
+function __setNotifyPraxisForTests(fn) {
+    notifyPraxisImpl = fn || notifyPraxis;
+}
+
+module.exports = { start, stop, shouldDispatchCalendarEvent, checkUpcomingEvents, dispatchCalendarEvent, __setNotifyPraxisForTests };

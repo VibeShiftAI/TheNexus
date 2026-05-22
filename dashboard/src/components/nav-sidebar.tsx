@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { X, BookOpen, Gauge, Zap, FolderGit2, Settings } from "lucide-react";
+import { X, BookOpen, Gauge, Zap, FolderGit2, Settings, Cpu, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { getProjects, type Project } from "@/lib/nexus";
+import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
 
 interface NavSidebarProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface NavSidebarProps {
 export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [localOnly, setLocalOnly] = useState<{ enabled: boolean; reason: string | null }>({ enabled: false, reason: null });
 
   // Fetch projects list
   useEffect(() => {
@@ -35,6 +37,19 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    getLocalOnlyMode()
+      .then(setLocalOnly)
+      .catch((err) => console.warn("Failed to load local-only mode:", err.message));
+  }, []);
+
+  const toggleLocalOnly = async () => {
+    const next = !localOnly.enabled;
+    const reason = next ? (localOnly.reason || "manual_override") : null;
+    const updated = await setLocalOnlyMode(next, reason);
+    setLocalOnly(updated);
+  };
 
   // Listen for Escape key press to close sidebar
   useEffect(() => {
@@ -93,6 +108,26 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
                 </Link>
               ))}
             </nav>
+
+            <div className={`mt-6 rounded-lg border p-3 ${localOnly.enabled ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-800 bg-slate-950/40'}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  {localOnly.enabled ? <WifiOff size={16} className="text-amber-300" /> : <Cpu size={16} className="text-slate-400" />}
+                  <div className="min-w-0">
+                    <div className={`text-sm font-medium ${localOnly.enabled ? 'text-amber-200' : 'text-slate-300'}`}>Local Only</div>
+                    <div className="truncate text-xs text-slate-500">{localOnly.enabled ? (localOnly.reason || 'manual_override') : 'Cloud enabled'}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={toggleLocalOnly}
+                  className={`h-6 w-11 rounded-full border p-0.5 transition-colors ${localOnly.enabled ? 'border-amber-400/50 bg-amber-400/30' : 'border-slate-700 bg-slate-800'}`}
+                  aria-pressed={localOnly.enabled}
+                  aria-label="Toggle local-only mode"
+                >
+                  <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${localOnly.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+            </div>
 
             {/* Active Projects Section */}
             <div className="mt-8">

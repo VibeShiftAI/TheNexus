@@ -12,6 +12,7 @@ import {
     type CalendarEvent,
     type CalendarEventForm,
 } from "@/lib/calendar";
+import { ModelAssignmentControl } from "@/components/model-assignment-control";
 
 export default function CalendarPage() {
     const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -54,7 +55,8 @@ export default function CalendarPage() {
                 end_time: event.end_time || "",
                 description: event.description || "",
                 result: event.result || "",
-                status: event.status || "scheduled"
+                status: event.status || "scheduled",
+                model_assignment: event.model_assignment || ""
             });
         } else {
             setSelectedEvent(null);
@@ -70,7 +72,8 @@ export default function CalendarPage() {
                 end_time: toDatetimeLocalValue(endTime),
                 description: "",
                 result: "",
-                status: "scheduled"
+                status: "scheduled",
+                model_assignment: ""
             });
         }
         setIsEditModalOpen(true);
@@ -85,7 +88,8 @@ export default function CalendarPage() {
                 description: editForm.description,
                 result: editForm.result,
                 status: editForm.status,
-                event_type: 'praxis_task'
+                event_type: 'praxis_task',
+                model_assignment: editForm.model_assignment || null
             };
 
             if (selectedEvent) {
@@ -207,6 +211,11 @@ export default function CalendarPage() {
                                                         {event.description}
                                                     </p>
                                                 )}
+                                                {event.model_assignment && (
+                                                    <span className="mt-1 w-fit rounded bg-black/30 px-1.5 py-0.5 text-[10px] text-cyan-200">
+                                                        {event.model_assignment.replace(/^model:/, '').replace(/^alias:/, '')}
+                                                    </span>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -270,6 +279,15 @@ export default function CalendarPage() {
                                     onChange={e => setEditForm({...editForm, description: e.target.value})}
                                     className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 min-h-[100px]"
                                     placeholder="Write instructions or context that Praxis should see before starting this."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Model</label>
+                                <ModelAssignmentControl
+                                    value={editForm.model_assignment}
+                                    role="scheduled_activity"
+                                    onChange={(value) => setEditForm({ ...editForm, model_assignment: value })}
                                 />
                             </div>
                             

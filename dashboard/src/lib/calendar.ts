@@ -11,6 +11,7 @@ export interface CalendarEvent {
   event_type: string | null;
   project_id: string | null;
   task_id: string | null;
+  model_assignment: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -27,6 +28,7 @@ export interface CalendarEventForm {
   description: string;
   result: string;
   status: CalendarEventStatus;
+  model_assignment: string;
 }
 
 const CALENDAR_EVENT_STATUSES = new Set<string>([
@@ -52,6 +54,7 @@ export function emptyCalendarEventForm(): CalendarEventForm {
     description: "",
     result: "",
     status: "scheduled",
+    model_assignment: "",
   };
 }
 

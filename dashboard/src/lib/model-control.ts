@@ -74,6 +74,28 @@ export async function resolveModelAssignment(input: { model_assignment?: string 
     return response.json();
 }
 
+export async function setLocalOnlyMode(enabled: boolean, reason?: string | null): Promise<{ enabled: boolean; reason: string | null }> {
+    const response = await fetch("/api/model-control/local-only", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify({ enabled, reason: reason || null }),
+    });
+    if (!response.ok) throw new Error(`Failed to update local-only mode: ${response.status}`);
+    return response.json();
+}
+
+export async function getLocalOnlyMode(projectId?: string | null): Promise<{ enabled: boolean; reason: string | null }> {
+    const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
+    const response = await fetch(`/api/model-control/options${query}`, {
+        credentials: "include",
+        headers: { ...getAuthHeader() as any },
+    });
+    if (!response.ok) throw new Error(`Failed to load local-only mode: ${response.status}`);
+    const data = await response.json();
+    return data.localOnly || { enabled: false, reason: null };
+}
+
 export function formatResolvedModel(resolved?: ResolvedModelControl | null): string {
     if (!resolved) return "";
     const label = resolved.label || resolved.apiModelId || resolved.resolvedModelId || "model";
