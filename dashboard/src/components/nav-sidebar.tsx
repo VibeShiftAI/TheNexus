@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { X, BookOpen, Gauge, Zap, FolderGit2, Settings, Cpu, WifiOff } from "lucide-react";
+import { X, BookOpen, Gauge, Zap, FolderGit2, Settings, Cpu, WifiOff, Route } from "lucide-react";
 import Link from "next/link";
 import { getProjects, type Project } from "@/lib/nexus";
 import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
@@ -69,6 +69,7 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
   }, [isOpen, onClose]);
 
   const navItems = [
+    { href: "/model-control", label: "Model Control", icon: Route, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/system-monitor", label: "System Monitor", icon: Gauge, color: "text-amber-400 hover:text-amber-300" },
     { href: "/workflow-builder", label: "Workflow Builder", icon: Zap, color: "text-indigo-400 hover:text-indigo-300" },
     { href: "/codex", label: "The Codex", icon: BookOpen, color: "text-pink-400 hover:text-pink-300" },

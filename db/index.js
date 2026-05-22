@@ -1263,6 +1263,61 @@ async function createModelExecutionSnapshot(snapshot) {
     }
 }
 
+async function getModelExecutionSnapshots(filters = {}) {
+    if (!db) throw new Error('Database connection required for model execution snapshots');
+    try {
+        const where = [];
+        const values = [];
+        const filterMap = {
+            projectId: 'project_id',
+            taskId: 'task_id',
+            calendarEventId: 'calendar_event_id',
+            workflowId: 'workflow_id',
+            workflowRunId: 'workflow_run_id',
+            nodeId: 'node_id',
+            conversationId: 'conversation_id',
+            messageId: 'message_id',
+            commandId: 'command_id',
+            provider: 'provider',
+            resolvedModelId: 'resolved_model_id',
+        };
+
+        for (const [inputKey, column] of Object.entries(filterMap)) {
+            if (filters[inputKey]) {
+                where.push(`${column} = ?`);
+                values.push(filters[inputKey]);
+            }
+        }
+
+        if (filters.fallbackUsed !== undefined) {
+            where.push('fallback_used = ?');
+            values.push(filters.fallbackUsed ? 1 : 0);
+        }
+        if (filters.localOnlyActive !== undefined) {
+            where.push('local_only_active = ?');
+            values.push(filters.localOnlyActive ? 1 : 0);
+        }
+
+        const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+        const limit = Math.min(Math.max(Number(filters.limit) || 50, 1), 200);
+        const offset = Math.max(Number(filters.offset) || 0, 0);
+
+        const total = db.prepare(`SELECT COUNT(*) AS count FROM model_execution_snapshots ${whereSql}`).get(...values).count;
+        const snapshots = deserRows(db.prepare(`
+            SELECT *
+            FROM model_execution_snapshots
+            ${whereSql}
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        `).all(...values, limit, offset));
+
+        return { snapshots, total, limit, offset };
+    } catch (err) {
+        console.error('[Database] Error fetching model execution snapshots:', err.message);
+        throw new Error(`Failed to fetch model execution snapshots: ${err.message}`);
+    }
+}
+
 // ============================================================================
 // NEW WRAPPER FUNCTIONS (for server consumers that used db.supabase directly)
 // ============================================================================
@@ -2002,6 +2057,7 @@ module.exports = {
     setModelControlSetting,
     getModelControlSetting,
     createModelExecutionSnapshot,
+    getModelExecutionSnapshots,
     // Usage
     recordUsage,
     getUsageStats,

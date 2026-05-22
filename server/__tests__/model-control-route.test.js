@@ -113,4 +113,60 @@ describe('model control route', () => {
             }
         });
     });
+
+    test('returns recent model execution snapshots for the control center', async () => {
+        const db = {
+            getModelExecutionSnapshots: jest.fn(async (filters) => ({
+                snapshots: [{
+                    id: 'snapshot-1',
+                    requested_assignment: 'alias:coder',
+                    resolved_model_id: 'anthropic-claude-sonnet',
+                    provider: 'anthropic',
+                    api_model_id: 'claude-sonnet-4-6',
+                    source: 'project_alias',
+                    fallback_used: false,
+                    local_only_active: false,
+                    project_id: 'project-1',
+                    task_id: 'task-1',
+                    created_at: '2026-05-22T12:00:00.000Z'
+                }],
+                total: 1,
+                limit: filters.limit,
+                offset: filters.offset
+            })),
+        };
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db }));
+        handle = await listen(app);
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/executions?projectId=project-1&limit=5&offset=0`))
+            .resolves.toEqual({
+                status: 200,
+                body: {
+                    snapshots: [{
+                        id: 'snapshot-1',
+                        requested_assignment: 'alias:coder',
+                        resolved_model_id: 'anthropic-claude-sonnet',
+                        provider: 'anthropic',
+                        api_model_id: 'claude-sonnet-4-6',
+                        source: 'project_alias',
+                        fallback_used: false,
+                        local_only_active: false,
+                        project_id: 'project-1',
+                        task_id: 'task-1',
+                        created_at: '2026-05-22T12:00:00.000Z'
+                    }],
+                    total: 1,
+                    limit: 5,
+                    offset: 0
+                }
+            });
+        expect(db.getModelExecutionSnapshots).toHaveBeenCalledWith({
+            projectId: 'project-1',
+            limit: 5,
+            offset: 0
+        });
+    });
 });

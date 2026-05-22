@@ -36,13 +36,53 @@ export interface ModelControlModel {
     provider?: string;
     api_model_id?: string;
     apiModelId?: string;
+    capabilities?: Record<string, boolean>;
+    parameters?: Record<string, unknown>;
+    default_parameters?: Record<string, unknown>;
+    family?: string;
+    version_sort?: string;
+    availability_status?: string;
+    discovered_at?: string;
+    last_seen_at?: string;
+    is_active?: boolean;
 }
 
 export interface ModelControlOptionsResponse {
-    models?: Array<{ id: string; name?: string; display_name?: string; provider?: string; api_model_id?: string; apiModelId?: string }>;
+    models?: ModelControlModel[];
     aliases?: ModelControlAlias[];
     projectAliases?: ModelControlAlias[];
     localOnly?: { enabled: boolean; reason: string | null };
+}
+
+export interface ModelExecutionSnapshot {
+    id: string;
+    requested_assignment?: string | null;
+    resolved_model_id?: string | null;
+    provider?: string | null;
+    api_model_id?: string | null;
+    parameters_summary?: Record<string, unknown> | null;
+    source?: string | null;
+    local_only_active?: boolean;
+    local_only_reason?: string | null;
+    fallback_used?: boolean;
+    fallback_reason?: string | null;
+    project_id?: string | null;
+    task_id?: string | null;
+    calendar_event_id?: string | null;
+    workflow_id?: string | null;
+    workflow_run_id?: string | null;
+    node_id?: string | null;
+    conversation_id?: string | null;
+    message_id?: string | null;
+    command_id?: string | null;
+    created_at?: string | null;
+}
+
+export interface ModelExecutionResponse {
+    snapshots: ModelExecutionSnapshot[];
+    total: number;
+    limit: number;
+    offset: number;
 }
 
 export async function getModelControlState(projectId?: string | null): Promise<ModelControlOptionsResponse> {
@@ -93,6 +133,34 @@ export async function resolveModelAssignment(input: { model_assignment?: string 
         body: JSON.stringify(input),
     });
     if (!response.ok) throw new Error(`Failed to resolve model assignment: ${response.status}`);
+    return response.json();
+}
+
+export async function getModelExecutionSnapshots(filters: {
+    projectId?: string | null;
+    taskId?: string | null;
+    calendarEventId?: string | null;
+    workflowId?: string | null;
+    provider?: string | null;
+    resolvedModelId?: string | null;
+    fallbackUsed?: boolean;
+    localOnlyActive?: boolean;
+    limit?: number;
+    offset?: number;
+} = {}): Promise<ModelExecutionResponse> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+        if (value !== undefined && value !== null && value !== "") {
+            params.set(key, String(value));
+        }
+    }
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const response = await fetch(`/api/model-control/executions${query}`, {
+        credentials: "include",
+        headers: { ...getAuthHeader() as any },
+        cache: "no-store",
+    });
+    if (!response.ok) throw new Error(`Failed to load model execution snapshots: ${response.status}`);
     return response.json();
 }
 

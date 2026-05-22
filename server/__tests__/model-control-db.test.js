@@ -72,5 +72,11 @@ describe('model control database contract', () => {
         expect(snapshot.provider).toBe('anthropic');
         expect(snapshot.local_only_active).toBe(false);
         expect(snapshot.fallback_used).toBe(false);
+
+        const history = await db.getModelExecutionSnapshots({ projectId: project.id, limit: 10 });
+        expect(history.total).toBe(1);
+        expect(history.snapshots[0].id).toBe(snapshot.id);
+        expect(history.snapshots[0].task_id).toBe(created.id);
+        expect(history.snapshots[0].parameters_summary).toEqual({});
     });
 });
