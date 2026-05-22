@@ -1,4 +1,5 @@
 const { buildChatMessageEvent } = require('../chat-message-format');
+const { calculateCost } = require('../utils/token-tracker');
 
 function normalizeProvider(provider) {
     const value = String(provider || '').toLowerCase();
@@ -100,31 +101,43 @@ function buildResolved(model, requestedAssignment, source, extras = {}) {
 
 function normalizePolicy(policy) {
     if (!policy || typeof policy !== 'object') {
-        return { enabled: false, requiredCapabilities: [], fallbackChain: [] };
+        return { enabled: false, requiredCapabilities: [], fallbackChain: [], budget: {} };
     }
+    const budget = policy.budget && typeof policy.budget === 'object' ? policy.budget : {};
     return {
         enabled: policy.enabled !== false && (
             policy.enabled === true
             || (Array.isArray(policy.requiredCapabilities) && policy.requiredCapabilities.length > 0)
             || (Array.isArray(policy.fallbackChain) && policy.fallbackChain.length > 0)
+            || Number(budget.dailyTokenLimit) > 0
+            || Number(budget.dailyCostLimit) > 0
         ),
         requiredCapabilities: Array.isArray(policy.requiredCapabilities)
             ? policy.requiredCapabilities.map(String).map(value => value.trim()).filter(Boolean)
             : [],
         fallbackChain: Array.isArray(policy.fallbackChain)
             ? policy.fallbackChain.map(normalizeAssignment).filter(Boolean)
-            : []
+            : [],
+        budget: {
+            dailyTokenLimit: Number(budget.dailyTokenLimit) > 0 ? Number(budget.dailyTokenLimit) : null,
+            dailyCostLimit: Number(budget.dailyCostLimit) > 0 ? Number(budget.dailyCostLimit) : null,
+            autoLocalOnly: !!budget.autoLocalOnly
+        }
     };
 }
 
 function mergePolicies(globalPolicy, projectPolicy) {
     const global = normalizePolicy(globalPolicy);
     const project = normalizePolicy(projectPolicy);
-    if (!global.enabled && !project.enabled) return { enabled: false, requiredCapabilities: [], fallbackChain: [] };
+    if (!global.enabled && !project.enabled) return { enabled: false, requiredCapabilities: [], fallbackChain: [], budget: {} };
     return {
         enabled: global.enabled || project.enabled,
         requiredCapabilities: project.requiredCapabilities.length ? project.requiredCapabilities : global.requiredCapabilities,
-        fallbackChain: project.fallbackChain.length ? project.fallbackChain : global.fallbackChain
+        fallbackChain: project.fallbackChain.length ? project.fallbackChain : global.fallbackChain,
+        budget: {
+            ...global.budget,
+            ...Object.fromEntries(Object.entries(project.budget || {}).filter(([, value]) => value !== null && value !== undefined && value !== false))
+        }
     };
 }
 
@@ -143,6 +156,37 @@ function missingPolicyCapabilities(resolved, policy) {
     if (!policy?.enabled || !policy.requiredCapabilities?.length || !resolved || resolved.unavailable) return [];
     const capabilities = resolved.capabilities || {};
     return policy.requiredCapabilities.filter(capability => capabilities[capability] !== true);
+}
+
+async function evaluateBudgetGuardrail(db, policy) {
+    const budget = policy?.budget || {};
+    if (!budget.dailyTokenLimit && !budget.dailyCostLimit) return { exceeded: false };
+    if (typeof db.getUsageStats !== 'function') return { exceeded: false };
+
+    const today = new Date().toISOString().split('T')[0];
+    const rows = await db.getUsageStats(today, today);
+    const totals = (rows || []).reduce((acc, row) => {
+        const input = Number(row.input_tokens) || 0;
+        const output = Number(row.output_tokens) || 0;
+        const total = Number(row.total_tokens) || input + output;
+        acc.dailyTokensUsed += total;
+        acc.dailyCostUsed += calculateCost(row.model || 'default', input, output);
+        return acc;
+    }, { dailyTokensUsed: 0, dailyCostUsed: 0 });
+
+    const tokenExceeded = budget.dailyTokenLimit && totals.dailyTokensUsed >= budget.dailyTokenLimit;
+    const costExceeded = budget.dailyCostLimit && totals.dailyCostUsed >= budget.dailyCostLimit;
+    return {
+        ...totals,
+        dailyTokenLimit: budget.dailyTokenLimit || null,
+        dailyCostLimit: budget.dailyCostLimit || null,
+        exceeded: !!(tokenExceeded || costExceeded),
+        reason: tokenExceeded
+            ? `daily token budget exceeded (${totals.dailyTokensUsed}/${budget.dailyTokenLimit})`
+            : costExceeded
+                ? `daily cost budget exceeded ($${totals.dailyCostUsed.toFixed(6)}/$${budget.dailyCostLimit})`
+                : null
+    };
 }
 
 function parseFallbackChain(assignment) {
@@ -308,6 +352,28 @@ async function resolveNormal(db, requestedAssignment, context = {}) {
 
 async function resolveWithPolicy(db, requestedAssignment, context = {}, policy = {}) {
     const candidate = requestedAssignment || context.projectDefaultAssignment || context.globalDefaultAssignment || 'alias:local_default';
+    const budget = await evaluateBudgetGuardrail(db, policy);
+    if (budget.exceeded) {
+        if (policy.budget?.autoLocalOnly) {
+            const local = await resolveLocalOnly(db, candidate, budget.reason);
+            local.budget = budget;
+            local.policy = policy;
+            return local;
+        }
+        const fallback = await resolvePolicyFallback(db, policy, context, candidate, budget.reason, budget);
+        if (fallback) return fallback;
+        const local = await resolveFirstLocalModel(db, candidate, {
+            sourceOverride: 'budget_fallback',
+            fallbackUsed: true,
+            fallbackReason: budget.reason
+        });
+        local.fallbackUsed = true;
+        local.fallbackReason = budget.reason;
+        local.budget = budget;
+        local.policy = policy;
+        return local;
+    }
+
     const resolved = await resolveAssignment(db, candidate, context, candidate);
     const initialReason = resolved.unavailable
         ? resolved.reason
@@ -319,21 +385,8 @@ async function resolveWithPolicy(db, requestedAssignment, context = {}, policy =
         return { ...resolved, policy };
     }
 
-    for (const fallback of policy.fallbackChain || []) {
-        const fallbackResolved = await resolveAssignment(db, fallback, context, candidate, {
-            fallbackUsed: true,
-            fallbackReason: initialReason
-        });
-        if (fallbackResolved.unavailable) continue;
-        const missing = missingPolicyCapabilities(fallbackResolved, policy);
-        if (missing.length) continue;
-        return {
-            ...fallbackResolved,
-            fallbackUsed: true,
-            fallbackReason: initialReason,
-            policy
-        };
-    }
+    const fallback = await resolvePolicyFallback(db, policy, context, candidate, initialReason);
+    if (fallback) return fallback;
 
     const local = await resolveFirstLocalModel(db, candidate, {
         sourceOverride: 'local_fallback',
@@ -344,6 +397,26 @@ async function resolveWithPolicy(db, requestedAssignment, context = {}, policy =
     local.fallbackReason = initialReason;
     local.policy = policy;
     return local;
+}
+
+async function resolvePolicyFallback(db, policy, context, candidate, reason, budget = null) {
+    for (const fallback of policy.fallbackChain || []) {
+        const fallbackResolved = await resolveAssignment(db, fallback, context, candidate, {
+            fallbackUsed: true,
+            fallbackReason: reason
+        });
+        if (fallbackResolved.unavailable) continue;
+        const missing = missingPolicyCapabilities(fallbackResolved, policy);
+        if (missing.length) continue;
+        return {
+            ...fallbackResolved,
+            fallbackUsed: true,
+            fallbackReason: reason,
+            policy,
+            ...(budget ? { budget } : {})
+        };
+    }
+    return null;
 }
 
 async function resolveModelAssignment(db, context = {}) {
@@ -394,6 +467,7 @@ module.exports = {
     normalizeProvider,
     normalizePolicy,
     mergePolicies,
+    evaluateBudgetGuardrail,
     resolveModelAssignment,
     recordModelExecutionSnapshot,
     summarizeParameters,

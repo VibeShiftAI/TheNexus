@@ -41,7 +41,7 @@ import { getProjects, type Project } from "@/lib/nexus";
 
 const ROLE_ALIASES = ["local_default", "coder", "planner", "researcher", "reviewer", "summarizer"];
 const CAPABILITY_OPTIONS = ["chat", "coding", "reasoning", "vision", "local"];
-const DEFAULT_POLICY: ModelControlPolicy = { enabled: false, requiredCapabilities: [], fallbackChain: [] };
+const DEFAULT_POLICY: ModelControlPolicy = { enabled: false, requiredCapabilities: [], fallbackChain: [], budget: {} };
 
 function formatDate(value?: string | null) {
     if (!value) return "unknown";
@@ -218,6 +218,7 @@ export default function ModelControlPage() {
         ? (state.projectPolicy || state.policy || DEFAULT_POLICY)
         : (state.policy || DEFAULT_POLICY);
     const fallbackText = (activePolicy.fallbackChain || []).join("\n");
+    const budget = activePolicy.budget || {};
 
     const toggleLocalOnly = async () => {
         const enabled = !(state.localOnly?.enabled);
@@ -275,6 +276,16 @@ export default function ModelControlPage() {
         updatePolicy({
             ...activePolicy,
             fallbackChain: value.split(/\r?\n|,/).map(item => item.trim()).filter(Boolean),
+        });
+    };
+
+    const saveBudget = (patch: Partial<NonNullable<ModelControlPolicy["budget"]>>) => {
+        updatePolicy({
+            ...activePolicy,
+            budget: {
+                ...(activePolicy.budget || {}),
+                ...patch,
+            },
         });
     };
 
@@ -472,6 +483,40 @@ export default function ModelControlPage() {
                                     );
                                 })}
                             </div>
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Daily Tokens</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        defaultValue={budget.dailyTokenLimit || ""}
+                                        onBlur={(event) => saveBudget({ dailyTokenLimit: event.target.value ? Number(event.target.value) : null })}
+                                        className="w-full rounded border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                                        placeholder="4000000"
+                                    />
+                                </label>
+                                <label className="block">
+                                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">Daily Cost USD</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        defaultValue={budget.dailyCostLimit || ""}
+                                        onBlur={(event) => saveBudget({ dailyCostLimit: event.target.value ? Number(event.target.value) : null })}
+                                        className="w-full rounded border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                                        placeholder="25.00"
+                                    />
+                                </label>
+                            </div>
+                            <label className="mt-3 flex items-center gap-2 text-sm text-slate-300">
+                                <input
+                                    type="checkbox"
+                                    checked={!!budget.autoLocalOnly}
+                                    onChange={(event) => saveBudget({ autoLocalOnly: event.target.checked })}
+                                    className="h-4 w-4 rounded border-slate-700 bg-slate-950"
+                                />
+                                Force local when budget is exceeded
+                            </label>
                         </div>
                         <div>
                             <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Fallback Chain</div>

@@ -89,19 +89,39 @@ describe('model control route', () => {
         await expect(requestJson(`${handle.baseUrl}/api/model-control/policy`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enabled: true, requiredCapabilities: ['coding'], fallbackChain: ['alias:local_default'] })
+            body: JSON.stringify({
+                enabled: true,
+                requiredCapabilities: ['coding'],
+                fallbackChain: ['alias:local_default'],
+                budget: { dailyTokenLimit: 1000, dailyCostLimit: 1.25, autoLocalOnly: false }
+            })
         })).resolves.toEqual({
             status: 200,
-            body: { enabled: true, requiredCapabilities: ['coding'], fallbackChain: ['alias:local_default'] }
+            body: {
+                enabled: true,
+                requiredCapabilities: ['coding'],
+                fallbackChain: ['alias:local_default'],
+                budget: { dailyTokenLimit: 1000, dailyCostLimit: 1.25, autoLocalOnly: false }
+            }
         });
 
         await expect(requestJson(`${handle.baseUrl}/api/model-control/projects/project-1/policy`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enabled: true, requiredCapabilities: ['reasoning'], fallbackChain: ['family_latest:google/gemini-pro'] })
+            body: JSON.stringify({
+                enabled: true,
+                requiredCapabilities: ['reasoning'],
+                fallbackChain: ['family_latest:google/gemini-pro'],
+                budget: { dailyTokenLimit: 500, dailyCostLimit: 0.5, autoLocalOnly: false }
+            })
         })).resolves.toEqual({
             status: 200,
-            body: { enabled: true, requiredCapabilities: ['reasoning'], fallbackChain: ['family_latest:google/gemini-pro'] }
+            body: {
+                enabled: true,
+                requiredCapabilities: ['reasoning'],
+                fallbackChain: ['family_latest:google/gemini-pro'],
+                budget: { dailyTokenLimit: 500, dailyCostLimit: 0.5, autoLocalOnly: false }
+            }
         });
     });
 

@@ -60,6 +60,11 @@ export interface ModelControlPolicy {
     enabled: boolean;
     requiredCapabilities: string[];
     fallbackChain: string[];
+    budget?: {
+        dailyTokenLimit?: number | null;
+        dailyCostLimit?: number | null;
+        autoLocalOnly?: boolean;
+    };
 }
 
 export interface ModelExecutionSnapshot {

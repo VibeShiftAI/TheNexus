@@ -1,6 +1,20 @@
 const express = require('express');
 const { resolveModelAssignment } = require('../services/model-control');
 
+function normalizePolicyInput(body = {}) {
+    const budget = body.budget && typeof body.budget === 'object' ? body.budget : {};
+    return {
+        enabled: !!body.enabled,
+        requiredCapabilities: Array.isArray(body.requiredCapabilities) ? body.requiredCapabilities : [],
+        fallbackChain: Array.isArray(body.fallbackChain) ? body.fallbackChain : [],
+        budget: {
+            dailyTokenLimit: Number(budget.dailyTokenLimit) > 0 ? Number(budget.dailyTokenLimit) : null,
+            dailyCostLimit: Number(budget.dailyCostLimit) > 0 ? Number(budget.dailyCostLimit) : null,
+            autoLocalOnly: !!budget.autoLocalOnly
+        }
+    };
+}
+
 function createModelControlRouter({ db, discoverModelRegistry }) {
     const router = express.Router();
 
@@ -97,11 +111,7 @@ function createModelControlRouter({ db, discoverModelRegistry }) {
 
     router.put('/policy', async (req, res) => {
         try {
-            res.json(await db.setModelControlSetting('model_policy', {
-                enabled: !!req.body.enabled,
-                requiredCapabilities: Array.isArray(req.body.requiredCapabilities) ? req.body.requiredCapabilities : [],
-                fallbackChain: Array.isArray(req.body.fallbackChain) ? req.body.fallbackChain : []
-            }));
+            res.json(await db.setModelControlSetting('model_policy', normalizePolicyInput(req.body)));
         } catch (error) {
             console.error('[Model Control] Failed to update model policy:', error);
             res.status(500).json({ error: 'Failed to update model policy: ' + error.message });
@@ -123,11 +133,7 @@ function createModelControlRouter({ db, discoverModelRegistry }) {
 
     router.put('/projects/:id/policy', async (req, res) => {
         try {
-            res.json(await db.setProjectModelControlSetting(req.params.id, 'model_policy', {
-                enabled: !!req.body.enabled,
-                requiredCapabilities: Array.isArray(req.body.requiredCapabilities) ? req.body.requiredCapabilities : [],
-                fallbackChain: Array.isArray(req.body.fallbackChain) ? req.body.fallbackChain : []
-            }));
+            res.json(await db.setProjectModelControlSetting(req.params.id, 'model_policy', normalizePolicyInput(req.body)));
         } catch (error) {
             console.error('[Model Control] Failed to update project model policy:', error);
             res.status(500).json({ error: 'Failed to update project model policy: ' + error.message });

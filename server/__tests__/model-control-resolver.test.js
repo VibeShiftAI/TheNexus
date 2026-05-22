@@ -62,6 +62,7 @@ function createStubDb() {
     return {
         getModelControlSetting: jest.fn().mockResolvedValue(null),
         getProjectModelControlSetting: jest.fn().mockResolvedValue(null),
+        getUsageStats: jest.fn(async () => []),
         getModel: jest.fn(async (id) => models.find(m => m.id === id) || null),
         getModels: jest.fn(async () => models),
         getModelAliases: jest.fn(async () => [
@@ -180,6 +181,41 @@ describe('model control resolver', () => {
         expect(resolved.policy).toEqual(expect.objectContaining({
             enabled: true,
             requiredCapabilities: ['reasoning']
+        }));
+    });
+
+    test('budget guardrail redirects to fallback chain when daily usage is over limit', async () => {
+        const db = createStubDb();
+        db.getModelControlSetting.mockImplementation(async (key) => {
+            if (key === 'model_policy') {
+                return {
+                    enabled: true,
+                    budget: {
+                        dailyTokenLimit: 100,
+                        dailyCostLimit: 0.001
+                    },
+                    fallbackChain: ['alias:local_default']
+                };
+            }
+            return null;
+        });
+        db.getUsageStats.mockResolvedValue([
+            { model: 'claude-sonnet', input_tokens: 200, output_tokens: 50, total_tokens: 250, request_count: 3, source: 'praxis' }
+        ]);
+        const { resolveModelAssignment } = require('../services/model-control');
+
+        const resolved = await resolveModelAssignment(db, {
+            model_assignment: 'model:anthropic-claude-sonnet'
+        });
+
+        expect(resolved.resolvedModelId).toBe('local-llama');
+        expect(resolved.provider).toBe('local');
+        expect(resolved.fallbackUsed).toBe(true);
+        expect(resolved.fallbackReason).toContain('daily token budget exceeded');
+        expect(resolved.budget).toEqual(expect.objectContaining({
+            dailyTokensUsed: 250,
+            dailyTokenLimit: 100,
+            exceeded: true
         }));
     });
 });
