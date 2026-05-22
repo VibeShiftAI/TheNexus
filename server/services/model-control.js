@@ -90,11 +90,59 @@ function buildResolved(model, requestedAssignment, source, extras = {}) {
         model: apiModelId,
         parameters,
         label: model.display_name || model.name || model.id,
+        capabilities: model.capabilities || {},
         source,
         localOnlyActive: false,
         fallbackUsed: false,
         ...extras
     };
+}
+
+function normalizePolicy(policy) {
+    if (!policy || typeof policy !== 'object') {
+        return { enabled: false, requiredCapabilities: [], fallbackChain: [] };
+    }
+    return {
+        enabled: policy.enabled !== false && (
+            policy.enabled === true
+            || (Array.isArray(policy.requiredCapabilities) && policy.requiredCapabilities.length > 0)
+            || (Array.isArray(policy.fallbackChain) && policy.fallbackChain.length > 0)
+        ),
+        requiredCapabilities: Array.isArray(policy.requiredCapabilities)
+            ? policy.requiredCapabilities.map(String).map(value => value.trim()).filter(Boolean)
+            : [],
+        fallbackChain: Array.isArray(policy.fallbackChain)
+            ? policy.fallbackChain.map(normalizeAssignment).filter(Boolean)
+            : []
+    };
+}
+
+function mergePolicies(globalPolicy, projectPolicy) {
+    const global = normalizePolicy(globalPolicy);
+    const project = normalizePolicy(projectPolicy);
+    if (!global.enabled && !project.enabled) return { enabled: false, requiredCapabilities: [], fallbackChain: [] };
+    return {
+        enabled: global.enabled || project.enabled,
+        requiredCapabilities: project.requiredCapabilities.length ? project.requiredCapabilities : global.requiredCapabilities,
+        fallbackChain: project.fallbackChain.length ? project.fallbackChain : global.fallbackChain
+    };
+}
+
+async function loadPolicy(db, context = {}) {
+    const globalPolicy = typeof db.getModelControlSetting === 'function'
+        ? await db.getModelControlSetting('model_policy')
+        : null;
+    const projectId = context.project_id || context.projectId || context.project?.id || null;
+    const projectPolicy = projectId && typeof db.getProjectModelControlSetting === 'function'
+        ? await db.getProjectModelControlSetting(projectId, 'model_policy')
+        : null;
+    return mergePolicies(globalPolicy, projectPolicy);
+}
+
+function missingPolicyCapabilities(resolved, policy) {
+    if (!policy?.enabled || !policy.requiredCapabilities?.length || !resolved || resolved.unavailable) return [];
+    const capabilities = resolved.capabilities || {};
+    return policy.requiredCapabilities.filter(capability => capabilities[capability] !== true);
 }
 
 function parseFallbackChain(assignment) {
@@ -258,11 +306,55 @@ async function resolveNormal(db, requestedAssignment, context = {}) {
     return local;
 }
 
+async function resolveWithPolicy(db, requestedAssignment, context = {}, policy = {}) {
+    const candidate = requestedAssignment || context.projectDefaultAssignment || context.globalDefaultAssignment || 'alias:local_default';
+    const resolved = await resolveAssignment(db, candidate, context, candidate);
+    const initialReason = resolved.unavailable
+        ? resolved.reason
+        : missingPolicyCapabilities(resolved, policy).length
+            ? `missing required capabilities: ${missingPolicyCapabilities(resolved, policy).join(', ')}`
+            : null;
+
+    if (!initialReason) {
+        return { ...resolved, policy };
+    }
+
+    for (const fallback of policy.fallbackChain || []) {
+        const fallbackResolved = await resolveAssignment(db, fallback, context, candidate, {
+            fallbackUsed: true,
+            fallbackReason: initialReason
+        });
+        if (fallbackResolved.unavailable) continue;
+        const missing = missingPolicyCapabilities(fallbackResolved, policy);
+        if (missing.length) continue;
+        return {
+            ...fallbackResolved,
+            fallbackUsed: true,
+            fallbackReason: initialReason,
+            policy
+        };
+    }
+
+    const local = await resolveFirstLocalModel(db, candidate, {
+        sourceOverride: 'local_fallback',
+        fallbackUsed: true,
+        fallbackReason: initialReason
+    });
+    local.fallbackUsed = true;
+    local.fallbackReason = initialReason;
+    local.policy = policy;
+    return local;
+}
+
 async function resolveModelAssignment(db, context = {}) {
     const settings = await db.getModelControlSetting('local_only');
     const requestedAssignment = pickRequestedAssignment(context);
     if (settings?.enabled) {
         return resolveLocalOnly(db, requestedAssignment, settings.reason);
+    }
+    const policy = await loadPolicy(db, context);
+    if (policy.enabled) {
+        return resolveWithPolicy(db, requestedAssignment, context, policy);
     }
     return resolveNormal(db, requestedAssignment, context);
 }
@@ -300,6 +392,8 @@ async function writeModelSystemMessage(db, io, message, metadata = {}) {
 
 module.exports = {
     normalizeProvider,
+    normalizePolicy,
+    mergePolicies,
     resolveModelAssignment,
     recordModelExecutionSnapshot,
     summarizeParameters,

@@ -46,6 +46,16 @@ describe('model control database contract', () => {
             target: 'model:anthropic-claude-sonnet'
         });
         await db.setModelControlSetting('local_only', { enabled: true, reason: 'budget_limit' });
+        await db.setModelControlSetting('model_policy', {
+            enabled: true,
+            requiredCapabilities: ['coding'],
+            fallbackChain: ['alias:local_default']
+        });
+        await db.setProjectModelControlSetting(project.id, 'model_policy', {
+            enabled: true,
+            requiredCapabilities: ['reasoning'],
+            fallbackChain: ['family_latest:google/gemini-pro']
+        });
 
         const created = await db.createTask({
             project_id: project.id,
@@ -68,6 +78,16 @@ describe('model control database contract', () => {
         expect((await db.getModelAliases()).find(a => a.alias === 'coder').target).toBe('model:anthropic-claude-sonnet');
         expect((await db.getProjectModelAliases(project.id)).find(a => a.alias === 'coder').target).toBe('model:anthropic-claude-sonnet');
         expect(await db.getModelControlSetting('local_only')).toEqual({ enabled: true, reason: 'budget_limit' });
+        expect(await db.getModelControlSetting('model_policy')).toEqual({
+            enabled: true,
+            requiredCapabilities: ['coding'],
+            fallbackChain: ['alias:local_default']
+        });
+        expect(await db.getProjectModelControlSetting(project.id, 'model_policy')).toEqual({
+            enabled: true,
+            requiredCapabilities: ['reasoning'],
+            fallbackChain: ['family_latest:google/gemini-pro']
+        });
         expect((await db.getTask(created.id)).model_assignment).toBe('alias:coder');
         expect(snapshot.provider).toBe('anthropic');
         expect(snapshot.local_only_active).toBe(false);

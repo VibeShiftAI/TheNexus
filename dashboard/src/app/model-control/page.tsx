@@ -27,8 +27,11 @@ import {
     resolveModelAssignment,
     runModelDiscovery,
     setLocalOnlyMode,
+    setGlobalModelPolicy,
+    setProjectModelPolicy,
     type ModelDiscoveryResult,
     type ModelDiscoveryProviderStatus,
+    type ModelControlPolicy,
     type ModelControlModel,
     type ModelControlOptionsResponse,
     type ModelExecutionSnapshot,
@@ -37,6 +40,8 @@ import {
 import { getProjects, type Project } from "@/lib/nexus";
 
 const ROLE_ALIASES = ["local_default", "coder", "planner", "researcher", "reviewer", "summarizer"];
+const CAPABILITY_OPTIONS = ["chat", "coding", "reasoning", "vision", "local"];
+const DEFAULT_POLICY: ModelControlPolicy = { enabled: false, requiredCapabilities: [], fallbackChain: [] };
 
 function formatDate(value?: string | null) {
     if (!value) return "unknown";
@@ -143,6 +148,7 @@ export default function ModelControlPage() {
     const [loading, setLoading] = useState(true);
     const [savingLocal, setSavingLocal] = useState(false);
     const [discovering, setDiscovering] = useState(false);
+    const [savingPolicy, setSavingPolicy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
@@ -208,6 +214,11 @@ export default function ModelControlPage() {
         modelCount: (state.models || []).filter(model => model.provider === provider).length,
     }));
 
+    const activePolicy = projectId
+        ? (state.projectPolicy || state.policy || DEFAULT_POLICY)
+        : (state.policy || DEFAULT_POLICY);
+    const fallbackText = (activePolicy.fallbackChain || []).join("\n");
+
     const toggleLocalOnly = async () => {
         const enabled = !(state.localOnly?.enabled);
         setSavingLocal(true);
@@ -233,6 +244,38 @@ export default function ModelControlPage() {
         } finally {
             setDiscovering(false);
         }
+    };
+
+    const updatePolicy = async (next: ModelControlPolicy) => {
+        setSavingPolicy(true);
+        try {
+            const saved = projectId
+                ? await setProjectModelPolicy(projectId, next)
+                : await setGlobalModelPolicy(next);
+            setState(prev => projectId ? { ...prev, projectPolicy: saved } : { ...prev, policy: saved });
+            setError(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update model policy");
+        } finally {
+            setSavingPolicy(false);
+        }
+    };
+
+    const toggleCapability = (capability: string) => {
+        const current = new Set(activePolicy.requiredCapabilities || []);
+        if (current.has(capability)) current.delete(capability);
+        else current.add(capability);
+        updatePolicy({
+            ...activePolicy,
+            requiredCapabilities: Array.from(current),
+        });
+    };
+
+    const saveFallbackChain = (value: string) => {
+        updatePolicy({
+            ...activePolicy,
+            fallbackChain: value.split(/\r?\n|,/).map(item => item.trim()).filter(Boolean),
+        });
     };
 
     return (
@@ -385,6 +428,62 @@ export default function ModelControlPage() {
                     </div>
 
                     <ModelAliasManager projectId={projectId || null} />
+                </section>
+
+                <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Shield size={16} className="text-cyan-300" />
+                                <h2 className="font-semibold text-white">Execution Policy</h2>
+                                <span className="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-400">{projectId ? "project" : "global"}</span>
+                            </div>
+                            <div className="mt-1 text-sm text-slate-500">
+                                Required capabilities are enforced by the resolver before an API call is made.
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => updatePolicy({ ...activePolicy, enabled: !activePolicy.enabled })}
+                            disabled={savingPolicy}
+                            className={`inline-flex items-center justify-center gap-2 rounded border px-3 py-2 text-sm font-medium ${activePolicy.enabled ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200" : "border-slate-700 bg-slate-900 text-slate-300"} disabled:opacity-50`}
+                        >
+                            {savingPolicy ? <Loader2 size={15} className="animate-spin" /> : <Shield size={15} />}
+                            {activePolicy.enabled ? "Policy On" : "Policy Off"}
+                        </button>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
+                        <div>
+                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Required Capabilities</div>
+                            <div className="flex flex-wrap gap-2">
+                                {CAPABILITY_OPTIONS.map(capability => {
+                                    const active = activePolicy.requiredCapabilities?.includes(capability);
+                                    return (
+                                        <button
+                                            key={capability}
+                                            type="button"
+                                            onClick={() => toggleCapability(capability)}
+                                            disabled={savingPolicy}
+                                            className={`rounded border px-3 py-1.5 text-xs font-medium ${active ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200" : "border-slate-800 bg-slate-900 text-slate-400 hover:text-slate-200"} disabled:opacity-50`}
+                                        >
+                                            {capability}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Fallback Chain</div>
+                            <textarea
+                                key={`${projectId || "global"}-${fallbackText}`}
+                                defaultValue={fallbackText}
+                                onBlur={(event) => saveFallbackChain(event.target.value)}
+                                className="min-h-24 w-full rounded border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-200 outline-none focus:border-cyan-500"
+                                placeholder={"alias:coder\nfamily_latest:anthropic/Claude Sonnet\nalias:local_default"}
+                            />
+                        </div>
+                    </div>
                 </section>
 
                 <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50">

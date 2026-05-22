@@ -52,6 +52,14 @@ export interface ModelControlOptionsResponse {
     aliases?: ModelControlAlias[];
     projectAliases?: ModelControlAlias[];
     localOnly?: { enabled: boolean; reason: string | null };
+    policy?: ModelControlPolicy | null;
+    projectPolicy?: ModelControlPolicy | null;
+}
+
+export interface ModelControlPolicy {
+    enabled: boolean;
+    requiredCapabilities: string[];
+    fallbackChain: string[];
 }
 
 export interface ModelExecutionSnapshot {
@@ -198,6 +206,28 @@ export async function setLocalOnlyMode(enabled: boolean, reason?: string | null)
         body: JSON.stringify({ enabled, reason: reason || null }),
     });
     if (!response.ok) throw new Error(`Failed to update local-only mode: ${response.status}`);
+    return response.json();
+}
+
+export async function setGlobalModelPolicy(policy: ModelControlPolicy): Promise<ModelControlPolicy> {
+    const response = await fetch("/api/model-control/policy", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify(policy),
+    });
+    if (!response.ok) throw new Error(`Failed to update model policy: ${response.status}`);
+    return response.json();
+}
+
+export async function setProjectModelPolicy(projectId: string, policy: ModelControlPolicy): Promise<ModelControlPolicy> {
+    const response = await fetch(`/api/model-control/projects/${encodeURIComponent(projectId)}/policy`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify(policy),
+    });
+    if (!response.ok) throw new Error(`Failed to update project model policy: ${response.status}`);
     return response.json();
 }
 

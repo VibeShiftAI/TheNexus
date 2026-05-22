@@ -393,6 +393,14 @@ CREATE TABLE IF NOT EXISTS model_control_settings (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS project_model_control_settings (
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    value TEXT DEFAULT '{}',
+    updated_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (project_id, key)
+);
+
 CREATE TABLE IF NOT EXISTS model_execution_snapshots (
     id TEXT PRIMARY KEY,
     requested_assignment TEXT,

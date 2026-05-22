@@ -11,7 +11,11 @@ function createModelControlRouter({ db, discoverModelRegistry }) {
                 models: await db.getModels(true),
                 aliases: await db.getModelAliases(true),
                 projectAliases: projectId ? await db.getProjectModelAliases(projectId) : [],
-                localOnly: await db.getModelControlSetting('local_only')
+                localOnly: await db.getModelControlSetting('local_only'),
+                policy: await db.getModelControlSetting('model_policy'),
+                projectPolicy: projectId && typeof db.getProjectModelControlSetting === 'function'
+                    ? await db.getProjectModelControlSetting(projectId, 'model_policy')
+                    : null
             });
         } catch (error) {
             console.error('[Model Control] Failed to load options:', error);
@@ -91,6 +95,19 @@ function createModelControlRouter({ db, discoverModelRegistry }) {
         }
     });
 
+    router.put('/policy', async (req, res) => {
+        try {
+            res.json(await db.setModelControlSetting('model_policy', {
+                enabled: !!req.body.enabled,
+                requiredCapabilities: Array.isArray(req.body.requiredCapabilities) ? req.body.requiredCapabilities : [],
+                fallbackChain: Array.isArray(req.body.fallbackChain) ? req.body.fallbackChain : []
+            }));
+        } catch (error) {
+            console.error('[Model Control] Failed to update model policy:', error);
+            res.status(500).json({ error: 'Failed to update model policy: ' + error.message });
+        }
+    });
+
     router.put('/projects/:id/aliases/:alias', async (req, res) => {
         try {
             res.json(await db.upsertProjectModelAlias(req.params.id, {
@@ -101,6 +118,19 @@ function createModelControlRouter({ db, discoverModelRegistry }) {
         } catch (error) {
             console.error('[Model Control] Failed to update project alias:', error);
             res.status(500).json({ error: 'Failed to update project model alias: ' + error.message });
+        }
+    });
+
+    router.put('/projects/:id/policy', async (req, res) => {
+        try {
+            res.json(await db.setProjectModelControlSetting(req.params.id, 'model_policy', {
+                enabled: !!req.body.enabled,
+                requiredCapabilities: Array.isArray(req.body.requiredCapabilities) ? req.body.requiredCapabilities : [],
+                fallbackChain: Array.isArray(req.body.fallbackChain) ? req.body.fallbackChain : []
+            }));
+        } catch (error) {
+            console.error('[Model Control] Failed to update project model policy:', error);
+            res.status(500).json({ error: 'Failed to update project model policy: ' + error.message });
         }
     });
 

@@ -44,7 +44,13 @@ describe('model control route', () => {
             getModelAliases: jest.fn(async () => [{ alias: 'local_default', target: 'model:local-llama' }]),
             getProjectModelAliases: jest.fn(async () => [{ alias: 'coder', target: 'model:local-llama' }]),
             getModelControlSetting: jest.fn(async () => ({ enabled: false, reason: null })),
+            getProjectModelControlSetting: jest.fn(async () => ({
+                enabled: true,
+                requiredCapabilities: ['coding'],
+                fallbackChain: ['alias:local_default']
+            })),
             setModelControlSetting: jest.fn(async (_key, value) => value),
+            setProjectModelControlSetting: jest.fn(async (_projectId, _key, value) => value),
             upsertModelAlias: jest.fn(async (record) => record),
             upsertProjectModelAlias: jest.fn(async (projectId, record) => ({ project_id: projectId, ...record })),
         };
@@ -61,7 +67,13 @@ describe('model control route', () => {
                     models: [{ id: 'local-llama', provider: 'local', api_model_id: 'llama3.2' }],
                     aliases: [{ alias: 'local_default', target: 'model:local-llama' }],
                     projectAliases: [{ alias: 'coder', target: 'model:local-llama' }],
-                    localOnly: { enabled: false, reason: null }
+                    localOnly: { enabled: false, reason: null },
+                    policy: { enabled: false, reason: null },
+                    projectPolicy: {
+                        enabled: true,
+                        requiredCapabilities: ['coding'],
+                        fallbackChain: ['alias:local_default']
+                    }
                 }
             });
 
@@ -72,6 +84,24 @@ describe('model control route', () => {
         })).resolves.toEqual({
             status: 200,
             body: { enabled: true, reason: 'offline' }
+        });
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/policy`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: true, requiredCapabilities: ['coding'], fallbackChain: ['alias:local_default'] })
+        })).resolves.toEqual({
+            status: 200,
+            body: { enabled: true, requiredCapabilities: ['coding'], fallbackChain: ['alias:local_default'] }
+        });
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/projects/project-1/policy`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: true, requiredCapabilities: ['reasoning'], fallbackChain: ['family_latest:google/gemini-pro'] })
+        })).resolves.toEqual({
+            status: 200,
+            body: { enabled: true, requiredCapabilities: ['reasoning'], fallbackChain: ['family_latest:google/gemini-pro'] }
         });
     });
 

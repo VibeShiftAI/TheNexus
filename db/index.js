@@ -170,6 +170,14 @@ function runModelControlMigrations(sqlite) {
                 updated_at TEXT DEFAULT (datetime('now'))
             );
 
+            CREATE TABLE IF NOT EXISTS project_model_control_settings (
+                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                key TEXT NOT NULL,
+                value TEXT DEFAULT '{}',
+                updated_at TEXT DEFAULT (datetime('now')),
+                PRIMARY KEY (project_id, key)
+            );
+
             CREATE TABLE IF NOT EXISTS model_execution_snapshots (
                 id TEXT PRIMARY KEY,
                 requested_assignment TEXT,
@@ -1244,6 +1252,30 @@ async function getModelControlSetting(key) {
     }
 }
 
+async function setProjectModelControlSetting(projectId, key, value) {
+    if (!db) throw new Error('Database connection required for project model control settings');
+    try {
+        const record = { project_id: projectId, key, value, updated_at: now() };
+        const { sql, values } = buildInsert('project_model_control_settings', record, 'project_id, key');
+        db.prepare(sql).run(...values);
+        return getProjectModelControlSetting(projectId, key);
+    } catch (err) {
+        console.error('[Database] Error setting project model control setting:', err.message);
+        throw new Error(`Failed to set project model control setting: ${err.message}`);
+    }
+}
+
+async function getProjectModelControlSetting(projectId, key) {
+    if (!db) throw new Error('Database connection required for project model control settings');
+    try {
+        const row = deserRow(db.prepare('SELECT * FROM project_model_control_settings WHERE project_id = ? AND key = ?').get(projectId, key));
+        return row ? row.value : null;
+    } catch (err) {
+        console.error('[Database] Error fetching project model control setting:', err.message);
+        throw new Error(`Failed to fetch project model control setting: ${err.message}`);
+    }
+}
+
 async function createModelExecutionSnapshot(snapshot) {
     if (!db) throw new Error('Database connection required for model execution snapshots');
     try {
@@ -2056,6 +2088,8 @@ module.exports = {
     getProjectModelAliases,
     setModelControlSetting,
     getModelControlSetting,
+    setProjectModelControlSetting,
+    getProjectModelControlSetting,
     createModelExecutionSnapshot,
     getModelExecutionSnapshots,
     // Usage

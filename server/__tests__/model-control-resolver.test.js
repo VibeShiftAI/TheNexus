@@ -31,7 +31,7 @@ function createStubDb() {
             name: 'Gemini 3 Pro',
             family: 'gemini-pro',
             version_sort: '2026-01-01',
-            capabilities: { coding: true },
+            capabilities: { coding: true, reasoning: true },
             availability_status: 'available',
             is_active: true
         },
@@ -53,7 +53,7 @@ function createStubDb() {
             name: 'Local Llama',
             family: 'local',
             version_sort: '2025-01-01',
-            capabilities: { local: true, coding: true },
+            capabilities: { local: true, coding: true, reasoning: false },
             availability_status: 'available',
             is_active: true
         }
@@ -61,6 +61,7 @@ function createStubDb() {
 
     return {
         getModelControlSetting: jest.fn().mockResolvedValue(null),
+        getProjectModelControlSetting: jest.fn().mockResolvedValue(null),
         getModel: jest.fn(async (id) => models.find(m => m.id === id) || null),
         getModels: jest.fn(async () => models),
         getModelAliases: jest.fn(async () => [
@@ -156,5 +157,29 @@ describe('model control resolver', () => {
         expect(resolved.resolvedModelId).toBe('anthropic-claude-sonnet');
         expect(resolved.fallbackUsed).toBe(true);
         expect(resolved.fallbackReason).toMatch(/unavailable/i);
+    });
+
+    test('project policy requires capabilities and redirects through policy fallback chain', async () => {
+        const db = createStubDb();
+        db.getProjectModelControlSetting.mockResolvedValue({
+            enabled: true,
+            requiredCapabilities: ['reasoning'],
+            fallbackChain: ['family_latest:google/gemini-pro', 'alias:local_default']
+        });
+        const { resolveModelAssignment } = require('../services/model-control');
+
+        const resolved = await resolveModelAssignment(db, {
+            project_id: 'project-1',
+            model_assignment: 'alias:coder'
+        });
+
+        expect(resolved.resolvedModelId).toBe('google-gemini-3-pro');
+        expect(resolved.source).toBe('family_latest');
+        expect(resolved.fallbackUsed).toBe(true);
+        expect(resolved.fallbackReason).toContain('missing required capabilities: reasoning');
+        expect(resolved.policy).toEqual(expect.objectContaining({
+            enabled: true,
+            requiredCapabilities: ['reasoning']
+        }));
     });
 });
