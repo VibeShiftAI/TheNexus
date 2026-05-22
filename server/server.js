@@ -245,7 +245,7 @@ server.listen(PORT, async () => {
     calendarScheduler.start(db);
 
     // Model discovery (non-blocking)
-    discoverModels().then(models => {
+    discoverModels({ db }).then(models => {
         console.log(`Model Discovery: ${models.length} latest models ready`);
     }).catch(err => {
         console.warn(`Model Discovery: failed (using fallbacks) - ${err.message}`);

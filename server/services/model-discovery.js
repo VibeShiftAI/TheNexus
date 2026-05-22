@@ -159,10 +159,12 @@ function filterLatestPerFamily(provider, rawModelIds) {
                 apiModelId,
                 name: familyDef.display(bestVersion.toString()),
                 provider: PROVIDER_DISPLAY[provider],
+                providerId: provider,
                 isThinking,
                 parameters: {},
                 limits: null, // Provider APIs don't always return this; we leave it flexible
                 family: familyDef.family,
+                versionSort: bestVersion.toString(),
                 discoveredVersion: bestVersion,
             });
         }
@@ -171,10 +173,51 @@ function filterLatestPerFamily(provider, rawModelIds) {
     return results;
 }
 
+function inferCapabilities(model) {
+    return {
+        chat: true,
+        reasoning: !!model.isThinking,
+        local: model.providerId === 'local'
+    };
+}
+
+function inferDefaultParameters(model) {
+    if (model.providerId === 'anthropic') return { max_tokens: 8192 };
+    if (model.providerId === 'google' && model.isThinking) return { thinking_budget: 8000 };
+    return {};
+}
+
+async function upsertDiscoveredModels(registryDb, models) {
+    if (!registryDb?.upsertModel) return;
+    const now = new Date().toISOString();
+
+    for (const model of models) {
+        const existing = registryDb.getModel
+            ? await registryDb.getModel(model.id).catch(() => null)
+            : null;
+        await registryDb.upsertModel({
+            id: model.id,
+            provider: model.providerId || String(model.provider || '').toLowerCase(),
+            api_model_id: model.apiModelId,
+            name: model.name,
+            display_name: model.name,
+            family: model.family,
+            version_sort: model.versionSort || String(model.discoveredVersion || ''),
+            capabilities: inferCapabilities(model),
+            parameters: model.parameters || {},
+            default_parameters: inferDefaultParameters(model),
+            availability_status: 'available',
+            is_active: 1,
+            discovered_at: existing?.discovered_at || now,
+            last_seen_at: now
+        });
+    }
+}
+
 /**
  * Main discovery function — call on server startup
  */
-async function discoverModels() {
+async function discoverModels(options = {}) {
     console.log('[Model Discovery] Starting model discovery across all providers...');
     const startTime = Date.now();
 
@@ -207,6 +250,8 @@ async function discoverModels() {
     console.log(`[Model Discovery] Final model list (${allModels.length} models):`);
     allModels.forEach(m => console.log(`  → ${m.name} (${m.provider}) [${m.apiModelId}]${m.isThinking ? ' ⚡ Thinking' : ''}`));
 
+    await upsertDiscoveredModels(options.db, allModels);
+
     discoveredModels = allModels;
     return allModels;
 }
@@ -221,4 +266,5 @@ function getModels() {
 module.exports = {
     discoverModels,
     getModels,
+    filterLatestPerFamily,
 };

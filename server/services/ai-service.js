@@ -16,6 +16,14 @@ const TASK_TO_AGENT_MAP = {
     quick: 'quick-research'
 };
 
+function normalizeProvider(provider) {
+    const value = String(provider || '').toLowerCase();
+    if (value === 'gemini') return 'google';
+    if (value === 'claude') return 'anthropic';
+    if (value === 'grok') return 'xai';
+    return value || 'google';
+}
+
 /**
  * Get AI model config for a task
  * Priority: 1. Database (is_default_for_task), 2. agent-config.json
@@ -494,8 +502,8 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
     if (typeof taskOrConfig === 'string') {
         // Task-based lookup from DB
         const taskConfig = await getAIModelConfig(taskOrConfig);
-        provider = taskConfig.provider.toLowerCase();
-        modelId = taskConfig.model;
+        provider = normalizeProvider(taskConfig.provider);
+        modelId = taskConfig.api_model_id || taskConfig.apiModelId || taskConfig.model;
         parameters = {};
 
         // Apply thinking config for Gemini
@@ -506,8 +514,8 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
         console.log(`[callAI] Task: ${taskOrConfig}, Provider: ${provider}, Model: ${modelId}`);
     } else {
         // Direct config provided (from chat endpoint)
-        provider = (taskOrConfig.provider || 'google').toLowerCase();
-        modelId = taskOrConfig.apiModelId || taskOrConfig.model;
+        provider = normalizeProvider(taskOrConfig.provider || 'google');
+        modelId = taskOrConfig.apiModelId || taskOrConfig.api_model_id || taskOrConfig.model;
         parameters = taskOrConfig.parameters || {};
 
         // Handle thinking config from frontend
@@ -561,7 +569,7 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
 
     // Return full result or just text based on options
     if (options.returnFullResult) {
-        return result; // { text, usage }
+        return { ...result, provider, model: modelId };
     }
     return result.text;
 }
