@@ -31,6 +31,8 @@ try {
         db.exec(fs.readFileSync(schemaPath, 'utf8'));
     }
 
+    runModelControlMigrations(db);
+
     // Migration: add 'source' column to usage_stats for per-caller tracking
     try {
         const cols = db.prepare("PRAGMA table_info(usage_stats)").all();
@@ -85,9 +87,10 @@ function deser(val) {
 const JSON_COLS = new Set([
     'stack', 'urls', 'tasks_list', 'task_ledger', 'supervisor_details',
     'graph_config', 'context', 'checkpoint', 'metadata',
-    'agent_configuration', 'parameters', 'capabilities', 'config',
+    'agent_configuration', 'parameters', 'capabilities', 'default_parameters', 'parameters_summary', 'config',
     'trigger_config', 'configuration', 'target_projects', 'progress',
     'allowed_tools', 'denied_tools', 'details', 'data',
+    'value',
     'stages', 'outputs',
     'antigravity_payload', 'dependencies',
     'suspended_context', 'resume_action'
@@ -100,7 +103,7 @@ function deserRow(row) {
             row[key] = deser(row[key]);
         }
         // SQLite booleans back to JS booleans
-        if (key === 'is_template' || key === 'is_active' || key === 'is_enabled' || key === 'resolved' || key === 'pinned') {
+        if (key === 'is_template' || key === 'is_active' || key === 'is_enabled' || key === 'resolved' || key === 'pinned' || key === 'local_only_active' || key === 'fallback_used') {
             row[key] = row[key] === 1 || row[key] === true;
         }
     }
@@ -108,6 +111,93 @@ function deserRow(row) {
 }
 
 function deserRows(rows) { return (rows || []).map(deserRow); }
+
+function tableExists(sqlite, tableName) {
+    return !!sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(tableName);
+}
+
+function columnExists(sqlite, tableName, columnName) {
+    if (!tableExists(sqlite, tableName)) return false;
+    return sqlite.prepare(`PRAGMA table_info("${tableName}")`).all().some(c => c.name === columnName);
+}
+
+function ensureColumn(sqlite, tableName, columnName, definition) {
+    if (!tableExists(sqlite, tableName)) return;
+    if (!columnExists(sqlite, tableName, columnName)) {
+        sqlite.exec(`ALTER TABLE "${tableName}" ADD COLUMN "${columnName}" ${definition}`);
+    }
+}
+
+function runModelControlMigrations(sqlite) {
+    try {
+        [
+            ['models', 'api_model_id', 'TEXT'],
+            ['models', 'display_name', 'TEXT'],
+            ['models', 'default_parameters', "TEXT DEFAULT '{}'"],
+            ['models', 'version_sort', 'TEXT'],
+            ['models', 'discovered_at', 'TEXT'],
+            ['models', 'last_seen_at', 'TEXT'],
+            ['models', 'availability_status', "TEXT DEFAULT 'unknown'"],
+            ['tasks', 'model_assignment', 'TEXT'],
+            ['calendar_events', 'model_assignment', 'TEXT'],
+            ['project_workflows', 'model_assignment', 'TEXT'],
+            ['workflow_templates', 'model_assignment', 'TEXT'],
+        ].forEach(([table, column, definition]) => ensureColumn(sqlite, table, column, definition));
+
+        sqlite.exec(`
+            CREATE TABLE IF NOT EXISTS model_aliases (
+                alias TEXT PRIMARY KEY,
+                target TEXT NOT NULL,
+                description TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS project_model_aliases (
+                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                alias TEXT NOT NULL,
+                target TEXT NOT NULL,
+                description TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now')),
+                PRIMARY KEY (project_id, alias)
+            );
+
+            CREATE TABLE IF NOT EXISTS model_control_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT DEFAULT '{}',
+                updated_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS model_execution_snapshots (
+                id TEXT PRIMARY KEY,
+                requested_assignment TEXT,
+                resolved_model_id TEXT,
+                provider TEXT,
+                api_model_id TEXT,
+                parameters_summary TEXT DEFAULT '{}',
+                source TEXT,
+                local_only_active INTEGER DEFAULT 0,
+                local_only_reason TEXT,
+                fallback_used INTEGER DEFAULT 0,
+                fallback_reason TEXT,
+                project_id TEXT,
+                task_id TEXT,
+                calendar_event_id TEXT,
+                workflow_id TEXT,
+                workflow_run_id TEXT,
+                node_id TEXT,
+                conversation_id TEXT,
+                message_id TEXT,
+                command_id TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+        `);
+    } catch (err) {
+        console.warn('[Database] model-control migration skipped:', err.message);
+    }
+}
 
 /**
  * Build an INSERT or INSERT OR REPLACE from an object.
@@ -1067,6 +1157,112 @@ async function getDefaultModelForTask(taskType) {
     }
 }
 
+async function upsertModelAlias(aliasRecord) {
+    if (!db) throw new Error('Database connection required for model aliases');
+    try {
+        const record = {
+            alias: aliasRecord.alias,
+            target: aliasRecord.target,
+            description: aliasRecord.description || null,
+            is_active: aliasRecord.is_active === undefined ? 1 : aliasRecord.is_active,
+            updated_at: now(),
+            created_at: aliasRecord.created_at || now()
+        };
+        const { sql, values } = buildInsert('model_aliases', record, 'alias');
+        db.prepare(sql).run(...values);
+        return deserRow(db.prepare('SELECT * FROM model_aliases WHERE alias = ?').get(record.alias));
+    } catch (err) {
+        console.error('[Database] Error upserting model alias:', err.message);
+        throw new Error(`Failed to upsert model alias: ${err.message}`);
+    }
+}
+
+async function getModelAliases(activeOnly = true) {
+    if (!db) throw new Error('Database connection required for model aliases');
+    try {
+        const sql = activeOnly
+            ? 'SELECT * FROM model_aliases WHERE is_active = 1 ORDER BY alias'
+            : 'SELECT * FROM model_aliases ORDER BY alias';
+        return deserRows(db.prepare(sql).all());
+    } catch (err) {
+        console.error('[Database] Error fetching model aliases:', err.message);
+        throw new Error(`Failed to fetch model aliases: ${err.message}`);
+    }
+}
+
+async function upsertProjectModelAlias(projectId, aliasRecord) {
+    if (!db) throw new Error('Database connection required for project model aliases');
+    try {
+        const record = {
+            project_id: projectId,
+            alias: aliasRecord.alias,
+            target: aliasRecord.target,
+            description: aliasRecord.description || null,
+            updated_at: now(),
+            created_at: aliasRecord.created_at || now()
+        };
+        const { sql, values } = buildInsert('project_model_aliases', record, 'project_id, alias');
+        db.prepare(sql).run(...values);
+        return deserRow(db.prepare('SELECT * FROM project_model_aliases WHERE project_id = ? AND alias = ?').get(projectId, record.alias));
+    } catch (err) {
+        console.error('[Database] Error upserting project model alias:', err.message);
+        throw new Error(`Failed to upsert project model alias: ${err.message}`);
+    }
+}
+
+async function getProjectModelAliases(projectId) {
+    if (!db) throw new Error('Database connection required for project model aliases');
+    try {
+        return deserRows(db.prepare('SELECT * FROM project_model_aliases WHERE project_id = ? ORDER BY alias').all(projectId));
+    } catch (err) {
+        console.error('[Database] Error fetching project model aliases:', err.message);
+        throw new Error(`Failed to fetch project model aliases: ${err.message}`);
+    }
+}
+
+async function setModelControlSetting(key, value) {
+    if (!db) throw new Error('Database connection required for model control settings');
+    try {
+        const record = { key, value, updated_at: now() };
+        const { sql, values } = buildInsert('model_control_settings', record, 'key');
+        db.prepare(sql).run(...values);
+        return getModelControlSetting(key);
+    } catch (err) {
+        console.error('[Database] Error setting model control setting:', err.message);
+        throw new Error(`Failed to set model control setting: ${err.message}`);
+    }
+}
+
+async function getModelControlSetting(key) {
+    if (!db) throw new Error('Database connection required for model control settings');
+    try {
+        const row = deserRow(db.prepare('SELECT * FROM model_control_settings WHERE key = ?').get(key));
+        return row ? row.value : null;
+    } catch (err) {
+        console.error('[Database] Error fetching model control setting:', err.message);
+        throw new Error(`Failed to fetch model control setting: ${err.message}`);
+    }
+}
+
+async function createModelExecutionSnapshot(snapshot) {
+    if (!db) throw new Error('Database connection required for model execution snapshots');
+    try {
+        const record = {
+            id: snapshot.id || uuid(),
+            ...snapshot,
+            local_only_active: snapshot.local_only_active ? 1 : 0,
+            fallback_used: snapshot.fallback_used ? 1 : 0,
+            created_at: snapshot.created_at || now()
+        };
+        const { sql, values } = buildInsert('model_execution_snapshots', record);
+        db.prepare(sql).run(...values);
+        return deserRow(db.prepare('SELECT * FROM model_execution_snapshots WHERE id = ?').get(record.id));
+    } catch (err) {
+        console.error('[Database] Error creating model execution snapshot:', err.message);
+        throw new Error(`Failed to create model execution snapshot: ${err.message}`);
+    }
+}
+
 // ============================================================================
 // NEW WRAPPER FUNCTIONS (for server consumers that used db.supabase directly)
 // ============================================================================
@@ -1799,6 +1995,13 @@ module.exports = {
     upsertModel,
     deleteModel,
     getDefaultModelForTask,
+    upsertModelAlias,
+    getModelAliases,
+    upsertProjectModelAlias,
+    getProjectModelAliases,
+    setModelControlSetting,
+    getModelControlSetting,
+    createModelExecutionSnapshot,
     // Usage
     recordUsage,
     getUsageStats,

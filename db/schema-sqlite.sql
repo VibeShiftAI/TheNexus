@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     langgraph_node TEXT,               -- Current LangGraph node
     langgraph_started_at TEXT,         -- When LangGraph run started
     langgraph_updated_at TEXT,         -- When LangGraph run last updated
+    model_assignment TEXT,             -- model:<id> or alias:<name> for model-control routing
     critic_feedback TEXT,              -- Code review critic feedback
     initiative_validation TEXT,         -- JSON: validation data from initiative router
     supervisor_status TEXT,
@@ -284,6 +285,7 @@ CREATE TABLE IF NOT EXISTS project_workflows (
     workflow_type TEXT,
     trigger_type TEXT DEFAULT 'manual',
     trigger_config TEXT DEFAULT '{}',    -- JSON
+    model_assignment TEXT,               -- model:<id> or alias:<name> default for this workflow
     graph_config TEXT DEFAULT '{}',      -- JSON (React Flow nodes/edges)
     stages TEXT DEFAULT '[]',           -- JSON array of workflow stages
     template_id TEXT,                   -- Reference to workflow template
@@ -349,14 +351,70 @@ CREATE TABLE IF NOT EXISTS models (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     provider TEXT NOT NULL,
+    api_model_id TEXT,
+    display_name TEXT,
     is_active INTEGER DEFAULT 1,        -- boolean
     is_default_for_task TEXT,           -- 'plan', 'research', 'implementation', 'quick', or NULL
     capabilities TEXT DEFAULT '{}',     -- JSON
     parameters TEXT DEFAULT '{}',       -- JSON
+    default_parameters TEXT DEFAULT '{}', -- JSON provider defaults
     sort_order INTEGER DEFAULT 0,
     family TEXT,
+    version_sort TEXT,
+    discovered_at TEXT,
+    last_seen_at TEXT,
+    availability_status TEXT DEFAULT 'unknown',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS model_aliases (
+    alias TEXT PRIMARY KEY,
+    target TEXT NOT NULL,
+    description TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS project_model_aliases (
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    alias TEXT NOT NULL,
+    target TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (project_id, alias)
+);
+
+CREATE TABLE IF NOT EXISTS model_control_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT DEFAULT '{}',
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS model_execution_snapshots (
+    id TEXT PRIMARY KEY,
+    requested_assignment TEXT,
+    resolved_model_id TEXT,
+    provider TEXT,
+    api_model_id TEXT,
+    parameters_summary TEXT DEFAULT '{}',
+    source TEXT,
+    local_only_active INTEGER DEFAULT 0,
+    local_only_reason TEXT,
+    fallback_used INTEGER DEFAULT 0,
+    fallback_reason TEXT,
+    project_id TEXT,
+    task_id TEXT,
+    calendar_event_id TEXT,
+    workflow_id TEXT,
+    workflow_run_id TEXT,
+    node_id TEXT,
+    conversation_id TEXT,
+    message_id TEXT,
+    command_id TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
 );
 
 -- ============================================================================
@@ -549,6 +607,7 @@ CREATE TABLE IF NOT EXISTS calendar_events (
     event_type TEXT DEFAULT 'praxis_task',
     project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
     task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+    model_assignment TEXT,
     result TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
