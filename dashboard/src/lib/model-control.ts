@@ -64,7 +64,24 @@ export interface ModelControlPolicy {
         dailyTokenLimit?: number | null;
         dailyCostLimit?: number | null;
         autoLocalOnly?: boolean;
+        providerLimits?: Record<string, {
+            dailyTokenLimit?: number | null;
+            dailyCostLimit?: number | null;
+        }>;
     };
+}
+
+export interface ModelBudgetProviderStatus {
+    dailyTokensUsed: number;
+    dailyCostUsed: number;
+    dailyTokenLimit?: number | null;
+    dailyCostLimit?: number | null;
+    exceeded: boolean;
+    reason?: string | null;
+}
+
+export interface ModelBudgetStatus extends ModelBudgetProviderStatus {
+    byProvider: Record<string, ModelBudgetProviderStatus>;
 }
 
 export interface ModelExecutionSnapshot {
@@ -200,6 +217,17 @@ export async function runModelDiscovery(): Promise<ModelDiscoveryResult> {
         headers: { ...getAuthHeader() as any },
     });
     if (!response.ok) throw new Error(`Failed to run model discovery: ${response.status}`);
+    return response.json();
+}
+
+export async function getModelBudgetStatus(projectId?: string | null): Promise<ModelBudgetStatus> {
+    const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
+    const response = await fetch(`/api/model-control/budget-status${query}`, {
+        credentials: "include",
+        headers: { ...getAuthHeader() as any },
+        cache: "no-store",
+    });
+    if (!response.ok) throw new Error(`Failed to load model budget status: ${response.status}`);
     return response.json();
 }
 

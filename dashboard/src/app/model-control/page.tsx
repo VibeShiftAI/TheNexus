@@ -23,6 +23,7 @@ import {
 import { ModelAliasManager } from "@/components/model-alias-manager";
 import {
     getModelControlState,
+    getModelBudgetStatus,
     getModelExecutionSnapshots,
     resolveModelAssignment,
     runModelDiscovery,
@@ -32,6 +33,7 @@ import {
     type ModelDiscoveryResult,
     type ModelDiscoveryProviderStatus,
     type ModelControlPolicy,
+    type ModelBudgetStatus,
     type ModelControlModel,
     type ModelControlOptionsResponse,
     type ModelExecutionSnapshot,
@@ -42,6 +44,7 @@ import { getProjects, type Project } from "@/lib/nexus";
 const ROLE_ALIASES = ["local_default", "coder", "planner", "researcher", "reviewer", "summarizer"];
 const CAPABILITY_OPTIONS = ["chat", "coding", "reasoning", "vision", "local"];
 const DEFAULT_POLICY: ModelControlPolicy = { enabled: false, requiredCapabilities: [], fallbackChain: [], budget: {} };
+const PROVIDERS = ["anthropic", "openai", "google", "xai", "local"];
 
 function formatDate(value?: string | null) {
     if (!value) return "unknown";
@@ -143,6 +146,7 @@ export default function ModelControlPage() {
     const [projectId, setProjectId] = useState<string>("");
     const [history, setHistory] = useState<ModelExecutionSnapshot[]>([]);
     const [roleResolutions, setRoleResolutions] = useState<Record<string, ResolvedModelControl>>({});
+    const [budgetStatus, setBudgetStatus] = useState<ModelBudgetStatus | null>(null);
     const [discovery, setDiscovery] = useState<ModelDiscoveryResult | null>(null);
     const [localReason, setLocalReason] = useState("manual_override");
     const [loading, setLoading] = useState(true);
@@ -163,6 +167,9 @@ export default function ModelControlPage() {
             setProjects(projectList);
             setHistory(executions.snapshots || []);
             setLocalReason(controlState.localOnly?.reason || "manual_override");
+            getModelBudgetStatus(projectId || null)
+                .then(setBudgetStatus)
+                .catch(() => setBudgetStatus(null));
 
             const resolutions: Record<string, ResolvedModelControl> = {};
             await Promise.all(ROLE_ALIASES.map(async (alias) => {
@@ -219,6 +226,7 @@ export default function ModelControlPage() {
         : (state.policy || DEFAULT_POLICY);
     const fallbackText = (activePolicy.fallbackChain || []).join("\n");
     const budget = activePolicy.budget || {};
+    const providerLimits = budget.providerLimits || {};
 
     const toggleLocalOnly = async () => {
         const enabled = !(state.localOnly?.enabled);
@@ -287,6 +295,23 @@ export default function ModelControlPage() {
                 ...patch,
             },
         });
+    };
+
+    const saveProviderBudget = (provider: string, patch: { dailyTokenLimit?: number | null; dailyCostLimit?: number | null }) => {
+        saveBudget({
+            providerLimits: {
+                ...providerLimits,
+                [provider]: {
+                    ...(providerLimits[provider] || {}),
+                    ...patch,
+                },
+            },
+        });
+    };
+
+    const formatMoney = (value?: number | null) => {
+        if (!value) return "$0.00";
+        return `$${value.toFixed(value < 1 ? 4 : 2)}`;
     };
 
     return (
@@ -517,6 +542,22 @@ export default function ModelControlPage() {
                                 />
                                 Force local when budget is exceeded
                             </label>
+                            <div className="mt-4 rounded border border-slate-800 bg-slate-950/60 p-3">
+                                <div className="mb-2 flex items-center justify-between">
+                                    <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Today</span>
+                                    {budgetStatus?.exceeded && <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200">over budget</span>}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <div className="text-slate-500">Tokens</div>
+                                        <div className="font-mono text-slate-200">{budgetStatus?.dailyTokensUsed?.toLocaleString() || "0"}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-slate-500">Cost</div>
+                                        <div className="font-mono text-slate-200">{formatMoney(budgetStatus?.dailyCostUsed)}</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Fallback Chain</div>
@@ -527,6 +568,43 @@ export default function ModelControlPage() {
                                 className="min-h-24 w-full rounded border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-200 outline-none focus:border-cyan-500"
                                 placeholder={"alias:coder\nfamily_latest:anthropic/Claude Sonnet\nalias:local_default"}
                             />
+                        </div>
+                    </div>
+                    <div className="mt-4">
+                        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Provider Caps</div>
+                        <div className="grid gap-2 lg:grid-cols-5">
+                            {PROVIDERS.map(provider => {
+                                const current = providerLimits[provider] || {};
+                                const status = budgetStatus?.byProvider?.[provider];
+                                return (
+                                    <div key={provider} className={`rounded border p-3 ${status?.exceeded ? "border-amber-500/40 bg-amber-500/10" : "border-slate-800 bg-slate-950/60"}`}>
+                                        <div className="mb-2 flex items-center justify-between gap-2">
+                                            <span className="text-sm font-medium text-slate-200">{provider}</span>
+                                            {status?.exceeded && <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200">cap</span>}
+                                        </div>
+                                        <div className="mb-2 text-[11px] text-slate-500">
+                                            {(status?.dailyTokensUsed || 0).toLocaleString()} tokens · {formatMoney(status?.dailyCostUsed)}
+                                        </div>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            defaultValue={current.dailyTokenLimit || ""}
+                                            onBlur={(event) => saveProviderBudget(provider, { dailyTokenLimit: event.target.value ? Number(event.target.value) : null })}
+                                            className="mb-2 w-full rounded border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500"
+                                            placeholder="token cap"
+                                        />
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            defaultValue={current.dailyCostLimit || ""}
+                                            onBlur={(event) => saveProviderBudget(provider, { dailyCostLimit: event.target.value ? Number(event.target.value) : null })}
+                                            className="w-full rounded border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-cyan-500"
+                                            placeholder="cost cap"
+                                        />
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </section>

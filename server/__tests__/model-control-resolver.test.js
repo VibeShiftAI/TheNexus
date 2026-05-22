@@ -218,4 +218,42 @@ describe('model control resolver', () => {
             exceeded: true
         }));
     });
+
+    test('provider budget guardrail redirects only when the selected provider is over limit', async () => {
+        const db = createStubDb();
+        db.getModelControlSetting.mockImplementation(async (key) => {
+            if (key === 'model_policy') {
+                return {
+                    enabled: true,
+                    budget: {
+                        providerLimits: {
+                            anthropic: { dailyTokenLimit: 100 },
+                            google: { dailyTokenLimit: 1000 }
+                        }
+                    },
+                    fallbackChain: ['family_latest:google/gemini-pro', 'alias:local_default']
+                };
+            }
+            return null;
+        });
+        db.getUsageStats.mockResolvedValue([
+            { model: 'claude-sonnet', input_tokens: 200, output_tokens: 50, total_tokens: 250, request_count: 3, source: 'praxis' },
+            { model: 'gemini-pro', input_tokens: 10, output_tokens: 5, total_tokens: 15, request_count: 1, source: 'nexus' }
+        ]);
+        const { resolveModelAssignment } = require('../services/model-control');
+
+        const resolved = await resolveModelAssignment(db, {
+            model_assignment: 'model:anthropic-claude-sonnet'
+        });
+
+        expect(resolved.resolvedModelId).toBe('google-gemini-3-pro');
+        expect(resolved.provider).toBe('google');
+        expect(resolved.fallbackReason).toContain('anthropic daily token budget exceeded');
+        expect(resolved.budget).toEqual(expect.objectContaining({
+            provider: 'anthropic',
+            dailyTokensUsed: 250,
+            dailyTokenLimit: 100,
+            exceeded: true
+        }));
+    });
 });

@@ -93,7 +93,14 @@ describe('model control route', () => {
                 enabled: true,
                 requiredCapabilities: ['coding'],
                 fallbackChain: ['alias:local_default'],
-                budget: { dailyTokenLimit: 1000, dailyCostLimit: 1.25, autoLocalOnly: false }
+                budget: {
+                    dailyTokenLimit: 1000,
+                    dailyCostLimit: 1.25,
+                    autoLocalOnly: false,
+                    providerLimits: {
+                        anthropic: { dailyTokenLimit: 250, dailyCostLimit: 0.75 }
+                    }
+                }
             })
         })).resolves.toEqual({
             status: 200,
@@ -101,7 +108,14 @@ describe('model control route', () => {
                 enabled: true,
                 requiredCapabilities: ['coding'],
                 fallbackChain: ['alias:local_default'],
-                budget: { dailyTokenLimit: 1000, dailyCostLimit: 1.25, autoLocalOnly: false }
+                budget: {
+                    dailyTokenLimit: 1000,
+                    dailyCostLimit: 1.25,
+                    autoLocalOnly: false,
+                    providerLimits: {
+                        anthropic: { dailyTokenLimit: 250, dailyCostLimit: 0.75 }
+                    }
+                }
             }
         });
 
@@ -112,7 +126,7 @@ describe('model control route', () => {
                 enabled: true,
                 requiredCapabilities: ['reasoning'],
                 fallbackChain: ['family_latest:google/gemini-pro'],
-                budget: { dailyTokenLimit: 500, dailyCostLimit: 0.5, autoLocalOnly: false }
+                budget: { dailyTokenLimit: 500, dailyCostLimit: 0.5, autoLocalOnly: false, providerLimits: {} }
             })
         })).resolves.toEqual({
             status: 200,
@@ -120,7 +134,7 @@ describe('model control route', () => {
                 enabled: true,
                 requiredCapabilities: ['reasoning'],
                 fallbackChain: ['family_latest:google/gemini-pro'],
-                budget: { dailyTokenLimit: 500, dailyCostLimit: 0.5, autoLocalOnly: false }
+                budget: { dailyTokenLimit: 500, dailyCostLimit: 0.5, autoLocalOnly: false, providerLimits: {} }
             }
         });
     });
@@ -261,5 +275,45 @@ describe('model control route', () => {
                 }
             });
         expect(discoverModelRegistry).toHaveBeenCalledWith({ db });
+    });
+
+    test('returns budget status from the existing usage ledger', async () => {
+        const db = {
+            getModelControlSetting: jest.fn(async () => ({
+                enabled: true,
+                budget: { dailyTokenLimit: 1000, providerLimits: { anthropic: { dailyTokenLimit: 200 } } }
+            })),
+            getProjectModelControlSetting: jest.fn(async () => null),
+            getUsageStats: jest.fn(async () => [
+                { model: 'claude-sonnet', input_tokens: 120, output_tokens: 90, total_tokens: 210 },
+                { model: 'gemini-pro', input_tokens: 10, output_tokens: 5, total_tokens: 15 }
+            ])
+        };
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db }));
+        handle = await listen(app);
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/budget-status`))
+            .resolves.toEqual({
+                status: 200,
+                body: expect.objectContaining({
+                    dailyTokensUsed: 225,
+                    dailyTokenLimit: 1000,
+                    exceeded: false,
+                    byProvider: expect.objectContaining({
+                        anthropic: expect.objectContaining({
+                            dailyTokensUsed: 210,
+                            dailyTokenLimit: 200,
+                            exceeded: true
+                        }),
+                        google: expect.objectContaining({
+                            dailyTokensUsed: 15,
+                            exceeded: false
+                        })
+                    })
+                })
+            });
     });
 });

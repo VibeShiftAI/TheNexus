@@ -1,8 +1,17 @@
 const express = require('express');
-const { resolveModelAssignment } = require('../services/model-control');
+const { resolveModelAssignment, mergePolicies, getBudgetStatus } = require('../services/model-control');
 
 function normalizePolicyInput(body = {}) {
     const budget = body.budget && typeof body.budget === 'object' ? body.budget : {};
+    const providerLimits = budget.providerLimits && typeof budget.providerLimits === 'object'
+        ? Object.fromEntries(Object.entries(budget.providerLimits).map(([provider, limits]) => {
+            const value = limits && typeof limits === 'object' ? limits : {};
+            return [String(provider).toLowerCase(), {
+                dailyTokenLimit: Number(value.dailyTokenLimit) > 0 ? Number(value.dailyTokenLimit) : null,
+                dailyCostLimit: Number(value.dailyCostLimit) > 0 ? Number(value.dailyCostLimit) : null
+            }];
+        }))
+        : {};
     return {
         enabled: !!body.enabled,
         requiredCapabilities: Array.isArray(body.requiredCapabilities) ? body.requiredCapabilities : [],
@@ -10,7 +19,8 @@ function normalizePolicyInput(body = {}) {
         budget: {
             dailyTokenLimit: Number(budget.dailyTokenLimit) > 0 ? Number(budget.dailyTokenLimit) : null,
             dailyCostLimit: Number(budget.dailyCostLimit) > 0 ? Number(budget.dailyCostLimit) : null,
-            autoLocalOnly: !!budget.autoLocalOnly
+            autoLocalOnly: !!budget.autoLocalOnly,
+            providerLimits
         }
     };
 }
@@ -68,6 +78,21 @@ function createModelControlRouter({ db, discoverModelRegistry }) {
         } catch (error) {
             console.error('[Model Control] Failed to load execution snapshots:', error);
             res.status(500).json({ error: 'Failed to load model execution snapshots: ' + error.message });
+        }
+    });
+
+    router.get('/budget-status', async (req, res) => {
+        try {
+            const projectId = req.query.projectId || null;
+            const globalPolicy = await db.getModelControlSetting('model_policy');
+            const projectPolicy = projectId && typeof db.getProjectModelControlSetting === 'function'
+                ? await db.getProjectModelControlSetting(projectId, 'model_policy')
+                : null;
+            const policy = mergePolicies(globalPolicy, projectPolicy);
+            res.json(await getBudgetStatus(db, policy));
+        } catch (error) {
+            console.error('[Model Control] Failed to load budget status:', error);
+            res.status(500).json({ error: 'Failed to load budget status: ' + error.message });
         }
     });
 

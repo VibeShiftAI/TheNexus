@@ -9,6 +9,16 @@ function normalizeProvider(provider) {
     return value || 'local';
 }
 
+function inferProviderFromModelName(model) {
+    const value = String(model || '').toLowerCase();
+    if (value.includes('gemini') || value.includes('google')) return 'google';
+    if (value.includes('claude') || value.includes('anthropic')) return 'anthropic';
+    if (value.includes('gpt') || value.includes('openai')) return 'openai';
+    if (value.includes('grok') || value.includes('xai')) return 'xai';
+    if (value.includes('llama') || value.includes('ollama') || value.includes('local')) return 'local';
+    return 'other';
+}
+
 function normalizeAssignment(value) {
     if (!value || typeof value !== 'string') return null;
     const trimmed = value.trim();
@@ -104,6 +114,15 @@ function normalizePolicy(policy) {
         return { enabled: false, requiredCapabilities: [], fallbackChain: [], budget: {} };
     }
     const budget = policy.budget && typeof policy.budget === 'object' ? policy.budget : {};
+    const providerLimits = budget.providerLimits && typeof budget.providerLimits === 'object'
+        ? Object.fromEntries(Object.entries(budget.providerLimits).map(([provider, limits]) => {
+            const value = limits && typeof limits === 'object' ? limits : {};
+            return [normalizeProvider(provider), {
+                dailyTokenLimit: Number(value.dailyTokenLimit) > 0 ? Number(value.dailyTokenLimit) : null,
+                dailyCostLimit: Number(value.dailyCostLimit) > 0 ? Number(value.dailyCostLimit) : null
+            }];
+        }))
+        : {};
     return {
         enabled: policy.enabled !== false && (
             policy.enabled === true
@@ -111,6 +130,7 @@ function normalizePolicy(policy) {
             || (Array.isArray(policy.fallbackChain) && policy.fallbackChain.length > 0)
             || Number(budget.dailyTokenLimit) > 0
             || Number(budget.dailyCostLimit) > 0
+            || Object.values(providerLimits).some(limits => limits.dailyTokenLimit || limits.dailyCostLimit)
         ),
         requiredCapabilities: Array.isArray(policy.requiredCapabilities)
             ? policy.requiredCapabilities.map(String).map(value => value.trim()).filter(Boolean)
@@ -121,7 +141,8 @@ function normalizePolicy(policy) {
         budget: {
             dailyTokenLimit: Number(budget.dailyTokenLimit) > 0 ? Number(budget.dailyTokenLimit) : null,
             dailyCostLimit: Number(budget.dailyCostLimit) > 0 ? Number(budget.dailyCostLimit) : null,
-            autoLocalOnly: !!budget.autoLocalOnly
+            autoLocalOnly: !!budget.autoLocalOnly,
+            providerLimits
         }
     };
 }
@@ -158,34 +179,81 @@ function missingPolicyCapabilities(resolved, policy) {
     return policy.requiredCapabilities.filter(capability => capabilities[capability] !== true);
 }
 
-async function evaluateBudgetGuardrail(db, policy) {
+function limitStatus({ dailyTokensUsed, dailyCostUsed, dailyTokenLimit = null, dailyCostLimit = null, label = '' }) {
+    const tokenExceeded = dailyTokenLimit && dailyTokensUsed >= dailyTokenLimit;
+    const costExceeded = dailyCostLimit && dailyCostUsed >= dailyCostLimit;
+    return {
+        dailyTokensUsed,
+        dailyCostUsed,
+        dailyTokenLimit: dailyTokenLimit || null,
+        dailyCostLimit: dailyCostLimit || null,
+        exceeded: !!(tokenExceeded || costExceeded),
+        reason: tokenExceeded
+            ? `${label}daily token budget exceeded (${dailyTokensUsed}/${dailyTokenLimit})`
+            : costExceeded
+                ? `${label}daily cost budget exceeded ($${dailyCostUsed.toFixed(6)}/$${dailyCostLimit})`
+                : null
+    };
+}
+
+async function getBudgetStatus(db, policy) {
     const budget = policy?.budget || {};
-    if (!budget.dailyTokenLimit && !budget.dailyCostLimit) return { exceeded: false };
-    if (typeof db.getUsageStats !== 'function') return { exceeded: false };
+    if (typeof db.getUsageStats !== 'function') return { exceeded: false, byProvider: {} };
 
     const today = new Date().toISOString().split('T')[0];
     const rows = await db.getUsageStats(today, today);
+    const byProvider = {};
     const totals = (rows || []).reduce((acc, row) => {
         const input = Number(row.input_tokens) || 0;
         const output = Number(row.output_tokens) || 0;
         const total = Number(row.total_tokens) || input + output;
+        const provider = inferProviderFromModelName(row.model);
+        if (!byProvider[provider]) byProvider[provider] = { dailyTokensUsed: 0, dailyCostUsed: 0 };
         acc.dailyTokensUsed += total;
-        acc.dailyCostUsed += calculateCost(row.model || 'default', input, output);
+        const cost = calculateCost(row.model || 'default', input, output);
+        acc.dailyCostUsed += cost;
+        byProvider[provider].dailyTokensUsed += total;
+        byProvider[provider].dailyCostUsed += cost;
         return acc;
     }, { dailyTokensUsed: 0, dailyCostUsed: 0 });
 
-    const tokenExceeded = budget.dailyTokenLimit && totals.dailyTokensUsed >= budget.dailyTokenLimit;
-    const costExceeded = budget.dailyCostLimit && totals.dailyCostUsed >= budget.dailyCostLimit;
-    return {
+    const status = limitStatus({
         ...totals,
         dailyTokenLimit: budget.dailyTokenLimit || null,
-        dailyCostLimit: budget.dailyCostLimit || null,
-        exceeded: !!(tokenExceeded || costExceeded),
-        reason: tokenExceeded
-            ? `daily token budget exceeded (${totals.dailyTokensUsed}/${budget.dailyTokenLimit})`
-            : costExceeded
-                ? `daily cost budget exceeded ($${totals.dailyCostUsed.toFixed(6)}/$${budget.dailyCostLimit})`
-                : null
+        dailyCostLimit: budget.dailyCostLimit || null
+    });
+    const providerLimits = budget.providerLimits || {};
+    for (const provider of new Set([...Object.keys(byProvider), ...Object.keys(providerLimits)])) {
+        const providerTotals = byProvider[provider] || { dailyTokensUsed: 0, dailyCostUsed: 0 };
+        byProvider[provider] = limitStatus({
+            ...providerTotals,
+            dailyTokenLimit: providerLimits[provider]?.dailyTokenLimit || null,
+            dailyCostLimit: providerLimits[provider]?.dailyCostLimit || null,
+            label: `${provider} `
+        });
+    }
+    return { ...status, byProvider };
+}
+
+async function evaluateBudgetGuardrail(db, policy, provider = null) {
+    const budget = policy?.budget || {};
+    if (!budget.dailyTokenLimit && !budget.dailyCostLimit && !Object.keys(budget.providerLimits || {}).length) {
+        return { exceeded: false, byProvider: {} };
+    }
+    const status = await getBudgetStatus(db, policy);
+    if (provider) {
+        const providerStatus = status.byProvider?.[normalizeProvider(provider)];
+        if (providerStatus?.exceeded) {
+            return {
+                ...providerStatus,
+                provider: normalizeProvider(provider),
+                byProvider: status.byProvider
+            };
+        }
+    }
+    return {
+        ...status,
+        exceeded: !!status.exceeded
     };
 }
 
@@ -375,6 +443,19 @@ async function resolveWithPolicy(db, requestedAssignment, context = {}, policy =
     }
 
     const resolved = await resolveAssignment(db, candidate, context, candidate);
+    if (!resolved.unavailable) {
+        const providerBudget = await evaluateBudgetGuardrail(db, policy, resolved.provider);
+        if (providerBudget.exceeded) {
+            if (policy.budget?.autoLocalOnly) {
+                const local = await resolveLocalOnly(db, candidate, providerBudget.reason);
+                local.budget = providerBudget;
+                local.policy = policy;
+                return local;
+            }
+            const fallback = await resolvePolicyFallback(db, policy, context, candidate, providerBudget.reason, providerBudget, resolved.provider);
+            if (fallback) return fallback;
+        }
+    }
     const initialReason = resolved.unavailable
         ? resolved.reason
         : missingPolicyCapabilities(resolved, policy).length
@@ -399,13 +480,16 @@ async function resolveWithPolicy(db, requestedAssignment, context = {}, policy =
     return local;
 }
 
-async function resolvePolicyFallback(db, policy, context, candidate, reason, budget = null) {
+async function resolvePolicyFallback(db, policy, context, candidate, reason, budget = null, blockedProvider = null) {
     for (const fallback of policy.fallbackChain || []) {
         const fallbackResolved = await resolveAssignment(db, fallback, context, candidate, {
             fallbackUsed: true,
             fallbackReason: reason
         });
         if (fallbackResolved.unavailable) continue;
+        if (blockedProvider && fallbackResolved.provider === blockedProvider) continue;
+        const providerBudget = await evaluateBudgetGuardrail(db, policy, fallbackResolved.provider);
+        if (providerBudget.exceeded) continue;
         const missing = missingPolicyCapabilities(fallbackResolved, policy);
         if (missing.length) continue;
         return {
@@ -468,6 +552,7 @@ module.exports = {
     normalizePolicy,
     mergePolicies,
     evaluateBudgetGuardrail,
+    getBudgetStatus,
     resolveModelAssignment,
     recordModelExecutionSnapshot,
     summarizeParameters,
