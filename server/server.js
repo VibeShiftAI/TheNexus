@@ -85,7 +85,7 @@ function authenticate(req, res, next) {
 }
 
 // Apply auth to protected route prefixes
-['/api/projects', '/api/tasks', '/api/ai', '/api/pins', '/api/models',
+['/api/projects', '/api/tasks', '/api/ai', '/api/pins', '/api/models', '/api/model-control',
  '/api/activity', '/api/dashboard', '/api/mcp', '/api/initiatives', '/api/local-queue'
 ].forEach(prefix => app.use(prefix, authenticate));
 
@@ -113,6 +113,7 @@ app.use('/api/workflows',   createWorkflowsRouter({ db, PROJECT_ROOT, getProject
 // ─── Route Modules — Newly Extracted ────────────────────────────────────────
 const createHealthRouter    = require('./routes/health');
 const createModelsRouter    = require('./routes/models');
+const createModelControlRouter = require('./routes/model-control');
 const createSettingsRouter  = require('./routes/settings');
 const createDashboardRouter = require('./routes/dashboard');
 const createSystemRouter    = require('./routes/system');
@@ -136,6 +137,7 @@ const createLocalQueueRouter = require('./routes/local-queue');
 // Health & system
 app.use('/api/health',    createHealthRouter());
 app.use('/api/models',    createModelsRouter({ db, getModels }));
+app.use('/api/model-control', createModelControlRouter({ db, io }));
 app.use('/api/settings',  createSettingsRouter());
 app.use('/api/dashboard', createDashboardRouter({ db }));
 app.use('/api',        createSystemRouter({ db, systemMonitor, tokenTracker, isCriticEnabled, setCriticEnabled }));
