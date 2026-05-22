@@ -137,7 +137,7 @@ const createLocalQueueRouter = require('./routes/local-queue');
 // Health & system
 app.use('/api/health',    createHealthRouter());
 app.use('/api/models',    createModelsRouter({ db, getModels }));
-app.use('/api/model-control', createModelControlRouter({ db, io, discoverModelRegistry }));
+app.use('/api/model-control', createModelControlRouter({ db, io, discoverModelRegistry, callAI }));
 app.use('/api/settings',  createSettingsRouter());
 app.use('/api/dashboard', createDashboardRouter({ db }));
 app.use('/api',        createSystemRouter({ db, systemMonitor, tokenTracker, isCriticEnabled, setCriticEnabled }));

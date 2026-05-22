@@ -21,6 +21,15 @@ export interface ResolvedModelControl {
     fallbackReason?: string | null;
 }
 
+export interface ModelControlProbeResult {
+    mode: "resolve" | "live";
+    live: boolean;
+    resolved: ResolvedModelControl;
+    response?: string;
+    usage?: Record<string, unknown> | null;
+    snapshot?: ModelExecutionSnapshot | null;
+}
+
 export interface ModelControlAlias {
     alias: string;
     target: string;
@@ -179,6 +188,23 @@ export async function resolveModelAssignment(input: { model_assignment?: string 
         body: JSON.stringify(input),
     });
     if (!response.ok) throw new Error(`Failed to resolve model assignment: ${response.status}`);
+    return response.json();
+}
+
+export async function runModelControlProbe(input: {
+    mode: "resolve" | "live";
+    model_assignment?: string | null;
+    projectId?: string | null;
+    role?: string;
+    prompt?: string;
+}): Promise<ModelControlProbeResult> {
+    const response = await fetch("/api/model-control/probe", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify(input),
+    });
+    if (!response.ok) throw new Error(`Failed to run model-control probe: ${response.status}`);
     return response.json();
 }
 

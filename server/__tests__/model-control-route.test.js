@@ -316,4 +316,85 @@ describe('model control route', () => {
                 })
             });
     });
+
+    test('runs resolve-only and live model-control probes', async () => {
+        const db = {
+            getModelControlSetting: jest.fn(async () => null),
+            getProjectModelControlSetting: jest.fn(async () => null),
+            getModel: jest.fn(async () => ({
+                id: 'local-llama',
+                provider: 'local',
+                api_model_id: 'llama3.2',
+                name: 'Local Llama',
+                capabilities: { chat: true, local: true },
+                is_active: true,
+                availability_status: 'available'
+            })),
+            getModels: jest.fn(async () => []),
+            getModelAliases: jest.fn(async () => []),
+            getProjectModelAliases: jest.fn(async () => []),
+            getUsageStats: jest.fn(async () => []),
+            createModelExecutionSnapshot: jest.fn(async (snapshot) => ({ id: 'snapshot-1', ...snapshot })),
+        };
+        const callAI = jest.fn(async () => ({
+            text: 'probe ok',
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+        }));
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db, callAI }));
+        handle = await listen(app);
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/probe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'resolve', model_assignment: 'model:local-llama', projectId: 'project-1' })
+        })).resolves.toEqual({
+            status: 200,
+            body: expect.objectContaining({
+                mode: 'resolve',
+                live: false,
+                resolved: expect.objectContaining({
+                    resolvedModelId: 'local-llama',
+                    provider: 'local',
+                    apiModelId: 'llama3.2'
+                })
+            })
+        });
+        expect(callAI).not.toHaveBeenCalled();
+        expect(db.createModelExecutionSnapshot).not.toHaveBeenCalled();
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/probe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'live', model_assignment: 'model:local-llama', projectId: 'project-1', prompt: 'Say probe ok.' })
+        })).resolves.toEqual({
+            status: 200,
+            body: expect.objectContaining({
+                mode: 'live',
+                live: true,
+                response: 'probe ok',
+                snapshot: expect.objectContaining({ id: 'snapshot-1', project_id: 'project-1' }),
+                resolved: expect.objectContaining({
+                    resolvedModelId: 'local-llama',
+                    provider: 'local'
+                })
+            })
+        });
+        expect(callAI).toHaveBeenCalledWith(
+            expect.objectContaining({ provider: 'local', apiModelId: 'llama3.2' }),
+            'Say probe ok.',
+            expect.any(String),
+            [],
+            { returnFullResult: true }
+        );
+        expect(db.createModelExecutionSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+            requested_assignment: 'model:local-llama',
+            resolved_model_id: 'local-llama',
+            provider: 'local',
+            project_id: 'project-1',
+            command_id: 'model-control-probe'
+        }));
+    });
 });
