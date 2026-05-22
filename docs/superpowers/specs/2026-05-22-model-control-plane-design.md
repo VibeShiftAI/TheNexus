@@ -14,6 +14,7 @@ The first implementation must control:
 - Task execution, including LangGraph dispatch, task resume, and Praxis task redispatch.
 - Calendar events and scheduled activities.
 - Workflow builder nodes and saved workflow graph configuration.
+- A global local-only operating mode for offline use or billable-token protection.
 
 ## Core Concepts
 
@@ -59,11 +60,14 @@ Example: `alias:coder` may prefer latest Claude Sonnet, then latest GPT coding m
 
 Every execution route resolves assignment with the same order:
 
+0. Global local-only operating mode, when enabled.
 1. Item override.
 2. Workflow or template default.
 3. Project alias/default.
 4. Global role alias/default.
 5. Local fallback.
+
+When global local-only mode is enabled, all cloud model assignments are short-circuited to the configured local fallback before any provider call is made. The original requested assignment is still preserved in the resolution result and execution snapshot.
 
 The resolver returns a complete execution object, not only a display label:
 
@@ -74,11 +78,26 @@ interface ResolvedModelAssignment {
   provider: "google" | "anthropic" | "openai" | "xai" | "local";
   apiModelId: string;
   parameters: Record<string, unknown>;
-  source: "item" | "workflow" | "project" | "global" | "fallback";
+  source: "local_only" | "item" | "workflow" | "project" | "global" | "fallback";
+  localOnlyActive: boolean;
   fallbackUsed: boolean;
   fallbackReason?: string;
 }
 ```
+
+### Global Local-Only Mode
+
+The model control plane includes a global local-only override for offline work or billable-token protection. This mode is a system setting, not an alias, because it must override item-level and project-level cloud selections.
+
+When enabled:
+
+- Every resolver call returns a local model config, preferably `alias:local_default`.
+- Cloud API branches are not called.
+- UI model badges display the requested assignment and the active override, for example `alias:coder -> local-default (local-only mode)`.
+- Execution snapshots record `localOnlyActive: true`, the original requested assignment, and the actual local model used.
+- Praxis terminal receives a visible system message the first time the mode redirects a command or scheduled/task execution in a session.
+
+The setting should support an optional reason such as `offline`, `budget_limit`, or `manual`, so logs can distinguish network protection from cost protection.
 
 ## Execution Routing
 
@@ -181,6 +200,8 @@ Snapshot fields:
 - `api_model_id`.
 - `parameters_summary`.
 - `source`.
+- `local_only_active`.
+- `local_only_reason`.
 - `fallback_used`.
 - `fallback_reason`.
 - Entity links when known: `project_id`, `task_id`, `calendar_event_id`, `workflow_id`, `workflow_run_id`, `node_id`, `conversation_id`, `message_id`, and `command_id`.
@@ -193,6 +214,7 @@ New model control endpoints:
 - `GET /api/model-control/options`: active models, aliases, project overrides when scoped, and resolved defaults.
 - `POST /api/model-control/resolve`: previews a requested assignment with context.
 - `PUT /api/model-control/aliases/:alias`: creates or updates a global alias.
+- `PUT /api/model-control/local-only`: enables or disables global local-only mode and records the reason.
 - `PUT /api/projects/:id/model-aliases/:alias`: creates or updates a project override.
 
 Existing APIs accept and return `model_assignment` where relevant:
@@ -212,6 +234,7 @@ Controls should appear near the thing they affect:
 - Workflow nodes: node badge and node config selector.
 - Project settings: project alias overrides and project default.
 - Global settings or Agent Manager: global alias definitions and model registry status.
+- Global header/status area: local-only toggle with current reason and clear visual indication when active.
 
 Display format should make provenance clear:
 
@@ -234,6 +257,13 @@ alias:deep_reasoning -> local-default
 Fallback from OpenAI: missing API key
 ```
 
+When local-only mode is active:
+
+```text
+alias:coder -> local-default
+Global local-only mode: budget_limit
+```
+
 ## Testing Requirements
 
 Tests must prove behavior at the API-call boundary, not only persistence.
@@ -247,7 +277,9 @@ Required tests:
 - Direct chat selecting Claude invokes the Anthropic branch of `callAI`.
 - Direct chat selecting Gemini invokes the Google branch of `callAI`.
 - Local selection invokes the local OpenAI-compatible branch.
+- Global local-only mode forces a cloud assignment to the local branch without calling the cloud provider.
 - Unavailable selected model falls back and writes a Praxis terminal system message.
+- Local-only redirection writes a Praxis terminal system message and records `local_only_active` in the snapshot.
 - Calendar dispatch resolves the event model before notifying Praxis.
 - Task LangGraph dispatch passes resolved provider config.
 - Workflow node config persists `model_assignment` and node execution receives the resolved config.
