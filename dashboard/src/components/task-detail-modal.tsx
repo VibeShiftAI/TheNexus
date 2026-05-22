@@ -10,6 +10,7 @@ import { FeedbackHistory } from './feedback-history';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { normalizeMarkdown } from '@/lib/normalizeMarkdown';
+import { ModelAssignmentControl } from '@/components/model-assignment-control';
 
 import { UnifiedWorkflowView } from './task-modal/unified-workflow-view';
 
@@ -191,6 +192,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
     const [editDescription, setEditDescription] = useState('');
     const [isEditSaving, setIsEditSaving] = useState(false);
     const [editError, setEditError] = useState<string | null>(null);
+    const [isModelSaving, setIsModelSaving] = useState(false);
 
     // LangGraph workflow state
     const [langGraphTemplates, setLangGraphTemplates] = useState<WorkflowTemplate[]>([]);
@@ -557,6 +559,26 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                 <div className="flex-1 overflow-y-auto p-6">
                     {activeTab === 'overview' && (
                         <div className="space-y-4">
+                            <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                                <div className="flex items-center justify-between gap-3 mb-2">
+                                    <h3 className="text-sm font-medium text-slate-300">Model</h3>
+                                    {isModelSaving && <Loader2 size={14} className="animate-spin text-slate-400" />}
+                                </div>
+                                <ModelAssignmentControl
+                                    value={task.model_assignment || ''}
+                                    projectId={projectId}
+                                    role="task"
+                                    onChange={async (value) => {
+                                        setIsModelSaving(true);
+                                        try {
+                                            await updateTask(projectId, task.id, { model_assignment: value || null });
+                                            onTaskChange();
+                                        } finally {
+                                            setIsModelSaving(false);
+                                        }
+                                    }}
+                                />
+                            </div>
                             <div>
                                 <h3 className="text-sm font-medium text-slate-400 mb-2">Description</h3>
                                 {task.description ? (

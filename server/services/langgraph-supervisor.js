@@ -36,7 +36,7 @@ async function isLangGraphAvailable() {
  * @returns {Promise<Object>} Run result with run_id
  */
 async function runLangGraphWorkflow(options) {
-    const { projectPath, projectId, taskId, taskData, templateId, graphConfig } = options;
+    const { projectPath, projectId, taskId, taskData, templateId, graphConfig, resolvedModel, modelOverride } = options;
 
     // Build request body
     console.log(`[LangGraph] Building body with taskData:`, JSON.stringify(taskData));
@@ -48,8 +48,12 @@ async function runLangGraphWorkflow(options) {
             project_id: projectId,
             task_id: taskId,
             task_title: taskData?.title || 'Untitled Task',
-            task_description: taskData?.description || ''
-        }
+            task_description: taskData?.description || '',
+            resolved_model: resolvedModel || null,
+            model_override: modelOverride || null
+        },
+        resolved_model: resolvedModel || null,
+        model_override: modelOverride || null
     };
     console.log(`[LangGraph] Built input_data:`, JSON.stringify(body.input_data));
 
@@ -82,7 +86,9 @@ async function runLangGraphWorkflow(options) {
                     body: JSON.stringify({
                         project_id: projectId,
                         task_id: taskId,
-                        input_data: body.input_data
+                        input_data: body.input_data,
+                        resolved_model: resolvedModel || null,
+                        model_override: modelOverride || null
                     })
                 });
 

@@ -507,6 +507,7 @@ export interface Task {
         startedAt: string;
     };
     langgraph_template?: string | null;  // Flat DB column — auto-assigned by compiler or user
+    model_assignment?: string | null;
 
     // First-class citizen fields
     initiativeValidation?: InitiativeValidation;
@@ -550,11 +551,11 @@ export async function getTasks(id: string): Promise<TasksResponse> {
     return res.json();
 }
 
-export async function addTask(id: string, title: string, description?: string, templateId?: string): Promise<{ success: boolean; task: Task }> {
+export async function addTask(id: string, title: string, description?: string, templateId?: string, model_assignment?: string | null): Promise<{ success: boolean; task: Task }> {
     const res = await authFetch(`${API_URL}/${id}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, templateId }),
+        body: JSON.stringify({ title, description, templateId, model_assignment }),
     });
     if (!res.ok) {
         const data = await res.json();
@@ -695,6 +696,7 @@ export async function updateTask(
         research_output?: string | null;
         plan_output?: string | null;
         walkthrough?: string | null;
+        model_assignment?: string | null;
         [key: string]: any;  // Allow other fields
     }
 ): Promise<{ success: boolean; task: Task }> {
@@ -784,6 +786,7 @@ export interface UpdateTaskData {
     title?: string;
     description?: string;
     status?: TaskStatus;
+    model_assignment?: string | null;
 }
 
 export interface ReviewItem {

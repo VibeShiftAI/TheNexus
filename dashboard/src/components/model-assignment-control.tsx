@@ -33,7 +33,7 @@ export function ModelAssignmentControl({ value, projectId, role = "chat", onChan
             })
             .catch(err => console.warn("[ModelAssignmentControl] options unavailable:", err.message));
         return () => { cancelled = true; };
-    }, [projectId, value, onChange]);
+    }, [projectId]);
 
     useEffect(() => {
         if (!value) {

@@ -1,5 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
 const { getTool, getGeminiTools } = require('../tools');
+const { callAI } = require('../services/ai-service');
 
 // Token truncation settings
 const MAX_TOOL_RESULT_LENGTH = 5000;
@@ -89,6 +90,30 @@ async function runAgent(options) {
         featureId = null,
         featureTitle = null
     } = options;
+
+    const normalizedProvider = String(provider || 'google').toLowerCase();
+    if (normalizedProvider !== 'google' && normalizedProvider !== 'gemini') {
+        const result = await callAI(
+            {
+                provider: normalizedProvider,
+                apiModelId: model,
+                parameters: options.parameters || {}
+            },
+            task,
+            providedSystemPrompt || '',
+            [],
+            { returnFullResult: true }
+        );
+        return {
+            success: true,
+            response: result.text,
+            iterations: 1,
+            historyLength: 0,
+            provider: result.provider || normalizedProvider,
+            model: result.model || model,
+            usage: result.usage
+        };
+    }
     
     // Store system prompt for potential checkpoint restoration
     const systemPrompt = providedSystemPrompt;

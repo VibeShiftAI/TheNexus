@@ -5,9 +5,33 @@
  */
 const express = require('express');
 const crypto = require('crypto');
+const { resolveModelAssignment, recordModelExecutionSnapshot } = require('../services/model-control');
 
 function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, runDeepResearch, validateInitiativeRequest, pushService }) {
     const router = express.Router();
+
+    async function resolveTaskModel(task, projectId, extraLinks = {}) {
+        const resolved = await resolveModelAssignment(db, {
+            model_assignment: task.model_assignment,
+            task,
+            projectId,
+            project_id: projectId,
+            role: 'task'
+        });
+        await recordModelExecutionSnapshot(db, resolved, {
+            project_id: projectId || task.project_id || null,
+            task_id: task.id || null,
+            ...extraLinks
+        });
+        return {
+            resolvedModel: resolved,
+            modelOverride: {
+                provider: resolved.provider,
+                apiModelId: resolved.apiModelId,
+                parameters: resolved.parameters || {}
+            }
+        };
+    }
 
     // ─── List tasks by project_id (Praxis compatibility) ────────────────
     // Praxis calls GET /api/tasks?project_id=xxx — this was project-scoped
@@ -37,13 +61,14 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
 
     // ─── Create Task (top-level) ─────────────────────────────────────────
     router.post('/', async (req, res) => {
-        const { project_id, title, status, priority, description, templateId } = req.body;
+        const { project_id, title, status, priority, description, templateId, model_assignment } = req.body;
         if (!project_id || !title) return res.status(400).json({ error: 'project_id and title are required' });
         try {
             const result = await db.createTask({
                 project_id, name: title, status: status || 'planning',
                 priority: priority === 'high' ? 2 : 1, description: description || '',
-                langgraph_template: templateId || null
+                langgraph_template: templateId || null,
+                model_assignment: model_assignment || null
             });
             res.status(201).json(result);
         } catch (error) {
@@ -54,7 +79,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // ─── PATCH update task by ID (LangGraph workflow sync) ───────────────
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, description } = req.body;
+        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, description, model_assignment } = req.body;
         try {
             const existing = await db.getTask(taskId);
             if (!existing) return res.status(404).json({ error: 'Task not found' });
@@ -65,6 +90,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (walkthrough !== undefined) updates.walkthrough = walkthrough;
             if (priority !== undefined) updates.priority = priority;
             if (description !== undefined) updates.description = description;
+            if (model_assignment !== undefined) updates.model_assignment = model_assignment || null;
             // ser() in the db layer JSON-encodes arrays; deserRow parses it back.
             if (dependencies !== undefined) updates.dependencies = Array.isArray(dependencies) ? dependencies : [];
             if (status_message !== undefined) {
@@ -138,7 +164,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
 
     // POST add task to project
     router.post('/:id/tasks', async (req, res) => {
-        const { title, description, templateId } = req.body;
+        const { title, description, templateId, model_assignment } = req.body;
         if (!title?.trim()) return res.status(400).json({ error: 'Task title is required' });
 
         let validation = {};
@@ -154,7 +180,8 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const created = await db.createTask({
                 project_id: project.id, name: title.trim(), description: description?.trim() || '',
                 status: 'idea', priority: 0, initiative_validation: validation, source: 'user',
-                langgraph_template: templateId || null, metadata: { classifiedAt: new Date().toISOString() }
+                langgraph_template: templateId || null, model_assignment: model_assignment || null,
+                metadata: { classifiedAt: new Date().toISOString() }
             });
             res.json({ success: true, task: { ...created, title: created.name, createdAt: created.created_at } });
         } catch (error) {
@@ -178,7 +205,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // PATCH update task (project-scoped)
     router.patch('/:id/tasks/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { title, description, status } = req.body;
+        const { title, description, status, model_assignment } = req.body;
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
         try {
@@ -187,6 +214,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const updates = { updated_at: new Date().toISOString() };
             if (title !== undefined) updates.name = title.trim();
             if (description !== undefined) updates.description = description.trim();
+            if (model_assignment !== undefined) updates.model_assignment = model_assignment || null;
             if (status !== undefined) {
                 updates.status = status;
                 if (status === 'idea') {
@@ -300,11 +328,14 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (!project) return res.status(404).json({ error: 'Project not found' });
             const task = await db.getTask(taskId);
             if (!task) return res.status(404).json({ error: 'Task not found' });
+            const modelControl = await resolveTaskModel(task, projectId);
             const lgSupervisor = require('../services/langgraph-supervisor');
             const result = await lgSupervisor.runLangGraphWorkflow({
                 projectPath: project.path, projectId, taskId,
                 taskData: { title: task.name || task.title || 'Untitled', description: task.description || '' },
-                templateId, graphConfig
+                templateId, graphConfig,
+                resolvedModel: modelControl.resolvedModel,
+                modelOverride: modelControl.modelOverride
             });
             if (result.success && result.run_id) {
                 const newStatus = task.status === 'idea' ? 'todo' : task.status;
@@ -412,6 +443,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             // Re-dispatch to Praxis if the resume action says to
             if (resumeAction.type === 'redispatch' || !resumeAction.type) {
                 try {
+                    const modelControl = await resolveTaskModel(task, task.project_id || req.params.id);
                     await fetch('http://127.0.0.1:54322/resume-task', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -419,7 +451,8 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                             nexusTaskId: taskId,
                             workspace: resumeAction.workspace || context.workspace,
                             instructions: resumeInstructions,
-                            modelOverride: resumeAction.modelOverride,
+                            resolvedModel: modelControl.resolvedModel,
+                            modelOverride: resumeAction.modelOverride || modelControl.modelOverride,
                         }),
                     });
                 } catch (fetchErr) {

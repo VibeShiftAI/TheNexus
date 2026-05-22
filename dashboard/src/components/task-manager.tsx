@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Task, TaskStatus, addTask, deleteTask, researchTasks, getResearchStatus, updateTask, updateTaskDetails, getWorkflowTemplates, WorkflowTemplate, runTaskWithLangGraph } from "@/lib/nexus";
 import { Lightbulb, Plus, Search, Rocket, CheckCircle2, Clock, Loader2, ChevronRight, Sparkles, XCircle, Undo2, Pencil, Bug, HelpCircle, AlertTriangle, Fingerprint, Pause, Play, Workflow } from "lucide-react";
+import { ModelAssignmentControl } from "@/components/model-assignment-control";
 
 interface TaskManagerProps {
     projectId: string;
@@ -27,6 +28,7 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+    const [newTaskModelAssignment, setNewTaskModelAssignment] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [researchingId, setResearchingId] = useState<string | null>(null);
     const [isAutoResearching, setIsAutoResearching] = useState(false);
@@ -38,6 +40,7 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [editTitle, setEditTitle] = useState('');
     const [editDescription, setEditDescription] = useState('');
+    const [editModelAssignment, setEditModelAssignment] = useState<string>('');
     const [isEditSaving, setIsEditSaving] = useState(false);
     const [editError, setEditError] = useState<string | null>(null);
 
@@ -130,10 +133,11 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
 
         setIsSubmitting(true);
         try {
-            await addTask(projectId, title.trim(), description.trim() || undefined, selectedTemplateId || undefined);
+            await addTask(projectId, title.trim(), description.trim() || undefined, selectedTemplateId || undefined, newTaskModelAssignment || null);
             setTitle('');
             setDescription('');
             setSelectedTemplateId('');
+            setNewTaskModelAssignment('');
             setShowForm(false);
             onTasksChange();
         } catch (error) {
@@ -153,6 +157,7 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
         setEditingTask(task);
         setEditTitle(task.title);
         setEditDescription(task.description || '');
+        setEditModelAssignment(task.model_assignment || '');
         setEditError(null);
     };
 
@@ -166,7 +171,8 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
         try {
             await updateTaskDetails(projectId, editingTask.id, {
                 title: editTitle.trim(),
-                description: editDescription.trim()
+                description: editDescription.trim(),
+                model_assignment: editModelAssignment || null
             });
             setEditingTask(null);
             onTasksChange();
@@ -282,6 +288,15 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                             </select>
                         </div>
                     )}
+                    <div className="mb-3">
+                        <label className="block text-xs text-slate-400 mb-1">Model</label>
+                        <ModelAssignmentControl
+                            value={newTaskModelAssignment}
+                            projectId={projectId}
+                            role="task"
+                            onChange={setNewTaskModelAssignment}
+                        />
+                    </div>
                     <div className="flex gap-2">
                         <button
                             type="submit"
@@ -292,7 +307,7 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setShowForm(false); setTitle(''); setDescription(''); setSelectedTemplateId(''); }}
+                            onClick={() => { setShowForm(false); setTitle(''); setDescription(''); setSelectedTemplateId(''); setNewTaskModelAssignment(''); }}
                             className="px-4 py-2 text-sm rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
                         >
                             Cancel
@@ -415,6 +430,11 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                                                         {templates.find(t => t.id === task.langgraph_template)?.name || task.langgraph_template}
                                                     </span>
                                                 )}
+                                                {task.model_assignment && (
+                                                    <span className="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                                                        {task.model_assignment.replace(/^model:/, '').replace(/^alias:/, '')}
+                                                    </span>
+                                                )}
                                                 {task.implementationPlan && (
                                                     <span className="px-1.5 py-0.5 rounded bg-slate-800">Has Plan</span>
                                                 )}
@@ -490,6 +510,15 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                                     className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                     placeholder="Describe the task..."
                                     disabled={isEditSaving}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">Model</label>
+                                <ModelAssignmentControl
+                                    value={editModelAssignment}
+                                    projectId={projectId}
+                                    role="task"
+                                    onChange={setEditModelAssignment}
                                 />
                             </div>
                         </div>
