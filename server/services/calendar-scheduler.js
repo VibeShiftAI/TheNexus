@@ -108,7 +108,20 @@ async function checkUpcomingEvents(db = dbRef, now = new Date()) {
     await Promise.all(events.map(async event => {
         // If event is starting within the next minute (or is up to 5 min late but still scheduled)
         if (shouldDispatchCalendarEvent(event, now)) {
-            await dispatchCalendarEvent(db, event);
+            // Per-event isolation: a single event's dispatch failure (e.g. model
+            // control throwing "No active local model" when the local LLM is
+            // momentarily down) must NOT reject the whole Promise.all and surface
+            // as an unhandled rejection — which previously added event-loop noise
+            // ahead of a supervisor restart. The event stays `scheduled`, so the
+            // next poll tick retries it once the model is back.
+            try {
+                await dispatchCalendarEvent(db, event);
+            } catch (err) {
+                console.error(
+                    `[CalendarScheduler] Dispatch failed for event "${event.title}" (${event.id}); will retry next tick:`,
+                    err && err.message ? err.message : err
+                );
+            }
         }
     }));
 }

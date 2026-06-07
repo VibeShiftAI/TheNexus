@@ -24,6 +24,13 @@ export const HITLResolutionSchema = z.object({
   resolvedBy: z.string(),
   choice: z.string().optional(),
   freeText: z.string().optional(),
+  /**
+   * Optional resolver-supplied structured payload. The morning [MORNING PLAN]
+   * approval card uses this to attach `scheduleOverrides` (per-task executor
+   * changes and skips with reasons) alongside the approve choice. Open-typed
+   * so other resolvers can attach their own structured input.
+   */
+  payload: z.record(z.string(), z.unknown()).optional(),
 });
 export type HITLResolution = z.infer<typeof HITLResolutionSchema>;
 
@@ -45,6 +52,14 @@ export const HITLRequestSchema = z.object({
   originalPayload: HITLOriginalPayloadSchema.optional(),
   requestedAt: z.string().datetime(),
   ttlSeconds: z.number().int().positive().optional(),
+
+  /**
+   * Open-typed metadata bag for request-kind-specific structured data the UI
+   * may render against. The morning [MORNING PLAN] HITL attaches
+   * `{ kind: "day-schedule", date, slots: [...] }` so the dashboard can show
+   * a rich per-slot card.
+   */
+  metadata: z.record(z.string(), z.unknown()).optional(),
 
   resolution: HITLResolutionSchema.nullable().optional(),
 });

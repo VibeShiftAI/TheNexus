@@ -503,9 +503,26 @@ async function resolvePolicyFallback(db, policy, context, candidate, reason, bud
     return null;
 }
 
+async function resolveRoleAssignment(db, role) {
+    try {
+        const row = typeof db.getModelRole === 'function' ? await db.getModelRole(role) : null;
+        const assignment = normalizeAssignment(row?.assignment);
+        if (assignment && row.is_active !== false && row.is_active !== 0) return assignment;
+    } catch (err) {
+        console.error('[Model Control] role lookup failed for', role, err.message);
+    }
+    // Local-first default for any unconfigured/inactive role.
+    return 'alias:local_default';
+}
+
 async function resolveModelAssignment(db, context = {}) {
     const settings = await db.getModelControlSetting('local_only');
-    const requestedAssignment = pickRequestedAssignment(context);
+    let requestedAssignment = pickRequestedAssignment(context);
+    // Role-based default: an explicit assignment always wins; otherwise a
+    // call-site role resolves to its configured assignment (local-first default).
+    if (!requestedAssignment && context.role) {
+        requestedAssignment = await resolveRoleAssignment(db, context.role);
+    }
     if (settings?.enabled) {
         return resolveLocalOnly(db, requestedAssignment, settings.reason);
     }
@@ -554,6 +571,7 @@ module.exports = {
     evaluateBudgetGuardrail,
     getBudgetStatus,
     resolveModelAssignment,
+    resolveRoleAssignment,
     recordModelExecutionSnapshot,
     summarizeParameters,
     writeModelSystemMessage

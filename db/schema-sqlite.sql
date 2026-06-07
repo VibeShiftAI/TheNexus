@@ -377,6 +377,16 @@ CREATE TABLE IF NOT EXISTS model_aliases (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
+-- Named call-site roles. assignment uses the same grammar as model_aliases.target.
+CREATE TABLE IF NOT EXISTS model_roles (
+    role TEXT PRIMARY KEY,
+    assignment TEXT NOT NULL,
+    description TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS project_model_aliases (
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     alias TEXT NOT NULL,

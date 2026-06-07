@@ -53,6 +53,12 @@ const CALLER_COLORS: Record<string, string> = {
   "mcp.claude": "#d97757",
   "mcp.codex": "#22c55e",
   "mcp.antigravity": "#3b82f6",
+  // Task-dispatch events (which executor a Nexus task was routed to). Colors
+  // mirror each executor's brand so dispatches read consistently alongside
+  // that executor's MCP calls.
+  "dispatch.claude-code": "#d97757",
+  "dispatch.codex": "#22c55e",
+  "dispatch.antigravity": "#3b82f6",
 };
 const PROVIDER_COLORS: Record<string, string> = {
   google: "#3b82f6",
@@ -62,6 +68,10 @@ const PROVIDER_COLORS: Record<string, string> = {
   xai: "#ec4899",
   openrouter: "#8b5cf6",
   local: "#14b8a6",
+  // Executors, when they appear as the `provider` of a dispatch event.
+  antigravity: "#3b82f6",
+  codex: "#22c55e",
+  "claude-code": "#d97757",
 };
 function colorFor(map: Record<string, string>, key: string, i: number) {
   return map[key] || ["#94a3b8", "#64748b", "#475569", "#cbd5e1"][i % 4];

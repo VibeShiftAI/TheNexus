@@ -195,6 +195,46 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
         }
     });
 
+    router.get('/roles', async (req, res) => {
+        try {
+            const roles = await db.getModelRoles(false);
+            // Resolve each role to its current model so the UI / probe shows
+            // exactly what every call site will hit right now.
+            const resolved = await Promise.all(roles.map(async (r) => {
+                let resolution = null;
+                try { resolution = await resolveModelAssignment(db, { role: r.role }); } catch (_) { /* show raw */ }
+                return {
+                    role: r.role,
+                    assignment: r.assignment,
+                    description: r.description,
+                    is_active: r.is_active,
+                    resolvedProvider: resolution?.provider || null,
+                    resolvedModel: resolution?.apiModelId || null,
+                    resolvedLabel: resolution?.label || null,
+                    source: resolution?.source || null
+                };
+            }));
+            res.json({ roles: resolved });
+        } catch (error) {
+            console.error('[Model Control] Failed to load roles:', error);
+            res.status(500).json({ error: 'Failed to load model roles: ' + error.message });
+        }
+    });
+
+    router.put('/roles/:role', async (req, res) => {
+        try {
+            res.json(await db.upsertModelRole({
+                role: req.params.role,
+                assignment: req.body.assignment,
+                description: req.body.description,
+                is_active: req.body.is_active
+            }));
+        } catch (error) {
+            console.error('[Model Control] Failed to update role:', error);
+            res.status(500).json({ error: 'Failed to update model role: ' + error.message });
+        }
+    });
+
     router.put('/local-only', async (req, res) => {
         try {
             res.json(await db.setModelControlSetting('local_only', {

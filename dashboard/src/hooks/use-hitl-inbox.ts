@@ -7,6 +7,14 @@ import { usePraxisStream } from "./use-praxis-stream";
 type ResolveInput = {
   choice?: string;
   freeText?: string;
+  /**
+   * Structured resolver-supplied payload. Used by the rich schedule card to
+   * attach `{ scheduleOverrides: { executors, skips } }` so Robert's per-row
+   * dropdown / skip-with-reason choices ride alongside the approve verb.
+   * The Praxis side reads `resolution.payload.scheduleOverrides` and applies
+   * them before activating the schedule.
+   */
+  payload?: Record<string, unknown>;
 };
 
 export function useHitlInbox() {
