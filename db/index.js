@@ -240,9 +240,17 @@ function runModelControlMigrations(sqlite) {
               ('morning.self_assess',     'alias:local_default',  'Morning self-assessment'),
               ('trading.council',         'alias:local_default',  'Trading council'),
               ('youtube.research',        'alias:local_default',  'YouTube story research'),
+              ('agent.consolidate',       'alias:local_default',  'Tool-output fusion / compression'),
+              ('rag.counter_query',       'alias:local_default',  'Counter-evidence query rewrite'),
+              ('memory.prune',            'alias:local_default',  'Conversation context summarization'),
               ('agent.interactive',       'alias:gemini_default', 'Human-facing interactive chat replies'),
               ('agent.intermediate_eval', 'alias:gemini_default', 'Agent intermediate rubric self-check'),
               ('agent.skill_rank',        'alias:gemini_default', 'Skill ranking / selection'),
+              ('memory.multimodal',       'alias:gemini_default', 'Image description (needs a vision model)'),
+              ('research.deep',           'alias:gemini_default', 'Deep-research worker (SOTA reasoning)'),
+              ('agent.self_consistency',  'alias:gemini_default', 'Multi-path reasoning sampler'),
+              ('agent.epistemic',         'alias:gemini_default', 'Trust-gap / epistemic evaluation'),
+              ('brain.chat',              'alias:gemini_default', 'External reasoning offload (praxis-mind brain_chat)'),
               ('router.classify',         'alias:gemini_fast',    'Turn classifier (fast)'),
               ('context.plan',            'alias:gemini_fast',    'Context planner (fast)');
         `);
