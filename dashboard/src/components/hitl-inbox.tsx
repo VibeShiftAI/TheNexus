@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AlertCircle, CheckCircle2, HelpCircle, Loader2 } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
+import { ScheduleHitlCard, isScheduleHitl } from "./schedule-hitl-card";
 
 const REASON_LABELS: Record<string, string> = {
   low_confidence: "Low confidence",
@@ -49,14 +50,23 @@ export function HitlInbox() {
         <p className="text-xs text-slate-400">No input needed right now.</p>
       ) : (
         <div className="space-y-3">
-          {pendingRequests.map((request) => (
-            <HitlRequestCard
-              key={request.id}
-              request={request}
-              resolving={resolvingId === request.id}
-              onResolve={resolveRequest}
-            />
-          ))}
+          {pendingRequests.map((request) =>
+            isScheduleHitl(request) ? (
+              <ScheduleHitlCard
+                key={request.id}
+                request={request}
+                resolving={resolvingId === request.id}
+                onResolve={resolveRequest}
+              />
+            ) : (
+              <HitlRequestCard
+                key={request.id}
+                request={request}
+                resolving={resolvingId === request.id}
+                onResolve={resolveRequest}
+              />
+            ),
+          )}
         </div>
       )}
     </section>

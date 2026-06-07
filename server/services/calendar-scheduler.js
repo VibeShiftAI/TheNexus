@@ -56,41 +56,60 @@ function shouldDispatchCalendarEvent(event, now = new Date()) {
 }
 
 async function dispatchCalendarEvent(db, event) {
-    const resolved = await resolveModelAssignment(db, {
-        requestedAssignment: event.model_assignment,
-        model_assignment: event.model_assignment,
-        projectId: event.project_id,
-        project_id: event.project_id,
-        calendarEventId: event.id,
-        role: 'scheduled_activity'
-    });
-    await recordModelExecutionSnapshot(db, resolved, {
-        project_id: event.project_id || null,
-        task_id: event.task_id || null,
-        calendar_event_id: event.id
-    });
+    // Model-control resolution ENRICHES a dispatch (resolved model + snapshot)
+    // but must NEVER gate it. Executor-backed tasks (claude-code / antigravity /
+    // codex) carry their own model, so if resolution throws — e.g. a config gap
+    // leaves the default `alias:local_default` pointing at nothing and no local
+    // model is registered — we still hand the task to Praxis, just without a
+    // modelOverride. Previously such a throw was caught one level up and the
+    // event was retried-and-failed forever, silently blocking ALL scheduled
+    // dispatch. Degrade gracefully instead of dropping the task on the floor.
+    let resolved = null;
+    try {
+        resolved = await resolveModelAssignment(db, {
+            requestedAssignment: event.model_assignment,
+            model_assignment: event.model_assignment,
+            projectId: event.project_id,
+            project_id: event.project_id,
+            calendarEventId: event.id,
+            role: 'scheduled_activity'
+        });
+        await recordModelExecutionSnapshot(db, resolved, {
+            project_id: event.project_id || null,
+            task_id: event.task_id || null,
+            calendar_event_id: event.id
+        });
 
-    if (resolved.localOnlyActive || resolved.fallbackUsed) {
-        const reason = resolved.localOnlyActive
-            ? `local-only mode${resolved.localOnlyReason ? ` (${resolved.localOnlyReason})` : ''}`
-            : `fallback (${resolved.fallbackReason || 'requested model unavailable'})`;
-        await writeModelSystemMessage(
-            db,
-            null,
-            `Model control redirected scheduled event "${event.title}" to ${resolved.label || resolved.apiModelId} via ${reason}.`,
-            { modelControl: { resolved, modelAssignment: event.model_assignment, calendarEventId: event.id } }
+        if (resolved.localOnlyActive || resolved.fallbackUsed) {
+            const reason = resolved.localOnlyActive
+                ? `local-only mode${resolved.localOnlyReason ? ` (${resolved.localOnlyReason})` : ''}`
+                : `fallback (${resolved.fallbackReason || 'requested model unavailable'})`;
+            await writeModelSystemMessage(
+                db,
+                null,
+                `Model control redirected scheduled event "${event.title}" to ${resolved.label || resolved.apiModelId} via ${reason}.`,
+                { modelControl: { resolved, modelAssignment: event.model_assignment, calendarEventId: event.id } }
+            );
+        }
+    } catch (err) {
+        console.warn(
+            `[CalendarScheduler] Model-control resolution failed for event "${event.title}" (${event.id}); dispatching without model override:`,
+            err && err.message ? err.message : err
         );
+        resolved = null;
     }
 
     return notifyPraxisImpl({
         ...event,
         modelAssignment: event.model_assignment,
         resolvedModel: resolved,
-        modelOverride: {
-            provider: resolved.provider,
-            apiModelId: resolved.apiModelId,
-            parameters: resolved.parameters || {}
-        }
+        ...(resolved ? {
+            modelOverride: {
+                provider: resolved.provider,
+                apiModelId: resolved.apiModelId,
+                parameters: resolved.parameters || {}
+            }
+        } : {})
     });
 }
 
@@ -108,7 +127,20 @@ async function checkUpcomingEvents(db = dbRef, now = new Date()) {
     await Promise.all(events.map(async event => {
         // If event is starting within the next minute (or is up to 5 min late but still scheduled)
         if (shouldDispatchCalendarEvent(event, now)) {
-            await dispatchCalendarEvent(db, event);
+            // Per-event isolation: a single event's dispatch failure (e.g. model
+            // control throwing "No active local model" when the local LLM is
+            // momentarily down) must NOT reject the whole Promise.all and surface
+            // as an unhandled rejection — which previously added event-loop noise
+            // ahead of a supervisor restart. The event stays `scheduled`, so the
+            // next poll tick retries it once the model is back.
+            try {
+                await dispatchCalendarEvent(db, event);
+            } catch (err) {
+                console.error(
+                    `[CalendarScheduler] Dispatch failed for event "${event.title}" (${event.id}); will retry next tick:`,
+                    err && err.message ? err.message : err
+                );
+            }
         }
     }));
 }

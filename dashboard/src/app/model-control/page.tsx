@@ -21,6 +21,7 @@ import {
     WifiOff,
 } from "lucide-react";
 import { ModelAliasManager } from "@/components/model-alias-manager";
+import { ModelRoleManager } from "@/components/model-role-manager";
 import {
     getModelControlState,
     getModelBudgetStatus,
@@ -490,6 +491,9 @@ export default function ModelControlPage() {
                     </div>
 
                     <ModelAliasManager projectId={projectId || null} />
+                    <div className="mt-4">
+                        <ModelRoleManager />
+                    </div>
                 </section>
 
                 <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">

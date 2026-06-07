@@ -154,6 +154,19 @@ function runModelControlMigrations(sqlite) {
                 updated_at TEXT DEFAULT (datetime('now'))
             );
 
+            -- Named call-site roles (e.g. "ingestion.extract", "agent.interactive").
+            -- assignment uses the same grammar as model_aliases.target:
+            -- "alias:<name>" | "model:<id>" | "family:<name>" | "capability:<cap>".
+            -- Lets every Praxis LLM call resolve its model from one controllable place.
+            CREATE TABLE IF NOT EXISTS model_roles (
+                role TEXT PRIMARY KEY,
+                assignment TEXT NOT NULL,
+                description TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            );
+
             CREATE TABLE IF NOT EXISTS project_model_aliases (
                 project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
                 alias TEXT NOT NULL,
@@ -201,6 +214,45 @@ function runModelControlMigrations(sqlite) {
                 command_id TEXT,
                 created_at TEXT DEFAULT (datetime('now'))
             );
+        `);
+
+        // Seed repointable online aliases (one place to change "which Gemini")
+        // and the canonical call-site roles (local-first, with a small Gemini
+        // allowlist). INSERT OR IGNORE never clobbers a value the user has tuned.
+        sqlite.exec(`
+            INSERT OR IGNORE INTO model_aliases (alias, target, description) VALUES
+              ('gemini_default', 'model:google-gemini-pro',   'Default online model (Gemini Pro) for quality/latency-sensitive roles'),
+              ('gemini_fast',    'model:google-gemini-flash', 'Fast online model (Gemini Flash) for classify/plan roles');
+
+            INSERT OR IGNORE INTO model_roles (role, assignment, description) VALUES
+              ('ingestion.extract',       'alias:local_default',  'Nightly Pass-1 entity/factoid extraction'),
+              ('ingestion.refine',        'alias:local_default',  'Pass-2 refinement'),
+              ('ingestion.journal',       'alias:local_default',  'Overnight journal reflection'),
+              ('ingestion.summary',       'alias:gemini_default', 'Nightly AI-intelligence briefing narrative'),
+              ('report.upload',           'alias:local_default',  'Report-upload chunk summaries'),
+              ('maintenance.synthesis',   'alias:local_default',  'Nightly synthesis'),
+              ('maintenance.lars',        'alias:local_default',  'LARS analysis'),
+              ('memory.evolve',           'alias:local_default',  'Conversation-evolve extraction'),
+              ('memory.synthesize',       'alias:local_default',  'Session synthesizer'),
+              ('morning.rank',            'alias:local_default',  'Morning task ranking'),
+              ('morning.commentary',      'alias:local_default',  'Morning planning commentary'),
+              ('morning.goalgen',         'alias:local_default',  'Morning goal regression'),
+              ('morning.self_assess',     'alias:local_default',  'Morning self-assessment'),
+              ('trading.council',         'alias:local_default',  'Trading council'),
+              ('youtube.research',        'alias:local_default',  'YouTube story research'),
+              ('agent.consolidate',       'alias:local_default',  'Tool-output fusion / compression'),
+              ('rag.counter_query',       'alias:local_default',  'Counter-evidence query rewrite'),
+              ('memory.prune',            'alias:local_default',  'Conversation context summarization'),
+              ('agent.interactive',       'alias:gemini_default', 'Human-facing interactive chat replies'),
+              ('agent.intermediate_eval', 'alias:gemini_default', 'Agent intermediate rubric self-check'),
+              ('agent.skill_rank',        'alias:gemini_default', 'Skill ranking / selection'),
+              ('memory.multimodal',       'alias:gemini_default', 'Image description (needs a vision model)'),
+              ('research.deep',           'alias:gemini_default', 'Deep-research worker (SOTA reasoning)'),
+              ('agent.self_consistency',  'alias:gemini_default', 'Multi-path reasoning sampler'),
+              ('agent.epistemic',         'alias:gemini_default', 'Trust-gap / epistemic evaluation'),
+              ('brain.chat',              'alias:gemini_default', 'External reasoning offload (praxis-mind brain_chat)'),
+              ('router.classify',         'alias:gemini_fast',    'Turn classifier (fast)'),
+              ('context.plan',            'alias:gemini_fast',    'Context planner (fast)');
         `);
     } catch (err) {
         console.warn('[Database] model-control migration skipped:', err.message);
@@ -1198,6 +1250,49 @@ async function getModelAliases(activeOnly = true) {
     }
 }
 
+async function upsertModelRole(roleRecord) {
+    if (!db) throw new Error('Database connection required for model roles');
+    try {
+        const record = {
+            role: roleRecord.role,
+            assignment: roleRecord.assignment,
+            description: roleRecord.description || null,
+            is_active: roleRecord.is_active === undefined ? 1 : roleRecord.is_active,
+            updated_at: now(),
+            created_at: roleRecord.created_at || now()
+        };
+        const { sql, values } = buildInsert('model_roles', record, 'role');
+        db.prepare(sql).run(...values);
+        return deserRow(db.prepare('SELECT * FROM model_roles WHERE role = ?').get(record.role));
+    } catch (err) {
+        console.error('[Database] Error upserting model role:', err.message);
+        throw new Error(`Failed to upsert model role: ${err.message}`);
+    }
+}
+
+async function getModelRoles(activeOnly = true) {
+    if (!db) throw new Error('Database connection required for model roles');
+    try {
+        const sql = activeOnly
+            ? 'SELECT * FROM model_roles WHERE is_active = 1 ORDER BY role'
+            : 'SELECT * FROM model_roles ORDER BY role';
+        return deserRows(db.prepare(sql).all());
+    } catch (err) {
+        console.error('[Database] Error fetching model roles:', err.message);
+        throw new Error(`Failed to fetch model roles: ${err.message}`);
+    }
+}
+
+async function getModelRole(role) {
+    if (!db) throw new Error('Database connection required for model roles');
+    try {
+        return deserRow(db.prepare('SELECT * FROM model_roles WHERE role = ?').get(role)) || null;
+    } catch (err) {
+        console.error('[Database] Error fetching model role:', err.message);
+        throw new Error(`Failed to fetch model role: ${err.message}`);
+    }
+}
+
 async function upsertProjectModelAlias(projectId, aliasRecord) {
     if (!db) throw new Error('Database connection required for project model aliases');
     try {
@@ -2084,6 +2179,9 @@ module.exports = {
     getDefaultModelForTask,
     upsertModelAlias,
     getModelAliases,
+    upsertModelRole,
+    getModelRoles,
+    getModelRole,
     upsertProjectModelAlias,
     getProjectModelAliases,
     setModelControlSetting,

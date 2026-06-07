@@ -317,6 +317,39 @@ export async function upsertProjectModelAlias(projectId: string, alias: string, 
     return response.json();
 }
 
+export interface ModelControlRole {
+    role: string;
+    assignment: string;
+    description?: string | null;
+    is_active?: boolean;
+    resolvedProvider?: string | null;
+    resolvedModel?: string | null;
+    resolvedLabel?: string | null;
+    source?: string | null;
+}
+
+export async function getModelRoles(): Promise<ModelControlRole[]> {
+    const response = await fetch(`/api/model-control/roles`, {
+        credentials: "include",
+        headers: { ...getAuthHeader() as any },
+        cache: "no-store",
+    });
+    if (!response.ok) throw new Error(`Failed to load model roles: ${response.status}`);
+    const data = await response.json();
+    return data.roles || [];
+}
+
+export async function upsertModelRole(role: string, input: { assignment: string; description?: string | null; is_active?: boolean }): Promise<ModelControlRole> {
+    const response = await fetch(`/api/model-control/roles/${encodeURIComponent(role)}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify(input),
+    });
+    if (!response.ok) throw new Error(`Failed to save model role: ${response.status}`);
+    return response.json();
+}
+
 export function formatResolvedModel(resolved?: ResolvedModelControl | null): string {
     if (!resolved) return "";
     const label = resolved.label || resolved.apiModelId || resolved.resolvedModelId || "model";
