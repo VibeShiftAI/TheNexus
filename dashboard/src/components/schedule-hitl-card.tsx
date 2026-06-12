@@ -17,8 +17,16 @@
  * `{ choice: "reject" }` and holds the full schedule.
  */
 
-import { useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, Trash2, XCircle } from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
 
 type ExecutorName = "antigravity" | "codex" | "claude-code";
@@ -32,6 +40,14 @@ interface ScheduleSlotMeta {
   estimatedMinutes: number;
   startTime: string;
   executor: ExecutorName;
+  /** One-sentence definition of done, proposed by Praxis. */
+  objective?: string | null;
+  /** Praxis-assigned 1–5 difficulty score. */
+  complexity?: number | null;
+  /** Additional executor instructions beyond the title. */
+  instructions?: string | null;
+  /** Snapshot of the underlying Nexus task description. */
+  taskDescription?: string | null;
 }
 
 interface ScheduleMetadata {
@@ -66,6 +82,36 @@ function formatTime(iso: string): string {
   }
 }
 
+const COMPLEXITY_LABELS: Record<number, string> = {
+  1: "Trivial",
+  2: "Small",
+  3: "Moderate",
+  4: "Hard",
+  5: "Very hard",
+};
+
+/** Render the Praxis-assigned 1–5 difficulty score, colored by level. */
+function ComplexityBadge({ value }: { value: number | null | undefined }) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return <span className="text-[11px] text-slate-600">—</span>;
+  }
+  const level = Math.min(5, Math.max(1, Math.round(value)));
+  const tone =
+    level <= 2
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+      : level === 3
+        ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+        : "border-rose-500/40 bg-rose-500/10 text-rose-300";
+  return (
+    <span
+      title={`${COMPLEXITY_LABELS[level]} (${level}/5)`}
+      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[11px] font-semibold ${tone}`}
+    >
+      🧩 {level}/5
+    </span>
+  );
+}
+
 export function ScheduleHitlCard({
   request,
   resolving,
@@ -88,6 +134,7 @@ export function ScheduleHitlCard({
   });
   const [skips, setSkips] = useState<Record<string, string>>({});
   const [skipDraft, setSkipDraft] = useState<{ taskId: string; reason: string } | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
   if (!schedule) {
@@ -170,6 +217,7 @@ export function ScheduleHitlCard({
             <tr>
               <th className="px-2 py-1 text-left font-semibold">#</th>
               <th className="px-2 py-1 text-left font-semibold">Task</th>
+              <th className="px-2 py-1 text-left font-semibold">Difficulty</th>
               <th className="px-2 py-1 text-left font-semibold">Start</th>
               <th className="px-2 py-1 text-left font-semibold">Worker</th>
               <th className="px-2 py-1 text-right font-semibold">Action</th>
@@ -180,18 +228,41 @@ export function ScheduleHitlCard({
               const isSkipped = skips[slot.nexusTaskId] !== undefined;
               const currentExec = executors[slot.nexusTaskId] ?? slot.executor;
               const isDraftingSkip = skipDraft?.taskId === slot.nexusTaskId;
+              const isOpen = expanded[slot.nexusTaskId] === true;
               return (
-                <>
+                <Fragment key={slot.nexusTaskId}>
                   <tr
-                    key={slot.nexusTaskId}
                     className={`border-t border-slate-700/40 ${isSkipped ? "opacity-50 line-through decoration-rose-400/60" : ""}`}
                   >
                     <td className="px-2 py-1 text-slate-400">{slot.slotNumber}</td>
                     <td className="px-2 py-1 text-slate-100">
-                      <div className="truncate">{slot.title}</div>
-                      <div className="truncate text-[10px] text-slate-500">
-                        {slot.workspace} · ~{slot.estimatedMinutes}min
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpanded((prev) => ({
+                            ...prev,
+                            [slot.nexusTaskId]: !prev[slot.nexusTaskId],
+                          }))
+                        }
+                        aria-expanded={isOpen}
+                        className="flex w-full items-start gap-1 text-left hover:text-cyan-300"
+                        title="Open task to review objective + instructions"
+                      >
+                        {isOpen ? (
+                          <ChevronDown className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" />
+                        ) : (
+                          <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" />
+                        )}
+                        <span className="min-w-0">
+                          <span className="block truncate">{slot.title}</span>
+                          <span className="block truncate text-[10px] text-slate-500">
+                            {slot.workspace} · ~{slot.estimatedMinutes}min
+                          </span>
+                        </span>
+                      </button>
+                    </td>
+                    <td className="px-2 py-1">
+                      <ComplexityBadge value={slot.complexity} />
                     </td>
                     <td className="px-2 py-1 text-slate-300">{formatTime(slot.startTime)}</td>
                     <td className="px-2 py-1">
@@ -241,9 +312,40 @@ export function ScheduleHitlCard({
                       )}
                     </td>
                   </tr>
+                  {isOpen ? (
+                    <tr key={`${slot.nexusTaskId}-detail`} className="border-t border-slate-700/40 bg-slate-900/40">
+                      <td colSpan={6} className="px-3 py-2">
+                        <div className="space-y-2 text-[11px] text-slate-300">
+                          <div>
+                            <span className="font-semibold text-cyan-300">Objective:</span>{" "}
+                            {slot.objective ? (
+                              <span>{slot.objective}</span>
+                            ) : (
+                              <span className="italic text-slate-500">No objective provided.</span>
+                            )}
+                          </div>
+                          <div>
+                            <span className="font-semibold text-cyan-300">Instructions:</span>{" "}
+                            {slot.instructions ? (
+                              <span className="whitespace-pre-wrap">{slot.instructions}</span>
+                            ) : (
+                              <span className="italic text-slate-500">No extra instructions.</span>
+                            )}
+                          </div>
+                          {slot.taskDescription &&
+                          slot.taskDescription.trim() !== (slot.instructions ?? "").trim() ? (
+                            <div>
+                              <span className="font-semibold text-cyan-300">Task description:</span>{" "}
+                              <span className="whitespace-pre-wrap">{slot.taskDescription}</span>
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
                   {isDraftingSkip ? (
                     <tr key={`${slot.nexusTaskId}-draft`} className="border-t border-slate-700/40 bg-rose-950/20">
-                      <td colSpan={5} className="px-2 py-2">
+                      <td colSpan={6} className="px-2 py-2">
                         <label className="mb-1 block text-[11px] text-rose-300">
                           Skip reason (recorded on the task and written to Cortex memory so Praxis stops re-proposing it):
                         </label>
@@ -280,7 +382,7 @@ export function ScheduleHitlCard({
                       </td>
                     </tr>
                   ) : null}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
