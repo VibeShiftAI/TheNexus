@@ -7,8 +7,8 @@
  * Note: Uses native fetch (Node.js 18+)
  */
 
-// Python LangGraph backend URL
-const LANGGRAPH_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+// Python LangGraph backend URL — canonical source in shared/constants
+const { LANGGRAPH_URL } = require('../shared/constants');
 
 /**
  * Check if LangGraph engine is available

@@ -133,6 +133,7 @@ const createBroadcastRouter = require('./routes/broadcast');
 const createCalendarRouter  = require('./routes/calendar');
 const createPraxisStreamRouter = require('./routes/praxis-stream');
 const createLocalQueueRouter = require('./routes/local-queue');
+const createIngestionControlRouter = require('./routes/ingestion-control');
 
 // Health & system
 app.use('/api/health',    createHealthRouter());
@@ -145,6 +146,7 @@ app.use('/api/ai/usage',  createUsageRouter({ db, tokenTracker }));
 app.use('/api/calendar',  createCalendarRouter({ db }));
 app.use('/api/praxis',    createPraxisStreamRouter({ io, pushService }));
 app.use('/api/local-queue', createLocalQueueRouter());
+app.use('/api/ingestion-control', createIngestionControlRouter());
 
 // Projects & tasks
 const projectsRouter = createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync });

@@ -9,7 +9,7 @@ function createAgentsRouter({ db }) {
 
     router.get('/', async (req, res) => {
         try {
-            const PYTHON_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+            const { LANGGRAPH_URL: PYTHON_URL } = require('../shared/constants');
 
             const fetchWithRetry = async (url, retries = 3, delay = 1000) => {
                 for (let attempt = 1; attempt <= retries; attempt++) {

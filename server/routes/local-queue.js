@@ -1,6 +1,6 @@
 const express = require('express');
 
-const PRAXIS_URL = process.env.PRAXIS_URL || 'http://127.0.0.1:54322';
+const { PRAXIS_URL } = require('../shared/constants');
 
 async function proxyPraxisJson(res, upstreamPath, options = {}) {
     try {

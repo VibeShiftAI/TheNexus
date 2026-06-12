@@ -3,8 +3,17 @@
  * Handles the main /api/ai/chat endpoint — proxies to Cortex, Praxis, or direct LLM.
  */
 const express = require('express');
+const { PRAXIS_URL } = require('../shared/constants');
 
 const DEFAULT_PRAXIS_CHAT_TIMEOUT_MS = 20 * 60 * 1000;
+
+// When set, "agent" terminal mode routes through Praxis (the single orchestrator)
+// instead of hitting TheCortex directly. Praxis then drives Cortex System-2, whose
+// artifacts still stream to the dashboard Glass Box via Cortex → /api/broadcast.
+// Default off so the existing Cortex-direct path stays the behavior until tested.
+function agentViaPraxis() {
+    return process.env.AGENT_VIA_PRAXIS === '1';
+}
 
 function getPraxisChatTimeoutMs() {
     const configured = Number.parseInt(process.env.PRAXIS_CHAT_TIMEOUT_MS || '', 10);
@@ -176,7 +185,10 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
         if (!message) return res.status(400).json({ error: 'Message is required' });
 
         // ─── PROXY TO PYTHON CORTEX ──────────────────────────────────────
-        if (mode === 'agent' || mode === 'cortex') {
+        // Legacy direct-to-Cortex path. When AGENT_VIA_PRAXIS is set, agent/cortex
+        // requests fall through to the Praxis branch below instead (Praxis drives
+        // Cortex System-2; the Glass Box artifact stream is unaffected).
+        if ((mode === 'agent' || mode === 'cortex') && !agentViaPraxis()) {
             try {
                 console.log(`[AI Chat] Proxying 'agent' request to Python Cortex (Port 8000)...`);
                 if (files?.length > 0) console.log(`   📎 Forwarding ${files.length} file(s) to Python:`, files.map(f => f.name));
@@ -219,7 +231,8 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
         }
 
         // ─── PROXY TO PRAXIS ─────────────────────────────────────────────
-        if (mode === 'praxis') {
+        // Praxis supervisor mode, plus agent/cortex mode when AGENT_VIA_PRAXIS is on.
+        if (mode === 'praxis' || ((mode === 'agent' || mode === 'cortex') && agentViaPraxis())) {
             let conversationId = null;
             try {
                 console.log(`[AI Chat] Proxying '${mode}' request to Praxis Agent (Port 54322)...`);
@@ -248,7 +261,12 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                     }
                 }
 
-                const canStream = wantsEventStream(req) && !audio && !(attachments?.length > 0);
+                // Agent/cortex mode tells Praxis to drive Cortex System-2 instead
+                // of its normal agent loop; that path is non-streaming (the brain
+                // streams its artifacts to the Glass Box separately), so exclude
+                // agent mode from canStream too.
+                const isAgentMode = mode === 'agent' || mode === 'cortex';
+                const canStream = wantsEventStream(req) && !audio && !(attachments?.length > 0) && !isAgentMode;
                 const praxisPayload = {
                     message,
                     history,
@@ -258,9 +276,10 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                     modelAssignment: requestedModelAssignment,
                     resolvedModel,
                     modelOverride: toModelOverride(resolvedModel),
+                    ...(isAgentMode ? { agentMode: true } : {}),
                     ...(canStream ? { stream: true } : {})
                 };
-                const praxisResponse = await fetch('http://127.0.0.1:54322/api/chat', {
+                const praxisResponse = await fetch(`${PRAXIS_URL}/api/chat`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}) },
                     body: JSON.stringify(praxisPayload), signal: AbortSignal.timeout(getPraxisChatTimeoutMs()), // local agent loops can be long
                 });
@@ -314,7 +333,7 @@ function createAIChatRouter({ db, callAI, pushService, io }) {
                     }
                 }
 
-                return res.json({ response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode, conversationId, assistantMessageId, resolvedModel, isThinking: false, tokenUsage: { total: 0 }, artifacts: [], voiceData: data.voiceData });
+                return res.json({ response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode, conversationId, assistantMessageId, resolvedModel, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData });
             } catch (error) {
                 console.error(`[AI Chat] Praxis Proxy Error:`, error);
                 if (res.headersSent) return;

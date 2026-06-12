@@ -190,7 +190,7 @@ function getApprovalStage(pendingApproval, fallback = null) {
 }
 
 async function handleYoutubeWorkflowStart({ db: database = db, workflow, context, langGraphUrl }) {
-    const url = langGraphUrl || process.env.LANGGRAPH_URL || process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+    const url = langGraphUrl || require('../shared/constants').LANGGRAPH_URL;
     const project = workflow.project || await database.getProject?.(workflow.project_id);
     const prompt = context || workflow.configuration?.goal || workflow.description || 'Create a reviewed YouTube video.';
 
@@ -263,7 +263,7 @@ async function resumeYoutubeWorkflowApproval({
     revisionTarget = undefined,
     langGraphUrl,
 }) {
-    const url = langGraphUrl || process.env.LANGGRAPH_URL || process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+    const url = langGraphUrl || require('../shared/constants').LANGGRAPH_URL;
     const runId = workflow.supervisor_details?.youtube_run_id || workflow.supervisor_details?.langgraph_run_id;
     if (!runId) {
         throw new Error('No YouTube LangGraph run id found for workflow');

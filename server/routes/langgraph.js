@@ -72,7 +72,7 @@ module.exports = function createLangGraphRouter({ db, PROJECT_ROOT, getProjectBy
     // ─── Proxy Routes (thin pass-through to Python backend) ─────────────
 
     async function proxyYoutubeToLangGraph(res, urlPath, options = {}) {
-        const langgraphUrl = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+        const { LANGGRAPH_URL: langgraphUrl } = require('../shared/constants');
         try {
             const response = await fetch(`${langgraphUrl}${urlPath}`, {
                 ...options,

@@ -15,8 +15,9 @@
 const express = require('express');
 const http = require('http');
 const { URL } = require('url');
+const { randomUUID } = require('crypto');
 
-const PRAXIS_URL = process.env.PRAXIS_URL || 'http://127.0.0.1:54322';
+const { PRAXIS_URL } = require('../shared/constants');
 const UPSTREAM_PATH = '/stream';
 const SNAPSHOT_PATH = '/presence';
 const RING_BUFFER_SIZE = 500;
@@ -62,6 +63,12 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
         if (!pushService || event?.type !== 'hitl.created' || !event.request?.id) return;
         const request = event.request;
         if (pushedHitlIds.has(request.id)) return;
+        // Bound the dedupe set so a long-lived relay can't leak memory one HITL
+        // id at a time. Set preserves insertion order, so deleting the first
+        // key evicts the oldest. 1000 is far more than the in-flight HITL count.
+        if (pushedHitlIds.size >= 1000) {
+            pushedHitlIds.delete(pushedHitlIds.values().next().value);
+        }
         pushedHitlIds.add(request.id);
         pushService.notify({
             title: 'Praxis needs input',
@@ -224,6 +231,15 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
                     res.write(`event: ${event.type}\n`);
                     res.write(`data: ${JSON.stringify(event)}\n\n`);
                 }
+            } else {
+                // We don't hold sinceId — the relay restarted (or the client was
+                // gone longer than the ring holds). We can't fill the gap, so tell
+                // the client to re-bootstrap from /snapshot instead of resuming
+                // blind. Mirrors Praxis's own ring-miss handling on /stream.
+                const reset = { type: 'stream.reset', at: new Date().toISOString(), eventId: randomUUID(), reason: 'ring-miss' };
+                res.write(`id: ${reset.eventId}\n`);
+                res.write(`event: ${reset.type}\n`);
+                res.write(`data: ${JSON.stringify(reset)}\n\n`);
             }
         }
 

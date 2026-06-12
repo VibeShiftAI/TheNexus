@@ -277,7 +277,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         if (feedback) updatedFeedback.push({ id: crypto.randomUUID(), content: feedback, createdAt: new Date().toISOString(), action: 'approve', stage: 'research' });
         const runId = task.langgraph_run_id;
         if (runId) {
-            const langGraphUrl = process.env.LANGGRAPH_URL || 'http://localhost:8000';
+            const { LANGGRAPH_URL: langGraphUrl } = require('../shared/constants');
             try {
                 const resumeResponse = await fetch(`${langGraphUrl}/graph/nexus/${runId}/resume`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_action: 'approve', feedback: feedback || null }) });
                 if (!resumeResponse.ok) { const errorText = await resumeResponse.text(); return res.status(500).json({ error: `Failed to resume workflow: ${errorText}` }); }
@@ -305,7 +305,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             }
             const runId = task.langgraph_run_id;
             if (runId) {
-                const langGraphUrl = process.env.LANGGRAPH_URL || 'http://localhost:8000';
+                const { LANGGRAPH_URL: langGraphUrl } = require('../shared/constants');
                 const resumeResponse = await fetch(`${langGraphUrl}/graph/nexus/${runId}/resume`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_action: 'approve', feedback: feedback || null }) });
                 if (!resumeResponse.ok) { const errorText = await resumeResponse.text(); return res.status(500).json({ error: `Failed to resume workflow: ${errorText}` }); }
                 const resumeResult = await resumeResponse.json();
