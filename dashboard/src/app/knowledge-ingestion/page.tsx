@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
     ArrowLeft,
+    BookOpen,
     BrainCircuit,
     Check,
     Database,
@@ -17,7 +18,12 @@ import {
     Sparkles,
     Trash2,
     X,
+    Youtube,
 } from "lucide-react";
+import { getGlobalNotes, type Note } from "@/lib/nexus";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 import KnowledgeGraphForce from "@/components/knowledge-graph-force";
 import TopicMapForce from "@/components/topic-map-force";
 import {
@@ -32,6 +38,7 @@ import {
     getKnowledgeView,
     getRecommendations,
     getTopicMap,
+    ingestYouTubeVideo,
     rebuildCommunities,
     refreshRecommendations,
     removeIngestionSource,
@@ -77,6 +84,8 @@ function confidenceDots(confidence: number): string {
 export default function KnowledgeIngestionPage() {
     const [overview, setOverview] = useState<IngestionOverview | null>(null);
     const [runs, setRuns] = useState<RunSummary[]>([]);
+    const [reports, setReports] = useState<Note[]>([]);
+    const [detailTab, setDetailTab] = useState<"report" | "details">("report");
     const [selectedRun, setSelectedRun] = useState<RunDetail | null>(null);
     const [recommendations, setRecommendations] = useState<RecommendationStore | null>(null);
     const [communities, setCommunities] = useState<KnowledgeCommunity[]>([]);
@@ -96,19 +105,27 @@ export default function KnowledgeIngestionPage() {
     const [formName, setFormName] = useState("");
     const [formType, setFormType] = useState<SourceType>("rss");
     const [formUrl, setFormUrl] = useState("");
+    const [videoUrl, setVideoUrl] = useState("");
 
     const loadAll = useCallback(async () => {
         try {
-            const [ov, runList, recs, comms] = await Promise.all([
+            const [ov, runList, recs, comms, notesData] = await Promise.all([
                 getIngestionOverview(),
                 getIngestionRuns(14),
                 getRecommendations(),
                 getCommunities(60).catch(() => ({ communities: [] })),
+                getGlobalNotes().catch(() => []),
             ]);
             setOverview(ov);
             setRuns(runList.runs);
             setRecommendations(recs);
             setCommunities(comms.communities);
+
+            const filteredReports = notesData
+                .filter((n: Note) => (n.category as string) === "ingestion-report")
+                .sort((a: Note, b: Note) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setReports(filteredReports);
+
             setError(null);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load ingestion state");
@@ -197,13 +214,63 @@ export default function KnowledgeIngestionPage() {
         }
     }, [topicMap]);
 
+    const getLocalDateString = (isoString?: string | null) => {
+        if (!isoString) return "";
+        try {
+            return new Date(isoString).toISOString().split("T")[0];
+        } catch {
+            return "";
+        }
+    };
+
+    const matchingReport = useMemo(() => {
+        if (!selectedRun) return null;
+        const runDate = getLocalDateString(selectedRun.created_at);
+        
+        // 1. Try YYYY-MM-DD match
+        const byDate = reports.find(r => getLocalDateString(r.created_at) === runDate);
+        if (byDate) return byDate;
+        
+        // 2. Proximity fallback (within 12 hours)
+        const runTime = new Date(selectedRun.created_at).getTime();
+        let bestMatch: Note | null = null;
+        let minDiff = Infinity;
+        for (const r of reports) {
+            const diff = Math.abs(new Date(r.created_at).getTime() - runTime);
+            if (diff < minDiff && diff < 12 * 60 * 60 * 1000) {
+                minDiff = diff;
+                bestMatch = r;
+            }
+        }
+        return bestMatch;
+    }, [selectedRun, reports]);
+
     const openRun = useCallback(async (runId: string) => {
         try {
-            setSelectedRun(await getIngestionRunDetail(runId));
+            const runDetail = await getIngestionRunDetail(runId);
+            setSelectedRun(runDetail);
+
+            const runDate = getLocalDateString(runDetail.created_at);
+            const byDate = reports.find(r => getLocalDateString(r.created_at) === runDate);
+            let hasMatchingReport = !!byDate;
+            
+            if (!hasMatchingReport) {
+                const runTime = new Date(runDetail.created_at).getTime();
+                let minDiff = Infinity;
+                for (const r of reports) {
+                    const diff = Math.abs(new Date(r.created_at).getTime() - runTime);
+                    if (diff < minDiff && diff < 12 * 60 * 60 * 1000) {
+                        minDiff = diff;
+                        hasMatchingReport = true;
+                    }
+                }
+            }
+            
+            setDetailTab(hasMatchingReport ? "report" : "details");
         } catch (err) {
             setNotice(err instanceof Error ? err.message : "Failed to load run");
         }
-    }, []);
+    }, [reports]);
 
     const submitAdd = async () => {
         const isTerm = showAddForm === "term";
@@ -219,6 +286,18 @@ export default function KnowledgeIngestionPage() {
         setShowAddForm(null);
         setFormName("");
         setFormUrl("");
+    };
+
+    const submitVideo = async () => {
+        const trimmed = videoUrl.trim();
+        if (!trimmed) return;
+        await runMutation("youtube-video", async () => {
+            const result = await ingestYouTubeVideo(trimmed);
+            return {
+                message: `Queued YouTube video ingestion (${result.ingestion.itemsEnqueued} item${result.ingestion.itemsEnqueued === 1 ? "" : "s"}) in ${result.ingestion.runId}.`,
+            };
+        });
+        setVideoUrl("");
     };
 
     const termSources = useMemo(
@@ -400,6 +479,31 @@ export default function KnowledgeIngestionPage() {
                     </div>
                 </section>
 
+                {/* ── Single video intake ───────────────────────────── */}
+                <section className="rounded-lg border border-slate-800 bg-slate-900/40">
+                    <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                            <Youtube size={18} className="text-rose-300" />
+                            <h2 className="font-semibold text-white">Single YouTube Video</h2>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 p-3">
+                        <input
+                            value={videoUrl}
+                            onChange={(e) => setVideoUrl(e.target.value)}
+                            placeholder="YouTube video URL or ID"
+                            className="min-w-64 flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-rose-500 focus:outline-none"
+                        />
+                        <button
+                            onClick={submitVideo}
+                            disabled={busy !== null || !videoUrl.trim()}
+                            className="inline-flex items-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
+                        >
+                            {busy === "youtube-video" ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Ingest video
+                        </button>
+                    </div>
+                </section>
+
                 {/* ── Content sources ────────────────────────────────── */}
                 <section className="rounded-lg border border-slate-800 bg-slate-900/40">
                     <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
@@ -435,12 +539,12 @@ export default function KnowledgeIngestionPage() {
                             <input
                                 value={formUrl}
                                 onChange={(e) => setFormUrl(e.target.value)}
-                                placeholder="Feed URL / @channel / query"
+                                placeholder={formType === "youtube" ? "Channel URL, @handle, or channel ID" : "Feed URL / folder ID / query"}
                                 className="min-w-64 flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none"
                             />
                             <button
                                 onClick={submitAdd}
-                                disabled={busy !== null || !formUrl.trim() || !formName.trim()}
+                                disabled={busy !== null || !formUrl.trim() || (formType !== "youtube" && !formName.trim())}
                                 className="inline-flex items-center gap-1 rounded-md border border-cyan-500/50 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50"
                             >
                                 {busy === "add" ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Add
@@ -830,92 +934,142 @@ export default function KnowledgeIngestionPage() {
                             <div className="max-h-[520px] overflow-y-auto p-4">
                                 {selectedRun ? (
                                     <div className="space-y-4">
-                                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
-                                            <span className="font-mono text-white">{selectedRun.run_id}</span>
-                                            <span>trigger: {selectedRun.trigger}</span>
-                                            <span>{formatDate(selectedRun.created_at)}</span>
-                                            <span>
-                                                {selectedRun.deduped_count}/{selectedRun.discovered_count} after dedup
-                                            </span>
+                                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                                            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                                                <span className="font-mono text-white">{selectedRun.run_id}</span>
+                                                <span>trigger: {selectedRun.trigger}</span>
+                                                <span>{formatDate(selectedRun.created_at)}</span>
+                                                <span>
+                                                    {selectedRun.deduped_count}/{selectedRun.discovered_count} after dedup
+                                                </span>
+                                            </div>
+                                            <div className="flex overflow-hidden rounded-md border border-slate-700 text-xs">
+                                                <button
+                                                    onClick={() => setDetailTab("report")}
+                                                    className={`px-3 py-1.5 ${
+                                                        detailTab === "report" ? "bg-sky-500/20 text-sky-200" : "text-slate-400 hover:text-slate-200"
+                                                    }`}
+                                                >
+                                                    Intake Report
+                                                </button>
+                                                <button
+                                                    onClick={() => setDetailTab("details")}
+                                                    className={`px-3 py-1.5 ${
+                                                        detailTab === "details" ? "bg-sky-500/20 text-sky-200" : "text-slate-400 hover:text-slate-200"
+                                                    }`}
+                                                >
+                                                    Ingestion Details
+                                                </button>
+                                            </div>
                                         </div>
-                                        {selectedRun.search_terms.length > 0 && (
-                                            <div>
-                                                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                                    Terms searched this run
-                                                </h3>
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {selectedRun.search_terms.map((t) => (
-                                                        <button
-                                                            key={t}
-                                                            onClick={() => explore(t)}
-                                                            className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-200 hover:bg-cyan-500/20"
-                                                        >
-                                                            {t}
-                                                        </button>
-                                                    ))}
+
+                                        {detailTab === "report" ? (
+                                            matchingReport ? (
+                                                <div className="prose prose-invert prose-sm max-w-none text-left
+                                                    prose-headings:text-white prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2
+                                                    prose-p:text-slate-300 prose-p:leading-relaxed prose-p:mb-3
+                                                    prose-a:text-cyan-400 hover:prose-a:underline
+                                                    prose-code:text-cyan-300 prose-code:bg-slate-800/80 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+                                                    prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800
+                                                    prose-ul:list-disc prose-ul:pl-5 prose-ul:mb-3 prose-ul:text-slate-300
+                                                    prose-ol:list-decimal prose-ol:pl-5 prose-ol:mb-3 prose-ol:text-slate-300
+                                                    prose-strong:text-white
+                                                    prose-table:w-full prose-table:border-collapse prose-table:my-4
+                                                    prose-th:border prose-th:border-slate-800 prose-th:px-3 prose-th:py-2 prose-th:bg-slate-900/50 prose-th:text-white prose-th:font-semibold
+                                                    prose-td:border prose-td:border-slate-800 prose-td:px-3 prose-td:py-2 prose-td:text-slate-300
+                                                    prose-blockquote:border-l-4 prose-blockquote:border-cyan-500/50 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-slate-400
+                                                ">
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                        {normalizeMarkdown(matchingReport.content)}
+                                                    </ReactMarkdown>
                                                 </div>
-                                            </div>
-                                        )}
-                                        <div>
-                                            <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Per source</h3>
-                                            <div className="space-y-1.5">
-                                                {selectedRun.sources.map((src) => {
-                                                    const total = Math.max(src.discovered, 1);
-                                                    return (
-                                                        <div key={src.source_name} className="rounded-md border border-slate-800 bg-slate-950/50 px-3 py-2">
-                                                            <div className="flex flex-wrap items-center gap-2 text-xs">
-                                                                <span className={`rounded border px-1.5 py-0.5 text-[10px] uppercase ${SOURCE_TYPE_CLASS[src.source_type] ?? ""}`}>
-                                                                    {src.source_type}
-                                                                </span>
-                                                                <span className="font-medium text-slate-200">{src.source_name}</span>
-                                                                <span className="ml-auto text-slate-500">
-                                                                    {src.succeeded} ok · {src.skipped} skipped · {src.failed} failed
-                                                                    {src.pending > 0 ? ` · ${src.pending} pending` : ""} · {src.vectors_written} vec
-                                                                </span>
-                                                            </div>
-                                                            <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-slate-800">
-                                                                <div className="bg-emerald-500/70" style={{ width: `${(src.succeeded / total) * 100}%` }} />
-                                                                <div className="bg-slate-600" style={{ width: `${(src.skipped / total) * 100}%` }} />
-                                                                <div className="bg-red-500/70" style={{ width: `${(src.failed / total) * 100}%` }} />
-                                                                <div className="bg-sky-500/50" style={{ width: `${(src.pending / total) * 100}%` }} />
-                                                            </div>
+                                            ) : (
+                                                <div className="p-8 text-center text-slate-500 italic text-xs border border-dashed border-slate-800 rounded-lg bg-slate-950/20">
+                                                    No daily intake report was recorded around this run's timestamp.
+                                                </div>
+                                            )
+                                        ) : (
+                                            <>
+                                                {selectedRun.search_terms.length > 0 && (
+                                                    <div>
+                                                        <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                                            Terms searched this run
+                                                        </h3>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {selectedRun.search_terms.map((t) => (
+                                                                <button
+                                                                    key={t}
+                                                                    onClick={() => explore(t)}
+                                                                    className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-200 hover:bg-cyan-500/20"
+                                                                >
+                                                                    {t}
+                                                                </button>
+                                                            ))}
                                                         </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                        <details>
-                                            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                                Items ({selectedRun.items.length})
-                                            </summary>
-                                            <div className="mt-2 space-y-1">
-                                                {selectedRun.items.map((item) => (
-                                                    <div key={item.hash} className="rounded border border-slate-800/60 px-3 py-2 text-xs">
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <span className={OUTCOME_CLASS[item.outcome.status] ?? "text-slate-400"}>
-                                                                {item.outcome.status}
-                                                            </span>
-                                                            <a
-                                                                href={item.url}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                className="truncate text-slate-300 hover:text-cyan-300 hover:underline"
-                                                            >
-                                                                {item.title}
-                                                            </a>
-                                                            <span className="ml-auto text-slate-600">{item.source_name}</span>
-                                                        </div>
-                                                        {item.search_query && (
-                                                            <p className="mt-0.5 text-slate-500">query: {item.search_query}</p>
-                                                        )}
-                                                        {item.outcome.skip_reason && (
-                                                            <p className="mt-0.5 text-slate-500">skip: {item.outcome.skip_reason}</p>
-                                                        )}
-                                                        {item.outcome.error && <p className="mt-0.5 text-red-300/80">{item.outcome.error}</p>}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </details>
+                                                )}
+                                                <div>
+                                                    <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Per source</h3>
+                                                    <div className="space-y-1.5">
+                                                        {selectedRun.sources.map((src) => {
+                                                            const total = Math.max(src.discovered, 1);
+                                                            return (
+                                                                <div key={src.source_name} className="rounded-md border border-slate-800 bg-slate-950/50 px-3 py-2">
+                                                                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                                                                        <span className={`rounded border px-1.5 py-0.5 text-[10px] uppercase ${SOURCE_TYPE_CLASS[src.source_type] ?? ""}`}>
+                                                                            {src.source_type}
+                                                                        </span>
+                                                                        <span className="font-medium text-slate-200">{src.source_name}</span>
+                                                                        <span className="ml-auto text-slate-500">
+                                                                            {src.succeeded} ok · {src.skipped} skipped · {src.failed} failed
+                                                                            {src.pending > 0 ? ` · ${src.pending} pending` : ""} · {src.vectors_written} vec
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-slate-800">
+                                                                        <div className="bg-emerald-500/70" style={{ width: `${(src.succeeded / total) * 100}%` }} />
+                                                                        <div className="bg-slate-600" style={{ width: `${(src.skipped / total) * 100}%` }} />
+                                                                        <div className="bg-red-500/70" style={{ width: `${(src.failed / total) * 100}%` }} />
+                                                                        <div className="bg-sky-500/50" style={{ width: `${(src.pending / total) * 100}%` }} />
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                                <details>
+                                                    <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                                        Items ({selectedRun.items.length})
+                                                    </summary>
+                                                    <div className="mt-2 space-y-1">
+                                                        {selectedRun.items.map((item) => (
+                                                            <div key={item.hash} className="rounded border border-slate-800/60 px-3 py-2 text-xs">
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    <span className={OUTCOME_CLASS[item.outcome.status] ?? "text-slate-400"}>
+                                                                        {item.outcome.status}
+                                                                    </span>
+                                                                    <a
+                                                                        href={item.url}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        className="truncate text-slate-300 hover:text-cyan-300 hover:underline"
+                                                                    >
+                                                                        {item.title}
+                                                                    </a>
+                                                                    <span className="ml-auto text-slate-600">{item.source_name}</span>
+                                                                </div>
+                                                                {item.search_query && (
+                                                                    <p className="mt-0.5 text-slate-500">query: {item.search_query}</p>
+                                                                )}
+                                                                {item.outcome.skip_reason && (
+                                                                    <p className="mt-0.5 text-slate-500">skip: {item.outcome.skip_reason}</p>
+                                                                )}
+                                                                {item.outcome.error && <p className="mt-0.5 text-red-300/80">{item.outcome.error}</p>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </details>
+                                            </>
+                                        )}
                                     </div>
                                 ) : (
                                     <p className="p-6 text-center text-sm text-slate-500">Select a run to see its breakdown.</p>
