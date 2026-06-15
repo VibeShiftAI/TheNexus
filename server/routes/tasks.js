@@ -205,7 +205,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // PATCH update task (project-scoped)
     router.patch('/:id/tasks/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { title, description, status, model_assignment } = req.body;
+        const { title, description, status, priority, model_assignment } = req.body;
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
         try {
@@ -214,6 +214,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const updates = { updated_at: new Date().toISOString() };
             if (title !== undefined) updates.name = title.trim();
             if (description !== undefined) updates.description = description.trim();
+            if (priority !== undefined) updates.priority = priority;
             if (model_assignment !== undefined) updates.model_assignment = model_assignment || null;
             if (status !== undefined) {
                 updates.status = status;

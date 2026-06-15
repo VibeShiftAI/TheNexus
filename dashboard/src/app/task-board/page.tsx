@@ -10,11 +10,13 @@ import {
   Filter,
   Loader2,
   MessageSquareText,
+  Pencil,
   RefreshCw,
   Search,
   Table2,
 } from "lucide-react";
-import { getBoardState } from "@/lib/nexus";
+import { getBoardState, updateTask } from "@/lib/nexus";
+import { TaskEditModal, STATUS_OPTIONS } from "@/components/task-edit-modal";
 import {
   BOARD_LANES,
   filterBoardTasks,
@@ -36,6 +38,7 @@ export default function TaskBoardPage() {
   const [query, setQuery] = useState("");
   const [projectId, setProjectId] = useState("all");
   const [laneId, setLaneId] = useState<BoardFilterLaneId>("all");
+  const [editingTask, setEditingTask] = useState<BoardTask | null>(null);
 
   const loadBoard = useCallback(async (mode: "initial" | "refresh" = "refresh") => {
     if (mode === "initial") {
@@ -84,6 +87,29 @@ export default function TaskBoardPage() {
     const latest = timestamps.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
     return formatBoardTime(latest);
   }, [projects]);
+
+  // Inline status change directly from a card (the most common board action).
+  const handleQuickStatus = useCallback(async (task: BoardTask, nextStatus: string) => {
+    const tProjectId = task.projectId || task.project_id;
+    if (!tProjectId) return;
+
+    // Optimistic update so the card jumps lanes immediately.
+    setProjects((prev) =>
+      prev.map((project) => ({
+        ...project,
+        tasks: (project.tasks || []).map((t) =>
+          t.id === task.id ? { ...t, status: nextStatus, updated_at: new Date().toISOString() } : t,
+        ),
+      })),
+    );
+
+    try {
+      await updateTask(tProjectId, task.id, { status: nextStatus });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update status");
+      loadBoard("refresh");
+    }
+  }, [loadBoard]);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30">
@@ -190,27 +216,40 @@ export default function TaskBoardPage() {
             <Loader2 className="animate-spin" size={32} />
           </div>
         ) : (
-          <section className="grid gap-4 xl:grid-cols-5">
+          <section className="flex gap-4 overflow-x-auto pb-3 scrollbar-thin">
             {visibleLanes.map((lane) => (
               <LaneColumn
                 key={lane.id}
                 lane={lane}
+                onManage={setEditingTask}
+                onQuickStatus={handleQuickStatus}
               />
             ))}
           </section>
         )}
       </div>
+
+      <TaskEditModal
+        task={editingTask}
+        isOpen={editingTask !== null}
+        onClose={() => setEditingTask(null)}
+        onSaved={() => loadBoard("refresh")}
+      />
     </main>
   );
 }
 
 function LaneColumn({
   lane,
+  onManage,
+  onQuickStatus,
 }: {
   lane: BoardLane;
+  onManage: (task: BoardTask) => void;
+  onQuickStatus: (task: BoardTask, nextStatus: string) => void;
 }) {
   return (
-    <div className="min-h-[520px] rounded-lg border border-slate-800 bg-slate-950">
+    <div className="flex min-h-[520px] w-72 shrink-0 flex-col rounded-lg border border-slate-800 bg-slate-950 xl:w-auto xl:flex-1">
       <div className={`border-b px-3 py-3 ${lane.accentClass}`}>
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold uppercase">{lane.title}</h3>
@@ -231,6 +270,8 @@ function LaneColumn({
             <TaskCard
               key={task.id}
               task={task}
+              onManage={onManage}
+              onQuickStatus={onQuickStatus}
             />
           ))
         )}
@@ -241,8 +282,12 @@ function LaneColumn({
 
 function TaskCard({
   task,
+  onManage,
+  onQuickStatus,
 }: {
   task: BoardTask;
+  onManage: (task: BoardTask) => void;
+  onQuickStatus: (task: BoardTask, nextStatus: string) => void;
 }) {
   const title = task.title || task.name || "Untitled task";
   const taskProjectId = task.projectId || task.project_id;
@@ -254,7 +299,7 @@ function TaskCard({
 
   return (
     <article className="rounded-lg border border-slate-800 bg-slate-900/80 p-3 shadow-sm shadow-black/20 transition-colors hover:border-slate-700">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <Link href={detailHref} className="group inline-flex min-w-0 items-start gap-2">
             <span className="line-clamp-2 text-sm font-semibold leading-5 text-slate-100 group-hover:text-cyan-200">
@@ -264,12 +309,32 @@ function TaskCard({
           </Link>
           <p className="mt-1 truncate text-xs text-slate-500">{task.projectName || "Unknown project"}</p>
         </div>
+        <button
+          onClick={() => onManage(task)}
+          className="shrink-0 rounded-md border border-slate-700 bg-slate-950 p-1.5 text-slate-400 transition-colors hover:border-cyan-500/40 hover:text-cyan-300"
+          aria-label="Edit task"
+          title="Edit task (status, description, cancel, delete)"
+        >
+          <Pencil size={13} />
+        </button>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        <span className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-300">
-          {task.status || "unknown"}
-        </span>
+        <select
+          value={task.status || ""}
+          onChange={(e) => onQuickStatus(task, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          className="max-w-[150px] rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-300 outline-none transition-colors hover:border-cyan-500/40 focus:border-cyan-500/60"
+          aria-label="Change task status"
+          title="Change status"
+        >
+          {!STATUS_OPTIONS.some((o) => o.value === (task.status || "")) && task.status && (
+            <option value={task.status}>{task.status}</option>
+          )}
+          {STATUS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
         <span className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-400">
           P{task.priority ?? 0}
         </span>

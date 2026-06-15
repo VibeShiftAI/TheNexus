@@ -711,6 +711,23 @@ export async function updateTask(
     return res.json();
 }
 
+/**
+ * Update a task's priority (0=low, 1=normal, 2=high).
+ * Uses the top-level /api/tasks/:taskId endpoint, which handles the `priority` column directly.
+ */
+export async function setTaskPriority(taskId: string, priority: number): Promise<{ success: boolean; task: Task }> {
+    const baseUrl = API_URL.replace('/projects', '/tasks');
+    const res = await authFetch(`${baseUrl}/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priority }),
+    });
+    if (!res.ok) {
+        throw new Error("Failed to update task priority");
+    }
+    return res.json();
+}
+
 export async function addResearchFeedback(projectId: string, taskId: string, feedback: string): Promise<{ success: boolean; task: Task }> {
     const res = await authFetch(`${API_URL}/${projectId}/tasks/${taskId}/research-feedback`, {
         method: 'POST',

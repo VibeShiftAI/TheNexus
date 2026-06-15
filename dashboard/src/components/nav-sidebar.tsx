@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { X, BookOpen, Gauge, Zap, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit } from "lucide-react";
+import { X, BookOpen, Gauge, Zap, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare } from "lucide-react";
 import Link from "next/link";
 import { getProjects, type Project } from "@/lib/nexus";
 import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
@@ -68,10 +68,14 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
     };
   }, [isOpen, onClose]);
 
+  const larsDashboardHref = "http://192.168.86.205:7878";
+
   const navItems = [
+    { href: "/task-board", label: "Task Board", icon: KanbanSquare, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/model-control", label: "Model Control", icon: Route, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/system-monitor", label: "System Monitor", icon: Gauge, color: "text-amber-400 hover:text-amber-300" },
     { href: "/workflow-builder", label: "Workflow Builder", icon: Zap, color: "text-indigo-400 hover:text-indigo-300" },
+    { href: larsDashboardHref, label: "LARS Dashboard", icon: BarChart3, color: "text-emerald-400 hover:text-emerald-300", external: true },
     { href: "/codex", label: "The Codex", icon: BookOpen, color: "text-pink-400 hover:text-pink-300" },
     { href: "/knowledge-ingestion", label: "Knowledge Ingestion", icon: BrainCircuit, color: "text-violet-400 hover:text-violet-300" },
   ];
@@ -99,17 +103,37 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
             </div>
 
             <nav className="mt-8 space-y-4">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onClose}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-800 bg-slate-950/40 hover:bg-slate-950/80 transition-all ${item.color}`}
-                >
-                  <item.icon size={18} />
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                const className = `flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-800 bg-slate-950/40 hover:bg-slate-950/80 transition-all ${item.color}`;
+
+                if (item.external) {
+                  return (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={onClose}
+                      className={className}
+                    >
+                      <item.icon size={18} />
+                      <span className="font-medium">{item.label}</span>
+                    </a>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onClose}
+                    className={className}
+                  >
+                    <item.icon size={18} />
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
             </nav>
 
             <div className={`mt-6 rounded-lg border p-3 ${localOnly.enabled ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-800 bg-slate-950/40'}`}>

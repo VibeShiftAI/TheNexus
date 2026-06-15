@@ -42,6 +42,9 @@ function createIngestionControlRouter() {
     router.post('/sources', (req, res) => {
         proxyPraxisJson(res, '/ingestion/sources', { method: 'POST', body: req.body });
     });
+    router.post('/youtube/video', (req, res) => {
+        proxyPraxisJson(res, '/ingestion/youtube/video', { method: 'POST', body: req.body });
+    });
     router.post('/sources/:name/toggle', (req, res) => {
         proxyPraxisJson(res, `/ingestion/sources/${encodeURIComponent(req.params.name)}/toggle`, { method: 'POST', body: req.body });
     });

@@ -682,7 +682,7 @@ async function getBoardState(projectId) {
             } else {
                 task.is_unblocked = deps.every(depId => {
                     const depStatus = taskStatusMap.get(depId);
-                    return depStatus === 'complete' || depStatus === 'done';
+                    return depStatus === 'complete' || depStatus === 'completed' || depStatus === 'done';
                 });
             }
         }
@@ -702,8 +702,8 @@ async function getBoardState(projectId) {
             tasks: tasksByProject.get(project.id) || [],
             task_summary: {
                 total: (tasksByProject.get(project.id) || []).length,
-                unblocked: (tasksByProject.get(project.id) || []).filter(t => t.is_unblocked && t.status !== 'complete' && t.status !== 'done' && t.status !== 'suspended').length,
-                complete: (tasksByProject.get(project.id) || []).filter(t => t.status === 'complete' || t.status === 'done').length,
+                unblocked: (tasksByProject.get(project.id) || []).filter(t => t.is_unblocked && t.status !== 'complete' && t.status !== 'completed' && t.status !== 'done' && t.status !== 'suspended').length,
+                complete: (tasksByProject.get(project.id) || []).filter(t => t.status === 'complete' || t.status === 'completed' || t.status === 'done').length,
                 suspended: (tasksByProject.get(project.id) || []).filter(t => t.status === 'suspended').length,
             }
         }));

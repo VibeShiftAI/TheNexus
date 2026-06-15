@@ -64,6 +64,17 @@ export interface RunItem {
     refinement?: { status: string; skip_reason?: string };
 }
 
+export interface DiscoveredIngestionItem {
+    hash: string;
+    title: string;
+    url: string;
+    content: string;
+    source_name: string;
+    source_type: string;
+    published_at: string;
+    metadata?: Record<string, unknown>;
+}
+
 export interface RunDetail extends RunSummary {
     items: RunItem[];
 }
@@ -183,6 +194,25 @@ export interface MutationResult {
     ok: boolean;
     message: string;
     sources?: IngestionSource[];
+    initial_ingestion?: {
+        runId: string;
+        discovered: number;
+        deduped: number;
+        itemsEnqueued: number;
+        finalizerJobId: string;
+    };
+}
+
+export interface YouTubeVideoIngestionResult {
+    ok: boolean;
+    item: DiscoveredIngestionItem;
+    ingestion: {
+        runId: string;
+        discovered: number;
+        deduped: number;
+        itemsEnqueued: number;
+        finalizerJobId: string;
+    };
 }
 
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -224,6 +254,10 @@ export function addIngestionSource(input: {
     max_items?: number;
 }): Promise<MutationResult> {
     return api("/sources", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function ingestYouTubeVideo(url: string): Promise<YouTubeVideoIngestionResult> {
+    return api("/youtube/video", { method: "POST", body: JSON.stringify({ url }) });
 }
 
 export function toggleIngestionSource(name: string): Promise<MutationResult> {
