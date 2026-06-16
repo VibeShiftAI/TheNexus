@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { X, BookOpen, Gauge, Zap, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare } from "lucide-react";
+import { X, BookOpen, Gauge, Zap, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard } from "lucide-react";
 import Link from "next/link";
 import { getProjects, type Project } from "@/lib/nexus";
 import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
@@ -78,6 +78,7 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
     { href: larsDashboardHref, label: "LARS Dashboard", icon: BarChart3, color: "text-emerald-400 hover:text-emerald-300", external: true },
     { href: "/codex", label: "The Codex", icon: BookOpen, color: "text-pink-400 hover:text-pink-300" },
     { href: "/knowledge-ingestion", label: "Knowledge Ingestion", icon: BrainCircuit, color: "text-violet-400 hover:text-violet-300" },
+    { href: "/studio", label: "Studio", icon: Clapperboard, color: "text-violet-400 hover:text-violet-300" },
   ];
 
   return (
