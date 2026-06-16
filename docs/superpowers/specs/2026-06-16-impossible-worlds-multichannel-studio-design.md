@@ -6,7 +6,7 @@ Create a new content project, **Impossible Worlds Field Guide**, inside The Nexu
 
 > I help curious people feel how strange the real and possible universe is, by treating extreme and hypothetical worlds like a naturalist's field guide - every scenario worked through with actual physics, no hype.
 
-The first implementation should turn The Nexus Studio from a Praxis-only production board into a reusable multi-channel Studio. Impossible Worlds gets its own isolated channel profile, episode pipeline, source ingestion configuration, local object catalog, reference image library, prompts, and seeded first 10 videos.
+The first implementation should turn The Nexus Studio from a Praxis-only production board into a reusable multi-channel Studio. Impossible Worlds gets its own isolated channel profile, episode pipeline, source ingestion configuration, local object catalog, reference image library, prompts, and seeded first 10 videos. Praxis also receives an editable channel profile so the new system can distinguish channel voice, audience, source strategy, and production goals without hardcoded assumptions.
 
 ## Context Reviewed
 
@@ -50,7 +50,7 @@ Create:
 
 `project.json` should allow The Nexus scanner to discover it as a `content` project. The folder stores durable project-facing artifacts and exported assets. The Nexus database stores the live production system.
 
-## Channel Profile
+## Channel Profiles
 
 Seed `studio_channels` with:
 
@@ -66,12 +66,47 @@ Seed `studio_channels` with:
 
 The channel profile should drive generation prompts, seed content, source defaults, and UI copy.
 
+Also seed `praxis-youtube` with an editable profile that captures the current Praxis Studio assumptions:
+
+- `id`: `praxis-youtube`
+- `name`: `Praxis YouTube Channel`
+- `project_path`: `/Volumes/Projects/Praxis YouTube Channel`
+- `type`: `youtube`
+- `positioning`: Robert teaches viewers how his personal AI operating system works and how to build minimal versions of its pieces.
+- `editorial_promise`: concrete, build-along, honest about trade-offs, no hype.
+- `host_style`: Robert as builder/teacher; calm, direct, specific, transparent about what works and what breaks.
+- `audience`: builders, AI-agent enthusiasts, indie hackers, technically curious viewers.
+- `monetization`: sponsorships, tool/repo products, consulting credibility, long-term audience trust.
+
+Channel profiles should drive generation prompts, seed content, source defaults, UI copy, and channel-specific job behavior. Hardcoded Praxis channel prompt text should be replaced with profile-driven prompt assembly as part of the migration.
+
+### Editable Profile Fields
+
+The profile editor should expose the fields that materially change generation and planning:
+
+- name
+- project path
+- positioning
+- editorial promise
+- audience
+- host style / narrator voice
+- visual style notes
+- recurring episode format
+- source strategy
+- monetization notes
+- risks and mitigations
+- default cadence target
+- prompt guardrails
+
+These fields can be stored as columns plus JSON metadata where appropriate, but the UI should present them as normal editable fields, not raw JSON.
+
 ## Studio UI
 
 ### Channel-Level Studio
 
 `/studio` gains a channel selector. Selecting Impossible Worlds changes the whole board to that channel's state:
 
+- editable channel profile panel
 - cadence banner
 - six-stage episode board: suggested, approved, scripted, thumbnail, ready, published
 - quick jobs
@@ -80,6 +115,8 @@ The channel profile should drive generation prompts, seed content, source defaul
 - reference image library summary
 - recent jobs/run digest
 - manual episode add
+
+The channel profile panel should be visible from the main Studio view for every channel. It can be collapsed by default once populated, but it must be easy to open, edit, save, and see which profile is currently driving prompts.
 
 Quick jobs for Impossible Worlds:
 
@@ -344,6 +381,8 @@ Key prompt outputs:
 Keep the current `/api/studio` surface, but scope it by channel:
 
 - `GET /api/studio/channels`
+- `GET /api/studio/channels/:channelId`
+- `PATCH /api/studio/channels/:channelId`
 - `GET /api/studio?channelId=...`
 - `GET /api/studio/ideas/:id`
 - `POST /api/studio/:channelId/ideas`
@@ -362,6 +401,7 @@ Existing Praxis endpoints should keep working through default channel fallback.
 
 - Create `studio_channels`.
 - Insert `praxis-youtube` as the default channel.
+- Seed an editable Praxis channel profile from the current hardcoded Nexus Studio prompt assumptions.
 - Add `channel_id` to existing `studio_ideas` for v1 and default existing rows to `praxis-youtube`.
 - Insert `impossible-worlds-field-guide`.
 - Seed Impossible Worlds ideas, source definitions, spec definitions, and reference-image folders.
@@ -373,6 +413,8 @@ Prefer additive migrations and compatibility code over destructive rewrites.
 Focused tests:
 
 - channel list includes Praxis and Impossible Worlds
+- channel profile editor reads and saves Praxis and Impossible Worlds profiles
+- prompt builders use the selected channel profile instead of hardcoded Praxis assumptions
 - existing Praxis ideas do not appear in Impossible Worlds
 - Impossible Worlds seed creates the first 10 episodes once
 - source config CRUD is channel scoped
@@ -386,6 +428,7 @@ Focused tests:
 Manual/browser verification:
 
 - `/studio` loads with a channel selector
+- channel profile is visible and editable for Praxis and Impossible Worlds
 - switching channels changes the board without data leakage
 - Impossible Worlds shows source/object/reference panels
 - episode detail can attach object records and reference images
