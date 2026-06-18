@@ -1,0 +1,65 @@
+<h2>Multi-channel Studio structure</h2>
+<p class="subtitle">Proposed shape for putting Impossible Worlds inside The Nexus without duplicating Studio.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Studio: channel-level command center</div>
+  <div class="mockup-body">
+    <div class="mock-nav">Channel selector: Praxis YouTube Channel | <strong>Impossible Worlds Field Guide</strong></div>
+    <div style="display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin-top:16px;">
+      <div>
+        <div class="placeholder" style="height:auto;padding:14px;text-align:left;">
+          <strong>Cadence + pipeline</strong><br>
+          Six-stage board: suggested, approved, scripted, thumbnail, ready, published.<br>
+          Seeded with the first 10 Impossible Worlds episodes.
+        </div>
+        <div class="placeholder" style="height:auto;padding:14px;margin-top:12px;text-align:left;">
+          <strong>Source engine</strong><br>
+          Kurzgesagt YouTube source, physics/astronomy sources, web-search source templates, and editable ingestion config.
+        </div>
+      </div>
+      <div>
+        <div class="placeholder" style="height:auto;padding:14px;text-align:left;">
+          <strong>Reference image library</strong><br>
+          Upload/store generated references, attach them to episodes, copy reusable prompt blocks.
+        </div>
+        <div class="placeholder" style="height:auto;padding:14px;margin-top:12px;text-align:left;">
+          <strong>Jobs + prompts</strong><br>
+          Local, cloud, and prompt-mode generation per channel profile.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Episode detail: production workspace</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="placeholder" style="height:auto;padding:14px;text-align:left;">
+        <strong>Script + rigor pass</strong><br>
+        Field-guide episode structure, physics assumptions, source notes, contradiction checklist.
+      </div>
+      <div class="placeholder" style="height:auto;padding:14px;text-align:left;">
+        <strong>Visual package</strong><br>
+        Thumbnail concepts, world/sky/surface image prompts, reference attachments, rendered assets.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve-structure" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>This structure feels right</h3>
+      <p>Proceed to a written design based on this channel-level / episode-level split.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="needs-adjustment" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Adjust the split</h3>
+      <p>Move one or more source, image, prompt, or job controls to a different screen.</p>
+    </div>
+  </div>
+</div>

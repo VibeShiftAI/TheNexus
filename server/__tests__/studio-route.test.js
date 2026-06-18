@@ -36,6 +36,48 @@ async function json(url, options = {}) {
   return { status: response.status, body };
 }
 
+test('serves a board when migrating legacy global studio settings', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-studio-legacy-test-'));
+  let handle;
+  try {
+    process.env.NEXUS_DB_PATH = path.join(tmpDir, 'nexus.db');
+    const Database = require('better-sqlite3');
+    const legacy = new Database(process.env.NEXUS_DB_PATH);
+    legacy.exec(`
+      CREATE TABLE studio_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+      INSERT INTO studio_settings (key, value) VALUES ('targetReady', '3');
+      CREATE TABLE studio_ideas (
+        id TEXT PRIMARY KEY,
+        source TEXT,
+        title TEXT NOT NULL,
+        status TEXT DEFAULT 'suggested',
+        checklist TEXT
+      );
+    `);
+    legacy.close();
+
+    jest.resetModules();
+    const createStudioRouter = require('../routes/studio');
+    const app = express();
+    app.use(express.json({ limit: '5mb' }));
+    app.use('/api/studio', createStudioRouter({ callAI: jest.fn() }));
+    handle = await listen(app);
+
+    const result = await json(`${handle.baseUrl}/api/studio?channelId=praxis-youtube`);
+
+    expect(result.status).toBe(200);
+    expect(result.body.channel.id).toBe('praxis-youtube');
+    expect(result.body.targetReady).toBe(3);
+  } finally {
+    if (handle) await close(handle);
+    delete process.env.NEXUS_DB_PATH;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 describe('studio route', () => {
   let tmpDir;
   let handle;
@@ -145,6 +187,15 @@ describe('studio route', () => {
   });
 
   test('creates local-only ingestion runs without calling cloud generation', async () => {
+    // Disable seeded sources so discovery is deterministic and hits no network.
+    const sources = (await json(`${handle.baseUrl}/api/studio/impossible-worlds-field-guide/sources`)).body;
+    for (const source of sources) {
+      await json(`${handle.baseUrl}/api/studio/impossible-worlds-field-guide/sources/${source.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ enabled: false }),
+      });
+    }
+
     const result = await json(`${handle.baseUrl}/api/studio/impossible-worlds-field-guide/ingestion/run`, {
       method: 'POST',
       body: JSON.stringify({ trigger: 'manual-test' }),
@@ -157,8 +208,20 @@ describe('studio route', () => {
       trigger: 'manual-test',
       status: 'queued',
     }));
-    expect(result.body.run.items_enqueued).toBeGreaterThan(0);
-    expect(callAI).not.toHaveBeenCalled();
+
+    // Wait for the background run to settle, then confirm it completed and that
+    // any model use stayed on the LOCAL provider (never a cloud tier-up).
+    const runId = result.body.run.id;
+    let run;
+    for (let i = 0; i < 40; i += 1) {
+      run = (await json(`${handle.baseUrl}/api/studio/impossible-worlds-field-guide/ingestion/runs/${runId}`)).body.run;
+      if (run && run.status === 'complete') break;
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    expect(run.status).toBe('complete');
+    for (const call of callAI.mock.calls) {
+      expect(call[0]).toEqual(expect.objectContaining({ provider: 'local' }));
+    }
   });
 
   test('creates object catalog records with spec values and wonder fields', async () => {
@@ -251,5 +314,141 @@ describe('studio route', () => {
     expect(prompt.body.user).toContain('field-guide');
     expect(prompt.body.user).toContain('TRAPPIST-1 e');
     expect(prompt.body.user).not.toContain('personal AI operating system');
+  });
+
+  test('write_script runs a writer + critic agentic flow grounded in attached object params', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    const idea = await json(`${base}/ideas`, { method: 'POST', body: JSON.stringify({ title: 'Standing on Gliese X', status: 'approved' }) });
+    const object = await json(`${base}/objects`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Gliese X b',
+        object_kind: 'exoplanet',
+        reality_status: 'observed',
+        field_guide_summary: 'A heavy super-Earth.',
+        specs: [
+          { spec_key: 'bulk.mass_earth', value_number: 5, status: 'known', confidence: 'high' },
+          { spec_key: 'bulk.radius_earth', value_number: 1.6, status: 'known', confidence: 'high' },
+        ],
+      }),
+    });
+    await json(`${handle.baseUrl}/api/studio/ideas/${idea.body.id}/objects`, { method: 'POST', body: JSON.stringify({ object_id: object.body.id, role: 'main_subject' }) });
+
+    callAI.mockClear();
+    const gen = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'write_script', ideaId: idea.body.id, mode: 'local' }) });
+
+    expect(gen.status).toBe(200);
+    expect(gen.body.success).toBe(true);
+    expect(gen.body.idea.script).toBeTruthy();
+    expect(gen.body.idea.script_model).toMatch(/writer\+critic/);
+    expect(gen.body.idea.status).toBe('scripted');
+    // Two model passes (writer, then critic), both local.
+    expect(callAI.mock.calls.length).toBeGreaterThanOrEqual(2);
+    for (const call of callAI.mock.calls) expect(call[0]).toEqual(expect.objectContaining({ provider: 'local' }));
+    // Writer prompt was grounded in the attached object's parameters.
+    expect(callAI.mock.calls[0][1]).toContain('Gliese X b');
+  });
+
+  test('the enrich endpoint drains un-enriched objects and reports remaining', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    // Two objects with mass+radius so the parameter calculator has something to do.
+    for (const name of ['Enrich A', 'Enrich B']) {
+      await json(`${base}/objects`, {
+        method: 'POST',
+        body: JSON.stringify({ name, object_kind: 'exoplanet', specs: [
+          { spec_key: 'bulk.mass_earth', value_number: 1, status: 'known' },
+          { spec_key: 'bulk.radius_earth', value_number: 1, status: 'known' },
+        ] }),
+      });
+    }
+
+    let cursors = (await json(`${base}/ingestion/cursors`)).body;
+    expect(cursors.enrichRemaining).toBe(2);
+
+    const res = await json(`${base}/ingestion/enrich`, { method: 'POST', body: JSON.stringify({}) });
+    expect(res.status).toBe(202);
+    expect(res.body.run.trigger).toBe('enrich');
+
+    let run;
+    for (let i = 0; i < 40; i += 1) {
+      run = (await json(`${base}/ingestion/runs/${res.body.run.id}`)).body.run;
+      if (run && run.status === 'complete') break;
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    expect(run.status).toBe('complete');
+    expect(run.digest).toMatch(/Enrichment: processed 2/);
+
+    // No YouTube key in the test env → objects still get parameter-enriched and marked.
+    cursors = (await json(`${base}/ingestion/cursors`)).body;
+    expect(cursors.enrichRemaining).toBe(0);
+  });
+
+  test('interaction_idea builds a video idea from selected objects and links them', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    const a = await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({ name: 'Object Alpha', object_kind: 'exoplanet', specs: [{ spec_key: 'bulk.mass_earth', value_number: 2, status: 'known' }] }) });
+    const b = await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({ name: 'Object Beta', object_kind: 'rogue planet' }) });
+
+    callAI.mockResolvedValueOnce({ text: JSON.stringify({ title: 'When Alpha Meets Beta', angle: 'A gravitational tango.', build_promise: 'See the encounter.', category: 'Object system' }) });
+
+    const gen = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'interaction_idea', objectIds: [a.body.id, b.body.id], mode: 'local' }) });
+    expect(gen.status).toBe(200);
+    expect(gen.body.result.ideaId).toBeTruthy();
+    expect(gen.body.idea.title).toBe('When Alpha Meets Beta');
+    expect(gen.body.idea.source).toBe('object-interaction');
+    // Both objects linked to the new episode.
+    expect(callAI.mock.calls[0][0]).toEqual(expect.objectContaining({ provider: 'local' }));
+  });
+
+  test('unreal_environment and physics_analysis prompts include the selected objects', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    const obj = await json(`${base}/objects`, {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Vulcanis Prime', object_kind: 'exoplanet', specs: [
+        { spec_key: 'bulk.mass_earth', value_number: 4, status: 'known' },
+        { spec_key: 'bulk.radius_earth', value_number: 1.5, status: 'known' },
+      ] }),
+    });
+
+    const ue = await json(`${base}/prompt?type=unreal_environment&objectIds=${obj.body.id}`);
+    expect(ue.status).toBe(200);
+    expect(ue.body.user).toContain('Vulcanis Prime');
+    expect(ue.body.user).toMatch(/Unreal Engine 5/i);
+
+    const phys = await json(`${base}/prompt?type=physics_analysis&objectIds=${obj.body.id}`);
+    expect(phys.status).toBe(200);
+    expect(phys.body.user).toContain('Vulcanis Prime');
+    expect(phys.body.user).toMatch(/tidal|Roche|gravity/i);
+  });
+
+  test('object jobs reject an empty selection', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    const res = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'physics_analysis', objectIds: [], mode: 'local' }) });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/selected objects/i);
+  });
+
+  test('uploads a reference image and serves it back, scoped to channel + episode', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    const idea = await json(`${base}/ideas`, { method: 'POST', body: JSON.stringify({ title: 'Reference image episode' }) });
+
+    const form = new FormData();
+    form.append('file', new Blob([Buffer.from('fake-png-bytes')], { type: 'image/png' }), 'ref.png');
+    form.append('episode_id', idea.body.id);
+    form.append('intended_use', 'surface_reference');
+    const uploadRes = await fetch(`${base}/reference-images/upload`, { method: 'POST', body: form });
+    const uploaded = await uploadRes.json();
+
+    expect(uploadRes.status).toBe(201);
+    expect(uploaded.episode_id).toBe(idea.body.id);
+    expect(uploaded.file_path_or_url).toContain('/reference-images/');
+
+    // Listed for the episode
+    const list = await json(`${base}/reference-images?episodeId=${idea.body.id}`);
+    expect(list.body.some((img) => img.id === uploaded.id)).toBe(true);
+
+    // Served back
+    const fileRes = await fetch(`${handle.baseUrl}${uploaded.file_path_or_url}`);
+    expect(fileRes.status).toBe(200);
+    expect(Buffer.from(await fileRes.arrayBuffer()).toString()).toBe('fake-png-bytes');
   });
 });

@@ -10,8 +10,6 @@ import {
   ChevronRight,
   ClipboardCopy,
   Copy,
-  FileImage,
-  FlaskConical,
   Loader2,
   Moon,
   Save,
@@ -24,15 +22,21 @@ import {
   applyPaste,
   archiveIdea,
   createReferenceImage,
+  deleteReferenceImage,
   generate,
   getBoard,
   getIdea,
   getPrompt,
+  getReferenceImages,
   updateIdea,
+  uploadReferenceImage,
   type BoardState,
   type GenMode,
   type Idea,
+  type ReferenceImage,
 } from "@/lib/studio";
+
+const REFERENCE_USES = ["surface_reference", "sky_reference", "diagram_reference", "b_roll", "style_reference", "thumbnail"] as const;
 
 const STATUSES = [...STAGES.map(([key]) => key), "archived"] as Idea["status"][];
 
@@ -56,7 +60,7 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [promptModal, setPromptModal] = useState<{ type: string; label: string; text: string } | null>(null);
-  const [newImage, setNewImage] = useState({ file_path_or_url: "", prompt: "", intended_use: "surface_reference" });
+  const [refImages, setRefImages] = useState<ReferenceImage[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -64,8 +68,10 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
       const q = new URLSearchParams(window.location.search);
       const activeChannel = q.get("channelId") || data.channel_id || "praxis-youtube";
       const boardData = await getBoard(activeChannel);
+      const images = await getReferenceImages(activeChannel, id).catch(() => []);
       setIdea(data);
       setBoard(boardData);
+      setRefImages(images);
       setChannelId(activeChannel);
       setForm({
         title: data.title,
@@ -141,12 +147,42 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
     window.location.href = `/studio?channelId=${encodeURIComponent(channelId)}`;
   }
 
-  async function addReferenceImage(event: React.FormEvent) {
-    event.preventDefault();
-    if (!newImage.file_path_or_url.trim()) return;
-    await createReferenceImage(channelId, { ...newImage, episode_id: id });
-    setNewImage({ file_path_or_url: "", prompt: "", intended_use: "surface_reference" });
-    await load();
+  async function addImageByUrl(url: string, intendedUse: string, prompt: string) {
+    setBusy("ref-add");
+    try {
+      await createReferenceImage(channelId, { episode_id: id, file_path_or_url: url, intended_use: intendedUse, prompt: prompt || undefined });
+      await load();
+      flash("Reference image added");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add image");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function uploadImageFile(file: File, intendedUse: string) {
+    setBusy("ref-upload");
+    try {
+      await uploadReferenceImage(channelId, file, { episode_id: id, intended_use: intendedUse });
+      await load();
+      flash("Reference image uploaded");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function removeImage(imageId: string) {
+    setBusy(`ref-del:${imageId}`);
+    try {
+      await deleteReferenceImage(channelId, imageId);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setBusy(null);
+    }
   }
 
   if (loading) {
@@ -160,10 +196,9 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
   const prompts = idea.image_prompts || [];
   const checklist = idea.checklist || [];
   const kit = idea.publish_kit;
-  const episodeImages = (board?.referenceImages || []).filter((image) => image.episode_id === idea.id);
 
   return (
-    <Shell title={idea.title} subtitle={board?.channel.name} channelId={channelId}>
+    <Shell title={idea.title} subtitle={board?.channel?.name} channelId={channelId}>
       <div className="container mx-auto max-w-5xl space-y-5 p-6">
         {error && <Banner kind="err" message={error} />}
         {done && <Banner kind="ok" message={done} />}
@@ -219,46 +254,6 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
-          <Panel title="Object Catalog" icon={<FlaskConical size={18} className="text-cyan-300" />}>
-            <div className="space-y-2">
-              {(board?.objects || []).slice(0, 8).map((object) => (
-                <div key={object.id} className="border border-slate-800 bg-slate-950/40 p-3 text-sm">
-                  <div className="font-semibold text-slate-200">{object.name}</div>
-                  <div className="text-xs text-slate-500">{object.object_kind || "object"} · {object.reality_status || "unknown"}</div>
-                  {object.field_guide_summary && <p className="mt-1 text-xs text-slate-400">{object.field_guide_summary}</p>}
-                </div>
-              ))}
-              {!board?.objects?.length && <p className="text-xs text-slate-600">No objects yet</p>}
-            </div>
-          </Panel>
-
-          <Panel title="Reference Images" icon={<FileImage size={18} className="text-cyan-300" />}>
-            <div className="mb-3 space-y-2">
-              {episodeImages.map((image) => (
-                <div key={image.id} className="border border-slate-800 bg-slate-950/40 p-3 text-xs">
-                  <div className="truncate font-semibold text-slate-200">{image.file_path_or_url}</div>
-                  <div className="text-slate-500">{image.intended_use || "reference"}</div>
-                  {image.prompt && <p className="mt-1 text-slate-400">{image.prompt}</p>}
-                </div>
-              ))}
-              {!episodeImages.length && <p className="text-xs text-slate-600">No episode references yet</p>}
-            </div>
-            <form onSubmit={addReferenceImage} className="grid gap-2">
-              <input value={newImage.file_path_or_url} onChange={(e) => setNewImage({ ...newImage, file_path_or_url: e.target.value })} placeholder="File path or URL" className={inputCls} />
-              <select value={newImage.intended_use} onChange={(e) => setNewImage({ ...newImage, intended_use: e.target.value })} className={inputCls}>
-                <option value="thumbnail">thumbnail</option>
-                <option value="surface_reference">surface_reference</option>
-                <option value="sky_reference">sky_reference</option>
-                <option value="diagram_reference">diagram_reference</option>
-                <option value="b_roll">b_roll</option>
-              </select>
-              <textarea rows={2} value={newImage.prompt} onChange={(e) => setNewImage({ ...newImage, prompt: e.target.value })} placeholder="Prompt" className={inputCls} />
-              <button className="h-9 rounded-lg border border-slate-700 text-sm font-semibold text-slate-200 hover:border-cyan-500">Store Reference</button>
-            </form>
-          </Panel>
-        </section>
-
         {concepts.length > 0 && (
           <Panel title="Thumbnail Concepts">
             <div className="grid gap-3 md:grid-cols-3">
@@ -280,7 +275,16 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
                 <div key={index} className="border-l-2 border-cyan-500 bg-slate-900/60 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm font-semibold text-slate-200">{prompt.label || "Prompt"}</span>
-                    <CopyButton text={prompt.prompt || ""} />
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => addImageByUrl("", prompt.intended_use || "surface_reference", prompt.prompt || "")}
+                        className="text-[11px] font-semibold text-slate-500 hover:text-cyan-300"
+                        title="Add a reference-image slot for this prompt (fill the URL after)"
+                      >
+                        + slot
+                      </button>
+                      <CopyButton text={prompt.prompt || ""} />
+                    </div>
                   </div>
                   <p className="mt-1 font-mono text-xs text-slate-400">{prompt.prompt}</p>
                 </div>
@@ -288,6 +292,14 @@ export default function IdeaPage({ params }: { params: Promise<{ id: string }> }
             </div>
           </Panel>
         )}
+
+        <ReferenceImagesPanel
+          images={refImages}
+          busy={busy}
+          onAddUrl={addImageByUrl}
+          onUpload={uploadImageFile}
+          onRemove={removeImage}
+        />
 
         {checklist.length > 0 && (
           <Panel title="Checklist">
@@ -403,6 +415,77 @@ function PromptModal({ modal, channelId, ideaId, onClose, onApplied, onError }: 
         </button>
       </div>
     </div>
+  );
+}
+
+function ReferenceImagesPanel({ images, busy, onAddUrl, onUpload, onRemove }: {
+  images: ReferenceImage[];
+  busy: string | null;
+  onAddUrl: (url: string, intendedUse: string, prompt: string) => void | Promise<void>;
+  onUpload: (file: File, intendedUse: string) => void | Promise<void>;
+  onRemove: (id: string) => void | Promise<void>;
+}) {
+  const [url, setUrl] = useState("");
+  const [use, setUse] = useState<string>("surface_reference");
+
+  return (
+    <Panel title={`Reference Images${images.length ? ` (${images.length})` : ""}`}>
+      <p className="mb-3 text-xs text-slate-500">
+        Generate a prompt pack above, then collect the reference images you&apos;ll build the video from. Upload files or paste image URLs — add as many as you need.
+      </p>
+
+      {images.length > 0 && (
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {images.map((img) => (
+            <div key={img.id} className="group relative overflow-hidden border border-slate-800 bg-slate-950/50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.file_path_or_url} alt={img.intended_use || "reference"} className="h-36 w-full bg-slate-900 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.25"; }} />
+              <div className="p-2">
+                <span className="inline-block rounded bg-slate-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-cyan-300">{img.intended_use || "reference"}</span>
+                {img.prompt && <p className="mt-1 line-clamp-2 text-[11px] text-slate-400">{img.prompt}</p>}
+              </div>
+              <button
+                onClick={() => onRemove(img.id)}
+                disabled={busy === `ref-del:${img.id}`}
+                className="absolute right-1 top-1 rounded bg-slate-950/80 p-1 text-slate-400 opacity-0 transition hover:text-red-300 group-hover:opacity-100"
+                title="Remove"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-end gap-2 border-t border-slate-800 pt-3">
+        <label className="flex-1">
+          <span className="mb-1 block text-[11px] font-semibold uppercase text-slate-500">Image URL or path</span>
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… or /path/to/image.png" className={inputCls} />
+        </label>
+        <label>
+          <span className="mb-1 block text-[11px] font-semibold uppercase text-slate-500">Use</span>
+          <select value={use} onChange={(e) => setUse(e.target.value)} className={inputCls}>
+            {REFERENCE_USES.map((u) => <option key={u} value={u}>{u.replace(/_/g, " ")}</option>)}
+          </select>
+        </label>
+        <button
+          onClick={() => { if (url.trim()) { onAddUrl(url.trim(), use, ""); setUrl(""); } }}
+          disabled={!url.trim() || busy === "ref-add"}
+          className="h-10 rounded-lg border border-slate-700 px-3 text-sm font-semibold text-slate-200 hover:border-cyan-500 disabled:opacity-50"
+        >
+          Add URL
+        </button>
+        <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg bg-cyan-600 px-3 text-sm font-semibold text-white hover:bg-cyan-500">
+          {busy === "ref-upload" ? "Uploading…" : "Upload file"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { const file = e.target.files?.[0]; if (file) onUpload(file, use); e.target.value = ""; }}
+          />
+        </label>
+      </div>
+    </Panel>
   );
 }
 

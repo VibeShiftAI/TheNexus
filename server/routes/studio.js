@@ -1,6 +1,11 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const Database = require('better-sqlite3');
+const createStudioIngestion = require('../services/studio-ingestion');
+const createAstroNightly = require('../services/astro-nightly');
+const { startNightlyScheduler } = createAstroNightly;
 
 const DEFAULT_CHANNEL_ID = 'praxis-youtube';
 const IMPOSSIBLE_WORLDS_CHANNEL_ID = 'impossible-worlds-field-guide';
@@ -23,7 +28,7 @@ const EDITABLE_CHANNEL_FIELDS = [
   'prompt_guardrails',
 ];
 
-function createStudioRouter({ callAI } = {}) {
+function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
   const router = express.Router();
   const DB_PATH = process.env.NEXUS_DB_PATH || path.resolve(__dirname, '../../nexus.db');
   const sql = new Database(DB_PATH);
@@ -35,6 +40,37 @@ function createStudioRouter({ callAI } = {}) {
 
   const uuid = () => require('crypto').randomUUID();
   const now = () => new Date().toISOString();
+
+  const ingestion = createStudioIngestion({
+    sql, callAI, uuid, now,
+    helpers: { upsertSpecValues, insertWonderPoints, extractJSON, stringifyMaybe, slugify },
+    listSources,
+    deps: ingestionDeps,
+  });
+  const astroNightly = createAstroNightly({ sql, uuid, now, ingestion, getChannel, callAI, deps: astroDeps });
+
+  // Reference-image uploads land in a server-managed, channel-scoped folder and
+  // are served back through an API route so the dashboard can preview them.
+  const REF_ROOT = path.resolve(__dirname, '../../data/studio-references');
+  const refStorage = multer.diskStorage({
+    destination: (req, _file, cb) => {
+      const dir = path.join(REF_ROOT, String(req.params.channelId || 'default').replace(/[^a-z0-9_-]/gi, ''));
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (_req, file, cb) => {
+      const ext = (path.extname(file.originalname || '') || '.img').slice(0, 10);
+      cb(null, `${uuid()}${ext}`);
+    },
+  });
+  const refUpload = multer({ storage: refStorage, limits: { fileSize: 25 * 1024 * 1024 } });
+
+  if (process.env.NODE_ENV !== 'test' && process.env.STUDIO_NIGHTLY !== 'off') {
+    startNightlyScheduler({
+      runFn: () => astroNightly.run({ channelId: IMPOSSIBLE_WORLDS_CHANNEL_ID }),
+      hour: Number(process.env.STUDIO_NIGHTLY_HOUR) || 2,
+    });
+  }
 
   function getChannelId(req) {
     return String(req.params.channelId || req.query.channelId || DEFAULT_CHANNEL_ID);
@@ -54,7 +90,10 @@ function createStudioRouter({ callAI } = {}) {
   }
 
   function getSetting(channelId, key, fallback) {
-    const row = sql.prepare('SELECT value FROM studio_settings WHERE channel_id = ? AND key = ?').get(channelId, key);
+    const hasChannelId = hasColumn(sql, 'studio_settings', 'channel_id');
+    const row = hasChannelId
+      ? sql.prepare('SELECT value FROM studio_settings WHERE channel_id = ? AND key = ?').get(channelId, key)
+      : sql.prepare('SELECT value FROM studio_settings WHERE key = ?').get(key);
     if (!row) return fallback;
     try {
       return JSON.parse(row.value);
@@ -64,11 +103,20 @@ function createStudioRouter({ callAI } = {}) {
   }
 
   function setSetting(channelId, key, value) {
+    const hasChannelId = hasColumn(sql, 'studio_settings', 'channel_id');
+    if (hasChannelId) {
+      sql.prepare(
+        `INSERT INTO studio_settings (channel_id, key, value)
+         VALUES (?, ?, ?)
+         ON CONFLICT(channel_id, key) DO UPDATE SET value = excluded.value`
+      ).run(channelId, key, JSON.stringify(value));
+      return;
+    }
     sql.prepare(
-      `INSERT INTO studio_settings (channel_id, key, value)
-       VALUES (?, ?, ?)
-       ON CONFLICT(channel_id, key) DO UPDATE SET value = excluded.value`
-    ).run(channelId, key, JSON.stringify(value));
+      `INSERT INTO studio_settings (key, value)
+       VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+    ).run(key, JSON.stringify(value));
   }
 
   function rowToIdea(row) {
@@ -184,6 +232,68 @@ function createStudioRouter({ callAI } = {}) {
     }).join('\n');
   }
 
+  // Full parameter dump for the objects attached to a specific episode — feeds the
+  // writer + critic so the script is grounded in real (and calculated) numbers.
+  function episodeObjectContext(channelId, ideaId) {
+    const links = sql.prepare('SELECT object_id, role FROM studio_episode_objects WHERE episode_id = ?').all(ideaId);
+    if (!links.length) {
+      return { hasObjects: false, text: 'No catalog objects are attached to this episode yet. Reason carefully from the title/angle and explicitly label every assumption.' };
+    }
+    const blocks = [];
+    for (const link of links) {
+      const obj = objectRow(sql.prepare('SELECT * FROM space_objects WHERE id = ? AND channel_id = ?').get(link.object_id, channelId));
+      if (!obj) continue;
+      const specs = (obj.spec_values || []).map((s) => {
+        const v = s.value_text != null ? s.value_text
+          : (s.value_number != null ? s.value_number
+            : (s.value_min != null && s.value_max != null ? `${s.value_min}–${s.value_max}` : 'unknown'));
+        return `    - ${s.spec_key}: ${v}${s.unit ? ` ${s.unit}` : ''} [${s.status}${s.confidence ? `/${s.confidence}` : ''}]${s.notes ? ` (${s.notes})` : ''}`;
+      }).join('\n');
+      blocks.push(
+        `• ${obj.name} [${obj.object_kind || 'object'} / ${obj.reality_status || 'unknown'}] (role: ${link.role || 'subject'})\n` +
+        `  ${obj.field_guide_summary || obj.description || ''}\n` +
+        (obj.sensory_impression ? `  Sensory: ${obj.sensory_impression}\n` : '') +
+        `  Parameters:\n${specs || '    (none recorded)'}`
+      );
+    }
+    return { hasObjects: blocks.length > 0, text: blocks.join('\n\n') };
+  }
+
+  // Full parameter dump for an explicit list of object ids — feeds the catalog
+  // "system" jobs (interaction idea, Unreal environment, physics analysis).
+  function parseObjectIds(raw) {
+    if (Array.isArray(raw)) return raw.map((x) => String(x)).filter(Boolean);
+    if (typeof raw === 'string') return raw.split(',').map((x) => x.trim()).filter(Boolean);
+    return [];
+  }
+
+  function selectedObjectsContext(channelId, objectIds) {
+    const ids = parseObjectIds(objectIds);
+    const objects = [];
+    for (const id of ids) {
+      const obj = objectRow(sql.prepare('SELECT * FROM space_objects WHERE id = ? AND channel_id = ?').get(id, channelId));
+      if (obj) objects.push(obj);
+    }
+    if (!objects.length) {
+      return { hasObjects: false, objects: [], text: 'No objects selected.' };
+    }
+    const text = objects.map((obj) => {
+      const specs = (obj.spec_values || []).map((s) => {
+        const v = s.value_text != null ? s.value_text
+          : (s.value_number != null ? s.value_number
+            : (s.value_min != null && s.value_max != null ? `${s.value_min}–${s.value_max}` : 'unknown'));
+        return `    - ${s.spec_key}: ${v}${s.unit ? ` ${s.unit}` : ''} [${s.status}${s.confidence ? `/${s.confidence}` : ''}]`;
+      }).join('\n');
+      return (
+        `• ${obj.name} [${obj.object_kind || 'object'} / ${obj.reality_status || 'unknown'}]\n` +
+        `  ${obj.field_guide_summary || obj.description || ''}\n` +
+        (obj.sensory_impression ? `  Sensory: ${obj.sensory_impression}\n` : '') +
+        `  Parameters:\n${specs || '    (none recorded)'}`
+      );
+    }).join('\n\n');
+    return { hasObjects: true, objects, text };
+  }
+
   const JOBS = {
     suggest_topics: {
       label: 'Suggest episodes',
@@ -225,18 +335,69 @@ function createStudioRouter({ callAI } = {}) {
       },
     },
     write_script: {
-      label: 'Write script',
+      label: 'Write script (writer + critic)',
       needsIdea: true,
+      // Two-agent agentic flow used by the generate endpoint: a writer drafts a
+      // first-person sensory script from the episode's attached object parameters,
+      // then a critic refines pacing and checks hard-science constraints.
+      async custom({ channel, channelId, ideaId, model, modelLabel }) {
+        const idea = getIdea(ideaId);
+        if (!idea) throw new Error('Idea not found.');
+        const params = episodeObjectContext(channelId, ideaId);
+
+        const writerSystem = buildChannelSystem(channel,
+          'You write immersive, first-person, present-tense field-guide scripts that translate cold data into a deeply human experience. Robert is on camera as the human awe anchor.');
+        const writerUser =
+          `Write a full ready-to-record script for "${idea.title}".\n` +
+          `Angle: ${idea.angle || ''}\nPromise: ${idea.build_promise || ''}\nCategory: ${idea.category || ''}\n\n` +
+          `Object parameters to obey (these are the physics of this world):\n${params.text}\n\n` +
+          `Sensory focus — script exactly what the viewer would SEE (sky color from atmospheric scattering, light quality), HEAR (wind, silence, pressure), and FEEL (gravity on the body, temperature, the immediate biological challenges of standing there). ` +
+          `Follow the channel's recurring field-guide format. State assumptions plainly, label every uncertainty (unknown/estimated/disputed), use the real numbers above, and never invent measurements or hype.`;
+        const draft = (await callAI(model, writerUser, writerSystem, [], { returnFullResult: true }));
+        const draftText = draft.text || String(draft);
+
+        const criticSystem = buildChannelSystem(channel,
+          'You are a script editor and hard-science fact-checker. You improve pacing and flow, and you correct anything that contradicts the supplied physical parameters. You never weaken honest uncertainty labels.');
+        const criticUser =
+          `Revise the following draft for "${idea.title}".\n\n` +
+          `PARAMETERS (ground truth):\n${params.text}\n\n` +
+          `DRAFT:\n${draftText}\n\n` +
+          `Tighten pacing, keep the first-person sensory voice, and fix any claim that conflicts with the parameters. ` +
+          `Return ONLY strict JSON: {"script": "<full revised script>", "notes": ["<short note about each substantive change or remaining science caveat>"]}`;
+        const criticRaw = (await callAI(model, criticUser, criticSystem, [], { returnFullResult: true }));
+        const criticText = criticRaw.text || String(criticRaw);
+
+        let finalScript = draftText;
+        let notes = [];
+        try {
+          const parsed = extractJSON(criticText);
+          if (parsed && typeof parsed.script === 'string' && parsed.script.trim().length > 40) finalScript = parsed.script;
+          if (parsed && Array.isArray(parsed.notes)) notes = parsed.notes;
+        } catch {
+          if (criticText && criticText.trim().length > 40) finalScript = criticText;
+        }
+
+        const status = ['suggested', 'approved'].includes(idea.status) ? 'scripted' : idea.status;
+        const checklist = Array.isArray(idea.checklist) ? idea.checklist : [];
+        for (const note of notes.slice(0, 8)) checklist.push({ label: `Critic: ${String(note).slice(0, 200)}`, done: false });
+        if (!params.hasObjects) checklist.push({ label: 'Attach object records so the script can be grounded in real parameters.', done: false });
+        sql.prepare('UPDATE studio_ideas SET script = ?, script_model = ?, status = ?, checklist = ?, updated_at = ? WHERE id = ?')
+          .run(String(finalScript), `${modelLabel} (writer+critic)`, status, JSON.stringify(checklist), now(), ideaId);
+        return { summary: `Script written via writer+critic (${String(finalScript).length} chars, ${notes.length} critic note(s))`, ideaId };
+      },
+      // Prompt-mode + paste fallback (single pass).
       build({ channel, channelId, ideaId }) {
         const idea = getIdea(ideaId);
         if (!idea) throw new Error('Idea not found.');
+        const params = episodeObjectContext(channelId, ideaId);
         return {
-          system: buildChannelSystem(channel),
+          system: buildChannelSystem(channel, 'You write immersive, first-person, sensory field-guide scripts grounded in real physics.'),
           user:
-            `Write a full ready-to-record script in the channel's recurring field-guide format.\n\n` +
+            `Write a full ready-to-record first-person script in the channel's recurring field-guide format.\n\n` +
             `Episode: ${idea.title}\nAngle: ${idea.angle || ''}\nPromise: ${idea.build_promise || ''}\nCategory: ${idea.category || ''}\n\n` +
-            `Catalog context:\n${objectContext(channelId)}\n\n` +
-            `Requirements: clear assumptions, actual physics, uncertainty labels, vivid sensory writing, Robert on camera as the human awe anchor, no hype.`,
+            `Attached object parameters:\n${params.text}\n\n` +
+            `Channel catalog context:\n${objectContext(channelId)}\n\n` +
+            `Sensory focus: what you SEE (sky color from scattering), HEAR (wind), and FEEL (gravity, temperature, immediate biological hazards). Clear assumptions, actual physics, uncertainty labels, Robert on camera, no hype.`,
         };
       },
       apply({ ideaId, model }, text) {
@@ -354,6 +515,91 @@ function createStudioRouter({ callAI } = {}) {
         return { summary: 'Source/citation notes added to checklist', ideaId };
       },
     },
+
+    // ---- Catalog "system" jobs: act on a multi-object selection -----------
+    interaction_idea: {
+      label: 'Start video from selected objects',
+      needsObjects: true,
+      build({ channel, channelId, objectIds }) {
+        const ctx = selectedObjectsContext(channelId, objectIds);
+        return {
+          system: buildChannelSystem(channel, 'You invent one compelling episode concept from the INTERACTION between the selected space objects. Output strict JSON only.'),
+          user:
+            `Invent a single video idea built on what happens when these objects interact, are compared, or share a system. Use their real parameters.\n\n` +
+            `Selected objects:\n${ctx.text}\n\n` +
+            `Return a JSON object: { "title": string, "angle": string, "build_promise": string, "category": string }.`,
+        };
+      },
+      apply({ channelId, objectIds }, text) {
+        const parsed = extractJSON(text);
+        const item = Array.isArray(parsed) ? parsed[0] : parsed;
+        if (!item || !item.title) throw new Error('Model did not return a usable idea.');
+        const id = uuid();
+        const ts = now();
+        sql.prepare(
+          `INSERT INTO studio_ideas (id, channel_id, source, title, angle, build_promise, category, status, checklist, created_at, updated_at)
+           VALUES (?, ?, 'object-interaction', ?, ?, ?, ?, 'suggested', '[]', ?, ?)`
+        ).run(id, channelId, String(item.title).slice(0, 220), String(item.angle || '').slice(0, 2000), String(item.build_promise || '').slice(0, 1200), String(item.category || 'Object system').slice(0, 120), ts, ts);
+        // Link every selected object to the new episode.
+        const link = sql.prepare('INSERT OR IGNORE INTO studio_episode_objects (episode_id, object_id, role, notes) VALUES (?, ?, ?, ?)');
+        for (const objId of parseObjectIds(objectIds)) {
+          if (sql.prepare('SELECT 1 FROM space_objects WHERE id = ? AND channel_id = ?').get(objId, channelId)) {
+            link.run(id, objId, 'system_member', null);
+          }
+        }
+        return { summary: `Created "${item.title}" from ${parseObjectIds(objectIds).length} object(s)`, ideaId: id };
+      },
+    },
+    unreal_environment: {
+      label: 'Unreal 5 environment brief',
+      needsObjects: true,
+      build({ channel, channelId, objectIds }) {
+        const ctx = selectedObjectsContext(channelId, objectIds);
+        return {
+          system: buildChannelSystem(channel, 'You are a senior technical artist writing a precise build brief for Unreal Engine 5.5. Ground every choice in the supplied physical parameters.'),
+          user:
+            `Write a copy-paste build brief to recreate this world/system as a playable environment in Unreal Engine 5.5.\n\n` +
+            `Objects and parameters:\n${ctx.text}\n\n` +
+            `Cover, with concrete UE5 settings and real numbers where available: ` +
+            `Sky Atmosphere (Rayleigh/Mie tint from atmospheric composition + host-star color, density from pressure), ` +
+            `Directional Light / star (color temperature, intensity, angle), exposure & post-process color grading, ` +
+            `Landscape (scale, terrain type, dominant materials), water/ocean if present, ` +
+            `Niagara FX (wind from wind speed, precipitation/condensates, dust/haze), ` +
+            `and a Physics note (project gravity from surface gravity in m/s², scale). ` +
+            `Label anything you must assume.`,
+        };
+      },
+      apply({ channelId, objectIds, ideaId }, text) {
+        const body = String(text);
+        if (ideaId && getIdea(ideaId)) {
+          sql.prepare('UPDATE studio_ideas SET unreal_prompt = ?, updated_at = ? WHERE id = ?').run(body, now(), ideaId);
+        }
+        return { summary: `Unreal 5 environment brief ready (${body.length} chars)`, text: body, ideaId: ideaId || null };
+      },
+    },
+    physics_analysis: {
+      label: 'System physics analysis',
+      needsObjects: true,
+      build({ channel, channelId, objectIds }) {
+        const ctx = selectedObjectsContext(channelId, objectIds);
+        return {
+          system: buildChannelSystem(channel, 'You are a hard-science analyst. Reason quantitatively from the supplied parameters and label every assumption and uncertainty.'),
+          user:
+            `Analyze the physics of the system formed by these objects — especially their interactions.\n\n` +
+            `Objects and parameters:\n${ctx.text}\n\n` +
+            `Address: mutual gravity and orbital dynamics, tidal forces and Roche limits, orbital stability and resonances, ` +
+            `illumination and sky appearance, radiation environment, and what a human standing in the system would actually experience. ` +
+            `Use real numbers where available, show key formulas, and call out unknown/estimated/disputed values explicitly.`,
+        };
+      },
+      apply({ channelId, objectIds, ideaId }, text) {
+        const body = String(text);
+        if (ideaId && getIdea(ideaId)) {
+          sql.prepare('UPDATE studio_ideas SET physics_analysis = ?, updated_at = ? WHERE id = ?').run(body, now(), ideaId);
+        }
+        return { summary: `Physics analysis ready (${body.length} chars)`, text: body, ideaId: ideaId || null };
+      },
+    },
   };
   const PROMPTABLE = Object.keys(JOBS);
 
@@ -361,16 +607,22 @@ function createStudioRouter({ callAI } = {}) {
     const def = JOBS[type];
     if (!def) throw new Error(`Unknown job type: ${type}`);
     if (def.needsIdea && !params.ideaId) throw new Error('This job needs an idea.');
+    if (def.needsObjects && !parseObjectIds(params.objectIds).length) throw new Error('This job needs one or more selected objects.');
     const channel = getChannel(params.channelId);
     if (!channel) throw new Error('Channel not found.');
-    const built = def.build({ ...params, channel });
+    if (!callAI) throw new Error('AI service is not available.');
     const mode = params.mode === 'local' ? 'local' : 'cloud';
     const model = mode === 'local'
       ? { provider: 'local', model: process.env.LOCAL_STUDIO_MODEL || 'llama3.2' }
       : { provider: params.provider || 'anthropic', model: process.env.STUDIO_CLOUD_MODEL || 'claude-sonnet-4-6' };
-    if (!callAI) throw new Error('AI service is not available.');
+    const modelLabel = `${model.provider}/${model.model}`;
+    // Jobs may define a `custom` runner for multi-call agentic flows (e.g. writer + critic).
+    if (typeof def.custom === 'function') {
+      return def.custom({ ...params, channel, model, modelLabel });
+    }
+    const built = def.build({ ...params, channel });
     const full = await callAI(model, built.user, built.system, [], { returnFullResult: true });
-    return def.apply({ ...params, model: `${model.provider}/${model.model}` }, full.text || full);
+    return def.apply({ ...params, model: modelLabel }, full.text || full);
   }
 
   router.get('/channels', (_req, res) => {
@@ -474,7 +726,7 @@ function createStudioRouter({ callAI } = {}) {
     if (!idea) return res.status(404).json({ error: 'Idea not found' });
     const fields = [];
     const values = [];
-    for (const field of ['title', 'source', 'angle', 'build_promise', 'category', 'script', 'youtube_id']) {
+    for (const field of ['title', 'source', 'angle', 'build_promise', 'category', 'script', 'youtube_id', 'unreal_prompt', 'physics_analysis']) {
       if (req.body[field] !== undefined) {
         fields.push(`${field} = ?`);
         values.push(String(req.body[field]));
@@ -612,46 +864,84 @@ function createStudioRouter({ callAI } = {}) {
   });
 
   router.post('/:channelId/ingestion/run', (req, res) => {
-    if (!requireChannel(res, req.params.channelId)) return;
-    const runId = uuid();
-    const enabledSources = listSources(req.params.channelId).filter((source) => source.enabled);
-    const items = enabledSources.map((source) => ({
-      id: uuid(),
-      source,
-      title: source.query_template ? `Search: ${source.query_template}` : source.name,
-      url: source.url || null,
-      content_hash: `${source.id}:${source.updated_at || source.created_at || ''}`,
-    }));
-    const ts = now();
-    const tx = sql.transaction(() => {
-      sql.prepare(
-        `INSERT INTO studio_ingestion_runs (id, channel_id, trigger, status, discovered_count, deduped_count, items_enqueued, digest, created_at, updated_at)
-         VALUES (?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?)`
-      ).run(
-        runId,
-        req.params.channelId,
-        String(req.body.trigger || 'manual'),
-        items.length,
-        items.length,
-        items.length,
-        `Queued ${items.length} local source item(s) for ${req.params.channelId}.`,
-        ts,
-        ts
-      );
-      const insertItem = sql.prepare(
-        `INSERT INTO studio_source_items (id, channel_id, run_id, title, url, source_type, source_name, content_hash, ingestion_status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?)`
-      );
-      for (const item of items) {
-        insertItem.run(item.id, req.params.channelId, runId, item.title, item.url, item.source.source_type, item.source.name, item.content_hash, ts, ts);
-      }
+    const channel = requireChannel(res, req.params.channelId);
+    if (!channel) return;
+    const channelId = req.params.channelId;
+    const trigger = String(req.body.trigger || 'manual');
+    // Create the run synchronously so the client gets an id, then process in the background.
+    const runId = ingestion.createRun(channelId, trigger);
+    setImmediate(() => {
+      ingestion.run({ channelId, trigger, channel, existingRunId: runId }).catch((e) => {
+        try { ingestion.updateRun(runId, { status: 'failed', digest: `Ingestion failed: ${e.message}` }); } catch { /* noop */ }
+      });
     });
-    tx();
     res.status(202).json({
       localOnly: true,
       run: sql.prepare('SELECT * FROM studio_ingestion_runs WHERE id = ?').get(runId),
-      items,
     });
+  });
+
+  router.post('/:channelId/ingestion/astro', (req, res) => {
+    const channel = requireChannel(res, req.params.channelId);
+    if (!channel) return;
+    const channelId = req.params.channelId;
+    const runId = ingestion.createRun(channelId, 'astro-manual');
+    setImmediate(() => {
+      astroNightly.run({ channelId, existingRunId: runId }).catch((e) => {
+        try { ingestion.updateRun(runId, { status: 'failed', digest: `Astrophysics agent failed: ${e.message}` }); } catch { /* noop */ }
+      });
+    });
+    res.status(202).json({ localOnly: true, run: sql.prepare('SELECT * FROM studio_ingestion_runs WHERE id = ?').get(runId) });
+  });
+
+  router.post('/:channelId/ingestion/enrich', (req, res) => {
+    const channel = requireChannel(res, req.params.channelId);
+    if (!channel) return;
+    const channelId = req.params.channelId;
+    const runId = ingestion.createRun(channelId, 'enrich');
+    const batch = Number(req.body.batch) || undefined;
+    setImmediate(() => {
+      astroNightly.runEnrichment({ channelId, existingRunId: runId, batch }).catch((e) => {
+        try { ingestion.updateRun(runId, { status: 'failed', digest: `Enrichment failed: ${e.message}` }); } catch { /* noop */ }
+      });
+    });
+    res.status(202).json({ localOnly: true, run: sql.prepare('SELECT * FROM studio_ingestion_runs WHERE id = ?').get(runId) });
+  });
+
+  router.get('/:channelId/ingestion/runs', (req, res) => {
+    if (!requireChannel(res, req.params.channelId)) return;
+    const runs = sql.prepare('SELECT * FROM studio_ingestion_runs WHERE channel_id = ? ORDER BY created_at DESC LIMIT 20').all(req.params.channelId);
+    res.json(runs);
+  });
+
+  // Seed the Sun + local planets with curated, data-rich reference values (the
+  // Exoplanet Archive excludes our own system). Idempotent — upserts by name.
+  router.post('/:channelId/seed-solar-system', (req, res) => {
+    if (!requireChannel(res, req.params.channelId)) return;
+    const records = require('../services/solar-system-seed');
+    let seeded = 0;
+    const tx = sql.transaction(() => {
+      for (const rec of records) { if (ingestion.upsertObject(req.params.channelId, rec, null)) seeded += 1; }
+    });
+    tx();
+    res.json({ seeded, names: records.map((r) => r.name) });
+  });
+
+  // Backfill progress: where each source's cursor has reached + objects left to enrich.
+  router.get('/:channelId/ingestion/cursors', (req, res) => {
+    if (!requireChannel(res, req.params.channelId)) return;
+    const cursors = sql.prepare('SELECT * FROM studio_ingestion_cursors WHERE channel_id = ? ORDER BY source ASC').all(req.params.channelId);
+    const objectsTotal = sql.prepare('SELECT COUNT(*) AS n FROM space_objects WHERE channel_id = ?').get(req.params.channelId).n;
+    const enrichRemaining = sql.prepare('SELECT COUNT(*) AS n FROM space_objects WHERE channel_id = ? AND enriched_at IS NULL').get(req.params.channelId).n;
+    res.json({ cursors, objectsTotal, enrichRemaining });
+  });
+
+  router.get('/:channelId/ingestion/runs/:runId', (req, res) => {
+    if (!requireChannel(res, req.params.channelId)) return;
+    const run = sql.prepare('SELECT * FROM studio_ingestion_runs WHERE id = ? AND channel_id = ?').get(req.params.runId, req.params.channelId);
+    if (!run) return res.status(404).json({ error: 'Run not found' });
+    const items = sql.prepare('SELECT * FROM studio_source_items WHERE run_id = ? ORDER BY created_at ASC').all(req.params.runId);
+    res.json({ run, items });
   });
 
   router.get('/:channelId/objects', (req, res) => {
@@ -802,14 +1092,42 @@ function createStudioRouter({ callAI } = {}) {
 
   router.delete('/:channelId/reference-images/:imageId', (req, res) => {
     if (!requireChannel(res, req.params.channelId)) return;
+    const row = sql.prepare('SELECT stored_path FROM studio_reference_images WHERE id = ? AND channel_id = ?').get(req.params.imageId, req.params.channelId);
+    if (row && row.stored_path) { try { fs.unlinkSync(row.stored_path); } catch { /* best effort */ } }
     sql.prepare('DELETE FROM studio_reference_images WHERE id = ? AND channel_id = ?').run(req.params.imageId, req.params.channelId);
     res.json({ success: true });
+  });
+
+  router.post('/:channelId/reference-images/upload', refUpload.single('file'), (req, res) => {
+    if (!getChannel(req.params.channelId)) {
+      if (req.file) { try { fs.unlinkSync(req.file.path); } catch { /* noop */ } }
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded. Use field name "file".' });
+    const id = uuid();
+    const fileUrl = `/api/studio/${req.params.channelId}/reference-images/${id}/file`;
+    sql.prepare(
+      `INSERT INTO studio_reference_images (id, channel_id, episode_id, object_id, file_path_or_url, stored_path, prompt, negative_prompt, model, aspect_ratio, intended_use, tags, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      id, req.params.channelId, req.body.episode_id || null, req.body.object_id || null,
+      fileUrl, req.file.path, req.body.prompt || null, req.body.negative_prompt || null,
+      req.body.model || null, req.body.aspect_ratio || null, req.body.intended_use || 'surface_reference',
+      req.body.tags || null, req.body.notes || null, now()
+    );
+    res.status(201).json(imageRow(sql.prepare('SELECT * FROM studio_reference_images WHERE id = ?').get(id)));
+  });
+
+  router.get('/:channelId/reference-images/:imageId/file', (req, res) => {
+    const row = sql.prepare('SELECT * FROM studio_reference_images WHERE id = ? AND channel_id = ?').get(req.params.imageId, req.params.channelId);
+    if (!row || !row.stored_path || !fs.existsSync(row.stored_path)) return res.status(404).json({ error: 'File not found' });
+    res.sendFile(path.resolve(row.stored_path));
   });
 
   router.post('/:channelId/generate', async (req, res) => {
     try {
       const result = await runJob(req.body.type, { ...req.body, channelId: req.params.channelId });
-      res.json({ success: true, result, idea: req.body.ideaId ? getIdea(req.body.ideaId) : null });
+      res.json({ success: true, result, idea: result?.ideaId ? getIdea(result.ideaId) : (req.body.ideaId ? getIdea(req.body.ideaId) : null) });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
@@ -819,7 +1137,7 @@ function createStudioRouter({ callAI } = {}) {
     try {
       const channelId = req.body.channelId || DEFAULT_CHANNEL_ID;
       const result = await runJob(req.body.type, { ...req.body, channelId });
-      res.json({ success: true, result, idea: req.body.ideaId ? getIdea(req.body.ideaId) : null });
+      res.json({ success: true, result, idea: result?.ideaId ? getIdea(result.ideaId) : (req.body.ideaId ? getIdea(req.body.ideaId) : null) });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
@@ -831,7 +1149,7 @@ function createStudioRouter({ callAI } = {}) {
       if (!channel) return res.status(404).json({ error: 'Channel not found' });
       const def = JOBS[req.query.type];
       if (!def) return res.status(404).json({ error: 'Unknown job type' });
-      const built = def.build({ channel, channelId: req.params.channelId, ideaId: req.query.ideaId, count: req.query.count });
+      const built = def.build({ channel, channelId: req.params.channelId, ideaId: req.query.ideaId, objectIds: req.query.objectIds, count: req.query.count });
       res.json({ label: def.label, system: built.system, user: built.user });
     } catch (e) {
       res.status(400).json({ error: e.message });
@@ -845,7 +1163,7 @@ function createStudioRouter({ callAI } = {}) {
       if (!channel) return res.status(404).json({ error: 'Channel not found' });
       const def = JOBS[req.query.type];
       if (!def) return res.status(404).json({ error: 'Unknown job type' });
-      const built = def.build({ channel, channelId, ideaId: req.query.ideaId, count: req.query.count });
+      const built = def.build({ channel, channelId, ideaId: req.query.ideaId, objectIds: req.query.objectIds, count: req.query.count });
       res.json({ label: def.label, system: built.system, user: built.user });
     } catch (e) {
       res.status(400).json({ error: e.message });
@@ -856,8 +1174,8 @@ function createStudioRouter({ callAI } = {}) {
     try {
       const def = JOBS[req.body.type];
       if (!def) return res.status(404).json({ error: 'Unknown job type' });
-      const result = def.apply({ channelId: req.params.channelId, ideaId: req.body.ideaId, model: 'pasted' }, String(req.body.text || ''));
-      res.json({ success: true, result, idea: req.body.ideaId ? getIdea(req.body.ideaId) : null });
+      const result = def.apply({ channelId: req.params.channelId, ideaId: req.body.ideaId, objectIds: req.body.objectIds, model: 'pasted' }, String(req.body.text || ''));
+      res.json({ success: true, result, idea: result?.ideaId ? getIdea(result.ideaId) : (req.body.ideaId ? getIdea(req.body.ideaId) : null) });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
@@ -867,8 +1185,8 @@ function createStudioRouter({ callAI } = {}) {
     try {
       const def = JOBS[req.body.type];
       if (!def) return res.status(404).json({ error: 'Unknown job type' });
-      const result = def.apply({ channelId: req.body.channelId || DEFAULT_CHANNEL_ID, ideaId: req.body.ideaId, model: 'pasted' }, String(req.body.text || ''));
-      res.json({ success: true, result, idea: req.body.ideaId ? getIdea(req.body.ideaId) : null });
+      const result = def.apply({ channelId: req.body.channelId || DEFAULT_CHANNEL_ID, ideaId: req.body.ideaId, objectIds: req.body.objectIds, model: 'pasted' }, String(req.body.text || ''));
+      res.json({ success: true, result, idea: result?.ideaId ? getIdea(result.ideaId) : (req.body.ideaId ? getIdea(req.body.ideaId) : null) });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
@@ -1055,18 +1373,53 @@ function setupSchema(sql) {
       notes TEXT,
       created_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS studio_ingestion_cursors (
+      channel_id TEXT NOT NULL,
+      source TEXT NOT NULL,
+      mode TEXT DEFAULT 'backfill',
+      position TEXT,
+      last_run_at TEXT,
+      processed_count INTEGER DEFAULT 0,
+      total_estimate INTEGER,
+      updated_at TEXT,
+      PRIMARY KEY (channel_id, source)
+    );
+  `);
+  ensureColumn(sql, 'studio_ideas', 'channel_id', "TEXT DEFAULT 'praxis-youtube'");
+  ensureColumn(sql, 'studio_ideas', 'source', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'angle', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'build_promise', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'category', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'status', "TEXT DEFAULT 'suggested'");
+  ensureColumn(sql, 'studio_ideas', 'script', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'script_model', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'thumbnail_concepts', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'image_prompts', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'checklist', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'publish_kit', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'youtube_id', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'unreal_prompt', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'physics_analysis', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'sort_order', 'INTEGER DEFAULT 0');
+  ensureColumn(sql, 'studio_ideas', 'created_at', 'TEXT');
+  ensureColumn(sql, 'studio_ideas', 'updated_at', 'TEXT');
+  ensureColumn(sql, 'studio_reference_images', 'stored_path', 'TEXT');
+  ensureColumn(sql, 'space_objects', 'enriched_at', 'TEXT');
+  sql.exec(`
     CREATE INDEX IF NOT EXISTS idx_studio_ideas_channel_status ON studio_ideas(channel_id, status);
     CREATE INDEX IF NOT EXISTS idx_studio_sources_channel ON studio_sources(channel_id);
     CREATE INDEX IF NOT EXISTS idx_space_objects_channel_kind ON space_objects(channel_id, object_kind);
     CREATE INDEX IF NOT EXISTS idx_space_spec_values_object ON space_object_spec_values(object_id);
     CREATE INDEX IF NOT EXISTS idx_reference_images_channel_episode ON studio_reference_images(channel_id, episode_id);
   `);
-  ensureColumn(sql, 'studio_ideas', 'channel_id', "TEXT DEFAULT 'praxis-youtube'");
 }
 
 function ensureColumn(sql, table, column, definition) {
-  const hasColumn = sql.prepare(`PRAGMA table_info(${table})`).all().some((row) => row.name === column);
-  if (!hasColumn) sql.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  if (!hasColumn(sql, table, column)) sql.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+function hasColumn(sql, table, column) {
+  return sql.prepare(`PRAGMA table_info(${table})`).all().some((row) => row.name === column);
 }
 
 function seedChannels(sql) {
@@ -1183,6 +1536,7 @@ function seedSpecDefinitions(sql) {
     ['atmosphere.pressure_bar', 'Atmosphere', 'Pressure', 'bar'],
     ['atmosphere.composition', 'Atmosphere', 'Composition', null],
     ['atmosphere.scale_height_km', 'Atmosphere', 'Scale height', 'km'],
+    ['atmosphere.density_kg_m3', 'Atmosphere', 'Surface air density', 'kg/m3'],
     ['atmosphere.clouds_hazes', 'Atmosphere', 'Clouds/hazes', null],
     ['atmosphere.dominant_weather', 'Atmosphere', 'Dominant weather', null],
     ['atmosphere.wind_speed_km_h', 'Atmosphere', 'Wind speed', 'km/h'],

@@ -1,0 +1,71 @@
+<h2>Source use for Impossible Worlds</h2>
+<p class="subtitle">Sources should feed a reusable catalog of real, candidate, and hypothetical space objects before they feed scripts.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Local overnight ingestion flow</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-items:stretch;">
+      <div class="placeholder" style="height:auto;padding:12px;">Configured sources<br><small>Kurzgesagt, NASA/arXiv/RSS, YouTube, URLs, search queries</small></div>
+      <div class="placeholder" style="height:auto;padding:12px;">Discovery + dedup<br><small>same shape as Praxis intake</small></div>
+      <div class="placeholder" style="height:auto;padding:12px;">Local LLM read<br><small>extract objects, specs, claims, wonder points</small></div>
+      <div class="placeholder" style="height:auto;padding:12px;">Object catalog<br><small>field-guide specimens + evidence</small></div>
+      <div class="placeholder" style="height:auto;padding:12px;">Episodes<br><small>attach objects, assumptions, image prompts, citations</small></div>
+    </div>
+  </div>
+</div>
+
+<div class="cards">
+  <div class="card" data-choice="sqlite-phased-hybrid" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="placeholder" style="height:auto;padding:14px;text-align:left;">
+        <strong>Recommended: SQLite catalog, graph-ready edges</strong><br>
+        Tables: objects, specs, claims, relationships, points_of_wonder, source_items.
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Phased Hybrid</h3>
+      <p>Fast to build and easy to inspect now. Relationship table can later project into Neo4j/The Cortex without rethinking the model.</p>
+    </div>
+  </div>
+  <div class="card" data-choice="neo4j-first" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="placeholder" style="height:auto;padding:14px;text-align:left;">
+        <strong>Neo4j-first object graph</strong><br>
+        Nodes: Object, Class, HostStar, Phenomenon, Source. Edges: ORBITS, ANALOG_OF, CONSTRAINS.
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Graph First</h3>
+      <p>Best for relationship exploration, but heavier for v1 and dependent on graph services being healthy.</p>
+    </div>
+  </div>
+  <div class="card" data-choice="simple-notes" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="placeholder" style="height:auto;padding:14px;text-align:left;">
+        <strong>Markdown/spec notes only</strong><br>
+        Per-object files in the project folder with source links and prompt notes.
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>File Notes</h3>
+      <p>Human-readable and simple, but hard to query, dedupe, attach to episodes, or use for structured prompts.</p>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve-phased-hybrid" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Use phased hybrid</h3>
+      <p>Start with local SQLite tables and graph-ready relationships; make Neo4j a later projection if useful.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="prefer-neo4j-first" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Use Neo4j first</h3>
+      <p>Prioritize relationship exploration over v1 implementation simplicity.</p>
+    </div>
+  </div>
+</div>
