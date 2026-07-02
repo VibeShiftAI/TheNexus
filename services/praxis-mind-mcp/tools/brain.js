@@ -61,13 +61,14 @@ function register(server, ctx) {
 
   server.tool(
     'brain_deliberate',
-    'Ask Praxis\'s council / System-2 deliberation for a careful answer to a high-stakes question. Heavier (slower, more tokens) than brain_chat. NOTE: v0 routes to brain_chat with a deliberation system prompt until the Cortex council HTTP endpoint exists.',
+    'Ask Praxis\'s council / System-2 deliberation for a careful answer to a high-stakes question. Heavier (slower, more tokens) than brain_chat. Deliberations are automatically grounded with top-ranked shared-mind vault hits for the question (disable with vault_grounding: false). NOTE: v0 routes to brain_chat with a deliberation system prompt until the Cortex council HTTP endpoint exists.',
     {
       question: z.string().describe('The question to deliberate on.'),
       depth: z.enum(['shallow', 'deep']).default('shallow'),
       context: z.array(z.string()).optional().describe('Optional context snippets to ground the deliberation.'),
+      vault_grounding: z.boolean().default(true).describe('Prepend top-ranked shared-mind vault hits for the question.'),
     },
-    async ({ question, depth, context }) => {
+    async ({ question, depth, context, vault_grounding = true }) => {
       const auth = checkPrivilege(ctx.caller, 'brain.deliberate');
       if (auth) return auth;
       const rl = checkAndIncrement(ctx.caller.identity, 'brain_deliberate', ctx.caller.rate_limits_per_hour?.['brain.deliberate']);
@@ -76,8 +77,23 @@ function register(server, ctx) {
       }
       const started = Date.now();
       try {
+        // Retrieval-grounded deliberation: top vault hits ride along as a
+        // context message. Best-effort — Cortex being down never blocks the
+        // deliberation itself.
+        let vaultBlock = null;
+        if (vault_grounding) {
+          try {
+            const hits = await backends.cortexVaultSearch({ query: question, k: 3 });
+            if (hits?.results?.length) {
+              vaultBlock = 'Shared-mind vault context (ranked):\n' + hits.results
+                .map((r) => `- [${r.path}${r.heading ? ` › ${r.heading}` : ''}] ${(r.text || '').replace(/\s+/g, ' ').slice(0, 250)}`)
+                .join('\n');
+            }
+          } catch (_) { /* vault index unavailable — deliberate without it */ }
+        }
         const system = `You are Praxis's deliberation mode. Think step by step. Surface counterexamples. State your confidence. ${depth === 'deep' ? 'Be exhaustive; consider failure modes.' : 'Be concise.'}`;
         const messages = [
+          ...(vaultBlock ? [{ role: 'user', content: vaultBlock }] : []),
           ...(context && context.length ? [{ role: 'user', content: `Context:\n${context.join('\n---\n')}` }] : []),
           { role: 'user', content: question },
         ];

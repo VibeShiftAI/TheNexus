@@ -10,6 +10,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MonitorPlay } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { CoreCanvas, CORE_STYLES } from "@/components/bridge/core-canvas";
@@ -160,7 +161,9 @@ export function AmbientMode() {
         <MonitorPlay size={18} />
       </button>
 
-      {active && (
+      {/* Portal to <body>: the header's backdrop-filter creates a containing
+          block, which would trap a fixed overlay inside the 64px header. */}
+      {active && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[100] flex cursor-none flex-col items-center justify-center bg-black">
           <div className="text-7xl font-bold tabular-nums tracking-tight text-slate-200">{clock}</div>
           <div className="mt-1 text-sm text-slate-500">
@@ -190,7 +193,8 @@ export function AmbientMode() {
           <div className="absolute bottom-6 max-w-3xl truncate px-6 font-mono text-[11px] text-slate-700">
             {latestLine ? `${new Date(latestLine.at).toLocaleTimeString()} · ${latestLine.type}` : "standing by"}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
