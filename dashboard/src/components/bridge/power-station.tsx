@@ -34,10 +34,16 @@ function fmtTokens(n: number) {
   return String(n);
 }
 
+interface BurnDay {
+  day: string;
+  calls: number;
+}
+
 export function PowerStation() {
   const { presence } = usePraxisStream();
   const [log, setLog] = useState<LogResponse | null>(null);
   const [err, setErr] = useState(false);
+  const [burn, setBurn] = useState<BurnDay[]>([]);
   const [localOnly, setLocalOnly] = useState<{ enabled: boolean; reason: string | null }>({
     enabled: false,
     reason: null,
@@ -65,6 +71,33 @@ export function PowerStation() {
     getLocalOnlyMode()
       .then(setLocalOnly)
       .catch(() => {});
+  }, []);
+
+  // Daily call burn-down: max sampled daily_call_count per local calendar day.
+  useEffect(() => {
+    let active = true;
+    const loadBurn = async () => {
+      try {
+        const res = await fetch("/api/fleet/stats-history?hours=168", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const perDay = new Map<string, number>();
+        for (const row of data.rows ?? []) {
+          if (row.daily_call_count == null) continue;
+          const day = new Date(row.at).toLocaleDateString([], { weekday: "short" });
+          perDay.set(day, Math.max(perDay.get(day) ?? 0, row.daily_call_count));
+        }
+        if (active) setBurn([...perDay.entries()].map(([day, calls]) => ({ day, calls })).slice(-7));
+      } catch {
+        /* burn chart is progressive enhancement */
+      }
+    };
+    loadBurn();
+    const t = setInterval(loadBurn, 10 * 60_000);
+    return () => {
+      active = false;
+      clearInterval(t);
+    };
   }, []);
 
   const toggleLocalOnly = async () => {
@@ -155,6 +188,26 @@ export function PowerStation() {
           <div className="pt-0.5 text-[10px] text-slate-600">
             {agg.total_calls} calls / {agg.by_provider.length} provider{agg.by_provider.length === 1 ? "" : "s"} in the
             last hour
+          </div>
+        </div>
+      )}
+
+      {burn.length >= 2 && (
+        <div className="mt-3 border-t border-slate-800/60 pt-2">
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-600">daily cloud-call burn</div>
+          <div className="flex h-10 items-end gap-1.5">
+            {burn.map((b) => {
+              const max = Math.max(1, ...burn.map((x) => x.calls));
+              return (
+                <div key={b.day} className="flex flex-1 flex-col items-center gap-0.5" title={`${b.day}: ${b.calls} calls`}>
+                  <div
+                    className="w-full rounded-t bg-amber-500/50"
+                    style={{ height: `${Math.max(6, (b.calls / max) * 100)}%` }}
+                  />
+                  <span className="text-[9px] text-slate-600">{b.day}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

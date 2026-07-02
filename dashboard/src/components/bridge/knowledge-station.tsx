@@ -76,10 +76,11 @@ export function KnowledgeStation() {
   const chartData = useMemo(
     () =>
       history
-        .filter((r) => r.neo4j_nodes != null)
+        .filter((r) => r.neo4j_nodes != null || r.pinecone_vectors != null)
         .map((r) => ({
           at: new Date(r.at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit" }),
           nodes: r.neo4j_nodes,
+          vectors: r.pinecone_vectors,
         })),
     [history]
   );
@@ -88,6 +89,12 @@ export function KnowledgeStation() {
     const pts = history.filter((r) => r.neo4j_nodes != null);
     if (pts.length < 2) return null;
     return (pts[pts.length - 1].neo4j_nodes ?? 0) - (pts[0].neo4j_nodes ?? 0);
+  }, [history]);
+
+  const vectorGrowth = useMemo(() => {
+    const pts = history.filter((r) => r.pinecone_vectors != null);
+    if (pts.length < 2) return null;
+    return (pts[pts.length - 1].pinecone_vectors ?? 0) - (pts[0].pinecone_vectors ?? 0);
   }, [history]);
 
   return (
@@ -132,7 +139,8 @@ export function KnowledgeStation() {
                         <stop offset="100%" stopColor="#2dd4bf" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <YAxis domain={["dataMin", "dataMax"]} hide />
+                    <YAxis yAxisId="nodes" domain={["dataMin", "dataMax"]} hide />
+                    <YAxis yAxisId="vectors" domain={["dataMin", "dataMax"]} hide />
                     <Tooltip
                       contentStyle={{
                         background: "#0f172a",
@@ -142,13 +150,22 @@ export function KnowledgeStation() {
                       }}
                       labelStyle={{ color: "#94a3b8" }}
                     />
-                    <Area type="monotone" dataKey="nodes" stroke="#2dd4bf" strokeWidth={1.5} fill="url(#nodesFill)" />
+                    <Area yAxisId="nodes" type="monotone" dataKey="nodes" stroke="#2dd4bf" strokeWidth={1.5} fill="url(#nodesFill)" />
+                    <Area yAxisId="vectors" type="monotone" dataKey="vectors" stroke="#60a5fa" strokeWidth={1.2} fill="none" strokeDasharray="4 3" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
               <div className="mt-1 text-[10px] text-slate-500">
-                {growth != null && growth >= 0 ? `+${growth.toLocaleString()}` : growth?.toLocaleString()} nodes over the
-                sampled week
+                <span className="text-teal-400">■</span>{" "}
+                {growth != null && growth >= 0 ? `+${growth.toLocaleString()}` : growth?.toLocaleString()} nodes
+                {vectorGrowth != null && (
+                  <>
+                    {" · "}
+                    <span className="text-blue-400">▪</span> {vectorGrowth >= 0 ? "+" : ""}
+                    {vectorGrowth.toLocaleString()} vectors
+                  </>
+                )}{" "}
+                over the sampled window
               </div>
             </>
           ) : (

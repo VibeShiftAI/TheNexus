@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle } from "lucide-react";
+import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, RotateCcw, ShieldCheck } from "lucide-react";
 import { DispatchStation, type DispatchStateResponse } from "@/components/bridge/dispatch-station";
 import { EventTicker } from "@/components/bridge/event-ticker";
 
@@ -79,6 +79,37 @@ export default function OpsConsolePage() {
     }
   };
 
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  const retryTask = async (id: string) => {
+    setRetryingId(id);
+    try {
+      const res = await fetch("/api/praxis/dispatch/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setActionMsg(res.ok ? `Task ${id.slice(0, 8)} re-queued — the sweep will re-dispatch it.` : `Retry failed: ${data.error ?? res.status}`);
+      load();
+    } catch {
+      setActionMsg("Retry failed — Praxis unreachable.");
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
+  const reapplyAutoApprove = async () => {
+    try {
+      const res = await fetch("/api/praxis/dispatch/auto-approve", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      setActionMsg(res.ok ? "Auto-approve settings re-applied to Antigravity." : `Auto-approve failed: ${data.error ?? res.status}`);
+    } catch {
+      setActionMsg("Auto-approve failed — Praxis unreachable.");
+    }
+  };
+
   const bridge = state?.antigravity?.bridge as
     | { status?: string; version?: string; queueDir?: string; activeTasks?: number; extension?: string }
     | null
@@ -121,6 +152,12 @@ export default function OpsConsolePage() {
         {err && (
           <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-xs text-red-300">{err}</div>
         )}
+        {actionMsg && (
+          <div className="flex items-center justify-between rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-3 text-xs text-cyan-200">
+            <span>{actionMsg}</span>
+            <button onClick={() => setActionMsg(null)} className="text-cyan-400 hover:text-white">✕</button>
+          </div>
+        )}
 
         {/* Live lanes + bridge health */}
         <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr] items-start">
@@ -151,6 +188,13 @@ export default function OpsConsolePage() {
                     </span>
                   </div>
                 )}
+                <button
+                  onClick={reapplyAutoApprove}
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1.5 text-[11px] text-emerald-300 hover:bg-emerald-500/20"
+                  title="Merge full-autonomy keys into Antigravity settings.json"
+                >
+                  <ShieldCheck size={12} /> re-apply auto-approve
+                </button>
               </div>
             ) : (
               <div className="rounded border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-300">
@@ -180,6 +224,16 @@ export default function OpsConsolePage() {
                   <span className="min-w-0 flex-1 truncate text-xs text-slate-300" title={t.title}>
                     {t.title}
                   </span>
+                  {t.status === "failed" && (
+                    <button
+                      onClick={() => retryTask(t.id)}
+                      disabled={retryingId === t.id}
+                      className="flex shrink-0 items-center gap-1 rounded border border-cyan-500/40 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
+                      title="Re-queue for dispatch"
+                    >
+                      <RotateCcw size={10} className={retryingId === t.id ? "animate-spin" : ""} /> retry
+                    </button>
+                  )}
                   <span className="shrink-0 font-mono text-[10px] text-slate-600">{t.id.slice(0, 8)}</span>
                   <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(t.updatedAt)}</span>
                 </div>

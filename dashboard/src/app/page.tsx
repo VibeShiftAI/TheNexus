@@ -19,6 +19,7 @@ import { KnowledgeStation } from "@/components/bridge/knowledge-station";
 import { PowerStation } from "@/components/bridge/power-station";
 import { AcademyStation } from "@/components/bridge/academy-station";
 import { VoiceCommandBar } from "@/components/bridge/voice-command-bar";
+import { AmbientMode } from "@/components/bridge/ambient-mode";
 import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-react";
 
 export default function Home() {
@@ -137,6 +138,7 @@ export default function Home() {
 
           <div className="flex items-center gap-3">
             <VoiceCommandBar />
+            <AmbientMode />
             <button
               onClick={() => setShowNewProjectModal(true)}
               className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/30 hover:border-cyan-500/50 px-3.5 py-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-all shadow-lg shadow-cyan-500/5"
@@ -172,6 +174,17 @@ export default function Home() {
           <PraxisCore />
         </div>
 
+        {/* Comms deck: Praxis chat front and center, inbox + today beside it */}
+        <div className="mb-6 grid gap-6 lg:grid-cols-[1.6fr_1fr] items-start">
+          <div className="h-[550px] lg:h-[620px] w-full min-w-0">
+            <AITerminal mode="inline" />
+          </div>
+          <div className="space-y-4 min-w-0">
+            <HitlInbox />
+            <ScheduleTimeline />
+          </div>
+        </div>
+
         {/* Bridge stations */}
         <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
           <DispatchStation />
@@ -179,24 +192,10 @@ export default function Home() {
           <PowerStation />
           <FleetStation />
           <AcademyStation />
-          <ScheduleTimeline />
         </div>
 
-        {/* Comms + operations workspace */}
-        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr] xl:grid-cols-[1.6fr_1fr] items-start">
-          {/* Left Side: Praxis Chat (AITerminal) */}
-          <div className="space-y-6 flex flex-col min-w-0">
-            <div className="h-[550px] lg:h-[600px] w-full shrink-0">
-              <AITerminal mode="inline" />
-            </div>
-          </div>
-
-          {/* Right Side: HITL inbox + task board */}
-          <div className="space-y-6 min-w-0">
-            <HitlInbox />
-            <CompactTaskBoard key={boardRefreshKey} onSelectTask={handleSelectTask} />
-          </div>
-        </div>
+        {/* Task board — full width below the stations */}
+        <CompactTaskBoard key={boardRefreshKey} onSelectTask={handleSelectTask} />
 
         {/* Pinned / Active Projects Section */}
         <div className="mt-12 pt-8 border-t border-slate-800/80 text-left shrink-0">

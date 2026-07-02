@@ -1,11 +1,18 @@
 /**
- * VoiceCommandBar — "Computer, …" for the bridge.
+ * VoiceCommandBar — "Praxis, …" for the bridge.
  *
- * Click the mic to record, click again to stop. Audio goes to Praxis's Groq
- * Whisper transcriber (/api/praxis/transcribe). The transcript first runs
- * through a local intent grammar (navigation, local-only lever, local-queue
- * pause/resume, status report); anything unmatched falls through to Praxis
- * chat and the reply is spoken back via ElevenLabs (/api/praxis/speak).
+ * Input paths:
+ *   - Wake word: a lightweight webkitSpeechRecognition loop listens for
+ *     "Praxis" while the bar is idle; hearing it chirps and opens the mic.
+ *   - Click the mic (manual push-to-talk) any time.
+ * Recording auto-stops on ~1.6s of silence (or 15s cap), goes to Praxis's
+ * Groq Whisper transcriber, runs the local intent grammar (navigation,
+ * local-only lever, local-queue pause/resume, status report), and anything
+ * unmatched falls through to Praxis chat. Replies are spoken back through
+ * the existing ElevenLabs route (/api/praxis/speak).
+ *
+ * Also owns spoken red-alert announcements (task.failed / hitl.created) with
+ * quiet hours 22:00–08:00 and a 2-minute rate limit.
  *
  * Mic capture and audio playback live here in the cockpit; STT/TTS/intent
  * cognition stay in Praxis — so this survives the planned agent swap.
@@ -14,11 +21,22 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, Square, Loader2, Volume2, X } from "lucide-react";
+import { Mic, Square, Loader2, Volume2, X, Settings2, Ear, EarOff } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { setLocalOnlyMode } from "@/lib/model-control";
+import { getAmbientIdleMinutes, setAmbientIdleMinutes } from "@/components/bridge/ambient-mode";
+import type { StreamEvent } from "@praxis/contract";
 
 type VoiceState = "idle" | "recording" | "transcribing" | "working" | "speaking";
+
+const WAKE_KEY = "nexus.voice.wakeword";
+const ALERTS_KEY = "nexus.voice.alerts";
+const WAKE_PATTERN = /\bpraxis\b|\bpraxus\b/i;
+const SILENCE_STOP_MS = 1600;
+const MAX_RECORDING_MS = 15_000;
+const SILENCE_RMS_THRESHOLD = 0.015;
+const ALERT_RATE_LIMIT_MS = 2 * 60_000;
+const QUIET_HOURS = { start: 22, end: 8 }; // local time, inclusive start / exclusive end
 
 const NAV_TARGETS: { pattern: RegExp; route: string; label: string }[] = [
   { pattern: /task ?board|tasks/, route: "/task-board", label: "Task board" },
@@ -40,29 +58,106 @@ function mimeToFilename(mime: string): string {
   return "voice.webm";
 }
 
+function inQuietHours(date = new Date()): boolean {
+  const h = date.getHours();
+  return h >= QUIET_HOURS.start || h < QUIET_HOURS.end;
+}
+
+function readSetting(key: string, fallback: boolean): boolean {
+  if (typeof window === "undefined") return fallback;
+  const raw = window.localStorage.getItem(key);
+  return raw == null ? fallback : raw === "1";
+}
+
+/** Minimal typing for Chrome's prefixed SpeechRecognition. */
+interface RecognitionLike {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>>; resultIndex: number }) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+function createRecognition(): RecognitionLike | null {
+  if (typeof window === "undefined") return null;
+  const Ctor = (window as unknown as { webkitSpeechRecognition?: new () => RecognitionLike }).webkitSpeechRecognition;
+  if (!Ctor) return null;
+  const rec = new Ctor();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = "en-US";
+  return rec;
+}
+
+function chirp(freq = 880) {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = freq;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+    osc.onended = () => ctx.close().catch(() => {});
+  } catch {
+    /* cosmetic */
+  }
+}
+
 export function VoiceCommandBar() {
   const router = useRouter();
-  const { presence } = usePraxisStream();
+  const { presence, recentEvents } = usePraxisStream();
   const presenceRef = useRef(presence);
   presenceRef.current = presence;
 
   const [state, setState] = useState<VoiceState>("idle");
+  const stateRef = useRef<VoiceState>("idle");
+  stateRef.current = state;
   const [transcript, setTranscript] = useState<string | null>(null);
   const [response, setResponse] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [wakeEnabled, setWakeEnabled] = useState(false);
+  const [alertsEnabled, setAlertsEnabled] = useState(true);
+  const [ambientIdle, setAmbientIdle] = useState(10);
+  const [wakeSupported, setWakeSupported] = useState(true);
+
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const recognitionRef = useRef<RecognitionLike | null>(null);
+  const wakeEnabledRef = useRef(false);
+  const lastAlertAtRef = useRef(0);
+  const announcedIdsRef = useRef<Set<string>>(new Set());
+  const mountedAtRef = useRef(Date.now());
 
-  const speak = useCallback(async (text: string) => {
+  useEffect(() => {
+    setWakeEnabled(readSetting(WAKE_KEY, false));
+    setAlertsEnabled(readSetting(ALERTS_KEY, true));
+    setAmbientIdle(getAmbientIdleMinutes());
+    setWakeSupported(Boolean(createRecognition()));
+  }, []);
+  wakeEnabledRef.current = wakeEnabled;
+
+  // ── Speech output ─────────────────────────────────────────────
+  const speak = useCallback(async (text: string, opts: { keepState?: boolean } = {}) => {
     try {
-      setState("speaking");
+      if (!opts.keepState) setState("speaking");
       const res = await fetch("/api/praxis/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: text.length > 600 ? `${text.slice(0, 600)}…` : text }),
       });
-      if (!res.ok) return; // TTS unconfigured/unreachable — text response is already shown
+      if (!res.ok) return;
       const { audio, mime } = await res.json();
       if (!audio) return;
       await new Promise<void>((resolve) => {
@@ -76,10 +171,11 @@ export function VoiceCommandBar() {
       /* speech is best-effort */
     } finally {
       audioRef.current = null;
-      setState("idle");
+      if (!opts.keepState) setState("idle");
     }
   }, []);
 
+  // ── Intent handling ───────────────────────────────────────────
   const runStatusReport = useCallback(async (): Promise<string> => {
     const p = presenceRef.current;
     const parts: string[] = [];
@@ -109,7 +205,6 @@ export function VoiceCommandBar() {
       const lower = text.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
       setState("working");
 
-      // 1. Navigation
       if (/(open|show|bring up|go to|take me to|display)\b/.test(lower)) {
         for (const target of NAV_TARGETS) {
           if (target.pattern.test(lower)) {
@@ -121,7 +216,6 @@ export function VoiceCommandBar() {
         }
       }
 
-      // 2. Local-only lever
       const localOnlyMatch = lower.match(/local[- ]only( mode)?\b.*\b(on|off)\b|\b(enable|engage|disable|disengage)\b.*local[- ]only/);
       if (localOnlyMatch) {
         const enable = /\bon\b|\benable\b|\bengage\b/.test(lower) && !/\boff\b|\bdisable\b|\bdisengage\b/.test(lower);
@@ -137,7 +231,6 @@ export function VoiceCommandBar() {
         return;
       }
 
-      // 3. Local queue pause/resume
       const queueMatch = lower.match(/\b(pause|resume)\b.*(local|queue)/);
       if (queueMatch && /(queue|local)/.test(lower)) {
         const action = queueMatch[1] === "pause" ? "pause" : "resume";
@@ -157,7 +250,6 @@ export function VoiceCommandBar() {
         return;
       }
 
-      // 4. Status report
       if (/\b(status report|sitrep|status update|full report|report status)\b/.test(lower)) {
         const report = await runStatusReport();
         setResponse(report);
@@ -165,7 +257,12 @@ export function VoiceCommandBar() {
         return;
       }
 
-      // 5. Fallback → Praxis chat (non-streaming)
+      if (/\b(ambient mode|screensaver)\b/.test(lower)) {
+        setResponse("Use the monitor button in the header for ambient mode.");
+        await speak("Ambient mode is on the monitor button in the header.");
+        return;
+      }
+
       try {
         const res = await fetch("/api/praxis/chat", {
           method: "POST",
@@ -185,11 +282,13 @@ export function VoiceCommandBar() {
     [router, speak, runStatusReport]
   );
 
+  // ── Recording (manual or wake-word triggered) ─────────────────
   const stopRecording = useCallback(() => {
     recorderRef.current?.stop();
   }, []);
 
   const startRecording = useCallback(async () => {
+    if (stateRef.current !== "idle") return;
     setTranscript(null);
     setResponse(null);
     setPanelOpen(true);
@@ -205,11 +304,49 @@ export function VoiceCommandBar() {
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
+
+      // Silence auto-stop: watch RMS on an analyser; stop after sustained
+      // silence once speech has been heard (or at the hard cap).
+      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      const audioCtx = Ctx ? new Ctx() : null;
+      let silenceTimer: ReturnType<typeof setInterval> | null = null;
+      let capTimer: ReturnType<typeof setTimeout> | null = null;
+      if (audioCtx) {
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        const buf = new Float32Array(analyser.fftSize);
+        let heardSpeech = false;
+        let silentSince = Date.now();
+        silenceTimer = setInterval(() => {
+          analyser.getFloatTimeDomainData(buf);
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+          const rms = Math.sqrt(sum / buf.length);
+          if (rms > SILENCE_RMS_THRESHOLD) {
+            heardSpeech = true;
+            silentSince = Date.now();
+          } else if (heardSpeech && Date.now() - silentSince > SILENCE_STOP_MS) {
+            recorder.stop();
+          }
+        }, 150);
+      }
+      capTimer = setTimeout(() => recorder.stop(), MAX_RECORDING_MS);
+
       recorder.onstop = async () => {
+        if (silenceTimer) clearInterval(silenceTimer);
+        if (capTimer) clearTimeout(capTimer);
+        audioCtx?.close().catch(() => {});
         stream.getTracks().forEach((t) => t.stop());
         setState("transcribing");
         try {
           const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+          if (blob.size < 2000) {
+            // Nothing meaningful captured (wake word false positive etc.)
+            setState("idle");
+            return;
+          }
           const base64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
@@ -223,13 +360,15 @@ export function VoiceCommandBar() {
           });
           if (!res.ok) throw new Error();
           const { text } = await res.json();
-          if (!text || !text.trim()) {
+          // Strip a leading wake word so "Praxis, status report" routes cleanly.
+          const cleaned = String(text ?? "").replace(/^\s*(hey\s+)?(praxis|praxus)[\s,.!—-]*/i, "").trim();
+          if (!cleaned) {
             setResponse("I didn't catch that.");
             setState("idle");
             return;
           }
-          setTranscript(text.trim());
-          await executeTranscript(text.trim());
+          setTranscript(cleaned);
+          await executeTranscript(cleaned);
         } catch {
           setResponse("Transcription failed — is Praxis online?");
           setState("idle");
@@ -245,6 +384,84 @@ export function VoiceCommandBar() {
     }
   }, [executeTranscript]);
 
+  // ── Wake word loop ────────────────────────────────────────────
+  useEffect(() => {
+    if (!wakeEnabled || state !== "idle") {
+      recognitionRef.current?.abort();
+      recognitionRef.current = null;
+      return;
+    }
+    const rec = createRecognition();
+    if (!rec) {
+      setWakeSupported(false);
+      return;
+    }
+    let disposed = false;
+    rec.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const alt = event.results[i][0];
+        if (alt && WAKE_PATTERN.test(alt.transcript)) {
+          rec.abort();
+          chirp();
+          startRecording();
+          return;
+        }
+      }
+    };
+    rec.onend = () => {
+      // Chrome ends recognition periodically — restart while still armed.
+      if (!disposed && wakeEnabledRef.current && stateRef.current === "idle") {
+        try {
+          rec.start();
+        } catch {
+          /* already started */
+        }
+      }
+    };
+    rec.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        disposed = true;
+        setWakeEnabled(false);
+        window.localStorage.setItem(WAKE_KEY, "0");
+        setResponse("Wake word disabled — microphone permission was denied.");
+        setPanelOpen(true);
+      }
+    };
+    try {
+      rec.start();
+      recognitionRef.current = rec;
+    } catch {
+      /* start can throw if called twice */
+    }
+    return () => {
+      disposed = true;
+      rec.abort();
+      if (recognitionRef.current === rec) recognitionRef.current = null;
+    };
+  }, [wakeEnabled, state, startRecording]);
+
+  // ── Spoken red-alert announcements ────────────────────────────
+  useEffect(() => {
+    if (!alertsEnabled || state !== "idle") return;
+    if (inQuietHours()) return;
+    if (Date.now() - lastAlertAtRef.current < ALERT_RATE_LIMIT_MS) return;
+    const alertEvent = recentEvents.find(
+      (e: StreamEvent) =>
+        (e.type === "task.failed" || e.type === "hitl.created") &&
+        e.eventId &&
+        !announcedIdsRef.current.has(e.eventId) &&
+        new Date(e.at).getTime() > mountedAtRef.current
+    );
+    if (!alertEvent || !alertEvent.eventId) return;
+    announcedIdsRef.current.add(alertEvent.eventId);
+    lastAlertAtRef.current = Date.now();
+    const line =
+      alertEvent.type === "task.failed"
+        ? `Alert. A task has failed: ${alertEvent.error?.slice(0, 120) ?? "unknown error"}`
+        : `Praxis needs your input: ${alertEvent.type === "hitl.created" ? alertEvent.request?.question?.slice(0, 120) ?? "approval required" : ""}`;
+    speak(line, { keepState: true });
+  }, [recentEvents, alertsEnabled, state, speak]);
+
   const onMicClick = () => {
     if (state === "recording") stopRecording();
     else if (state === "idle") startRecording();
@@ -255,20 +472,22 @@ export function VoiceCommandBar() {
     }
   };
 
-  // Escape closes the panel
   useEffect(() => {
-    if (!panelOpen) return;
+    if (!panelOpen && !settingsOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPanelOpen(false);
+      if (e.key === "Escape") {
+        setPanelOpen(false);
+        setSettingsOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [panelOpen]);
+  }, [panelOpen, settingsOpen]);
 
   const busy = state === "transcribing" || state === "working";
 
   return (
-    <div className="relative">
+    <div className="relative flex items-center gap-1">
       <button
         onClick={onMicClick}
         disabled={busy}
@@ -282,7 +501,7 @@ export function VoiceCommandBar() {
             : "border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:border-cyan-500/50 hover:text-cyan-300"
         }`}
         aria-label={state === "recording" ? "Stop recording" : "Start voice command"}
-        title="Voice command"
+        title={wakeEnabled ? 'Listening for "Praxis" — or click to talk' : "Voice command"}
       >
         {state === "recording" ? (
           <Square size={13} />
@@ -290,6 +509,8 @@ export function VoiceCommandBar() {
           <Loader2 size={14} className="animate-spin" />
         ) : state === "speaking" ? (
           <Volume2 size={14} />
+        ) : wakeEnabled ? (
+          <Ear size={14} />
         ) : (
           <Mic size={14} />
         )}
@@ -302,9 +523,77 @@ export function VoiceCommandBar() {
             ? "Working…"
             : state === "speaking"
             ? "Speaking"
+            : wakeEnabled
+            ? '"Praxis…"'
             : "Voice"}
         </span>
       </button>
+
+      <button
+        onClick={() => setSettingsOpen((v) => !v)}
+        className="p-1.5 rounded-lg border border-slate-800 bg-slate-900/50 text-slate-500 hover:text-white transition-all"
+        aria-label="Voice settings"
+        title="Voice settings"
+      >
+        <Settings2 size={14} />
+      </button>
+
+      {settingsOpen && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-slate-800 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-md">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">voice and ambient</div>
+
+          <label className="flex items-center justify-between gap-2 py-1.5 text-xs text-slate-300">
+            <span className="flex items-center gap-2">
+              {wakeEnabled ? <Ear size={13} className="text-cyan-400" /> : <EarOff size={13} className="text-slate-500" />}
+              Wake word &quot;Praxis&quot;
+              {!wakeSupported && <span className="text-[10px] text-amber-400">(needs Chrome)</span>}
+            </span>
+            <input
+              type="checkbox"
+              checked={wakeEnabled}
+              disabled={!wakeSupported}
+              onChange={(e) => {
+                setWakeEnabled(e.target.checked);
+                window.localStorage.setItem(WAKE_KEY, e.target.checked ? "1" : "0");
+              }}
+            />
+          </label>
+
+          <label className="flex items-center justify-between gap-2 py-1.5 text-xs text-slate-300">
+            <span className="flex items-center gap-2">
+              <Volume2 size={13} className="text-slate-400" />
+              Spoken alerts <span className="text-[10px] text-slate-600">(quiet 22:00–08:00)</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={alertsEnabled}
+              onChange={(e) => {
+                setAlertsEnabled(e.target.checked);
+                window.localStorage.setItem(ALERTS_KEY, e.target.checked ? "1" : "0");
+              }}
+            />
+          </label>
+
+          <label className="flex items-center justify-between gap-2 py-1.5 text-xs text-slate-300">
+            <span>Ambient after idle</span>
+            <select
+              value={ambientIdle}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setAmbientIdle(v);
+                setAmbientIdleMinutes(v);
+              }}
+              className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-200"
+            >
+              <option value={0}>off</option>
+              <option value={5}>5 min</option>
+              <option value={10}>10 min</option>
+              <option value={20}>20 min</option>
+              <option value={30}>30 min</option>
+            </select>
+          </label>
+        </div>
+      )}
 
       {panelOpen && (transcript || response) && (
         <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-slate-800 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-md">
