@@ -624,10 +624,12 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
 
     if (!isInline && !isOpen) return null;
 
-    // Inline mode: render directly as a block element filling its parent
+    // Inline mode: frameless — the surrounding station panel (PraxisCore)
+    // provides the chrome, so the terminal reads as its viewscreen rather
+    // than a boxed widget.
     if (isInline) {
         return (
-            <div className="h-full rounded-xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden">
+            <div className="h-full flex flex-col overflow-hidden">
                 {renderTerminalContent()}
             </div>
         );
@@ -882,12 +884,25 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 );
             })()}
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-800/50">
+            {/* Header — inline mode wears the station's HUD taxonomy (thin
+                toolbar, no title card); modal mode keeps the full title bar */}
+            <div className={`flex items-center justify-between ${
+                isInline
+                    ? 'px-1 pb-1.5 border-b border-slate-800/60'
+                    : 'px-4 py-3 border-b border-slate-700 bg-slate-800/50'
+            }`}>
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                        <Bot size={20} className="text-cyan-400" />
-                        <span className="font-bold text-white">Praxis Terminal</span>
+                        {isInline ? (
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                                viewscreen · direct line
+                            </span>
+                        ) : (
+                            <>
+                                <Bot size={20} className="text-cyan-400" />
+                                <span className="font-bold text-white">Praxis Terminal</span>
+                            </>
+                        )}
                         {scopedProjectId && (
                             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                                 <Lock size={10} />
@@ -895,9 +910,11 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                             </div>
                         )}
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
-                        Praxis
-                    </span>
+                    {!isInline && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
+                            Praxis
+                        </span>
+                    )}
                 </div>
                 <div className="flex items-center gap-1">
                     <button
@@ -908,7 +925,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                         className="p-1.5 rounded text-slate-400 hover:text-emerald-400 hover:bg-slate-700 transition-colors"
                         title="New Conversation"
                     >
-                        <Plus size={18} />
+                        <Plus size={isInline ? 15 : 18} />
                     </button>
                     <button
                         onClick={() => {
@@ -918,7 +935,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                         className={`p-1.5 rounded transition-colors ${showConversations ? 'text-cyan-400 bg-slate-700' : 'text-slate-400 hover:text-cyan-400 hover:bg-slate-700'}`}
                         title="Conversation History"
                     >
-                        <History size={18} />
+                        <History size={isInline ? 15 : 18} />
                     </button>
                     {!isInline && onClose && (
                         <button
@@ -933,7 +950,9 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
 
             {/* Conversation History Panel */}
             {showConversations && (
-                <div className="border-b border-slate-700 bg-slate-800/50 max-h-64 overflow-y-auto">
+                <div className={`border-b max-h-64 overflow-y-auto ${
+                    isInline ? 'border-slate-800/60 bg-slate-950/40' : 'border-slate-700 bg-slate-800/50'
+                }`}>
                     <div className="px-3 py-2 text-xs text-slate-400 font-medium border-b border-slate-700/50 sticky top-0 bg-slate-800/90 backdrop-blur-sm">
                         Conversations
                     </div>
@@ -1003,7 +1022,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 {messages.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full text-center text-slate-500">
                         <MessageSquare size={48} className="mb-4 opacity-50" />
-                        <p className="text-lg font-medium">Welcome to Praxis Terminal</p>
+                        <p className="text-lg font-medium">{isInline ? 'Viewscreen standing by' : 'Welcome to Praxis Terminal'}</p>
                         <p className="text-sm mt-1">Your direct line to Praxis</p>
                         <p className="text-xs mt-4 opacity-70">
                             Try: "Build me a landing page for my SaaS" or "Create a new web-app called MyProject"
@@ -1440,7 +1459,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-slate-700 bg-slate-800/50">
+            <div className={isInline ? 'px-1 pt-3 pb-0.5 border-t border-slate-800/60' : 'p-4 border-t border-slate-700 bg-slate-800/50'}>
                 {/* Hidden file input — any file type */}
                 <input
                     ref={fileInputRef}
