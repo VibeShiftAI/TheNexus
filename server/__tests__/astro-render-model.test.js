@@ -171,6 +171,23 @@ describe('render model', () => {
   });
 });
 
+describe('surface palette', () => {
+  test('icy materials produce a cold palette with strong desaturation', () => {
+    const m = computeRenderModel({
+      'surface.dominant_materials': textSpec('nitrogen and water ice over silicate crust'),
+    });
+    expect(m.surface.palette.ground[2]).toBeGreaterThan(m.surface.palette.ground[0]); // blue > red
+    expect(m.surface.palette.desat).toBeGreaterThan(0.8);
+  });
+
+  test('iron-oxide materials keep the warm palette', () => {
+    const m = computeRenderModel({
+      'surface.dominant_materials': textSpec('Basaltic sand, iron-oxide dust'),
+    });
+    expect(m.surface.palette.ground[0]).toBeGreaterThan(m.surface.palette.ground[2]); // red > blue
+  });
+});
+
 describe('new derived spec rows', () => {
   test('emits host-star Teff and daylight illuminance', () => {
     const out = computeDerivedSpecs({

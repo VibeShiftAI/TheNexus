@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { GraduationCap, ArrowUpRight, Sparkles } from "lucide-react";
+import { HudPanel, HudModal } from "@/components/bridge/hud";
 
 export interface SkillSummary {
   id: string;
@@ -39,6 +40,7 @@ export function AcademyStation() {
   const [data, setData] = useState<SkillsResponse | null>(null);
   const [err, setErr] = useState(false);
   const [justAcquired, setJustAcquired] = useState<string | null>(null);
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
   const prevTotal = useRef<number | null>(null);
 
   useEffect(() => {
@@ -73,18 +75,23 @@ export function AcademyStation() {
   const categories = Object.entries(data?.byCategory ?? {}).sort((a, b) => b[1] - a[1]);
   const catMax = Math.max(1, ...categories.map(([, n]) => n));
 
+  const categorySkills = openCategory
+    ? (data?.skills ?? [])
+        .filter((s) => s.category === openCategory)
+        .sort((a, b) => (b.updated || "").localeCompare(a.updated || ""))
+    : [];
+
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <GraduationCap size={16} className="text-pink-400" />
-          <h3 className="text-sm font-bold tracking-tight text-white">ACADEMY — SKILLS</h3>
-        </div>
+    <HudPanel
+      icon={<GraduationCap size={16} />}
+      title="ACADEMY — SKILLS"
+      accent="pink"
+      headerRight={
         <Link href="/academy" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
           skill tree <ArrowUpRight size={12} />
         </Link>
-      </div>
-
+      }
+    >
       {justAcquired && (
         <div className="mb-2 flex items-center gap-2 rounded border border-pink-500/40 bg-pink-500/10 px-2 py-1.5 text-[11px] text-pink-200">
           <Sparkles size={12} /> skill acquired: {justAcquired}
@@ -103,7 +110,12 @@ export function AcademyStation() {
           </div>
           <div className="min-w-0 flex-1 space-y-1">
             {categories.map(([cat, n]) => (
-              <div key={cat} className="flex items-center gap-2">
+              <button
+                key={cat}
+                onClick={() => setOpenCategory(cat)}
+                className="flex w-full items-center gap-2 rounded px-1 py-0.5 text-left transition-colors hover:bg-slate-800/50"
+                title={`Browse ${cat} skills`}
+              >
                 <span className="w-24 shrink-0 truncate text-[10px] text-slate-400">{cat}</span>
                 <div className="h-2 flex-1 overflow-hidden rounded bg-slate-800/60">
                   <div
@@ -112,7 +124,7 @@ export function AcademyStation() {
                   />
                 </div>
                 <span className="w-5 shrink-0 text-right text-[10px] tabular-nums text-slate-500">{n}</span>
-              </div>
+              </button>
             ))}
             {newest.length > 0 && (
               <div className="pt-1 text-[10px] text-slate-600">
@@ -122,6 +134,47 @@ export function AcademyStation() {
           </div>
         </div>
       )}
-    </div>
+
+      {openCategory && (
+        <HudModal
+          title={`${openCategory} skills`}
+          subtitle={`${categorySkills.length} banked · shared-mind skill bank`}
+          icon={<GraduationCap size={15} />}
+          accent="pink"
+          onClose={() => setOpenCategory(null)}
+          wide
+        >
+          {categorySkills.length === 0 ? (
+            <p className="py-6 text-center text-xs text-slate-500">No skills in this category.</p>
+          ) : (
+            <div className="space-y-2">
+              {categorySkills.map((s) => (
+                <div key={s.id} className="rounded-md border border-slate-800 bg-slate-900/50 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate text-xs font-semibold text-slate-100">{s.name}</span>
+                    <span className="shrink-0 text-[10px] tabular-nums text-slate-500">
+                      recalled {s.recallCount}× · {Math.round(s.confidence * 100)}% conf
+                    </span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-[11px] text-slate-400">{s.summary}</p>
+                  {s.tags.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {s.tags.slice(0, 6).map((t) => (
+                        <span
+                          key={t}
+                          className="rounded border border-pink-500/20 bg-pink-500/10 px-1.5 py-0.5 text-[9px] text-pink-200/80"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </HudModal>
+      )}
+    </HudPanel>
   );
 }

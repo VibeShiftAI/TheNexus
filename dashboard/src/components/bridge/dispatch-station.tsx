@@ -3,8 +3,8 @@
  * through Praxis's dispatch pipeline (Antigravity via the :54321 CDP bridge,
  * Codex, Claude Code, and the local LLM queue). Lane motion is driven by the
  * shared SSE stream (executor.progress / task.* events); queue depth and
- * bridge health come from Praxis /api/dispatch/state. Click through to /ops
- * for the full console.
+ * bridge health come from Praxis /api/dispatch/state. Click a lane for the
+ * executor drill-down popup, or through to /ops for the full console.
  */
 "use client";
 
@@ -12,6 +12,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Send, ArrowUpRight } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { HudPanel } from "@/components/bridge/hud";
+import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
 import type { ExecutorName, ExecutionPhase } from "@praxis/contract";
 
 const PHASE_PCT: Record<ExecutionPhase, number> = {
@@ -24,7 +26,7 @@ const PHASE_PCT: Record<ExecutionPhase, number> = {
   completing: 100,
 };
 
-const LANES: { id: ExecutorName; label: string }[] = [
+const LANES: { id: ExecutorName & ExecutorId; label: string }[] = [
   { id: "antigravity", label: "Antigravity" },
   { id: "codex", label: "Codex" },
   { id: "claude-code", label: "Claude Code" },
@@ -38,6 +40,29 @@ interface LaneState {
   at: number;
 }
 
+export interface ExecutorRun {
+  taskId: string;
+  executor: string;
+  title: string;
+  workspace?: string;
+  kind: "task" | "qa" | "agent";
+  phase: string;
+  status: "active" | "completed" | "failed";
+  startedAt: string;
+  updatedAt: string;
+  summary?: string;
+}
+
+export interface DispatchHistoryRow {
+  ts: string;
+  caller: string;
+  provider: string;
+  model: string;
+  latency_ms?: number | null;
+  success: number | boolean;
+  error?: string | null;
+}
+
 export interface DispatchStateResponse {
   antigravity?: {
     bridge?: { status?: string; activeTasks?: number } | null;
@@ -46,6 +71,10 @@ export interface DispatchStateResponse {
     queue?: { id: string; title: string; status: string; updatedAt: string }[];
   };
   dispatchLog?: { id: string; title: string; status: string; dispatchedAt: string }[];
+  executors?: {
+    runs?: ExecutorRun[];
+    history?: DispatchHistoryRow[];
+  };
   localLlm?: {
     worker?: { paused?: boolean; pauseReason?: string };
     counts?: Record<string, number>;
@@ -60,6 +89,7 @@ export function DispatchStation() {
   const [state, setState] = useState<DispatchStateResponse | null>(null);
   const [err, setErr] = useState(false);
   const [lanes, setLanes] = useState<Partial<Record<ExecutorName, LaneState>>>({});
+  const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -137,29 +167,45 @@ export function DispatchStation() {
   const now = Date.now();
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Send size={16} className="text-cyan-400" />
-          <h3 className="text-sm font-bold tracking-tight text-white">OPS — DISPATCH</h3>
+    <HudPanel
+      icon={<Send size={16} />}
+      title="OPS — DISPATCH"
+      accent="cyan"
+      headerRight={
+        <>
           <span
             className={`h-1.5 w-1.5 rounded-full ${
               bridge ? "bg-emerald-400" : err || state ? "bg-red-400" : "bg-slate-600"
             }`}
             title={bridge ? "Antigravity bridge online" : "Antigravity bridge unreachable"}
           />
-        </div>
-        <Link href="/ops" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
-          console <ArrowUpRight size={12} />
-        </Link>
-      </div>
-
+          <Link href="/ops" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
+            console <ArrowUpRight size={12} />
+          </Link>
+        </>
+      }
+    >
       {err && !state ? (
         <div className="py-4 text-center text-xs text-slate-500">Dispatch telemetry unavailable</div>
       ) : (
         <div className="space-y-2.5">
           {LANES.map((lane) => {
-            const l = lanes[lane.id];
+            // Live SSE events win; fall back to the run registry snapshot so
+            // a run started before this page loaded still shows as active.
+            const registryRun = lanes[lane.id]
+              ? undefined
+              : state?.executors?.runs?.find((r) => r.executor === lane.id && r.status === "active");
+            const l: LaneState | undefined =
+              lanes[lane.id] ??
+              (registryRun
+                ? {
+                    taskId: registryRun.taskId,
+                    pct: PHASE_PCT[registryRun.phase as ExecutionPhase] ?? 50,
+                    phase: registryRun.phase,
+                    status: "active",
+                    at: new Date(registryRun.updatedAt).getTime(),
+                  }
+                : undefined);
             const settled = l && now - l.at > LANE_SETTLE_MS && l.status !== "active";
             const show = l && !settled;
             const barColor =
@@ -167,7 +213,12 @@ export function DispatchStation() {
             const dotGlow =
               !show ? "" : l.status === "failed" ? "shadow-[0_0_8px_rgba(248,113,113,0.9)]" : "shadow-[0_0_8px_rgba(34,211,238,0.9)]";
             return (
-              <div key={lane.id} className="flex items-center gap-2.5">
+              <button
+                key={lane.id}
+                onClick={() => setInspecting(lane.id)}
+                className="flex w-full items-center gap-2.5 rounded px-1 py-0.5 text-left transition-colors hover:bg-slate-800/50"
+                title={`${lane.label} drill-down`}
+              >
                 <span className="w-[76px] shrink-0 truncate text-[11px] text-slate-300">{lane.label}</span>
                 <div className="relative h-1.5 flex-1 overflow-visible rounded-full bg-slate-800/70">
                   {show && (
@@ -194,11 +245,15 @@ export function DispatchStation() {
                     "idle"
                   )}
                 </span>
-              </div>
+              </button>
             );
           })}
 
-          <div className="flex items-center gap-2.5 border-t border-slate-800/60 pt-2">
+          <button
+            onClick={() => setInspecting("local-llm")}
+            className="flex w-full items-center gap-2.5 border-t border-slate-800/60 px-1 pt-2 text-left transition-colors hover:bg-slate-800/50"
+            title="Local LLM queue drill-down"
+          >
             <span className="w-[76px] shrink-0 text-[11px] text-slate-300">Local LLM</span>
             <div className="flex-1 text-[10px] text-slate-500">
               {localRunning > 0 ? (
@@ -212,9 +267,11 @@ export function DispatchStation() {
             <span className="shrink-0 text-[10px] tabular-nums text-slate-600">
               {bridge?.activeTasks != null ? `bridge tasks: ${bridge.activeTasks}` : ""}
             </span>
-          </div>
+          </button>
         </div>
       )}
-    </div>
+
+      {inspecting && <ExecutorDetailModal executor={inspecting} onClose={() => setInspecting(null)} />}
+    </HudPanel>
   );
 }

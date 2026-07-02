@@ -1,19 +1,18 @@
 /**
  * AI Chat Routes
- * Handles the main /api/ai/chat endpoint — proxies to Cortex, Praxis, or direct LLM.
+ * Handles the main /api/ai/chat endpoint — a thin relay to Praxis.
+ *
+ * History note (2026-07-02 simplification): this route used to carry three
+ * branches — a direct-to-Cortex proxy (dead once AGENT_VIA_PRAXIS became the
+ * only configuration), a direct-LLM branch with per-provider API keys (never
+ * used: every chat message ever stored is mode 'praxis'), and model-control
+ * assignment resolution whose output Praxis ignored entirely. All of that is
+ * gone; Praxis is the single orchestrator and does its own model routing.
  */
 const express = require('express');
 const { PRAXIS_URL } = require('../shared/constants');
 
 const DEFAULT_PRAXIS_CHAT_TIMEOUT_MS = 20 * 60 * 1000;
-
-// When set, "agent" terminal mode routes through Praxis (the single orchestrator)
-// instead of hitting TheCortex directly. Praxis then drives Cortex System-2, whose
-// artifacts still stream to the dashboard Glass Box via Cortex → /api/broadcast.
-// Default off so the existing Cortex-direct path stays the behavior until tested.
-function agentViaPraxis() {
-    return process.env.AGENT_VIA_PRAXIS === '1';
-}
 
 function getPraxisChatTimeoutMs() {
     const configured = Number.parseInt(process.env.PRAXIS_CHAT_TIMEOUT_MS || '', 10);
@@ -127,266 +126,128 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
     res.write('data: [DONE]\n\n');
 }
 
-function createAIChatRouter({ db, callAI, pushService, io }) {
+/** Inline attached text-file contents into the message Praxis receives.
+ *  (Previously `files` was only forwarded on the removed Cortex branch and
+ *  silently dropped in praxis mode.) */
+function inlineFilesIntoMessage(message, files) {
+    if (!Array.isArray(files) || files.length === 0) return message;
+    const blocks = files
+        .filter((f) => f && typeof f.content === 'string')
+        .map((f) => `[Attached file: ${f.name || 'file'}]\n${f.content}`);
+    if (blocks.length === 0) return message;
+    return `${message}\n\n${blocks.join('\n\n')}`;
+}
+
+function createAIChatRouter({ db, io }) {
     const router = express.Router();
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
-    const {
-        resolveModelAssignment,
-        recordModelExecutionSnapshot,
-        writeModelSystemMessage
-    } = require('../services/model-control');
-
-    async function resolveTerminalAssignment({ modelAssignment, projectId, mode, conversationId }) {
-        if (!modelAssignment) return null;
-        const resolved = await resolveModelAssignment(db, {
-            requestedAssignment: modelAssignment,
-            model_assignment: modelAssignment,
-            projectId,
-            project_id: projectId,
-            role: mode === 'praxis' ? 'praxis' : 'chat'
-        });
-        await recordModelExecutionSnapshot(db, resolved, {
-            project_id: projectId || null,
-            conversation_id: conversationId || null
-        });
-        if (resolved.localOnlyActive || resolved.fallbackUsed) {
-            const reason = resolved.localOnlyActive
-                ? `local-only mode${resolved.localOnlyReason ? ` (${resolved.localOnlyReason})` : ''}`
-                : `fallback (${resolved.fallbackReason || 'requested model unavailable'})`;
-            await writeModelSystemMessage(
-                db,
-                io,
-                `Model control redirected this terminal request to ${resolved.label || resolved.apiModelId} via ${reason}.`,
-                { modelControl: { resolved, modelAssignment } }
-            );
-        }
-        return resolved;
-    }
-
-    function toModelOverride(resolved) {
-        if (!resolved) return null;
-        return {
-            provider: resolved.provider,
-            apiModelId: resolved.apiModelId,
-            parameters: resolved.parameters || {}
-        };
-    }
 
     router.post('/', async (req, res) => {
-        const { message, modelConfig, model, mode, history, projectId, session_id, files, attachments, audio, clientMessageId, model_assignment, modelAssignment } = req.body || {};
-        const requestedModelAssignment = model_assignment || modelAssignment || null;
+        const { message, mode, history, projectId, files, attachments, audio, clientMessageId } = req.body || {};
 
         console.log(`\n🤖 [AI Chat] Request Details:`);
-        console.log(`   → Mode: ${mode}`);
-        console.log(`   → Model: ${requestedModelAssignment || model || (modelConfig && modelConfig.id)}`);
+        console.log(`   → Mode: ${mode || 'praxis'} (all modes relay to Praxis)`);
         console.log(`   → Message: "${message ? message.substring(0, 50) : 'None'}..."`);
         console.log(`   → Files: ${files ? files.length : 0} attached`);
 
         if (!message) return res.status(400).json({ error: 'Message is required' });
 
-        // ─── PROXY TO PYTHON CORTEX ──────────────────────────────────────
-        // Legacy direct-to-Cortex path. When AGENT_VIA_PRAXIS is set, agent/cortex
-        // requests fall through to the Praxis branch below instead (Praxis drives
-        // Cortex System-2; the Glass Box artifact stream is unaffected).
-        if ((mode === 'agent' || mode === 'cortex') && !agentViaPraxis()) {
-            try {
-                console.log(`[AI Chat] Proxying 'agent' request to Python Cortex (Port 8000)...`);
-                if (files?.length > 0) console.log(`   📎 Forwarding ${files.length} file(s) to Python:`, files.map(f => f.name));
-
-                const pythonPayload = {
-                    user_request: message,
-                    session_id: session_id || require('crypto').randomUUID(),
-                    project_id: projectId,
-                    existing_workflow: null,
-                    files: files || null,
-                    use_cortex_brain: true
-                };
-
-                const pythonResponse = await fetch('http://localhost:8000/ai-builder/chat', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(pythonPayload),
-                    signal: AbortSignal.timeout(300000),
-                });
-
-                if (!pythonResponse.ok) throw new Error(`Python backend error: ${pythonResponse.status} ${await pythonResponse.text()}`);
-                const data = await pythonResponse.json();
-
-                if (data.mode === 'cortex_brain_error') {
-                    return res.json({ response: data.response, model: 'cortex-error', provider: 'TheCortex', mode, isThinking: false, tokenUsage: { total: 0 }, artifacts: [] });
-                }
-
-                const modeInfo = data.mode === 'cortex_brain' ? 'System 2 Brain (Agora)' : 'Simple Responder';
-                const debugFooter = `\n\n_—_\n*🧠 Debug: ${modeInfo}*`;
-
-                return res.json({
-                    response: data.response + debugFooter,
-                    model: data.mode === 'cortex_brain' ? 'cortex-system2' : 'cortex-responder',
-                    provider: 'TheCortex', mode, isThinking: false, tokenUsage: { total: 0 },
-                    artifacts: data.artifacts || []
-                });
-            } catch (error) {
-                console.error(`[AI Chat] Cortex Proxy Error:`, error);
-                return res.json({ response: `⚠️ **Connection to The Cortex Failed**\n\nI couldn't reach the Python engine (Port 8000). Ensure \`launch_system.bat\` is running.\n\nError: ${error.message}`, model: 'system-error', provider: 'System', mode });
-            }
-        }
-
-        // ─── PROXY TO PRAXIS ─────────────────────────────────────────────
-        // Praxis supervisor mode, plus agent/cortex mode when AGENT_VIA_PRAXIS is on.
-        if (mode === 'praxis' || ((mode === 'agent' || mode === 'cortex') && agentViaPraxis())) {
-            let conversationId = null;
-            try {
-                console.log(`[AI Chat] Proxying '${mode}' request to Praxis Agent (Port 54322)...`);
-                const conversation = await db.getActiveConversation('praxis');
-                conversationId = conversation ? conversation.id : null;
-                const resolvedModel = await resolveTerminalAssignment({
-                    modelAssignment: requestedModelAssignment,
-                    projectId,
-                    mode,
-                    conversationId
-                });
-
-                if (conversationId) {
-                    const savedUserMessage = await db.saveChatMessage({
-                        id: clientMessageId,
-                        conversation_id: conversationId, role: 'user', content: message, mode: 'praxis',
-                        metadata: {
-                            projectId, hasAudio: !!audio,
-                            modelAssignment: requestedModelAssignment,
-                            resolvedModel,
-                            ...(attachments?.length > 0 ? { attachments: attachments.map(a => ({ type: a.mimeType?.startsWith('image/') ? 'image' : a.mimeType?.startsWith('audio/') ? 'audio' : 'file', url: a.url, name: a.originalName || a.name, mimeType: a.mimeType })) } : {})
-                        }
-                    });
-                    if (savedUserMessage && io) {
-                        io.emit('chat-message', buildChatMessageEvent(savedUserMessage));
-                    }
-                }
-
-                // Agent/cortex mode tells Praxis to drive Cortex System-2 instead
-                // of its normal agent loop; that path is non-streaming (the brain
-                // streams its artifacts to the Glass Box separately), so exclude
-                // agent mode from canStream too.
-                const isAgentMode = mode === 'agent' || mode === 'cortex';
-                const canStream = wantsEventStream(req) && !audio && !(attachments?.length > 0) && !isAgentMode;
-                const praxisPayload = {
-                    message,
-                    history,
-                    projectId,
-                    audio,
-                    attachments: attachments || undefined,
-                    modelAssignment: requestedModelAssignment,
-                    resolvedModel,
-                    modelOverride: toModelOverride(resolvedModel),
-                    ...(isAgentMode ? { agentMode: true } : {}),
-                    ...(canStream ? { stream: true } : {})
-                };
-                const praxisResponse = await fetch(`${PRAXIS_URL}/api/chat`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}) },
-                    body: JSON.stringify(praxisPayload), signal: AbortSignal.timeout(getPraxisChatTimeoutMs()), // local agent loops can be long
-                });
-
-                if (!praxisResponse.ok) {
-                    const errorText = await praxisResponse.text().catch(() => '(no body)');
-                    console.error(`[AI Chat] Praxis returned ${praxisResponse.status}: ${errorText}`);
-                    throw new Error(`Praxis returned ${praxisResponse.status}: ${errorText}`);
-                }
-
-                if (canStream) {
-                    res.setHeader('Content-Type', 'text/event-stream');
-                    res.setHeader('Cache-Control', 'no-cache');
-                    res.setHeader('Connection', 'keep-alive');
-                    res.setHeader('X-Accel-Buffering', 'no');
-                    res.flushHeaders?.();
-                    res.socket?.setNoDelay(true);
-                    try {
-                        await writePraxisStreamToClient({
-                            praxisResponse,
-                            res,
-                            db,
-                            io,
-                            conversationId,
-                            fullResponsePrefix: `\n\n_\u2014_\n*\ud83e\udd16 Relayed by Praxis*`,
-                            metadata: { modelAssignment: requestedModelAssignment, resolvedModel },
-                        });
-                    } catch (streamErr) {
-                        console.error(`[AI Chat] Praxis stream relay error:`, streamErr);
-                        res.write(`data: ${JSON.stringify({ type: 'error', error: streamErr.message || 'Praxis stream failed' })}\n\n`);
-                        res.write('data: [DONE]\n\n');
-                    }
-                    return res.end();
-                }
-
-                const data = await praxisResponse.json();
-
-                const debugFooter = `\n\n_\u2014_\n*\ud83e\udd16 Relayed by Praxis*`;
-                const fullResponse = (data.response || "No response") + debugFooter;
-                let assistantMessageId = null;
-
-                if (conversationId) {
-                    try {
-                        const savedAssistantMessage = await db.saveChatMessage({ conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata({ ...data, modelAssignment: requestedModelAssignment, resolvedModel }) });
-                        assistantMessageId = savedAssistantMessage?.id || null;
-                        if (savedAssistantMessage && io) {
-                            io.emit('chat-message', buildChatMessageEvent(savedAssistantMessage));
-                        }
-                    } catch (dbErr) {
-                        console.error(`[AI Chat] Failed to persist Praxis response to DB (non-fatal):`, dbErr.message);
-                    }
-                }
-
-                return res.json({ response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode, conversationId, assistantMessageId, resolvedModel, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData });
-            } catch (error) {
-                console.error(`[AI Chat] Praxis Proxy Error:`, error);
-                if (res.headersSent) return;
-                return res.status(502).json({
-                    error: `Praxis proxy error: ${error.message}`,
-                    response: `\u26a0\ufe0f **Connection to Praxis Failed**\n\nI couldn't reach the Praxis daemon (Port 54322). Ensure the background service is running.\n\nError: ${error.message}`,
-                    model: 'system-error', provider: 'System', mode
-                });
-            }
-        }
-
-        // ─── STANDARD LLM ROUTING ────────────────────────────────────────
-        const config = modelConfig || { id: model || 'gemini-2.5-flash', apiModelId: model || 'gemini-2.5-flash', provider: 'Google', isThinking: false, parameters: {} };
-        let resolvedModel = null;
-        let executionConfig = config;
-
-        const apiKeys = {
-            Google: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
-            OpenAI: process.env.OPENAI_API_KEY,
-            Anthropic: process.env.ANTHROPIC_API_KEY,
-            xAI: process.env.XAI_API_KEY,
-            Local: 'local', // Local provider doesn't require a cloud API key
-        };
-
+        let conversationId = null;
         try {
-            if (requestedModelAssignment) {
-                resolvedModel = await resolveTerminalAssignment({
-                    modelAssignment: requestedModelAssignment,
-                    projectId,
-                    mode,
-                    conversationId: null
+            console.log(`[AI Chat] Relaying request to Praxis Agent (Port 54322)...`);
+            const conversation = await db.getActiveConversation('praxis');
+            conversationId = conversation ? conversation.id : null;
+
+            if (conversationId) {
+                const savedUserMessage = await db.saveChatMessage({
+                    id: clientMessageId,
+                    conversation_id: conversationId, role: 'user', content: message, mode: 'praxis',
+                    metadata: {
+                        projectId, hasAudio: !!audio,
+                        ...(attachments?.length > 0 ? { attachments: attachments.map(a => ({ type: a.mimeType?.startsWith('image/') ? 'image' : a.mimeType?.startsWith('audio/') ? 'audio' : 'file', url: a.url, name: a.originalName || a.name, mimeType: a.mimeType })) } : {})
+                    }
                 });
-                executionConfig = {
-                    id: resolvedModel.resolvedModelId,
-                    apiModelId: resolvedModel.apiModelId,
-                    provider: resolvedModel.provider,
-                    isThinking: !!resolvedModel.parameters?.thinking_config,
-                    parameters: resolvedModel.parameters || {}
-                };
-            } else if (!apiKeys[config.provider] && config.provider !== 'Local') {
-                return res.json({ response: `Praxis Terminal is ready! To enable ${config.provider} models, add the appropriate API key to your .env file.`, model: config.apiModelId, provider: config.provider, mode });
+                if (savedUserMessage && io) {
+                    io.emit('chat-message', buildChatMessageEvent(savedUserMessage));
+                }
             }
 
-            const systemPrompt = 'You are a helpful AI assistant for a developer dashboard called The Nexus.';
-            const aiResponse = await callAI(executionConfig, message, systemPrompt, history || [], { returnFullResult: true });
-            let debugFooter = `\n\n_—_\n*🔧 Debug: Native Node.js Route (Chat Mode).*`;
-            if (message.toLowerCase().includes('autopilot') || message.toLowerCase().includes('cortex') || message.toLowerCase().includes('debate')) {
-                debugFooter += `\n*💡 Tip: Switch to "Agent" mode to access Cortex Tools (Autopilot, Debates).*`;
+            // Legacy agent/cortex mode tells Praxis to drive Cortex System-2
+            // instead of its normal agent loop; that path is non-streaming
+            // (the brain streams its artifacts to the Glass Box separately).
+            const isAgentMode = mode === 'agent' || mode === 'cortex';
+            const canStream = wantsEventStream(req) && !audio && !(attachments?.length > 0) && !isAgentMode;
+            const praxisPayload = {
+                message: inlineFilesIntoMessage(message, files),
+                history,
+                projectId,
+                audio,
+                attachments: attachments || undefined,
+                ...(isAgentMode ? { agentMode: true } : {}),
+                ...(canStream ? { stream: true } : {})
+            };
+            const praxisResponse = await fetch(`${PRAXIS_URL}/api/chat`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}) },
+                body: JSON.stringify(praxisPayload), signal: AbortSignal.timeout(getPraxisChatTimeoutMs()), // local agent loops can be long
+            });
+
+            if (!praxisResponse.ok) {
+                const errorText = await praxisResponse.text().catch(() => '(no body)');
+                console.error(`[AI Chat] Praxis returned ${praxisResponse.status}: ${errorText}`);
+                throw new Error(`Praxis returned ${praxisResponse.status}: ${errorText}`);
             }
-            return res.json({ response: aiResponse.text + debugFooter, model: executionConfig.apiModelId, provider: executionConfig.provider, mode, resolvedModel, isThinking: executionConfig.isThinking, tokenUsage: aiResponse.usage });
+
+            if (canStream) {
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Connection', 'keep-alive');
+                res.setHeader('X-Accel-Buffering', 'no');
+                res.flushHeaders?.();
+                res.socket?.setNoDelay(true);
+                try {
+                    await writePraxisStreamToClient({
+                        praxisResponse,
+                        res,
+                        db,
+                        io,
+                        conversationId,
+                        fullResponsePrefix: `\n\n_—_\n*🤖 Relayed by Praxis*`,
+                    });
+                } catch (streamErr) {
+                    console.error(`[AI Chat] Praxis stream relay error:`, streamErr);
+                    res.write(`data: ${JSON.stringify({ type: 'error', error: streamErr.message || 'Praxis stream failed' })}\n\n`);
+                    res.write('data: [DONE]\n\n');
+                }
+                return res.end();
+            }
+
+            const data = await praxisResponse.json();
+
+            const debugFooter = `\n\n_—_\n*🤖 Relayed by Praxis*`;
+            const fullResponse = (data.response || "No response") + debugFooter;
+            let assistantMessageId = null;
+
+            if (conversationId) {
+                try {
+                    const savedAssistantMessage = await db.saveChatMessage({ conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata(data) });
+                    assistantMessageId = savedAssistantMessage?.id || null;
+                    if (savedAssistantMessage && io) {
+                        io.emit('chat-message', buildChatMessageEvent(savedAssistantMessage));
+                    }
+                } catch (dbErr) {
+                    console.error(`[AI Chat] Failed to persist Praxis response to DB (non-fatal):`, dbErr.message);
+                }
+            }
+
+            return res.json({ response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData });
         } catch (error) {
-            console.error(`[AI Chat] Error with ${executionConfig.provider}:`, error);
-            return res.status(500).json({ error: `Failed to get response from ${executionConfig.provider}: ${error.message}`, model: executionConfig.apiModelId });
+            console.error(`[AI Chat] Praxis Proxy Error:`, error);
+            if (res.headersSent) return;
+            return res.status(502).json({
+                error: `Praxis proxy error: ${error.message}`,
+                response: `⚠️ **Connection to Praxis Failed**\n\nI couldn't reach the Praxis daemon (Port 54322). Ensure the background service is running.\n\nError: ${error.message}`,
+                model: 'system-error', provider: 'System', mode: 'praxis'
+            });
         }
     });
 

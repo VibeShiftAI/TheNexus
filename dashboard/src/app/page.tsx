@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { getProjects, getPins, getTasks, type Project, type Task } from "@/lib/nexus";
 import { ProjectCard } from "@/components/project-card";
 import { NewProjectModal } from "@/components/new-project-modal";
-import { AITerminal } from "@/components/ai-terminal";
 import { SettingsModal } from "@/components/settings-modal";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { ScheduleTimeline } from "@/components/schedule-timeline";
@@ -12,7 +11,6 @@ import { CompactTaskBoard } from "@/components/compact-task-board";
 import { DetailDrawer } from "@/components/detail-drawer";
 import { HitlInbox } from "@/components/hitl-inbox";
 import { PraxisCore } from "@/components/bridge/praxis-core";
-import { EventTicker } from "@/components/bridge/event-ticker";
 import { DispatchStation } from "@/components/bridge/dispatch-station";
 import { FleetStation } from "@/components/bridge/fleet-station";
 import { KnowledgeStation } from "@/components/bridge/knowledge-station";
@@ -20,6 +18,7 @@ import { PowerStation } from "@/components/bridge/power-station";
 import { AcademyStation } from "@/components/bridge/academy-station";
 import { VoiceCommandBar } from "@/components/bridge/voice-command-bar";
 import { AmbientMode } from "@/components/bridge/ambient-mode";
+import { StatusStrip } from "@/components/bridge/status-strip";
 import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-react";
 
 export default function Home() {
@@ -115,7 +114,7 @@ export default function Home() {
   });
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 flex flex-col pb-12">
+    <main className="min-h-screen bg-slate-950 hud-backdrop text-slate-200 selection:bg-cyan-500/30 flex flex-col pb-12">
       {/* Header HUD */}
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md shrink-0">
         <div className="container mx-auto flex h-16 items-center justify-between px-6">
@@ -169,17 +168,15 @@ export default function Home() {
           </div>
         )}
 
-        {/* Main viewer — living Praxis core */}
-        <div className="mb-6">
-          <PraxisCore />
-        </div>
+        {/* Headline KPI strip — click a chip to warp to its station */}
+        <StatusStrip />
 
-        {/* Comms deck: Praxis chat front and center, inbox + today beside it */}
-        <div className="mb-6 grid gap-6 lg:grid-cols-[1.6fr_1fr] items-start">
-          <div className="h-[550px] lg:h-[620px] w-full min-w-0">
-            <AITerminal mode="inline" />
+        {/* Main viewer beside the inbox/schedule rail */}
+        <div className="mb-6 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div id="station-core">
+            <PraxisCore />
           </div>
-          <div className="space-y-4 min-w-0">
+          <div id="panel-inbox" className="grid gap-4">
             <HitlInbox />
             <ScheduleTimeline />
           </div>
@@ -187,15 +184,27 @@ export default function Home() {
 
         {/* Bridge stations */}
         <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
-          <DispatchStation />
-          <KnowledgeStation />
-          <PowerStation />
-          <FleetStation />
-          <AcademyStation />
+          <div id="station-dispatch">
+            <DispatchStation />
+          </div>
+          <div id="station-fleet">
+            <FleetStation />
+          </div>
+          <div id="station-power">
+            <PowerStation />
+          </div>
+          <div id="station-knowledge">
+            <KnowledgeStation />
+          </div>
+          <div id="station-academy">
+            <AcademyStation />
+          </div>
         </div>
 
         {/* Task board — full width below the stations */}
-        <CompactTaskBoard key={boardRefreshKey} onSelectTask={handleSelectTask} />
+        <div id="task-board">
+          <CompactTaskBoard key={boardRefreshKey} onSelectTask={handleSelectTask} />
+        </div>
 
         {/* Pinned / Active Projects Section */}
         <div className="mt-12 pt-8 border-t border-slate-800/80 text-left shrink-0">
@@ -257,9 +266,6 @@ export default function Home() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
-
-      {/* Live event ticker — pinned to the bottom of the viewport */}
-      <EventTicker />
     </main>
   );
 }

@@ -113,6 +113,12 @@ function chirp(freq = 880) {
   }
 }
 
+/** Two-tone klaxon that precedes spoken alerts. */
+function alertChime() {
+  chirp(660);
+  setTimeout(() => chirp(494), 220);
+}
+
 export function VoiceCommandBar() {
   const router = useRouter();
   const { presence, recentEvents } = usePraxisStream();
@@ -165,13 +171,15 @@ export function VoiceCommandBar() {
         audioRef.current = el;
         el.onended = () => resolve();
         el.onerror = () => resolve();
+        el.onpause = () => resolve(); // barge-in: pausing playback releases the await
         el.play().catch(() => resolve());
       });
     } catch {
       /* speech is best-effort */
     } finally {
       audioRef.current = null;
-      if (!opts.keepState) setState("idle");
+      // Only reset if nothing else (e.g. a barge-in recording) took the state.
+      if (!opts.keepState && stateRef.current === "speaking") setState("idle");
     }
   }, []);
 
@@ -200,69 +208,114 @@ export function VoiceCommandBar() {
     return parts.join(" ");
   }, []);
 
-  const executeTranscript = useCallback(
-    async (text: string) => {
-      const lower = text.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
-      setState("working");
+  /** Server intent shape returned by Praxis /api/voice/intent. */
+  type ServerIntent =
+    | { type: "navigate"; route: string; label: string; speech: string }
+    | { type: "local_only"; enable: boolean; speech: string }
+    | { type: "local_queue"; action: "pause" | "resume"; speech: string }
+    | { type: "status_report"; speech: string }
+    | { type: "chat" };
 
+  /** Execute a classified intent. Returns false for chat fall-through. */
+  const runIntent = useCallback(
+    async (intent: ServerIntent): Promise<boolean> => {
+      switch (intent.type) {
+        case "navigate":
+          setResponse(`On screen: ${intent.label}.`);
+          router.push(intent.route);
+          await speak(intent.speech);
+          return true;
+        case "local_only":
+          try {
+            await setLocalOnlyMode(intent.enable, intent.enable ? "voice_command" : null);
+            setResponse(intent.speech);
+            await speak(intent.speech);
+          } catch {
+            setResponse("Couldn't reach model control.");
+            setState("idle");
+          }
+          return true;
+        case "local_queue":
+          try {
+            const res = await fetch(`/api/local-queue/${intent.action}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reason: "voice_command" }),
+            });
+            const msg = res.ok ? intent.speech : `Local queue ${intent.action} failed.`;
+            setResponse(msg);
+            await speak(msg);
+          } catch {
+            setResponse("Couldn't reach the local queue.");
+            setState("idle");
+          }
+          return true;
+        case "status_report": {
+          // Server composes the report; fall back to the local composer if empty.
+          const report = intent.speech || (await runStatusReport());
+          setResponse(report);
+          await speak(report);
+          return true;
+        }
+        case "chat":
+        default:
+          return false;
+      }
+    },
+    [router, speak, runStatusReport]
+  );
+
+  /** Offline fallback grammar — used only when Praxis's intent endpoint is unreachable. */
+  const runLocalGrammar = useCallback(
+    async (text: string): Promise<boolean> => {
+      const lower = text.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
       if (/(open|show|bring up|go to|take me to|display)\b/.test(lower)) {
         for (const target of NAV_TARGETS) {
           if (target.pattern.test(lower)) {
-            setResponse(`On screen: ${target.label}.`);
-            router.push(target.route);
-            await speak(`On screen. ${target.label}.`);
-            return;
+            return runIntent({
+              type: "navigate",
+              route: target.route,
+              label: target.label,
+              speech: `On screen. ${target.label}.`,
+            });
           }
         }
       }
-
-      const localOnlyMatch = lower.match(/local[- ]only( mode)?\b.*\b(on|off)\b|\b(enable|engage|disable|disengage)\b.*local[- ]only/);
-      if (localOnlyMatch) {
-        const enable = /\bon\b|\benable\b|\bengage\b/.test(lower) && !/\boff\b|\bdisable\b|\bdisengage\b/.test(lower);
-        try {
-          await setLocalOnlyMode(enable, enable ? "voice_command" : null);
-          const msg = enable ? "Local-only mode engaged. Cloud calls suspended." : "Local-only mode disengaged. Cloud restored.";
-          setResponse(msg);
-          await speak(msg);
-        } catch {
-          setResponse("Couldn't reach model control.");
-          setState("idle");
-        }
-        return;
-      }
-
-      const queueMatch = lower.match(/\b(pause|resume)\b.*(local|queue)/);
-      if (queueMatch && /(queue|local)/.test(lower)) {
-        const action = queueMatch[1] === "pause" ? "pause" : "resume";
-        try {
-          const res = await fetch(`/api/local-queue/${action}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reason: "voice_command" }),
-          });
-          const msg = res.ok ? `Local queue ${action}d.` : `Local queue ${action} failed.`;
-          setResponse(msg);
-          await speak(msg);
-        } catch {
-          setResponse("Couldn't reach the local queue.");
-          setState("idle");
-        }
-        return;
-      }
-
       if (/\b(status report|sitrep|status update|full report|report status)\b/.test(lower)) {
-        const report = await runStatusReport();
-        setResponse(report);
-        await speak(report);
-        return;
+        return runIntent({ type: "status_report", speech: "" });
+      }
+      return false;
+    },
+    [runIntent]
+  );
+
+  const executeTranscript = useCallback(
+    async (text: string) => {
+      setState("working");
+
+      // 1. Shared grammar on Praxis — one grammar for every cockpit surface.
+      let handled = false;
+      let serverReachable = true;
+      try {
+        const res = await fetch("/api/praxis/voice-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: text }),
+        });
+        if (!res.ok) throw new Error();
+        const data = (await res.json()) as { intent: ServerIntent };
+        handled = await runIntent(data.intent);
+      } catch {
+        serverReachable = false;
+      }
+      if (handled) return;
+
+      // 2. Praxis unreachable → minimal local grammar keeps navigation working.
+      if (!serverReachable) {
+        if (await runLocalGrammar(text)) return;
       }
 
-      if (/\b(ambient mode|screensaver)\b/.test(lower)) {
-        setResponse("Use the monitor button in the header for ambient mode.");
-        await speak("Ambient mode is on the monitor button in the header.");
-        return;
-      }
-
+      // 3. Chat fall-through — the reply is spoken via the ElevenLabs route.
       try {
         const res = await fetch("/api/praxis/chat", {
           method: "POST",
@@ -279,7 +332,7 @@ export function VoiceCommandBar() {
         setState("idle");
       }
     },
-    [router, speak, runStatusReport]
+    [speak, runIntent, runLocalGrammar]
   );
 
   // ── Recording (manual or wake-word triggered) ─────────────────
@@ -288,7 +341,12 @@ export function VoiceCommandBar() {
   }, []);
 
   const startRecording = useCallback(async () => {
-    if (stateRef.current !== "idle") return;
+    // "speaking" is allowed: barge-in — cut Praxis off and listen.
+    if (stateRef.current !== "idle" && stateRef.current !== "speaking") return;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     setTranscript(null);
     setResponse(null);
     setPanelOpen(true);
@@ -385,8 +443,9 @@ export function VoiceCommandBar() {
   }, [executeTranscript]);
 
   // ── Wake word loop ────────────────────────────────────────────
+  // Armed while idle AND while Praxis is speaking (say "Praxis" to barge in).
   useEffect(() => {
-    if (!wakeEnabled || state !== "idle") {
+    if (!wakeEnabled || (state !== "idle" && state !== "speaking")) {
       recognitionRef.current?.abort();
       recognitionRef.current = null;
       return;
@@ -410,7 +469,11 @@ export function VoiceCommandBar() {
     };
     rec.onend = () => {
       // Chrome ends recognition periodically — restart while still armed.
-      if (!disposed && wakeEnabledRef.current && stateRef.current === "idle") {
+      if (
+        !disposed &&
+        wakeEnabledRef.current &&
+        (stateRef.current === "idle" || stateRef.current === "speaking")
+      ) {
         try {
           rec.start();
         } catch {
@@ -459,7 +522,8 @@ export function VoiceCommandBar() {
       alertEvent.type === "task.failed"
         ? `Alert. A task has failed: ${alertEvent.error?.slice(0, 120) ?? "unknown error"}`
         : `Praxis needs your input: ${alertEvent.type === "hitl.created" ? alertEvent.request?.question?.slice(0, 120) ?? "approval required" : ""}`;
-    speak(line, { keepState: true });
+    alertChime();
+    setTimeout(() => speak(line, { keepState: true }), 550);
   }, [recentEvents, alertsEnabled, state, speak]);
 
   const onMicClick = () => {

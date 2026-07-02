@@ -8,8 +8,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, RotateCcw, ShieldCheck } from "lucide-react";
-import { DispatchStation, type DispatchStateResponse } from "@/components/bridge/dispatch-station";
-import { EventTicker } from "@/components/bridge/event-ticker";
+import {
+  DispatchStation,
+  type DispatchStateResponse,
+  type DispatchHistoryRow,
+} from "@/components/bridge/dispatch-station";
+import { useCrewActivity } from "@/hooks/use-crew-activity";
 
 function relTime(iso?: string) {
   if (!iso) return "—";
@@ -22,10 +26,30 @@ function relTime(iso?: string) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+function executorChip(name: string) {
+  const map: Record<string, string> = {
+    antigravity: "border-violet-500/40 bg-violet-500/10 text-violet-300",
+    codex: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+    "claude-code": "border-orange-500/40 bg-orange-500/10 text-orange-300",
+  };
+  return map[name] ?? "border-slate-600 bg-slate-800/60 text-slate-300";
+}
+
+/** llm_calls history rows: dispatch.<executor> carries the task title in
+ * `model`; agent-dispatch.<label> carries the run detail there, so the
+ * label itself is the useful title. */
+function historyEntry(row: DispatchHistoryRow): { executor: string; title: string } {
+  if (row.caller.startsWith("agent-dispatch.")) {
+    return { executor: row.provider, title: `Agent: ${row.caller.slice("agent-dispatch.".length)}` };
+  }
+  return { executor: row.provider, title: row.model };
+}
+
 function statusChip(status: string) {
   const map: Record<string, string> = {
     "in-progress": "border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
     running: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
+    active: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
     pending: "border-slate-600 bg-slate-800/60 text-slate-300",
     queued: "border-slate-600 bg-slate-800/60 text-slate-300",
     dispatched: "border-violet-500/40 bg-violet-500/10 text-violet-300",
@@ -42,6 +66,7 @@ function statusChip(status: string) {
 
 export default function OpsConsolePage() {
   const router = useRouter();
+  const { sseRuns } = useCrewActivity();
   const [state, setState] = useState<DispatchStateResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -115,7 +140,14 @@ export default function OpsConsolePage() {
     | null
     | undefined;
   const queue = state?.antigravity?.queue ?? [];
-  const log = state?.dispatchLog ?? [];
+  // Registry runs plus SSE-synthesized rows: a run that's live on the event
+  // stream still shows here even if the running Praxis predates the registry.
+  const registryRuns = state?.executors?.runs ?? [];
+  const runs = [
+    ...registryRuns,
+    ...sseRuns.filter((s) => !registryRuns.some((r) => r.taskId === s.taskId)),
+  ];
+  const history = state?.executors?.history ?? [];
   const localJobs = state?.localLlm?.jobs ?? [];
   const localCounts = state?.localLlm?.counts ?? {};
   const localPaused = Boolean(state?.localLlm?.worker?.paused);
@@ -204,6 +236,51 @@ export default function OpsConsolePage() {
           </div>
         </div>
 
+        {/* Executor runs — all executors (Antigravity, Codex, Claude Code) + agent runs */}
+        <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+          <h3 className="mb-3 text-sm font-bold tracking-tight text-white">
+            EXECUTOR RUNS{" "}
+            <span className="ml-1 text-xs font-normal text-slate-500">
+              ({runs.filter((r) => r.status === "active").length} active · all executors)
+            </span>
+          </h3>
+          {runs.length === 0 ? (
+            <div className="py-4 text-center text-xs text-slate-500">
+              No runs since the last Praxis restart.
+            </div>
+          ) : (
+            <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
+              {runs.map((r) => (
+                <div
+                  key={r.taskId}
+                  className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2"
+                >
+                  <span className={`w-24 shrink-0 rounded border px-1.5 py-0.5 text-center text-[10px] uppercase ${executorChip(r.executor)}`}>
+                    {r.executor}
+                  </span>
+                  <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] uppercase ${statusChip(r.status === "active" ? "active" : r.status)}`}>
+                    {r.status === "active" ? r.phase : r.status}
+                  </span>
+                  {r.kind !== "task" && (
+                    <span className="shrink-0 rounded border border-slate-700 bg-slate-800/60 px-1.5 py-0.5 text-[10px] uppercase text-slate-400">
+                      {r.kind}
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-xs text-slate-300" title={r.summary ?? r.title}>
+                    {r.title}
+                  </span>
+                  {r.workspace && (
+                    <span className="shrink-0 font-mono text-[10px] text-slate-600" title={r.workspace}>
+                      {r.workspace.split("/").filter(Boolean).pop()}
+                    </span>
+                  )}
+                  <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(r.updatedAt)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Antigravity queue */}
         <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
           <h3 className="mb-3 text-sm font-bold tracking-tight text-white">
@@ -243,24 +320,38 @@ export default function OpsConsolePage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2 items-start">
-          {/* Session dispatch log */}
+          {/* Dispatch log — persistent, all executors (from llm_calls) */}
           <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-            <h3 className="mb-3 text-sm font-bold tracking-tight text-white">SESSION DISPATCH LOG</h3>
-            {log.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-500">No dispatches this session.</div>
+            <h3 className="mb-3 text-sm font-bold tracking-tight text-white">
+              DISPATCH LOG{" "}
+              <span className="ml-1 text-xs font-normal text-slate-500">(all executors · survives restarts)</span>
+            </h3>
+            {history.length === 0 ? (
+              <div className="py-4 text-center text-xs text-slate-500">No dispatches recorded.</div>
             ) : (
               <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
-                {log.map((d) => (
-                  <div key={d.id} className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2">
-                    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] uppercase ${statusChip(d.status)}`}>
-                      {d.status}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-xs text-slate-300" title={d.title}>
-                      {d.title}
-                    </span>
-                    <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(d.dispatchedAt)}</span>
-                  </div>
-                ))}
+                {history.map((row, i) => {
+                  const entry = historyEntry(row);
+                  const ok = Boolean(row.success);
+                  return (
+                    <div
+                      key={`${row.ts}-${i}`}
+                      className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2"
+                    >
+                      <span className={`w-24 shrink-0 rounded border px-1.5 py-0.5 text-center text-[10px] uppercase ${executorChip(entry.executor)}`}>
+                        {entry.executor}
+                      </span>
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${ok ? "bg-emerald-400" : "bg-red-400"}`}
+                        title={ok ? "dispatched" : row.error ?? "dispatch failed"}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-xs text-slate-300" title={row.error ?? entry.title}>
+                        {entry.title}
+                      </span>
+                      <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(row.ts)}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -314,8 +405,6 @@ export default function OpsConsolePage() {
           </div>
         </div>
       </div>
-
-      <EventTicker />
     </main>
   );
 }

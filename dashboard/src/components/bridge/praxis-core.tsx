@@ -1,14 +1,29 @@
 /**
  * PraxisCore — the bridge "main viewer": the living core orb (shared with
- * ambient mode via CoreCanvas), live stat readouts, and the latest thinking
- * trace from the stream. Replaces the static PraxisStatusPanel on the deck.
+ * ambient mode via CoreCanvas) with live stat readouts and the thinking
+ * trace on the left, and the Praxis terminal embedded as the viewscreen
+ * beside it — presence and conversation are one station. The viewscreen is
+ * kept dashboard-sized; a maximize toggle blows it up to full screen without
+ * losing conversation state. Crew chips click through to executor telemetry.
  */
 "use client";
 
-import { Radio } from "lucide-react";
+import { useState } from "react";
+import { Radio, Maximize2, Minimize2 } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useCrewActivity } from "@/hooks/use-crew-activity";
 import { CoreCanvas, CORE_STYLES } from "@/components/bridge/core-canvas";
+import { HudPanel, HudErrorBoundary } from "@/components/bridge/hud";
+import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
+import { AITerminal } from "@/components/ai-terminal";
 import type { PresenceActivity } from "@praxis/contract";
+
+const CREW_DOT: Record<string, string> = {
+  active: "bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] motion-safe:animate-pulse",
+  done: "bg-emerald-400",
+  failed: "bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.8)]",
+  idle: "bg-slate-700",
+};
 
 function fmtTime(iso?: string) {
   if (!iso) return null;
@@ -17,8 +32,12 @@ function fmtTime(iso?: string) {
 
 export function PraxisCore() {
   const { presence, recentEvents, connected } = usePraxisStream();
+  const { crew } = useCrewActivity();
+  const [viewscreenMax, setViewscreenMax] = useState(false);
+  const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
   const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";
   const style = CORE_STYLES[activity];
+  const busyCrew = crew.filter((m) => m.state === "active").length;
 
   const lastTrace = recentEvents.find((e) => e.type === "thinking.trace");
   const traceText = lastTrace && lastTrace.type === "thinking.trace" ? lastTrace.content : presence?.thinkingTrace;
@@ -33,45 +52,94 @@ export function PraxisCore() {
   ).filter((s): s is { label: string; value: number | string } => s.value !== undefined && s.value !== null);
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-slate-800 bg-slate-900/50 p-4">
-      <div className="mb-1 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Radio size={16} className="text-cyan-400" />
-          <h3 className="text-sm font-bold tracking-tight text-white">MAIN VIEWER — PRAXIS CORE</h3>
-        </div>
-        <span
-          className={`rounded-md border px-1.5 py-0.5 text-[10px] uppercase ${
-            connected
-              ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
-              : "border-amber-400/40 bg-amber-400/10 text-amber-200"
-          }`}
-        >
-          {connected ? "live" : "reconnecting"}
-        </span>
-      </div>
+    <HudPanel
+      icon={<Radio size={16} />}
+      title="MAIN VIEWER — PRAXIS CORE"
+      accent="cyan"
+      className="overflow-hidden"
+      headerRight={
+        <>
+          <span
+            className={`rounded-md border px-1.5 py-0.5 text-[10px] uppercase ${
+              connected
+                ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
+                : "border-amber-400/40 bg-amber-400/10 text-amber-200"
+            }`}
+          >
+            {connected ? "live" : "reconnecting"}
+          </span>
+          <button
+            onClick={() => setViewscreenMax((v) => !v)}
+            className="rounded-md border border-slate-800 bg-slate-900/60 p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            aria-label={viewscreenMax ? "Restore viewscreen" : "Maximize viewscreen"}
+            title={viewscreenMax ? "Restore viewscreen" : "Maximize viewscreen"}
+          >
+            {viewscreenMax ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          </button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4 lg:flex-row">
+        {/* Core column — presence, vitals, thought stream */}
+        <div className="flex w-full shrink-0 flex-col items-center lg:w-[240px]">
+          <CoreCanvas activity={activity} size={150} />
 
-      <div className="flex flex-col items-center gap-4 sm:flex-row">
-        <CoreCanvas activity={activity} size={210} />
-
-        <div className="min-w-0 flex-1 self-stretch py-2">
-          <div className={`text-2xl font-bold tracking-tight ${style.textClass}`}>{style.label}</div>
-          <div className="mt-1 text-sm text-slate-400">
+          <div className={`text-lg font-bold tracking-tight ${style.textClass}`}>{style.label}</div>
+          <div className="mt-0.5 line-clamp-2 text-center text-[11px] text-slate-400" title={presence?.summary}>
             {presence?.summary ?? (connected ? "Connecting…" : "Signal lost — attempting to re-establish link")}
           </div>
 
           {stats.length > 0 && (
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="mt-2.5 grid w-full grid-cols-2 gap-1.5">
               {stats.map((s) => (
-                <div key={s.label} className="rounded-md border border-slate-800 bg-slate-950/50 px-2 py-1.5">
-                  <div className="text-[10px] uppercase tracking-wide text-slate-500">{s.label}</div>
-                  <div className="text-sm font-semibold tabular-nums text-slate-200">{s.value}</div>
+                <div key={s.label} className="rounded-md border border-slate-800 bg-slate-950/50 px-2 py-1">
+                  <div className="text-[9px] uppercase tracking-wide text-slate-500">{s.label}</div>
+                  <div className="text-[13px] font-semibold tabular-nums text-slate-200">{s.value}</div>
                 </div>
               ))}
             </div>
           )}
 
+          {/* Crew — the other pairs of hands: CLI executors + local LLM.
+              Praxis can be idle while the crew works his dispatched tasks.
+              Each chip opens the executor drill-down. */}
+          <div className="mt-2.5 w-full">
+            <div className="mb-1 flex items-baseline justify-between">
+              <span className="text-[10px] uppercase tracking-wide text-slate-600">crew</span>
+              {busyCrew > 0 && (
+                <span className="text-[10px] font-semibold text-cyan-400">{busyCrew} working</span>
+              )}
+            </div>
+            <div className="grid w-full grid-cols-2 gap-1.5">
+              {crew.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setInspecting(m.id as ExecutorId)}
+                  className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-left transition-colors hover:border-slate-600 ${
+                    m.state === "active"
+                      ? "border-cyan-500/30 bg-cyan-500/5"
+                      : m.state === "failed"
+                      ? "border-red-500/30 bg-red-500/5"
+                      : "border-slate-800 bg-slate-950/50"
+                  }`}
+                  title={`${m.label}${m.detail ? `: ${m.detail}` : ""} — click for telemetry`}
+                >
+                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${CREW_DOT[m.state]}`} />
+                  <div className="min-w-0">
+                    <div className={`truncate text-[10px] font-medium ${m.state === "idle" ? "text-slate-500" : "text-slate-200"}`}>
+                      {m.label}
+                    </div>
+                    <div className={`truncate text-[9px] ${m.state === "active" ? "text-cyan-400" : m.state === "failed" ? "text-red-400" : "text-slate-600"}`}>
+                      {m.detail ?? m.state}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {traceText && (activity === "thinking" || activity === "executing") && (
-            <div className="mt-3 max-h-16 overflow-hidden rounded-md border border-slate-800/60 bg-slate-950/60 px-2.5 py-1.5">
+            <div className="mt-2.5 max-h-16 w-full overflow-hidden rounded-md border border-slate-800/60 bg-slate-950/60 px-2.5 py-1.5">
               <div className="text-[10px] uppercase tracking-wide text-slate-600">thought stream</div>
               <p className="truncate font-mono text-[11px] leading-relaxed text-slate-500" title={traceText}>
                 {traceText}
@@ -79,7 +147,34 @@ export function PraxisCore() {
             </div>
           )}
         </div>
+
+        {/* Viewscreen — the Praxis terminal, part of the core station.
+            Same DOM node in both sizes so the conversation survives the
+            maximize toggle. */}
+        {viewscreenMax && (
+          <div
+            className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm"
+            onClick={() => setViewscreenMax(false)}
+            aria-hidden
+          />
+        )}
+        <div className={viewscreenMax ? "fixed inset-4 z-[71]" : "h-[420px] min-w-0 flex-1"}>
+          <HudErrorBoundary label="viewscreen">
+            <AITerminal mode="inline" />
+          </HudErrorBoundary>
+          {viewscreenMax && (
+            <button
+              onClick={() => setViewscreenMax(false)}
+              className="absolute -top-2 -right-2 rounded-full border border-slate-700 bg-slate-900 p-1.5 text-slate-300 shadow-lg transition-colors hover:bg-slate-800 hover:text-white"
+              aria-label="Restore viewscreen"
+            >
+              <Minimize2 size={14} />
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+
+      {inspecting && <ExecutorDetailModal executor={inspecting} onClose={() => setInspecting(null)} />}
+    </HudPanel>
   );
 }

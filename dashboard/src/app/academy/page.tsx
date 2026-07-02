@@ -8,7 +8,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, GraduationCap, Search, ChevronDown, ChevronRight, Pin } from "lucide-react";
-import { EventTicker } from "@/components/bridge/event-ticker";
 import type { SkillSummary } from "@/components/bridge/academy-station";
 
 interface SkillsResponse {
@@ -184,8 +183,6 @@ export default function AcademyPage() {
           ))
         )}
       </div>
-
-      <EventTicker />
     </main>
   );
 }

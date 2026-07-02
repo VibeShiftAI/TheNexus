@@ -422,6 +422,21 @@ function computeRenderModel(specMap = {}) {
     }
   }
 
+  // Ground palette from the dominant surface materials: tints applied over
+  // the renderer's photo textures (desat = how far the red-sand photo gets
+  // neutralized first; icy worlds need nearly full desaturation).
+  const materials = (text('surface.dominant_materials') || '').toLowerCase();
+  let palette = { ground: [0.95, 0.9, 0.85], rock: [0.9, 0.88, 0.86], dust: [0.62, 0.44, 0.3], desat: 0.35 };
+  if (/\bice|snow|frost|frozen/.test(materials)) {
+    palette = { ground: [0.72, 0.78, 0.88], rock: [0.5, 0.55, 0.63], dust: [0.78, 0.84, 0.95], desat: 0.9 };
+  } else if (/iron|oxide|rust|hematite/.test(materials)) {
+    palette = { ground: [0.95, 0.88, 0.8], rock: [0.75, 0.72, 0.7], dust: [0.62, 0.44, 0.3], desat: 0.35 };
+  } else if (/basalt|volcanic|lava|mafic/.test(materials)) {
+    palette = { ground: [0.55, 0.53, 0.52], rock: [0.42, 0.41, 0.4], dust: [0.6, 0.55, 0.5], desat: 0.75 };
+  } else if (/sulfur|sulphur/.test(materials)) {
+    palette = { ground: [0.95, 0.85, 0.45], rock: [0.75, 0.65, 0.35], dust: [0.9, 0.8, 0.5], desat: 0.8 };
+  }
+
   const r = radiusM(specMap);
   const gG = get('bulk.surface_gravity_g');
   const albedo = get('energy.albedo');
@@ -444,6 +459,7 @@ function computeRenderModel(specMap = {}) {
     mie: { scale: round(mie.scale, 6), anisotropy: mie.anisotropy, color: mie.color },
     fog,
     clouds,
+    palette,
   };
 
   return { rotation, surface, suns: [sun] };

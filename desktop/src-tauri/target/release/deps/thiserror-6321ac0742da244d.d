@@ -1,0 +1,14 @@
+/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/deps/thiserror-6321ac0742da244d.d: /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/thiserror-8ba9b142a41f21d9/out/private.rs
+
+/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/deps/libthiserror-6321ac0742da244d.rlib: /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/thiserror-8ba9b142a41f21d9/out/private.rs
+
+/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/deps/libthiserror-6321ac0742da244d.rmeta: /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/thiserror-8ba9b142a41f21d9/out/private.rs
+
+/Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs:
+/Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs:
+/Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs:
+/Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs:
+/Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs:
+/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/thiserror-8ba9b142a41f21d9/out/private.rs:
+
+# env-dep:OUT_DIR=/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/thiserror-8ba9b142a41f21d9/out

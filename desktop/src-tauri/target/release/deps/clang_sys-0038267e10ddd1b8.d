@@ -1,0 +1,14 @@
+/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/deps/clang_sys-0038267e10ddd1b8.d: /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/macros.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/common.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/dynamic.rs
+
+/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/deps/libclang_sys-0038267e10ddd1b8.rlib: /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/macros.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/common.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/dynamic.rs
+
+/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/deps/libclang_sys-0038267e10ddd1b8.rmeta: /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs /Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/macros.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/common.rs /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/dynamic.rs
+
+/Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs:
+/Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs:
+/Users/robertwashko/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs:
+/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/macros.rs:
+/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/common.rs:
+/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out/dynamic.rs:
+
+# env-dep:OUT_DIR=/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/build/clang-sys-c43e7576086c74b5/out

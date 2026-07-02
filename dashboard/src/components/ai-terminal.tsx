@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Settings2, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw, Maximize2, Mic, Square, Plus, History, ChevronRight, Download, Image, Film, Music, FileArchive, Volume2, Save } from "lucide-react";
+import { Send, Bot, User, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw, Maximize2, Mic, Square, Plus, History, ChevronRight, Download, Image, Film, Music, FileArchive, Volume2, Save } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -11,7 +11,6 @@ import { useParams } from "next/navigation";
 import { getAuthHeader } from "@/lib/auth";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 import { useCortex } from "@/components/cortex-provider";
-import { ModelAssignmentControl } from "@/components/model-assignment-control";
 import type { Message, CortexArtifact, PlanDraftData, CompiledPlanData, ChatResponseData, LineCommentData, VoteSummaryData, StatusUpdateData, UnknownArtifactData } from "@/components/cortex-provider";
 
 // Types are now imported from cortex-provider.tsx
@@ -22,39 +21,9 @@ interface AITerminalProps {
     mode?: 'modal' | 'inline';
 }
 
-// Model configuration following "Configuration-over-Identity" pattern
-// See: AI Model ID API Research for detailed specifications
-interface ModelConfig {
-    id: string;           // Internal identifier for UI
-    apiModelId: string;   // Actual API model ID to send
-    name: string;         // Display name
-    provider: string;
-    isThinking?: boolean; // Whether this is a "thinking" variant
-    parameters?: {
-        // Google Gemini thinking config
-        thinking_config?: {
-            thinking_level?: 'LOW' | 'HIGH';
-        };
-        thinking_budget?: number; // For Gemini 2.5 Flash
-        // Anthropic thinking config
-        thinking?: {
-            type: 'enabled';
-            budget_tokens: number;
-        };
-        // OpenAI reasoning config
-        reasoning_effort?: 'low' | 'medium' | 'high' | 'xhigh';
-    };
-    limits?: {
-        maxInputTokens: number;
-        maxOutputTokens: number;
-    };
-}
-
-const MODES = [
-    { id: 'agent', name: 'Agent', description: 'Execute actions on projects' },
-    { id: 'chat', name: 'Chat', description: 'Natural conversation' },
-    { id: 'praxis', name: 'Praxis', description: 'Your personal AI supervisor' },
-];
+// 2026-07-02 simplification: the terminal is praxis-only. The old Agent/Chat
+// modes and the model picker were removed — every message relays to Praxis,
+// which does its own model routing (the picked model was ignored end-to-end).
 
 function createClientMessageId(): string {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -109,11 +78,6 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages } = useCortex();
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
-    const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
-    const [selectedModel, setSelectedModel] = useState<ModelConfig | null>(null);
-    const [selectedModelAssignment, setSelectedModelAssignment] = useState<string>("");
-    const [selectedMode, setSelectedMode] = useState(MODES[2]);
-    const [showSettings, setShowSettings] = useState(false);
     const [pendingArtifact, setPendingArtifact] = useState<CortexArtifact | null>(null);
     const [attachedFiles, setAttachedFiles] = useState<File[]>([]); // File upload state
     const [attachedPreviews, setAttachedPreviews] = useState<{ name: string; size: number; type: string; previewUrl?: string }[]>([]); // Rich preview state
@@ -218,36 +182,6 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             loadMoreMessages();
         }
     }, [hasMoreMessages, isLoadingMore, loadMoreMessages]);
-
-    // Fetch available models from the model discovery API
-    useEffect(() => {
-        let attempts = 0;
-        const maxAttempts = 3;
-
-        const fetchModels = () => {
-            fetch(`/api/models?_cb=${Date.now()}`, { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.models && data.models.length > 0) {
-                        setAvailableModels(data.models);
-                        setSelectedModel(data.models[0]);
-                        setSelectedModelAssignment(`model:${data.models[0].id}`);
-                        console.log(`[Praxis Terminal] Loaded ${data.models.length} models from discovery API`);
-                    } else if (++attempts < maxAttempts) {
-                        // Discovery may still be running — retry after 2s
-                        setTimeout(fetchModels, 2000);
-                    }
-                })
-                .catch(err => {
-                    console.warn('[Praxis Terminal] Model discovery unavailable:', err.message);
-                    if (++attempts < maxAttempts) {
-                        setTimeout(fetchModels, 2000);
-                    }
-                });
-        };
-
-        fetchModels();
-    }, []);
 
     // Focus input when terminal opens (modal only — inline shouldn't steal focus on page load)
     useEffect(() => {
@@ -383,7 +317,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     };
 
     const handleSend = async () => {
-        if ((!input.trim() && attachedFiles.length === 0 && !audioBlob) || loading || !selectedModel) return;
+        if ((!input.trim() && attachedFiles.length === 0 && !audioBlob) || loading) return;
 
         // ---------------------------------------------------------------
         // SLASH COMMAND: /ingest <url_or_text>
@@ -541,20 +475,11 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             let lastError: Error | null = null;
             let response: Response | null = null;
 
-            const canStreamPraxis = selectedMode.id === 'praxis' && !base64Audio && uploadedAttachments.length === 0;
+            const canStreamPraxis = !base64Audio && uploadedAttachments.length === 0;
             const streamingAssistantId = canStreamPraxis ? createClientMessageId() : null;
             const requestBody = JSON.stringify({
                 message: input.trim() || (currentAudioBlob ? "Voice recording attached" : `Please analyze the attached file(s): ${filesToUpload.map(f => f.name).join(', ')}`),
-                // Send full model configuration for proper routing
-                modelConfig: {
-                    id: selectedModel.id,
-                    apiModelId: selectedModel.apiModelId,
-                    provider: selectedModel.provider,
-                    isThinking: selectedModel.isThinking || false,
-                    parameters: selectedModel.parameters || {},
-                },
-                model_assignment: selectedModelAssignment || `model:${selectedModel.id}`,
-                mode: selectedMode.id,
+                mode: 'praxis',
                 history: messages.slice(-10), // Last 10 messages for context
                 projectId: scopedProjectId, // Send scope if available
                 clientMessageId,
@@ -671,37 +596,20 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             });
         } catch (error: any) {
             console.error('AI Chat error:', error);
-            // In Agent mode, artifacts stream via WebSocket — the HTTP response is just a summary.
-            // Don't show a scary error if the pipeline is actually working via Glass Box.
-            if (selectedMode.id === 'agent') {
-                console.warn('[Praxis Terminal] HTTP response failed in Agent mode — artifacts may still be streaming via WebSocket.');
-                // Only show error if no artifacts have arrived (i.e., Cortex is truly down)
-                const hasRecentArtifact = messages.some(m =>
-                    m.artifact && m.timestamp && (Date.now() - new Date(m.timestamp).getTime()) < 120000
-                );
-                if (!hasRecentArtifact) {
-                    setMessages(prev => [...prev, {
-                        role: 'system',
-                        content: '⚠️ Cortex Brain is processing your request. Artifacts will appear as they are produced.',
-                        timestamp: new Date(),
-                    }]);
-                }
-            } else {
-                // Show a diagnostic error instead of the misleading "429 Rate Limit"
-                const errMsg = error?.message || String(error);
-                const isNetworkError = errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('Failed to fetch') || error?.name === 'TypeError';
-                const isRateLimit = errMsg.includes('429') || errMsg.includes('Too many');
-                const userMessage = isRateLimit
-                    ? 'Rate limit exceeded (429). Your API quota may be exhausted — try again in a few minutes.'
-                    : isNetworkError
-                    ? 'Connection lost — the server may be restarting. Please try again in a moment.'
-                    : `Error: ${errMsg}`;
-                setMessages(prev => [...prev, {
-                    role: 'system',
-                    content: userMessage,
-                    timestamp: new Date(),
-                }]);
-            }
+            // Show a diagnostic error instead of the misleading "429 Rate Limit"
+            const errMsg = error?.message || String(error);
+            const isNetworkError = errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('Failed to fetch') || error?.name === 'TypeError';
+            const isRateLimit = errMsg.includes('429') || errMsg.includes('Too many');
+            const userMessage = isRateLimit
+                ? 'Rate limit exceeded (429). Your API quota may be exhausted — try again in a few minutes.'
+                : isNetworkError
+                ? 'Connection lost — the server may be restarting. Please try again in a moment.'
+                : `Error: ${errMsg}`;
+            setMessages(prev => [...prev, {
+                role: 'system',
+                content: userMessage,
+                timestamp: new Date(),
+            }]);
         } finally {
             setLoading(false);
         }
@@ -987,19 +895,8 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                             </div>
                         )}
                     </div>
-                    {selectedModel ? (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${selectedModel.isThinking
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            : 'bg-cyan-500/20 text-cyan-400'}`}>
-                            {selectedModel.isThinking && '⚡ '}{selectedModel.name}
-                        </span>
-                    ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400 animate-pulse">
-                            Loading models…
-                        </span>
-                    )}
                     <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
-                        {selectedMode.name}
+                        Praxis
                     </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -1023,12 +920,6 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     >
                         <History size={18} />
                     </button>
-                    <button
-                        onClick={() => setShowSettings(!showSettings)}
-                        className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                    >
-                        <Settings2 size={18} />
-                    </button>
                     {!isInline && onClose && (
                         <button
                             onClick={onClose}
@@ -1039,51 +930,6 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     )}
                 </div>
             </div>
-
-            {/* Settings Panel */}
-            {showSettings && (
-                <div className="px-4 py-3 border-b border-slate-700 bg-slate-800/30 space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs text-slate-400 mb-1">Model</label>
-                            <select
-                                value={selectedModel?.id || ''}
-                                onChange={(e) => {
-                                    const nextModel = availableModels.find((m: ModelConfig) => m.id === e.target.value) || availableModels[0];
-                                    setSelectedModel(nextModel);
-                                    if (nextModel) setSelectedModelAssignment(`model:${nextModel.id}`);
-                                }}
-                                className="w-full rounded bg-slate-800 border border-slate-600 px-3 py-1.5 text-sm text-white focus:border-cyan-500 focus:outline-none"
-                            >
-                                {availableModels.map((m: ModelConfig) => (
-                                    <option key={m.id} value={m.id}>{m.name} ({m.provider})</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs text-slate-400 mb-1">Assignment</label>
-                            <ModelAssignmentControl
-                                value={selectedModelAssignment}
-                                projectId={scopedProjectId}
-                                role={selectedMode.id}
-                                onChange={setSelectedModelAssignment}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs text-slate-400 mb-1">Mode</label>
-                            <select
-                                value={selectedMode.id}
-                                onChange={(e) => setSelectedMode(MODES.find(m => m.id === e.target.value) || MODES[0])}
-                                className="w-full rounded bg-slate-800 border border-slate-600 px-3 py-1.5 text-sm text-white focus:border-cyan-500 focus:outline-none"
-                            >
-                                {MODES.map(m => (
-                                    <option key={m.id} value={m.id}>{m.name} - {m.description}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Conversation History Panel */}
             {showConversations && (
@@ -1686,8 +1532,8 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 )}
 
                 <div className="flex gap-2">
-                    {/* Voice Record button — only in Praxis mode */}
-                    {selectedMode.id === 'praxis' && !isRecording && !audioBlob && (
+                    {/* Voice Record button */}
+                    {!isRecording && !audioBlob && (
                         <button
                             onClick={startRecording}
                             disabled={loading || isDragging}

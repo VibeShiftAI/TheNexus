@@ -299,6 +299,8 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
     // Ops console actions.
     router.post('/dispatch/retry', (req, res) => proxyJson(req, res, '/api/dispatch/retry'));
     router.post('/dispatch/auto-approve', (req, res) => proxyJson(req, res, '/api/dispatch/auto-approve'));
+    // Shared voice-command grammar (classification lives with the agent).
+    router.post('/voice-intent', (req, res) => proxyJson(req, res, '/api/voice/intent'));
 
     return router;
 }

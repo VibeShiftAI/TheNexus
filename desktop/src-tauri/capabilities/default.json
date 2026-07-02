@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Loader window; the dashboard itself needs no Tauri IPC.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

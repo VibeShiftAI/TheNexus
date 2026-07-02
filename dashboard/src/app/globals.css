@@ -28,6 +28,67 @@ body {
   }
 }
 
+/* ---- Bridge HUD layer ---- */
+
+/* Page backdrop: faint tactical grid + station glows */
+.hud-backdrop {
+  background-image:
+    radial-gradient(1100px 480px at 72% -8%, rgba(34, 211, 238, 0.055), transparent),
+    radial-gradient(900px 420px at 8% 108%, rgba(167, 139, 250, 0.045), transparent),
+    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+  background-size: auto, auto, 44px 44px, 44px 44px;
+}
+
+/* CRT scanlines over a panel (parent must be position:relative) */
+.hud-scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(148, 163, 184, 0.03) 0px,
+    rgba(148, 163, 184, 0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Attention flash when a KPI chip warps you to a station */
+@keyframes hud-flash {
+  0% {
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.9), 0 0 28px rgba(34, 211, 238, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 1px transparent, 0 0 0 transparent;
+  }
+}
+.hud-flash {
+  border-radius: 0.5rem;
+  animation: hud-flash 1.6s ease-out 1;
+}
+
+/* Radar sweep beam */
+@keyframes hud-radar-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Modal pop-in */
+@keyframes hud-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;

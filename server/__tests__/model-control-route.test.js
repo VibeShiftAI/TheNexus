@@ -67,6 +67,8 @@ describe('model control route', () => {
                     models: [{ id: 'local-llama', provider: 'local', api_model_id: 'llama3.2' }],
                     aliases: [{ alias: 'local_default', target: 'model:local-llama' }],
                     projectAliases: [{ alias: 'coder', target: 'model:local-llama' }],
+                    agentBackend: { backend: 'codex', fallbacks: ['claude-code', 'gemini'] },
+                    claudeDefault: 'claude-opus-4-8',
                     localOnly: { enabled: false, reason: null },
                     policy: { enabled: false, reason: null },
                     projectPolicy: {

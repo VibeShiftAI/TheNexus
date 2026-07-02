@@ -1041,7 +1041,10 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
     const starIdxs = objects.map((o, j) => (isStar(o) ? j : -1)).filter((j) => j >= 0);
     const sunsFor = (o, i, rm) => {
       const base = (rm && rm.suns && rm.suns[0]) || null;
-      if (!starIdxs.length) return base ? [base] : [];
+      // No star in the selection: use the host-star render model only when it
+      // has real brightness. A starless body (rogue planet) exports an EMPTY
+      // suns list — the renderer must not invent a 133k-lux daylight for it.
+      if (!starIdxs.length) return (base && base.illuminance_lux != null) ? [base] : [];
       const aAU = sv(o, 'orbital.semi_major_axis_au');
       return starIdxs.map((j) => {
         const dp = states[i].position_m.map((p, k) => p - states[j].position_m[k]);

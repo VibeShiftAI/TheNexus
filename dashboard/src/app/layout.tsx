@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CortexProvider } from "@/components/cortex-provider";
+import { EventTicker } from "@/components/bridge/event-ticker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +37,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '2.25rem' }}>
           <CortexProvider>
             <main style={{ flex: 1 }}>
               {children}
@@ -50,6 +51,8 @@ export default function RootLayout({
             }}>
               © {new Date().getFullYear()} VibeShift AI. All rights reserved.
             </footer>
+            {/* Live Praxis event strip — pinned to the bottom on every page */}
+            <EventTicker />
           </CortexProvider>
         </div>
       </body>

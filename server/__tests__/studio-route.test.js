@@ -504,6 +504,24 @@ describe('studio route', () => {
     expect(b.Cinderfall.suns[0].angular_diameter_deg).toBeGreaterThan(0.5);
   });
 
+  test('a starless rogue planet exports an empty suns list, not fake daylight', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    const rogue = await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({
+      name: 'Nomad', object_kind: 'rogue planet',
+      specs: [
+        { spec_key: 'bulk.mass_earth', value_number: 0.8, status: 'known' },
+        { spec_key: 'bulk.radius_earth', value_number: 0.95, status: 'known' },
+        { spec_key: 'atmosphere.pressure_bar', value_number: 0, status: 'estimated' },
+      ],
+    }) });
+    const res = await json(`${base}/export/unreal`, { method: 'POST', body: JSON.stringify({ objectIds: [rogue.body.id] }) });
+    expect(res.status).toBe(200);
+    const nomad = res.body.bodies.find((x) => x.name === 'Nomad');
+    expect(nomad.suns).toEqual([]);
+    expect(nomad.surface.has_atmosphere).toBe(false);
+    expect(nomad.surface.rayleigh.scale).toBe(0);
+  });
+
   test('object jobs reject an empty selection', async () => {
     const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
     const res = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'physics_analysis', objectIds: [], mode: 'local' }) });

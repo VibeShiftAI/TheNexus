@@ -1,0 +1,14 @@
+{
+  "name": "nexus-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Native shell for The Nexus bridge dashboard (Tauri / WKWebView)",
+  "scripts": {
+    "tauri": "tauri",
+    "build": "tauri build",
+    "dev": "tauri dev"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
