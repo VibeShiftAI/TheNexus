@@ -987,6 +987,8 @@ export interface LocalLlmQueueState {
         updatedAt: string;
     };
     jobs: LocalLlmJob[];
+    /** Present when fetched with activeOnly — status → count over the full history. */
+    counts?: Record<string, number>;
 }
 
 export interface EnqueueLocalLlmJobInput {
@@ -999,8 +1001,10 @@ export interface EnqueueLocalLlmJobInput {
 
 const LOCAL_QUEUE_API = API_URL.replace(/\/projects$/, '/local-queue');
 
-export async function getLocalLlmQueue(): Promise<LocalLlmQueueState> {
-    const res = await authFetch(LOCAL_QUEUE_API);
+export async function getLocalLlmQueue(activeOnly = true): Promise<LocalLlmQueueState> {
+    // activeOnly (default) returns worker + counts + running/queued jobs only —
+    // the full history is thousands of jobs and should never sit on a poll loop.
+    const res = await authFetch(`${LOCAL_QUEUE_API}${activeOnly ? '?active=1' : ''}`);
     if (!res.ok) throw new Error(`Failed to fetch local queue (${res.status})`);
     return res.json();
 }

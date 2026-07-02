@@ -72,9 +72,7 @@ function bootstrapSnapshot() {
     });
 }
 
-// "stream.reset" is newer than the installed @praxis/contract union, so the
-// list is plain strings — the relay emits it either way.
-const EVENT_TYPES: string[] = [
+const EVENT_TYPES: StreamEvent["type"][] = [
   "presence.changed",
   "task.created",
   "task.updated",
@@ -104,7 +102,7 @@ function handleFrame(msg: MessageEvent) {
   if (event.type === "presence.changed") {
     patch.presence = event.presence;
   }
-  if ((event.type as string) === "stream.reset") {
+  if (event.type === "stream.reset") {
     // Gap we can't replay — re-bootstrap authoritative state.
     bootstrapSnapshot();
   }

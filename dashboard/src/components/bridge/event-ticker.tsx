@@ -18,8 +18,6 @@ function truncate(text: string, max = 90) {
 }
 
 function describeEvent(e: StreamEvent): string | null {
-  // Newer than the installed @praxis/contract union — check before the switch.
-  if ((e.type as string) === "stream.reset") return "stream reset — resynchronizing";
   switch (e.type) {
     case "presence.changed":
       return `presence → ${e.presence.activity}${e.presence.summary ? ` — ${truncate(e.presence.summary, 60)}` : ""}`;
@@ -47,6 +45,8 @@ function describeEvent(e: StreamEvent): string | null {
       return `${e.progress.executor} · ${e.progress.phase}${
         e.progress.progressPct != null ? ` ${Math.round(e.progress.progressPct)}%` : ""
       }${e.progress.message ? ` — ${truncate(e.progress.message, 50)}` : ""}`;
+    case "stream.reset":
+      return "stream reset — resynchronizing";
     default:
       return null;
   }

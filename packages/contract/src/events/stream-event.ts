@@ -117,6 +117,18 @@ export const TradeBlockedEventSchema = baseEvent.extend({
   reason: z.string().optional(),
 });
 
+/**
+ * Sent when a reconnecting client's `lastEventId` can no longer be replayed —
+ * typically because the producer (Praxis or the relay) restarted and its ring
+ * buffer was cleared, so events were missed silently. The client should treat
+ * its local state as stale and re-bootstrap from the `/presence` snapshot (and
+ * the HITL inbox) rather than trusting an unbroken stream.
+ */
+export const StreamResetEventSchema = baseEvent.extend({
+  type: z.literal("stream.reset"),
+  reason: z.enum(["ring-miss", "producer-restart"]).optional(),
+});
+
 export const StreamEventSchema = z.discriminatedUnion("type", [
   PresenceChangedEventSchema,
   TaskCreatedEventSchema,
@@ -134,6 +146,7 @@ export const StreamEventSchema = z.discriminatedUnion("type", [
   TradeSignalEventSchema,
   TradeFilledEventSchema,
   TradeBlockedEventSchema,
+  StreamResetEventSchema,
 ]);
 export type StreamEvent = z.infer<typeof StreamEventSchema>;
 

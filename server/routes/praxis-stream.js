@@ -296,6 +296,9 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
     router.post('/speak', (req, res) => proxyJson(req, res, '/api/speak'));
     // Non-streaming chat relay for the voice bar ({ message, stream: false }).
     router.post('/chat', (req, res) => proxyJson(req, res, '/api/chat'));
+    // Ops console actions.
+    router.post('/dispatch/retry', (req, res) => proxyJson(req, res, '/api/dispatch/retry'));
+    router.post('/dispatch/auto-approve', (req, res) => proxyJson(req, res, '/api/dispatch/auto-approve'));
 
     return router;
 }

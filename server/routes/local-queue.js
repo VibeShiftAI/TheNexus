@@ -24,7 +24,8 @@ async function proxyPraxisJson(res, upstreamPath, options = {}) {
 function createLocalQueueRouter() {
     const router = express.Router();
 
-    router.get('/', (_req, res) => proxyPraxisJson(res, '/local-llm/queue'));
+    router.get('/', (req, res) =>
+        proxyPraxisJson(res, `/local-llm/queue${req.query.active ? '?active=1' : ''}`));
     router.post('/jobs', (req, res) => proxyPraxisJson(res, '/local-llm/jobs', { method: 'POST', body: req.body }));
     router.post('/jobs/:id/promote', (req, res) => {
         proxyPraxisJson(res, `/local-llm/jobs/${encodeURIComponent(req.params.id)}/promote`, { method: 'POST', body: req.body });

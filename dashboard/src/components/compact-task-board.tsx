@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getBoardState } from "@/lib/nexus";
 import { groupBoardTasks, type BoardTask, type BoardLaneId, type BoardProject } from "@/lib/task-board";
+import { useStreamRefetch } from "@/hooks/use-stream-refetch";
 import { FolderGit2, ChevronDown, ChevronUp, Clock, AlertTriangle, Play, ExternalLink } from "lucide-react";
 
 interface CompactTaskBoardProps {
@@ -17,31 +18,29 @@ export function CompactTaskBoard({ onSelectTask }: CompactTaskBoardProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-
-    const fetchBoard = async () => {
-      try {
-        const boardState = await getBoardState();
-        if (active) {
-          setProjects(boardState || []);
-        }
-      } catch (e) {
-        console.error("Failed to fetch board state:", e);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchBoard();
-    const interval = setInterval(fetchBoard, 10000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
+  const fetchBoard = useCallback(async () => {
+    try {
+      const boardState = await getBoardState();
+      setProjects(boardState || []);
+    } catch (e) {
+      console.error("Failed to fetch board state:", e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchBoard();
+    // Event-driven via the stream below; this is just a slow drift-correction poll.
+    const interval = setInterval(fetchBoard, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchBoard]);
+
+  // Refetch the moment task lifecycle events land on the Praxis stream.
+  useStreamRefetch(
+    ["task.created", "task.updated", "task.started", "task.completed", "task.failed", "task.blocked"],
+    fetchBoard,
+  );
 
   const grouped = groupBoardTasks(projects);
 

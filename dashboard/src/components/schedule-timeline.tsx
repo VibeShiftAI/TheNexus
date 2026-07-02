@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { calendarEventsUrl, calendarEventTone, type CalendarEvent } from "@/lib/calendar";
+import { useStreamRefetch } from "@/hooks/use-stream-refetch";
 import { Calendar, ChevronDown, ChevronUp, CheckCircle, Play, Circle } from "lucide-react";
 
 export function ScheduleTimeline() {
@@ -9,35 +10,35 @@ export function ScheduleTimeline() {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    const fetchTodayEvents = async () => {
-      try {
-        const today = new Date();
-        const start = new Date(new Date(today).setHours(0, 0, 0, 0)).toISOString();
-        const end = new Date(new Date(today).setHours(23, 59, 59, 999)).toISOString();
-        const res = await fetch(calendarEventsUrl(start, end));
-        if (res.ok && active) {
-          const data = await res.json();
-          const sorted = (data || []).sort((a: CalendarEvent, b: CalendarEvent) => 
-            new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-          );
-          setEvents(sorted);
-        }
-      } catch (e) {
-        console.error("Failed to fetch schedule events:", e);
-      } finally {
-        if (active) setLoading(false);
+  const fetchTodayEvents = useCallback(async () => {
+    try {
+      const today = new Date();
+      const start = new Date(new Date(today).setHours(0, 0, 0, 0)).toISOString();
+      const end = new Date(new Date(today).setHours(23, 59, 59, 999)).toISOString();
+      const res = await fetch(calendarEventsUrl(start, end));
+      if (res.ok) {
+        const data = await res.json();
+        const sorted = (data || []).sort((a: CalendarEvent, b: CalendarEvent) =>
+          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+        );
+        setEvents(sorted);
       }
-    };
-
-    fetchTodayEvents();
-    const interval = setInterval(fetchTodayEvents, 10000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
+    } catch (e) {
+      console.error("Failed to fetch schedule events:", e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchTodayEvents();
+    // Event-driven via the stream below; slow poll only corrects drift.
+    const interval = setInterval(fetchTodayEvents, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchTodayEvents]);
+
+  // Live refresh when the day plan or task state changes.
+  useStreamRefetch(["schedule.updated", "task.completed", "task.started"], fetchTodayEvents);
 
   const toggleExpand = (id: string) => {
     setExpandedEventId(prev => (prev === id ? null : id));
