@@ -32,6 +32,14 @@ import {
     setLocalOnlyMode,
     setGlobalModelPolicy,
     setProjectModelPolicy,
+    setClaudeDefaultModel,
+    filterClaudeModels,
+    apiModelIdOf,
+    setAgentBackend,
+    AGENT_BACKENDS,
+    AGENT_BACKEND_LABELS,
+    type AgentBackend,
+    type AgentBackendConfig,
     type ModelDiscoveryResult,
     type ModelDiscoveryProviderStatus,
     type ModelControlPolicy,
@@ -157,6 +165,8 @@ export default function ModelControlPage() {
     const [localReason, setLocalReason] = useState("manual_override");
     const [loading, setLoading] = useState(true);
     const [savingLocal, setSavingLocal] = useState(false);
+    const [savingClaudeDefault, setSavingClaudeDefault] = useState(false);
+    const [savingAgentBackend, setSavingAgentBackend] = useState(false);
     const [discovering, setDiscovering] = useState(false);
     const [probing, setProbing] = useState<"resolve" | "live" | null>(null);
     const [savingPolicy, setSavingPolicy] = useState(false);
@@ -234,6 +244,38 @@ export default function ModelControlPage() {
     const fallbackText = (activePolicy.fallbackChain || []).join("\n");
     const budget = activePolicy.budget || {};
     const providerLimits = budget.providerLimits || {};
+
+    const updateAgentBackend = async (primary: AgentBackend, fallback: AgentBackend | "") => {
+        setSavingAgentBackend(true);
+        setError(null);
+        try {
+            // Chain: primary → chosen fallback → the rest; gemini is always
+            // the implicit last resort server-side.
+            const fallbacks = [
+                ...(fallback && fallback !== primary ? [fallback] : []),
+                ...AGENT_BACKENDS.filter(b => b !== primary && b !== fallback),
+            ];
+            const saved = await setAgentBackend({ backend: primary, fallbacks });
+            setState(prev => ({ ...prev, agentBackend: saved }));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update agent backend");
+        } finally {
+            setSavingAgentBackend(false);
+        }
+    };
+
+    const updateClaudeDefault = async (model: string) => {
+        setSavingClaudeDefault(true);
+        setError(null);
+        try {
+            const saved = await setClaudeDefaultModel(model);
+            setState(prev => ({ ...prev, claudeDefault: saved }));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update Claude default model");
+        } finally {
+            setSavingClaudeDefault(false);
+        }
+    };
 
     const toggleLocalOnly = async () => {
         const enabled = !(state.localOnly?.enabled);
@@ -440,6 +482,141 @@ export default function ModelControlPage() {
                                 {provider.message && <div className="mt-1 truncate text-[11px] text-slate-600">{provider.message}</div>}
                             </div>
                         ))}
+                    </div>
+                </section>
+
+                <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50">
+                    <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                            <Bot size={16} className="text-cyan-300" />
+                            <h2 className="font-semibold text-white">Model Inventory</h2>
+                        </div>
+                        <span className="text-xs text-slate-500">{stats.models} active</span>
+                    </div>
+                    <div className="grid gap-0 md:grid-cols-2 xl:grid-cols-3">
+                        {(state.models || []).map(model => {
+                            const caps = Object.entries(model.capabilities || {}).filter(([, enabled]) => enabled).map(([key]) => key);
+                            return (
+                                <div key={model.id} className="border-b border-r border-slate-900 p-4">
+                                    <div className="mb-2 flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="truncate font-medium text-white">{modelLabel(model)}</div>
+                                            <div className="truncate text-xs text-slate-500">{model.api_model_id || model.apiModelId || model.id}</div>
+                                        </div>
+                                        <span className={`shrink-0 rounded border px-2 py-0.5 text-xs ${providerTone(model.provider)}`}>{model.provider || "model"}</span>
+                                    </div>
+                                    <div className="mb-2 flex flex-wrap gap-1.5">
+                                        {model.family && <span className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-200">latest {model.family}</span>}
+                                        {isNewModel(model) && <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200">new</span>}
+                                        {isStaleModel(model) && <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200">stale</span>}
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {(caps.length ? caps : ["chat"]).slice(0, 5).map(capability => (
+                                            <span key={capability} className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{capability}</span>
+                                        ))}
+                                    </div>
+                                    <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-600">
+                                        <Sparkles size={12} />
+                                        {model.last_seen_at ? `seen ${formatDate(model.last_seen_at)}` : model.availability_status || "registered"}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {!loading && (state.models || []).length === 0 && (
+                        <div className="px-4 py-8 text-center text-sm text-slate-500">No active models registered</div>
+                    )}
+                </section>
+
+                {/* Praxis Agent Backend — which engine runs autonomous system
+                    agent tasks (wakeups, morning routine, HITL resumes). CLI
+                    backends run on signed-in subscriptions; Gemini API is the
+                    always-available last resort. */}
+                <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex items-center gap-3">
+                            <Brain size={22} className="text-cyan-300" />
+                            <div>
+                                <div className="text-base font-semibold text-white">Praxis Agent Backend</div>
+                                <div className="text-sm text-slate-500">
+                                    Runs autonomous system tasks (wakeups, morning routine, HITL resumes). Falls through automatically on usage limits; Gemini API is always the final fallback.
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <label className="text-xs text-slate-400">Primary</label>
+                            <select
+                                value={state.agentBackend?.backend || "codex"}
+                                onChange={(event) =>
+                                    void updateAgentBackend(
+                                        event.target.value as AgentBackend,
+                                        state.agentBackend?.fallbacks?.[0] ?? "",
+                                    )
+                                }
+                                disabled={savingAgentBackend || loading}
+                                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500 disabled:opacity-50"
+                            >
+                                {AGENT_BACKENDS.map(backend => (
+                                    <option key={backend} value={backend}>{AGENT_BACKEND_LABELS[backend]}</option>
+                                ))}
+                            </select>
+                            <label className="text-xs text-slate-400">Fallback</label>
+                            <select
+                                value={state.agentBackend?.fallbacks?.[0] || ""}
+                                onChange={(event) =>
+                                    void updateAgentBackend(
+                                        (state.agentBackend?.backend || "codex") as AgentBackend,
+                                        event.target.value as AgentBackend | "",
+                                    )
+                                }
+                                disabled={savingAgentBackend || loading}
+                                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500 disabled:opacity-50"
+                            >
+                                <option value="">(straight to Gemini API)</option>
+                                {AGENT_BACKENDS.filter(b => b !== (state.agentBackend?.backend || "codex")).map(backend => (
+                                    <option key={backend} value={backend}>{AGENT_BACKEND_LABELS[backend]}</option>
+                                ))}
+                            </select>
+                            {savingAgentBackend && <Loader2 size={15} className="animate-spin text-slate-400" />}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Claude Code default — the model Praxis's claude-code executor
+                    uses when a task/slot has no explicit model override. Runs on
+                    the Claude subscription, so higher tiers cost usage window,
+                    not API dollars. */}
+                <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                            <Bot size={22} className="text-purple-300" />
+                            <div>
+                                <div className="text-base font-semibold text-white">Claude Code Default Model</div>
+                                <div className="text-sm text-slate-500">
+                                    Used for claude-code dispatches without a per-task or per-slot model override. Billed to the Claude subscription.
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={state.claudeDefault || "claude-opus-4-8"}
+                                onChange={(event) => void updateClaudeDefault(event.target.value)}
+                                disabled={savingClaudeDefault || loading}
+                                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-purple-500 disabled:opacity-50"
+                            >
+                                {filterClaudeModels(state.models).map(model => (
+                                    <option key={model.id} value={apiModelIdOf(model)}>
+                                        {model.display_name || model.name || model.id}
+                                    </option>
+                                ))}
+                                {/* Keep the current value selectable even if discovery hasn't listed it */}
+                                {state.claudeDefault &&
+                                    !filterClaudeModels(state.models).some(m => apiModelIdOf(m) === state.claudeDefault) && (
+                                        <option value={state.claudeDefault}>{state.claudeDefault}</option>
+                                    )}
+                            </select>
+                            {savingClaudeDefault && <Loader2 size={15} className="animate-spin text-slate-400" />}
+                        </div>
                     </div>
                 </section>
 
@@ -720,49 +897,6 @@ export default function ModelControlPage() {
                             })}
                         </div>
                     </div>
-                </section>
-
-                <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50">
-                    <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-                        <div className="flex items-center gap-2">
-                            <Bot size={16} className="text-cyan-300" />
-                            <h2 className="font-semibold text-white">Model Inventory</h2>
-                        </div>
-                        <span className="text-xs text-slate-500">{stats.models} active</span>
-                    </div>
-                    <div className="grid gap-0 md:grid-cols-2 xl:grid-cols-3">
-                        {(state.models || []).map(model => {
-                            const caps = Object.entries(model.capabilities || {}).filter(([, enabled]) => enabled).map(([key]) => key);
-                            return (
-                                <div key={model.id} className="border-b border-r border-slate-900 p-4">
-                                    <div className="mb-2 flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <div className="truncate font-medium text-white">{modelLabel(model)}</div>
-                                            <div className="truncate text-xs text-slate-500">{model.api_model_id || model.apiModelId || model.id}</div>
-                                        </div>
-                                        <span className={`shrink-0 rounded border px-2 py-0.5 text-xs ${providerTone(model.provider)}`}>{model.provider || "model"}</span>
-                                    </div>
-                                    <div className="mb-2 flex flex-wrap gap-1.5">
-                                        {model.family && <span className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-200">latest {model.family}</span>}
-                                        {isNewModel(model) && <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200">new</span>}
-                                        {isStaleModel(model) && <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200">stale</span>}
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {(caps.length ? caps : ["chat"]).slice(0, 5).map(capability => (
-                                            <span key={capability} className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">{capability}</span>
-                                        ))}
-                                    </div>
-                                    <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-600">
-                                        <Sparkles size={12} />
-                                        {model.last_seen_at ? `seen ${formatDate(model.last_seen_at)}` : model.availability_status || "registered"}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    {!loading && (state.models || []).length === 0 && (
-                        <div className="px-4 py-8 text-center text-sm text-slate-500">No active models registered</div>
-                    )}
                 </section>
 
                 <section className="rounded-lg border border-slate-800 bg-slate-950/50">

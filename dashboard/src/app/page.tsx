@@ -1,20 +1,24 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { getProjects, getPins, getTasks, type Project, type Task } from "@/lib/nexus";
 import { ProjectCard } from "@/components/project-card";
 import { NewProjectModal } from "@/components/new-project-modal";
 import { AITerminal } from "@/components/ai-terminal";
-import { AntigravityMonitor } from "@/components/antigravity-monitor";
 import { SettingsModal } from "@/components/settings-modal";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { ScheduleTimeline } from "@/components/schedule-timeline";
-import { LocalQueueList } from "@/components/local-queue-list";
 import { CompactTaskBoard } from "@/components/compact-task-board";
 import { DetailDrawer } from "@/components/detail-drawer";
-import { LLMActivityWidget } from "@/components/llm-activity-widget";
-import { PraxisStatusPanel } from "@/components/praxis-status-panel";
+import { HitlInbox } from "@/components/hitl-inbox";
+import { PraxisCore } from "@/components/bridge/praxis-core";
+import { EventTicker } from "@/components/bridge/event-ticker";
+import { DispatchStation } from "@/components/bridge/dispatch-station";
+import { FleetStation } from "@/components/bridge/fleet-station";
+import { KnowledgeStation } from "@/components/bridge/knowledge-station";
+import { PowerStation } from "@/components/bridge/power-station";
+import { AcademyStation } from "@/components/bridge/academy-station";
+import { VoiceCommandBar } from "@/components/bridge/voice-command-bar";
 import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-react";
 
 export default function Home() {
@@ -22,7 +26,7 @@ export default function Home() {
   const [pins, setPins] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Navigation / Modals State
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
@@ -32,11 +36,9 @@ export default function Home() {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectingTask, setInspectingTask] = useState<Task | null>(null);
   const [inspectingProjectId, setInspectingProjectId] = useState<string | null>(null);
-  
+
   // Refresh signals
   const [boardRefreshKey, setBoardRefreshKey] = useState(0);
-
-  const router = useRouter();
 
   const loadData = useCallback(async () => {
     try {
@@ -112,7 +114,7 @@ export default function Home() {
   });
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 flex flex-col">
+    <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 flex flex-col pb-12">
       {/* Header HUD */}
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md shrink-0">
         <div className="container mx-auto flex h-16 items-center justify-between px-6">
@@ -128,12 +130,13 @@ export default function Home() {
             <h1 className="text-lg font-bold tracking-tight text-white flex items-baseline gap-1.5">
               THE <span className="text-cyan-400">NEXUS</span>
               <span className="text-[10px] text-slate-500 font-mono font-medium border border-slate-800/80 px-1.5 py-0.5 rounded bg-slate-950">
-                Praxis Dashboard
+                Bridge
               </span>
             </h1>
           </div>
 
           <div className="flex items-center gap-3">
+            <VoiceCommandBar />
             <button
               onClick={() => setShowNewProjectModal(true)}
               className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/30 hover:border-cyan-500/50 px-3.5 py-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-all shadow-lg shadow-cyan-500/5"
@@ -164,34 +167,34 @@ export default function Home() {
           </div>
         )}
 
+        {/* Main viewer — living Praxis core */}
+        <div className="mb-6">
+          <PraxisCore />
+        </div>
+
+        {/* Bridge stations */}
+        <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
+          <DispatchStation />
+          <KnowledgeStation />
+          <PowerStation />
+          <FleetStation />
+          <AcademyStation />
+          <ScheduleTimeline />
+        </div>
+
+        {/* Comms + operations workspace */}
         <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr] xl:grid-cols-[1.6fr_1fr] items-start">
-          {/* Left Side: Praxis Chat (AITerminal) & CompactTaskBoard */}
+          {/* Left Side: Praxis Chat (AITerminal) */}
           <div className="space-y-6 flex flex-col min-w-0">
-            {/* Praxis Terminal Chat Container */}
             <div className="h-[550px] lg:h-[600px] w-full shrink-0">
               <AITerminal mode="inline" />
             </div>
-
-            {/* Praxis status + action panel */}
-            <PraxisStatusPanel />
-
-            {/* Tasks Board Widget */}
-            <CompactTaskBoard key={boardRefreshKey} onSelectTask={handleSelectTask} />
           </div>
 
-          {/* Right Side: Widgets & Schedule */}
+          {/* Right Side: HITL inbox + task board */}
           <div className="space-y-6 min-w-0">
-            {/* Today's Schedule */}
-            <ScheduleTimeline />
-
-            {/* LLM activity — who is calling which AI */}
-            <LLMActivityWidget />
-
-            {/* Local LLM Queue Monitor */}
-            <LocalQueueList />
-
-            {/* Antigravity background task monitor */}
-            <AntigravityMonitor />
+            <HitlInbox />
+            <CompactTaskBoard key={boardRefreshKey} onSelectTask={handleSelectTask} />
           </div>
         </div>
 
@@ -255,7 +258,9 @@ export default function Home() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+
+      {/* Live event ticker — pinned to the bottom of the viewport */}
+      <EventTicker />
     </main>
   );
 }
-

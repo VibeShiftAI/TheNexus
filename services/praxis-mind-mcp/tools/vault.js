@@ -5,9 +5,9 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
 const { z } = require('zod');
 const { VAULT } = require('../lib/config');
+const { cortexVaultSearch } = require('../lib/backends');
 const { checkPrivilege } = require('../lib/auth');
 const { checkAndIncrement } = require('../lib/ratelimit');
 const ledger = require('../lib/ledger');
@@ -144,29 +144,104 @@ function register(server, ctx) {
 
   server.tool(
     'vault_search',
-    'Full-text search across vault markdown via ripgrep (case-insensitive). Returns matching lines with file:line prefix.',
-    { query: z.string().describe('Substring or regex to search for.') },
-    async ({ query }) => {
+    'Search the shared-mind vault with ranked hybrid retrieval — BM25 keyword + embedding vector + reciprocal-rank fusion, boosted by the LINKS.md backlink graph (GBrain pattern, served by the Cortex vault index). Best for concept/topic queries ("how do we recover stale tasks"). Set mode:"grep" for exact substring/regex matching via ripgrep (identifiers, exact strings). Hybrid falls back to grep automatically when Cortex is unreachable.',
+    {
+      query: z.string().describe('Natural-language query (hybrid mode) or substring/regex (grep mode).'),
+      k: z.number().int().min(1).max(25).default(8).describe('Max results in hybrid mode.'),
+      mode: z.enum(['hybrid', 'grep']).default('hybrid').describe('hybrid = ranked retrieval; grep = exact ripgrep match.'),
+    },
+    async ({ query, k = 8, mode = 'hybrid' }) => {
       const auth = checkPrivilege(ctx.caller, 'vault.read');
       if (auth) return auth;
-      try {
-        let out = '';
+      let grepNote = '';
+      if (mode !== 'grep') {
         try {
-          out = execFileSync('rg', ['-iN', '--max-count', '5', '-S', '--', query, VAULT], { encoding: 'utf8', maxBuffer: 2 * 1024 * 1024 });
-        } catch (rgErr) {
-          // rg exits 1 when no matches; that's fine.
-          if (rgErr.status === 1) out = '';
-          else throw rgErr;
+          const res = await cortexVaultSearch({ query, k });
+          ledger.record({ caller: ctx.caller.identity, tool: 'vault_search', success: true });
+          return { content: [{ type: 'text', text: formatHybridResults(res) }] };
+        } catch (e) {
+          grepNote = `[Cortex vault index unavailable (${e.message}) — fell back to grep scan]\n`;
         }
-        const lines = out.trim().split('\n').filter(Boolean).slice(0, 200);
+      }
+      try {
+        const lines = grepVault(query);
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_search', success: true });
-        return { content: [{ type: 'text', text: lines.length === 0 ? 'No matches.' : lines.join('\n') }] };
+        return { content: [{ type: 'text', text: grepNote + (lines.length === 0 ? 'No matches.' : lines.join('\n')) }] };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_search', success: false, error: e.message });
         return { content: [{ type: 'text', text: `Error searching vault: ${e.message}` }], isError: true };
       }
     },
   );
+}
+
+/**
+ * Case-insensitive regex scan over vault markdown, pure Node (ripgrep is
+ * not installed on this box — the old execFileSync('rg') path always threw
+ * ENOENT). Invalid regexes are retried as escaped literals. Mirrors the
+ * old rg shape: ≤5 matches per file, ≤200 lines total, "path: line" rows.
+ */
+function grepVault(query) {
+  let re;
+  try {
+    re = new RegExp(query, 'i');
+  } catch (_) {
+    re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  }
+  const skip = new Set(['.git', '.obsidian', '.index', '.superpowers', '_archive', 'node_modules']);
+  const results = [];
+  const walk = [VAULT];
+  while (walk.length && results.length < 200) {
+    const dir = walk.pop();
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (_) {
+      continue;
+    }
+    for (const entry of entries) {
+      if (results.length >= 200) break;
+      if (entry.name.startsWith('._') || skip.has(entry.name)) continue;
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk.push(abs);
+        continue;
+      }
+      if (!entry.name.endsWith('.md')) continue;
+      let body;
+      try {
+        body = fs.readFileSync(abs, 'utf8');
+      } catch (_) {
+        continue;
+      }
+      const rel = path.relative(VAULT, abs);
+      let perFile = 0;
+      for (const line of body.split('\n')) {
+        if (perFile >= 5 || results.length >= 200) break;
+        if (re.test(line)) {
+          results.push(`${rel}: ${line.trim()}`);
+          perFile += 1;
+        }
+      }
+    }
+  }
+  return results;
+}
+
+/** Render /api/vault/search results as compact ranked text for agents. */
+function formatHybridResults(res) {
+  const results = res.results || [];
+  const lines = [
+    `Vault hybrid search — mode: ${res.mode}${res.generated ? `, index generated ${res.generated}` : ''}`,
+  ];
+  results.forEach((r, i) => {
+    const loc = r.heading && r.heading !== r.title ? `${r.path} › ${r.heading}` : r.path;
+    const backlinks = r.backlinks ? `, ${r.backlinks} backlinks` : '';
+    lines.push('', `${i + 1}. ${loc}  (score ${r.score}${backlinks})`);
+    lines.push(`   ${(r.text || '').replace(/\s+/g, ' ').slice(0, 300)}`);
+  });
+  if (results.length === 0) lines.push('', 'No results.');
+  return lines.join('\n');
 }
 
 module.exports = { register };

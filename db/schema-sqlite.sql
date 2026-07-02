@@ -566,28 +566,6 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conve
 CREATE INDEX IF NOT EXISTS idx_chat_messages_mode ON chat_messages(mode);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at);
 
--- ============================================================================
--- ANTIGRAVITY EVENT STREAM (zero-cost monitoring)
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS ag_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_type TEXT NOT NULL,            -- 'task_dispatched', 'task_pickup', 'task_progress', 'task_complete', 'approval_needed', 'error', 'stall_detected', 'task_aborted', 'health_check', 'extension_lifecycle'
-    severity TEXT DEFAULT 'info',        -- 'info', 'warning', 'critical'
-    title TEXT NOT NULL,
-    message TEXT,
-    task_id TEXT,
-    source TEXT DEFAULT 'extension',     -- 'extension', 'praxis', 'nexus'
-    metadata TEXT DEFAULT '{}',          -- JSON blob for extra context
-    requires_action INTEGER DEFAULT 0,   -- 1 if user needs to act (e.g., click away a dialog)
-    action_taken INTEGER DEFAULT 0,      -- 1 once user/agent has handled it
-    created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_ag_events_type ON ag_events(event_type);
-CREATE INDEX IF NOT EXISTS idx_ag_events_created ON ag_events(created_at);
-CREATE INDEX IF NOT EXISTS idx_ag_events_action ON ag_events(requires_action, action_taken);
-
 -- ─── Push Notification Tokens ───────────────────────────────
 
 CREATE TABLE IF NOT EXISTS push_tokens (

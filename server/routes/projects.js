@@ -1,12 +1,14 @@
 /**
  * Projects Routes
  * 
- * GET    /api/projects                          — List all projects
+ * GET    /api/projects                          — List active projects (?archived=true → archived only)
  * POST   /api/projects                          — Create project
  * POST   /api/projects/scaffold                 — Scaffold new project
  * GET    /api/projects/:id                      — Get project details
  * PATCH  /api/projects/:id                      — Update project
  * DELETE /api/projects/:id                      — Delete project
+ * POST   /api/projects/:id/archive              — Archive project + its tasks (files left intact)
+ * POST   /api/projects/:id/unarchive            — Restore an archived project + its tasks
  * GET    /api/projects/:id/status               — Git status
  * POST   /api/projects/:id/git/init             — Init git
  * POST   /api/projects/:id/git/remote           — Add remote
@@ -128,6 +130,11 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     // ─── Projects List ───────────────────────────────────────────────────
     router.get('/', async (req, res) => {
         try {
+            // Archive-management view: return only archived projects (no scan needed).
+            if (req.query.archived === 'true') {
+                const all = await db.getProjects({ includeArchived: true });
+                return res.json(all.filter(p => p.status === 'archived'));
+            }
             const now = Date.now();
             if (!scanCache || (now - scanCacheTime) > SCAN_CACHE_TTL) {
                 if (scanInProgress) {
@@ -277,6 +284,49 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         } catch (error) {
             console.error(`Error deleting project ${id}:`, error);
             res.status(500).json({ error: 'Failed to delete project: ' + error.message });
+        }
+    });
+
+    // ─── Archive project ─────────────────────────────────────────────────
+    // Soft, reversible: marks the project + all its tasks as 'archived' so they
+    // drop off the dashboard and out of context-retrieval. Project files on disk
+    // are intentionally left untouched (unlike DELETE with deleteFiles).
+    router.post('/:id/archive', async (req, res) => {
+        const { id } = req.params;
+        try {
+            const project = await getProjectById(PROJECT_ROOT, id);
+            if (!project) return res.status(404).json({ error: 'Project not found' });
+            const result = await db.archiveProject(project.id);
+            if (!result) return res.status(500).json({ error: 'Failed to archive project' });
+            res.json({
+                success: true,
+                project: result.project,
+                tasksArchived: result.tasksArchived,
+                message: `Project archived (${result.tasksArchived} task(s) archived). Files left intact.`
+            });
+        } catch (error) {
+            console.error(`Error archiving project ${id}:`, error);
+            res.status(500).json({ error: 'Failed to archive project: ' + error.message });
+        }
+    });
+
+    // ─── Unarchive project ───────────────────────────────────────────────
+    router.post('/:id/unarchive', async (req, res) => {
+        const { id } = req.params;
+        try {
+            const project = await getProjectById(PROJECT_ROOT, id);
+            if (!project) return res.status(404).json({ error: 'Project not found' });
+            const result = await db.unarchiveProject(project.id);
+            if (!result) return res.status(500).json({ error: 'Failed to unarchive project' });
+            res.json({
+                success: true,
+                project: result.project,
+                tasksRestored: result.tasksRestored,
+                message: `Project restored (${result.tasksRestored} task(s) restored).`
+            });
+        } catch (error) {
+            console.error(`Error unarchiving project ${id}:`, error);
+            res.status(500).json({ error: 'Failed to unarchive project: ' + error.message });
         }
     });
 

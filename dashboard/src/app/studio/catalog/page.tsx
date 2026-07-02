@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Box,
   Check,
   ClipboardCopy,
   Copy,
@@ -22,6 +23,7 @@ import {
   getBoard,
   generateFromObjects,
   getObjectsPrompt,
+  exportToUnreal,
   type BoardState,
   type GenMode,
   type SpaceObject,
@@ -130,6 +132,35 @@ export default function CatalogPage() {
     }
   }
 
+  async function exportUnreal() {
+    if (!ids.length) return;
+    setBusy("export:unreal");
+    setError(null);
+    try {
+      const scene = await exportToUnreal(channelId, ids);
+      const blob = new Blob([JSON.stringify(scene, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "scene.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      const src = (scene as { source?: string }).source;
+      const written = (scene as { written?: string[] }).written || [];
+      const wroteToSim = written.some((p) => p.includes("ImpossibleWorldsNBody"));
+      setResultPanel({
+        title: "Exported to Unreal",
+        text: `${ids.length} bodies exported (source: ${src}).\n\n${wroteToSim
+          ? "Written straight into the simulator project at ImpossibleWorldsNBody/Content/NBody/scene.json — just open the project and press Play."
+          : "Downloaded scene.json — drop it into the simulator's Content/NBody/ folder."}\n\nA timestamped copy is also in the project's exports/ folder.`,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 pb-32 text-slate-200">
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
@@ -214,6 +245,9 @@ export default function CatalogPage() {
             <Link href={`/studio/simulator?channelId=${encodeURIComponent(channelId)}&objects=${ids.join(",")}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white hover:bg-indigo-500">
               <Orbit size={14} /> Simulate
             </Link>
+            <button onClick={exportUnreal} disabled={!!busy} title="Export a double-precision SI scene (real Horizons state vectors when available) for the Unreal Engine 5 N-body simulator" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-50">
+              {busy === "export:unreal" ? <Loader2 size={14} className="animate-spin" /> : <Box size={14} />} Export to Unreal
+            </button>
           </div>
         </div>
       )}

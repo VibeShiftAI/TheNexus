@@ -339,6 +339,9 @@ export const getObjectsPrompt = (channelId: string, type: string, objectIds: str
   request(`${API}/${channelId}/prompt?type=${encodeURIComponent(type)}&objectIds=${encodeURIComponent(objectIds.join(','))}`);
 export const applyFromObjects = (channelId: string, type: string, text: string, objectIds: string[]): Promise<ObjectsGenerateResult> =>
   request(`${API}/${channelId}/apply`, { method: 'POST', body: JSON.stringify({ type, text, objectIds }) });
+// Export selected objects as a double-precision SI scene for the Unreal Engine 5 N-body simulator.
+export const exportToUnreal = (channelId: string, objectIds: string[]): Promise<Record<string, unknown>> =>
+  request(`${API}/${channelId}/export/unreal`, { method: 'POST', body: JSON.stringify({ objectIds }) });
 
 export const createSource = (channelId: string, body: Partial<StudioSource>): Promise<StudioSource> =>
   request(`${API}/${channelId}/sources`, { method: 'POST', body: JSON.stringify(body) });

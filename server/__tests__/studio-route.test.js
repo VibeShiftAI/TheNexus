@@ -420,6 +420,90 @@ describe('studio route', () => {
     expect(phys.body.user).toMatch(/tidal|Roche|gravity/i);
   });
 
+  test('exports a double-precision SI scene for Unreal (derived initial conditions)', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    const star = await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({ name: 'Star A', object_kind: 'star', specs: [{ spec_key: 'bulk.mass_earth', value_number: 200000, status: 'known' }] }) });
+    const planet = await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({ name: 'Planet B', object_kind: 'exoplanet', specs: [
+      { spec_key: 'bulk.mass_earth', value_number: 1, status: 'known' },
+      { spec_key: 'bulk.radius_earth', value_number: 1, status: 'known' },
+      { spec_key: 'orbital.semi_major_axis_au', value_number: 1, status: 'known' },
+    ] }) });
+
+    const res = await json(`${base}/export/unreal`, { method: 'POST', body: JSON.stringify({ objectIds: [star.body.id, planet.body.id] }) });
+    expect(res.status).toBe(200);
+    expect(res.body.units).toBe('SI');
+    expect(res.body.source).toBe('derived-from-elements'); // not Solar System bodies
+    expect(res.body.G).toBeCloseTo(6.6743e-11, 14);
+    expect(res.body.bodies).toHaveLength(2);
+
+    const b = Object.fromEntries(res.body.bodies.map((x) => [x.name, x]));
+    // Mass conversion: 1 Earth mass -> ~5.97e24 kg.
+    expect(b['Planet B'].mass_kg).toBeCloseTo(5.972e24, -22);
+    expect(b['Planet B'].radius_m).toBeCloseTo(6.371e6, -4);
+    // Central (most massive) star sits at the origin; planet ~1 AU out, moving.
+    expect(Math.hypot(...b['Star A'].position_m)).toBe(0);
+    const r = Math.hypot(...b['Planet B'].position_m);
+    expect(r).toBeGreaterThan(1.3e11);
+    expect(r).toBeLessThan(1.6e11);
+    expect(Math.hypot(...b['Planet B'].velocity_mps)).toBeGreaterThan(1e3);
+  });
+
+  test('export carries rotation, surface scattering, and suns render blocks', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    const star = await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({
+      name: 'Ember', object_kind: 'star', subtype: 'M1V red dwarf',
+      specs: [{ spec_key: 'bulk.mass_earth', value_number: 150000, status: 'known' }],
+    }) });
+    const planet = await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({
+      name: 'Cinderfall', object_kind: 'exoplanet',
+      specs: [
+        { spec_key: 'bulk.mass_earth', value_number: 1.2, status: 'known' },
+        { spec_key: 'bulk.radius_earth', value_number: 1.1, status: 'known' },
+        { spec_key: 'orbital.semi_major_axis_au', value_number: 0.1, status: 'known' },
+        { spec_key: 'orbital.rotation_period_hours', value_number: 480, status: 'known' },
+        { spec_key: 'orbital.obliquity_deg', value_number: 5, status: 'known' },
+        { spec_key: 'orbital.tidal_lock_status', value_text: 'Tidally locked to Ember', status: 'known' },
+        { spec_key: 'energy.stellar_flux_earth', value_number: 0.9, status: 'known' },
+        { spec_key: 'atmosphere.pressure_bar', value_number: 1, status: 'known' },
+        { spec_key: 'atmosphere.density_kg_m3', value_number: 1.3, status: 'known' },
+        { spec_key: 'atmosphere.scale_height_km', value_number: 9, status: 'known' },
+        { spec_key: 'atmosphere.composition', value_text: 'N2, CO2, H2O', status: 'known' },
+        { spec_key: 'location.host_star_or_object', value_text: 'Ember (M1 V)', status: 'known' },
+      ],
+    }) });
+
+    const res = await json(`${base}/export/unreal`, { method: 'POST', body: JSON.stringify({ objectIds: [star.body.id, planet.body.id] }) });
+    expect(res.status).toBe(200);
+    const b = Object.fromEntries(res.body.bodies.map((x) => [x.name, x]));
+
+    // Star: blackbody color from its M1V subtype (red-dominant), no surface block.
+    expect(b.Ember.isStar).toBe(true);
+    expect(b.Ember.surface).toBeUndefined();
+    expect(b.Ember.color[0]).toBe(1);
+    expect(b.Ember.color[2]).toBeLessThan(0.75);
+
+    // Planet: rotation + tidal lock exported.
+    expect(b.Cinderfall.rotation_period_h).toBeCloseTo(480, 0);
+    expect(b.Cinderfall.obliquity_deg).toBeCloseTo(5, 1);
+    expect(b.Cinderfall.tidal_locked).toBe(true);
+
+    // Surface scattering scaled from air density (1.3/1.225 × UE Earth default).
+    expect(b.Cinderfall.surface.rayleigh.scale).toBeCloseTo(0.0331 * (1.3 / 1.225), 3);
+    expect(b.Cinderfall.surface.rayleigh.exp_distribution_km).toBeCloseTo(9, 1);
+    expect(b.Cinderfall.surface.has_atmosphere).toBe(true);
+    expect(b.Cinderfall.surface.planet_radius_km).toBeGreaterThan(6000);
+
+    // Suns: the in-selection star, red-shifted, illuminance rescaled to the
+    // actual exported separation (circular orbit at the catalog SMA → ≈ 0.9 S⊕).
+    expect(b.Cinderfall.suns).toHaveLength(1);
+    expect(b.Cinderfall.suns[0].name).toBe('Ember');
+    expect(b.Cinderfall.suns[0].teff_k).toBeLessThan(4000);
+    expect(b.Cinderfall.suns[0].rgb[2]).toBeLessThan(0.75);
+    expect(b.Cinderfall.suns[0].illuminance_lux).toBeGreaterThan(100000);
+    expect(b.Cinderfall.suns[0].illuminance_lux).toBeLessThan(140000);
+    expect(b.Cinderfall.suns[0].angular_diameter_deg).toBeGreaterThan(0.5);
+  });
+
   test('object jobs reject an empty selection', async () => {
     const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
     const res = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'physics_analysis', objectIds: [], mode: 'local' }) });

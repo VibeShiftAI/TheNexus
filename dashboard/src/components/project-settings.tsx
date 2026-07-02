@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Project, updateProject } from "@/lib/nexus";
-import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen, Target } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Project, updateProject, archiveProject } from "@/lib/nexus";
+import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen, Target, Archive } from "lucide-react";
 
 interface ProjectSettingsProps {
     project: Project;
@@ -10,10 +11,27 @@ interface ProjectSettingsProps {
 }
 
 export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
+    const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [archiving, setArchiving] = useState(false);
+    const [confirmArchive, setConfirmArchive] = useState(false);
     const [editedProject, setEditedProject] = useState<Project>(project);
     const [stackEntry, setStackEntry] = useState({ key: '', value: '' });
+
+    const handleArchive = async () => {
+        setArchiving(true);
+        try {
+            await archiveProject(project.id);
+            // Archived projects drop off the dashboard — send the operator back there.
+            router.push('/');
+        } catch (error) {
+            console.error('Failed to archive project:', error);
+            alert(error instanceof Error ? error.message : 'Failed to archive project');
+            setArchiving(false);
+            setConfirmArchive(false);
+        }
+    };
 
     const handleChange = (field: keyof Project, value: any) => {
         setEditedProject(prev => ({ ...prev, [field]: value }));
@@ -151,7 +169,7 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
 
     return (
         <div className="bg-slate-900 border border-cyan-500/30 rounded-xl p-6 relative animate-in fade-in zoom-in-95 duration-200">
-            <div className="absolute top-4 right-4 flex gap-2">
+            <div className="sticky -top-3 z-20 -mx-6 -mt-6 mb-2 flex justify-end gap-2 px-6 py-3 bg-slate-900/95 backdrop-blur border-b border-cyan-500/20 rounded-t-xl">
                 <button
                     onClick={() => setIsEditing(false)}
                     disabled={loading}
@@ -295,6 +313,53 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                             </button>
                         </div>
                     </div>
+                </div>
+
+                {/* Archive (danger zone) */}
+                <div className="space-y-2 pt-4 border-t border-slate-800">
+                    <label className="text-xs font-medium text-amber-400/80 uppercase flex items-center gap-2">
+                        <Archive size={12} />
+                        Archive Project
+                    </label>
+                    {!confirmArchive ? (
+                        <div className="flex items-center justify-between gap-3 bg-slate-950 border border-amber-500/20 rounded-lg px-3 py-2.5">
+                            <p className="text-xs text-slate-400">
+                                Archives this project and all its tasks, and hides it from the dashboard and AI context.
+                                Code and files on disk are left untouched. Reversible.
+                            </p>
+                            <button
+                                onClick={() => setConfirmArchive(true)}
+                                disabled={archiving}
+                                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 hover:text-amber-300 transition-colors text-xs font-semibold"
+                            >
+                                <Archive size={14} />
+                                Archive
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between gap-3 bg-amber-500/5 border border-amber-500/40 rounded-lg px-3 py-2.5">
+                            <p className="text-xs text-amber-300">
+                                Archive <span className="font-bold">{project.name}</span> and its tasks? Files stay intact and you can restore it later.
+                            </p>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                    onClick={() => setConfirmArchive(false)}
+                                    disabled={archiving}
+                                    className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition-colors text-xs font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleArchive}
+                                    disabled={archiving}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 hover:bg-amber-400 transition-colors text-xs font-bold"
+                                >
+                                    {archiving ? <div className="w-3.5 h-3.5 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" /> : <Archive size={14} />}
+                                    Confirm Archive
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

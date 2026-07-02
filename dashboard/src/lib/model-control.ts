@@ -63,6 +63,23 @@ export interface ModelControlOptionsResponse {
     localOnly?: { enabled: boolean; reason: string | null };
     policy?: ModelControlPolicy | null;
     projectPolicy?: ModelControlPolicy | null;
+    /** Default model for Praxis claude-code dispatches (api model id). */
+    claudeDefault?: string;
+    /** Backend chain for Praxis's autonomous system-agent runs. */
+    agentBackend?: AgentBackendConfig;
+}
+
+export type AgentBackend = "codex" | "claude-code" | "gemini";
+export const AGENT_BACKENDS: AgentBackend[] = ["codex", "claude-code", "gemini"];
+export const AGENT_BACKEND_LABELS: Record<AgentBackend, string> = {
+    codex: "Codex CLI (ChatGPT subscription)",
+    "claude-code": "Claude Code CLI (Claude subscription)",
+    gemini: "Gemini API (per-token)",
+};
+
+export interface AgentBackendConfig {
+    backend: AgentBackend;
+    fallbacks: AgentBackend[];
 }
 
 export interface ModelControlPolicy {
@@ -147,6 +164,49 @@ export async function getModelControlState(projectId?: string | null): Promise<M
         headers: { ...getAuthHeader() as any },
     });
     if (!response.ok) throw new Error(`Failed to load model-control state: ${response.status}`);
+    return response.json();
+}
+
+/** Anthropic entries from the discovered roster, for Claude model dropdowns. */
+export function filterClaudeModels(models: ModelControlModel[] | undefined): ModelControlModel[] {
+    return (models || []).filter(m => (m.provider || "").toLowerCase() === "anthropic");
+}
+
+/** API model id for a roster entry (dropdown value used for dispatch). */
+export function apiModelIdOf(model: ModelControlModel): string {
+    return model.api_model_id || model.apiModelId || model.id;
+}
+
+export async function getClaudeDefaultModel(): Promise<string> {
+    const response = await fetch(`/api/model-control/claude-default`, {
+        credentials: "include",
+        headers: { ...getAuthHeader() as any },
+    });
+    if (!response.ok) throw new Error(`Failed to load claude default: ${response.status}`);
+    const data = await response.json();
+    return data.model || "claude-opus-4-8";
+}
+
+export async function setClaudeDefaultModel(model: string): Promise<string> {
+    const response = await fetch(`/api/model-control/claude-default`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify({ model }),
+    });
+    if (!response.ok) throw new Error(`Failed to update claude default: ${response.status}`);
+    const data = await response.json();
+    return data.model;
+}
+
+export async function setAgentBackend(config: AgentBackendConfig): Promise<AgentBackendConfig> {
+    const response = await fetch(`/api/model-control/agent-backend`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify(config),
+    });
+    if (!response.ok) throw new Error(`Failed to update agent backend: ${response.status}`);
     return response.json();
 }
 

@@ -78,3 +78,6 @@ stop-nexus.sh
 pinned.json
 TheNexus.code-workspace
 nodemon.json
+
+# Build artifacts — too large for GitHub (100MB limit); build locally instead
+dashboard/public/*.apk

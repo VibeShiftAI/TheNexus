@@ -39,6 +39,33 @@ function toModelOverride(resolved) {
     };
 }
 
+/**
+ * The model Praxis's claude-code executor uses when a dispatch carries no
+ * explicit override. Stored in model_control_settings; defaults to Opus 4.8.
+ */
+const CLAUDE_DEFAULT_FALLBACK = 'claude-opus-4-8';
+async function getClaudeDefaultModel(db) {
+    const setting = await db.getModelControlSetting('claude_default_model');
+    const model = setting && typeof setting.model === 'string' ? setting.model.trim() : '';
+    return model || CLAUDE_DEFAULT_FALLBACK;
+}
+
+/**
+ * Backend chain for Praxis's autonomous system-agent runs. Codex-first
+ * (ChatGPT subscription), Claude Code next, Gemini API as the last resort.
+ */
+const AGENT_BACKENDS = ['codex', 'claude-code', 'gemini'];
+const AGENT_BACKEND_DEFAULT = { backend: 'codex', fallbacks: ['claude-code', 'gemini'] };
+async function getAgentBackendConfig(db) {
+    const setting = await db.getModelControlSetting('agent_backend');
+    if (!setting || typeof setting !== 'object') return AGENT_BACKEND_DEFAULT;
+    const backend = AGENT_BACKENDS.includes(setting.backend) ? setting.backend : AGENT_BACKEND_DEFAULT.backend;
+    const fallbacks = Array.isArray(setting.fallbacks)
+        ? setting.fallbacks.filter(f => AGENT_BACKENDS.includes(f) && f !== backend)
+        : AGENT_BACKEND_DEFAULT.fallbacks.filter(f => f !== backend);
+    return { backend, fallbacks };
+}
+
 function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
     const router = express.Router();
 
@@ -51,6 +78,8 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                 projectAliases: projectId ? await db.getProjectModelAliases(projectId) : [],
                 localOnly: await db.getModelControlSetting('local_only'),
                 policy: await db.getModelControlSetting('model_policy'),
+                claudeDefault: await getClaudeDefaultModel(db),
+                agentBackend: await getAgentBackendConfig(db),
                 projectPolicy: projectId && typeof db.getProjectModelControlSetting === 'function'
                     ? await db.getProjectModelControlSetting(projectId, 'model_policy')
                     : null
@@ -58,6 +87,62 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
         } catch (error) {
             console.error('[Model Control] Failed to load options:', error);
             res.status(500).json({ error: 'Failed to load model-control options: ' + error.message });
+        }
+    });
+
+    // ─── Claude default model ─────────────────────────────────────────────
+    // Read by Praxis's claude-code executor at dispatch time (cached 60s
+    // there) and by the dashboard's Model Control panel.
+    router.get('/claude-default', async (_req, res) => {
+        try {
+            res.json({ model: await getClaudeDefaultModel(db) });
+        } catch (error) {
+            console.error('[Model Control] Failed to read claude default:', error);
+            res.status(500).json({ error: 'Failed to read claude default: ' + error.message });
+        }
+    });
+
+    router.put('/claude-default', async (req, res) => {
+        try {
+            const model = typeof req.body.model === 'string' ? req.body.model.trim() : '';
+            if (!model) return res.status(400).json({ error: 'model is required' });
+            await db.setModelControlSetting('claude_default_model', { model });
+            res.json({ model });
+        } catch (error) {
+            console.error('[Model Control] Failed to update claude default:', error);
+            res.status(500).json({ error: 'Failed to update claude default: ' + error.message });
+        }
+    });
+
+    // ─── Praxis agent backend ─────────────────────────────────────────────
+    // Which engine runs Praxis's autonomous SYSTEM agent tasks (wakeups,
+    // morning routine, HITL resumes). "codex"/"claude-code" = signed-in CLI
+    // subscriptions; "gemini" = the in-process API loop (always the implicit
+    // last resort even if not listed in fallbacks).
+    router.get('/agent-backend', async (_req, res) => {
+        try {
+            res.json(await getAgentBackendConfig(db));
+        } catch (error) {
+            console.error('[Model Control] Failed to read agent backend:', error);
+            res.status(500).json({ error: 'Failed to read agent backend: ' + error.message });
+        }
+    });
+
+    router.put('/agent-backend', async (req, res) => {
+        try {
+            const backend = AGENT_BACKENDS.includes(req.body.backend) ? req.body.backend : null;
+            if (!backend) {
+                return res.status(400).json({ error: `backend must be one of: ${AGENT_BACKENDS.join(', ')}` });
+            }
+            const fallbacks = Array.isArray(req.body.fallbacks)
+                ? req.body.fallbacks.filter(f => AGENT_BACKENDS.includes(f) && f !== backend)
+                : AGENT_BACKEND_DEFAULT.fallbacks.filter(f => f !== backend);
+            const value = { backend, fallbacks };
+            await db.setModelControlSetting('agent_backend', value);
+            res.json(value);
+        } catch (error) {
+            console.error('[Model Control] Failed to update agent backend:', error);
+            res.status(500).json({ error: 'Failed to update agent backend: ' + error.message });
         }
     });
 

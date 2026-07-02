@@ -128,13 +128,13 @@ const createChatHistoryRouter = require('./routes/chat-history');
 const createChatFilesRouter   = require('./routes/chat-files');
 const createPushRouter      = require('./routes/push');
 const createProjectWorkflowsRouter = require('./routes/project-workflows');
-const createAgEventsRouter  = require('./routes/ag-events');
 const createBroadcastRouter = require('./routes/broadcast');
 const createCalendarRouter  = require('./routes/calendar');
 const createPraxisStreamRouter = require('./routes/praxis-stream');
 const createLocalQueueRouter = require('./routes/local-queue');
 const createIngestionControlRouter = require('./routes/ingestion-control');
 const createStudioRouter = require('./routes/studio');
+const createFleetRouter = require('./routes/fleet');
 
 // Health & system
 app.use('/api/health',    createHealthRouter());
@@ -149,6 +149,7 @@ app.use('/api/praxis',    createPraxisStreamRouter({ io, pushService }));
 app.use('/api/local-queue', createLocalQueueRouter());
 app.use('/api/ingestion-control', createIngestionControlRouter());
 app.use('/api/studio',    createStudioRouter({ db, callAI }));
+app.use('/api/fleet',     createFleetRouter());
 
 // Projects & tasks
 const projectsRouter = createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync });
@@ -195,7 +196,6 @@ app.use('/api/chat/files', createChatFilesRouter());
 
 // Push & events
 app.use('/api/push',      createPushRouter({ db, pushService }));
-app.use('/api/ag',        createAgEventsRouter({ db, io, pushService }));
 app.use('/api/broadcast', createBroadcastRouter({ io }));
 
 // ─── Legacy Research Routes (uses app.post directly) ────────────────────────

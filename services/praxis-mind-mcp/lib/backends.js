@@ -61,6 +61,16 @@ async function cortexCypher({ query, params = {} }) {
   });
 }
 
+async function cortexVaultSearch({ query, k = 8, rerank = false }) {
+  // Hybrid vault retrieval (BM25 + vector + RRF, backlink-boosted) over the
+  // watcher-built index at shared-mind/.index/vault-search.json.
+  return httpJSON(`${cfg.CORTEX_GATEWAY}/api/vault/search`, {
+    method: 'POST',
+    headers: cortexHeaders(),
+    body: { query, k, rerank },
+  });
+}
+
 async function cortexIngestAtoms(payload) {
   // Direct wrap of /api/memory/ingest_atoms — same shape Praxis Path B uses.
   return httpJSON(`${cfg.CORTEX_GATEWAY}/api/memory/ingest_atoms`, {
@@ -140,6 +150,7 @@ module.exports = {
   cortexSearch,
   cortexRecent,
   cortexCypher,
+  cortexVaultSearch,
   cortexIngestAtoms,
   praxisChat,
   nexusProjects,

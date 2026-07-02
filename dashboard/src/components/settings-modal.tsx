@@ -6,6 +6,7 @@ import {
     FolderOpen, Key, CheckCircle2, AlertCircle
 } from "lucide-react";
 import { getEnvSettings, saveEnvSettings, EnvSettings } from "@/lib/nexus";
+import { ArchivedProjectsList } from "@/components/archived-projects-list";
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -232,6 +233,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                     Shared secret between Cortex and the API server. Auto-generated if empty.
                                 </p>
                             </div>
+
+                            {/* Archived Projects */}
+                            <ArchivedProjectsList reloadKey={isOpen} />
 
                             {/* Error */}
                             {error && (

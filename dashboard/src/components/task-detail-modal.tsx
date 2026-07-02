@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Task, TaskStatus, Feedback, deleteTask, addPlanFeedback, addWalkthroughFeedback, addResearchFeedback, updateTaskDetails, researchTasks, getWorkflowTemplates, runTaskWithLangGraph, getTaskLangGraphStatus, WorkflowTemplate, updateTask, approveResearch, rejectResearch, approveWalkthrough, rejectWalkthrough, cancelWalkthrough, cancelWorkflowRun } from "@/lib/nexus";
 import { getTabForTaskStatus } from "@/lib/taskTabMapping";
-import { X, Lightbulb, FileText, BookOpen, Check, XCircle, Loader2, Trash2, GitCommit, Rocket, Search, MessageSquare, Send, Undo2, RefreshCw, Pencil, Zap, ChevronDown, Archive, RotateCw } from "lucide-react";
+import { X, Lightbulb, FileText, BookOpen, Check, XCircle, Loader2, Trash2, GitCommit, Rocket, Search, MessageSquare, Send, Undo2, RefreshCw, Pencil, Zap, ChevronDown, Archive, RotateCw, ClipboardCopy } from "lucide-react";
+import { copyClaudeDispatch } from "@/lib/claude-dispatch";
 import { AnnotatedMarkdown } from './annotated-markdown';
 import { StageTimeline } from './stage-timeline';
 import { FeedbackHistory } from './feedback-history';
@@ -73,6 +74,9 @@ function StatusBadge({ status }: { status: TaskStatus }) {
 export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initialTab }: TaskDetailModalProps) {
     // Track the task ID to detect when we're viewing a different task
     const previousTaskId = useRef<string | null>(null);
+
+    // "Copy Claude Dispatch" button feedback
+    const [dispatchCopied, setDispatchCopied] = useState(false);
 
     // Helper to clean potential JSON content from LLMs
     const cleanContent = (content: string): string => {
@@ -471,6 +475,16 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
     };
 
 
+    const handleCopyClaudeDispatch = async () => {
+        try {
+            await copyClaudeDispatch(task, projectId);
+            setDispatchCopied(true);
+            setTimeout(() => setDispatchCopied(false), 2000);
+        } catch (error) {
+            console.error('Failed to copy Claude dispatch brief:', error);
+        }
+    };
+
     const actions = statusActions[task.status] || [];
     const isPending = !langGraphRunId && (task.status === 'todo' || task.status === 'planning' || task.status === 'building');
 
@@ -513,6 +527,17 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                             <h2 className="text-xl font-bold text-white truncate">{task.title}</h2>
                         </div>
                     </div>
+                    <button
+                        onClick={handleCopyClaudeDispatch}
+                        className={`flex items-center gap-2 px-3 py-2 mr-2 rounded-lg border text-sm transition-colors ${dispatchCopied
+                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                            : 'border-slate-700 hover:bg-slate-800 text-slate-300'
+                            }`}
+                        title="Copy a Claude-ready brief for this task — paste into any Claude session; includes how to mark the task complete"
+                    >
+                        {dispatchCopied ? <Check size={16} /> : <ClipboardCopy size={16} />}
+                        {dispatchCopied ? 'Copied!' : 'Copy Claude Dispatch'}
+                    </button>
                     <button
                         onClick={onClose}
                         className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"

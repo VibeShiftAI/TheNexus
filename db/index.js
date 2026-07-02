@@ -48,6 +48,28 @@ try {
         console.warn('[Database] usage_stats source migration skipped:', err.message);
     }
 
+    // Migration: project/task archival (see db/migrations/027_project_archival.sql)
+    // projects.status already supports 'archived' (migration 024). Here we add the
+    // timestamp/restore columns needed to archive a project and its tasks reversibly.
+    try {
+        const projCols = db.prepare("PRAGMA table_info(projects)").all();
+        if (projCols.length > 0 && !projCols.find(c => c.name === 'archived_at')) {
+            db.exec("ALTER TABLE projects ADD COLUMN archived_at TEXT");
+            console.log('[Database] Migration: added archived_at column to projects');
+        }
+        const taskCols = db.prepare("PRAGMA table_info(tasks)").all();
+        if (taskCols.length > 0 && !taskCols.find(c => c.name === 'archived_at')) {
+            db.exec("ALTER TABLE tasks ADD COLUMN archived_at TEXT");
+            console.log('[Database] Migration: added archived_at column to tasks');
+        }
+        if (taskCols.length > 0 && !taskCols.find(c => c.name === 'pre_archive_status')) {
+            db.exec("ALTER TABLE tasks ADD COLUMN pre_archive_status TEXT");
+            console.log('[Database] Migration: added pre_archive_status column to tasks');
+        }
+    } catch (err) {
+        console.warn('[Database] project archival migration skipped:', err.message);
+    }
+
     console.log(`[Database] Connected to SQLite: ${DB_PATH}`);
 } catch (err) {
     console.error('[Database] Failed to open SQLite database:', err.message);
@@ -323,10 +345,18 @@ async function testConnection() {
 // PROJECT OPERATIONS
 // ============================================================================
 
-async function getProjects() {
+/**
+ * List projects. Archived projects are excluded by default so they drop out of
+ * the dashboard list and any context-retrieval paths that feed project data to
+ * the AI for analysis. Pass { includeArchived: true } for archive-management views.
+ */
+async function getProjects({ includeArchived = false } = {}) {
     if (!db) return [];
     try {
-        return deserRows(db.prepare('SELECT * FROM projects ORDER BY name').all());
+        const sql = includeArchived
+            ? 'SELECT * FROM projects ORDER BY name'
+            : "SELECT * FROM projects WHERE status IS NULL OR status != 'archived' ORDER BY name";
+        return deserRows(db.prepare(sql).all());
     } catch (err) {
         console.error('[Database] Error fetching projects:', err.message);
         return [];
@@ -394,6 +424,78 @@ async function deleteProject(projectId) {
     } catch (err) {
         console.error('[Database] Error deleting project:', err.message);
         return false;
+    }
+}
+
+/**
+ * Archive a project and all of its tasks. This is a soft, reversible operation
+ * that NEVER touches project files on disk — only database state changes:
+ *   - The project's status becomes 'archived' (drops it from the dashboard and
+ *     from context-retrieval paths via getProjects/getBoardState filtering).
+ *   - Every non-archived task gets status='archived', its prior status stashed in
+ *     pre_archive_status, and an archived_at timestamp, so it can be restored.
+ *
+ * @returns {{ project: object, tasksArchived: number } | null}
+ */
+async function archiveProject(projectId) {
+    if (!db) return null;
+    try {
+        const ts = now();
+        const run = db.transaction(() => {
+            const tasks = db.prepare(
+                "SELECT id, status FROM tasks WHERE project_id = ? AND (status IS NULL OR status != 'archived')"
+            ).all(projectId);
+            const updateTaskStmt = db.prepare(
+                "UPDATE tasks SET pre_archive_status = ?, status = 'archived', archived_at = ?, updated_at = ? WHERE id = ?"
+            );
+            for (const t of tasks) {
+                updateTaskStmt.run(t.status || null, ts, ts, t.id);
+            }
+            db.prepare(
+                "UPDATE projects SET status = 'archived', archived_at = ?, updated_at = ? WHERE id = ?"
+            ).run(ts, ts, projectId);
+            return tasks.length;
+        });
+        const tasksArchived = run();
+        const project = deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
+        return { project, tasksArchived };
+    } catch (err) {
+        console.error('[Database] Error archiving project:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Reverse archiveProject. Restores the project to 'active' and each archived task
+ * to the status it held before archival (falling back to 'idea' if unknown).
+ *
+ * @returns {{ project: object, tasksRestored: number } | null}
+ */
+async function unarchiveProject(projectId) {
+    if (!db) return null;
+    try {
+        const ts = now();
+        const run = db.transaction(() => {
+            const tasks = db.prepare(
+                "SELECT id, pre_archive_status FROM tasks WHERE project_id = ? AND status = 'archived'"
+            ).all(projectId);
+            const restoreTaskStmt = db.prepare(
+                "UPDATE tasks SET status = ?, pre_archive_status = NULL, archived_at = NULL, updated_at = ? WHERE id = ?"
+            );
+            for (const t of tasks) {
+                restoreTaskStmt.run(t.pre_archive_status || 'idea', ts, t.id);
+            }
+            db.prepare(
+                "UPDATE projects SET status = 'active', archived_at = NULL, updated_at = ? WHERE id = ?"
+            ).run(ts, projectId);
+            return tasks.length;
+        });
+        const tasksRestored = run();
+        const project = deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
+        return { project, tasksRestored };
+    } catch (err) {
+        console.error('[Database] Error unarchiving project:', err.message);
+        return null;
     }
 }
 
@@ -1988,81 +2090,6 @@ async function clearChatMessages(conversationId) {
 }
 
 // ============================================================================
-// ANTIGRAVITY EVENT STREAM
-// ============================================================================
-
-const AG_EVENTS_MAX_ROWS = 500; // Ring buffer — prune beyond this
-
-/**
- * Record a new Antigravity event.
- * Auto-prunes old events beyond AG_EVENTS_MAX_ROWS.
- */
-async function recordAgEvent({ event_type, severity, title, message, task_id, source, metadata, requires_action }) {
-    if (!db) return null;
-    try {
-        const stmt = db.prepare(`
-            INSERT INTO ag_events (event_type, severity, title, message, task_id, source, metadata, requires_action)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        const info = stmt.run(
-            event_type,
-            severity || 'info',
-            title,
-            message || null,
-            task_id || null,
-            source || 'extension',
-            ser(metadata || {}),
-            requires_action ? 1 : 0
-        );
-
-        // Auto-prune: keep only the most recent AG_EVENTS_MAX_ROWS
-        const count = db.prepare('SELECT COUNT(*) as cnt FROM ag_events').get().cnt;
-        if (count > AG_EVENTS_MAX_ROWS) {
-            db.prepare(`
-                DELETE FROM ag_events WHERE id NOT IN (
-                    SELECT id FROM ag_events ORDER BY id DESC LIMIT ?
-                )
-            `).run(AG_EVENTS_MAX_ROWS);
-        }
-
-        // Return the inserted row
-        const row = db.prepare('SELECT * FROM ag_events WHERE id = ?').get(info.lastInsertRowid);
-        return row ? deserRow(row) : { id: info.lastInsertRowid };
-    } catch (err) {
-        console.error('[Database] Error recording ag_event:', err.message);
-        return null;
-    }
-}
-
-/**
- * Get recent Antigravity events (for dashboard hydration).
- */
-async function getRecentAgEvents(limit = 50) {
-    if (!db) return [];
-    try {
-        const rows = db.prepare('SELECT * FROM ag_events ORDER BY id DESC LIMIT ?').all(limit);
-        return deserRows(rows).reverse(); // Chronological order
-    } catch (err) {
-        console.error('[Database] Error fetching ag_events:', err.message);
-        return [];
-    }
-}
-
-/**
- * Mark an Antigravity event as actioned (user dismissed the alert).
- */
-async function markAgEventActioned(id) {
-    if (!db) return false;
-    try {
-        db.prepare('UPDATE ag_events SET action_taken = 1 WHERE id = ?').run(id);
-        return true;
-    } catch (err) {
-        console.error('[Database] Error marking ag_event actioned:', err.message);
-        return false;
-    }
-}
-
-// ============================================================================
 // CALENDAR SYSTEM
 // ============================================================================
 
@@ -2139,6 +2166,8 @@ module.exports = {
     upsertProject,
     updateProject,
     deleteProject,
+    archiveProject,
+    unarchiveProject,
     // Tasks
     getTasks,
     getTask,
@@ -2231,9 +2260,6 @@ module.exports = {
     saveChatMessage,
     clearChatMessages,
     // Antigravity Event Stream
-    recordAgEvent,
-    getRecentAgEvents,
-    markAgEventActioned,
     // Push Notification Tokens
     registerPushToken,
     unregisterPushToken,

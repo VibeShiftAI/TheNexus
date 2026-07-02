@@ -82,6 +82,8 @@ export interface Project {
         repo?: string;
     };
     end_state?: string;
+    status?: 'active' | 'paused' | 'archived' | string;
+    archived_at?: string | null;
     stats?: {
         pending_reviews?: number;
     };
@@ -168,6 +170,15 @@ export async function getProjects(): Promise<Project[]> {
         console.error("Failed to fetch projects:", error);
         throw error;
     }
+}
+
+/** List archived projects (excluded from getProjects). For the archive-management view. */
+export async function getArchivedProjects(): Promise<Project[]> {
+    const res = await authFetch(`${API_URL}?archived=true`, { cache: 'no-store' });
+    if (!res.ok) {
+        throw new Error(`Failed to fetch archived projects: ${res.statusText} (${res.status})`);
+    }
+    return res.json();
 }
 
 export async function getProjectStatus(id: string): Promise<GitStatus> {
@@ -613,6 +624,30 @@ export async function deleteProject(id: string, deleteFiles: boolean = false): P
     if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to delete project');
+    }
+    return res.json();
+}
+
+/**
+ * Archive a project and all of its tasks. Reversible and DB-only — the project's
+ * files on disk are never touched. Archived projects drop off the dashboard and
+ * out of context-retrieval paths.
+ */
+export async function archiveProject(id: string): Promise<{ success: boolean; project: Project; tasksArchived: number; message: string }> {
+    const res = await authFetch(`${API_URL}/${id}/archive`, { method: 'POST' });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to archive project');
+    }
+    return res.json();
+}
+
+/** Restore an archived project and its tasks. */
+export async function unarchiveProject(id: string): Promise<{ success: boolean; project: Project; tasksRestored: number; message: string }> {
+    const res = await authFetch(`${API_URL}/${id}/unarchive`, { method: 'POST' });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to unarchive project');
     }
     return res.json();
 }

@@ -1,15 +1,13 @@
 /**
- * PraxisStatusPanel — combined "what is Praxis doing" status + actionable
- * input requests, sized to sit directly under the Praxis terminal on the
- * main dashboard. Status is driven by the live SSE presence stream; the
- * action surface is the HITL inbox (the only operator action Praxis exposes).
+ * PraxisStatusPanel — "what is Praxis doing" live status card, driven by the
+ * live SSE presence stream. The HITL inbox (operator action surface) lives
+ * separately on the dashboard; this panel is status-only.
  */
 "use client";
 
 import { Cpu } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { getPresenceVisualState } from "@/components/presence-indicator";
-import { HitlInbox } from "@/components/hitl-inbox";
 
 function fmtTime(iso?: string) {
   if (!iso) return null;
@@ -32,7 +30,7 @@ export function PraxisStatusPanel() {
   ).filter((s): s is { label: string; value: number | string } => s.value !== undefined && s.value !== null);
 
   return (
-    <div className="space-y-4">
+    <div>
       {/* Live status */}
       <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4">
         <div className="mb-3 flex items-center justify-between">
@@ -64,9 +62,6 @@ export function PraxisStatusPanel() {
           </div>
         )}
       </div>
-
-      {/* Actions — pending input requests from Praxis */}
-      <HitlInbox />
     </div>
   );
 }

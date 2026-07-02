@@ -403,10 +403,12 @@ async function callLocal(message, config, systemPrompt, history) {
     const modelId = config.apiModelId;
     const params = config.parameters || {};
 
-    // Resolve endpoint: explicit config > env var > Ollama default
+    // Resolve endpoint: explicit config > env var > LM Studio default.
+    // :1234 matches nexus-shared/src/endpoints.ts (the LM Studio port) so a
+    // machine without LOCAL_AI_URL set still reaches the right server.
     const baseUrl = params.base_url
         || process.env.LOCAL_AI_URL
-        || 'http://localhost:11434/v1';
+        || 'http://localhost:1234/v1';
 
     console.log(`[Local AI] Endpoint: ${baseUrl}, Model: ${modelId}`);
 
@@ -443,10 +445,15 @@ async function callLocal(message, config, systemPrompt, history) {
         headers['Authorization'] = `Bearer ${localApiKey}`;
     }
 
+    // Bounded wait: local Gemma on a long prompt can legitimately take
+    // minutes (slow prefill + reasoning), but an LM Studio stall must not
+    // hang the Nexus request forever. 600s mirrors Praxis's local ceiling.
+    const timeoutMs = Number(process.env.LOCAL_AI_TIMEOUT_MS || 600000);
     const response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(timeoutMs)
     });
 
     if (!response.ok) {
@@ -455,7 +462,13 @@ async function callLocal(message, config, systemPrompt, history) {
     }
 
     const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || 'No response from local model';
+    // Local Gemma is a thinking model: it can emit everything to
+    // reasoning_content and leave content empty (2026-06-08 incident class).
+    // Salvage the reasoning channel before giving up.
+    const localMsg = data.choices?.[0]?.message || {};
+    const text = (localMsg.content && localMsg.content.trim())
+        || (localMsg.reasoning_content && localMsg.reasoning_content.trim())
+        || 'No response from local model';
 
     const usage = data.usage || {};
 

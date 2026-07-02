@@ -79,11 +79,14 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // ─── PATCH update task by ID (LangGraph workflow sync) ───────────────
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, description, model_assignment } = req.body;
+        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, description, model_assignment, antigravity_payload, name, title } = req.body;
         try {
             const existing = await db.getTask(taskId);
             if (!existing) return res.status(404).json({ error: 'Task not found' });
             const updates = { updated_at: new Date().toISOString() };
+            // Accept either `name` (db column) or `title` (UI/MCP term) to fix a task's title.
+            if (name !== undefined) updates.name = name;
+            else if (title !== undefined) updates.name = title;
             if (status !== undefined) updates.status = status;
             if (research_output !== undefined) updates.research_output = research_output;
             if (plan_output !== undefined) updates.plan_output = plan_output;
@@ -91,6 +94,8 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (priority !== undefined) updates.priority = priority;
             if (description !== undefined) updates.description = description;
             if (model_assignment !== undefined) updates.model_assignment = model_assignment || null;
+            // Machine-layer payload (JSON column; ser() encodes, deserRow parses back).
+            if (antigravity_payload !== undefined) updates.antigravity_payload = antigravity_payload;
             // ser() in the db layer JSON-encodes arrays; deserRow parses it back.
             if (dependencies !== undefined) updates.dependencies = Array.isArray(dependencies) ? dependencies : [];
             if (status_message !== undefined) {

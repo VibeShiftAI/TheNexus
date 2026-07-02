@@ -203,33 +203,6 @@ async function notifyCortexArtifact(artifact) {
 }
 
 /**
- * Notify about a system alert (Antigravity event).
- */
-async function notifySystemAlert(event) {
-    const severityEmoji = {
-        'critical': '🔴',
-        'warning': '🟡',
-        'info': '🔵',
-    };
-
-    const emoji = severityEmoji[event.severity] || '📢';
-
-    return notify({
-        title: `${emoji} ${event.title}`,
-        body: event.message || '',
-        data: {
-            type: 'system_alert',
-            eventType: event.event_type,
-            severity: event.severity,
-            eventId: event.id,
-            requiresAction: event.requires_action,
-            route: '/(tabs)/settings',
-        },
-        channelId: event.severity === 'critical' ? 'nexus-default' : 'praxis-agent',
-    });
-}
-
-/**
  * Notify about an incoming chat message from Praxis.
  */
 async function notifyPraxisMessage({ preview, conversationId }) {
@@ -251,6 +224,5 @@ module.exports = {
     sendToTokens,
     notifyTaskUpdate,
     notifyCortexArtifact,
-    notifySystemAlert,
     notifyPraxisMessage,
 };

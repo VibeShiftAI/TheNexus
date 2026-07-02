@@ -26,6 +26,28 @@ const R_JUP = 6.9911e7; // m
 // T = 278.5 K * (1-A)^0.25 * (S/S_earth)^0.25
 const T_EQ_REF = 278.5; // K
 
+// Render-model reference values (Unreal SkyAtmosphere ships Earth defaults;
+// we scale those by the real physics so the renderer stays honest).
+const T_SUN = 5772; // K, solar effective temperature
+const SUN_ANGULAR_DIAMETER_DEG = 0.5334; // apparent solar diameter from 1 AU
+const EARTH_AIR_DENSITY_KG_M3 = 1.225; // sea-level air density
+const EARTH_NOON_ILLUMINANCE_LUX = 133000; // direct overhead sunlight
+const UE_EARTH_RAYLEIGH_SCALE = 0.0331; // UE SkyAtmosphere default
+const UE_EARTH_RAYLEIGH_COLOR = [0.1752, 0.4096, 1.0]; // UE default scattering tint
+const UE_EARTH_MIE_SCALE = 0.003996; // UE SkyAtmosphere default
+
+// Effective temperature at subclass 0 and 9 for each spectral class (main
+// sequence anchors; linear interpolation across the subclass digit).
+const SPECTRAL_TEFF_ANCHORS = {
+  O: [45000, 30000],
+  B: [30000, 10000],
+  A: [10000, 7300],
+  F: [7300, 6000],
+  G: [6000, 5300],
+  K: [5300, 3900],
+  M: [3900, 2300],
+};
+
 // Mean molar masses (kg/mol) for composition keyword inference
 const MOLAR_MASSES = {
   h2: 0.002016,
@@ -200,8 +222,23 @@ function computeDerivedSpecs(specMap = {}) {
       `H = R·T/(M·g); T=${round(tempForGas, 1)} K, M=${round(molar * 1000, 1)} g/mol, g=${round(gForAtm, 2)} m/s².`);
   }
 
+  // Host-star effective temperature from spectral type (drives light color)
+  const hostText = specMap['location.host_star_or_object'] && specMap['location.host_star_or_object'].value_text;
+  const spect = parseSpectralType(hostText);
+  const teff = spectralTypeToTeff(spect);
+  if (teff != null) {
+    add('energy.star_effective_temperature_k', teff, 'K', 'medium',
+      `Teff interpolated from spectral type ${spect.cls}${spect.subclass != null ? spect.subclass : ''} between class anchors.`);
+  }
+
+  // Daylight illuminance: overhead sunlight on Earth ≈ 133,000 lux, ∝ insolation.
+  if (flux != null && flux > 0) {
+    add('human_experience.daylight_illuminance_lux', EARTH_NOON_ILLUMINANCE_LUX * flux, 'lux', 'medium',
+      `E = 133,000 lux × S/S⊕; S/S⊕=${round(flux, 3)}.`);
+  }
+
   // Qualitative sky appearance from Rayleigh-scattering reasoning
-  const sky = describeSky({ composition, pressureBar, hostStar: specMap['location.host_star_or_object'] && specMap['location.host_star_or_object'].value_text });
+  const sky = describeSky({ composition, pressureBar, hostStar: hostText });
   if (sky && statusOf(specMap, 'human_experience.sky_appearance') !== 'known') {
     out.push({
       spec_key: 'human_experience.sky_appearance',
@@ -252,8 +289,172 @@ function describeSky({ composition, pressureBar, hostStar }) {
   return { text: `Expect ${parts.join(', ')}.`, note };
 }
 
+/**
+ * Extract a stellar spectral class from free text. Handles the ingestion
+ * format "Kepler-22 (G5 V)" (parenthetical preferred), compact "M8V", and
+ * prose forms like "G2V yellow dwarf" or "M dwarf". Catalog names such as
+ * "K2-18" must NOT parse as class K — a hyphen right after the subclass
+ * digit rejects the match.
+ */
+function parseSpectralType(text) {
+  if (!text) return null;
+  const s = String(text).toUpperCase();
+  const paren = s.match(/\(([^)]+)\)/);
+  const target = paren ? paren[1] : s;
+  const m = target.match(/\b([OBAFGKM])\s?(\d(?:\.\d)?)(?![\d.-])/);
+  if (m) return { cls: m[1], subclass: parseFloat(m[2]) };
+  if (!paren) {
+    const prose = s.match(/\b([OBAFGKM])[-\s](?:TYPE|DWARF|STAR|GIANT|SUBGIANT|CLASS)/);
+    if (prose) return { cls: prose[1], subclass: 5 };
+  }
+  return null;
+}
+
+/** Interpolate an effective temperature (K) from a parsed spectral type. */
+function spectralTypeToTeff(spect) {
+  if (!spect || !SPECTRAL_TEFF_ANCHORS[spect.cls]) return null;
+  const [t0, t9] = SPECTRAL_TEFF_ANCHORS[spect.cls];
+  const sub = Number.isFinite(spect.subclass) ? Math.min(Math.max(spect.subclass, 0), 9.9) : 5;
+  return t0 + (t9 - t0) * (sub / 10);
+}
+
+/**
+ * Blackbody temperature → normalized linear RGB (max channel = 1), via the
+ * Tanner-Helland piecewise fit. 5772 K ≈ warm white, 3000 K red, 10000 K blue.
+ */
+function blackbodyToRGB(teffK) {
+  if (!Number.isFinite(teffK) || teffK <= 0) return null;
+  const t = Math.min(Math.max(teffK, 1000), 40000) / 100;
+  let r; let g; let b;
+  if (t <= 66) r = 255;
+  else r = 329.698727446 * Math.pow(t - 60, -0.1332047592);
+  if (t <= 66) g = 99.4708025861 * Math.log(t) - 161.1195681661;
+  else g = 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+  if (t >= 66) b = 255;
+  else if (t <= 19) b = 0;
+  else b = 138.5177312231 * Math.log(t - 10) - 305.0447927307;
+  const clamp = (x) => Math.min(255, Math.max(0, x));
+  const rgb = [clamp(r), clamp(g), clamp(b)];
+  const max = Math.max(rgb[0], rgb[1], rgb[2], 1);
+  return rgb.map((x) => round(x / max, 4));
+}
+
+/**
+ * Quantitative render parameters for the Unreal surface stage. Same contract
+ * as computeDerivedSpecs (pure, deterministic, never overrides knowns — it
+ * only reads) but returns a structured model instead of spec rows, because
+ * scattering coefficients and RGB triples don't fit the value_number schema.
+ */
+function computeRenderModel(specMap = {}) {
+  const derived = computeDerivedSpecs(specMap);
+  const dByKey = {};
+  for (const d of derived) if (d.value_number != null) dByKey[d.spec_key] = d.value_number;
+  const get = (key) => {
+    const v = val(specMap, key);
+    return v != null ? v : (dByKey[key] != null ? dByKey[key] : null);
+  };
+  const text = (key) => ((specMap[key] && specMap[key].value_text) ? String(specMap[key].value_text) : null);
+
+  // "Tidally locked" only counts when not negated in the same clause
+  // (seed values read "Not locked; 3:2 resonance" and similar).
+  const lockText = text('orbital.tidal_lock_status') || '';
+  const rotation = {
+    period_h: get('orbital.rotation_period_hours'),
+    obliquity_deg: get('orbital.obliquity_deg'),
+    tidal_locked: /locked|synchronous/i.test(lockText)
+      && !/\b(not|never|no|isn't|un-?locked)\b[^.;]*\b(locked|synchronous)/i.test(lockText),
+  };
+
+  // --- host star: color, brightness, apparent size ---
+  const hostText = text('location.host_star_or_object');
+  const spect = parseSpectralType(hostText);
+  let teff = spectralTypeToTeff(spect);
+  let starConfidence = 'medium';
+  if (teff == null) { teff = T_SUN; starConfidence = 'low'; }
+  const flux = get('energy.stellar_flux_earth');
+  const aAU = get('orbital.semi_major_axis_au');
+  // L/L☉ = S/S⊕ · a²; R★/R☉ = √L · (T☉/T★)²; θ = θ☉ · (R★/R☉)/a
+  let angular = SUN_ANGULAR_DIAMETER_DEG;
+  if (flux != null && flux > 0 && aAU != null && aAU > 0) {
+    const lSun = flux * aAU * aAU;
+    const rStar = Math.sqrt(lSun) * Math.pow(T_SUN / teff, 2);
+    angular = SUN_ANGULAR_DIAMETER_DEG * (rStar / aAU);
+  }
+  const sun = {
+    name: hostText ? (hostText.replace(/\s*\([^)]*\)\s*/g, '').trim() || 'Host star') : 'Host star',
+    teff_k: Math.round(teff),
+    rgb: blackbodyToRGB(teff),
+    illuminance_lux: (flux != null && flux > 0) ? Math.round(EARTH_NOON_ILLUMINANCE_LUX * flux) : null,
+    angular_diameter_deg: round(angular, 4),
+    confidence: starConfidence,
+  };
+
+  // --- atmosphere: Rayleigh/Mie coefficients as scalings of UE Earth defaults ---
+  const pressureBar = get('atmosphere.pressure_bar');
+  const airDensity = get('atmosphere.density_kg_m3');
+  const scaleHeightKm = get('atmosphere.scale_height_km');
+  const composition = (text('atmosphere.composition') || '').toLowerCase();
+  const cloudsText = (text('atmosphere.clouds_hazes') || '').toLowerCase();
+  const hasAtmosphere = (pressureBar != null && pressureBar > 1e-6)
+    || (airDensity != null && airDensity > 1e-6);
+
+  // Rayleigh scattering ∝ molecular number density → scale Earth's coefficient
+  // by surface air density (fallback: surface pressure as a crude proxy).
+  let rayleighScale = 0;
+  if (hasAtmosphere && airDensity != null) rayleighScale = UE_EARTH_RAYLEIGH_SCALE * (airDensity / EARTH_AIR_DENSITY_KG_M3);
+  else if (hasAtmosphere && pressureBar != null) rayleighScale = UE_EARTH_RAYLEIGH_SCALE * pressureBar;
+  let rayleighColor = UE_EARTH_RAYLEIGH_COLOR.slice();
+  if (/ch4|methane/.test(composition)) rayleighColor = [0.05, 0.35, 1.0];
+  else if (/so2|sulfur|sulphur|sulfuric/.test(composition)) rayleighColor = [0.6, 0.5, 0.3];
+
+  let mie = { scale: hasAtmosphere ? UE_EARTH_MIE_SCALE : 0, anisotropy: 0.8, color: [1.0, 1.0, 1.0] };
+  let fog = { enabled: false, density: 0 };
+  const clouds = { enabled: false };
+  const dusty = /dust/.test(cloudsText)
+    || (/co2|carbon dioxide/.test(composition) && pressureBar != null && pressureBar < 0.1);
+  if (hasAtmosphere) {
+    if (dusty) mie = { scale: 0.03, anisotropy: 0.6, color: [0.9, 0.7, 0.5] };
+    else if (/haz|smog|aerosol/.test(cloudsText)) mie = { scale: 0.02, anisotropy: 0.7, color: [1.0, 0.95, 0.85] };
+    if (/thick|global|dense|opaque|perpetual/.test(cloudsText)) {
+      clouds.enabled = true;
+      fog = { enabled: true, density: Math.min(Math.max(0.02 * (pressureBar || 1), 0.005), 0.5) };
+      if (mie.scale < 0.01) mie = { scale: 0.01, anisotropy: 0.75, color: mie.color };
+    }
+  }
+
+  const r = radiusM(specMap);
+  const gG = get('bulk.surface_gravity_g');
+  const albedo = get('energy.albedo');
+  const surface = {
+    planet_radius_km: r != null ? round(r / 1000, 1) : null,
+    ground_albedo: albedo != null ? albedo : 0.3,
+    has_atmosphere: hasAtmosphere,
+    atmosphere_height_km: (hasAtmosphere && scaleHeightKm != null)
+      ? round(Math.min(Math.max(11 * scaleHeightKm, 60), 200), 1)
+      : 60,
+    // Isostatic limit: tallest supportable mountains shrink as gravity grows.
+    max_relief_m: (gG != null && gG > 0)
+      ? Math.round(Math.min(Math.max(10000 / gG, 500), 30000))
+      : 10000,
+    rayleigh: {
+      scale: round(rayleighScale, 6),
+      color: rayleighColor,
+      exp_distribution_km: scaleHeightKm != null ? round(Math.min(Math.max(scaleHeightKm, 1), 100), 2) : 8.0,
+    },
+    mie: { scale: round(mie.scale, 6), anisotropy: mie.anisotropy, color: mie.color },
+    fog,
+    clouds,
+  };
+
+  return { rotation, surface, suns: [sun] };
+}
+
 module.exports = {
   computeDerivedSpecs,
+  computeRenderModel,
+  parseSpectralType,
+  spectralTypeToTeff,
+  blackbodyToRGB,
   inferMolarMass,
   describeSky,
   // exported for tests

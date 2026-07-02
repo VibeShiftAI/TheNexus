@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { getProject, getProjectStatus, getProjectCommits, getTasks, getProjectReadme, Project, GitStatus, Commit, Task, getDashboardStats, ReviewItem } from "@/lib/nexus";
-import { ArrowLeft, GitBranch, Zap, Bot, Activity, Brain, FolderOpen as Folders, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { getProject, getProjectStatus, getProjectCommits, getTasks, getProjectReadme, Project, GitStatus, Commit, Task, getDashboardStats, ReviewItem, unarchiveProject } from "@/lib/nexus";
+import { ArrowLeft, GitBranch, Zap, Bot, Activity, Brain, FolderOpen as Folders, FileText, ChevronDown, ChevronUp, Archive } from "lucide-react";
 import Link from "next/link";
 import { AITerminal } from "@/components/ai-terminal";
 import { TaskManager } from "@/components/task-manager";
@@ -52,6 +52,21 @@ export default function ProjectDetailPage() {
             console.error('Failed to load tasks:', error);
         }
     }, [projectId]);
+
+    const [restoring, setRestoring] = useState(false);
+    const handleRestore = async () => {
+        setRestoring(true);
+        try {
+            await unarchiveProject(projectId);
+            const [proj] = await Promise.all([getProject(projectId), loadTasks()]);
+            setProject(proj);
+        } catch (error) {
+            console.error('Failed to restore project:', error);
+            alert(error instanceof Error ? error.message : 'Failed to restore project');
+        } finally {
+            setRestoring(false);
+        }
+    };
 
     useEffect(() => {
         if (!projectId) return;
@@ -237,13 +252,34 @@ export default function ProjectDetailPage() {
 
             <div className="container mx-auto p-6 space-y-6">
 
+                {project.status === 'archived' && (
+                    <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+                        <div className="flex items-center gap-2.5 text-amber-300">
+                            <Archive size={18} className="shrink-0" />
+                            <div className="text-left">
+                                <p className="text-sm font-bold">This project is archived</p>
+                                <p className="text-xs text-amber-400/80">
+                                    It is hidden from the dashboard and excluded from AI context. Its tasks are archived. Files on disk are unchanged.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleRestore}
+                            disabled={restoring}
+                            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 hover:bg-amber-400 transition-colors text-xs font-bold"
+                        >
+                            {restoring ? <div className="w-3.5 h-3.5 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" /> : <Archive size={14} />}
+                            Restore Project
+                        </button>
+                    </div>
+                )}
 
                 {/* Project Overview Row - right column drives height, left fills to match */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Project Details + Context Manager (unified) */}
                     <div className="lg:col-span-2 relative min-w-0">
                         <div className="lg:absolute lg:inset-0 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden flex flex-col">
-                            <div className="px-4 py-3 border-b border-slate-800 shrink-0">
+                            <div className="px-4 py-3 border-b border-slate-800 shrink-0 max-h-full overflow-y-auto min-h-0">
                                 <ProjectSettings
                                     project={project}
                                     onUpdate={() => {

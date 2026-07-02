@@ -120,15 +120,26 @@ function register(server, ctx) {
 
   server.tool(
     'nexus_task_update',
-    'Update an existing Nexus task by id. Supply only the fields you want to change. USE FOR: changing status (e.g. retiring/cancelling a task), repointing dependencies, adjusting priority, or editing the description. Does NOT create tasks — use nexus_task_create for that.',
+    'Update an existing Nexus task by id. Supply only the fields you want to change. USE FOR: changing status (e.g. retiring/cancelling a task), repointing dependencies, adjusting priority, editing the human description, or backfilling/replacing the machine antigravity_payload (the "instructions" layer). Does NOT create tasks — use nexus_task_create for that.',
     {
       task_id: z.string().describe('Task UUID (from nexus_tasks_read / nexus_task_status).'),
       status: z.string().optional().describe('New status, e.g. "todo", "in-progress", "completed", "blocked", "cancelled".'),
       priority: z.number().int().min(0).max(2).optional().describe('0=low, 1=normal, 2=high.'),
       description: z.string().optional().describe('Replacement description / context.'),
       dependencies: z.array(z.string()).optional().describe('Replacement list of task IDs this task depends on. Replaces the existing list entirely.'),
+      antigravity_payload: z
+        .object({
+          prompt: z.string().describe('Use case / intended outcome + areas of the project impacted, as intent (not prescriptive code steps).'),
+          workspace: z.string().optional(),
+          target_files: z.array(z.string()).optional(),
+          context_files: z.array(z.string()).optional(),
+          commands: z.array(z.string()).optional(),
+          acceptance_criteria: z.array(z.string()).optional(),
+        })
+        .optional()
+        .describe('Replacement machine-execution payload (the "instructions" layer). Replaces the existing payload entirely.'),
     },
-    async ({ task_id, status, priority, description, dependencies }) => {
+    async ({ task_id, status, priority, description, dependencies, antigravity_payload }) => {
       const auth = checkPrivilege(ctx.caller, 'nexus.task_update');
       if (auth) return auth;
       const rl = checkAndIncrement(ctx.caller.identity, 'nexus_task_update', ctx.caller.rate_limits_per_hour?.['nexus.task_update']);
@@ -140,8 +151,9 @@ function register(server, ctx) {
       if (priority !== undefined) patch.priority = priority;
       if (description !== undefined) patch.description = description;
       if (dependencies !== undefined) patch.dependencies = dependencies;
+      if (antigravity_payload !== undefined) patch.antigravity_payload = antigravity_payload;
       if (Object.keys(patch).length === 0) {
-        return { content: [{ type: 'text', text: 'No fields to update. Specify at least one of: status, priority, description, dependencies.' }], isError: true };
+        return { content: [{ type: 'text', text: 'No fields to update. Specify at least one of: status, priority, description, dependencies, antigravity_payload.' }], isError: true };
       }
       const started = Date.now();
       try {

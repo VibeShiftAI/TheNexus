@@ -288,6 +288,15 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
         return proxyJson(req, res, `/api/llm-log${qs ? `?${qs}` : ''}`);
     });
 
+    // ── Bridge / cockpit passthroughs (command-deck dashboard) ─────
+    router.get('/stats', (req, res) => proxyJson(req, res, '/api/praxis/stats'));
+    router.get('/skills', (req, res) => proxyJson(req, res, '/api/skills'));
+    router.get('/dispatch-state', (req, res) => proxyJson(req, res, '/api/dispatch/state'));
+    router.post('/transcribe', (req, res) => proxyJson(req, res, '/api/transcribe'));
+    router.post('/speak', (req, res) => proxyJson(req, res, '/api/speak'));
+    // Non-streaming chat relay for the voice bar ({ message, stream: false }).
+    router.post('/chat', (req, res) => proxyJson(req, res, '/api/chat'));
+
     return router;
 }
 

@@ -17,7 +17,7 @@
  * `{ choice: "reject" }` and holds the full schedule.
  */
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -28,6 +28,11 @@ import {
   XCircle,
 } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
+import {
+  apiModelIdOf,
+  filterClaudeModels,
+  getModelControlState,
+} from "@/lib/model-control";
 
 type ExecutorName = "antigravity" | "codex" | "claude-code";
 const EXECUTOR_OPTIONS: ExecutorName[] = ["antigravity", "codex", "claude-code"];
@@ -40,6 +45,8 @@ interface ScheduleSlotMeta {
   estimatedMinutes: number;
   startTime: string;
   executor: ExecutorName;
+  /** Praxis-proposed model override for the slot (api model id), if any. */
+  modelOverride?: string | null;
   /** One-sentence definition of done, proposed by Praxis. */
   objective?: string | null;
   /** Praxis-assigned 1–5 difficulty score. */
@@ -50,11 +57,30 @@ interface ScheduleSlotMeta {
   taskDescription?: string | null;
 }
 
+interface SkillCandidateMeta {
+  /** Candidate id (kebab-case filename in skills/_candidates/). */
+  id: string;
+  name: string;
+  category: string;
+  summary: string;
+  /** Title of the ingested item this was harvested from. */
+  sourceTitle?: string | null;
+  sourceUrl?: string | null;
+}
+
+type CandidateDecision = "approve" | "archive";
+
 interface ScheduleMetadata {
   kind: "day-schedule";
   date: string;
   nightlySummary: string | null;
   slots: ScheduleSlotMeta[];
+  /**
+   * Pending nightly skill-harvest candidates (optional — older Praxis
+   * builds don't send this). Decisions ride back on the resolution as
+   * payload.skillCandidateDecisions; undecided candidates stay staged.
+   */
+  skillCandidates?: SkillCandidateMeta[];
 }
 
 /** Type-guard the open-typed metadata bag into our schedule shape. */
@@ -135,6 +161,37 @@ export function ScheduleHitlCard({
   const [skips, setSkips] = useState<Record<string, string>>({});
   const [skipDraft, setSkipDraft] = useState<{ taskId: string; reason: string } | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Per-slot model override, keyed by nexus_task_id ("" = executor default).
+  const [models, setModels] = useState<Record<string, string>>(() => {
+    if (!schedule) return {};
+    return Object.fromEntries(schedule.slots.map((s) => [s.nexusTaskId, s.modelOverride ?? ""]));
+  });
+  // Discovered Claude models for the per-slot Model dropdown (claude-code
+  // slots only) + the operator-set default, for the "(default)" label.
+  const [claudeModels, setClaudeModels] = useState<Array<{ id: string; label: string }>>([]);
+  const [claudeDefault, setClaudeDefault] = useState<string>("claude-opus-4-8");
+  useEffect(() => {
+    let cancelled = false;
+    getModelControlState(null)
+      .then((state) => {
+        if (cancelled) return;
+        setClaudeModels(
+          filterClaudeModels(state.models).map((m) => ({
+            id: apiModelIdOf(m),
+            label: m.display_name || m.name || m.id,
+          })),
+        );
+        if (state.claudeDefault) setClaudeDefault(state.claudeDefault);
+      })
+      .catch(() => {
+        /* dropdown falls back to the default-only option */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  // Per-candidate decisions; absent key = leave staged for tomorrow.
+  const [candidateDecisions, setCandidateDecisions] = useState<Record<string, CandidateDecision>>({});
   const [error, setError] = useState<string | null>(null);
 
   if (!schedule) {
@@ -156,30 +213,54 @@ export function ScheduleHitlCard({
   async function submit(choice: "approve" | "reject") {
     setError(null);
     try {
+      // Candidate decisions ride on BOTH approve and reject — deciding on
+      // harvested skills is independent of the schedule's fate.
+      const hasCandidateDecisions = Object.keys(candidateDecisions).length > 0;
+
       if (choice === "reject") {
-        await onResolve(request.id, { choice: "reject" });
+        await onResolve(request.id, {
+          choice: "reject",
+          payload: hasCandidateDecisions
+            ? { skillCandidateDecisions: candidateDecisions }
+            : undefined,
+        });
         return;
       }
 
-      // Build the scheduleOverrides payload — only include executors that
-      // actually differ from the proposed defaults; always include skips.
+      // Build the scheduleOverrides payload — only include executors/models
+      // that actually differ from the proposed defaults; always include skips.
       const executorOverrides: Record<string, string> = {};
+      const modelOverrides: Record<string, string> = {};
       for (const slot of schedule!.slots) {
         const chosen = executors[slot.nexusTaskId];
         if (chosen && chosen !== slot.executor) {
           executorOverrides[slot.nexusTaskId] = chosen;
         }
+        const chosenModel = models[slot.nexusTaskId] ?? "";
+        if (chosenModel !== (slot.modelOverride ?? "")) {
+          // "" rides through intentionally — it clears a proposed override.
+          modelOverrides[slot.nexusTaskId] = chosenModel;
+        }
       }
       const hasExecutorChanges = Object.keys(executorOverrides).length > 0;
+      const hasModelChanges = Object.keys(modelOverrides).length > 0;
       const hasSkips = Object.keys(skips).length > 0;
 
       const payload =
-        hasExecutorChanges || hasSkips
+        hasExecutorChanges || hasModelChanges || hasSkips || hasCandidateDecisions
           ? {
-              scheduleOverrides: {
-                ...(hasExecutorChanges ? { executors: executorOverrides } : {}),
-                ...(hasSkips ? { skips } : {}),
-              },
+              ...(hasExecutorChanges || hasModelChanges || hasSkips
+                ? {
+                    scheduleOverrides: {
+                      ...(hasExecutorChanges ? { executors: executorOverrides } : {}),
+                      ...(hasModelChanges ? { models: modelOverrides } : {}),
+                      ...(hasSkips ? { skips } : {}),
+                    },
+                  }
+                : {}),
+              ...(hasCandidateDecisions
+                ? { skillCandidateDecisions: candidateDecisions }
+                : {}),
             }
           : undefined;
 
@@ -266,23 +347,46 @@ export function ScheduleHitlCard({
                     </td>
                     <td className="px-2 py-1 text-slate-300">{formatTime(slot.startTime)}</td>
                     <td className="px-2 py-1">
-                      <select
-                        disabled={isSkipped || resolving}
-                        value={currentExec}
-                        onChange={(e) =>
-                          setExecutors((prev) => ({
-                            ...prev,
-                            [slot.nexusTaskId]: e.target.value as ExecutorName,
-                          }))
-                        }
-                        className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed"
-                      >
-                        {EXECUTOR_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex flex-col gap-1">
+                        <select
+                          disabled={isSkipped || resolving}
+                          value={currentExec}
+                          onChange={(e) =>
+                            setExecutors((prev) => ({
+                              ...prev,
+                              [slot.nexusTaskId]: e.target.value as ExecutorName,
+                            }))
+                          }
+                          className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed"
+                        >
+                          {EXECUTOR_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                        {currentExec === "claude-code" ? (
+                          <select
+                            disabled={isSkipped || resolving}
+                            value={models[slot.nexusTaskId] ?? ""}
+                            onChange={(e) =>
+                              setModels((prev) => ({
+                                ...prev,
+                                [slot.nexusTaskId]: e.target.value,
+                              }))
+                            }
+                            title="Claude model for this slot (billed to the Claude subscription)"
+                            className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[11px] text-purple-200 outline-none focus:border-purple-500 disabled:cursor-not-allowed"
+                          >
+                            <option value="">default ({claudeDefault})</option>
+                            {claudeModels.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-2 py-1 text-right">
                       {isSkipped ? (
@@ -388,6 +492,104 @@ export function ScheduleHitlCard({
           </tbody>
         </table>
       </div>
+
+      {schedule.skillCandidates && schedule.skillCandidates.length > 0 ? (
+        <div className="mb-3 overflow-hidden rounded border border-violet-500/30">
+          <div className="flex items-center justify-between bg-violet-500/10 px-2 py-1">
+            <span className="text-[11px] font-semibold text-violet-300">
+              🧩 Skill Candidates — {schedule.skillCandidates.length} from the nightly harvest
+            </span>
+            <span className="text-[10px] text-slate-400">
+              Approve → live in the vault for all agents · Archive → rejected · Undecided → stays for tomorrow
+            </span>
+          </div>
+          <ul className="divide-y divide-slate-700/40">
+            {schedule.skillCandidates.map((candidate) => {
+              const decision = candidateDecisions[candidate.id];
+              return (
+                <li key={candidate.id} className="flex items-start justify-between gap-2 px-2 py-1.5">
+                  <div className="min-w-0 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`truncate font-semibold ${
+                          decision === "archive"
+                            ? "text-slate-500 line-through decoration-rose-400/60"
+                            : decision === "approve"
+                              ? "text-emerald-300"
+                              : "text-slate-100"
+                        }`}
+                      >
+                        {candidate.name}
+                      </span>
+                      <span className="shrink-0 rounded-full border border-slate-700 px-1.5 py-0 text-[10px] text-slate-400">
+                        {candidate.category}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-slate-400">{candidate.summary}</div>
+                    {candidate.sourceTitle ? (
+                      <div className="mt-0.5 truncate text-[10px] text-slate-500">
+                        from:{" "}
+                        {candidate.sourceUrl ? (
+                          <a
+                            href={candidate.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline decoration-slate-600 hover:text-violet-300"
+                          >
+                            {candidate.sourceTitle}
+                          </a>
+                        ) : (
+                          candidate.sourceTitle
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 gap-1 pt-0.5">
+                    <button
+                      disabled={resolving}
+                      onClick={() =>
+                        setCandidateDecisions((prev) => {
+                          const next = { ...prev };
+                          if (next[candidate.id] === "approve") delete next[candidate.id];
+                          else next[candidate.id] = "approve";
+                          return next;
+                        })
+                      }
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-50 ${
+                        decision === "approve"
+                          ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
+                          : "border-slate-700 text-slate-300 hover:border-emerald-400 hover:text-emerald-300"
+                      }`}
+                      title="Move into the live skill library (installs for Claude Code via the vault watcher)"
+                    >
+                      <CheckCircle2 className="h-3 w-3" /> Approve
+                    </button>
+                    <button
+                      disabled={resolving}
+                      onClick={() =>
+                        setCandidateDecisions((prev) => {
+                          const next = { ...prev };
+                          if (next[candidate.id] === "archive") delete next[candidate.id];
+                          else next[candidate.id] = "archive";
+                          return next;
+                        })
+                      }
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-50 ${
+                        decision === "archive"
+                          ? "border-rose-400 bg-rose-500/20 text-rose-200"
+                          : "border-slate-700 text-slate-300 hover:border-rose-400 hover:text-rose-300"
+                      }`}
+                      title="Reject — moved to _candidates/_rejected/ for audit"
+                    >
+                      <Trash2 className="h-3 w-3" /> Archive
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
 
       {error ? (
         <div className="mb-2 flex items-center gap-1 text-[11px] text-rose-300">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Task, TaskStatus, addTask, deleteTask, researchTasks, getResearchStatus, updateTask, updateTaskDetails, getWorkflowTemplates, WorkflowTemplate, runTaskWithLangGraph } from "@/lib/nexus";
-import { Lightbulb, Plus, Search, Rocket, CheckCircle2, Clock, Loader2, ChevronRight, Sparkles, XCircle, Undo2, Pencil, Bug, HelpCircle, AlertTriangle, Fingerprint, Pause, Play, Workflow } from "lucide-react";
+import { Lightbulb, Plus, Search, Rocket, CheckCircle2, Clock, Loader2, ChevronRight, Sparkles, XCircle, Undo2, Pencil, Bug, HelpCircle, AlertTriangle, Fingerprint, Pause, Play, Workflow, ClipboardCopy, Check } from "lucide-react";
+import { copyClaudeDispatch } from "@/lib/claude-dispatch";
 import { ModelAssignmentControl } from "@/components/model-assignment-control";
 import { ModelAliasManager } from "@/components/model-alias-manager";
 
@@ -37,6 +38,7 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
     const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
     const [startingWorkflow, setStartingWorkflow] = useState<string | null>(null);
     const [showAliasManager, setShowAliasManager] = useState(false);
+    const [copiedDispatchTaskId, setCopiedDispatchTaskId] = useState<string | null>(null);
 
     // Edit state
     const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -422,6 +424,23 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-2 ml-4">
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            try {
+                                                                await copyClaudeDispatch(task, projectId);
+                                                                setCopiedDispatchTaskId(task.id);
+                                                                setTimeout(() => setCopiedDispatchTaskId(current => current === task.id ? null : current), 2000);
+                                                            } catch (err) {
+                                                                console.error('Failed to copy Claude dispatch brief:', err);
+                                                            }
+                                                        }}
+                                                        className={`p-1.5 rounded-lg hover:bg-slate-700 transition-colors ${copiedDispatchTaskId === task.id ? 'text-emerald-400' : 'text-slate-400 hover:text-purple-400'}`}
+                                                        title="Copy Claude dispatch brief (paste into any Claude session; includes completion instructions)"
+                                                    >
+                                                        {copiedDispatchTaskId === task.id ? <Check size={14} /> : <ClipboardCopy size={14} />}
+                                                    </button>
+
                                                     {/* Edit button for idea/planning status */}
                                                     {(status === 'idea' || status === 'planning') && (
                                                         <button

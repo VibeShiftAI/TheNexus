@@ -19,6 +19,7 @@ const MODEL_FAMILIES = {
         { family: 'Claude Opus', pattern: /^claude-opus-(\d+(?:[.-]\d+)?)/, display: (v) => `Claude Opus ${v}`, dashVersion: true },
         { family: 'Claude Sonnet', pattern: /^claude-sonnet-(\d+(?:[.-]\d+)?)/, display: (v) => `Claude Sonnet ${v}`, dashVersion: true },
         { family: 'Claude Haiku', pattern: /^claude-haiku-(\d+(?:[.-]\d+)?)/, display: (v) => `Claude Haiku ${v}`, dashVersion: true },
+        { family: 'Claude Fable', pattern: /^claude-fable-(\d+(?:[.-]\d+)?)/, display: (v) => `Claude Fable ${v}`, dashVersion: true },
     ],
     xai: [
         // Only full Grok, no mini

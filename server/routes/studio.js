@@ -6,6 +6,8 @@ const Database = require('better-sqlite3');
 const createStudioIngestion = require('../services/studio-ingestion');
 const createAstroNightly = require('../services/astro-nightly');
 const { startNightlyScheduler } = createAstroNightly;
+const horizons = require('../services/horizons');
+const astroParams = require('../services/astro-parameters');
 
 const DEFAULT_CHANNEL_ID = 'praxis-youtube';
 const IMPOSSIBLE_WORLDS_CHANNEL_ID = 'impossible-worlds-field-guide';
@@ -927,6 +929,197 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
     res.json({ seeded, names: records.map((r) => r.name) });
   });
 
+  // Export the selected objects as a double-precision SI scene for the Unreal
+  // Engine 5 N-body simulator. Solar System bodies use true NASA Horizons state
+  // vectors (consistent barycentric frame); any other selection derives initial
+  // conditions from orbital elements (central body at origin). Frames are never
+  // mixed: if every selected object is a known Solar System body we use Horizons
+  // for all of them, otherwise we derive all of them.
+  router.post('/:channelId/export/unreal', async (req, res) => {
+    if (!requireChannel(res, req.params.channelId)) return;
+    const channelId = req.params.channelId;
+    const ids = parseObjectIds(req.body.objectIds);
+    if (!ids.length) return res.status(400).json({ error: 'Select one or more objects to export.' });
+
+    const M_EARTH = 5.972e24, R_EARTH = 6.371e6, M_JUP = 1.898e27, R_JUP = 6.9911e7;
+    const M_SUN = 1.989e30, R_SUN = 6.957e8, AU = 1.495978707e11, G = 6.6743e-11;
+
+    const objects = ids
+      .map((id) => objectRow(sql.prepare('SELECT * FROM space_objects WHERE id = ? AND channel_id = ?').get(id, channelId)))
+      .filter(Boolean);
+    if (!objects.length) return res.status(404).json({ error: 'No matching objects.' });
+
+    const sv = (o, key) => {
+      const s = (o.spec_values || []).find((x) => x.spec_key === key);
+      if (!s || s.status === 'unknown' || s.status === 'not_applicable') return null;
+      if (s.value_number != null) return Number(s.value_number);
+      const n = s.value_text != null ? parseFloat(s.value_text) : NaN;
+      return Number.isFinite(n) ? n : null;
+    };
+    const isStar = (o) => /star|dwarf|neutron|pulsar|magnetar/i.test(o.object_kind || '');
+    const massKg = (o) => {
+      const me = sv(o, 'bulk.mass_earth'); if (me != null) return me * M_EARTH;
+      const mj = sv(o, 'bulk.mass_jupiter'); if (mj != null) return mj * M_JUP;
+      return isStar(o) ? M_SUN : M_EARTH;
+    };
+    const radiusM = (o) => {
+      const re = sv(o, 'bulk.radius_earth'); if (re != null) return re * R_EARTH;
+      const rj = sv(o, 'bulk.radius_jupiter'); if (rj != null) return rj * R_JUP;
+      return isStar(o) ? R_SUN : R_EARTH;
+    };
+    // A star's spectral type lives in its subtype (e.g. 'G2V yellow dwarf').
+    const starTeff = (o) => astroParams.spectralTypeToTeff(
+      astroParams.parseSpectralType(o.subtype || '') || astroParams.parseSpectralType(o.name || '')
+    );
+    const colorOf = (o) => {
+      if (isStar(o)) {
+        const teff = starTeff(o);
+        return (teff != null && astroParams.blackbodyToRGB(teff)) || [1.0, 0.9, 0.7];
+      }
+      const t = sv(o, 'energy.equilibrium_temperature_k');
+      if (t == null) return [0.6, 0.65, 0.78];
+      if (t > 1000) return [1.0, 0.42, 0.29];
+      if (t > 400) return [0.91, 0.63, 0.35];
+      if (t > 200) return [0.35, 0.82, 0.77];
+      return [0.48, 0.64, 1.0];
+    };
+
+    const masses = objects.map(massKg);
+    const centralIdx = masses.indexOf(Math.max(...masses));
+
+    // --- positions + velocities (consistent frame) ---
+    let states = null;
+    let source = 'derived-from-elements';
+    const allSolar = objects.every((o) => horizons.isSolarBody(o.name));
+    if (allSolar) {
+      try {
+        // Sequential: JPL Horizons throttles concurrent requests from one IP.
+        const fetched = [];
+        for (const o of objects) {
+          // eslint-disable-next-line no-await-in-loop
+          fetched.push(await horizons.getSolarSystemState(o.name));
+        }
+        if (fetched.every(Boolean)) { states = fetched; source = 'nasa-horizons-j2000-barycentric'; }
+      } catch { states = null; }
+    }
+    if (!states) {
+      // Derive: central at origin; others on circular orbits at their semi-major axis.
+      states = objects.map((o, i) => {
+        if (i === centralIdx) return { position_m: [0, 0, 0], velocity_mps: [0, 0, 0] };
+        const aAU = sv(o, 'orbital.semi_major_axis_au');
+        const r = (aAU != null ? aAU : 1.2 + i) * AU;
+        const angle = i * 2.399963; // golden angle spread
+        const v = Math.sqrt((G * masses[centralIdx]) / r);
+        return {
+          position_m: [r * Math.cos(angle), r * Math.sin(angle), 0],
+          velocity_mps: [-v * Math.sin(angle), v * Math.cos(angle), 0],
+        };
+      });
+      // Zero net momentum so the system doesn't drift off-screen.
+      const totalMass = masses.reduce((a, b) => a + b, 0);
+      const p = [0, 0, 0];
+      states.forEach((s, i) => { for (let k = 0; k < 3; k += 1) p[k] += masses[i] * s.velocity_mps[k]; });
+      states.forEach((s) => { for (let k = 0; k < 3; k += 1) s.velocity_mps[k] -= p[k] / totalMass; });
+    }
+
+    // Per-body render model (rotation, atmosphere scattering, host-star light)
+    // derived from catalog specs — feeds the Unreal surface stage.
+    const specMapOf = (o) => {
+      const map = {};
+      for (const s of (o.spec_values || [])) map[s.spec_key] = s;
+      return map;
+    };
+    const renderModels = objects.map((o) => {
+      try { return astroParams.computeRenderModel(specMapOf(o)); } catch { return null; }
+    });
+
+    // Suns as seen from body i: one entry per star in the selection, with
+    // illuminance/apparent size rescaled from the catalog's semi-major axis to
+    // the ACTUAL separation in the exported state vectors (matters for
+    // eccentric orbits and for Horizons epochs). Falls back to the render
+    // model's host-star entry when no star was selected.
+    const starIdxs = objects.map((o, j) => (isStar(o) ? j : -1)).filter((j) => j >= 0);
+    const sunsFor = (o, i, rm) => {
+      const base = (rm && rm.suns && rm.suns[0]) || null;
+      if (!starIdxs.length) return base ? [base] : [];
+      const aAU = sv(o, 'orbital.semi_major_axis_au');
+      return starIdxs.map((j) => {
+        const dp = states[i].position_m.map((p, k) => p - states[j].position_m[k]);
+        const dAU = Math.sqrt(dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2]) / AU;
+        const teff = starTeff(objects[j]) != null ? starTeff(objects[j]) : (base ? base.teff_k : 5772);
+        const rescale = (aAU != null && aAU > 0 && dAU > 0) ? (aAU / dAU) : 1;
+        return {
+          name: objects[j].name,
+          teff_k: Math.round(teff),
+          rgb: astroParams.blackbodyToRGB(teff),
+          illuminance_lux: (base && base.illuminance_lux != null)
+            ? Math.round(base.illuminance_lux * rescale * rescale) : null,
+          angular_diameter_deg: (base && base.angular_diameter_deg != null)
+            ? Number((base.angular_diameter_deg * rescale).toFixed(4)) : 0.5334,
+        };
+      }).sort((a, b) => (b.illuminance_lux || 0) - (a.illuminance_lux || 0));
+    };
+
+    const scene = {
+      generated_at: now(),
+      source,
+      units: 'SI',
+      G,
+      unitsPerAU_hint: 1000,
+      bodies: objects.map((o, i) => {
+        const rm = renderModels[i];
+        const body = {
+          name: o.name,
+          mass_kg: masses[i],
+          radius_m: radiusM(o),
+          position_m: states[i].position_m,
+          velocity_mps: states[i].velocity_mps,
+          isStar: isStar(o),
+          color: colorOf(o),
+          texture: o.name.trim().toLowerCase(),
+        };
+        if (rm) {
+          if (rm.rotation.period_h != null) body.rotation_period_h = rm.rotation.period_h;
+          if (rm.rotation.obliquity_deg != null) body.obliquity_deg = rm.rotation.obliquity_deg;
+          if (rm.rotation.tidal_locked) body.tidal_locked = true;
+          if (!body.isStar) {
+            body.surface = rm.surface;
+            if (body.surface.planet_radius_km == null) {
+              body.surface.planet_radius_km = Math.round(body.radius_m / 1000);
+            }
+            body.suns = sunsFor(o, i, rm);
+          }
+        }
+        return body;
+      }),
+    };
+
+    // Save into the project: a timestamped copy in exports/, and — if the Unreal
+    // simulator project lives inside this project — straight into its
+    // Content/NBody/scene.json so it auto-feeds the sim (no manual copy needed).
+    const written = [];
+    try {
+      const channel = getChannel(channelId);
+      if (channel && channel.project_path) {
+        const json = JSON.stringify(scene, null, 2);
+        const exportsDir = path.join(channel.project_path, 'exports');
+        fs.mkdirSync(exportsDir, { recursive: true });
+        const archive = path.join(exportsDir, `nbody-scene-${slugify(objects.map((o) => o.name).join('-')).slice(0, 60) || 'scene'}.json`);
+        fs.writeFileSync(archive, json);
+        written.push(archive);
+
+        const ueScene = path.join(channel.project_path, 'ImpossibleWorldsNBody', 'Content', 'NBody', 'scene.json');
+        if (fs.existsSync(path.join(channel.project_path, 'ImpossibleWorldsNBody'))) {
+          fs.mkdirSync(path.dirname(ueScene), { recursive: true });
+          fs.writeFileSync(ueScene, json);
+          written.push(ueScene);
+        }
+      }
+    } catch (e) { /* non-fatal */ }
+
+    res.json({ ...scene, written });
+  });
+
   // Backfill progress: where each source's cursor has reached + objects left to enrich.
   router.get('/:channelId/ingestion/cursors', (req, res) => {
     if (!requireChannel(res, req.params.channelId)) return;
@@ -1567,6 +1760,9 @@ function seedSpecDefinitions(sql) {
     ['human_experience.movement_difficulty', 'Human Experience', 'Movement difficulty', null],
     ['human_experience.immediate_hazards', 'Human Experience', 'Immediate hazards', null],
     ['human_experience.survival_impossibilities', 'Human Experience', 'Survival impossibilities', null],
+    // Appended after initial release (ON CONFLICT DO NOTHING keeps old rows).
+    ['energy.star_effective_temperature_k', 'Energy', 'Host star effective temperature', 'K'],
+    ['human_experience.daylight_illuminance_lux', 'Human Experience', 'Daylight illuminance', 'lux'],
   ];
   const insert = sql.prepare(
     `INSERT INTO space_spec_definitions (key, category, label, unit, value_type, collection_guidance, sort_order)

@@ -7,20 +7,6 @@ import { io, Socket } from "socket.io-client";
 // Shared types (also used by ai-terminal.tsx)
 // ────────────────────────────────────────────────────────────
 
-export interface AgEvent {
-    id: number;
-    event_type: string;
-    severity: 'info' | 'warning' | 'critical';
-    title: string;
-    message?: string;
-    task_id?: string;
-    source?: string;
-    metadata?: Record<string, any>;
-    requires_action?: boolean;
-    action_taken?: boolean;
-    created_at: string;
-}
-
 export interface Message {
     id?: string;
     conversation_id?: string;
@@ -140,9 +126,6 @@ interface CortexContextValue {
     hasMoreMessages: boolean;
     isLoadingMore: boolean;
     loadMoreMessages: () => Promise<void>;
-    // Antigravity event stream
-    agEvents: AgEvent[];
-    dismissAgEvent: (id: number) => Promise<void>;
 }
 
 const CortexContext = createContext<CortexContextValue | null>(null);
@@ -175,7 +158,6 @@ export function CortexProvider({ children }: { children: ReactNode }) {
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [hasMoreMessages, setHasMoreMessages] = useState(false);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
-    const [agEvents, setAgEvents] = useState<AgEvent[]>([]);
     const socketRef = useRef<Socket | null>(null);
     const initialised = useRef(false);
 
@@ -441,16 +423,6 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             });
         });
 
-        // ── Antigravity Event Stream ──
-        socket.on('ag-event', (event: AgEvent) => {
-            console.log('[CortexProvider] AG Event:', event.event_type, event.title);
-            setAgEvents(prev => [...prev.slice(-99), event]); // Keep last 100
-        });
-
-        socket.on('ag-event-actioned', ({ id }: { id: number }) => {
-            setAgEvents(prev => prev.map(e => e.id === id ? { ...e, action_taken: true } : e));
-        });
-
         socket.on('disconnect', () => {
             console.warn('[CortexProvider] WebSocket disconnected');
         });
@@ -469,28 +441,6 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         };
     }, []);
 
-    // ── Hydrate AG events on mount ──
-    useEffect(() => {
-        const base = apiBase();
-        fetch(`${base}/api/ag/events?limit=50`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.events) setAgEvents(data.events);
-            })
-            .catch(() => { /* silent */ });
-    }, []);
-
-    // ── Dismiss AG event callback ──
-    const dismissAgEvent = useCallback(async (id: number) => {
-        try {
-            const base = apiBase();
-            await fetch(`${base}/api/ag/events/${id}/action`, { method: 'PUT' });
-            setAgEvents(prev => prev.map(e => e.id === id ? { ...e, action_taken: true } : e));
-        } catch (e) {
-            console.warn('[CortexProvider] Failed to dismiss AG event:', e);
-        }
-    }, []);
-
     return (
         <CortexContext.Provider value={{
             messages, setMessages,
@@ -504,8 +454,6 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             hasMoreMessages,
             isLoadingMore,
             loadMoreMessages,
-            agEvents,
-            dismissAgEvent,
         }}>
             {children}
         </CortexContext.Provider>

@@ -1,4 +1,4 @@
-[dotenv@17.2.3] injecting env (13) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (13) from .env -- tip: ⚙️  override existing env vars with { override: true }
 [Database] Connected to SQLite: /Volumes/Projects/TheNexus/nexus.db
 !!! UNCAUGHT EXCEPTION !!! Error: listen EADDRINUSE: address already in use :::4000
     at Server.setupListenHandle [as _listen2] (node:net:1937:16)
