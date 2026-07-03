@@ -86,7 +86,8 @@ function authenticate(req, res, next) {
 
 // Apply auth to protected route prefixes
 ['/api/projects', '/api/tasks', '/api/ai', '/api/pins', '/api/models', '/api/model-control',
- '/api/activity', '/api/dashboard', '/api/mcp', '/api/initiatives', '/api/local-queue'
+ '/api/activity', '/api/dashboard', '/api/mcp', '/api/initiatives', '/api/local-queue',
+ '/api/skill-candidates'
 ].forEach(prefix => app.use(prefix, authenticate));
 
 // ─── Shared Dependencies (injected into route factories) ────────────────────
@@ -147,6 +148,7 @@ app.use('/api/ai/usage',  createUsageRouter({ db, tokenTracker }));
 app.use('/api/calendar',  createCalendarRouter({ db }));
 app.use('/api/praxis',    createPraxisStreamRouter({ io, pushService }));
 app.use('/api/local-queue', createLocalQueueRouter());
+app.use('/api/skill-candidates', require('./routes/skill-candidates')());
 app.use('/api/ingestion-control', createIngestionControlRouter());
 app.use('/api/studio',    createStudioRouter({ db, callAI }));
 app.use('/api/fleet',     createFleetRouter());

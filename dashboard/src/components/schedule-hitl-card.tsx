@@ -190,9 +190,37 @@ export function ScheduleHitlCard({
       cancelled = true;
     };
   }, []);
-  // Per-candidate decisions; absent key = leave staged for tomorrow.
-  const [candidateDecisions, setCandidateDecisions] = useState<Record<string, CandidateDecision>>({});
+  // Individual candidate decisions POST immediately and are decoupled from
+  // the plan approval (2026-07-03). "approved"/"archived" are terminal here;
+  // undecided candidates stay staged and reappear tomorrow.
+  const [candidateStates, setCandidateStates] = useState<
+    Record<string, "deciding" | "approved" | "archived">
+  >({});
   const [error, setError] = useState<string | null>(null);
+
+  async function decideCandidate(id: string, decision: CandidateDecision) {
+    setError(null);
+    setCandidateStates((prev) => ({ ...prev, [id]: "deciding" }));
+    try {
+      const res = await fetch(`/api/skill-candidates/${encodeURIComponent(id)}/decide`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+      if (!res.ok) throw new Error(`candidate decision failed (${res.status})`);
+      setCandidateStates((prev) => ({
+        ...prev,
+        [id]: decision === "approve" ? "approved" : "archived",
+      }));
+    } catch (err) {
+      setCandidateStates((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setError(err instanceof Error ? err.message : "Candidate decision failed");
+    }
+  }
 
   if (!schedule) {
     // Defensive — caller should have checked isScheduleHitl, but fall back
@@ -213,17 +241,10 @@ export function ScheduleHitlCard({
   async function submit(choice: "approve" | "reject") {
     setError(null);
     try {
-      // Candidate decisions ride on BOTH approve and reject — deciding on
-      // harvested skills is independent of the schedule's fate.
-      const hasCandidateDecisions = Object.keys(candidateDecisions).length > 0;
-
+      // The plan resolution carries ONLY plan concerns. Skill candidates are
+      // decided individually via decideCandidate (2026-07-03 split).
       if (choice === "reject") {
-        await onResolve(request.id, {
-          choice: "reject",
-          payload: hasCandidateDecisions
-            ? { skillCandidateDecisions: candidateDecisions }
-            : undefined,
-        });
+        await onResolve(request.id, { choice: "reject" });
         return;
       }
 
@@ -247,20 +268,13 @@ export function ScheduleHitlCard({
       const hasSkips = Object.keys(skips).length > 0;
 
       const payload =
-        hasExecutorChanges || hasModelChanges || hasSkips || hasCandidateDecisions
+        hasExecutorChanges || hasModelChanges || hasSkips
           ? {
-              ...(hasExecutorChanges || hasModelChanges || hasSkips
-                ? {
-                    scheduleOverrides: {
-                      ...(hasExecutorChanges ? { executors: executorOverrides } : {}),
-                      ...(hasModelChanges ? { models: modelOverrides } : {}),
-                      ...(hasSkips ? { skips } : {}),
-                    },
-                  }
-                : {}),
-              ...(hasCandidateDecisions
-                ? { skillCandidateDecisions: candidateDecisions }
-                : {}),
+              scheduleOverrides: {
+                ...(hasExecutorChanges ? { executors: executorOverrides } : {}),
+                ...(hasModelChanges ? { models: modelOverrides } : {}),
+                ...(hasSkips ? { skips } : {}),
+              },
             }
           : undefined;
 
@@ -493,6 +507,40 @@ export function ScheduleHitlCard({
         </table>
       </div>
 
+      {error ? (
+        <div className="mb-2 flex items-center gap-1 text-[11px] text-rose-300">
+          <AlertCircle className="h-3 w-3" /> {error}
+        </div>
+      ) : null}
+
+      {/* Plan approval sits directly under the plan and approves ONLY the
+          schedule — skill candidates below are decided individually. */}
+      <div className="mb-3 flex justify-end gap-2">
+        <button
+          disabled={resolving}
+          onClick={() => void submit("reject")}
+          className="inline-flex items-center gap-1 rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <XCircle className="h-3.5 w-3.5" /> Reject
+        </button>
+        <button
+          disabled={resolving || activeCount === 0}
+          onClick={() => void submit("approve")}
+          className="inline-flex items-center gap-1 rounded-md bg-cyan-500 px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+        >
+          {resolving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-3.5 w-3.5" />
+          )}
+          {resolving
+            ? "Approving..."
+            : activeCount === 0
+              ? "All slots skipped"
+              : `Approve plan (${activeCount})`}
+        </button>
+      </div>
+
       {schedule.skillCandidates && schedule.skillCandidates.length > 0 ? (
         <div className="mb-3 overflow-hidden rounded border border-violet-500/30">
           <div className="flex items-center justify-between bg-violet-500/10 px-2 py-1">
@@ -500,21 +548,21 @@ export function ScheduleHitlCard({
               🧩 Skill Candidates — {schedule.skillCandidates.length} from the nightly harvest
             </span>
             <span className="text-[10px] text-slate-400">
-              Approve → live in the vault for all agents · Archive → rejected · Undecided → stays for tomorrow
+              Decided individually — effective immediately, independent of the plan approval above · Undecided → stays for tomorrow
             </span>
           </div>
           <ul className="divide-y divide-slate-700/40">
             {schedule.skillCandidates.map((candidate) => {
-              const decision = candidateDecisions[candidate.id];
+              const state = candidateStates[candidate.id];
               return (
                 <li key={candidate.id} className="flex items-start justify-between gap-2 px-2 py-1.5">
                   <div className="min-w-0 text-xs">
                     <div className="flex items-center gap-1.5">
                       <span
                         className={`truncate font-semibold ${
-                          decision === "archive"
+                          state === "archived"
                             ? "text-slate-500 line-through decoration-rose-400/60"
-                            : decision === "approve"
+                            : state === "approved"
                               ? "text-emerald-300"
                               : "text-slate-100"
                         }`}
@@ -546,42 +594,34 @@ export function ScheduleHitlCard({
                   </div>
                   <div className="flex shrink-0 gap-1 pt-0.5">
                     <button
-                      disabled={resolving}
-                      onClick={() =>
-                        setCandidateDecisions((prev) => {
-                          const next = { ...prev };
-                          if (next[candidate.id] === "approve") delete next[candidate.id];
-                          else next[candidate.id] = "approve";
-                          return next;
-                        })
-                      }
+                      disabled={state !== undefined}
+                      onClick={() => void decideCandidate(candidate.id, "approve")}
                       className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-50 ${
-                        decision === "approve"
+                        state === "approved"
                           ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
                           : "border-slate-700 text-slate-300 hover:border-emerald-400 hover:text-emerald-300"
                       }`}
-                      title="Move into the live skill library (installs for Claude Code via the vault watcher)"
+                      title="Approve now — moves into the live skill library immediately (installs for Claude Code via the vault watcher)"
                     >
-                      <CheckCircle2 className="h-3 w-3" /> Approve
+                      {state === "deciding" ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-3 w-3" />
+                      )}
+                      {state === "approved" ? "Approved" : "Approve"}
                     </button>
                     <button
-                      disabled={resolving}
-                      onClick={() =>
-                        setCandidateDecisions((prev) => {
-                          const next = { ...prev };
-                          if (next[candidate.id] === "archive") delete next[candidate.id];
-                          else next[candidate.id] = "archive";
-                          return next;
-                        })
-                      }
+                      disabled={state !== undefined}
+                      onClick={() => void decideCandidate(candidate.id, "archive")}
                       className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-50 ${
-                        decision === "archive"
+                        state === "archived"
                           ? "border-rose-400 bg-rose-500/20 text-rose-200"
                           : "border-slate-700 text-slate-300 hover:border-rose-400 hover:text-rose-300"
                       }`}
-                      title="Reject — moved to _candidates/_rejected/ for audit"
+                      title="Reject now — moved to _candidates/_rejected/ for audit"
                     >
-                      <Trash2 className="h-3 w-3" /> Archive
+                      <Trash2 className="h-3 w-3" />
+                      {state === "archived" ? "Archived" : "Archive"}
                     </button>
                   </div>
                 </li>
@@ -591,37 +631,6 @@ export function ScheduleHitlCard({
         </div>
       ) : null}
 
-      {error ? (
-        <div className="mb-2 flex items-center gap-1 text-[11px] text-rose-300">
-          <AlertCircle className="h-3 w-3" /> {error}
-        </div>
-      ) : null}
-
-      <div className="flex justify-end gap-2">
-        <button
-          disabled={resolving}
-          onClick={() => void submit("reject")}
-          className="inline-flex items-center gap-1 rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <XCircle className="h-3.5 w-3.5" /> Reject
-        </button>
-        <button
-          disabled={resolving || activeCount === 0}
-          onClick={() => void submit("approve")}
-          className="inline-flex items-center gap-1 rounded-md bg-cyan-500 px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-        >
-          {resolving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <CheckCircle2 className="h-3.5 w-3.5" />
-          )}
-          {resolving
-            ? "Approving..."
-            : activeCount === 0
-              ? "All slots skipped"
-              : `Approve (${activeCount})`}
-        </button>
-      </div>
     </article>
   );
 }
