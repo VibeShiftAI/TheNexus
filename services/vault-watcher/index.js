@@ -80,7 +80,7 @@ function listMarkdown(dir) {
  * Extracts name/category/tags plus the first paragraph under ## Summary.
  */
 function parseSkillFrontmatter(raw) {
-  const out = { name: '', category: '', tags: [], summary: '' };
+  const out = { name: '', category: '', tags: [], summary: '', state: '' };
   const fm = raw.match(/^---\n([\s\S]*?)\n---/);
   if (fm) {
     for (const line of fm[1].split('\n')) {
@@ -89,6 +89,7 @@ function parseSkillFrontmatter(raw) {
       const [, key, value] = m;
       if (key === 'name') out.name = value.trim();
       else if (key === 'category') out.category = value.trim();
+      else if (key === 'state') out.state = value.trim();
       else if (key === 'tags') {
         out.tags = value
           .replace(/^\[|\]$/g, '')
@@ -155,7 +156,10 @@ function collectSkills() {
           category: parsed.category || sub || 'general',
           summary: parsed.summary,
           tags: parsed.tags,
-          state: 'active',
+          // Unindexed files can still carry frontmatter state (stamped by
+          // the SkillsManager on archive) — respect it so an archived skill
+          // whose index row was lost never re-enters the active bus.
+          state: parsed.state === 'archived' ? 'archived' : 'active',
         };
       }
       if (sub.startsWith('_')) candidates.push(entry);
@@ -191,12 +195,27 @@ function regenerateMemoryIndex() {
 
   // Skills (root + nested subdirs) — names only; summaries + trigger
   // hints live in SKILLS.md to keep this session-loaded index lean.
+  // Archived skills are omitted so sessions only see the live library
+  // (they remain on disk + in skills/_index.json for history).
   lines.push('## skills/', '');
   lines.push('> One-line summaries and trigger hints for every skill: [SKILLS.md](SKILLS.md)', '');
+  lines.push('> Archived skills are omitted; full inventory lives in skills/_index.json.', '');
   const skillsRoot = path.join(VAULT, 'skills');
   if (fs.existsSync(skillsRoot)) {
+    const skillsIndex = readJsonSafe(path.join(skillsRoot, '_index.json'));
+    const archivedIds = new Set();
+    if (skillsIndex && Array.isArray(skillsIndex.skills)) {
+      for (const s of skillsIndex.skills) {
+        if (s.state === 'archived') archivedIds.add(s.id);
+      }
+    }
+    const isArchived = (dir, f) => {
+      const id = f.replace(/\.md$/, '');
+      if (archivedIds.has(id)) return true;
+      return parseSkillFrontmatter(readFileSafe(path.join(dir, f))).state === 'archived';
+    };
     // Root-level files (e.g. lars-protocol.md)
-    const rootFiles = listMarkdown(skillsRoot);
+    const rootFiles = listMarkdown(skillsRoot).filter((f) => !isArchived(skillsRoot, f));
     for (const f of rootFiles) {
       const name = f.replace(/\.md$/, '');
       lines.push(`- [\`${name}\`](skills/${encodeFilename(f)})`);
@@ -208,7 +227,8 @@ function regenerateMemoryIndex() {
       .map((d) => d.name)
       .sort();
     for (const sub of subdirs) {
-      const files = listMarkdown(path.join(skillsRoot, sub));
+      const subDir = path.join(skillsRoot, sub);
+      const files = listMarkdown(subDir).filter((f) => !isArchived(subDir, f));
       if (files.length === 0) continue;
       lines.push('', `### skills/${sub}/`, '');
       for (const f of files) {
