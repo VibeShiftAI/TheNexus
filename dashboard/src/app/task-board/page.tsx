@@ -1,13 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
+  Check,
+  ChevronDown,
   CircleDot,
   ExternalLink,
   Filter,
+  Layers,
   Loader2,
   MessageSquareText,
   Pencil,
@@ -19,16 +22,32 @@ import { getBoardState, updateTask } from "@/lib/nexus";
 import { TaskEditModal, STATUS_OPTIONS } from "@/components/task-edit-modal";
 import {
   BOARD_LANES,
+  DEFAULT_VISIBLE_LANE_IDS,
   filterBoardTasks,
   formatBoardTime,
   groupBoardTasks,
-  type BoardFilterLaneId,
   type BoardLane,
+  type BoardLaneId,
   type BoardProject,
   type BoardTask,
 } from "@/lib/task-board";
 
 const POLL_MS = 12_000;
+const VISIBLE_LANES_STORAGE_KEY = "nexus.taskBoard.visibleLanes";
+const KNOWN_LANE_IDS = new Set<BoardLaneId>(BOARD_LANES.map((lane) => lane.id));
+
+function readStoredVisibleLanes(): Set<BoardLaneId> | null {
+  try {
+    const raw = window.localStorage.getItem(VISIBLE_LANES_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const valid = parsed.filter((id): id is BoardLaneId => KNOWN_LANE_IDS.has(id));
+    return new Set(valid);
+  } catch {
+    return null;
+  }
+}
 
 export default function TaskBoardPage() {
   const [projects, setProjects] = useState<BoardProject[]>([]);
@@ -37,8 +56,42 @@ export default function TaskBoardPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [projectId, setProjectId] = useState("all");
-  const [laneId, setLaneId] = useState<BoardFilterLaneId>("all");
+  const [visibleLaneIds, setVisibleLaneIds] = useState<Set<BoardLaneId>>(
+    () => new Set(DEFAULT_VISIBLE_LANE_IDS),
+  );
   const [editingTask, setEditingTask] = useState<BoardTask | null>(null);
+
+  const toggleLane = useCallback((id: BoardLaneId) => {
+    setVisibleLaneIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  // Restore the operator's saved lane selection on mount, then persist any
+  // change so it survives reloads. `didHydrateRef` skips the very first persist
+  // pass so the default set never clobbers a stored selection.
+  const didHydrateRef = useRef(false);
+  useEffect(() => {
+    const stored = readStoredVisibleLanes();
+    if (stored) setVisibleLaneIds(stored);
+  }, []);
+  useEffect(() => {
+    if (!didHydrateRef.current) {
+      didHydrateRef.current = true;
+      return;
+    }
+    try {
+      window.localStorage.setItem(VISIBLE_LANES_STORAGE_KEY, JSON.stringify([...visibleLaneIds]));
+    } catch {
+      // Storage unavailable (private mode / quota); board still works in-session.
+    }
+  }, [visibleLaneIds]);
 
   const loadBoard = useCallback(async (mode: "initial" | "refresh" = "refresh") => {
     if (mode === "initial") {
@@ -68,12 +121,12 @@ export default function TaskBoardPage() {
   const grouped = useMemo(() => groupBoardTasks(projects), [projects]);
   const visibleLanes = useMemo(() => {
     return BOARD_LANES
-      .filter((lane) => laneId === "all" || lane.id === laneId)
+      .filter((lane) => visibleLaneIds.has(lane.id))
       .map((lane) => ({
         ...grouped[lane.id],
-        tasks: filterBoardTasks(grouped[lane.id].tasks, { projectId, laneId, query }),
+        tasks: filterBoardTasks(grouped[lane.id].tasks, { projectId, laneId: "all", query }),
       }));
-  }, [grouped, laneId, projectId, query]);
+  }, [grouped, visibleLaneIds, projectId, query]);
 
   const totalTasks = useMemo(() => Object.values(grouped).reduce((sum, lane) => sum + lane.tasks.length, 0), [grouped]);
   const visibleTasks = useMemo(() => visibleLanes.reduce((sum, lane) => sum + lane.tasks.length, 0), [visibleLanes]);
@@ -186,19 +239,11 @@ export default function TaskBoardPage() {
             </select>
           </label>
 
-          <label className="relative block">
-            <Filter className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-            <select
-              value={laneId}
-              onChange={(event) => setLaneId(event.target.value as BoardFilterLaneId)}
-              className="h-11 w-full appearance-none rounded-lg border border-slate-800 bg-slate-900 pl-10 pr-3 text-sm text-slate-100 outline-none transition-colors focus:border-cyan-500/60"
-            >
-              <option value="all">All lanes</option>
-              {BOARD_LANES.map((lane) => (
-                <option key={lane.id} value={lane.id}>{lane.title}</option>
-              ))}
-            </select>
-          </label>
+          <LaneFilterMenu
+            visibleLaneIds={visibleLaneIds}
+            onToggle={toggleLane}
+            onReset={() => setVisibleLaneIds(new Set(DEFAULT_VISIBLE_LANE_IDS))}
+          />
         </section>
 
         {error && (
@@ -236,6 +281,97 @@ export default function TaskBoardPage() {
         onSaved={() => loadBoard("refresh")}
       />
     </main>
+  );
+}
+
+function LaneFilterMenu({
+  visibleLaneIds,
+  onToggle,
+  onReset,
+}: {
+  visibleLaneIds: Set<BoardLaneId>;
+  onToggle: (id: BoardLaneId) => void;
+  onReset: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointer = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  const selectedCount = visibleLaneIds.size;
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        className="flex h-11 w-full items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 pl-10 pr-3 text-sm text-slate-100 outline-none transition-colors focus:border-cyan-500/60"
+      >
+        <Filter className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+        <span className="flex-1 text-left">
+          Lanes <span className="text-slate-500">({selectedCount}/{BOARD_LANES.length})</span>
+        </span>
+        <ChevronDown size={16} className={`shrink-0 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-50 mt-2 w-64 rounded-lg border border-slate-800 bg-slate-900 p-2 shadow-xl shadow-black/40">
+          <div className="flex items-center justify-between px-2 py-1.5">
+            <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+              <Layers size={13} />
+              Show lanes
+            </span>
+            <button
+              type="button"
+              onClick={onReset}
+              className="text-xs text-slate-500 transition-colors hover:text-cyan-300"
+            >
+              Reset
+            </button>
+          </div>
+          <div className="mt-1 space-y-0.5">
+            {BOARD_LANES.map((lane) => {
+              const checked = visibleLaneIds.has(lane.id);
+              return (
+                <button
+                  key={lane.id}
+                  type="button"
+                  onClick={() => onToggle(lane.id)}
+                  className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-slate-200 transition-colors hover:bg-slate-800"
+                >
+                  <span
+                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                      checked ? "border-cyan-500 bg-cyan-500 text-slate-950" : "border-slate-600 bg-slate-950"
+                    }`}
+                  >
+                    {checked && <Check size={12} strokeWidth={3} />}
+                  </span>
+                  <span className="flex-1">{lane.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

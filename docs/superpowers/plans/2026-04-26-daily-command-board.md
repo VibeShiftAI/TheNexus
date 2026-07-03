@@ -1,5 +1,7 @@
 # Daily Command Board Implementation Plan
 
+> **Status: ✅ SHIPPED — verified against the codebase 2026-07-02.** The unchecked boxes below were never ticked during execution and are NOT open work. Canonical open-items list: shared-mind vault → `projects/Open Items Board.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a dedicated `/task-board` Nexus page that tracks active tasks across projects by daily operational lane.

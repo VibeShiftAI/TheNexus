@@ -26,7 +26,7 @@ function wantsEventStream(req) {
     return /\btext\/event-stream\b/i.test(req.get('accept') || '');
 }
 
-async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversationId, fullResponsePrefix = '', metadata = {} }) {
+async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversationId, metadata = {} }) {
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
     const decoder = new TextDecoder();
     const reader = praxisResponse.body?.getReader?.();
@@ -88,8 +88,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         await handleFrame(buffer);
     }
 
-    const responseBody = finalResponse || streamedResponse || 'No response';
-    const fullResponse = responseBody + fullResponsePrefix;
+    const fullResponse = finalResponse || streamedResponse || 'No response';
     let assistantMessageId = null;
 
     if (conversationId) {
@@ -211,7 +210,6 @@ function createAIChatRouter({ db, io }) {
                         db,
                         io,
                         conversationId,
-                        fullResponsePrefix: `\n\n_—_\n*🤖 Relayed by Praxis*`,
                     });
                 } catch (streamErr) {
                     console.error(`[AI Chat] Praxis stream relay error:`, streamErr);
@@ -223,8 +221,9 @@ function createAIChatRouter({ db, io }) {
 
             const data = await praxisResponse.json();
 
-            const debugFooter = `\n\n_—_\n*🤖 Relayed by Praxis*`;
-            const fullResponse = (data.response || "No response") + debugFooter;
+            // The "🤖 Relayed by Praxis" debug footer is gone (2026-07-02) —
+            // everything relays through Praxis now, so it was pure noise.
+            const fullResponse = data.response || "No response";
             let assistantMessageId = null;
 
             if (conversationId) {

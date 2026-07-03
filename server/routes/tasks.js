@@ -6,6 +6,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { resolveModelAssignment, recordModelExecutionSnapshot } = require('../services/model-control');
+const { hasRealActivity } = require('../lib/task-activity');
 
 function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, runDeepResearch, validateInitiativeRequest, pushService }) {
     const router = express.Router();
@@ -68,7 +69,8 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 project_id, name: title, status: status || 'planning',
                 priority: priority === 'high' ? 2 : 1, description: description || '',
                 langgraph_template: templateId || null,
-                model_assignment: model_assignment || null
+                model_assignment: model_assignment || null,
+                last_activity_at: new Date().toISOString()
             });
             res.status(201).json(result);
         } catch (error) {
@@ -101,6 +103,11 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (status_message !== undefined) {
                 updates.metadata = { ...(existing.metadata || {}), status_message };
             }
+            // last_activity_at moves only on REAL changes (never on the
+            // same-value rewrites the daily sweeps produce) — Groundskeeper.
+            if (hasRealActivity(existing, updates, req.headers)) {
+                updates.last_activity_at = updates.updated_at;
+            }
             console.log(`[Task Sync] Updating task ${taskId}: ${Object.keys(updates).filter(k => k !== 'updated_at').join(', ')}`);
             const updated = await db.updateTask(taskId, updates);
             res.json({ success: true, task: updated });
@@ -122,7 +129,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const preparedTasks = tasks.map(task => {
                 const realId = crypto.randomUUID();
                 if (task.stable_id) stableIdToRealId.set(task.stable_id, realId);
-                return { ...task, id: realId, project_id };
+                return { ...task, id: realId, project_id, last_activity_at: new Date().toISOString() };
             });
             for (const task of preparedTasks) {
                 if (task.dependencies?.length > 0) {
@@ -186,7 +193,8 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 project_id: project.id, name: title.trim(), description: description?.trim() || '',
                 status: 'idea', priority: 0, initiative_validation: validation, source: 'user',
                 langgraph_template: templateId || null, model_assignment: model_assignment || null,
-                metadata: { classifiedAt: new Date().toISOString() }
+                metadata: { classifiedAt: new Date().toISOString() },
+                last_activity_at: new Date().toISOString()
             });
             res.json({ success: true, task: { ...created, title: created.name, createdAt: created.created_at } });
         } catch (error) {
@@ -231,6 +239,9 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                         langgraph_run_id: null, langgraph_status: null, langgraph_template: null, langgraph_started_at: null
                     });
                 }
+            }
+            if (hasRealActivity(existing, updates, req.headers)) {
+                updates.last_activity_at = updates.updated_at;
             }
             const oldStatus = existing.status;
             const updated = await db.updateTask(taskId, updates);

@@ -70,6 +70,22 @@ try {
         console.warn('[Database] project archival migration skipped:', err.message);
     }
 
+    // Migration: real-activity timestamp for the Board Groundskeeper (task
+    // 02f3c8a7). Seeded from created_at, deliberately NOT updated_at — the
+    // daily sweeps have touched updated_at on every row, so it carries no
+    // signal. Old ideas therefore surface as stale immediately, which is the
+    // point; all Groundskeeper proposals are human-gated.
+    try {
+        const activityCols = db.prepare("PRAGMA table_info(tasks)").all();
+        if (activityCols.length > 0 && !activityCols.find(c => c.name === 'last_activity_at')) {
+            db.exec("ALTER TABLE tasks ADD COLUMN last_activity_at TEXT");
+            db.exec("UPDATE tasks SET last_activity_at = created_at WHERE last_activity_at IS NULL");
+            console.log('[Database] Migration: added last_activity_at column to tasks (seeded from created_at)');
+        }
+    } catch (err) {
+        console.warn('[Database] last_activity_at migration skipped:', err.message);
+    }
+
     console.log(`[Database] Connected to SQLite: ${DB_PATH}`);
 } catch (err) {
     console.error('[Database] Failed to open SQLite database:', err.message);

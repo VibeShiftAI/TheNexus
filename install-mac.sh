@@ -84,6 +84,29 @@ else
     fi
 fi
 
+# --- ripgrep (rg) ---
+if command -v rg &>/dev/null; then
+    echo "    ✓ ripgrep $(rg --version | head -1 | awk '{print $2}')"
+else
+    echo "    ✗ ripgrep (rg) is not installed"
+    INSTALLED=false
+    if $IS_MAC && $HAS_BREW; then
+        if confirm "Install ripgrep via Homebrew?"; then
+            brew install ripgrep && INSTALLED=true
+        fi
+    elif $IS_LINUX && $HAS_APT; then
+        if confirm "Install ripgrep via apt?"; then
+            sudo apt update -qq && sudo apt install -y ripgrep && INSTALLED=true
+        fi
+    fi
+    if $INSTALLED; then
+        echo "    ✓ ripgrep installed successfully"
+    else
+        echo "      Install manually: https://github.com/BurntSushi/ripgrep#installation"
+        ERRORS=$((ERRORS + 1))
+    fi
+fi
+
 # --- Node.js ---
 NEED_NODE=false
 if command -v node &>/dev/null; then

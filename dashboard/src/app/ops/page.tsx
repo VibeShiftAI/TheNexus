@@ -64,6 +64,22 @@ function statusChip(status: string) {
   return map[status] ?? "border-slate-600 bg-slate-800/60 text-slate-400";
 }
 
+/** A row in the unified dispatch log. `liveStatus` marks an item still in the
+ * Antigravity queue (rendered as a status pill); otherwise it's a completed
+ * history entry (rendered as a success/fail dot). Only queue-sourced rows carry
+ * an `id`, so only they can be retried. */
+interface DispatchRow {
+  key: string;
+  id?: string;
+  executor: string;
+  title: string;
+  ts?: string;
+  liveStatus?: string;
+  ok?: boolean;
+  error?: string | null;
+  retryable: boolean;
+}
+
 export default function OpsConsolePage() {
   const router = useRouter();
   const { sseRuns } = useCrewActivity();
@@ -148,10 +164,43 @@ export default function OpsConsolePage() {
     ...sseRuns.filter((s) => !registryRuns.some((r) => r.taskId === s.taskId)),
   ];
   const history = state?.executors?.history ?? [];
+  const today = state?.executors?.dispatchedToday;
   const localJobs = state?.localLlm?.jobs ?? [];
   const localCounts = state?.localLlm?.counts ?? {};
   const localPaused = Boolean(state?.localLlm?.worker?.paused);
   const activeCount = (localCounts["running"] ?? 0) + (localCounts["queued"] ?? 0);
+
+  // Unified dispatch log: the live Antigravity queue (actionable — failed
+  // items keep the retry button, since only these rows carry a task id) merged
+  // with the persistent all-executor history from llm_calls. Live queue items
+  // lead; history follows, minus any Antigravity row a live queue item already
+  // represents so a dispatch isn't listed twice.
+  const queueTitles = new Set(queue.map((t) => t.title));
+  const dispatchRows: DispatchRow[] = [
+    ...queue.map((t) => ({
+      key: `q-${t.id}`,
+      id: t.id,
+      executor: "antigravity",
+      title: t.title,
+      ts: t.updatedAt,
+      liveStatus: t.status,
+      retryable: t.status === "failed",
+    })),
+    ...history
+      .map((row, i) => {
+        const entry = historyEntry(row);
+        return {
+          key: `h-${row.ts}-${i}`,
+          executor: entry.executor,
+          title: entry.title,
+          ts: row.ts,
+          ok: Boolean(row.success),
+          error: row.error ?? null,
+          retryable: false,
+        };
+      })
+      .filter((r) => !(r.executor === "antigravity" && queueTitles.has(r.title))),
+  ];
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 pb-12">
@@ -246,7 +295,7 @@ export default function OpsConsolePage() {
           </h3>
           {runs.length === 0 ? (
             <div className="py-4 text-center text-xs text-slate-500">
-              No runs since the last Praxis restart.
+              No live runs since the last Praxis restart — the dispatch log below is the persistent record.
             </div>
           ) : (
             <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
@@ -281,77 +330,62 @@ export default function OpsConsolePage() {
           )}
         </div>
 
-        {/* Antigravity queue */}
-        <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-          <h3 className="mb-3 text-sm font-bold tracking-tight text-white">
-            ANTIGRAVITY QUEUE <span className="ml-1 text-xs font-normal text-slate-500">({queue.length})</span>
-          </h3>
-          {queue.length === 0 ? (
-            <div className="py-4 text-center text-xs text-slate-500">Queue empty.</div>
-          ) : (
-            <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
-              {queue.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2"
-                >
-                  <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] uppercase ${statusChip(t.status)}`}>
-                    {t.status}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-slate-300" title={t.title}>
-                    {t.title}
-                  </span>
-                  {t.status === "failed" && (
-                    <button
-                      onClick={() => retryTask(t.id)}
-                      disabled={retryingId === t.id}
-                      className="flex shrink-0 items-center gap-1 rounded border border-cyan-500/40 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
-                      title="Re-queue for dispatch"
-                    >
-                      <RotateCcw size={10} className={retryingId === t.id ? "animate-spin" : ""} /> retry
-                    </button>
-                  )}
-                  <span className="shrink-0 font-mono text-[10px] text-slate-600">{t.id.slice(0, 8)}</span>
-                  <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(t.updatedAt)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         <div className="grid gap-4 lg:grid-cols-2 items-start">
-          {/* Dispatch log — persistent, all executors (from llm_calls) */}
+          {/* Dispatch log — the live Antigravity queue (with retry) merged with
+              the persistent all-executor history from llm_calls. */}
           <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
             <h3 className="mb-3 text-sm font-bold tracking-tight text-white">
               DISPATCH LOG{" "}
-              <span className="ml-1 text-xs font-normal text-slate-500">(all executors · survives restarts)</span>
+              <span className="ml-1 text-xs font-normal text-slate-500">
+                ({today ? (
+                  <>
+                    {today.total} today
+                    {today.failed > 0 && <span className="text-red-400"> · {today.failed} failed</span>}
+                    {" · "}
+                  </>
+                ) : null}
+                {queue.length > 0 ? `${queue.length} queued · ` : ""}
+                all executors · survives restarts)
+              </span>
             </h3>
-            {history.length === 0 ? (
+            {dispatchRows.length === 0 ? (
               <div className="py-4 text-center text-xs text-slate-500">No dispatches recorded.</div>
             ) : (
               <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
-                {history.map((row, i) => {
-                  const entry = historyEntry(row);
-                  const ok = Boolean(row.success);
-                  return (
-                    <div
-                      key={`${row.ts}-${i}`}
-                      className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2"
-                    >
-                      <span className={`w-24 shrink-0 rounded border px-1.5 py-0.5 text-center text-[10px] uppercase ${executorChip(entry.executor)}`}>
-                        {entry.executor}
+                {dispatchRows.map((r) => (
+                  <div
+                    key={r.key}
+                    className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2"
+                  >
+                    <span className={`w-24 shrink-0 rounded border px-1.5 py-0.5 text-center text-[10px] uppercase ${executorChip(r.executor)}`}>
+                      {r.executor}
+                    </span>
+                    {r.liveStatus ? (
+                      <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] uppercase ${statusChip(r.liveStatus)}`}>
+                        {r.liveStatus}
                       </span>
+                    ) : (
                       <span
-                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${ok ? "bg-emerald-400" : "bg-red-400"}`}
-                        title={ok ? "dispatched" : row.error ?? "dispatch failed"}
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${r.ok ? "bg-emerald-400" : "bg-red-400"}`}
+                        title={r.ok ? "dispatched" : r.error ?? "dispatch failed"}
                       />
-                      <span className="min-w-0 flex-1 truncate text-xs text-slate-300" title={row.error ?? entry.title}>
-                        {entry.title}
-                      </span>
-                      <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(row.ts)}</span>
-                    </div>
-                  );
-                })}
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-xs text-slate-300" title={r.error ?? r.title}>
+                      {r.title}
+                    </span>
+                    {r.retryable && r.id && (
+                      <button
+                        onClick={() => retryTask(r.id!)}
+                        disabled={retryingId === r.id}
+                        className="flex shrink-0 items-center gap-1 rounded border border-cyan-500/40 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
+                        title="Re-queue for dispatch"
+                      >
+                        <RotateCcw size={10} className={retryingId === r.id ? "animate-spin" : ""} /> retry
+                      </button>
+                    )}
+                    <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(r.ts)}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>

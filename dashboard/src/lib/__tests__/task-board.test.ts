@@ -27,6 +27,8 @@ const projects: BoardProject[] = [
       { id: "doing-1", project_id: "project-b", title: "Codex run", name: "Codex run", status: "in_progress", priority: 2, is_unblocked: true, updated_at: "2026-04-26T13:00:00.000Z" },
       { id: "doing-2", project_id: "project-b", title: "Praxis dispatch", name: "Praxis dispatch", status: "in-progress", priority: 2, is_unblocked: true, updated_at: "2026-04-26T13:30:00.000Z" },
       { id: "done-1", project_id: "project-b", title: "Finished task", name: "Finished task", status: "done", priority: 1, is_unblocked: true, updated_at: "2026-04-26T14:00:00.000Z" },
+      { id: "archived-1", project_id: "project-b", title: "Retired task", name: "Retired task", status: "archived", priority: 0, is_unblocked: true, updated_at: "2026-04-26T15:00:00.000Z" },
+      { id: "cancelled-1", project_id: "project-b", title: "Dropped task", name: "Dropped task", status: "cancelled", priority: 0, is_unblocked: true, updated_at: "2026-04-26T16:00:00.000Z" },
     ],
   },
 ];
@@ -39,7 +41,9 @@ test("groupBoardTasks places tasks in operational lanes", () => {
   assert.equal(grouped.in_progress.tasks.map((task) => task.id).sort().join(","), "doing-1,doing-2");
   assert.equal(grouped.needs_attention.tasks.map((task) => task.id).join(","), "blocked-1");
   assert.equal(grouped.complete.tasks.map((task) => task.id).join(","), "done-1");
-  assert.equal(BOARD_LANES.length, 5);
+  assert.equal(grouped.archived.tasks.map((task) => task.id).join(","), "archived-1");
+  assert.equal(grouped.cancelled.tasks.map((task) => task.id).join(","), "cancelled-1");
+  assert.equal(BOARD_LANES.length, 7);
 });
 
 test("filterBoardTasks filters by project, lane, and search text", () => {

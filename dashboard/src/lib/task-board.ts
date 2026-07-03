@@ -1,4 +1,4 @@
-export type BoardLaneId = "new" | "ready" | "in_progress" | "needs_attention" | "complete";
+export type BoardLaneId = "new" | "ready" | "in_progress" | "needs_attention" | "complete" | "cancelled" | "archived";
 export type BoardFilterLaneId = BoardLaneId | "all";
 
 export interface BoardTask {
@@ -88,17 +88,40 @@ export const BOARD_LANES: BoardLaneDefinition[] = [
     accentClass: "border-emerald-300/40 text-emerald-200",
     description: "Finished work",
   },
+  {
+    id: "cancelled",
+    title: "Cancelled",
+    accentClass: "border-orange-400/40 text-orange-300",
+    description: "Cancelled or rejected work",
+  },
+  {
+    id: "archived",
+    title: "Archived",
+    accentClass: "border-slate-500/40 text-slate-400",
+    description: "Archived and retired work",
+  },
 ];
+
+// Lanes hidden by default on the board; the operator can toggle them back on
+// from the lane filter menu.
+export const DEFAULT_HIDDEN_LANE_IDS: BoardLaneId[] = ["complete", "cancelled", "archived"];
+export const DEFAULT_VISIBLE_LANE_IDS: BoardLaneId[] = BOARD_LANES
+  .map((lane) => lane.id)
+  .filter((id) => !DEFAULT_HIDDEN_LANE_IDS.includes(id));
 
 const NEW_STATUSES = new Set(["idea", "planning"]);
 const ACTIVE_STATUSES = new Set(["building", "in_progress", "review", "implementing", "researching", "scheduled"]);
-const ATTENTION_STATUSES = new Set(["blocked", "suspended", "failed", "awaiting_approval", "rejected", "cancelled", "archived"]);
+const ATTENTION_STATUSES = new Set(["blocked", "suspended", "failed", "awaiting_approval", "rejected"]);
 const COMPLETE_STATUSES = new Set(["done", "complete", "completed"]);
+const CANCELLED_STATUSES = new Set(["cancelled", "canceled"]);
+const ARCHIVED_STATUSES = new Set(["archived"]);
 
 export function getBoardLaneId(task: Pick<BoardTask, "status" | "is_unblocked">): BoardLaneId {
   const status = normalizeStatus(task.status);
 
   if (COMPLETE_STATUSES.has(status)) return "complete";
+  if (CANCELLED_STATUSES.has(status)) return "cancelled";
+  if (ARCHIVED_STATUSES.has(status)) return "archived";
   if (ATTENTION_STATUSES.has(status)) return "needs_attention";
   if (ACTIVE_STATUSES.has(status)) return "in_progress";
   if (NEW_STATUSES.has(status)) return "new";

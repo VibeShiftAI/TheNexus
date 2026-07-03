@@ -74,6 +74,8 @@ export interface DispatchStateResponse {
   executors?: {
     runs?: ExecutorRun[];
     history?: DispatchHistoryRow[];
+    /** Executor dispatches since local midnight, from the persistent llm_calls log. */
+    dispatchedToday?: { total: number; failed: number };
   };
   localLlm?: {
     worker?: { paused?: boolean; pauseReason?: string };
@@ -159,6 +161,7 @@ export function DispatchStation() {
 
   const bridge = state?.antigravity?.bridge;
   const pending = state?.antigravity?.pending ?? 0;
+  const today = state?.executors?.dispatchedToday;
   const localCounts = state?.localLlm?.counts ?? {};
   const localRunning = localCounts["running"] ?? 0;
   const localQueued = localCounts["queued"] ?? 0;
@@ -173,6 +176,14 @@ export function DispatchStation() {
       accent="cyan"
       headerRight={
         <>
+          {today && (
+            <span
+              className="text-[10px] tabular-nums text-slate-500"
+              title={`${today.total} dispatches since midnight${today.failed > 0 ? ` (${today.failed} failed)` : ""} — persistent count, survives Praxis restarts`}
+            >
+              {today.total} today
+            </span>
+          )}
           <span
             className={`h-1.5 w-1.5 rounded-full ${
               bridge ? "bg-emerald-400" : err || state ? "bg-red-400" : "bg-slate-600"

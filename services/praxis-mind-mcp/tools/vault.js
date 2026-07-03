@@ -5,6 +5,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const { z } = require('zod');
 const { VAULT } = require('../lib/config');
 const { cortexVaultSearch } = require('../lib/backends');
@@ -15,6 +16,8 @@ const ledger = require('../lib/ledger');
 const WATCHER_ONLY = new Set(['MEMORY.md', 'AGENTS.md', 'shared-mind-context.md']);
 const ROBERT_ONLY = new Set(['SOUL.md', 'USER.md', 'CONTEXT.md']);
 const STATIC_ROOT = new Set(['CLAUDE.md', 'README.md']);
+const RIPGREP_MISSING_MESSAGE = 'ripgrep not installed: vault_search grep mode requires the `rg` binary. Install ripgrep and ensure `rg` is on PATH.';
+let ripgrepValidated = false;
 
 function resolveVaultPath(rel) {
   // Reject absolute paths and parent traversal.
@@ -176,56 +179,75 @@ function register(server, ctx) {
 }
 
 /**
- * Case-insensitive regex scan over vault markdown, pure Node (ripgrep is
- * not installed on this box — the old execFileSync('rg') path always threw
- * ENOENT). Invalid regexes are retried as escaped literals. Mirrors the
- * old rg shape: ≤5 matches per file, ≤200 lines total, "path: line" rows.
+ * Case-insensitive regex scan over vault markdown via ripgrep. Validate the
+ * dependency before the search so missing runtimes get a readable tool error
+ * instead of leaking spawnSync ENOENT.
  */
 function grepVault(query) {
-  let re;
-  try {
-    re = new RegExp(query, 'i');
-  } catch (_) {
-    re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  ensureRipgrepAvailable();
+
+  const result = runRipgrep(query, false);
+  if (result.error) throw result.error;
+  if (result.status === 2) {
+    const literalResult = runRipgrep(query, true);
+    if (literalResult.error) throw literalResult.error;
+    return parseRipgrepOutput(literalResult.stdout);
   }
-  const skip = new Set(['.git', '.obsidian', '.index', '.superpowers', '_archive', 'node_modules']);
-  const results = [];
-  const walk = [VAULT];
-  while (walk.length && results.length < 200) {
-    const dir = walk.pop();
-    let entries;
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch (_) {
-      continue;
-    }
-    for (const entry of entries) {
-      if (results.length >= 200) break;
-      if (entry.name.startsWith('._') || skip.has(entry.name)) continue;
-      const abs = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk.push(abs);
-        continue;
-      }
-      if (!entry.name.endsWith('.md')) continue;
-      let body;
-      try {
-        body = fs.readFileSync(abs, 'utf8');
-      } catch (_) {
-        continue;
-      }
-      const rel = path.relative(VAULT, abs);
-      let perFile = 0;
-      for (const line of body.split('\n')) {
-        if (perFile >= 5 || results.length >= 200) break;
-        if (re.test(line)) {
-          results.push(`${rel}: ${line.trim()}`);
-          perFile += 1;
-        }
-      }
-    }
+  if (result.status && result.status !== 1) {
+    throw new Error((result.stderr || `ripgrep exited with status ${result.status}`).trim());
   }
-  return results;
+  return parseRipgrepOutput(result.stdout);
+}
+
+function ensureRipgrepAvailable() {
+  if (ripgrepValidated) return;
+  const result = spawnSync('rg', ['--version'], { encoding: 'utf8' });
+  if (result.error) {
+    if (result.error.code === 'ENOENT') throw new Error(RIPGREP_MISSING_MESSAGE);
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error((result.stderr || 'ripgrep availability check failed').trim());
+  }
+  ripgrepValidated = true;
+}
+
+function runRipgrep(query, fixedStrings) {
+  return spawnSync(
+    'rg',
+    [
+      '--ignore-case',
+      '--line-number',
+      '--with-filename',
+      '--no-heading',
+      '--max-count',
+      '5',
+      '--glob',
+      '*.md',
+      '--glob',
+      '!_archive/**',
+      '--glob',
+      '!node_modules/**',
+      '--color',
+      'never',
+      ...(fixedStrings ? ['--fixed-strings'] : []),
+      query,
+      '.',
+    ],
+    {
+      cwd: VAULT,
+      encoding: 'utf8',
+      maxBuffer: 1024 * 1024,
+    },
+  );
+}
+
+function parseRipgrepOutput(stdout) {
+  return (stdout || '')
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .slice(0, 200)
+    .map((line) => line.replace(/^\.\//, '').trim());
 }
 
 /** Render /api/vault/search results as compact ranked text for agents. */

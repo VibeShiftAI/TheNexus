@@ -48,6 +48,23 @@ function createPushRouter({ db, pushService }) {
         }
     });
 
+    // POST send — generic push relay (Praxis task questions, alerts).
+    router.post('/send', async (req, res) => {
+        const { title, body, data, channelId } = req.body || {};
+        if (!title && !body) return res.status(400).json({ error: 'title or body is required' });
+        try {
+            const result = await pushService.notify({
+                title: title || 'The Nexus',
+                body: body || '',
+                data: { type: 'praxis', ...(data || {}) },
+                channelId: channelId || 'nexus-default',
+            });
+            res.json({ success: true, ...result });
+        } catch (error) {
+            res.status(500).json({ error: 'Failed to send push notification' });
+        }
+    });
+
     // POST test notification
     router.post('/test', async (req, res) => {
         const { title, body, data } = req.body;

@@ -70,6 +70,19 @@ interface SkillCandidateMeta {
 
 type CandidateDecision = "approve" | "archive";
 
+interface PruneProposalMeta {
+  /** Groundskeeper proposal id (stable across runs). */
+  id: string;
+  kind: string;
+  taskTitle?: string | null;
+  projectName?: string | null;
+  duplicateOfTitle?: string | null;
+  detail: string;
+  confidence: number;
+}
+
+type PruneDecision = "archive" | "keep";
+
 interface ScheduleMetadata {
   kind: "day-schedule";
   date: string;
@@ -81,6 +94,12 @@ interface ScheduleMetadata {
    * payload.skillCandidateDecisions; undecided candidates stay staged.
    */
   skillCandidates?: SkillCandidateMeta[];
+  /**
+   * Board Groundskeeper archive proposals (optional). Decisions ride back on
+   * the resolution as payload.pruneDecisions ("archive" | "keep"); undecided
+   * proposals reappear on the next card. Praxis never archives on its own.
+   */
+  pruneProposals?: PruneProposalMeta[];
 }
 
 /** Type-guard the open-typed metadata bag into our schedule shape. */
@@ -196,7 +215,19 @@ export function ScheduleHitlCard({
   const [candidateStates, setCandidateStates] = useState<
     Record<string, "deciding" | "approved" | "archived">
   >({});
+  // Groundskeeper decisions are batched with the plan resolution (payload
+  // path) — toggling a button stages the decision; approve/reject sends it.
+  const [pruneDecisions, setPruneDecisions] = useState<Record<string, PruneDecision>>({});
   const [error, setError] = useState<string | null>(null);
+
+  function togglePruneDecision(id: string, decision: PruneDecision) {
+    setPruneDecisions((prev) => {
+      const next = { ...prev };
+      if (next[id] === decision) delete next[id];
+      else next[id] = decision;
+      return next;
+    });
+  }
 
   async function decideCandidate(id: string, decision: CandidateDecision) {
     setError(null);
@@ -243,8 +274,14 @@ export function ScheduleHitlCard({
     try {
       // The plan resolution carries ONLY plan concerns. Skill candidates are
       // decided individually via decideCandidate (2026-07-03 split).
+      // Groundskeeper prune decisions ride the resolution payload on BOTH
+      // outcomes — deciding them is independent of the schedule's fate.
+      const hasPrune = Object.keys(pruneDecisions).length > 0;
       if (choice === "reject") {
-        await onResolve(request.id, { choice: "reject" });
+        await onResolve(request.id, {
+          choice: "reject",
+          ...(hasPrune ? { payload: { pruneDecisions } } : {}),
+        });
         return;
       }
 
@@ -268,13 +305,18 @@ export function ScheduleHitlCard({
       const hasSkips = Object.keys(skips).length > 0;
 
       const payload =
-        hasExecutorChanges || hasModelChanges || hasSkips
+        hasExecutorChanges || hasModelChanges || hasSkips || hasPrune
           ? {
-              scheduleOverrides: {
-                ...(hasExecutorChanges ? { executors: executorOverrides } : {}),
-                ...(hasModelChanges ? { models: modelOverrides } : {}),
-                ...(hasSkips ? { skips } : {}),
-              },
+              ...(hasExecutorChanges || hasModelChanges || hasSkips
+                ? {
+                    scheduleOverrides: {
+                      ...(hasExecutorChanges ? { executors: executorOverrides } : {}),
+                      ...(hasModelChanges ? { models: modelOverrides } : {}),
+                      ...(hasSkips ? { skips } : {}),
+                    },
+                  }
+                : {}),
+              ...(hasPrune ? { pruneDecisions } : {}),
             }
           : undefined;
 
@@ -622,6 +664,81 @@ export function ScheduleHitlCard({
                     >
                       <Trash2 className="h-3 w-3" />
                       {state === "archived" ? "Archived" : "Archive"}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+
+      {schedule.pruneProposals && schedule.pruneProposals.length > 0 ? (
+        <div className="mb-3 overflow-hidden rounded border border-amber-500/30">
+          <div className="flex items-center justify-between bg-amber-500/10 px-2 py-1">
+            <span className="text-[11px] font-semibold text-amber-300">
+              🧹 Groundskeeper — {schedule.pruneProposals.length} archive proposal
+              {schedule.pruneProposals.length === 1 ? "" : "s"}
+            </span>
+            <span className="text-[10px] text-slate-400">
+              Sent with Approve/Reject · Keep suppresses re-proposal 30d · Undecided → stays for
+              next card · Nothing archives without you
+            </span>
+          </div>
+          <ul className="divide-y divide-slate-700/40">
+            {schedule.pruneProposals.map((proposal) => {
+              const decision = pruneDecisions[proposal.id];
+              return (
+                <li key={proposal.id} className="flex items-start justify-between gap-2 px-2 py-1.5">
+                  <div className="min-w-0 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`truncate font-semibold ${
+                          decision === "archive"
+                            ? "text-slate-500 line-through decoration-rose-400/60"
+                            : "text-slate-100"
+                        }`}
+                      >
+                        {proposal.taskTitle ?? proposal.projectName ?? proposal.id}
+                      </span>
+                      <span className="shrink-0 rounded-full border border-slate-700 px-1.5 py-0 text-[10px] text-slate-400">
+                        {proposal.kind}
+                      </span>
+                      <span className="shrink-0 text-[10px] text-slate-500">
+                        {Math.round(proposal.confidence * 100)}%
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-slate-400">{proposal.detail}</div>
+                    {proposal.projectName && proposal.taskTitle ? (
+                      <div className="mt-0.5 text-[10px] text-slate-500">
+                        in: {proposal.projectName}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 gap-1 pt-0.5">
+                    <button
+                      onClick={() => togglePruneDecision(proposal.id, "archive")}
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] ${
+                        decision === "archive"
+                          ? "border-rose-400 bg-rose-500/20 text-rose-200"
+                          : "border-slate-700 text-slate-300 hover:border-rose-400 hover:text-rose-300"
+                      }`}
+                      title="Stage for archive — applied when you Approve or Reject the plan (soft, reversible status flip)"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {decision === "archive" ? "Archiving" : "Archive"}
+                    </button>
+                    <button
+                      onClick={() => togglePruneDecision(proposal.id, "keep")}
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] ${
+                        decision === "keep"
+                          ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
+                          : "border-slate-700 text-slate-300 hover:border-emerald-400 hover:text-emerald-300"
+                      }`}
+                      title="Keep — Groundskeeper won't re-propose this for 30 days"
+                    >
+                      <CheckCircle2 className="h-3 w-3" />
+                      {decision === "keep" ? "Keeping" : "Keep"}
                     </button>
                   </div>
                 </li>

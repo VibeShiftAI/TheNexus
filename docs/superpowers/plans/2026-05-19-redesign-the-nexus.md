@@ -1,5 +1,7 @@
 # Redesign The Nexus Dashboard Implementation Plan
 
+> **Status: ✅ SHIPPED — verified against the codebase 2026-07-02.** The unchecked boxes below were never ticked during execution and are NOT open work. Canonical open-items list: shared-mind vault → `projects/Open Items Board.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Consolidate The Nexus homepage into a single command center showing the Praxis terminal, daily schedule timeline, local LLM queue, compact task board, and a slide-out markdown inspector drawer.
