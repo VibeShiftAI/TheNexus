@@ -521,7 +521,7 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
 
         // Apply thinking config for Gemini
         if (taskConfig.thinkingEnabled && provider === 'google') {
-            parameters.thinking_config = taskConfig.thinkingConfig || { thinkingBudget: 8000 };
+            parameters.thinking_config = taskConfig.thinkingConfig || { thinkingBudget: 8_000 };
         }
 
         console.log(`[callAI] Task: ${taskOrConfig}, Provider: ${provider}, Model: ${modelId}`);
@@ -533,7 +533,7 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
 
         // Handle thinking config from frontend
         if (taskOrConfig.isThinking && provider === 'google') {
-            parameters.thinking_config = parameters.thinking_config || { thinkingBudget: 8000 };
+            parameters.thinking_config = parameters.thinking_config || { thinkingBudget: 8_000 };
         }
 
         console.log(`[callAI] Direct: Provider: ${provider}, Model: ${modelId}`);

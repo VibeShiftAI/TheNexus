@@ -1,18 +1,18 @@
 # Nexus Architecture Documentation
 
-**Status:** Stable (Analysis Phase Complete)
+**Status:** Historical analysis; superseded by the 2026-07-02 orchestration decommission
 **Date:** December 29, 2025
 
 This directory contains the comprehensive architectural analysis of The Nexus platform.
 
 ## 1. System Overview
-The Nexus operates on a three-tier workflow hierarchy, orchestrated by a hybrid Node.js/Python backend.
+This directory preserves historical architecture analysis. The Python workflow service described here was retired on 2026-07-02; see `../decommission/langgraph-2026-07-02.md`.
 
 | Level | Orchestrator | Engine | Status |
 |-------|--------------|--------|--------|
-| **Dashboard** | `dashboard-initiative-supervisor.js` | Python LangGraph | ✅ Modern |
-| **Project** | `project-workflow-supervisor.js` | Python LangGraph | ✅ Modern |
-| **Task** | `supervisor.js` | **Legacy Node.js Loop** | ⚠️ **Disconnect** |
+| **Dashboard** | `dashboard-initiative-supervisor.js` | Retired Python workflow path | Historical |
+| **Project** | `project-workflow-supervisor.js` | Retired Python workflow path | Historical |
+| **Task** | `supervisor.js` | Node.js/Praxis task flow | Current |
 
 ## 2. Workflow Maps
 Visual diagrams of the orchestration logic at each level.
@@ -31,5 +31,5 @@ Detailed lists of code scheduled for removal or refactoring.
 - [Backend Deprecation Report](./deprecation-report-backend.md)
 - [Frontend & Database Deprecation Report](./deprecation-report-frontend-db.md)
 
-## 6. Next Steps (Unification)
-The immediate goal is to refactor the **Task Pipeline** to use the **Python LangGraph Engine**, unifying the architecture and eliminating the legacy Node.js agent loop.
+## 6. Current Direction
+Do not revive the retired Python workflow service from these notes. Current cleanup tracks through the decommission record.

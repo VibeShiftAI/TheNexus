@@ -1,7 +1,7 @@
 # The Nexus: System Architecture
 
 **Version:** 4.0
-**Status:** Operational / Integrated
+**Status:** Operational / Integrated; former Nexus-Builder orchestration retired 2026-07-02
 **System Type:** Personal Agentic Workspace & AI Orchestration Engine
 **Primary Interface:** The Nexus AI Terminal & Dashboard
 
@@ -11,7 +11,7 @@
 
 The Nexus operates as a **hybrid local-cloud platform** consisting of interconnected subsystems:
 
-- **AI Core (Cortex & Nexus-Builder)**: Python-based reasoning engines, workflow builders, and LangGraph orchestration.
+- **AI Core (Cortex)**: Python-based reasoning and terminal orchestration.
 - **Backend Services (Node.js)**: REST API, Task Manager, Scheduler System, Supervisor, and MCP Server.
 - **Frontend Dashboard (Next.js)**: The visual orchestration canvas, AI Terminal, and Agent Manager.
 
@@ -39,10 +39,9 @@ graph TD
         Scanner[Project Scanner]
     end
 
-    subgraph AICore ["AI Core (Python :8000)"]
-        FastAPI[FastAPI Routes]
-        LangGraph[LangGraph Engine]
-        
+    subgraph AICore ["AI Core (Python :8100)"]
+        CortexAPI[Cortex API]
+
         subgraph Agents ["Agent Ecosystem"]
             Planner[Plan Generator]
             Researcher[Deep Research]
@@ -61,9 +60,8 @@ graph TD
     User <--> Cloudflare
     Cloudflare <--> Dashboard
     Dashboard <--> NodeAPI
-    NodeAPI <--> FastAPI
-    FastAPI <--> LangGraph
-    LangGraph <--> Agents
+    NodeAPI <--> CortexAPI
+    CortexAPI <--> Agents
     Agents <--> LLM
     Agents <--> Memory
     
@@ -93,17 +91,14 @@ TheNexus/                       # Flat monorepo
 │       ├── app/                # App Router pages
 │       ├── components/         # AI Terminal, Agent Manager, etc.
 │       └── lib/nexus.ts        # API client
-├── cortex/                     # Python AI Brain (LangGraph)
+├── cortex/                     # Python AI Brain
 │   ├── agents/                 # Planner, Council, Browser, Compiler
 │   ├── api/                    # Terminal bridge, routes
 │   ├── core/                   # Orchestrator graph
 │   ├── schemas/                # Pydantic state models
 │   ├── blackboard/             # Research blackboard
 │   └── llm_factory.py          # Multi-provider LLM routing
-├── nexus-builder/              # Python graph engine & workflow
-│   ├── main.py                 # FastAPI entry point
-│   ├── graph_engine.py         # Workflow graph engine
-│   └── researcher/             # Research agent
+├── _retired/nexus-builder/     # Former Python orchestration service
 ├── sandbox/                    # Secure code execution sandbox
 ├── config/                     # Merged configuration
 │   ├── model_registry.yaml     # LLM model configs
@@ -140,7 +135,7 @@ graph LR
 
 ### Initiative Workflows
 
-Dashboard-level initiatives iterate over target projects, triggering project-level LangGraph workflows for each. Project-level templates are auto-discovered from `config/templates/workflows/*.json` by the Python backend.
+Dashboard-level initiatives now run through the Node/Praxis task flow. The former Nexus-Builder workflow service was decommissioned on 2026-07-02; see `docs/decommission/langgraph-2026-07-02.md`.
 
 | Template | Level | Pipeline | Output |
 |----------|-------|----------|--------|
@@ -152,12 +147,11 @@ Dashboard-level initiatives iterate over target projects, triggering project-lev
 
 ## 4. Component Reference
 
-### AI Core (Python / LangGraph)
+### AI Core (Python / Cortex)
 
 | Module | Purpose |
 |--------|---------|
 | **Cortex Core** | System orchestration, persistence (AsyncSqliteSaver), and prompting via `prompts.yaml`. |
-| **Nexus-Builder** | FastAPI backend serving the workflow graph engine and LangGraph node registry. |
 | **LLM Factory** | Multi-provider router managing Anthropic, Google, and OpenAI models. |
 | **Deep Research** | Gemini-powered recursive web research agent with background polling. |
 | **Code Critic** | Reviews code before writes for logical, security, and style issues. |
@@ -198,7 +192,7 @@ ANTHROPIC_API_KEY=...
 OPENAI_API_KEY=...
 
 # Backend Integration
-PYTHON_BACKEND_URL=http://localhost:8000
+CORTEX_API_URL=http://localhost:8100
 NEXUS_SERVICE_KEY=...
 ```
 

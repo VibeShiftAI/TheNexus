@@ -44,7 +44,7 @@ configureLongRunningRequestTimeouts(server, { praxisChatTimeoutMs: PRAXIS_CHAT_T
 
 const ALLOWED_ORIGINS = [
     'http://localhost:3000', 'http://localhost:4000',
-    'http://localhost:8000', 'https://nexus.vibeshiftai.com'
+    'https://nexus.vibeshiftai.com'
 ];
 const io = new Server(server, { cors: { origin: ALLOWED_ORIGINS } });
 const PORT = process.env.PORT || 4000;
@@ -101,15 +101,11 @@ app.use('/api/mcp', mcpScopesRouter);
 
 const createToolsRouter     = require('./routes/tools');
 const createMemoryRouter    = require('./routes/memory');
-const createLangGraphRouter = require('./routes/langgraph');
 const createInitiativesRouter = require('./routes/initiatives');
-const createWorkflowsRouter = require('./routes/workflows');
 
 app.use('/api/tools',       createToolsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects }));
 app.use('/api/memory',      createMemoryRouter({ scanProjects, PROJECT_ROOT, getDefaultMemoryManager }));
-app.use('/api/langgraph',   createLangGraphRouter({ db, PROJECT_ROOT, getProjectById, contextSync, runAgent }));
 app.use('/api/initiatives', createInitiativesRouter({ db }));
-app.use('/api/workflows',   createWorkflowsRouter({ db, PROJECT_ROOT, getProjectById }));
 
 // ─── Route Modules — Newly Extracted ────────────────────────────────────────
 const createHealthRouter    = require('./routes/health');

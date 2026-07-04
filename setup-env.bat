@@ -3,22 +3,20 @@ setlocal EnableDelayedExpansion
 
 :: ═══════════════════════════════════════════════════════════════
 ::  THE NEXUS — Environment Configuration
-::  Sets API keys in both .env and nexus-builder/.env
+::  Sets API keys in .env
 :: ═══════════════════════════════════════════════════════════════
 
 set "NEXUS_DIR=%~dp0"
 if "%NEXUS_DIR:~-1%"=="\" set "NEXUS_DIR=%NEXUS_DIR:~0,-1%"
 
 set "ROOT_ENV=%NEXUS_DIR%\.env"
-set "PYTHON_ENV=%NEXUS_DIR%\nexus-builder\.env"
-
 echo.
 echo  ╔═══════════════════════════════════════════════════════╗
 echo  ║        THE NEXUS — Environment Setup                  ║
 echo  ╠═══════════════════════════════════════════════════════╣
 echo  ║  This will configure your API keys.                   ║
 echo  ║  Press ENTER to keep the current value (shown in      ║
-echo  ║  brackets). API keys are written to both .env files.  ║
+echo  ║  brackets). API keys are written to .env.             ║
 echo  ╚═══════════════════════════════════════════════════════╝
 echo.
 
@@ -33,13 +31,6 @@ if not exist "%ROOT_ENV%" (
         exit /b 1
     )
 )
-if not exist "%PYTHON_ENV%" (
-    if exist "%NEXUS_DIR%\nexus-builder\.env.example" (
-        copy "%NEXUS_DIR%\nexus-builder\.env.example" "%PYTHON_ENV%" >nul
-        echo  Created nexus-builder/.env from .env.example
-    )
-)
-
 :: ── Read current values ──────────────────────────────────────
 
 set "CUR_PROJECT_ROOT="
@@ -125,30 +116,10 @@ echo  Writing .env ...
     echo.
     echo # --- Frontend URLs ---
     echo NEXT_PUBLIC_API_URL=http://localhost:4000
-    echo NEXT_PUBLIC_CORTEX_URL=http://localhost:8000
+    echo NEXT_PUBLIC_CORTEX_URL=http://localhost:8100
 ) > "%ROOT_ENV%"
 
 echo    ✓ .env updated
-
-:: ── Write nexus-builder .env ─────────────────────────────────
-
-echo  Writing nexus-builder/.env ...
-
-(
-    echo # ==============================================================================
-    echo # LangGraph Engine Environment Variables
-    echo # ==============================================================================
-    echo.
-    echo # AI Provider API Keys
-    echo GOOGLE_API_KEY=!NEW_GOOGLE!
-    echo ANTHROPIC_API_KEY=!NEW_ANTHROPIC!
-    echo OPENAI_API_KEY=!NEW_OPENAI!
-    echo.
-    echo # Node.js backend URL ^(for proxying requests^)
-    echo NODEJS_BACKEND_URL=http://localhost:4000
-) > "%PYTHON_ENV%"
-
-echo    ✓ nexus-builder/.env updated
 
 echo.
 echo  ╔═══════════════════════════════════════════════════════╗

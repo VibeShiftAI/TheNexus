@@ -14,7 +14,7 @@ set "ERRORS=0"
 :: ═══════════════════════════════════════════════════════════════
 :: 1. CHECK & INSTALL PREREQUISITES
 :: ═══════════════════════════════════════════════════════════════
-echo  [1/5] Checking prerequisites...
+echo  [1/4] Checking prerequisites...
 echo.
 
 :: Check if winget is available (for auto-install)
@@ -93,64 +93,6 @@ if !NEED_NODE!==1 (
     )
 )
 
-:: --- Python ---
-set "PYTHON_CMD="
-set "NEED_PYTHON=0"
-where python >nul 2>nul
-if not errorlevel 1 (
-    set "PYTHON_CMD=python"
-) else (
-    where python3 >nul 2>nul
-    if not errorlevel 1 (
-        set "PYTHON_CMD=python3"
-    )
-)
-
-if "!PYTHON_CMD!"=="" (
-    set "NEED_PYTHON=1"
-) else (
-    for /f "tokens=2" %%v in ('!PYTHON_CMD! --version 2^>nul') do set "PY_VER=%%v"
-    for /f "tokens=1,2 delims=." %%a in ("!PY_VER!") do (
-        set "PY_MAJOR=%%a"
-        set "PY_MINOR=%%b"
-    )
-    if !PY_MAJOR! LSS 3 (
-        echo    ✗ python !PY_VER! found, but 3.10+ is required
-        set "NEED_PYTHON=1"
-    ) else if !PY_MAJOR! EQU 3 if !PY_MINOR! LSS 10 (
-        echo    ✗ python !PY_VER! found, but 3.10+ is required
-        set "NEED_PYTHON=1"
-    ) else (
-        echo    ✓ python !PY_VER!
-    )
-)
-
-if !NEED_PYTHON!==1 (
-    if !HAS_WINGET!==1 (
-        set /p "INSTALL_PYTHON=    Install Python 3.12 automatically? [Y/n]: "
-        if /i "!INSTALL_PYTHON!"=="" set "INSTALL_PYTHON=Y"
-        if /i "!INSTALL_PYTHON!"=="Y" (
-            echo    Installing Python via winget...
-            winget install Python.Python.3.12 --accept-package-agreements --accept-source-agreements -e
-            if errorlevel 1 (
-                echo    ✗ Failed to install Python. Install manually: https://www.python.org/downloads/
-                set /a ERRORS+=1
-            ) else (
-                echo    ✓ Python installed successfully
-                set "PYTHON_CMD=python"
-                set "NEEDS_PATH_REFRESH=1"
-            )
-        ) else (
-            echo      Download: https://www.python.org/downloads/
-            set /a ERRORS+=1
-        )
-    ) else (
-        echo    ✗ python is NOT installed
-        echo      Download: https://www.python.org/downloads/
-        set /a ERRORS+=1
-    )
-)
-
 :: --- Refresh PATH if we installed anything ---
 if defined NEEDS_PATH_REFRESH (
     echo.
@@ -187,7 +129,7 @@ echo.
 :: ═══════════════════════════════════════════════════════════════
 :: 2. INSTALL NODE.JS DEPENDENCIES (root)
 :: ═══════════════════════════════════════════════════════════════
-echo  [2/5] Installing Node.js backend dependencies...
+echo  [2/4] Installing Node.js backend dependencies...
 cd /d "%NEXUS_DIR%"
 call npm install
 if errorlevel 1 (
@@ -201,7 +143,7 @@ echo.
 :: ═══════════════════════════════════════════════════════════════
 :: 3. INSTALL DASHBOARD DEPENDENCIES
 :: ═══════════════════════════════════════════════════════════════
-echo  [3/5] Installing Dashboard dependencies...
+echo  [3/4] Installing Dashboard dependencies...
 cd /d "%NEXUS_DIR%\dashboard"
 call npm install
 if errorlevel 1 (
@@ -213,36 +155,9 @@ echo    ✓ Dashboard dependencies installed
 echo.
 
 :: ═══════════════════════════════════════════════════════════════
-:: 4. SET UP PYTHON VIRTUAL ENVIRONMENT
+:: 4. CREATE CONFIGURATION FILES
 :: ═══════════════════════════════════════════════════════════════
-echo  [4/5] Setting up Python environment...
-cd /d "%NEXUS_DIR%\nexus-builder"
-
-if not exist "venv" (
-    echo    Creating virtual environment...
-    !PYTHON_CMD! -m venv venv
-    if errorlevel 1 (
-        echo    ✗ Failed to create Python virtual environment
-        pause
-        exit /b 1
-    )
-)
-
-echo    Installing Python packages (this may take a minute)...
-call venv\Scripts\activate.bat
-pip install -r requirements.txt --quiet
-if errorlevel 1 (
-    echo    ✗ pip install failed
-    pause
-    exit /b 1
-)
-echo    ✓ Python environment ready
-echo.
-
-:: ═══════════════════════════════════════════════════════════════
-:: 5. CREATE CONFIGURATION FILES
-:: ═══════════════════════════════════════════════════════════════
-echo  [5/5] Setting up configuration files...
+echo  [4/4] Setting up configuration files...
 cd /d "%NEXUS_DIR%"
 
 :: Root .env
@@ -251,14 +166,6 @@ if not exist ".env" (
     echo    ✓ Created .env (from .env.example)
 ) else (
     echo    • .env already exists, skipping
-)
-
-:: Python .env
-if not exist "nexus-builder\.env" (
-    copy "nexus-builder\.env.example" "nexus-builder\.env" >nul
-    echo    ✓ Created nexus-builder/.env (from .env.example)
-) else (
-    echo    • nexus-builder/.env already exists, skipping
 )
 
 :: Startup script
@@ -285,7 +192,6 @@ echo  ║                                                       ║
 echo  ║   URLs (after startup):                               ║
 echo  ║   - Dashboard:  http://localhost:3000                  ║
 echo  ║   - Node API:   http://localhost:4000                  ║
-echo  ║   - LangGraph:  http://localhost:8000                  ║
 echo  ║                                                       ║
 echo  ╚═══════════════════════════════════════════════════════╝
 echo.

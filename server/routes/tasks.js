@@ -1,7 +1,7 @@
 /**
  * Tasks Routes
  * Handles task CRUD, batch creation, reorder, research feedback,
- * approve/reject research/plan, and LangGraph dispatch.
+ * approve/reject research/plan, and local task lifecycle updates.
  */
 const express = require('express');
 const crypto = require('crypto');
@@ -62,13 +62,12 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
 
     // ─── Create Task (top-level) ─────────────────────────────────────────
     router.post('/', async (req, res) => {
-        const { project_id, title, status, priority, description, templateId, model_assignment } = req.body;
+        const { project_id, title, status, priority, description, model_assignment } = req.body;
         if (!project_id || !title) return res.status(400).json({ error: 'project_id and title are required' });
         try {
             const result = await db.createTask({
                 project_id, name: title, status: status || 'planning',
                 priority: priority === 'high' ? 2 : 1, description: description || '',
-                langgraph_template: templateId || null,
                 model_assignment: model_assignment || null,
                 last_activity_at: new Date().toISOString()
             });
@@ -78,7 +77,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         }
     });
 
-    // ─── PATCH update task by ID (LangGraph workflow sync) ───────────────
+    // ─── PATCH update task by ID ─────────────────────────────────────────
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
         const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, description, model_assignment, antigravity_payload, name, title } = req.body;
@@ -176,7 +175,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
 
     // POST add task to project
     router.post('/:id/tasks', async (req, res) => {
-        const { title, description, templateId, model_assignment } = req.body;
+        const { title, description, model_assignment } = req.body;
         if (!title?.trim()) return res.status(400).json({ error: 'Task title is required' });
 
         let validation = {};
@@ -192,7 +191,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const created = await db.createTask({
                 project_id: project.id, name: title.trim(), description: description?.trim() || '',
                 status: 'idea', priority: 0, initiative_validation: validation, source: 'user',
-                langgraph_template: templateId || null, model_assignment: model_assignment || null,
+                model_assignment: model_assignment || null,
                 metadata: { classifiedAt: new Date().toISOString() },
                 last_activity_at: new Date().toISOString()
             });
@@ -235,8 +234,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                     Object.assign(updates, {
                         research_output: null, plan_output: null, walkthrough: null,
                         research_interaction_id: null, supervisor_status: null, task_ledger: [],
-                        metadata: {}, initiative_validation: null, research_metadata: null, plan_metadata: null,
-                        langgraph_run_id: null, langgraph_status: null, langgraph_template: null, langgraph_started_at: null
+                        metadata: {}, initiative_validation: null, research_metadata: null, plan_metadata: null
                     });
                 }
             }
@@ -292,20 +290,8 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         let updatedFeedback = task.feedback || [];
         const { feedback } = req.body || {};
         if (feedback) updatedFeedback.push({ id: crypto.randomUUID(), content: feedback, createdAt: new Date().toISOString(), action: 'approve', stage: 'research' });
-        const runId = task.langgraph_run_id;
-        if (runId) {
-            const { LANGGRAPH_URL: langGraphUrl } = require('../shared/constants');
-            try {
-                const resumeResponse = await fetch(`${langGraphUrl}/graph/nexus/${runId}/resume`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_action: 'approve', feedback: feedback || null }) });
-                if (!resumeResponse.ok) { const errorText = await resumeResponse.text(); return res.status(500).json({ error: `Failed to resume workflow: ${errorText}` }); }
-                const resumeResult = await resumeResponse.json();
-                await db.updateTask(req.params.taskId, { updated_at: new Date().toISOString(), feedback: updatedFeedback, research_metadata: { ...task.research_metadata, approvedAt: new Date().toISOString() } });
-                return res.json({ success: true, message: 'Research approved - LangGraph workflow resuming', runId, resumeStatus: resumeResult.status, task: { ...task, feedback: updatedFeedback } });
-            } catch (fetchError) {
-                return res.status(500).json({ error: `Failed to resume workflow: ${fetchError.message}` });
-            }
-        }
-        return res.status(400).json({ error: 'This task is not part of an active workflow. Please restart the task using a Workflow Template.' });
+        await db.updateTask(req.params.taskId, { updated_at: new Date().toISOString(), feedback: updatedFeedback, research_metadata: { ...task.research_metadata, approvedAt: new Date().toISOString() } });
+        return res.json({ success: true, message: 'Research approved', task: { ...task, feedback: updatedFeedback } });
     });
 
     // ─── Approve plan ────────────────────────────────────────────────────
@@ -320,59 +306,11 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (feedback?.trim()) {
                 planMeta.feedback = [...(planMeta.feedback || []), { id: `fb-${Date.now()}`, content: feedback.trim(), createdAt: new Date().toISOString(), action: 'approve' }];
             }
-            const runId = task.langgraph_run_id;
-            if (runId) {
-                const { LANGGRAPH_URL: langGraphUrl } = require('../shared/constants');
-                const resumeResponse = await fetch(`${langGraphUrl}/graph/nexus/${runId}/resume`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approval_action: 'approve', feedback: feedback || null }) });
-                if (!resumeResponse.ok) { const errorText = await resumeResponse.text(); return res.status(500).json({ error: `Failed to resume workflow: ${errorText}` }); }
-                const resumeResult = await resumeResponse.json();
-                await db.updateTask(req.params.taskId, { status: 'building', updated_at: new Date().toISOString(), plan_metadata: { ...planMeta, approvedAt: new Date().toISOString() } });
-                const updated = await db.getTask(req.params.taskId);
-                return res.json({ success: true, message: 'Plan approved - LangGraph workflow resuming to builder phase', runId, resumeStatus: resumeResult.status, task: { ...updated, title: updated.name, createdAt: updated.created_at } });
-            }
-            return res.status(400).json({ error: 'This task is not part of an active workflow. Please restart the task using a Workflow Template.' });
+            await db.updateTask(req.params.taskId, { status: 'building', updated_at: new Date().toISOString(), plan_metadata: { ...planMeta, approvedAt: new Date().toISOString() } });
+            const updated = await db.getTask(req.params.taskId);
+            return res.json({ success: true, message: 'Plan approved', task: { ...updated, title: updated.name, createdAt: updated.created_at } });
         } catch (err) {
             res.status(500).json({ error: 'Database error: ' + err.message });
-        }
-    });
-
-    // ─── LangGraph dispatch ──────────────────────────────────────────────
-    router.post('/:id/tasks/:taskId/langgraph/run', async (req, res) => {
-        const { id: projectId, taskId } = req.params;
-        const { templateId, graphConfig } = req.body;
-        try {
-            const project = await getProjectById(PROJECT_ROOT, projectId);
-            if (!project) return res.status(404).json({ error: 'Project not found' });
-            const task = await db.getTask(taskId);
-            if (!task) return res.status(404).json({ error: 'Task not found' });
-            const modelControl = await resolveTaskModel(task, projectId);
-            const lgSupervisor = require('../services/langgraph-supervisor');
-            const result = await lgSupervisor.runLangGraphWorkflow({
-                projectPath: project.path, projectId, taskId,
-                taskData: { title: task.name || task.title || 'Untitled', description: task.description || '' },
-                templateId, graphConfig,
-                resolvedModel: modelControl.resolvedModel,
-                modelOverride: modelControl.modelOverride
-            });
-            if (result.success && result.run_id) {
-                const newStatus = task.status === 'idea' ? 'todo' : task.status;
-                await db.updateTask(taskId, { langgraph_run_id: result.run_id, langgraph_status: 'running', langgraph_template: templateId || null, langgraph_started_at: new Date().toISOString(), status: newStatus });
-            }
-            res.json(result);
-        } catch (error) {
-            res.status(500).json({ error: error.message });
-        }
-    });
-
-    // GET LangGraph status
-    router.get('/:id/tasks/:taskId/langgraph/status', async (req, res) => {
-        const { runId } = req.query;
-        if (!runId) return res.status(400).json({ error: 'runId query parameter required' });
-        try {
-            const lgSupervisor = require('../services/langgraph-supervisor');
-            res.json(await lgSupervisor.getLangGraphRunStatus(runId));
-        } catch (error) {
-            res.status(500).json({ error: error.message });
         }
     });
 

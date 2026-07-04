@@ -6,7 +6,6 @@
 
 [![Node.js](https://img.shields.io/badge/Backend-Node.js%2F%20Express-green)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-black)](https://nextjs.org)
-[![Python](https://img.shields.io/badge/AI%20Engine-Python%2F%20LangGraph-blue)](https://langchain-ai.github.io/langgraph/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **⚠️ Disclaimer:** This project was entirely vibecoded by a single person. It is a personal experiment in AI-assisted development and is **not intended for production use**. Expect rough edges, unconventional patterns, and the occasional "it works on my machine" moment. Use at your own risk — and have fun with it.
@@ -25,7 +24,7 @@ The Nexus bridges your local filesystem with an intelligent web dashboard, turni
 - **No-Code Design** — The system writes, reviews, and audits code for you
 - **26+ Specialized Agents** — Researchers, architects, builders, auditors, critics, and more
 - **AI Terminal** — Multi-provider chat interface (Gemini, Claude, OpenAI, Grok)
-- **The AI Mesh** — 4 specialized fleets orchestrated by Nexus Prime with adversarial review
+- **Historical AI Mesh archive** — former fleet orchestration is retained under `_retired/`
 - **The Pipeline** — 8-node orchestrator that turns ideas into organized projects with tasks
 - **Task Manager** — Full lifecycle: Idea → Research → Plan → Build → Audit → Complete
 - **SOTA Model Discovery** — Automatic detection of the latest AI models at startup
@@ -55,11 +54,6 @@ graph TD
         Supervisor["👔 Supervisors"]
     end
 
-    subgraph Engine ["🧠 AI Engine — FastAPI :8000"]
-        LangGraph["⭐ Nexus Prime\nLangGraph Engine"]
-        Fleets["🛡️ 4 Agent Fleets\n26+ Agents"]
-    end
-
     subgraph Persistence ["💾 Data"]
         DB[("SQLite\nnexus.db")]
         FS[("Local\nFilesystem")]
@@ -75,20 +69,14 @@ graph TD
     Terminal --> REST
     Tasks --> REST
     REST --> Supervisor
-    REST <-->|HTTP Proxy| LangGraph
-    Supervisor --> LangGraph
-    LangGraph --> Fleets
-    Fleets --> Providers
     Discovery --> Providers
+    Supervisor --> Providers
     REST --> DB
     REST --> FS
-    LangGraph --> FS
     Critic -.->|review before write| FS
 
     style User fill:#0f172a,stroke:#06b6d4,stroke-width:2px,color:#06b6d4
     style Terminal fill:#0f172a,stroke:#06b6d4,stroke-width:2px,color:#67e8f9
-    style LangGraph fill:#1a1a2e,stroke:#fbbf24,stroke-width:3px,color:#fbbf24
-    style Fleets fill:#0f172a,stroke:#f43f5e,stroke-width:2px,color:#fda4af
     style Discovery fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#6ee7b7
     style Critic fill:#0f172a,stroke:#8b5cf6,stroke-width:2px,color:#c4b5fd
     style DB fill:#1e293b,stroke:#64748b,stroke-width:2px,color:#94a3b8
@@ -113,22 +101,14 @@ TheNexus/                           # Flat monorepo
 │   ├── services/                   # Business logic services
 │   │   ├── model-discovery.js      # SOTA model auto-detection
 │   │   ├── critic.js               # Code review service
-│   │   ├── langgraph-supervisor.js # LangGraph task supervisor
-│   │   └── ...                     # 10+ more services
+│   │   └── ...                     # 10+ services
 │   └── tools/                      # Agent tool definitions
 ├── dashboard/                      # Next.js 16 frontend
 │   └── src/
 │       ├── app/                    # App Router pages
 │       ├── components/             # UI components
 │       └── lib/nexus.ts            # Centralized API client
-├── nexus-builder/                  # Python LangGraph engine (Nexus Prime)
-│   ├── main.py                     # FastAPI entry point
-│   ├── graph_engine.py             # LangGraph workflow engine
-│   ├── architect/                  # Architect agent (planning)
-│   ├── builder/                    # Builder agent (implementation)
-│   ├── auditor/                    # Auditor agent (adversarial review)
-│   ├── supervisor/                 # Supervisor agent (orchestration)
-│   └── researcher/                 # Research agent
+├── _retired/nexus-builder/         # Retired Python orchestration service
 ├── cortex/                         # Python AI Brain (Pipeline orchestrator)
 ├── sandbox/                        # Secure code execution sandbox
 ├── config/                         # Centralized configuration
@@ -209,16 +189,14 @@ open "Start The Nexus.command"
 ./start-local.sh
 ```
 
-Opens 3 terminal windows:
-1. **LangGraph Engine** — Python (port 8000)
-2. **Node.js Backend** — Express API (port 4000)
-3. **Next.js Dashboard** — Frontend (port 3000)
+Opens 2 terminal windows:
+1. **Node.js Backend** — Express API (port 4000)
+2. **Next.js Dashboard** — Frontend (port 3000)
 
 | Endpoint | URL |
 |----------|-----|
 | Dashboard | http://localhost:3000 |
 | Node.js API | http://localhost:4000 |
-| LangGraph API | http://localhost:8000 |
 
 ---
 
@@ -238,7 +216,7 @@ XAI_API_KEY=your-key
 
 # Frontend
 NEXT_PUBLIC_API_URL=http://localhost:4000
-NEXT_PUBLIC_CORTEX_URL=http://localhost:8000
+NEXT_PUBLIC_CORTEX_URL=http://localhost:8100
 ```
 
 ---
@@ -249,47 +227,9 @@ On startup, the Model Discovery Service (`server/services/model-discovery.js`) q
 
 ---
 
-## The AI Mesh — Nexus Prime Workflow Engine
+## Retired Workflow Orchestration
 
-Nexus Prime — the CEO — delegates to 4 specialized fleets. Each fleet is a team of AI agents with distinct roles, quality gates, and rejection loops. [See it live →](https://vibeshiftai.com/ai-mesh)
-
-```mermaid
-graph TD
-    Task["🎯 Project Task\nRequiring Code"] --> Prime
-
-    Prime{"⭐ NEXUS PRIME\nSupervisor — The CEO & Router"}
-
-    Prime -->|"1. Research"| RF["📚 RESEARCH FLEET\nPhase 0 — Gemini Mesh"]
-    Prime -->|"2. Planning"| AF["📐 ARCHITECT FLEET\nPhase 1 — Gemini Mesh"]
-    Prime -->|"3. Build"| BF["🔨 BUILDER FLEET\nPhase 2 — Implementation"]
-    Prime -->|"4. Audit"| AuF["🛡️ AUDITOR FLEET\nPhase 3 — Adversarial Mesh"]
-
-    RF --> D1["📄 DOSSIER.md"]
-    AF --> D2["📄 BLUEPRINT"]
-    BF --> D3["📄 SOURCE ARTIFACTS"]
-    AuF --> D4["📄 AUDIT REPORT"]
-
-    D4 -->|"✓ APPROVED"| Deploy["🚀 DEPLOY"]
-    D4 -->|"✗ REJECTED"| Prime
-
-    style Prime fill:#1a1a2e,stroke:#fbbf24,stroke-width:3px,color:#fbbf24
-    style Deploy fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#22c55e
-    style RF fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#93c5fd
-    style AF fill:#0f172a,stroke:#8b5cf6,stroke-width:2px,color:#c4b5fd
-    style BF fill:#0f172a,stroke:#f59e0b,stroke-width:2px,color:#fcd34d
-    style AuF fill:#0f172a,stroke:#f43f5e,stroke-width:2px,color:#fda4af
-```
-
-### Fleet Details
-
-| Phase | Fleet | Agents | Output |
-|-------|-------|--------|--------|
-| 0 | **Research** (Gemini Mesh) | Scoper → Professor → Executor → Synthesizer | `DOSSIER.md` |
-| 1 | **Architect** (Gemini Mesh) | Cartographer → Drafter → Grounder | `BLUEPRINT` (SPEC + MANIFEST + DDB) |
-| 2 | **Builder** (Implementation) | ⚙Loader → Scout → Builder → ⚙Syntax Check | Source artifacts + DIFF.patch |
-| 3 | **Auditor** (Adversarial) | ⚙Blast Calc → Sentinel → Interrogator | Audit Report (Pass/Fail + Security Score) |
-
-Each fleet has internal quality gates — the **Council Review** uses a "Society of Minds" pattern where Critic, Safety, and Efficiency voters score plans. Auditor rejections cycle back to Nexus Prime for retry with critique.
+The former Python workflow orchestration service was decommissioned on 2026-07-02 and moved to `_retired/nexus-builder/`. See `docs/decommission/langgraph-2026-07-02.md` for the decision record. It is preserved for recovery only and is not part of the live startup path.
 
 ---
 
@@ -351,7 +291,7 @@ graph TD
     style PC fill:#1e1b4b,stroke:#8b5cf6,color:#c4b5fd
 ```
 
-Three workflow levels cascade: **Dashboard Initiatives** (cross-project) → **Project Workflows** (multi-stage templates) → **Feature Tasks** (individual implementation). See `.context/dashboard-workflow-map.md` and `.context/project-workflow-map.md` for detailed sequence diagrams.
+Current dashboard work flows through the Node.js API and task board. Historical project workflow diagrams remain in the docs for reference but should not be treated as live startup or routing guidance.
 
 ---
 
@@ -428,12 +368,6 @@ Detailed architectural docs live in:
 ## Built With
 
 The Nexus stands on the shoulders of outstanding open-source projects:
-
-### AI Engine (Python)
-
-- **[LangGraph](https://langchain-ai.github.io/langgraph/)** — Multi-agent workflow orchestration powering Nexus Prime and the 4 fleet system
-- **[LangChain](https://www.langchain.com/)** — Foundation for AI provider integrations and tool-calling agents
-- **[FastAPI](https://fastapi.tiangolo.com/)** — High-performance async Python API serving the LangGraph engine
 
 ### Backend (Node.js)
 

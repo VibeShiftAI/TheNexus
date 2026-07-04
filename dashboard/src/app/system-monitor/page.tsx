@@ -193,7 +193,7 @@ export default function SystemMonitorPage() {
         // Show known dev stats
         return ['node', 'python', 'java'].includes(port.type) ||
             // Or show interesting ports
-            [3000, 8000, 8080, 5173, 4200].includes(port.port);
+            [3000, 8080, 5173, 4200].includes(port.port);
     });
 
     if (isLoading && !systemStatus) {

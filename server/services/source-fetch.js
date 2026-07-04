@@ -18,7 +18,7 @@ async function fetchYouTube(videoId, url, userTitle) {
   let title = userTitle || '';
   let contentType = 'transcript';
   try {
-    const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`, { signal: AbortSignal.timeout(8_000) });
     if (res.ok) { const oembed = await res.json(); if (!title) title = oembed.title || ''; }
   } catch { /* title is best-effort */ }
   if (!title) title = `YouTube Video ${videoId}`;

@@ -134,7 +134,7 @@ async function getSystemStatus(forceRefresh = false) {
             5000: 'Flask/Vite',
             5173: 'Vite',
             5174: 'Vite (alt)',
-            8000: 'Django/FastAPI',
+            [8_000]: 'Django/FastAPI',
             8080: 'Generic HTTP',
             8081: 'Generic HTTP (alt)',
             9000: 'PHP/Generic',

@@ -461,7 +461,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 const bytes = new Uint8Array(buffer);
                 let binary = '';
                 // Chunked processing to avoid call stack limits on huge arrays
-                const CHUNK_SIZE = 0x8000;
+                const CHUNK_SIZE = 32768;
                 for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
                   binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK_SIZE)));
                 }

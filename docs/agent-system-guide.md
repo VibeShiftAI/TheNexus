@@ -294,21 +294,17 @@ Each fleet is decomposed into individual agents:
 | `/node-types/atomic/{type_id}` | GET | Get node schema |
 | `/api/agents` | GET | List all agents |
 
-### Workflow Endpoints
+### Retired Workflow Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/langgraph/run` | POST | Execute workflow |
-| `/api/langgraph/continue` | POST | Continue paused workflow |
-| `/api/langgraph/status/{run_id}` | GET | Get run status |
+The former workflow proxy endpoints were removed after the 2026-07-02 orchestration decommission. See `decommission/langgraph-2026-07-02.md`.
 
 ---
 
 ## Quick Start
 
 1. **View Agents**: Navigate to `/agents` in dashboard
-2. **Build Workflow**: Use the visual builder to connect nodes
-3. **Execute**: Run workflow with input data
-4. **Review Artifacts**: Check `state["artifacts"]` for outputs
+2. **Review Models**: Confirm the available model catalog
+3. **Manage Tasks**: Use the task board for active work
+4. **Review Artifacts**: Check task outputs in the dashboard
 
 For more details, see the implementation plan and codebase.

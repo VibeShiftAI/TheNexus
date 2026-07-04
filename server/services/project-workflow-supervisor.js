@@ -185,151 +185,6 @@ async function updateWorkflowSupervisorStatus(workflowId, status, details = {}) 
     });
 }
 
-function getApprovalStage(pendingApproval, fallback = null) {
-    return pendingApproval?.gate || fallback;
-}
-
-async function handleYoutubeWorkflowStart({ db: database = db, workflow, context, langGraphUrl }) {
-    const url = langGraphUrl || require('../shared/constants').LANGGRAPH_URL;
-    const project = workflow.project || await database.getProject?.(workflow.project_id);
-    const prompt = context || workflow.configuration?.goal || workflow.description || 'Create a reviewed YouTube video.';
-
-    const response = await fetch(`${url}/api/youtube/runs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            prompt,
-            project_id: workflow.project_id,
-            desired_duration_s: workflow.configuration?.desired_duration_s || 90,
-            channel_profile_id: workflow.configuration?.channel_profile_id || 'default',
-            dry_run: workflow.configuration?.dry_run !== false,
-            publish_mode: workflow.configuration?.publish_mode || 'export',
-            max_cost_usd: workflow.configuration?.max_cost_usd || 0,
-            project_path: project?.path || project?.local_path || '',
-            project_name: project?.name || '',
-        }),
-    });
-
-    if (!response.ok) {
-        throw new Error(`YouTube LangGraph run failed: ${response.status}`);
-    }
-
-    const runData = await response.json();
-    if (!runData.success) {
-        throw new Error(`YouTube LangGraph run returned error: ${runData.error || 'unknown'}`);
-    }
-
-    const pendingApproval = runData.pending_approval || runData.state?.pending_approval || null;
-    const currentStage = getApprovalStage(pendingApproval, workflow.current_stage || 'concept');
-
-    await database.updateProjectWorkflow(workflow.id, {
-        status: pendingApproval ? 'review' : 'in_progress',
-        current_stage: currentStage,
-        outputs: {
-            ...(workflow.outputs || {}),
-            [currentStage]: {
-                status: pendingApproval ? 'awaiting_approval' : 'complete',
-                mode: 'youtube-langgraph',
-                updatedAt: new Date().toISOString(),
-                artifact: pendingApproval?.artifact || null,
-            },
-        },
-        supervisor_status: pendingApproval ? WORKFLOW_STATUS.AWAITING_APPROVAL : WORKFLOW_STATUS.RUNNING,
-        supervisor_details: {
-            ...(workflow.supervisor_details || {}),
-            youtube_run_id: runData.run_id,
-            langgraph_run_id: runData.run_id,
-            pending_approval: pendingApproval,
-            youtube_state: runData.state || null,
-            startedAt: new Date().toISOString(),
-            mode: 'youtube-langgraph',
-        },
-    });
-
-    return {
-        success: true,
-        message: pendingApproval ? 'YouTube workflow waiting for approval' : 'YouTube workflow started',
-        runId: runData.run_id,
-        pendingApproval,
-        mode: 'youtube-langgraph',
-    };
-}
-
-async function resumeYoutubeWorkflowApproval({
-    db: database = db,
-    workflow,
-    decision = 'approve',
-    notes = '',
-    revisionTarget = undefined,
-    langGraphUrl,
-}) {
-    const url = langGraphUrl || require('../shared/constants').LANGGRAPH_URL;
-    const runId = workflow.supervisor_details?.youtube_run_id || workflow.supervisor_details?.langgraph_run_id;
-    if (!runId) {
-        throw new Error('No YouTube LangGraph run id found for workflow');
-    }
-
-    const response = await fetch(`${url}/api/youtube/runs/${runId}/resume`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            review_decision: decision,
-            review_notes: notes || undefined,
-            revision_target: revisionTarget,
-        }),
-    });
-
-    if (!response.ok) {
-        throw new Error(`YouTube LangGraph resume failed: ${response.status}`);
-    }
-
-    const runData = await response.json();
-    if (!runData.success) {
-        throw new Error(`YouTube LangGraph resume returned error: ${runData.error || 'unknown'}`);
-    }
-
-    const pendingApproval = runData.pending_approval || runData.state?.pending_approval || null;
-    const complete = !pendingApproval && runData.state?.final_output;
-    const currentStage = getApprovalStage(pendingApproval, complete ? null : workflow.current_stage);
-
-    await database.updateProjectWorkflow(workflow.id, {
-        status: complete ? 'complete' : (pendingApproval ? 'review' : 'in_progress'),
-        current_stage: currentStage,
-        outputs: {
-            ...(workflow.outputs || {}),
-            ...(currentStage ? {
-                [currentStage]: {
-                    status: pendingApproval ? 'awaiting_approval' : 'complete',
-                    mode: 'youtube-langgraph',
-                    updatedAt: new Date().toISOString(),
-                    artifact: pendingApproval?.artifact || null,
-                },
-            } : {}),
-            ...(complete ? { final: { status: 'complete', output: runData.state.final_output } } : {}),
-        },
-        supervisor_status: complete ? WORKFLOW_STATUS.COMPLETED : (pendingApproval ? WORKFLOW_STATUS.AWAITING_APPROVAL : WORKFLOW_STATUS.RUNNING),
-        supervisor_details: {
-            ...(workflow.supervisor_details || {}),
-            youtube_run_id: runId,
-            langgraph_run_id: runId,
-            pending_approval: pendingApproval,
-            youtube_state: runData.state || null,
-            lastDecision: decision,
-            lastReviewNotes: notes || null,
-            updatedAt: new Date().toISOString(),
-            mode: 'youtube-langgraph',
-        },
-    });
-
-    return {
-        success: true,
-        message: pendingApproval ? 'YouTube workflow waiting for approval' : 'YouTube workflow resumed',
-        runId,
-        pendingApproval,
-        complete,
-    };
-}
-
 /**
  * Gather context from completed tasks in previous stages
  * This includes research outputs, plan outputs, and any comments
@@ -462,16 +317,6 @@ async function generateStageTasks(workflow, workflowContext = '') {
             description += `\n\n---\n# Context from Previous Stages\n${previousStageContext}`;
         }
 
-        // Infer the best task-level template from the workflow type and stage
-        let inferredTemplate = null;
-        if (workflow_type === 'documentation') {
-            inferredTemplate = 'doc-writer';
-        } else if (stageId === 'discover' || stageId === 'brief') {
-            inferredTemplate = 'research-report';
-        } else {
-            inferredTemplate = 'nexus-prime';
-        }
-
         // Create the task
         const task = await db.createTask({
             project_id,
@@ -479,7 +324,6 @@ async function generateStageTasks(workflow, workflowContext = '') {
             description,
             status: 'idea',
             source: `workflow:${id}:${workflow_type}`,
-            langgraph_template: inferredTemplate,
             metadata: {
                 workflowStage: stageId,
                 stageName: currentStageObj.name
@@ -658,9 +502,7 @@ async function runProjectWorkflowSupervisor(options) {
 /**
  * Handle starting a workflow
  * 
- * For workflows with a matching project-level LangGraph template,
- * this delegates execution to the Python backend via /graph/run.
- * For legacy workflows without a template, falls back to generateStageTasks.
+ * Starts local stage task generation for a project workflow.
  */
 async function handleStartWorkflow(workflow, context) {
     const { id, stages, status, current_stage } = workflow;
@@ -685,122 +527,18 @@ async function handleStartWorkflow(workflow, context) {
         current_stage: firstStage
     });
 
-    // ═══════════════════════════════════════════════════════════════
-    // Execute via LangGraph Python backend
-    // ═══════════════════════════════════════════════════════════════
-    const langGraphUrl = process.env.LANGGRAPH_URL || 'http://localhost:8000';
-    const workflowType = workflow.workflow_type || workflow.type;
+    const tasks = await generateStageTasks(workflow, firstStage, context);
+    await updateWorkflowSupervisorStatus(id, WORKFLOW_STATUS.RUNNING, {
+        startedAt: new Date().toISOString(),
+        mode: 'local-stage-tasks'
+    });
 
-    if (!workflowType) {
-        return { success: false, error: 'No workflow_type defined' };
-    }
-
-    try {
-        if (workflowType === 'youtube-production') {
-            return await handleYoutubeWorkflowStart({ workflow, context, langGraphUrl });
-        }
-
-        // Fetch project-level templates from Python backend
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const templatesRes = await fetch(`${langGraphUrl}/templates?level=project`, {
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (!templatesRes.ok) {
-            throw new Error(`Template fetch failed: ${templatesRes.status}`);
-        }
-
-        const data = await templatesRes.json();
-        const templates = data.templates || [];
-
-        // Find matching template
-        const template = templates.find(t =>
-            t.workflow_type === workflowType ||
-            t.name.toLowerCase().includes(workflowType.replace('-', ' '))
-        );
-
-        if (!template) {
-            throw new Error(`No LangGraph template found for workflow type: ${workflowType}`);
-        }
-
-        console.log(`[WorkflowSupervisor] Found LangGraph template: ${template.name}`);
-
-        // Get project info for context
-        const project = workflow.project || await db.getProject(workflow.project_id);
-
-        // Execute via Python /graph/run
-        const runController = new AbortController();
-        const runTimeoutId = setTimeout(() => runController.abort(), 120000); // 2 min for full run
-
-        const runRes = await fetch(`${langGraphUrl}/graph/run`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                graph_config: {
-                    nodes: template.nodes,
-                    edges: template.edges,
-                    conditionalEdges: template.conditionalEdges || []
-                },
-                project_id: workflow.project_id,
-                input_data: {
-                    project_id: workflow.project_id,
-                    project_path: project?.path || project?.local_path || '',
-                    project_name: project?.name || '',
-                    workflow_id: id,
-                    workflow_type: workflowType,
-                    context: context || ''
-                }
-            }),
-            signal: runController.signal
-        });
-        clearTimeout(runTimeoutId);
-
-        if (!runRes.ok) {
-            throw new Error(`LangGraph run failed: ${runRes.status}`);
-        }
-
-        const runData = await runRes.json();
-
-        if (!runData.success) {
-            throw new Error(`LangGraph run returned error: ${runData.error || 'unknown'}`);
-        }
-
-        console.log(`[WorkflowSupervisor] LangGraph workflow started: run_id=${runData.run_id}`);
-
-        // Store the LangGraph run_id — workflow stays in_progress
-        // Completion will be triggered by Python callback to /api/langgraph/workflow-complete
-        await db.updateProjectWorkflow(id, {
-            supervisor_status: WORKFLOW_STATUS.RUNNING,
-            supervisor_details: {
-                langgraph_run_id: runData.run_id,
-                template_name: template.name,
-                startedAt: new Date().toISOString(),
-                mode: 'langgraph'
-            }
-        });
-
-        return {
-            success: true,
-            message: `Workflow started via LangGraph (${template.name})`,
-            runId: runData.run_id,
-            mode: 'langgraph'
-        };
-
-    } catch (err) {
-        console.error(`[WorkflowSupervisor] Workflow ${id} failed: ${err.message}`);
-        await db.updateProjectWorkflow(id, {
-            status: 'idea',
-            supervisor_status: WORKFLOW_STATUS.ERROR,
-            supervisor_details: {
-                error: err.message,
-                timestamp: new Date().toISOString()
-            }
-        });
-        return { success: false, error: err.message };
-    }
+    return {
+        success: true,
+        message: `Workflow started with ${tasks.length} task(s)`,
+        tasksCreated: tasks.length,
+        mode: 'local-stage-tasks'
+    };
 }
 
 /**
@@ -947,8 +685,6 @@ module.exports = {
     checkStageCompletion,
     advanceToNextStage,
     generateStageTasks,
-    handleYoutubeWorkflowStart,
-    resumeYoutubeWorkflowApproval,
     WORKFLOW_STATUS,
     STAGE_TASK_GENERATORS
 };

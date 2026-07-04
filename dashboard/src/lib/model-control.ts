@@ -65,6 +65,10 @@ export interface ModelControlOptionsResponse {
     projectPolicy?: ModelControlPolicy | null;
     /** Default model for Praxis claude-code dispatches (api model id). */
     claudeDefault?: string;
+    /** Default model for Praxis codex dispatches ("" = codex CLI default). */
+    codexDefault?: string;
+    /** Default model for Praxis antigravity dispatches — an `agy models` display name ("" = agy CLI default). */
+    antigravityDefault?: string;
     /** Backend chain for Praxis's autonomous system-agent runs. */
     agentBackend?: AgentBackendConfig;
 }
@@ -172,6 +176,26 @@ export function filterClaudeModels(models: ModelControlModel[] | undefined): Mod
     return (models || []).filter(m => (m.provider || "").toLowerCase() === "anthropic");
 }
 
+/** OpenAI entries from the discovered roster, for Codex model dropdowns. */
+export function filterCodexModels(models: ModelControlModel[] | undefined): ModelControlModel[] {
+    return (models || []).filter(m => (m.provider || "").toLowerCase() === "openai");
+}
+
+/**
+ * Model names the antigravity selector can offer — the local `agy models`
+ * output served by the Nexus API. These are display names ("Gemini 3.1 Pro
+ * (High)"); slug ids do NOT pin in the agy CLI.
+ */
+export async function getAntigravityModels(): Promise<string[]> {
+    const response = await fetch(`/api/model-control/antigravity-models`, {
+        credentials: "include",
+        headers: { ...getAuthHeader() as any },
+    });
+    if (!response.ok) throw new Error(`Failed to load antigravity models: ${response.status}`);
+    const data = await response.json();
+    return Array.isArray(data.models) ? data.models : [];
+}
+
 /** API model id for a roster entry (dropdown value used for dispatch). */
 export function apiModelIdOf(model: ModelControlModel): string {
     return model.api_model_id || model.apiModelId || model.id;
@@ -197,6 +221,32 @@ export async function setClaudeDefaultModel(model: string): Promise<string> {
     if (!response.ok) throw new Error(`Failed to update claude default: ${response.status}`);
     const data = await response.json();
     return data.model;
+}
+
+/** Set the codex-dispatch default model ("" = codex CLI default). */
+export async function setCodexDefaultModel(model: string): Promise<string> {
+    const response = await fetch(`/api/model-control/codex-default`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify({ model }),
+    });
+    if (!response.ok) throw new Error(`Failed to update codex default: ${response.status}`);
+    const data = await response.json();
+    return data.model ?? "";
+}
+
+/** Set the antigravity-dispatch default model — an `agy models` display name ("" = agy CLI default). */
+export async function setAntigravityDefaultModel(model: string): Promise<string> {
+    const response = await fetch(`/api/model-control/antigravity-default`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify({ model }),
+    });
+    if (!response.ok) throw new Error(`Failed to update antigravity default: ${response.status}`);
+    const data = await response.json();
+    return data.model ?? "";
 }
 
 export async function setAgentBackend(config: AgentBackendConfig): Promise<AgentBackendConfig> {

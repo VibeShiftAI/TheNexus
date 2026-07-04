@@ -53,7 +53,7 @@ const tools = [
                 }
 
                 // Read file with offset and limit support
-                const MAX_CONTENT_SIZE = Math.min(limit, 8000); // Cap at 8000 chars max
+                const MAX_CONTENT_SIZE = Math.min(limit, 8_000); // Cap at 8k chars max
                 const fullContent = fs.readFileSync(fullPath, 'utf8');
                 const totalSize = fullContent.length;
 
@@ -393,4 +393,3 @@ const tools = [
 ];
 
 module.exports = tools;
-

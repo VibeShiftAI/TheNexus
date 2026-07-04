@@ -69,6 +69,8 @@ describe('model control route', () => {
                     projectAliases: [{ alias: 'coder', target: 'model:local-llama' }],
                     agentBackend: { backend: 'codex', fallbacks: ['claude-code', 'gemini'] },
                     claudeDefault: 'claude-opus-4-8',
+                    codexDefault: '',
+                    antigravityDefault: '',
                     localOnly: { enabled: false, reason: null },
                     policy: { enabled: false, reason: null },
                     projectPolicy: {
@@ -139,6 +141,74 @@ describe('model control route', () => {
                 budget: { dailyTokenLimit: 500, dailyCostLimit: 0.5, autoLocalOnly: false, providerLimits: {} }
             }
         });
+    });
+
+    test('reads and updates the codex / antigravity default models', async () => {
+        const settings = {};
+        const db = {
+            getModelControlSetting: jest.fn(async (key) => settings[key] ?? null),
+            setModelControlSetting: jest.fn(async (key, value) => { settings[key] = value; return value; }),
+        };
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db }));
+        handle = await listen(app);
+
+        // Unset → empty string means "the CLI's own default".
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/codex-default`))
+            .resolves.toEqual({ status: 200, body: { model: '' } });
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/codex-default`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'gpt-5.5' })
+        })).resolves.toEqual({ status: 200, body: { model: 'gpt-5.5' } });
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/codex-default`))
+            .resolves.toEqual({ status: 200, body: { model: 'gpt-5.5' } });
+
+        // Antigravity values are `agy models` display names.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/antigravity-default`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'Gemini 3.1 Pro (High)' })
+        })).resolves.toEqual({ status: 200, body: { model: 'Gemini 3.1 Pro (High)' } });
+
+        // Empty clears back to the CLI default; non-strings are rejected.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/antigravity-default`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: '' })
+        })).resolves.toEqual({ status: 200, body: { model: '' } });
+        const bad = await requestJson(`${handle.baseUrl}/api/model-control/codex-default`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 42 })
+        });
+        expect(bad.status).toBe(400);
+    });
+
+    test('serves the antigravity model roster', async () => {
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db: {} }));
+        handle = await listen(app);
+
+        // Point at a nonexistent binary so the fallback list is exercised
+        // deterministically (no dependency on the local agy install in tests).
+        const previousAgyBin = process.env.AGY_BIN;
+        process.env.AGY_BIN = '/nonexistent/agy-for-tests';
+        try {
+            const res = await requestJson(`${handle.baseUrl}/api/model-control/antigravity-models`);
+            expect(res.status).toBe(200);
+            expect(Array.isArray(res.body.models)).toBe(true);
+            expect(res.body.models.length).toBeGreaterThan(0);
+            expect(res.body.models.every((m) => typeof m === 'string')).toBe(true);
+        } finally {
+            if (previousAgyBin === undefined) delete process.env.AGY_BIN;
+            else process.env.AGY_BIN = previousAgyBin;
+        }
     });
 
     test('updates global and project role aliases', async () => {

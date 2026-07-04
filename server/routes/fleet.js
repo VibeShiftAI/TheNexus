@@ -28,7 +28,6 @@ const SERVICES = [
     { id: 'antigravity-bridge', label: 'AG bridge', port: 54321, url: 'http://127.0.0.1:54321/health' },
     { id: 'nexus-node', label: 'Nexus node', port: 4000, url: 'http://127.0.0.1:4000/api/health' },
     { id: 'dashboard', label: 'Dashboard', port: 3000, url: 'http://127.0.0.1:3000' },
-    { id: 'langgraph', label: 'LangGraph', port: 8000, url: 'http://127.0.0.1:8000' },
     { id: 'cortex', label: 'Cortex', port: 8100, url: 'http://127.0.0.1:8100/health' },
     { id: 'lars', label: 'LARS', port: 7878, url: 'http://192.168.86.205:7878' },
 ];

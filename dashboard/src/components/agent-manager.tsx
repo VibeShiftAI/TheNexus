@@ -147,26 +147,6 @@ function resolveIcon(icon: string): string {
     return icon;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES FOR WORKFLOW TEMPLATES
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface WorkflowTemplateNode {
-    type?: string;
-    data?: { type?: string };
-}
-
-interface WorkflowTemplate {
-    id: string;
-    name: string;
-    nodes?: WorkflowTemplateNode[];
-}
-
-interface TemplatesResponse {
-    templates: WorkflowTemplate[];
-    error?: string;
-}
-
 // Helper to normalize category to a known bucket
 function getNormalizedCategory(cat?: string): string {
     if (!cat) return "utility";
@@ -201,32 +181,7 @@ export function AgentManager() {
                     setAgents(agentList);
                 }
 
-                // Fetch workflow templates to calculate usage
-                try {
-                    const templatesRes = await fetch("/api/langgraph/templates");
-                    if (templatesRes.ok) {
-                        const templatesData: TemplatesResponse = await templatesRes.json();
-                        const usage: Record<string, string[]> = {};
-
-                        // Parse each template to find which nodes it uses
-                        for (const template of templatesData.templates || []) {
-                            for (const node of template.nodes || []) {
-                                // Node type can be in node.type or node.data.type
-                                const nodeType = node.type || node.data?.type;
-                                if (nodeType) {
-                                    if (!usage[nodeType]) usage[nodeType] = [];
-                                    if (!usage[nodeType].includes(template.name)) {
-                                        usage[nodeType].push(template.name);
-                                    }
-                                }
-                            }
-                        }
-                        setWorkflowUsage(usage);
-                    }
-                } catch {
-                    // Templates endpoint may fail, that's okay - usage will be empty
-                    console.log('[AgentManager] Could not fetch workflow templates');
-                }
+                setWorkflowUsage({});
             } catch (err) {
                 setError("Network error - ensure Python backend is running");
             } finally {

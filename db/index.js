@@ -977,12 +977,27 @@ async function getDashboardStats() {
             FROM tasks
         `).all();
 
+        // Archived projects are retired — their artifacts should never appear in the review queue.
+        const archivedProjectIds = new Set(
+            db.prepare("SELECT id FROM projects WHERE status = 'archived'").all().map(r => r.id)
+        );
+
+        // Finished tasks never need review. Was only 'cancelled'/'complete',
+        // which let archived/done/completed tasks keep their artifacts in the
+        // queue forever (archiving a project cascades status='archived' to its
+        // tasks — see archiveProject — but those still slipped through here).
+        // Statuses are free snake_case/dash text, so normalize before matching.
+        const TERMINAL_TASK_STATUSES = new Set(['cancelled', 'canceled', 'complete', 'completed', 'done', 'archived']);
+        const isTerminalTaskStatus = (status) =>
+            TERMINAL_TASK_STATUSES.has(String(status || '').toLowerCase().replace(/-/g, '_'));
+
         const tasksByStatus = {};
         const reviewItems = [];
 
         tasks.forEach(task => {
             tasksByStatus[task.status] = (tasksByStatus[task.status] || 0) + 1;
-            if (task.status === 'cancelled' || task.status === 'complete') return;
+            if (isTerminalTaskStatus(task.status)) return;
+            if (archivedProjectIds.has(task.project_id)) return;
 
             const parsed = parseTaskFields({ ...task });
             if (parsed.researchReport?.content && !parsed.researchReport.approvedAt && !parsed.researchReport.rejectedAt) {
@@ -1000,6 +1015,7 @@ async function getDashboardStats() {
         const workflows = db.prepare('SELECT id, project_id, name, status, current_stage FROM project_workflows').all();
         let activeWorkflows = 0;
         workflows.forEach(wf => {
+            if (archivedProjectIds.has(wf.project_id)) return;
             if (wf.status === 'in_progress') activeWorkflows++;
             if (wf.status === 'review') {
                 reviewItems.push({ type: 'project-workflow', id: wf.id, projectId: wf.project_id, name: `Workflow: ${wf.name}`, level: 'Project' });
@@ -1009,6 +1025,7 @@ async function getDashboardStats() {
         // 3. Context reviews
         const contexts = db.prepare("SELECT project_id, context_type, status FROM project_contexts WHERE status = 'review_pending'").all();
         contexts.forEach(ctx => {
+            if (archivedProjectIds.has(ctx.project_id)) return;
             reviewItems.push({ type: 'project-context', id: `${ctx.project_id}-${ctx.context_type}`, projectId: ctx.project_id, name: `Context: ${ctx.context_type}`, level: 'Project' });
         });
 

@@ -1,4 +1,5 @@
 const express = require('express');
+const { spawn } = require('child_process');
 const {
     resolveModelAssignment,
     mergePolicies,
@@ -51,6 +52,63 @@ async function getClaudeDefaultModel(db) {
 }
 
 /**
+ * Default models for Praxis's codex / antigravity CLI dispatches. Unlike the
+ * claude default there is no hardcoded fallback: empty means "no --model
+ * flag", i.e. the CLI's own default. Antigravity values are `agy models`
+ * DISPLAY names ("Gemini 3.1 Pro (High)") — slug ids silently fail to pin.
+ */
+async function getCliDefaultModel(db, key) {
+    const setting = await db.getModelControlSetting(key);
+    const model = setting && typeof setting.model === 'string' ? setting.model.trim() : '';
+    return model;
+}
+
+/**
+ * The model list the antigravity selector offers — ground truth is the local
+ * `agy models` output (node-api runs on the same machine as the CLI). Cached
+ * 10 minutes; falls back to the last-known list when the CLI is unavailable.
+ */
+const AGY_MODELS_FALLBACK = [
+    'Gemini 3.5 Flash (Medium)',
+    'Gemini 3.5 Flash (High)',
+    'Gemini 3.5 Flash (Low)',
+    'Gemini 3.1 Pro (Low)',
+    'Gemini 3.1 Pro (High)',
+    'Claude Sonnet 4.6 (Thinking)',
+    'Claude Opus 4.6 (Thinking)',
+    'GPT-OSS 120B (Medium)'
+];
+let agyModelsCache = null; // { models, expiresAt }
+function listAntigravityModels() {
+    if (agyModelsCache && agyModelsCache.expiresAt > Date.now()) {
+        return Promise.resolve(agyModelsCache.models);
+    }
+    return new Promise((resolve) => {
+        const agyBin = process.env.AGY_BIN || '/opt/homebrew/bin/agy';
+        const finish = (stdout, failure) => {
+            const parsed = !failure && stdout
+                ? stdout.split('\n').map(line => line.trim()).filter(Boolean)
+                : [];
+            const models = parsed.length ? parsed : AGY_MODELS_FALLBACK;
+            agyModelsCache = { models, expiresAt: Date.now() + 10 * 60 * 1000 };
+            if (failure) console.warn('[Model Control] agy models unavailable, using fallback list:', failure);
+            resolve(models);
+        };
+        let child;
+        try {
+            // stdin must be 'ignore' — agy errors out on a pipe stdin.
+            child = spawn(agyBin, ['models'], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 10000 });
+        } catch (error) {
+            return finish('', error.message);
+        }
+        let stdout = '';
+        child.stdout.on('data', (chunk) => { stdout += chunk; });
+        child.on('error', (error) => finish('', error.message));
+        child.on('close', (code) => finish(stdout, code === 0 ? null : `agy models exited with code ${code}`));
+    });
+}
+
+/**
  * Backend chain for Praxis's autonomous system-agent runs. Codex-first
  * (ChatGPT subscription), Claude Code next, Gemini API as the last resort.
  */
@@ -79,6 +137,8 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                 localOnly: await db.getModelControlSetting('local_only'),
                 policy: await db.getModelControlSetting('model_policy'),
                 claudeDefault: await getClaudeDefaultModel(db),
+                codexDefault: await getCliDefaultModel(db, 'codex_default_model'),
+                antigravityDefault: await getCliDefaultModel(db, 'antigravity_default_model'),
                 agentBackend: await getAgentBackendConfig(db),
                 projectPolicy: projectId && typeof db.getProjectModelControlSetting === 'function'
                     ? await db.getProjectModelControlSetting(projectId, 'model_policy')
@@ -111,6 +171,50 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
         } catch (error) {
             console.error('[Model Control] Failed to update claude default:', error);
             res.status(500).json({ error: 'Failed to update claude default: ' + error.message });
+        }
+    });
+
+    // ─── Codex / Antigravity default models ──────────────────────────────
+    // Read by Praxis's codex / antigravity executors at dispatch time
+    // (cached 60s there) and by the dashboard's Model Control panel. Unlike
+    // claude-default, an EMPTY model is valid and means "use the CLI's own
+    // default" (no --model flag), so PUT accepts empty to clear.
+    for (const [route, key] of [
+        ['codex-default', 'codex_default_model'],
+        ['antigravity-default', 'antigravity_default_model']
+    ]) {
+        router.get(`/${route}`, async (_req, res) => {
+            try {
+                res.json({ model: await getCliDefaultModel(db, key) });
+            } catch (error) {
+                console.error(`[Model Control] Failed to read ${route}:`, error);
+                res.status(500).json({ error: `Failed to read ${route}: ` + error.message });
+            }
+        });
+
+        router.put(`/${route}`, async (req, res) => {
+            try {
+                if (typeof req.body.model !== 'string') {
+                    return res.status(400).json({ error: 'model must be a string (empty = CLI default)' });
+                }
+                const model = req.body.model.trim();
+                await db.setModelControlSetting(key, { model });
+                res.json({ model });
+            } catch (error) {
+                console.error(`[Model Control] Failed to update ${route}:`, error);
+                res.status(500).json({ error: `Failed to update ${route}: ` + error.message });
+            }
+        });
+    }
+
+    // The model names the antigravity selector can offer (`agy models` output;
+    // display names are the only values the agy CLI actually pins on).
+    router.get('/antigravity-models', async (_req, res) => {
+        try {
+            res.json({ models: await listAntigravityModels() });
+        } catch (error) {
+            console.error('[Model Control] Failed to list antigravity models:', error);
+            res.status(500).json({ error: 'Failed to list antigravity models: ' + error.message });
         }
     });
 

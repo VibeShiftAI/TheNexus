@@ -458,7 +458,7 @@ export default function KnowledgeIngestionPage() {
                                 <input
                                     value={formUrl}
                                     onChange={(e) => setFormUrl(e.target.value)}
-                                    placeholder="Search query, e.g. 'LangGraph multi-agent orchestration news'"
+                                    placeholder="Search query, e.g. 'multi-agent orchestration news'"
                                     className="min-w-64 flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none"
                                 />
                                 <input

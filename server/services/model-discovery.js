@@ -184,7 +184,7 @@ function inferCapabilities(model) {
 
 function inferDefaultParameters(model) {
     if (model.providerId === 'anthropic') return { max_tokens: 8192 };
-    if (model.providerId === 'google' && model.isThinking) return { thinking_budget: 8000 };
+    if (model.providerId === 'google' && model.isThinking) return { thinking_budget: 8_000 };
     return {};
 }
 

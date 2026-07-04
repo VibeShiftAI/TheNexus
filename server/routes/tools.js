@@ -199,10 +199,10 @@ module.exports = function createToolsRouter({ db, PROJECT_ROOT, getProjectById, 
         }
     });
 
-    // POST /api/tools/create-task - Internal endpoint for Python agents to create tasks
+    // POST /api/tools/create-task - Internal endpoint for automation to create tasks
     router.post('/create-task', async (req, res) => {
         try {
-            const { project_id, title, description, status, source, priority, templateId } = req.body;
+            const { project_id, title, description, status, source, priority } = req.body;
 
             if (!project_id || !title) {
                 return res.status(400).json({ error: 'project_id and title are required' });
@@ -220,10 +220,9 @@ module.exports = function createToolsRouter({ db, PROJECT_ROOT, getProjectById, 
                 status: status || 'idea',
                 priority: priority || 0,
                 source: source || 'workflow:documentation',
-                langgraph_template: templateId || null,
                 metadata: {
                     classifiedAt: new Date().toISOString(),
-                    createdBy: 'langgraph-agent'
+                    createdBy: 'automation'
                 }
             };
 

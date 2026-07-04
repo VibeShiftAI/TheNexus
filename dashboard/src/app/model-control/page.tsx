@@ -33,7 +33,11 @@ import {
     setGlobalModelPolicy,
     setProjectModelPolicy,
     setClaudeDefaultModel,
+    setCodexDefaultModel,
+    setAntigravityDefaultModel,
     filterClaudeModels,
+    filterCodexModels,
+    getAntigravityModels,
     apiModelIdOf,
     setAgentBackend,
     AGENT_BACKENDS,
@@ -166,6 +170,9 @@ export default function ModelControlPage() {
     const [loading, setLoading] = useState(true);
     const [savingLocal, setSavingLocal] = useState(false);
     const [savingClaudeDefault, setSavingClaudeDefault] = useState(false);
+    const [savingCodexDefault, setSavingCodexDefault] = useState(false);
+    const [savingAntigravityDefault, setSavingAntigravityDefault] = useState(false);
+    const [antigravityModels, setAntigravityModels] = useState<string[]>([]);
     const [savingAgentBackend, setSavingAgentBackend] = useState(false);
     const [discovering, setDiscovering] = useState(false);
     const [probing, setProbing] = useState<"resolve" | "live" | null>(null);
@@ -212,6 +219,12 @@ export default function ModelControlPage() {
     useEffect(() => {
         load();
     }, [load]);
+
+    // The agy CLI's model roster (display names) — loaded once; independent of
+    // the project filter.
+    useEffect(() => {
+        getAntigravityModels().then(setAntigravityModels).catch(() => setAntigravityModels([]));
+    }, []);
 
     const stats = useMemo(() => {
         const models = state.models || [];
@@ -274,6 +287,32 @@ export default function ModelControlPage() {
             setError(err instanceof Error ? err.message : "Failed to update Claude default model");
         } finally {
             setSavingClaudeDefault(false);
+        }
+    };
+
+    const updateCodexDefault = async (model: string) => {
+        setSavingCodexDefault(true);
+        setError(null);
+        try {
+            const saved = await setCodexDefaultModel(model);
+            setState(prev => ({ ...prev, codexDefault: saved }));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update Codex default model");
+        } finally {
+            setSavingCodexDefault(false);
+        }
+    };
+
+    const updateAntigravityDefault = async (model: string) => {
+        setSavingAntigravityDefault(true);
+        setError(null);
+        try {
+            const saved = await setAntigravityDefaultModel(model);
+            setState(prev => ({ ...prev, antigravityDefault: saved }));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update Antigravity default model");
+        } finally {
+            setSavingAntigravityDefault(false);
         }
     };
 
@@ -616,6 +655,81 @@ export default function ModelControlPage() {
                                     )}
                             </select>
                             {savingClaudeDefault && <Loader2 size={15} className="animate-spin text-slate-400" />}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Codex default — the model Praxis's codex executor uses when a
+                    task/slot has no explicit model override. Empty = the codex
+                    CLI's own default. Billed to the ChatGPT subscription. */}
+                <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                            <Bot size={22} className="text-emerald-300" />
+                            <div>
+                                <div className="text-base font-semibold text-white">Codex Default Model</div>
+                                <div className="text-sm text-slate-500">
+                                    Used for codex dispatches without a per-task or per-slot model override. Billed to the ChatGPT subscription.
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={state.codexDefault || ""}
+                                onChange={(event) => void updateCodexDefault(event.target.value)}
+                                disabled={savingCodexDefault || loading}
+                                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-emerald-500 disabled:opacity-50"
+                            >
+                                <option value="">CLI default</option>
+                                {filterCodexModels(state.models).map(model => (
+                                    <option key={model.id} value={apiModelIdOf(model)}>
+                                        {model.display_name || model.name || model.id}
+                                    </option>
+                                ))}
+                                {/* Keep the current value selectable even if discovery hasn't listed it */}
+                                {state.codexDefault &&
+                                    !filterCodexModels(state.models).some(m => apiModelIdOf(m) === state.codexDefault) && (
+                                        <option value={state.codexDefault}>{state.codexDefault}</option>
+                                    )}
+                            </select>
+                            {savingCodexDefault && <Loader2 size={15} className="animate-spin text-slate-400" />}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Antigravity default — the model Praxis's antigravity executor
+                    pins via `agy --model`. Options are the `agy models` display
+                    names (slug ids silently fail to pin). Empty = the agy CLI's
+                    own default. Billed to the Google subscription. */}
+                <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                            <Bot size={22} className="text-sky-300" />
+                            <div>
+                                <div className="text-base font-semibold text-white">Antigravity Default Model</div>
+                                <div className="text-sm text-slate-500">
+                                    Used for antigravity (agy) dispatches without a per-task or per-slot model override. Billed to the Google subscription.
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={state.antigravityDefault || ""}
+                                onChange={(event) => void updateAntigravityDefault(event.target.value)}
+                                disabled={savingAntigravityDefault || loading}
+                                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-500 disabled:opacity-50"
+                            >
+                                <option value="">CLI default</option>
+                                {antigravityModels.map(model => (
+                                    <option key={model} value={model}>{model}</option>
+                                ))}
+                                {/* Keep the current value selectable even if the agy roster changed */}
+                                {state.antigravityDefault &&
+                                    !antigravityModels.includes(state.antigravityDefault) && (
+                                        <option value={state.antigravityDefault}>{state.antigravityDefault}</option>
+                                    )}
+                            </select>
+                            {savingAntigravityDefault && <Loader2 size={15} className="animate-spin text-slate-400" />}
                         </div>
                     </div>
                 </section>

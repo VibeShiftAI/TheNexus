@@ -6,7 +6,6 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft, BookOpen, Calendar, Tag } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { getCodexDoc, CodexDoc } from '@/lib/codex';
-import { VibecodingWorkflowDiagram } from '@/components/visualizations/vibecoding-workflow-diagram';
 
 export default function CodexArticlePage() {
     const params = useParams();
@@ -101,21 +100,16 @@ export default function CodexArticlePage() {
 
                 {/* Article Content */}
                 <div className="prose prose-invert prose-slate max-w-none">
-                    {/* Special Handling for Diagram injection */}
-                    {slug === 'primary-vibecoding-workflow' && (
-                        <div className="my-8 not-prose">
-                            <VibecodingWorkflowDiagram />
-                        </div>
-                    )}
-
                     <ReactMarkdown
                         components={{
-                            // Custom renderer to strip out the <VibecodingWorkflowDiagram /> string if it exists in MD
                             p: ({ children }) => {
-                                // Safe check for children content
                                 const content = Array.isArray(children) ? children[0] : children;
                                 if (typeof content === 'string' && content.includes('<VibecodingWorkflowDiagram />')) {
-                                    return <></>;
+                                    return (
+                                        <p>
+                                            This retired workflow visualization was removed after the 2026-07-02 orchestration decommission.
+                                        </p>
+                                    );
                                 }
                                 return <p>{children}</p>;
                             }

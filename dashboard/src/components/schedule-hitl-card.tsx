@@ -31,6 +31,8 @@ import type { HITLRequest } from "@praxis/contract";
 import {
   apiModelIdOf,
   filterClaudeModels,
+  filterCodexModels,
+  getAntigravityModels,
   getModelControlState,
 } from "@/lib/model-control";
 
@@ -185,22 +187,37 @@ export function ScheduleHitlCard({
     if (!schedule) return {};
     return Object.fromEntries(schedule.slots.map((s) => [s.nexusTaskId, s.modelOverride ?? ""]));
   });
-  // Discovered Claude models for the per-slot Model dropdown (claude-code
-  // slots only) + the operator-set default, for the "(default)" label.
+  // Per-executor model options for the per-slot Model dropdown + the
+  // operator-set defaults, for the "(default)" labels. Claude/codex options
+  // come from the discovered roster; antigravity options are the `agy models`
+  // display names (the only values the agy CLI actually pins on).
   const [claudeModels, setClaudeModels] = useState<Array<{ id: string; label: string }>>([]);
   const [claudeDefault, setClaudeDefault] = useState<string>("claude-opus-4-8");
+  const [codexModels, setCodexModels] = useState<Array<{ id: string; label: string }>>([]);
+  const [codexDefault, setCodexDefault] = useState<string>("");
+  const [antigravityModels, setAntigravityModels] = useState<Array<{ id: string; label: string }>>([]);
+  const [antigravityDefault, setAntigravityDefault] = useState<string>("");
   useEffect(() => {
     let cancelled = false;
     getModelControlState(null)
       .then((state) => {
         if (cancelled) return;
-        setClaudeModels(
-          filterClaudeModels(state.models).map((m) => ({
-            id: apiModelIdOf(m),
-            label: m.display_name || m.name || m.id,
-          })),
-        );
+        const toOption = (m: Parameters<typeof apiModelIdOf>[0]) => ({
+          id: apiModelIdOf(m),
+          label: m.display_name || m.name || m.id,
+        });
+        setClaudeModels(filterClaudeModels(state.models).map(toOption));
+        setCodexModels(filterCodexModels(state.models).map(toOption));
         if (state.claudeDefault) setClaudeDefault(state.claudeDefault);
+        if (state.codexDefault) setCodexDefault(state.codexDefault);
+        if (state.antigravityDefault) setAntigravityDefault(state.antigravityDefault);
+      })
+      .catch(() => {
+        /* dropdown falls back to the default-only option */
+      });
+    getAntigravityModels()
+      .then((names) => {
+        if (!cancelled) setAntigravityModels(names.map((name) => ({ id: name, label: name })));
       })
       .catch(() => {
         /* dropdown falls back to the default-only option */
@@ -209,6 +226,13 @@ export function ScheduleHitlCard({
       cancelled = true;
     };
   }, []);
+  // Options/default/billing note per executor, for the per-slot dropdown.
+  const modelOptionsFor = (executor: ExecutorName) =>
+    executor === "claude-code"
+      ? { options: claudeModels, fallback: claudeDefault, note: "Claude" }
+      : executor === "codex"
+        ? { options: codexModels, fallback: codexDefault, note: "ChatGPT" }
+        : { options: antigravityModels, fallback: antigravityDefault, note: "Google" };
   // Individual candidate decisions POST immediately and are decoupled from
   // the plan approval (2026-07-03). "approved"/"archived" are terminal here;
   // undecided candidates stay staged and reappear tomorrow.
@@ -407,12 +431,16 @@ export function ScheduleHitlCard({
                         <select
                           disabled={isSkipped || resolving}
                           value={currentExec}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const nextExec = e.target.value as ExecutorName;
                             setExecutors((prev) => ({
                               ...prev,
-                              [slot.nexusTaskId]: e.target.value as ExecutorName,
-                            }))
-                          }
+                              [slot.nexusTaskId]: nextExec,
+                            }));
+                            // A chosen model is executor-specific — clear it so
+                            // the slot rides the new executor's default.
+                            setModels((prev) => ({ ...prev, [slot.nexusTaskId]: "" }));
+                          }}
                           className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed"
                         >
                           {EXECUTOR_OPTIONS.map((opt) => (
@@ -421,27 +449,36 @@ export function ScheduleHitlCard({
                             </option>
                           ))}
                         </select>
-                        {currentExec === "claude-code" ? (
-                          <select
-                            disabled={isSkipped || resolving}
-                            value={models[slot.nexusTaskId] ?? ""}
-                            onChange={(e) =>
-                              setModels((prev) => ({
-                                ...prev,
-                                [slot.nexusTaskId]: e.target.value,
-                              }))
-                            }
-                            title="Claude model for this slot (billed to the Claude subscription)"
-                            className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[11px] text-purple-200 outline-none focus:border-purple-500 disabled:cursor-not-allowed"
-                          >
-                            <option value="">default ({claudeDefault})</option>
-                            {claudeModels.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : null}
+                        {(() => {
+                          const { options, fallback, note } = modelOptionsFor(currentExec);
+                          const chosen = models[slot.nexusTaskId] ?? "";
+                          return (
+                            <select
+                              disabled={isSkipped || resolving}
+                              value={chosen}
+                              onChange={(e) =>
+                                setModels((prev) => ({
+                                  ...prev,
+                                  [slot.nexusTaskId]: e.target.value,
+                                }))
+                              }
+                              title={`${currentExec} model for this slot (billed to the ${note} subscription)`}
+                              className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[11px] text-purple-200 outline-none focus:border-purple-500 disabled:cursor-not-allowed"
+                            >
+                              <option value="">default ({fallback || "CLI default"})</option>
+                              {options.map((m) => (
+                                <option key={m.id} value={m.id}>
+                                  {m.label}
+                                </option>
+                              ))}
+                              {/* Keep a Praxis-proposed value selectable even if
+                                  it isn't in this executor's option list */}
+                              {chosen && !options.some((m) => m.id === chosen) && (
+                                <option value={chosen}>{chosen}</option>
+                              )}
+                            </select>
+                          );
+                        })()}
                       </div>
                     </td>
                     <td className="px-2 py-1 text-right">

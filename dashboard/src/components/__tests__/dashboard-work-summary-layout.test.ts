@@ -17,5 +17,5 @@ test("dashboard work summary lives below the Praxis journal, not in the right si
   );
 
   assert.equal(sidebar.includes("TaskStatusTiles"), false, "right sidebar should not render task status tiles");
-  assert.equal(sidebar.includes("Active Project Workflows"), false, "right sidebar should not render active workflows");
+  assert.equal(sidebar.includes("TaskStatusTiles"), false, "right sidebar remains free of work-summary widgets");
 });

@@ -577,15 +577,8 @@ export function ToolDock({ onToolSelect, className = '' }: ToolDockProps) {
         setServers(prev => prev.filter(s => s.id !== serverId));
     };
 
-    // TODO: Phase 2 - Tool Drag-to-Node Binding (Test 2.5)
-    // When dragging a tool onto a workflow node:
-    // 1. Accept the drop on the node (need onDrop handler in workflow-builder)
-    // 2. Bind the tool to the node's configuration (store in node.data.tools[])
-    // 3. Highlight compatible nodes during drag (nodes with 'tools' property)
-    // 4. Persist tool bindings when saving template
-    // 5. Execute bound tools during node execution in Python backend
     const handleToolDragStart = (tool: MCPTool, server: MCPServer, event: React.DragEvent) => {
-        // Set drag data for workflow builder to consume
+        // Preserve drag payload for future tool binding surfaces.
         event.dataTransfer.setData('application/mcp-tool', JSON.stringify({
             tool,
             server: { id: server.id, name: server.name }

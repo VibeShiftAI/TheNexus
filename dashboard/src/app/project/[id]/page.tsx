@@ -11,7 +11,6 @@ import { TaskArchive } from "@/components/task-archive";
 import { TaskDetailModal } from "@/components/task-detail-modal";
 import { ProjectSettings } from "@/components/project-settings";
 import { ProjectContextManager } from "@/components/project-context-manager";
-import { ProjectWorkflows } from "@/components/project-workflows";
 import { ArtifactsList } from "@/components/artifacts-list";
 import { TaskStatusTiles } from "@/components/task-status-tiles";
 import { ProjectNotes } from "@/components/project-notes";
@@ -293,7 +292,7 @@ export default function ProjectDetailPage() {
                         </div>
                     </div>
 
-                    {/* Git Status + Project Workflows + Artifacts */}
+                    {/* Git Status + Artifacts */}
                     <div className="flex flex-col gap-4">
                         <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-xl p-4">
                             <div className="flex items-center justify-between mb-2">
@@ -338,9 +337,6 @@ export default function ProjectDetailPage() {
                             ) : (
                                 <div className="text-slate-500 text-center py-3 text-sm">No git repository detected</div>
                             )}
-                        </div>
-                        <div className="flex-1">
-                            <ProjectWorkflows projectId={projectId} />
                         </div>
                         <div className="flex-1">
                             <ArtifactsList

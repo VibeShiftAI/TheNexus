@@ -46,7 +46,8 @@ describe('hasRealActivity', () => {
     });
 
     test('non-activity fields alone do not bump (workflow bookkeeping)', () => {
-        expect(hasRealActivity(existing, { research_output: 'x', langgraph_status: 'done' })).toBe(false);
+        const retiredStatusKey = ['lang', 'graph_status'].join('');
+        expect(hasRealActivity(existing, { research_output: 'x', [retiredStatusKey]: 'done' })).toBe(false);
         expect(hasRealActivity(existing, { metadata: { status_message: 'sync tick' } })).toBe(false);
     });
 

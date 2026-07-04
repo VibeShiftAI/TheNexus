@@ -84,7 +84,6 @@ describe('tasks model control integration', () => {
         handle = null;
         process.env = originalEnv;
         global.fetch = originalFetch;
-        jest.dontMock('../services/langgraph-supervisor');
     });
 
     test('task create and update persist model_assignment', async () => {
@@ -104,26 +103,6 @@ describe('tasks model control integration', () => {
             body: JSON.stringify({ model_assignment: 'model:anthropic-claude-sonnet' })
         });
         expect(db.updateTask).toHaveBeenCalledWith('task-1', expect.objectContaining({ model_assignment: 'model:anthropic-claude-sonnet' }));
-    });
-
-    test('LangGraph run resolves task assignment and passes model override to supervisor', async () => {
-        const runLangGraphWorkflow = jest.fn(async () => ({ success: true, run_id: 'run-1' }));
-        jest.doMock('../services/langgraph-supervisor', () => ({ runLangGraphWorkflow }));
-        const db = createDb();
-        handle = await mount(db);
-
-        const response = await requestJson(`${handle.baseUrl}/api/tasks/project-1/tasks/task-1/langgraph/run`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ templateId: 'template-1' })
-        });
-
-        expect(response.status).toBe(200);
-        expect(runLangGraphWorkflow).toHaveBeenCalledWith(expect.objectContaining({
-            modelOverride: expect.objectContaining({ provider: 'anthropic', apiModelId: 'claude-sonnet-4-6' }),
-            resolvedModel: expect.objectContaining({ resolvedModelId: 'anthropic-claude-sonnet' })
-        }));
-        expect(db.createModelExecutionSnapshot).toHaveBeenCalledWith(expect.objectContaining({ task_id: 'task-1', project_id: 'project-1' }));
     });
 
     test('resume redispatch includes resolved model override', async () => {

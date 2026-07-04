@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Task, TaskStatus, Feedback, deleteTask, addPlanFeedback, addWalkthroughFeedback, addResearchFeedback, updateTaskDetails, researchTasks, getWorkflowTemplates, runTaskWithLangGraph, getTaskLangGraphStatus, WorkflowTemplate, updateTask, approveResearch, rejectResearch, approveWalkthrough, rejectWalkthrough, cancelWalkthrough, cancelWorkflowRun } from "@/lib/nexus";
+import { Task, TaskStatus, Feedback, deleteTask, addPlanFeedback, addWalkthroughFeedback, addResearchFeedback, updateTaskDetails, researchTasks, updateTask, approveResearch, rejectResearch, approveWalkthrough, rejectWalkthrough, cancelWalkthrough } from "@/lib/nexus";
 import { getTabForTaskStatus } from "@/lib/taskTabMapping";
-import { X, Lightbulb, FileText, BookOpen, Check, XCircle, Loader2, Trash2, GitCommit, Rocket, Search, MessageSquare, Send, Undo2, RefreshCw, Pencil, Zap, ChevronDown, Archive, RotateCw, ClipboardCopy } from "lucide-react";
+import { X, Lightbulb, FileText, BookOpen, Check, XCircle, Loader2, Trash2, GitCommit, Rocket, Search, MessageSquare, Send, Undo2, RefreshCw, Pencil, Archive, RotateCw, ClipboardCopy } from "lucide-react";
 import { copyClaudeDispatch } from "@/lib/claude-dispatch";
 import { AnnotatedMarkdown } from './annotated-markdown';
 import { StageTimeline } from './stage-timeline';
@@ -13,8 +13,6 @@ import remarkGfm from 'remark-gfm';
 import { normalizeMarkdown } from '@/lib/normalizeMarkdown';
 import { ModelAssignmentControl } from '@/components/model-assignment-control';
 
-import { UnifiedWorkflowView } from './task-modal/unified-workflow-view';
-
 interface TaskDetailModalProps {
     projectId: string;
     task: Task | null;
@@ -23,7 +21,7 @@ interface TaskDetailModalProps {
     initialTab?: Tab;
 }
 
-type Tab = 'overview' | 'spec' | 'research' | 'plan' | 'walkthrough' | 'workflow';
+type Tab = 'overview' | 'spec' | 'research' | 'plan' | 'walkthrough';
 
 /** Actions available for each known status. Ad-hoc statuses get no actions by default. */
 const statusActions: Record<string, { action: string; nextStatus: string }[]> = {
@@ -149,28 +147,9 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
             setIsEditing(false);
             setEditError(null);
 
-            // LangGraph state reset
-            // Check for nested langGraph object first, then fallback to direct DB field names
-            const runId = task.langGraph?.runId || (task as any).langgraph_run_id;
-            const lgStatus = task.langGraph?.status || (task as any).langgraph_status;
-
-            if (runId) {
-                console.log("[TaskModal] Restoring runId from task:", runId);
-                setLangGraphRunId(runId);
-                setIsRunningLangGraph(true);
-                if (lgStatus) setLangGraphStatus(lgStatus);
-            } else {
-                setIsRunningLangGraph(false);
-                setLangGraphRunId(null);
-                setLangGraphStatus(null);
-                setLangGraphNode(null);
-            }
-
             // Clear any active intervals immediately
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-            if (langGraphPollRef.current) clearInterval(langGraphPollRef.current);
             pollIntervalRef.current = null;
-            langGraphPollRef.current = null;
         }
     }, [task]);
 
@@ -198,102 +177,8 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
     const [editError, setEditError] = useState<string | null>(null);
     const [isModelSaving, setIsModelSaving] = useState(false);
 
-    // LangGraph workflow state
-    const [langGraphTemplates, setLangGraphTemplates] = useState<WorkflowTemplate[]>([]);
-    const [showLangGraphMenu, setShowLangGraphMenu] = useState(false);
-    const [isRunningLangGraph, setIsRunningLangGraph] = useState(false);
-    const [langGraphRunId, setLangGraphRunId] = useState<string | null>(null);
-    const [langGraphStatus, setLangGraphStatus] = useState<string | null>(null);
-    const [langGraphNode, setLangGraphNode] = useState<string | null>(null);
-    const langGraphPollRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Switch to workflow tab if a run is active
-    useEffect(() => {
-        if (langGraphRunId) {
-            setActiveTab('workflow');
-        }
-    }, [langGraphRunId]);
-
-    // Sync LangGraph state when task's langgraph_run_id changes (e.g., after restart clears it)
-    const currentTaskRunId = task?.langGraph?.runId || (task as any)?.langgraph_run_id;
-    useEffect(() => {
-        // If task has no run ID but local state thinks we're running, clear it
-        if (!currentTaskRunId && isRunningLangGraph) {
-            console.log('[TaskModal] Task langgraph_run_id is null but local state thinks running. Clearing...');
-            setIsRunningLangGraph(false);
-            setLangGraphRunId(null);
-            setLangGraphStatus(null);
-            setLangGraphNode(null);
-        }
-    }, [currentTaskRunId, isRunningLangGraph]);
-
     // Check if editing is allowed (only for idea or planning status)
     const canEdit = task?.status === 'idea' || task?.status === 'planning';
-
-    // Check if LangGraph can be used (for idea, researched, or planned tasks, OR if already running)
-    const canUseLangGraph = task?.status === 'idea' || task?.status === 'todo' ||
-        task?.status === 'planning' || task?.status === 'building' || task?.status === 'testing' || task?.status === 'ready_for_review';
-
-    // Load LangGraph available workflows (templates)
-    useEffect(() => {
-        const loadTemplates = async () => {
-            try {
-                // Single source of truth - Python backend with level filter
-                const templates = await getWorkflowTemplates('task');
-                setLangGraphTemplates(templates || []);
-            } catch (err) {
-                console.error('Failed to load LangGraph templates:', err);
-                setError('Failed to load workflow templates');
-            }
-        };
-        loadTemplates();
-    }, []);
-
-    // Start polling if we have a run ID (restored or new) and it's active
-    useEffect(() => {
-        if (langGraphRunId && !langGraphPollRef.current) {
-            // Only poll if not completed/failed/cancelled? 
-            // Or always poll once to get latest state?
-            // polling function checks for terminal states.
-            pollLangGraphStatus(langGraphRunId);
-        }
-    }, [langGraphRunId]);
-
-    const pollLangGraphStatus = useCallback((runId: string) => {
-        if (!task) return;
-
-        if (langGraphPollRef.current) clearInterval(langGraphPollRef.current);
-
-        // Initial check
-        getTaskLangGraphStatus(projectId, task.id, runId).then(status => {
-            if (status) {
-                setLangGraphStatus(status.status);
-                setLangGraphNode(status.current_node || null);
-            }
-        });
-
-        // Poll every 5 seconds to reduce log noise
-        langGraphPollRef.current = setInterval(async () => {
-            try {
-                const status = await getTaskLangGraphStatus(projectId, task.id, runId);
-                if (status) {
-                    setLangGraphStatus(status.status);
-                    setLangGraphNode(status.current_node || null);
-
-                    if (['completed', 'failed', 'cancelled'].includes(status.status)) {
-                        if (langGraphPollRef.current) clearInterval(langGraphPollRef.current);
-                        langGraphPollRef.current = null;
-                        // Workflow finished — refresh the task to get updated status
-                        onTaskChange();
-                        setIsRunningLangGraph(false);
-                        // Don't auto-switch tabs — onWorkflowComplete handles post-completion
-                    }
-                }
-            } catch (err) {
-                console.error('Error polling status:', err);
-            }
-        }, 2000);
-    }, [projectId, task]);
 
     if (!task) return null;
 
@@ -326,25 +211,6 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                     break;
             }
 
-            // If a LangGraph workflow is paused, also resume it with the approval/rejection
-            if (langGraphRunId) {
-                const isApproval = action.toLowerCase().includes('approve');
-                const feedbackMsg = feedback || (isApproval ? 'Looks good' : 'Please revise');
-                try {
-                    await fetch(`/graph/nexus/${langGraphRunId}/resume`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            approval_action: isApproval ? 'approve' : 'reject',
-                            feedback: feedbackMsg
-                        })
-                    });
-                    // Switch to workflow tab to watch progress
-                    setActiveTab('workflow');
-                } catch (e) {
-                    console.error('[TaskModal] Failed to resume LangGraph workflow:', e);
-                }
-            }
             setFeedbackText('');
             onTaskChange();
         } catch (err) {
@@ -377,27 +243,11 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
 
     const handleCancelTask = async () => {
         try {
-            // Stop backend workflow FIRST to prevent orphaned runs
-            const runId = langGraphRunId || (task as any).langgraph_run_id;
-            if (runId) {
-                try {
-                    await cancelWorkflowRun(runId);
-                } catch (e) {
-                    console.warn('Failed to cancel LangGraph run:', e);
-                }
-            }
-
-            // Update both task status and langgraph_status
             await updateTask(projectId, task.id, {
                 status: 'cancelled',
-                langgraph_status: 'cancelled',
             });
 
             // Stop any active polling BEFORE triggering re-renders
-            if (langGraphPollRef.current) {
-                clearInterval(langGraphPollRef.current);
-                langGraphPollRef.current = null;
-            }
             if (pollIntervalRef.current) {
                 clearInterval(pollIntervalRef.current);
                 pollIntervalRef.current = null;
@@ -423,10 +273,6 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
             await updateTask(projectId, task.id, { status: 'complete' });
 
             // Stop any active polling
-            if (langGraphPollRef.current) {
-                clearInterval(langGraphPollRef.current);
-                langGraphPollRef.current = null;
-            }
             if (pollIntervalRef.current) {
                 clearInterval(pollIntervalRef.current);
                 pollIntervalRef.current = null;
@@ -445,24 +291,12 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
         if (!confirm('Are you sure you want to restart this task? This will clear all research, plans, and artifacts.')) return;
 
         try {
-            // Reset to idea status AND clear all langgraph workflow fields
             await updateTask(projectId, task.id, {
                 status: 'idea',
-                langgraph_run_id: null,
-                langgraph_status: null,
-                // NOTE: langgraph_template is intentionally preserved — it describes
-                // the task type, not the run state, so it survives restarts
-                langgraph_started_at: null,
                 research_output: null,
                 plan_output: null,
                 walkthrough: null
             });
-
-            // Clear local LangGraph state
-            setLangGraphRunId(null);
-            setLangGraphStatus(null);
-            setIsRunningLangGraph(false);
-            setLangGraphNode(null);
 
             // Notify parent to refresh list
             onTaskChange();
@@ -486,7 +320,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
     };
 
     const actions = statusActions[task.status] || [];
-    const isPending = !langGraphRunId && (task.status === 'todo' || task.status === 'planning' || task.status === 'building');
+    const isPending = task.status === 'todo' || task.status === 'planning' || task.status === 'building';
 
     // Show feedback for any approval/rejection stage
     const showFeedbackInput =
@@ -506,7 +340,6 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
     const tabs: { id: Tab; label: string; icon: React.ReactNode; disabled?: boolean }[] = [
         { id: 'overview', label: 'Overview', icon: <Lightbulb size={16} /> },
         { id: 'spec', label: 'Spec', icon: <FileText size={16} /> }, // Spec is always available for viewing/editing
-        { id: 'workflow', label: 'Live Workflow', icon: <Zap size={16} />, disabled: !langGraphRunId },
         { id: 'research', label: 'Research', icon: <Search size={16} />, disabled: !task.researchReport && task.status !== 'todo' },
         { id: 'plan', label: 'Plan', icon: <Rocket size={16} />, disabled: !task.implementationPlan && task.status !== 'planning' },
         { id: 'walkthrough', label: 'Walkthrough', icon: <BookOpen size={16} />, disabled: !task.walkthrough }
@@ -648,81 +481,6 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                 </div>
                             )}
 
-                            {/* LangGraph Workflow Button */}
-                            {(canUseLangGraph || langGraphRunId) && (langGraphTemplates.length > 0 || langGraphRunId) && (
-                                <div className="mt-6 pt-4 border-t border-slate-800">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div>
-                                            <h4 className="text-sm font-medium text-white flex items-center gap-2">
-                                                <Zap size={14} className="text-amber-400" />
-                                                Run with LangGraph
-                                            </h4>
-                                            <p className="text-xs text-slate-500 mt-1">Execute this task through a visual workflow</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setShowLangGraphMenu(!showLangGraphMenu)}
-                                            disabled={isRunningLangGraph}
-                                            className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition-all disabled:opacity-50"
-                                        >
-                                            <span className="flex items-center gap-2">
-                                                {isRunningLangGraph ? (
-                                                    <Loader2 size={16} className="animate-spin" />
-                                                ) : (
-                                                    <Zap size={16} />
-                                                )}
-                                                {isRunningLangGraph ? 'Running Workflow...' : (
-                                                    task.langgraph_template
-                                                        ? `⚡ ${langGraphTemplates.find(t => t.id === task.langgraph_template)?.name || task.langgraph_template}`
-                                                        : 'Select Workflow Template'
-                                                )}
-                                            </span>
-                                            <ChevronDown size={16} className={`transition-transform ${showLangGraphMenu ? 'rotate-180' : ''}`} />
-                                        </button>
-
-                                        {showLangGraphMenu && (
-                                            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 rounded-lg border border-slate-700 overflow-hidden z-10 shadow-xl">
-                                                {langGraphTemplates.map(template => (
-                                                    <button
-                                                        key={template.id}
-                                                        onClick={async () => {
-                                                            setShowLangGraphMenu(false);
-                                                            setIsRunningLangGraph(true);
-                                                            setError(null);
-                                                            try {
-                                                                const result = await runTaskWithLangGraph(
-                                                                    projectId,
-                                                                    task.id,
-                                                                    { templateId: template.id }
-                                                                );
-                                                                if (result.success && result.run_id) {
-                                                                    setLangGraphRunId(result.run_id);
-                                                                    // Start polling for status
-                                                                    pollLangGraphStatus(result.run_id);
-                                                                } else {
-                                                                    setError(result.error || 'Failed to start workflow');
-                                                                    setIsRunningLangGraph(false);
-                                                                }
-                                                            } catch (err) {
-                                                                setError(err instanceof Error ? err.message : 'Failed to run workflow');
-                                                                setIsRunningLangGraph(false);
-                                                            }
-                                                        }}
-                                                        className="w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors border-b border-slate-700 last:border-b-0"
-                                                    >
-                                                        <div className="font-medium text-white text-sm">{template.name}</div>
-                                                        <div className="text-xs text-slate-400 mt-0.5">{template.description}</div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Log moved to persistent footer */}
-                                </div>
-                            )}
                         </div>
                     )}
 
@@ -868,26 +626,6 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                         </div>
                     )}
 
-                    {activeTab === 'workflow' && langGraphRunId && (
-                        <div className="h-full">
-                            <UnifiedWorkflowView
-                                projectId={projectId}
-                                taskId={task.id}
-                                runId={langGraphRunId}
-                                onWorkflowComplete={async () => {
-                                    // Clear LangGraph execution state
-                                    setIsRunningLangGraph(false);
-                                    setLangGraphStatus(null);
-                                    setLangGraphNode(null);
-                                    setLangGraphRunId(null);
-                                    // Refresh task data so walkthrough tab becomes enabled
-                                    onTaskChange();
-                                    // Pivot to walkthrough tab to show the completed work
-                                    setActiveTab('walkthrough');
-                                }}
-                            />
-                        </div>
-                    )}
                 </div>
 
                 {/* Feedback Input */}

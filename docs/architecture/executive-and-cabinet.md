@@ -316,7 +316,7 @@ To use a different local model (e.g., Llama, Mistral, DeepSeek):
    local-default:
      model_name: llama3.3:70b
    ```
-4. Restart the LangGraph server
+4. Restart the relevant local inference service
 
 ### Falling Back to Cloud
 

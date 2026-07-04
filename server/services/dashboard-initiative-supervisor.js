@@ -233,11 +233,7 @@ async function executeInitiativeForProject(options) {
         initiativeId
     });
 
-    // Create actionable tasks from template stages — but ONLY if the workflow
-    // was a dashboard-level template. Project-level LangGraph templates (like
-    // documentation.json) create their own tasks via DocumentationTaskCreatorNode,
-    // so we skip to avoid duplicates.
-    if (result.success && result.data?.templateLevel !== 'project') {
+    if (result.success) {
         try {
             const taskIds = await createInitiativeTasks({
                 initiativeId,
@@ -259,119 +255,20 @@ async function executeInitiativeForProject(options) {
 }
 
 /**
- * Execute a workflow template via Python LangGraph engine
- * 
- * THROWS errors if:
- * - Python backend is unavailable
- * - No matching template found for workflow type
- * - Workflow execution fails
+ * Resolve initiative workflow metadata from local templates.
  */
 async function executeWithWorkflowTemplate(options) {
-    const { workflowType, project, configuration, initiativeId } = options;
-
-    const langGraphUrl = process.env.LANGGRAPH_URL || 'http://localhost:8000';
-
-    // Fetch templates from Python backend
-    let templates;
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const templatesRes = await fetch(`${langGraphUrl}/templates`, {
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (!templatesRes.ok) {
-            throw new Error(`HTTP ${templatesRes.status}: ${templatesRes.statusText}`);
-        }
-
-        const data = await templatesRes.json();
-        templates = data.templates || [];
-    } catch (err) {
-        if (err.cause?.code === 'ECONNREFUSED' || err.name === 'TypeError') {
-            throw new Error(`LangGraph Python backend is not running at ${langGraphUrl}. Start it with: cd python && uvicorn main:app --port 8000`);
-        }
-        if (err.name === 'AbortError') {
-            throw new Error(`LangGraph Python backend timed out at ${langGraphUrl}. Check if the service is responsive.`);
-        }
-        throw new Error(`Failed to fetch workflow templates: ${err.message}`);
+    const { workflowType, project } = options;
+    const templatePath = path.resolve(__dirname, '../../config/templates/workflows', `${workflowType}.json`);
+    if (!fs.existsSync(templatePath)) {
+        throw new Error(`No local workflow template found for initiative type "${workflowType}"`);
     }
 
-    // Find the project-level template matching this workflow type.
-    // Dashboard initiatives orchestrate project-level workflows across
-    // multiple projects — they always delegate to project templates.
-    const template = templates.find(t =>
-        t.level === 'project' &&
-        (t.workflow_type === workflowType ||
-            t.name.toLowerCase().includes(workflowType.replace('-', ' ')))
-    );
-
-    if (!template) {
-        const availableTemplates = templates
-            .filter(t => t.level === 'project')
-            .map(t => `${t.name} (${t.workflow_type})`)
-            .join(', ') || 'None';
-
-        throw new Error(
-            `No project-level workflow template found for initiative type "${workflowType}". ` +
-            `Create a project-level template that matches this type. ` +
-            `Available project templates: [${availableTemplates}]`
-        );
-    }
-
-    console.log(`[InitiativeSupervisor] Using template: ${template.name}`);
-
-    // Execute the workflow via Python backend
-    let runData;
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-        const runRes = await fetch(`${langGraphUrl}/graph/run`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                graph_config: {
-                    nodes: template.nodes,
-                    edges: template.edges
-                },
-                project_id: project.id,
-                input_data: {
-                    project_id: project.id,
-                    project_path: project.path,
-                    project_name: project.name,
-                    initiative_id: initiativeId,
-                    workflow_type: workflowType,
-                    configuration,
-                    target_projects: [project.id]
-                }
-            }),
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (!runRes.ok) {
-            const errBody = await runRes.text();
-            throw new Error(`HTTP ${runRes.status}: ${errBody}`);
-        }
-
-        runData = await runRes.json();
-    } catch (err) {
-        throw new Error(`Failed to execute workflow "${template.name}": ${err.message}`);
-    }
-
-    if (!runData.success) {
-        throw new Error(`Workflow "${template.name}" failed to start: ${runData.error || 'Unknown error'}`);
-    }
-
-    console.log(`[InitiativeSupervisor] Workflow started: ${runData.run_id}`);
-
+    const template = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
     return {
         success: true,
-        runId: runData.run_id,
-        summary: `Workflow template "${template.name}" started`,
-        data: { templateName: template.name, templateLevel: template.level }
+        summary: `Prepared "${template.name}" tasks for ${project.name}`,
+        data: { templateName: template.name }
     };
 }
 
@@ -428,15 +325,6 @@ async function createInitiativeTasks(options) {
             description += `\n\n**Target Project:** ${projectName}`;
         }
 
-        // Infer the best task-level template from the initiative workflow type
-        const templateMap = {
-            'security-sweep': 'nexus-prime',
-            'dependency-audit': 'nexus-prime',
-            'documentation': 'doc-writer',
-            'readme-update': 'doc-writer',
-        };
-        const inferredTemplate = templateMap[workflowType] || 'nexus-prime';
-
         // Create the task — same pattern as project-workflow-supervisor.js L321
         const task = await db.createTask({
             project_id: projectId,
@@ -444,7 +332,6 @@ async function createInitiativeTasks(options) {
             description,
             status: 'idea',
             source: `initiative:${initiativeId}:${workflowType}`,
-            langgraph_template: inferredTemplate,
             metadata: {
                 initiativeId,
                 workflowType,

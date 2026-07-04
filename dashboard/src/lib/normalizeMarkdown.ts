@@ -6,7 +6,7 @@
  * This utility inserts proper spacing so ReactMarkdown can render cleanly.
  *
  * Applied at the rendering boundary (frontend) so it acts as a universal
- * safety net regardless of content source (Cortex, LangGraph, manual edits).
+ * safety net regardless of content source (Cortex, automation, manual edits).
  */
 
 export function normalizeMarkdown(text: string | null | undefined): string {

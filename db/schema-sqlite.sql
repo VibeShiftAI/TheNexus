@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     metadata TEXT DEFAULT '{}',         -- JSON: general task metadata
     langgraph_template TEXT,           -- LangGraph workflow template ID
     langgraph_run_id TEXT,             -- Active LangGraph run ID
-    langgraph_status TEXT,             -- LangGraph execution status
+    langgraph_status TEXT,             -- Retained historical orchestration status; not live
     langgraph_node TEXT,               -- Current LangGraph node
     langgraph_started_at TEXT,         -- When LangGraph run started
     langgraph_updated_at TEXT,         -- When LangGraph run last updated

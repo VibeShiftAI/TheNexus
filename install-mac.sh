@@ -17,7 +17,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════════
 # 1. CHECK & INSTALL PREREQUISITES
 # ═══════════════════════════════════════════════════════════════
-echo "  [1/5] Checking prerequisites..."
+echo "  [1/4] Checking prerequisites..."
 echo ""
 
 # Detect platform
@@ -152,50 +152,6 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-# --- Python ---
-PYTHON_CMD=""
-if command -v python3 &>/dev/null; then
-    PYTHON_CMD="python3"
-elif command -v python &>/dev/null; then
-    PYTHON_CMD="python"
-fi
-
-NEED_PYTHON=false
-if [ -z "$PYTHON_CMD" ]; then
-    NEED_PYTHON=true
-else
-    PY_VER=$($PYTHON_CMD --version 2>&1 | awk '{print $2}')
-    PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
-    PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
-    if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 10 ]; }; then
-        echo "    ✗ python ${PY_VER} found, but 3.10+ is required"
-        NEED_PYTHON=true
-    else
-        echo "    ✓ python ${PY_VER}"
-    fi
-fi
-
-if $NEED_PYTHON; then
-    INSTALLED=false
-    if $HAS_BREW; then
-        if confirm "Install Python 3.12 via Homebrew?"; then
-            brew install python@3.12 && INSTALLED=true
-            PYTHON_CMD="python3"
-        fi
-    elif $IS_LINUX && $HAS_APT; then
-        if confirm "Install Python 3.12 via apt?"; then
-            sudo apt update -qq && sudo apt install -y python3 python3-venv python3-pip && INSTALLED=true
-            PYTHON_CMD="python3"
-        fi
-    fi
-    if $INSTALLED; then
-        echo "    ✓ Python installed successfully"
-    else
-        echo "      Install manually: https://www.python.org/downloads/"
-        ERRORS=$((ERRORS + 1))
-    fi
-fi
-
 echo ""
 
 if [ "$ERRORS" -gt 0 ]; then
@@ -212,7 +168,7 @@ echo ""
 # ═══════════════════════════════════════════════════════════════
 # 2. INSTALL NODE.JS DEPENDENCIES (root)
 # ═══════════════════════════════════════════════════════════════
-echo "  [2/5] Installing Node.js backend dependencies..."
+echo "  [2/4] Installing Node.js backend dependencies..."
 cd "$NEXUS_DIR"
 npm install
 echo "    ✓ Backend dependencies installed"
@@ -221,33 +177,16 @@ echo ""
 # ═══════════════════════════════════════════════════════════════
 # 3. INSTALL DASHBOARD DEPENDENCIES
 # ═══════════════════════════════════════════════════════════════
-echo "  [3/5] Installing Dashboard dependencies..."
+echo "  [3/4] Installing Dashboard dependencies..."
 cd "$NEXUS_DIR/dashboard"
 npm install
 echo "    ✓ Dashboard dependencies installed"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════
-# 4. SET UP PYTHON VIRTUAL ENVIRONMENT
+# 4. CREATE CONFIGURATION FILES
 # ═══════════════════════════════════════════════════════════════
-echo "  [4/5] Setting up Python environment..."
-cd "$NEXUS_DIR/nexus-builder"
-
-if [ ! -d "venv" ]; then
-    echo "    Creating virtual environment..."
-    $PYTHON_CMD -m venv venv
-fi
-
-echo "    Installing Python packages (this may take a minute)..."
-source venv/bin/activate
-pip install -r requirements.txt --quiet
-echo "    ✓ Python environment ready"
-echo ""
-
-# ═══════════════════════════════════════════════════════════════
-# 5. CREATE CONFIGURATION FILES
-# ═══════════════════════════════════════════════════════════════
-echo "  [5/5] Setting up configuration files..."
+echo "  [4/4] Setting up configuration files..."
 cd "$NEXUS_DIR"
 
 # Root .env
@@ -256,14 +195,6 @@ if [ ! -f ".env" ]; then
     echo "    ✓ Created .env (from .env.example)"
 else
     echo "    • .env already exists, skipping"
-fi
-
-# Python .env
-if [ ! -f "nexus-builder/.env" ]; then
-    cp nexus-builder/.env.example nexus-builder/.env
-    echo "    ✓ Created nexus-builder/.env (from .env.example)"
-else
-    echo "    • nexus-builder/.env already exists, skipping"
 fi
 
 # Startup script (shell)
@@ -308,7 +239,6 @@ echo "  ║                                                       ║"
 echo "  ║   URLs (after startup):                               ║"
 echo "  ║   - Dashboard:  http://localhost:3000                  ║"
 echo "  ║   - Node API:   http://localhost:4000                  ║"
-echo "  ║   - LangGraph:  http://localhost:8000                  ║"
 echo "  ║                                                       ║"
 echo "  ╚═══════════════════════════════════════════════════════╝"
 echo ""
