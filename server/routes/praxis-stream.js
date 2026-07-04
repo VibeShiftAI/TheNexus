@@ -302,6 +302,29 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
     // Shared voice-command grammar (classification lives with the agent).
     router.post('/voice-intent', (req, res) => proxyJson(req, res, '/api/voice/intent'));
 
+    // ── Status reports (themed HTML rendered by Praxis) ────────────
+    // Raw passthrough (not proxyJson — the payload is text/html). The chat
+    // [STATUS REPORT] card links to /api/praxis/report/<file>, which the
+    // dashboard's /api rewrite sends here; opening it in a new window
+    // serves the report through this relay.
+    async function proxyReportFile(res, praxisPath) {
+        try {
+            const response = await fetch(`${PRAXIS_URL}${praxisPath}`, { redirect: 'follow' });
+            res.status(response.status);
+            const type = response.headers.get('content-type');
+            if (type) res.set('Content-Type', type);
+            res.send(Buffer.from(await response.arrayBuffer()));
+        } catch (err) {
+            res.status(502).json({ error: err.message || 'Praxis unreachable' });
+        }
+    }
+    router.get('/report/latest', (req, res) => proxyReportFile(res, '/report/latest'));
+    router.get('/report/:file', (req, res) =>
+        proxyReportFile(res, `/reports/${encodeURIComponent(req.params.file)}`));
+    router.get('/reports', (req, res) => proxyJson(req, res, '/reports'));
+    // Manual trigger (mobile/remote surfaces without chat).
+    router.post('/status-report', (req, res) => proxyJson(req, res, '/status-report'));
+
     return router;
 }
 

@@ -1068,7 +1068,21 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                                         prose-table:text-xs prose-th:text-cyan-300 prose-th:bg-slate-900/40 prose-th:px-2 prose-th:py-1 prose-td:text-slate-200 prose-td:px-2 prose-td:py-1 prose-td:border-slate-700/50
                                         prose-hr:border-slate-700/50 prose-hr:my-3
                                     ">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
+                                            components={{
+                                                /* Links (e.g. [STATUS REPORT] cards) open in a new
+                                                   browser window — never navigate the bridge away. */
+                                                a: ({ node: _node, ...props }) => (
+                                                    <a
+                                                        {...props}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-cyan-400 underline decoration-cyan-500/50 underline-offset-2 hover:text-cyan-300"
+                                                    />
+                                                ),
+                                            }}
+                                        >
                                             {msg.content}
                                         </ReactMarkdown>
                                     </div>

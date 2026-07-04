@@ -7,19 +7,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "label": "main",
-        "title": "The Nexus",
-        "width": 1512,
-        "height": 945,
-        "minWidth": 900,
-        "minHeight": 600,
-        "resizable": true,
-        "fullscreen": false,
-        "theme": "Dark"
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }

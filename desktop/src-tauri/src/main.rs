@@ -17,7 +17,8 @@ use std::sync::Mutex;
 use tauri::{
     menu::{CheckMenuItem, MenuBuilder, MenuItem},
     tray::TrayIconBuilder,
-    Manager,
+    webview::NewWindowResponse,
+    Manager, WebviewUrl, WebviewWindowBuilder,
 };
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
@@ -96,6 +97,27 @@ fn main() {
         ))
         .manage(AwakeState(Mutex::new(None)))
         .setup(|app| {
+            // Main bridge window — built in code (not tauri.conf.json) so we
+            // can attach the new-window handler: target=_blank links (e.g.
+            // the [STATUS REPORT] cards in chat) open in the system default
+            // browser. Without a handler WKWebView's new-window request goes
+            // nowhere and the click is a silent no-op.
+            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+                .title("The Nexus")
+                .inner_size(1512.0, 945.0)
+                .min_inner_size(900.0, 600.0)
+                .theme(Some(tauri::Theme::Dark))
+                .on_new_window(|url, _features| {
+                    let scheme = url.scheme();
+                    if scheme == "http" || scheme == "https" {
+                        if let Err(err) = open::that(url.as_str()) {
+                            eprintln!("[nexus] could not open {url} in the browser: {err}");
+                        }
+                    }
+                    NewWindowResponse::Deny
+                })
+                .build()?;
+
             // Start on login — enable once; harmless if already enabled.
             let autostart = app.autolaunch();
             if let Ok(false) = autostart.is_enabled() {
