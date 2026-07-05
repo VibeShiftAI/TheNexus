@@ -96,7 +96,7 @@ async function researchProjectTasks(projectPath, projectId) {
         // Fetch existing tasks from DB for context
         const existingTasks = await db.getTasks(projectId);
         const plannedTasks = existingTasks.filter(f => ['todo', 'planning', 'building'].includes(f.status));
-        const completedTasks = existingTasks.filter(f => ['complete'].includes(f.status));
+        const completedTasks = existingTasks.filter(f => ['completed'].includes(f.status));
         const rejectedTasks = existingTasks.filter(f => ['rejected', 'cancelled'].includes(f.status));
 
         // Build the prompt with properly extracted metadata

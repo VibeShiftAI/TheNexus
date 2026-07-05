@@ -7,6 +7,24 @@ const express = require('express');
 const crypto = require('crypto');
 const { resolveModelAssignment, recordModelExecutionSnapshot } = require('../services/model-control');
 const { hasRealActivity } = require('../lib/task-activity');
+const { TaskBoardStatusSchema, normalizeTaskBoardStatus } = require('@praxis/contract');
+
+/**
+ * Canonical-status gate (2026-07-05 unification). Legacy synonyms
+ * (complete/done/ready/in-progress/…) normalize silently; anything unknown is
+ * a 400 so status drift can never re-enter the board through the API.
+ * Returns the canonical value, or null after sending the 400 response.
+ */
+function requireValidStatus(res, rawStatus) {
+    const canonical = normalizeTaskBoardStatus(rawStatus);
+    if (canonical === null) {
+        res.status(400).json({
+            error: `Invalid task status "${rawStatus}". Valid: ${TaskBoardStatusSchema.options.join(', ')}`,
+        });
+        return null;
+    }
+    return canonical;
+}
 
 function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, runDeepResearch, validateInitiativeRequest, pushService }) {
     const router = express.Router();
@@ -64,9 +82,14 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     router.post('/', async (req, res) => {
         const { project_id, title, status, priority, description, model_assignment } = req.body;
         if (!project_id || !title) return res.status(400).json({ error: 'project_id and title are required' });
+        let canonicalStatus = 'planning';
+        if (status !== undefined && status !== null) {
+            canonicalStatus = requireValidStatus(res, status);
+            if (canonicalStatus === null) return;
+        }
         try {
             const result = await db.createTask({
-                project_id, name: title, status: status || 'planning',
+                project_id, name: title, status: canonicalStatus,
                 priority: priority === 'high' ? 2 : 1, description: description || '',
                 model_assignment: model_assignment || null,
                 last_activity_at: new Date().toISOString()
@@ -88,7 +111,11 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             // Accept either `name` (db column) or `title` (UI/MCP term) to fix a task's title.
             if (name !== undefined) updates.name = name;
             else if (title !== undefined) updates.name = title;
-            if (status !== undefined) updates.status = status;
+            if (status !== undefined) {
+                const canonicalStatus = requireValidStatus(res, status);
+                if (canonicalStatus === null) return;
+                updates.status = canonicalStatus;
+            }
             if (research_output !== undefined) updates.research_output = research_output;
             if (plan_output !== undefined) updates.plan_output = plan_output;
             if (walkthrough !== undefined) updates.walkthrough = walkthrough;
@@ -125,6 +152,13 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const project = await db.getProject(project_id);
             if (!project) return res.status(404).json({ error: `Project '${project_id}' not found.` });
             const stableIdToRealId = new Map();
+            for (const task of tasks) {
+                if (task.status !== undefined && task.status !== null) {
+                    const canonicalStatus = requireValidStatus(res, task.status);
+                    if (canonicalStatus === null) return;
+                    task.status = canonicalStatus;
+                }
+            }
             const preparedTasks = tasks.map(task => {
                 const realId = crypto.randomUUID();
                 if (task.stable_id) stableIdToRealId.set(task.stable_id, realId);
@@ -385,9 +419,9 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 `Human answer: ${humanInput || '(no input provided)'}\n\n` +
                 `Continue the task with this guidance.`;
 
-            // Clear suspension metadata and set back to in-progress
+            // Clear suspension metadata and set back to in_progress
             await db.updateTask(taskId, {
-                status: 'in-progress',
+                status: 'in_progress',
                 suspended_at: null,
                 suspended_reason: null,
                 suspended_context: null,

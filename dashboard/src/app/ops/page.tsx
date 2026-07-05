@@ -7,11 +7,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, RotateCcw, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, RotateCcw, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
 import {
   DispatchStation,
   type DispatchStateResponse,
-  type DispatchHistoryRow,
+  type ExecutorRun,
+  type CronJob,
 } from "@/components/bridge/dispatch-station";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
 
@@ -35,14 +36,29 @@ function executorChip(name: string) {
   return map[name] ?? "border-slate-600 bg-slate-800/60 text-slate-300";
 }
 
-/** llm_calls history rows: dispatch.<executor> carries the task title in
- * `model`; agent-dispatch.<label> carries the run detail there, so the
- * label itself is the useful title. */
-function historyEntry(row: DispatchHistoryRow): { executor: string; title: string } {
-  if (row.caller.startsWith("agent-dispatch.")) {
-    return { executor: row.provider, title: `Agent: ${row.caller.slice("agent-dispatch.".length)}` };
-  }
-  return { executor: row.provider, title: row.model };
+/** Relative time for a FUTURE instant (next scheduled run). */
+function relFuture(iso?: string | null) {
+  if (!iso) return "";
+  const diffMs = new Date(iso).getTime() - Date.now();
+  if (diffMs <= 0) return "due";
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return `in ${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `in ${hours}h`;
+  return `in ${Math.floor(hours / 24)}d`;
+}
+
+/** Colour + label for a cron category chip. */
+function cronCategoryChip(category: CronJob["category"]) {
+  const map: Record<CronJob["category"], string> = {
+    system: "border-slate-600 bg-slate-800/60 text-slate-300",
+    morning: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+    market: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+    ingestion: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300",
+    content: "border-violet-500/40 bg-violet-500/10 text-violet-300",
+    lars: "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-300",
+  };
+  return map[category] ?? "border-slate-600 bg-slate-800/60 text-slate-300";
 }
 
 function statusChip(status: string) {
@@ -64,20 +80,10 @@ function statusChip(status: string) {
   return map[status] ?? "border-slate-600 bg-slate-800/60 text-slate-400";
 }
 
-/** A row in the unified dispatch log. `liveStatus` marks an item still in the
- * Antigravity queue (rendered as a status pill); otherwise it's a completed
- * history entry (rendered as a success/fail dot). Only queue-sourced rows carry
- * an `id`, so only they can be retried. */
-interface DispatchRow {
-  key: string;
-  id?: string;
-  executor: string;
-  title: string;
-  ts?: string;
-  liveStatus?: string;
-  ok?: boolean;
-  error?: string | null;
-  retryable: boolean;
+/** An Executor Runs row: a live/recent run, optionally carrying `retryId` when
+ * it maps to a failed Antigravity queue item that can be re-dispatched. */
+interface RunRow extends ExecutorRun {
+  retryId?: string;
 }
 
 export default function OpsConsolePage() {
@@ -122,6 +128,28 @@ export default function OpsConsolePage() {
 
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [togglingCron, setTogglingCron] = useState<string | null>(null);
+
+  const toggleCronJob = async (key: string, paused: boolean, label: string) => {
+    const action = paused ? "resume" : "pause";
+    setTogglingCron(key);
+    try {
+      const res = await fetch(`/api/praxis/cron/${encodeURIComponent(key)}/${action}`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      setActionMsg(
+        res.ok
+          ? `${label} ${action === "pause" ? "paused" : "resumed"}.`
+          : `${action} failed: ${data.error ?? res.status}`,
+      );
+      load();
+    } catch {
+      setActionMsg(`${action} failed — Praxis unreachable.`);
+    } finally {
+      setTogglingCron(null);
+    }
+  };
 
   const retryTask = async (id: string) => {
     setRetryingId(id);
@@ -163,44 +191,50 @@ export default function OpsConsolePage() {
     ...registryRuns,
     ...sseRuns.filter((s) => !registryRuns.some((r) => r.taskId === s.taskId)),
   ];
-  const history = state?.executors?.history ?? [];
-  const today = state?.executors?.dispatchedToday;
   const localJobs = state?.localLlm?.jobs ?? [];
   const localCounts = state?.localLlm?.counts ?? {};
   const localPaused = Boolean(state?.localLlm?.worker?.paused);
   const activeCount = (localCounts["running"] ?? 0) + (localCounts["queued"] ?? 0);
 
-  // Unified dispatch log: the live Antigravity queue (actionable — failed
-  // items keep the retry button, since only these rows carry a task id) merged
-  // with the persistent all-executor history from llm_calls. Live queue items
-  // lead; history follows, minus any Antigravity row a live queue item already
-  // represents so a dispatch isn't listed twice.
-  const queueTitles = new Set(queue.map((t) => t.title));
-  const dispatchRows: DispatchRow[] = [
-    ...queue.map((t) => ({
-      key: `q-${t.id}`,
-      id: t.id,
+  // Executor Runs rows: live/recent runs, augmented so failed Antigravity
+  // dispatches keep their retry button here (folded up from the old Dispatch
+  // Log). A failed queue item matches a failed run by title; any failed queue
+  // item not already shown as a run is appended as its own actionable row so a
+  // stuck dispatch is never lost.
+  const runTitles = new Set(runs.map((r) => r.title));
+  const failedQueue = queue.filter((t) => t.status === "failed");
+  const failedQueueByTitle = new Map(failedQueue.map((t) => [t.title, t] as const));
+  const runRows: RunRow[] = runs.map((r) =>
+    r.status === "failed" && failedQueueByTitle.has(r.title)
+      ? { ...r, retryId: failedQueueByTitle.get(r.title)!.id }
+      : r,
+  );
+  for (const t of failedQueue) {
+    if (runTitles.has(t.title)) continue;
+    runRows.push({
+      taskId: `queue-${t.id}`,
       executor: "antigravity",
       title: t.title,
-      ts: t.updatedAt,
-      liveStatus: t.status,
-      retryable: t.status === "failed",
-    })),
-    ...history
-      .map((row, i) => {
-        const entry = historyEntry(row);
-        return {
-          key: `h-${row.ts}-${i}`,
-          executor: entry.executor,
-          title: entry.title,
-          ts: row.ts,
-          ok: Boolean(row.success),
-          error: row.error ?? null,
-          retryable: false,
-        };
-      })
-      .filter((r) => !(r.executor === "antigravity" && queueTitles.has(r.title))),
-  ];
+      workspace: t.workspace,
+      kind: "task",
+      phase: "failed",
+      status: "failed",
+      startedAt: t.updatedAt,
+      updatedAt: t.updatedAt,
+      summary: t.error ?? undefined,
+      retryId: t.id,
+    });
+  }
+  // Live work first, then retryable failures, then everything else newest-first.
+  const runRank = (r: RunRow) => (r.status === "active" ? 0 : r.retryId ? 1 : 2);
+  runRows.sort(
+    (a, b) => runRank(a) - runRank(b) || (b.updatedAt || "").localeCompare(a.updatedAt || ""),
+  );
+  const activeRuns = runRows.filter((r) => r.status === "active").length;
+
+  // Scheduled jobs (cron) — the registry list from Praxis.
+  const cronJobs = state?.cron ?? [];
+  const cronPausedCount = cronJobs.filter((c) => c.paused).length;
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 pb-12">
@@ -290,16 +324,16 @@ export default function OpsConsolePage() {
           <h3 className="mb-3 text-sm font-bold tracking-tight text-white">
             EXECUTOR RUNS{" "}
             <span className="ml-1 text-xs font-normal text-slate-500">
-              ({runs.filter((r) => r.status === "active").length} active · all executors)
+              ({activeRuns} active · all executors · survives restarts)
             </span>
           </h3>
-          {runs.length === 0 ? (
+          {runRows.length === 0 ? (
             <div className="py-4 text-center text-xs text-slate-500">
-              No live runs since the last Praxis restart — the dispatch log below is the persistent record.
+              No dispatch or agent runs on record yet.
             </div>
           ) : (
             <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
-              {runs.map((r) => (
+              {runRows.map((r) => (
                 <div
                   key={r.taskId}
                   className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2"
@@ -323,6 +357,16 @@ export default function OpsConsolePage() {
                       {r.workspace.split("/").filter(Boolean).pop()}
                     </span>
                   )}
+                  {r.retryId && (
+                    <button
+                      onClick={() => retryTask(r.retryId!)}
+                      disabled={retryingId === r.retryId}
+                      className="flex shrink-0 items-center gap-1 rounded border border-cyan-500/40 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
+                      title="Re-queue this failed dispatch"
+                    >
+                      <RotateCcw size={10} className={retryingId === r.retryId ? "animate-spin" : ""} /> retry
+                    </button>
+                  )}
                   <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(r.updatedAt)}</span>
                 </div>
               ))}
@@ -330,67 +374,72 @@ export default function OpsConsolePage() {
           )}
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2 items-start">
-          {/* Dispatch log — the live Antigravity queue (with retry) merged with
-              the persistent all-executor history from llm_calls. */}
-          <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-            <h3 className="mb-3 text-sm font-bold tracking-tight text-white">
-              DISPATCH LOG{" "}
-              <span className="ml-1 text-xs font-normal text-slate-500">
-                ({today ? (
-                  <>
-                    {today.total} today
-                    {today.failed > 0 && <span className="text-red-400"> · {today.failed} failed</span>}
-                    {" · "}
-                  </>
-                ) : null}
-                {queue.length > 0 ? `${queue.length} queued · ` : ""}
-                all executors · survives restarts)
-              </span>
-            </h3>
-            {dispatchRows.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-500">No dispatches recorded.</div>
-            ) : (
-              <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
-                {dispatchRows.map((r) => (
-                  <div
-                    key={r.key}
-                    className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2"
-                  >
-                    <span className={`w-24 shrink-0 rounded border px-1.5 py-0.5 text-center text-[10px] uppercase ${executorChip(r.executor)}`}>
-                      {r.executor}
-                    </span>
-                    {r.liveStatus ? (
-                      <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] uppercase ${statusChip(r.liveStatus)}`}>
-                        {r.liveStatus}
+        {/* Scheduled jobs — every cron in the system, viewable at once, each
+            pausable/resumable (durably — survives restarts). */}
+        <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-bold tracking-tight text-white">
+            <Clock size={14} className="text-cyan-400" />
+            SCHEDULED JOBS{" "}
+            <span className="text-xs font-normal text-slate-500">
+              ({cronJobs.length} job{cronJobs.length === 1 ? "" : "s"}
+              {cronPausedCount > 0 ? <span className="text-amber-400"> · {cronPausedCount} paused</span> : null})
+            </span>
+          </h3>
+          {cronJobs.length === 0 ? (
+            <div className="py-4 text-center text-xs text-slate-500">
+              No scheduled jobs registered — is Praxis running?
+            </div>
+          ) : (
+            <div className="grid gap-1.5 md:grid-cols-2">
+              {cronJobs.map((c) => (
+                <div
+                  key={c.key}
+                  className={`flex items-center gap-3 rounded border px-3 py-2 ${
+                    c.paused ? "border-amber-500/30 bg-amber-500/5" : "border-slate-800/60 bg-slate-950/40"
+                  }`}
+                >
+                  <span className={`w-20 shrink-0 rounded border px-1.5 py-0.5 text-center text-[10px] uppercase ${cronCategoryChip(c.category)}`}>
+                    {c.category}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`truncate text-xs ${c.paused ? "text-slate-400" : "text-slate-200"}`} title={c.description}>
+                        {c.label}
                       </span>
-                    ) : (
-                      <span
-                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${r.ok ? "bg-emerald-400" : "bg-red-400"}`}
-                        title={r.ok ? "dispatched" : r.error ?? "dispatch failed"}
-                      />
-                    )}
-                    <span className="min-w-0 flex-1 truncate text-xs text-slate-300" title={r.error ?? r.title}>
-                      {r.title}
-                    </span>
-                    {r.retryable && r.id && (
-                      <button
-                        onClick={() => retryTask(r.id!)}
-                        disabled={retryingId === r.id}
-                        className="flex shrink-0 items-center gap-1 rounded border border-cyan-500/40 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
-                        title="Re-queue for dispatch"
-                      >
-                        <RotateCcw size={10} className={retryingId === r.id ? "animate-spin" : ""} /> retry
-                      </button>
-                    )}
-                    <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(r.ts)}</span>
+                      {c.lastError && (
+                        <AlertTriangle size={11} className="shrink-0 text-red-400" aria-label="last run errored" />
+                      )}
+                    </div>
+                    <div className="truncate text-[10px] text-slate-500">
+                      {c.cadence}
+                      {!c.paused && c.nextRun ? ` · next ${relFuture(c.nextRun)}` : ""}
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  {c.paused && (
+                    <span className="shrink-0 rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] uppercase text-amber-300">
+                      paused
+                    </span>
+                  )}
+                  <button
+                    onClick={() => toggleCronJob(c.key, c.paused, c.label)}
+                    disabled={togglingCron === c.key}
+                    className={`flex w-[68px] shrink-0 items-center justify-center gap-1 rounded border px-1.5 py-0.5 text-[10px] transition-all disabled:opacity-50 ${
+                      c.paused
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                        : "border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                    }`}
+                    title={c.paused ? "Resume this job" : "Pause this job"}
+                  >
+                    {c.paused ? <PlayCircle size={11} /> : <PauseCircle size={11} />}
+                    {c.paused ? "resume" : "pause"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-          {/* Local LLM queue */}
+        {/* Local LLM queue */}
           <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold tracking-tight text-white">
@@ -437,7 +486,6 @@ export default function OpsConsolePage() {
               </div>
             )}
           </div>
-        </div>
       </div>
     </main>
   );

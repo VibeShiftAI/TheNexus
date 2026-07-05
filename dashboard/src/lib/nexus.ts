@@ -345,7 +345,7 @@ export async function rejectResearch(projectId: string, taskId: string, feedback
 export async function approveWalkthrough(projectId: string, taskId: string, feedback?: string): Promise<{ success: boolean; task: Task; commitHash?: string }> {
     // Step 1: Update task status to complete
     const updateResult = await updateTask(projectId, taskId, {
-        status: 'complete' as TaskStatus
+        status: 'completed' as TaskStatus
     });
 
     if (!updateResult.success) {
@@ -452,7 +452,7 @@ export async function generateCommitMessage(id: string, taskId?: string): Promis
 // ═══════════════════════════════════════════════════════════════
 
 /** Standard task lifecycle stages. Projects may define additional ad-hoc stages. */
-export const STANDARD_STATUSES = ['idea', 'todo', 'planning', 'building', 'testing', 'ready_for_review', 'complete', 'rejected', 'cancelled'] as const;
+export const STANDARD_STATUSES = ['idea', 'planning', 'todo', 'scheduled', 'dispatched', 'in_progress', 'needs_input', 'blocked', 'ready_for_review', 'review', 'completed', 'failed', 'cancelled', 'archived'] as const;
 export type StandardTaskStatus = typeof STANDARD_STATUSES[number];
 
 /** TaskStatus accepts any string — the standard stages above are defaults, but projects can use custom stages ad-hoc. */

@@ -53,7 +53,7 @@ export function buildClaudeDispatchBrief(
     lines.push("```bash");
     lines.push(`curl -X PATCH http://localhost:4000/api/tasks/${task.id} \\`);
     lines.push(`  -H "Content-Type: application/json" \\`);
-    lines.push(`  -d '{"status": "complete", "status_message": "Completed manually via Claude dispatch"}'`);
+    lines.push(`  -d '{"status": "completed", "status_message": "Completed manually via Claude dispatch"}'`);
     lines.push("```");
     return lines.join("\n");
 }

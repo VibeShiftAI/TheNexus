@@ -15,7 +15,7 @@ export function TaskArchive({ projectId, tasks, onTasksChange, onTaskSelect }: T
     const [isExpanded, setIsExpanded] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-    const completedTasks = tasks.filter(t => t.status === 'complete');
+    const completedTasks = tasks.filter(t => t.status === 'completed');
     const rejectedTasks = tasks.filter(t => t.status === 'rejected');
     const cancelledTasks = tasks.filter(t => t.status === 'cancelled');
     const totalArchived = completedTasks.length + rejectedTasks.length + cancelledTasks.length;

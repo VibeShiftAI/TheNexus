@@ -242,7 +242,7 @@ server.tool(
             try {
                 const tasks = await db.getTasks(project.id);
                 const activeTasks = (tasks || []).filter(t =>
-                    ['building', 'testing', 'ready_for_review', 'complete'].includes(t.status)
+                    ['in_progress', 'ready_for_review', 'review', 'completed'].includes(t.status)
                 );
                 const missingWalkthrough = activeTasks.filter(t => !t.walkthrough);
 
@@ -325,9 +325,11 @@ server.tool(
 // EXECUTIVE PLANNING TOOLS (Phase 1: Dual-Payload Task Management)
 // ============================================================================
 
-// Standard task statuses — any string is accepted, but these are the defaults
+// Canonical task statuses (@praxis/contract TaskBoardStatusSchema, 2026-07-05).
+// The API normalizes legacy synonyms and rejects anything else.
 const STANDARD_TASK_STATUSES = [
-    'idea', 'todo', 'planning', 'building', 'testing', 'ready_for_review', 'complete', 'rejected', 'cancelled'
+    'idea', 'planning', 'todo', 'scheduled', 'dispatched', 'in_progress', 'needs_input',
+    'blocked', 'ready_for_review', 'review', 'completed', 'failed', 'cancelled', 'archived'
 ];
 
 /**

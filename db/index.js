@@ -11,6 +11,27 @@ const Database = require('better-sqlite3');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
+const { normalizeTaskBoardStatus } = require('@praxis/contract');
+
+/**
+ * Write-side backstop for the canonical task-status enum (@praxis/contract
+ * TaskBoardStatusSchema, unified 2026-07-05). Every task write funnels
+ * through here: legacy synonyms (complete/done/ready/in-progress/…) are
+ * silently normalized so mixed-version writers can never re-fragment the
+ * board; genuinely unknown values are logged and passed through unchanged
+ * (the API layer rejects them with a 400 — this backstop must not turn a
+ * direct db-layer call into silent data loss).
+ */
+function normalizeTaskStatusField(task, context) {
+    if (!task || task.status === undefined || task.status === null) return task;
+    const canonical = normalizeTaskBoardStatus(task.status);
+    if (canonical === null) {
+        console.warn(`[Database] Unknown task status "${task.status}" in ${context} — storing as-is (API validation should have caught this)`);
+        return task;
+    }
+    if (canonical !== task.status) task.status = canonical;
+    return task;
+}
 
 // ---------------------------------------------------------------------------
 // Database initialisation
@@ -32,6 +53,23 @@ try {
     }
 
     runModelControlMigrations(db);
+
+    // Canonical-status sweep (2026-07-05 unification): idempotent, runs every
+    // boot. Writers normalize at createTask/updateTask, but a process still on
+    // pre-unification code can slip a legacy synonym in — this heals it on the
+    // next restart instead of letting the board re-fragment.
+    try {
+        const legacyMap = require('@praxis/contract').LEGACY_TASK_STATUS_MAP;
+        let healed = 0;
+        for (const [legacy, canonical] of Object.entries(legacyMap)) {
+            for (const col of ['status', 'pre_archive_status']) {
+                healed += db.prepare(`UPDATE tasks SET ${col} = ? WHERE lower(trim(${col})) = ?`).run(canonical, legacy).changes;
+            }
+        }
+        if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+    } catch (err) {
+        console.warn('[Database] Canonical-status sweep skipped:', err.message);
+    }
 
     // Migration: add 'source' column to usage_stats for per-caller tracking
     try {
@@ -680,6 +718,7 @@ async function createTask(task) {
         if (!task.id) task.id = uuid();
         if (!task.created_at) task.created_at = now();
         task.updated_at = now();
+        normalizeTaskStatusField(task, 'createTask');
         const { sql, values } = buildInsert('tasks', task);
         db.prepare(sql).run(...values);
         return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(task.id));
@@ -692,7 +731,8 @@ async function createTask(task) {
 async function updateTask(taskId, updates) {
     if (!db) return null;
     try {
-        const { sql, values } = buildUpdate('tasks', { ...updates }, 'id', taskId);
+        const normalized = normalizeTaskStatusField({ ...updates }, 'updateTask');
+        const { sql, values } = buildUpdate('tasks', normalized, 'id', taskId);
         db.prepare(sql).run(...values);
         return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId));
     } catch (err) {
@@ -734,6 +774,7 @@ async function batchCreateTasks(tasks) {
                 if (!task.id) task.id = uuid();
                 if (!task.created_at) task.created_at = now();
                 task.updated_at = now();
+                normalizeTaskStatusField(task, 'batchCreateTasks');
 
                 // Serialize JSON fields for storage
                 if (task.antigravity_payload && typeof task.antigravity_payload === 'object') {

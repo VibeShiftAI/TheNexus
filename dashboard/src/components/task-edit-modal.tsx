@@ -18,16 +18,19 @@ import type { BoardTask } from "@/lib/task-board";
 /** Status options offered in the editor. Values map onto the board lanes in lib/task-board.ts. */
 export const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "idea", label: "Idea / New" },
-  { value: "todo", label: "To Do" },
   { value: "planning", label: "Planning" },
-  { value: "building", label: "Building" },
+  { value: "todo", label: "To Do" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "dispatched", label: "Dispatched" },
   { value: "in_progress", label: "In Progress" },
-  { value: "testing", label: "Testing" },
-  { value: "ready_for_review", label: "Ready for Review" },
+  { value: "needs_input", label: "Needs Input" },
   { value: "blocked", label: "Blocked" },
-  { value: "complete", label: "Complete" },
-  { value: "rejected", label: "Rejected" },
+  { value: "ready_for_review", label: "Ready for Review" },
+  { value: "review", label: "In Review" },
+  { value: "completed", label: "Completed" },
+  { value: "failed", label: "Failed" },
   { value: "cancelled", label: "Cancelled" },
+  { value: "archived", label: "Archived" },
 ];
 
 const PRIORITY_OPTIONS: { value: number; label: string }[] = [

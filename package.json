@@ -21,6 +21,7 @@
     "@google/genai": "^1.34.0",
     "@modelcontextprotocol/sdk": "^1.24.3",
     "@napi-rs/canvas": "^0.1.97",
+    "@praxis/contract": "file:../nexus-shared",
     "better-sqlite3": "^12.6.2",
     "chokidar": "^5.0.0",
     "claude": "^0.1.1",

@@ -110,8 +110,8 @@ export const DEFAULT_VISIBLE_LANE_IDS: BoardLaneId[] = BOARD_LANES
   .filter((id) => !DEFAULT_HIDDEN_LANE_IDS.includes(id));
 
 const NEW_STATUSES = new Set(["idea", "planning"]);
-const ACTIVE_STATUSES = new Set(["building", "in_progress", "review", "implementing", "researching", "scheduled"]);
-const ATTENTION_STATUSES = new Set(["blocked", "suspended", "failed", "awaiting_approval", "rejected"]);
+const ACTIVE_STATUSES = new Set(["building", "in_progress", "review", "implementing", "researching", "scheduled", "dispatched", "ready_for_review"]);
+const ATTENTION_STATUSES = new Set(["blocked", "suspended", "failed", "awaiting_approval", "rejected", "needs_input"]);
 const COMPLETE_STATUSES = new Set(["done", "complete", "completed"]);
 const CANCELLED_STATUSES = new Set(["cancelled", "canceled"]);
 const ARCHIVED_STATUSES = new Set(["archived"]);

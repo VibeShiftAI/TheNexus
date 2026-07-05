@@ -30,7 +30,7 @@ const statusActions: Record<string, { action: string; nextStatus: string }[]> = 
     planning: [],
     building: [],
     testing: [
-        { action: 'Approve & Commit', nextStatus: 'complete' },
+        { action: 'Approve & Commit', nextStatus: 'completed' },
         { action: 'Revise & Advise', nextStatus: 'building' },
         { action: 'Cancel & Undo', nextStatus: 'cancelled' }
     ],
@@ -270,7 +270,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
 
     const handleCompleteTask = async () => {
         try {
-            await updateTask(projectId, task.id, { status: 'complete' });
+            await updateTask(projectId, task.id, { status: 'completed' });
 
             // Stop any active polling
             if (pollIntervalRef.current) {
@@ -402,7 +402,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                 {/* Action Buttons based on Status */}
                 <div className="flex items-center gap-3">
                     {/* Add Restart Option for Cancelled/Rejected/Complete tasks */}
-                    {(task.status === 'cancelled' || task.status === 'rejected' || task.status === 'complete') && (
+                    {(task.status === 'cancelled' || task.status === 'failed' || task.status === 'completed') && (
                         <button
                             onClick={handleRestartTask}
                             className="px-4 py-2 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300 transition-colors flex items-center gap-2"
@@ -689,7 +689,7 @@ export function TaskDetailModal({ projectId, task, onClose, onTaskChange, initia
                                 >
                                     <Trash2 size={16} /> Cancel Task
                                 </button>
-                                {task.status !== 'complete' && task.status !== 'cancelled' && (
+                                {task.status !== 'completed' && task.status !== 'cancelled' && (
                                     <button
                                         onClick={() => setShowCompleteConfirm(true)}
                                         className="text-slate-500 hover:text-emerald-400 text-sm transition-colors flex items-center gap-2"

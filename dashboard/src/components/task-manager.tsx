@@ -185,7 +185,7 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
 
     // Filter out completed/archived tasks - they appear in the TaskArchive component instead
     const activeTasks = tasks.filter(task =>
-        task.status !== 'complete' &&
+        task.status !== 'completed' &&
         task.status !== 'rejected' &&
         task.status !== 'cancelled'
     );

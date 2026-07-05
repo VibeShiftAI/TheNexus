@@ -63,14 +63,31 @@ export interface DispatchHistoryRow {
   error?: string | null;
 }
 
+/** A scheduled job (cron), from the Praxis cron registry. */
+export interface CronJob {
+  key: string;
+  label: string;
+  description: string;
+  category: "system" | "morning" | "market" | "ingestion" | "content" | "lars";
+  cadence: string;
+  schedule: string;
+  timezone: string;
+  paused: boolean;
+  running: boolean;
+  nextRun: string | null;
+  lastRun: string | null;
+  lastError: string | null;
+}
+
 export interface DispatchStateResponse {
   antigravity?: {
     bridge?: { status?: string; activeTasks?: number } | null;
     active?: number;
     pending?: number;
-    queue?: { id: string; title: string; status: string; updatedAt: string }[];
+    queue?: { id: string; title: string; status: string; updatedAt: string; nexusTaskId?: string; error?: string | null; workspace?: string }[];
   };
   dispatchLog?: { id: string; title: string; status: string; dispatchedAt: string }[];
+  cron?: CronJob[];
   executors?: {
     runs?: ExecutorRun[];
     history?: DispatchHistoryRow[];

@@ -389,7 +389,7 @@ async function checkStageCompletion(workflow) {
     }
 
     // Check if all tasks are complete (or rejected/cancelled)
-    const terminalStatuses = ['complete', 'rejected', 'cancelled'];
+    const terminalStatuses = ['completed', 'failed', 'cancelled', 'archived'];
     const allComplete = taskStatuses.every(t => terminalStatuses.includes(t.status));
 
     return {
@@ -397,7 +397,7 @@ async function checkStageCompletion(workflow) {
         tasks: taskStatuses,
         summary: {
             total: taskStatuses.length,
-            complete: taskStatuses.filter(t => t.status === 'complete').length,
+            complete: taskStatuses.filter(t => t.status === 'completed').length,
             inProgress: taskStatuses.filter(t => !terminalStatuses.includes(t.status)).length
         }
     };

@@ -53,7 +53,7 @@ export function TaskStatusTiles({ stats, className = "" }: TaskStatusTilesProps)
                 />
                 <StatusCard
                     label="Done"
-                    count={stats['complete'] || 0}
+                    count={(stats['completed'] || 0) + (stats['complete'] || 0)}
                     icon={CheckCircle}
                     color="text-emerald-400"
                     bg="bg-emerald-400/10"
