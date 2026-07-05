@@ -85,7 +85,8 @@ export interface GraphHealth {
     entity_entity_edges: number;
     promoted_edges: number;
     avg_entity_degree: number;
-    orphan_entities: number;
+    /** Entity-entity degree ≤ 1 (orphans and leaves) — renamed from orphan_entities 2026-07-05. */
+    leaf_entities: number;
     communities: number;
     communities_summarized: number;
     computed_at: string;
