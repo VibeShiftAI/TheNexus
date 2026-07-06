@@ -44,7 +44,12 @@ function createIngestRouter({ db }) {
             const noteId = note?.id;
 
             fetch(`${CORTEX_GATEWAY_URL}/api/memory/ingest`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Gateway auth (2026-07-06) — protected routes require the key.
+                    ...(process.env.CORTEX_GATEWAY_KEY ? { 'X-Gateway-Key': process.env.CORTEX_GATEWAY_KEY } : {})
+                },
                 body: JSON.stringify({ text: cortexText, source: sourceUrl || 'nexus-ingest', namespace: 'praxis', use_extraction: true }),
                 signal: AbortSignal.timeout(180_000),
             })

@@ -130,8 +130,14 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
     router.get('/options', async (req, res) => {
         try {
             const projectId = req.query.projectId || null;
+            // THE canonical model registry payload (full db rows — unlike
+            // /api/models, which returns only the discovery service's
+            // "latest" subset). Rows expose both api_model_id (db column)
+            // and apiModelId (camelCase alias) so consumers don't need the
+            // snake/camel fallback dance.
+            const registryModels = (await db.getModels(true)).map(m => ({ ...m, apiModelId: m.api_model_id }));
             res.json({
-                models: await db.getModels(true),
+                models: registryModels,
                 aliases: await db.getModelAliases(true),
                 projectAliases: projectId ? await db.getProjectModelAliases(projectId) : [],
                 localOnly: await db.getModelControlSetting('local_only'),

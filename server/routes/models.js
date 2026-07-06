@@ -12,6 +12,9 @@ function createModelsRouter({ db, getModels }) {
     const router = express.Router();
 
     // GET /api/models - List all available models (from discovery service)
+    // NOTE: this is the discovery service's "latest models" SUBSET (camelCase
+    // fields, omits inactive/local registry rows). The canonical full
+    // registry lives at GET /api/model-control/options → models.
     router.get('/', (req, res) => {
         const models = getModels();
         res.json({ models });
