@@ -5,7 +5,9 @@ import {
   BOARD_LANES,
   filterBoardTasks,
   groupBoardTasks,
+  sortBoardTasks,
   type BoardProject,
+  type BoardTask,
 } from "../task-board";
 
 const projects: BoardProject[] = [
@@ -52,4 +54,22 @@ test("filterBoardTasks filters by project, lane, and search text", () => {
   assert.equal(filterBoardTasks(grouped.ready.tasks, { projectId: "project-a", laneId: "ready", query: "ready" }).length, 1);
   assert.equal(filterBoardTasks(grouped.ready.tasks, { projectId: "project-b", laneId: "ready", query: "" }).length, 0);
   assert.equal(filterBoardTasks(grouped.in_progress.tasks, { projectId: "all", laneId: "all", query: "beta codex" }).length, 1);
+});
+
+test("sortBoardTasks orders a lane by the selected key without mutating input", () => {
+  const tasks: BoardTask[] = [
+    { id: "a", title: "Beta", priority: 1, updated_at: "2026-04-26T10:00:00.000Z" },
+    { id: "b", title: "Alpha", priority: 3, updated_at: "2026-04-26T09:00:00.000Z" },
+    { id: "c", title: "Gamma", priority: 2, updated_at: "2026-04-26T11:00:00.000Z" },
+  ];
+  const originalOrder = tasks.map((task) => task.id).join(",");
+
+  assert.equal(sortBoardTasks(tasks, "priority").map((task) => task.id).join(","), "b,c,a");
+  assert.equal(sortBoardTasks(tasks, "recent").map((task) => task.id).join(","), "c,a,b");
+  assert.equal(sortBoardTasks(tasks, "oldest").map((task) => task.id).join(","), "b,a,c");
+  assert.equal(sortBoardTasks(tasks, "title").map((task) => task.id).join(","), "b,a,c");
+  // priority is the default when no key is passed.
+  assert.equal(sortBoardTasks(tasks).map((task) => task.id).join(","), "b,c,a");
+  // Pure: the caller's array order is untouched.
+  assert.equal(tasks.map((task) => task.id).join(","), originalOrder);
 });

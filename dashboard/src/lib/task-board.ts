@@ -57,6 +57,25 @@ export interface BoardTaskFilters {
   query: string;
 }
 
+// How the tasks inside a single lane column are ordered. Each column carries
+// its own sort key so the operator can, say, sort "In Progress" by recency
+// while keeping "Ready" priority-first.
+export type BoardSortKey = "priority" | "recent" | "oldest" | "title";
+
+export interface BoardSortOption {
+  value: BoardSortKey;
+  label: string;
+}
+
+export const BOARD_SORT_OPTIONS: BoardSortOption[] = [
+  { value: "priority", label: "Priority" },
+  { value: "recent", label: "Recently updated" },
+  { value: "oldest", label: "Oldest updated" },
+  { value: "title", label: "Title A–Z" },
+];
+
+export const DEFAULT_BOARD_SORT: BoardSortKey = "priority";
+
 export const BOARD_LANES: BoardLaneDefinition[] = [
   {
     id: "new",
@@ -156,15 +175,43 @@ export function groupBoardTasks(projects: BoardProject[]): Record<BoardLaneId, B
   }
 
   for (const lane of Object.values(grouped)) {
-    lane.tasks.sort((a, b) => {
-      const priorityA = Number(a.priority ?? 0);
-      const priorityB = Number(b.priority ?? 0);
-      if (priorityA !== priorityB) return priorityB - priorityA;
-      return getTaskTime(b) - getTaskTime(a);
-    });
+    lane.tasks = sortBoardTasks(lane.tasks, DEFAULT_BOARD_SORT);
   }
 
   return grouped;
+}
+
+function boardTaskTitle(task: BoardTask): string {
+  return (task.title || task.name || "").toLowerCase();
+}
+
+// Return a new array of `tasks` ordered by `sortKey`. Pure — never mutates the
+// input, so it is safe to call inside a render/useMemo pass.
+export function sortBoardTasks(tasks: BoardTask[], sortKey: BoardSortKey = DEFAULT_BOARD_SORT): BoardTask[] {
+  const sorted = [...tasks];
+
+  switch (sortKey) {
+    case "recent":
+      sorted.sort((a, b) => getTaskTime(b) - getTaskTime(a));
+      break;
+    case "oldest":
+      sorted.sort((a, b) => getTaskTime(a) - getTaskTime(b));
+      break;
+    case "title":
+      sorted.sort((a, b) => boardTaskTitle(a).localeCompare(boardTaskTitle(b)));
+      break;
+    case "priority":
+    default:
+      sorted.sort((a, b) => {
+        const priorityA = Number(a.priority ?? 0);
+        const priorityB = Number(b.priority ?? 0);
+        if (priorityA !== priorityB) return priorityB - priorityA;
+        return getTaskTime(b) - getTaskTime(a);
+      });
+      break;
+  }
+
+  return sorted;
 }
 
 export function filterBoardTasks(tasks: BoardTask[], filters: BoardTaskFilters): BoardTask[] {

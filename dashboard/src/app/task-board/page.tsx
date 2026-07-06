@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
+  ArrowUpDown,
   Check,
   ChevronDown,
   CircleDot,
@@ -22,19 +23,34 @@ import { getBoardState, updateTask } from "@/lib/nexus";
 import { TaskEditModal, STATUS_OPTIONS } from "@/components/task-edit-modal";
 import {
   BOARD_LANES,
+  BOARD_SORT_OPTIONS,
+  DEFAULT_BOARD_SORT,
   DEFAULT_VISIBLE_LANE_IDS,
   filterBoardTasks,
   formatBoardTime,
   groupBoardTasks,
+  sortBoardTasks,
   type BoardLane,
   type BoardLaneId,
   type BoardProject,
+  type BoardSortKey,
   type BoardTask,
 } from "@/lib/task-board";
 
 const POLL_MS = 12_000;
 const VISIBLE_LANES_STORAGE_KEY = "nexus.taskBoard.visibleLanes";
+const LANE_SORT_STORAGE_KEY = "nexus.taskBoard.laneSort";
 const KNOWN_LANE_IDS = new Set<BoardLaneId>(BOARD_LANES.map((lane) => lane.id));
+const KNOWN_SORT_KEYS = new Set<BoardSortKey>(BOARD_SORT_OPTIONS.map((option) => option.value));
+
+type LaneSortMap = Record<BoardLaneId, BoardSortKey>;
+
+function defaultLaneSort(): LaneSortMap {
+  return BOARD_LANES.reduce((acc, lane) => {
+    acc[lane.id] = DEFAULT_BOARD_SORT;
+    return acc;
+  }, {} as LaneSortMap);
+}
 
 function readStoredVisibleLanes(): Set<BoardLaneId> | null {
   try {
@@ -44,6 +60,25 @@ function readStoredVisibleLanes(): Set<BoardLaneId> | null {
     if (!Array.isArray(parsed)) return null;
     const valid = parsed.filter((id): id is BoardLaneId => KNOWN_LANE_IDS.has(id));
     return new Set(valid);
+  } catch {
+    return null;
+  }
+}
+
+function readStoredLaneSort(): LaneSortMap | null {
+  try {
+    const raw = window.localStorage.getItem(LANE_SORT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    const next = defaultLaneSort();
+    for (const lane of BOARD_LANES) {
+      const value = (parsed as Record<string, unknown>)[lane.id];
+      if (typeof value === "string" && KNOWN_SORT_KEYS.has(value as BoardSortKey)) {
+        next[lane.id] = value as BoardSortKey;
+      }
+    }
+    return next;
   } catch {
     return null;
   }
@@ -59,6 +94,7 @@ export default function TaskBoardPage() {
   const [visibleLaneIds, setVisibleLaneIds] = useState<Set<BoardLaneId>>(
     () => new Set(DEFAULT_VISIBLE_LANE_IDS),
   );
+  const [laneSort, setLaneSort] = useState<LaneSortMap>(() => defaultLaneSort());
   const [editingTask, setEditingTask] = useState<BoardTask | null>(null);
 
   const toggleLane = useCallback((id: BoardLaneId) => {
@@ -71,6 +107,10 @@ export default function TaskBoardPage() {
       }
       return next;
     });
+  }, []);
+
+  const setLaneSortKey = useCallback((laneId: BoardLaneId, sortKey: BoardSortKey) => {
+    setLaneSort((prev) => ({ ...prev, [laneId]: sortKey }));
   }, []);
 
   // Restore the operator's saved lane selection on mount, then persist any
@@ -92,6 +132,24 @@ export default function TaskBoardPage() {
       // Storage unavailable (private mode / quota); board still works in-session.
     }
   }, [visibleLaneIds]);
+
+  // Same restore-then-persist dance for each column's sort choice.
+  const didHydrateSortRef = useRef(false);
+  useEffect(() => {
+    const stored = readStoredLaneSort();
+    if (stored) setLaneSort(stored);
+  }, []);
+  useEffect(() => {
+    if (!didHydrateSortRef.current) {
+      didHydrateSortRef.current = true;
+      return;
+    }
+    try {
+      window.localStorage.setItem(LANE_SORT_STORAGE_KEY, JSON.stringify(laneSort));
+    } catch {
+      // Storage unavailable; sort still applies in-session.
+    }
+  }, [laneSort]);
 
   const loadBoard = useCallback(async (mode: "initial" | "refresh" = "refresh") => {
     if (mode === "initial") {
@@ -122,11 +180,14 @@ export default function TaskBoardPage() {
   const visibleLanes = useMemo(() => {
     return BOARD_LANES
       .filter((lane) => visibleLaneIds.has(lane.id))
-      .map((lane) => ({
-        ...grouped[lane.id],
-        tasks: filterBoardTasks(grouped[lane.id].tasks, { projectId, laneId: "all", query }),
-      }));
-  }, [grouped, visibleLaneIds, projectId, query]);
+      .map((lane) => {
+        const tasks = filterBoardTasks(grouped[lane.id].tasks, { projectId, laneId: "all", query });
+        return {
+          ...grouped[lane.id],
+          tasks: sortBoardTasks(tasks, laneSort[lane.id]),
+        };
+      });
+  }, [grouped, visibleLaneIds, projectId, query, laneSort]);
 
   const totalTasks = useMemo(() => Object.values(grouped).reduce((sum, lane) => sum + lane.tasks.length, 0), [grouped]);
   const visibleTasks = useMemo(() => visibleLanes.reduce((sum, lane) => sum + lane.tasks.length, 0), [visibleLanes]);
@@ -266,6 +327,8 @@ export default function TaskBoardPage() {
               <LaneColumn
                 key={lane.id}
                 lane={lane}
+                sortKey={laneSort[lane.id]}
+                onSortChange={(sortKey) => setLaneSortKey(lane.id, sortKey)}
                 onManage={setEditingTask}
                 onQuickStatus={handleQuickStatus}
               />
@@ -375,12 +438,48 @@ function LaneFilterMenu({
   );
 }
 
+// Compact per-column sort picker. A native <select> keeps it accessible and
+// gives a real picker on mobile / touch without extra popover plumbing.
+function LaneSortControl({
+  lane,
+  sortKey,
+  onSortChange,
+}: {
+  lane: BoardLane;
+  sortKey: BoardSortKey;
+  onSortChange: (sortKey: BoardSortKey) => void;
+}) {
+  return (
+    <label className="relative mt-2 block">
+      <ArrowUpDown className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" size={12} />
+      <select
+        value={sortKey}
+        onChange={(event) => onSortChange(event.target.value as BoardSortKey)}
+        className="h-7 w-full appearance-none rounded-md border border-slate-800 bg-slate-900 pl-7 pr-6 text-xs text-slate-300 outline-none transition-colors hover:border-cyan-500/40 focus:border-cyan-500/60"
+        aria-label={`Sort ${lane.title} column`}
+        title="Sort this column"
+      >
+        {BOARD_SORT_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            Sort: {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500" size={12} />
+    </label>
+  );
+}
+
 function LaneColumn({
   lane,
+  sortKey,
+  onSortChange,
   onManage,
   onQuickStatus,
 }: {
   lane: BoardLane;
+  sortKey: BoardSortKey;
+  onSortChange: (sortKey: BoardSortKey) => void;
   onManage: (task: BoardTask) => void;
   onQuickStatus: (task: BoardTask, nextStatus: string) => void;
 }) {
@@ -394,6 +493,7 @@ function LaneColumn({
           </span>
         </div>
         <p className="mt-1 min-h-8 text-xs normal-case text-slate-500">{lane.description}</p>
+        <LaneSortControl lane={lane} sortKey={sortKey} onSortChange={onSortChange} />
       </div>
 
       <div className="space-y-3 p-3">
