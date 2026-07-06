@@ -136,8 +136,6 @@ import type { BoardProject } from './task-board';
 
 const API_URL = '/api/projects';
 
-const MEMORY_API = '/api/memory';
-
 // Helper for authenticated fetch
 async function authFetch(url: string, options: RequestInit = {}) {
     const headers = await getAuthHeader();
@@ -1082,122 +1080,6 @@ export async function getSupervisorStatus(projectId: string, taskId: string): Pr
 }
 
 
-
-// ═══════════════════════════════════════════════════════════════
-// GLOBAL CONTEXT MEMORY TYPES & API
-// ═══════════════════════════════════════════════════════════════
-
-export interface MemoryPreference {
-    value: unknown;
-    confidence: number;
-    source: 'inferred' | 'user-explicit' | 'project-detected';
-}
-
-export interface MemoryRule {
-    id: string;
-    rule: string;
-    addedAt: string;
-    source: 'user-explicit';
-    enabled: boolean;
-}
-
-export interface ScaffoldingHints {
-    language?: string;
-    packageManager?: string;
-    styling?: string;
-    testingFramework?: string;
-    lintingTool?: string;
-    framework?: string;
-    formatting?: Record<string, unknown>;
-    rules?: string[];
-}
-
-export interface MemoryStats {
-    preferenceCount: number;
-    ruleCount: number;
-    patternCount: number;
-    projectHistoryCount: number;
-    lastUpdated: string;
-}
-
-// MEMORY_API is already defined at top scope, removing duplicate declaration if present
-// const MEMORY_API = ... 
-
-
-export async function getMemoryPreferences(): Promise<Record<string, Record<string, MemoryPreference>>> {
-    const res = await authFetch(`${MEMORY_API}/preferences`);
-    if (!res.ok) throw new Error('Failed to get memory preferences');
-    return res.json();
-}
-
-export async function setMemoryPreference(category: string, key: string, value: unknown): Promise<void> {
-    const res = await authFetch(`${MEMORY_API}/preferences`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, key, value })
-    });
-    if (!res.ok) throw new Error('Failed to set memory preference');
-}
-
-export async function deleteMemoryPreference(category: string, key: string): Promise<void> {
-    const res = await authFetch(`${MEMORY_API}/preferences/${category}/${key}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Failed to delete memory preference');
-}
-
-export async function getMemoryRules(): Promise<MemoryRule[]> {
-    const res = await authFetch(`${MEMORY_API}/rules`);
-    if (!res.ok) throw new Error('Failed to get memory rules');
-    return res.json();
-}
-
-export async function addMemoryRule(rule: string): Promise<{ id: string }> {
-    const res = await authFetch(`${MEMORY_API}/rules`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rule })
-    });
-    if (!res.ok) throw new Error('Failed to add memory rule');
-    return res.json();
-}
-
-export async function deleteMemoryRule(id: string): Promise<void> {
-    const res = await authFetch(`${MEMORY_API}/rules/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Failed to delete memory rule');
-}
-
-export async function toggleMemoryRule(id: string, enabled: boolean): Promise<void> {
-    const res = await authFetch(`${MEMORY_API}/rules/${id}/toggle`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled })
-    });
-    if (!res.ok) throw new Error('Failed to toggle memory rule');
-}
-
-export async function getMemoryContext(): Promise<string> {
-    const res = await authFetch(`${MEMORY_API}/context`);
-    if (!res.ok) throw new Error('Failed to get memory context');
-    const data = await res.json();
-    return data.context;
-}
-
-export async function getScaffoldingHints(): Promise<ScaffoldingHints> {
-    const res = await authFetch(`${MEMORY_API}/hints`);
-    if (!res.ok) throw new Error('Failed to get scaffolding hints');
-    return res.json();
-}
-
-export async function getMemoryStats(): Promise<MemoryStats> {
-    const res = await authFetch(`${MEMORY_API}/stats`);
-    if (!res.ok) throw new Error('Failed to get memory stats');
-    return res.json();
-}
-
-export async function learnFromProject(projectId: string): Promise<{ analysis: unknown }> {
-    const res = await authFetch(`${MEMORY_API}/learn/${projectId}`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to learn from project');
-    return res.json();
-}
 
 // ═══════════════════════════════════════════════════════════════
 // EXECUTION TIMELINE & INLINE COMMENTS API

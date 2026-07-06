@@ -23,7 +23,6 @@ const { isCriticEnabled, setCriticEnabled } = require('./services/critic');
 const contextSync = require('./services/context-sync');
 const pushService = require('./push-service');
 const { discoverModels, discoverModelRegistry, getModels } = require('./services/model-discovery');
-const { getDefaultMemoryManager } = require('./memory');
 const db = require('../db');
 const { callAI } = require('./services/ai-service');
 const { validateInitiativeRequest } = require('./services/initiative-router');
@@ -98,11 +97,9 @@ app.use('/api/mcp', mcpRouter);
 app.use('/api/mcp', mcpScopesRouter);
 
 const createToolsRouter     = require('./routes/tools');
-const createMemoryRouter    = require('./routes/memory');
 const createInitiativesRouter = require('./routes/initiatives');
 
 app.use('/api/tools',       createToolsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects }));
-app.use('/api/memory',      createMemoryRouter({ scanProjects, PROJECT_ROOT, getDefaultMemoryManager }));
 app.use('/api/initiatives', createInitiativesRouter({ db }));
 
 // ─── Route Modules — Newly Extracted ────────────────────────────────────────
