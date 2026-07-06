@@ -4,7 +4,14 @@ import { useState } from "react";
 import { AlertCircle, CheckCircle2, HelpCircle, Loader2 } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
-import { ScheduleHitlCard, isScheduleHitl } from "./schedule-hitl-card";
+import {
+  BoardMaintenanceHitlCard,
+  ScheduleHitlCard,
+  SkillCandidatesHitlCard,
+  isBoardMaintenanceHitl,
+  isScheduleHitl,
+  isSkillCandidatesHitl,
+} from "./schedule-hitl-card";
 
 const REASON_LABELS: Record<string, string> = {
   low_confidence: "Low confidence",
@@ -53,6 +60,20 @@ export function HitlInbox() {
           {pendingRequests.map((request) =>
             isScheduleHitl(request) ? (
               <ScheduleHitlCard
+                key={request.id}
+                request={request}
+                resolving={resolvingId === request.id}
+                onResolve={resolveRequest}
+              />
+            ) : isSkillCandidatesHitl(request) ? (
+              <SkillCandidatesHitlCard
+                key={request.id}
+                request={request}
+                resolving={resolvingId === request.id}
+                onResolve={resolveRequest}
+              />
+            ) : isBoardMaintenanceHitl(request) ? (
+              <BoardMaintenanceHitlCard
                 key={request.id}
                 request={request}
                 resolving={resolvingId === request.id}
