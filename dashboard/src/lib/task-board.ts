@@ -229,6 +229,7 @@ export function filterBoardTasks(tasks: BoardTask[], filters: BoardTaskFilters):
     if (terms.length === 0) return true;
 
     const haystack = [
+      task.id,
       task.title,
       task.name,
       task.description,

@@ -4,13 +4,42 @@ import { useCallback, useEffect, useState } from "react";
 import { getBoardState } from "@/lib/nexus";
 import { groupBoardTasks, type BoardTask, type BoardLaneId, type BoardProject } from "@/lib/task-board";
 import { useStreamRefetch } from "@/hooks/use-stream-refetch";
-import { FolderGit2, ChevronDown, ChevronUp, Clock, AlertTriangle, Play, ExternalLink } from "lucide-react";
+import { FolderGit2, ChevronDown, ChevronUp, Clock, AlertTriangle, Play, ExternalLink, Copy, Check } from "lucide-react";
 
 interface CompactTaskBoardProps {
   onSelectTask?: (taskId: string, projectId: string) => void;
 }
 
 type TabId = "active" | "next" | "attention";
+
+// Short, copyable task ID — the full UUID is what Claude/Praxis reference in
+// chat and what the main board search matches on. One click copies the full id.
+function CopyableTaskId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // clipboard blocked (non-secure context) — id text is still visible
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1 rounded border border-slate-700 bg-slate-950 px-1.5 py-0.5 font-mono text-[10px] text-slate-400 transition-colors hover:border-cyan-500/40 hover:text-cyan-300"
+      aria-label={`Copy task ID ${id}`}
+      title={`Task ID: ${id}\nClick to copy`}
+    >
+      {copied ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}
+      {copied ? "copied" : id.slice(0, 8)}
+    </button>
+  );
+}
 
 export function CompactTaskBoard({ onSelectTask }: CompactTaskBoardProps) {
   const [projects, setProjects] = useState<BoardProject[]>([]);
@@ -193,6 +222,11 @@ export function CompactTaskBoard({ onSelectTask }: CompactTaskBoardProps) {
                     <div className="flex items-center justify-between pt-1 border-t border-slate-800/40 text-[10px] text-slate-500">
                       <span>Priority: <span className="font-semibold text-slate-400">P{task.priority ?? 0}</span></span>
                       <span>Status: <span className="font-semibold text-slate-400 uppercase">{task.status || "ready"}</span></span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-500">
+                      <span>Task ID</span>
+                      <CopyableTaskId id={task.id} />
                     </div>
 
                     {onSelectTask && taskProjectId && (

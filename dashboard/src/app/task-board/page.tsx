@@ -9,6 +9,7 @@ import {
   Check,
   ChevronDown,
   CircleDot,
+  Copy,
   ExternalLink,
   Filter,
   Layers,
@@ -282,7 +283,7 @@ export default function TaskBoardPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="h-11 w-full rounded-lg border border-slate-800 bg-slate-900 pl-10 pr-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-500/60"
-              placeholder="Search tasks, projects, statuses"
+              placeholder="Search tasks, projects, statuses, or task ID"
             />
           </label>
 
@@ -516,6 +517,37 @@ function LaneColumn({
   );
 }
 
+// Short, copyable task ID. The full UUID is what Claude/Praxis reference in
+// chat; the board search matches on it (substring), so the 8-char prefix
+// shown here is enough to find a task, and one click copies the full id.
+function CopyableTaskId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // clipboard blocked (non-secure context) — the id is still visible to read
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-[11px] text-slate-400 transition-colors hover:border-cyan-500/40 hover:text-cyan-300"
+      aria-label={`Copy task ID ${id}`}
+      title={`Task ID: ${id}\nClick to copy`}
+    >
+      {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+      {copied ? "copied" : id.slice(0, 8)}
+    </button>
+  );
+}
+
 function TaskCard({
   task,
   onManage,
@@ -574,6 +606,7 @@ function TaskCard({
         <span className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-400">
           P{task.priority ?? 0}
         </span>
+        <CopyableTaskId id={task.id} />
         {hasTranscript && (
           <span className="inline-flex items-center gap-1 rounded-md border border-cyan-400/30 px-2 py-1 text-cyan-200">
             <MessageSquareText size={12} />
