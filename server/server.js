@@ -22,7 +22,6 @@ const tokenTracker = require('./utils/token-tracker');
 const { isCriticEnabled, setCriticEnabled } = require('./services/critic');
 const contextSync = require('./services/context-sync');
 const pushService = require('./push-service');
-const calendarScheduler = require('./services/calendar-scheduler');
 const { discoverModels, discoverModelRegistry, getModels } = require('./services/model-discovery');
 const { getDefaultMemoryManager } = require('./memory');
 const db = require('../db');
@@ -221,8 +220,8 @@ server.listen(PORT, async () => {
         console.log(`Database: NOT CONFIGURED (using file-based storage)`);
     }
 
-    // Start Calendar polling
-    calendarScheduler.start(db);
+    // Calendar firing moved to Praxis (calendar-dispatch.ts poller,
+    // 2026-07-06 consolidation) — calendar_events is viewport data here.
 
     // Model discovery (non-blocking)
     discoverModels({ db }).then(models => {

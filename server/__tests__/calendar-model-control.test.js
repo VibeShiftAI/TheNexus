@@ -96,34 +96,66 @@ describe('calendar model control integration', () => {
         expect(db.updateCalendarEvent).toHaveBeenCalledWith('event-1', expect.objectContaining({ model_assignment: 'model:anthropic-claude-sonnet' }));
     });
 
-    test('scheduler resolves model before notifying Praxis', async () => {
+    // The firing loop lives in Praxis now (calendar-dispatch.ts poller,
+    // 2026-07-06 consolidation). Its resolve calls hit this route with a
+    // snapshot context and announceTitle so the DB/chat side effects that the
+    // retired Nexus scheduler used to perform still happen server-side.
+
+    test('resolve returns the assignment and records a snapshot when asked', async () => {
         const db = createDb();
-        const scheduler = require('../services/calendar-scheduler');
-        const notifyPraxis = jest.fn();
-        scheduler.__setNotifyPraxisForTests(notifyPraxis);
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db, io: null }));
+        handle = await listen(app);
 
-        await scheduler.checkUpcomingEvents(db, new Date());
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/model-control/resolve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model_assignment: 'model:anthropic-claude-sonnet',
+                requestedAssignment: 'model:anthropic-claude-sonnet',
+                projectId: 'project-1',
+                role: 'scheduled_activity',
+                snapshot: { project_id: 'project-1', task_id: 'task-1', calendar_event_id: 'event-1' },
+                announceTitle: 'Scheduled Praxis Work'
+            })
+        });
 
-        expect(notifyPraxis).toHaveBeenCalledWith(expect.objectContaining({
-            modelAssignment: 'model:anthropic-claude-sonnet',
-            modelOverride: expect.objectContaining({ provider: 'anthropic', apiModelId: 'claude-sonnet-4-6' }),
-            resolvedModel: expect.objectContaining({ resolvedModelId: 'anthropic-claude-sonnet' })
+        expect(status).toBe(200);
+        expect(body).toEqual(expect.objectContaining({ provider: 'anthropic', apiModelId: 'claude-sonnet-4-6' }));
+        expect(db.createModelExecutionSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+            calendar_event_id: 'event-1',
+            task_id: 'task-1'
         }));
+        expect(db.saveChatMessage).not.toHaveBeenCalled();
     });
 
-    test('local-only redirects calendar cloud assignment to local and logs system message', async () => {
+    test('resolve announces local-only redirects for scheduled events', async () => {
         const db = createDb({
             getModelControlSetting: jest.fn(async () => ({ enabled: true, reason: 'budget_limit' }))
         });
-        const scheduler = require('../services/calendar-scheduler');
-        const notifyPraxis = jest.fn();
-        scheduler.__setNotifyPraxisForTests(notifyPraxis);
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db, io: null }));
+        handle = await listen(app);
 
-        await scheduler.checkUpcomingEvents(db, new Date());
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/model-control/resolve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model_assignment: 'model:anthropic-claude-sonnet',
+                requestedAssignment: 'model:anthropic-claude-sonnet',
+                projectId: 'project-1',
+                role: 'scheduled_activity',
+                snapshot: { project_id: 'project-1', task_id: 'task-1', calendar_event_id: 'event-1' },
+                announceTitle: 'Scheduled Praxis Work'
+            })
+        });
 
-        expect(notifyPraxis).toHaveBeenCalledWith(expect.objectContaining({
-            modelOverride: expect.objectContaining({ provider: 'local', apiModelId: 'llama3.2' })
-        }));
+        expect(status).toBe(200);
+        expect(body).toEqual(expect.objectContaining({ provider: 'local', apiModelId: 'llama3.2' }));
         expect(db.saveChatMessage).toHaveBeenCalledWith(expect.objectContaining({
             role: 'system',
             content: expect.stringMatching(/local-only|budget_limit/i)

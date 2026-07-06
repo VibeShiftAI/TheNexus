@@ -252,7 +252,33 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
 
     router.post('/resolve', async (req, res) => {
         try {
-            res.json(await resolveModelAssignment(db, req.body || {}));
+            const body = req.body || {};
+            const resolved = await resolveModelAssignment(db, body);
+
+            // Praxis's calendar poller (owner of the firing loop since the
+            // 2026-07-06 consolidation) asks resolve to also record the
+            // execution snapshot and announce redirects, so those DB/chat
+            // writes stay server-side. Both enrich — never gate — resolution.
+            try {
+                if (body.snapshot && typeof body.snapshot === 'object') {
+                    await recordModelExecutionSnapshot(db, resolved, body.snapshot);
+                }
+                if (body.announceTitle && (resolved.localOnlyActive || resolved.fallbackUsed)) {
+                    const reason = resolved.localOnlyActive
+                        ? `local-only mode${resolved.localOnlyReason ? ` (${resolved.localOnlyReason})` : ''}`
+                        : `fallback (${resolved.fallbackReason || 'requested model unavailable'})`;
+                    await writeModelSystemMessage(
+                        db,
+                        io,
+                        `Model control redirected scheduled event "${body.announceTitle}" to ${resolved.label || resolved.apiModelId} via ${reason}.`,
+                        { modelControl: { resolved, modelAssignment: body.model_assignment, calendarEventId: body.calendarEventId } }
+                    );
+                }
+            } catch (sideEffectError) {
+                console.warn('[Model Control] resolve side effects failed (resolution still returned):', sideEffectError.message);
+            }
+
+            res.json(resolved);
         } catch (error) {
             console.error('[Model Control] Failed to resolve assignment:', error);
             res.status(500).json({ error: 'Failed to resolve model assignment: ' + error.message });
