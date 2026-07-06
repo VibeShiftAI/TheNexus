@@ -1,3 +1,15 @@
+/**
+ * AI service — thin relay to Praxis's LLM manager.
+ *
+ * 2026-07-06 consolidation: TheNexus no longer owns provider SDKs or API
+ * keys for chat completions. callAI() keeps its signature and result
+ * contract ({ text, usage } / plain text) but every call rides Praxis's
+ * POST /v1/brain/chat with an explicit provider/model pin — Praxis
+ * normalizes response_format per provider, enforces budget/semaphore,
+ * logs usage to the shared llm_calls ledger, and cascades on provider
+ * failure. runDeepResearch keeps its own Gemini client: it drives the
+ * long-poll interactions API, which has no completions equivalent.
+ */
 const { GoogleGenAI } = require('@google/genai');
 const fs = require('fs');
 const path = require('path');
@@ -7,6 +19,10 @@ const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(process.env.USERPR
 const AGENT_CONFIG_PATH = path.join(PROJECT_ROOT, 'TheNexus', 'agent-config.json'); // Assumption based on context
 const tokenTracker = require('../utils/token-tracker');
 const db = require('../../db');
+
+const PRAXIS_URL = process.env.PRAXIS_URL || 'http://127.0.0.1:54322';
+// Local-model turns can take minutes; match the generous chat relay timeout.
+const PRAXIS_BRAIN_TIMEOUT_MS = Number(process.env.PRAXIS_BRAIN_TIMEOUT_MS || 600000);
 
 // Maps task types to agent IDs in config file
 const TASK_TO_AGENT_MAP = {
@@ -40,6 +56,7 @@ async function getAIModelConfig(taskType) {
             return {
                 provider: dbModel.provider,
                 model: dbModel.id,
+                api_model_id: dbModel.api_model_id || dbModel.apiModelId,
                 thinkingEnabled: dbModel.capabilities?.thinking || false,
                 thinkingConfig: dbModel.parameters?.thinking_config,
                 description: dbModel.name
@@ -91,149 +108,52 @@ async function getAIModelConfig(taskType) {
     throw new Error(`No model configuration found for task type '${taskType}'. Please configure a default model in the database.`);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// GOOGLE GEMINI API HANDLER
-// ═══════════════════════════════════════════════════════════════
-async function callGemini(message, config, systemPrompt, history, apiKey) {
-    const modelId = config.apiModelId;
-    const params = config.parameters || {};
-
-    // Use the official @google/genai SDK (API key sent via header, not URL)
-    const genAI = new GoogleGenAI({ apiKey });
-
-    // Build generation config with thinking parameters
-    const generationConfig = {};
-
-    if (params.thinking_config) {
-        generationConfig.thinkingConfig = params.thinking_config;
-        console.log(`[Gemini] Using thinking_level: ${params.thinking_config.thinking_level}`);
-    }
-
-    if (params.thinking_budget !== undefined) {
-        generationConfig.thinkingBudget = params.thinking_budget;
-        console.log(`[Gemini] Using thinking_budget: ${params.thinking_budget}`);
-    }
-
-    // Build conversation contents
-    const contents = [];
-
-    // Add history if present
-    if (history && history.length > 0) {
-        for (const msg of history) {
-            contents.push({
-                role: msg.role === 'assistant' ? 'model' : 'user',
-                parts: [{ text: msg.content }]
-            });
-        }
-    }
-
-    // Add current message
-    contents.push({
-        role: 'user',
-        parts: [{ text: message }]
-    });
-
-    // Build SDK config
-    const sdkConfig = {};
-    if (systemPrompt) {
-        sdkConfig.systemInstruction = systemPrompt;
-    }
-    if (Object.keys(generationConfig).length > 0) {
-        Object.assign(sdkConfig, generationConfig);
-    }
-
-    const response = await genAI.models.generateContent({
-        model: modelId,
-        contents,
-        config: Object.keys(sdkConfig).length > 0 ? sdkConfig : undefined
-    });
-
-    // Extract text from SDK response
-    let text = 'No response from Gemini';
-    if (response.candidates && response.candidates[0]) {
-        const parts = response.candidates[0].content?.parts || [];
-        const textParts = parts.filter(p => p.text).map(p => p.text);
-        if (textParts.length > 0) {
-            text = textParts.join('');
-        }
-    }
-
-    const usageMetadata = response.usageMetadata || {};
-
-    // Track usage for resource monitor
-    tokenTracker.trackUsage({
-        provider: 'google',
-        model: modelId,
-        inputTokens: usageMetadata.promptTokenCount || 0,
-        outputTokens: usageMetadata.candidatesTokenCount || 0,
-        task: 'chat'
-    });
-
-    return {
-        text,
-        usage: {
-            inputTokens: usageMetadata.promptTokenCount || 0,
-            outputTokens: usageMetadata.candidatesTokenCount || 0,
-            totalTokens: usageMetadata.totalTokenCount || 0
-        }
-    };
-}
-
-// ═══════════════════════════════════════════════════════════════
-// OPENAI GPT API HANDLER
-// ═══════════════════════════════════════════════════════════════
-async function callOpenAI(message, config, systemPrompt, history, apiKey) {
-    const modelId = config.apiModelId;
-    const params = config.parameters || {};
-
+/**
+ * Relay one completion through Praxis /v1/brain/chat (pinned provider/model).
+ * Returns the { text, usage } contract the retired provider handlers used.
+ */
+async function callPraxisBrain(message, provider, modelId, systemPrompt, history, options = {}) {
     const messages = [
-        { role: 'system', content: systemPrompt }
+        // Normalize Gemini-style 'model' role to OpenAI-style 'assistant'.
+        ...(Array.isArray(history) ? history : []).map(h => ({
+            role: h.role === 'model' ? 'assistant' : h.role,
+            content: h.content
+        })),
+        { role: 'user', content: message }
     ];
 
-    if (history && history.length > 0) {
-        for (const msg of history) {
-            messages.push({
-                role: msg.role === 'assistant' ? 'assistant' : 'user',
-                content: msg.content
-            });
-        }
-    }
-
-    messages.push({ role: 'user', content: message });
-
-    const requestBody = {
-        model: modelId,
-        messages,
-    };
-
-    if (params.reasoning_effort) {
-        requestBody.reasoning_effort = params.reasoning_effort;
-        console.log(`[OpenAI] Using reasoning_effort: ${params.reasoning_effort}`);
-    }
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${PRAXIS_URL}/v1/brain/chat`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
+            'X-MCP-Caller': 'nexus.ai-service'
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({
+            provider,
+            model: modelId,
+            system: systemPrompt || undefined,
+            messages,
+            max_tokens: options.maxTokens || 8192
+        }),
+        signal: AbortSignal.timeout(PRAXIS_BRAIN_TIMEOUT_MS)
     });
 
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`OpenAI API error: ${response.status} - ${JSON.stringify(errorData)}`);
+        const errText = await response.text().catch(() => '');
+        throw new Error(`Praxis brain relay failed (${response.status}): ${errText.slice(0, 300)}`);
     }
 
     const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || 'No response from OpenAI';
+    const msg = data.choices?.[0]?.message || {};
+    // reasoning_content salvage: local Gemma emits most tokens there.
+    const text = (typeof msg.content === 'string' && msg.content.trim())
+        || (typeof msg.reasoning_content === 'string' && msg.reasoning_content.trim())
+        || 'No response from model';
 
     const usage = data.usage || {};
-
-    // Track usage for resource monitor
     tokenTracker.trackUsage({
-        provider: 'openai',
-        model: modelId,
+        provider,
+        model: data.model || modelId,
         inputTokens: usage.prompt_tokens || 0,
         outputTokens: usage.completion_tokens || 0,
         task: 'chat'
@@ -245,259 +165,19 @@ async function callOpenAI(message, config, systemPrompt, history, apiKey) {
             inputTokens: usage.prompt_tokens || 0,
             outputTokens: usage.completion_tokens || 0,
             totalTokens: usage.total_tokens || 0
-        }
-    };
-}
-
-// ═══════════════════════════════════════════════════════════════
-// ANTHROPIC CLAUDE API HANDLER
-// ═══════════════════════════════════════════════════════════════
-async function callAnthropic(message, config, systemPrompt, history, apiKey) {
-    const modelId = config.apiModelId;
-    const params = config.parameters || {};
-
-    const messages = [];
-
-    if (history && history.length > 0) {
-        for (const msg of history) {
-            messages.push({
-                role: msg.role === 'assistant' ? 'assistant' : 'user',
-                content: msg.content
-            });
-        }
-    }
-
-    messages.push({ role: 'user', content: message });
-
-    const requestBody = {
-        model: modelId,
-        max_tokens: 8192,
-        system: systemPrompt,
-        messages,
-    };
-
-    if (params.thinking) {
-        requestBody.thinking = params.thinking;
-        requestBody.max_tokens = Math.max(requestBody.max_tokens, params.thinking.budget_tokens + 4096);
-        console.log(`[Anthropic] Using thinking with budget_tokens: ${params.thinking.budget_tokens}`);
-    }
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01'
         },
-        body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Anthropic API error: ${response.status} - ${JSON.stringify(errorData)}`);
-    }
-
-    const data = await response.json();
-
-    let text = 'No response from Claude';
-    if (data.content && Array.isArray(data.content)) {
-        const textBlocks = data.content.filter(block => block.type === 'text');
-        text = textBlocks.map(block => block.text).join('\n') || 'No response from Claude';
-    }
-
-    const usage = data.usage || {};
-
-    // Track usage for resource monitor
-    tokenTracker.trackUsage({
-        provider: 'anthropic',
-        model: modelId,
-        inputTokens: usage.input_tokens || 0,
-        outputTokens: usage.output_tokens || 0,
-        task: 'chat'
-    });
-
-    return {
-        text,
-        usage: {
-            inputTokens: usage.input_tokens || 0,
-            outputTokens: usage.output_tokens || 0,
-            totalTokens: (usage.input_tokens || 0) + (usage.output_tokens || 0)
-        }
-    };
-}
-
-// ═══════════════════════════════════════════════════════════════
-// XAI (GROK) API HANDLER — OpenAI-compatible endpoint
-// ═══════════════════════════════════════════════════════════════
-async function callXAI(message, config, systemPrompt, history, apiKey) {
-    const modelId = config.apiModelId;
-    const params = config.parameters || {};
-
-    const messages = [
-        { role: 'system', content: systemPrompt }
-    ];
-
-    if (history && history.length > 0) {
-        for (const msg of history) {
-            messages.push({
-                role: msg.role === 'assistant' ? 'assistant' : 'user',
-                content: msg.content
-            });
-        }
-    }
-
-    messages.push({ role: 'user', content: message });
-
-    const requestBody = {
-        model: modelId,
-        messages,
-    };
-
-    if (params.reasoning_effort) {
-        requestBody.reasoning_effort = params.reasoning_effort;
-        console.log(`[xAI] Using reasoning_effort: ${params.reasoning_effort}`);
-    }
-
-    const response = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`xAI API error: ${response.status} - ${JSON.stringify(errorData)}`);
-    }
-
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || 'No response from Grok';
-
-    const usage = data.usage || {};
-
-    // Track usage for resource monitor
-    tokenTracker.trackUsage({
-        provider: 'xai',
-        model: modelId,
-        inputTokens: usage.prompt_tokens || 0,
-        outputTokens: usage.completion_tokens || 0,
-        task: 'chat'
-    });
-
-    return {
-        text,
-        usage: {
-            inputTokens: usage.prompt_tokens || 0,
-            outputTokens: usage.completion_tokens || 0,
-            totalTokens: usage.total_tokens || 0
-        }
-    };
-}
-
-// ═══════════════════════════════════════════════════════════════
-// LOCAL AI HANDLER — OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, etc.)
-// ═══════════════════════════════════════════════════════════════
-async function callLocal(message, config, systemPrompt, history) {
-    const modelId = config.apiModelId;
-    const params = config.parameters || {};
-
-    // Resolve endpoint: explicit config > env var > LM Studio default.
-    // :1234 matches nexus-shared/src/endpoints.ts (the LM Studio port) so a
-    // machine without LOCAL_AI_URL set still reaches the right server.
-    const baseUrl = params.base_url
-        || process.env.LOCAL_AI_URL
-        || 'http://localhost:1234/v1';
-
-    console.log(`[Local AI] Endpoint: ${baseUrl}, Model: ${modelId}`);
-
-    const messages = [
-        { role: 'system', content: systemPrompt }
-    ];
-
-    if (history && history.length > 0) {
-        for (const msg of history) {
-            messages.push({
-                role: msg.role === 'assistant' ? 'assistant' : 'user',
-                content: msg.content
-            });
-        }
-    }
-
-    messages.push({ role: 'user', content: message });
-
-    const requestBody = {
-        model: modelId,
-        messages,
-    };
-
-    // Forward any additional params the local server supports
-    if (params.temperature !== undefined) requestBody.temperature = params.temperature;
-    if (params.max_tokens !== undefined) requestBody.max_tokens = params.max_tokens;
-    if (params.top_p !== undefined) requestBody.top_p = params.top_p;
-
-    // Build headers — local servers typically don't require auth,
-    // but some (e.g., vLLM) accept a bearer token
-    const headers = { 'Content-Type': 'application/json' };
-    const localApiKey = process.env.LOCAL_AI_API_KEY;
-    if (localApiKey) {
-        headers['Authorization'] = `Bearer ${localApiKey}`;
-    }
-
-    // Bounded wait: local Gemma on a long prompt can legitimately take
-    // minutes (slow prefill + reasoning), but an LM Studio stall must not
-    // hang the Nexus request forever. 600s mirrors Praxis's local ceiling.
-    const timeoutMs = Number(process.env.LOCAL_AI_TIMEOUT_MS || 600000);
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(timeoutMs)
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Local AI error: ${response.status} - ${JSON.stringify(errorData)}`);
-    }
-
-    const data = await response.json();
-    // Local Gemma is a thinking model: it can emit everything to
-    // reasoning_content and leave content empty (2026-06-08 incident class).
-    // Salvage the reasoning channel before giving up.
-    const localMsg = data.choices?.[0]?.message || {};
-    const text = (localMsg.content && localMsg.content.trim())
-        || (localMsg.reasoning_content && localMsg.reasoning_content.trim())
-        || 'No response from local model';
-
-    const usage = data.usage || {};
-
-    // Track usage for resource monitor (tokens are free but still useful to track)
-    tokenTracker.trackUsage({
-        provider: 'local',
-        model: modelId,
-        inputTokens: usage.prompt_tokens || 0,
-        outputTokens: usage.completion_tokens || 0,
-        task: 'chat'
-    });
-
-    return {
-        text,
-        usage: {
-            inputTokens: usage.prompt_tokens || 0,
-            outputTokens: usage.completion_tokens || 0,
-            totalTokens: usage.total_tokens || 0
-        }
+        // Praxis may have cascaded past the pinned model — surface what ran.
+        servedBy: data.model || modelId
     };
 }
 
 /**
  * Unified AI call router - THE SINGLE ENTRY POINT for all AI calls
- * 
+ *
  * Supports two calling patterns:
  * 1. Task-based: callAI('research', prompt, systemPrompt) - looks up model from DB
  * 2. Direct config: callAI({ provider, model, ... }, prompt, systemPrompt) - uses provided config
- * 
+ *
  * @param {string|Object} taskOrConfig - Either a task name OR a model config object
  *   If string: Task type for DB lookup ('plan', 'research', 'implementation', 'quick')
  *   If object: Direct config with { provider, model/apiModelId, parameters, isThinking }
@@ -509,7 +189,7 @@ async function callLocal(message, config, systemPrompt, history) {
  * @returns {Promise<string|Object>} The AI response text, or { text, usage } if returnFullResult=true
  */
 async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], options = {}) {
-    let provider, modelId, parameters;
+    let provider, modelId;
 
     // Determine if this is a task name or direct config
     if (typeof taskOrConfig === 'string') {
@@ -517,68 +197,15 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
         const taskConfig = await getAIModelConfig(taskOrConfig);
         provider = normalizeProvider(taskConfig.provider);
         modelId = taskConfig.api_model_id || taskConfig.apiModelId || taskConfig.model;
-        parameters = {};
-
-        // Apply thinking config for Gemini
-        if (taskConfig.thinkingEnabled && provider === 'google') {
-            parameters.thinking_config = taskConfig.thinkingConfig || { thinkingBudget: 8_000 };
-        }
-
-        console.log(`[callAI] Task: ${taskOrConfig}, Provider: ${provider}, Model: ${modelId}`);
+        console.log(`[callAI] Task: ${taskOrConfig}, Provider: ${provider}, Model: ${modelId} (via Praxis)`);
     } else {
-        // Direct config provided (from chat endpoint)
+        // Direct config provided
         provider = normalizeProvider(taskOrConfig.provider || 'google');
         modelId = taskOrConfig.apiModelId || taskOrConfig.api_model_id || taskOrConfig.model;
-        parameters = taskOrConfig.parameters || {};
-
-        // Handle thinking config from frontend
-        if (taskOrConfig.isThinking && provider === 'google') {
-            parameters.thinking_config = parameters.thinking_config || { thinkingBudget: 8_000 };
-        }
-
-        console.log(`[callAI] Direct: Provider: ${provider}, Model: ${modelId}`);
+        console.log(`[callAI] Direct: Provider: ${provider}, Model: ${modelId} (via Praxis)`);
     }
 
-    // Get API key for the provider (local provider doesn't require one)
-    const apiKeys = {
-        google: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
-        openai: process.env.OPENAI_API_KEY,
-        anthropic: process.env.ANTHROPIC_API_KEY,
-        xai: process.env.XAI_API_KEY,
-    };
-
-    const apiKey = apiKeys[provider];
-    if (!apiKey && provider !== 'local') {
-        throw new Error(`No API key configured for provider: ${provider}`);
-    }
-
-    // Build config object expected by the main handlers
-    const config = {
-        apiModelId: modelId,
-        parameters
-    };
-
-    // Route to appropriate handler
-    let result;
-    switch (provider) {
-        case 'google':
-            result = await callGemini(userPrompt, config, systemPrompt, history, apiKey);
-            break;
-        case 'anthropic':
-            result = await callAnthropic(userPrompt, config, systemPrompt, history, apiKey);
-            break;
-        case 'openai':
-            result = await callOpenAI(userPrompt, config, systemPrompt, history, apiKey);
-            break;
-        case 'xai':
-            result = await callXAI(userPrompt, config, systemPrompt, history, apiKey);
-            break;
-        case 'local':
-            result = await callLocal(userPrompt, config, systemPrompt, history);
-            break;
-        default:
-            throw new Error(`Unsupported provider: ${provider}`);
-    }
+    const result = await callPraxisBrain(userPrompt, provider, modelId, systemPrompt, history, options);
 
     // Return full result or just text based on options
     if (options.returnFullResult) {
@@ -648,12 +275,8 @@ async function runDeepResearch(prompt, apiKey, callbacks, existingInteractionId 
 }
 
 module.exports = {
-    callGemini,
-    callOpenAI,
-    callAnthropic,
-    callXAI,
-    callLocal,
     getAIModelConfig,
     callAI,
+    callPraxisBrain,
     runDeepResearch
 };
