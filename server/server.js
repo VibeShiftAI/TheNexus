@@ -23,7 +23,6 @@ const { isCriticEnabled, setCriticEnabled } = require('./services/critic');
 const contextSync = require('./services/context-sync');
 const pushService = require('./push-service');
 const calendarScheduler = require('./services/calendar-scheduler');
-const { runAgent } = require('./agent');
 const { discoverModels, discoverModelRegistry, getModels } = require('./services/model-discovery');
 const { getDefaultMemoryManager } = require('./memory');
 const db = require('../db');
@@ -91,7 +90,7 @@ function authenticate(req, res, next) {
 ].forEach(prefix => app.use(prefix, authenticate));
 
 // ─── Shared Dependencies (injected into route factories) ────────────────────
-const deps = { db, io, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, pushService, runAgent };
+const deps = { db, io, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, pushService };
 
 // ─── Route Modules — Pre-existing (already extracted) ───────────────────────
 const mcpRouter = require('./routes/mcp-inline');
