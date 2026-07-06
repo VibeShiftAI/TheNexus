@@ -4,6 +4,10 @@
  * Long-lived daemon under launchd (com.thenexus.vault-watcher). Uses
  * Nexus's chokidar. Run with --once to regenerate and exit (no watch).
  *
+ * Also owns vault git sync (./git-sync.js — hourly commit, 6-hourly push)
+ * since the 2026-07-06 consolidation; the separate
+ * com.thenexus.vault-git-sync launchd job is retired.
+ *
  * v1 of the regeneration logic — pure concatenation of identity files
  * + filesystem-walk for the index, plus the skill bus:
  *   - SKILLS.md: per-skill one-line summaries + trigger tags so agents
@@ -674,8 +678,26 @@ watcher.on('ready', () => log('Watcher ready'));
 // Initial regen on startup so files reflect current vault state.
 regenerateAll('startup');
 
+// ── Git sync (hourly commit, 6-hourly push) ──
+const { runGitSync } = require('./git-sync');
+const GIT_SYNC_INTERVAL_MS = 60 * 60 * 1000;
+
+async function gitSyncTick() {
+  try {
+    await runGitSync(VAULT, log);
+  } catch (e) {
+    log(`[GitSync] ERROR: ${e.stack || e.message}`);
+  }
+}
+
+// First pass shortly after boot (matches the old job's RunAtLoad), then hourly.
+const gitSyncInitialTimer = setTimeout(gitSyncTick, 30_000);
+const gitSyncTimer = setInterval(gitSyncTick, GIT_SYNC_INTERVAL_MS);
+
 function shutdown(signal) {
   log(`${signal} received, shutting down`);
+  clearTimeout(gitSyncInitialTimer);
+  clearInterval(gitSyncTimer);
   watcher.close().then(() => process.exit(0));
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));

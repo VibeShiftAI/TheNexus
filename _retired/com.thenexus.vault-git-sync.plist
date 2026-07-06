@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.thenexus.vault-git-sync</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>while [ ! -d /Volumes/Projects/shared-mind/.git ]; do sleep 5; done; while [ ! -d /Volumes/Projects/TheNexus/node_modules/simple-git ]; do sleep 5; done; cd /Volumes/Projects/TheNexus &amp;&amp; exec /opt/homebrew/bin/node services/vault-git-sync/index.js</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/robertwashko</string>
+        <key>LOGNAME</key>
+        <string>robertwashko</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/nexus-vault-git-sync-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/nexus-vault-git-sync-stderr.log</string>
+</dict>
+</plist>
