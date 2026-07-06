@@ -102,6 +102,21 @@ interface ScheduleMetadata {
    * proposals reappear on the next card. Praxis never archives on its own.
    */
   pruneProposals?: PruneProposalMeta[];
+  /**
+   * Weekly QA spot-audit (optional; Mondays): randomly sampled QA-PASSED
+   * tasks from the trailing week for human review — a check that the
+   * cross-executor QA loop isn't rubber-stamping. Informational only; no
+   * decision rides back.
+   */
+  qaSpotAudit?: QaSpotAuditMeta[];
+}
+
+interface QaSpotAuditMeta {
+  origTaskId: string;
+  title: string | null;
+  author: string | null;
+  reviewer: string | null;
+  reviewedAt: string;
 }
 
 /** Type-guard the open-typed metadata bag into our schedule shape. */
@@ -781,6 +796,34 @@ export function ScheduleHitlCard({
                 </li>
               );
             })}
+          </ul>
+        </div>
+      ) : null}
+
+      {schedule.qaSpotAudit && schedule.qaSpotAudit.length > 0 ? (
+        <div className="mb-3 overflow-hidden rounded border border-sky-500/30">
+          <div className="flex items-center justify-between bg-sky-500/10 px-2 py-1">
+            <span className="text-[11px] font-semibold text-sky-300">
+              🔍 QA spot-audit — {schedule.qaSpotAudit.length} sampled pass
+              {schedule.qaSpotAudit.length === 1 ? "" : "es"} from last week
+            </span>
+            <span className="text-[10px] text-slate-400">
+              Open the task, eyeball the diff — does the pass verdict hold up?
+            </span>
+          </div>
+          <ul className="divide-y divide-slate-700/40">
+            {schedule.qaSpotAudit.map((sample) => (
+              <li key={sample.origTaskId} className="px-2 py-1.5 text-xs">
+                <span className="font-semibold text-slate-100">
+                  {sample.title ?? sample.origTaskId}
+                </span>
+                <span className="ml-1.5 text-[10px] text-slate-500">
+                  {sample.origTaskId.slice(0, 8)} · by {sample.author ?? "?"} · reviewed by{" "}
+                  {sample.reviewer ?? "?"} ·{" "}
+                  {new Date(sample.reviewedAt).toLocaleDateString()}
+                </span>
+              </li>
+            ))}
           </ul>
         </div>
       ) : null}
