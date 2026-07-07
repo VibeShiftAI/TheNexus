@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- macOS TCC purpose string. Without this key the OS denies microphone
+	     access outright and never shows a consent prompt, so getUserMedia in
+	     the voice command bar rejects with NotAllowedError. Merged into the
+	     generated Info.plist by the Tauri macOS bundler. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>The Nexus listens for the "Praxis" wake word and your spoken bridge commands.</string>
+</dict>
+</plist>
