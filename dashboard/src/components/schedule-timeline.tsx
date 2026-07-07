@@ -1,9 +1,17 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { calendarEventsUrl, calendarEventTone, type CalendarEvent } from "@/lib/calendar";
 import { useStreamRefetch } from "@/hooks/use-stream-refetch";
-import { Calendar, ChevronDown, ChevronUp, CheckCircle, Play, Circle } from "lucide-react";
+import { Calendar, ChevronDown, ChevronUp, CheckCircle, Play, Circle, ScrollText, ArrowRight, Clock } from "lucide-react";
+
+// A scheduled item has logs to drill into once it has actually run (or is
+// running). Upcoming items that haven't started yet carry no dispatch history,
+// so the detail shows a clean "no logs yet" state instead of an empty viewer.
+function eventHasLogs(event: CalendarEvent): boolean {
+  return event.status === "in_progress" || event.status === "completed" || Boolean(event.result);
+}
 
 export function ScheduleTimeline() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -119,6 +127,41 @@ export function ScheduleTimeline() {
                       <span>Status: <span className="font-semibold uppercase">{event.status}</span></span>
                       {event.event_type && <span>Type: {event.event_type}</span>}
                     </div>
+
+                    {/* Drill-down: one more click into the run logs (the task's
+                        dispatch console on /task/[id]) when this item maps to a
+                        task. Upcoming items with no run yet get a clean
+                        "no logs" state rather than an empty viewer. */}
+                    {event.task_id && (
+                      <div className="pt-2 border-t border-slate-800/40">
+                        {eventHasLogs(event) ? (
+                          <Link
+                            href={`/task/${event.task_id}`}
+                            className="group flex items-center gap-1.5 text-[11px] font-semibold text-teal-300 transition-colors hover:text-teal-200"
+                            title="Open the task detail and its run logs"
+                          >
+                            <ScrollText size={12} />
+                            View run logs &amp; full detail
+                            <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                          </Link>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                              <Clock size={12} />
+                              No logs yet — this run hasn&apos;t started.
+                            </span>
+                            <Link
+                              href={`/task/${event.task_id}`}
+                              className="flex items-center gap-1 text-[11px] text-slate-400 transition-colors hover:text-teal-300"
+                              title="Open the task detail"
+                            >
+                              Open task detail
+                              <ArrowRight size={11} />
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

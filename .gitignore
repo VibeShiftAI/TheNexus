@@ -62,6 +62,12 @@ docker/data/neo4j_data/
 *.db
 *.db-shm
 *.db-wal
+*.db.*
+*.sqlite
+*.sqlite3
+
+# DB backups / snapshots (timestamped names slip past *.db)
+backups/
 
 # Blackboard session data
 data/blackboard/
