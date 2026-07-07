@@ -38,7 +38,6 @@ import {
 import { copyClaudeDispatch } from "@/lib/claude-dispatch";
 import { STATUS_OPTIONS } from "@/components/task-edit-modal";
 import { TaskDispatchConsole } from "@/components/task-view/dispatch-console";
-import { ModelAssignmentControl } from "@/components/model-assignment-control";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 const TASK_POLL_MS = 20_000;
@@ -127,7 +126,6 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
-  const [modelSaving, setModelSaving] = useState(false);
   const [dispatchCopied, setDispatchCopied] = useState(false);
 
   const projectId = task?.project_id ?? null;
@@ -172,6 +170,9 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   const status = task?.status ?? "";
   const description = task?.description?.trim();
   const walkthrough = task?.walkthrough;
+  const hasSideContent = Boolean(
+    task?.spec_output || task?.researchReport?.content || task?.implementationPlan?.content,
+  );
   const suspendedReason =
     status === "suspended"
       ? task?.suspended_reason ||
@@ -322,7 +323,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
               </div>
             )}
 
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+            <div className={hasSideContent ? "grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
               {/* Main column */}
               <div className="min-w-0 space-y-5">
                 <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
@@ -358,58 +359,34 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 </section>
               </div>
 
-              {/* Side column */}
-              <div className="min-w-0 space-y-4">
-                <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-                  <h3 className="mb-2 text-sm font-semibold text-slate-200">Model assignment</h3>
-                  <div className="flex items-center gap-2">
-                    <div className="min-w-0 flex-1">
-                      <ModelAssignmentControl
-                        value={task.model_assignment || ""}
-                        projectId={projectId}
-                        role="task"
-                        onChange={async (value) => {
-                          setModelSaving(true);
-                          try {
-                            await updateTaskById(task.id, { model_assignment: value || null });
-                            await load();
-                          } finally {
-                            setModelSaving(false);
-                          }
-                        }}
-                      />
-                    </div>
-                    {modelSaving && <Loader2 size={14} className="shrink-0 animate-spin text-slate-400" />}
-                  </div>
-                  <p className="mt-2 text-[11px] text-slate-500">
-                    The standing model for autonomous runs. One-off dispatches pick their model in the console.
-                  </p>
-                </section>
-
-                {task.spec_output && (
-                  <ArtifactSection
-                    title="Spec"
-                    icon={<FileText size={14} className="text-slate-400" />}
-                    content={task.spec_output}
-                  />
-                )}
-                {task.researchReport?.content && (
-                  <ArtifactSection
-                    title="Research"
-                    icon={<Search size={14} className="text-slate-400" />}
-                    content={task.researchReport.content}
-                    generatedAt={task.researchReport.generatedAt}
-                  />
-                )}
-                {task.implementationPlan?.content && (
-                  <ArtifactSection
-                    title="Plan"
-                    icon={<Rocket size={14} className="text-slate-400" />}
-                    content={task.implementationPlan.content}
-                    generatedAt={task.implementationPlan.generatedAt}
-                  />
-                )}
-              </div>
+              {/* Side column — task artifacts (only when present) */}
+              {hasSideContent && (
+                <div className="min-w-0 space-y-4">
+                  {task.spec_output && (
+                    <ArtifactSection
+                      title="Spec"
+                      icon={<FileText size={14} className="text-slate-400" />}
+                      content={task.spec_output}
+                    />
+                  )}
+                  {task.researchReport?.content && (
+                    <ArtifactSection
+                      title="Research"
+                      icon={<Search size={14} className="text-slate-400" />}
+                      content={task.researchReport.content}
+                      generatedAt={task.researchReport.generatedAt}
+                    />
+                  )}
+                  {task.implementationPlan?.content && (
+                    <ArtifactSection
+                      title="Plan"
+                      icon={<Rocket size={14} className="text-slate-400" />}
+                      content={task.implementationPlan.content}
+                      generatedAt={task.implementationPlan.generatedAt}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}
