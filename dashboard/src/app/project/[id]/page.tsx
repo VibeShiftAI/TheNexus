@@ -1,14 +1,13 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { getProject, getProjectStatus, getProjectCommits, getTasks, getProjectReadme, Project, GitStatus, Commit, Task, getDashboardStats, ReviewItem, unarchiveProject } from "@/lib/nexus";
 import { ArrowLeft, GitBranch, Zap, Bot, Activity, Brain, FolderOpen as Folders, FileText, ChevronDown, ChevronUp, Archive } from "lucide-react";
 import Link from "next/link";
 import { AITerminal } from "@/components/ai-terminal";
 import { TaskManager } from "@/components/task-manager";
 import { TaskArchive } from "@/components/task-archive";
-import { TaskDetailModal } from "@/components/task-detail-modal";
 import { ProjectSettings } from "@/components/project-settings";
 import { ProjectContextManager } from "@/components/project-context-manager";
 import { ArtifactsList } from "@/components/artifacts-list";
@@ -18,6 +17,7 @@ import { ProjectNotes } from "@/components/project-notes";
 export default function ProjectDetailPage() {
     const params = useParams();
     const projectId = params.id as string;
+    const router = useRouter();
 
     const [project, setProject] = useState<Project | null>(null);
     const [status, setStatus] = useState<GitStatus | null>(null);
@@ -25,28 +25,21 @@ export default function ProjectDetailPage() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAITerminal, setShowAITerminal] = useState(false);
-    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-    const [initialTab, setInitialTab] = useState<'overview' | 'spec' | 'research' | 'plan' | 'walkthrough' | undefined>(undefined);
     const [readme, setReadme] = useState<{ exists: boolean; content: string | null }>({ exists: false, content: null });
     const [readmeExpanded, setReadmeExpanded] = useState(true);
     const [artifactsInReview, setArtifactsInReview] = useState<{ items: ReviewItem[], project: number, task: number }>({ items: [], project: 0, task: 0 });
 
-    const selectedTaskRef = useRef<Task | null>(null);
-    selectedTaskRef.current = selectedTask;
-    const deepLinkHandled = useRef(false);
+    // Opening a task navigates to its own screen (/task/[id]) — the old
+    // in-page TaskDetailModal overlay is retired.
+    const openTask = useCallback((task: Task) => {
+        router.push(`/task/${task.id}`);
+    }, [router]);
 
     const loadTasks = useCallback(async () => {
         if (!projectId) return;
         try {
             const res = await getTasks(projectId);
             setTasks(res.tasks);
-            // Update selected task if it exists - use ref to read CURRENT value
-            // (avoids stale closure resurrecting a task after onClose sets it to null)
-            const currentSelected = selectedTaskRef.current;
-            if (currentSelected) {
-                const updated = res.tasks.find(t => t.id === currentSelected.id);
-                setSelectedTask(updated || null);
-            }
         } catch (error) {
             console.error('Failed to load tasks:', error);
         }
@@ -98,26 +91,13 @@ export default function ProjectDetailPage() {
             .finally(() => setLoading(false));
     }, [projectId]);
 
-    // Handle deep linking - only on initial page load, not on every close/reopen
+    // Legacy deep links (?taskId= from chat/mobile/bookmarks) land on the new
+    // task screen — the modal they used to open no longer exists.
     const searchParams = useSearchParams();
     useEffect(() => {
-        if (loading || tasks.length === 0) return;
-        if (deepLinkHandled.current) return;
-
         const taskId = searchParams.get('taskId');
-        const artifact = searchParams.get('artifact');
-
-        if (taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (task) {
-                deepLinkHandled.current = true;
-                setSelectedTask(task);
-                if (artifact && ['overview', 'spec', 'research', 'plan', 'walkthrough'].includes(artifact)) {
-                    setInitialTab(artifact as any);
-                }
-            }
-        }
-    }, [loading, tasks, searchParams]);
+        if (taskId) router.replace(`/task/${taskId}`);
+    }, [searchParams, router]);
 
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
@@ -224,30 +204,6 @@ export default function ProjectDetailPage() {
                 isOpen={showAITerminal}
                 onClose={() => setShowAITerminal(false)}
             />
-
-            {/* Task Detail Modal */}
-            {selectedTask && (
-                <TaskDetailModal
-                    key={selectedTask.id}
-                    projectId={projectId}
-                    task={selectedTask}
-                    onClose={() => {
-                        // Update ref IMMEDIATELY so any in-flight loadTasks reads null
-                        selectedTaskRef.current = null;
-                        setSelectedTask(null);
-                        setInitialTab(undefined);
-                        // Clear deep link params from URL to prevent re-selection
-                        const url = new URL(window.location.href);
-                        if (url.searchParams.has('taskId')) {
-                            url.searchParams.delete('taskId');
-                            url.searchParams.delete('artifact');
-                            window.history.replaceState({}, '', url.pathname + url.search);
-                        }
-                    }}
-                    onTaskChange={loadTasks}
-                    initialTab={initialTab}
-                />
-            )}
 
             <div className="container mx-auto p-6 space-y-6">
 
@@ -356,7 +312,7 @@ export default function ProjectDetailPage() {
                             projectId={projectId}
                             tasks={tasks}
                             onTasksChange={loadTasks}
-                            onTaskSelect={setSelectedTask}
+                            onTaskSelect={openTask}
                         />
                     </div>
                     <div className="lg:col-span-1 space-y-3">
@@ -365,7 +321,7 @@ export default function ProjectDetailPage() {
                             projectId={projectId}
                             tasks={tasks}
                             onTasksChange={loadTasks}
-                            onTaskSelect={setSelectedTask}
+                            onTaskSelect={openTask}
                         />
                     </div>
                 </div>

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Save, Edit3, ClipboardList, Calendar as CalendarIcon, Check, Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { X, Save, Edit3, ClipboardList, Calendar as CalendarIcon, Check, Loader2, RefreshCw, AlertCircle, ExternalLink } from "lucide-react";
 import { updateTask, type Task, type TaskStatus } from "@/lib/nexus";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -173,9 +174,21 @@ export function DetailDrawer({ task, projectId, isOpen, onClose, onTaskChange }:
                 Task Details
               </span>
             </div>
-            <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-800 transition-colors">
-              <X size={18} className="text-slate-400 hover:text-white" />
-            </button>
+            <div className="flex items-center gap-2">
+              {task && (
+                <Link
+                  href={`/task/${task.id}`}
+                  className="flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-semibold text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                  title="Open the full task screen — dispatch console, run history, follow-ups"
+                >
+                  <ExternalLink size={13} />
+                  Open full task
+                </Link>
+              )}
+              <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                <X size={18} className="text-slate-400 hover:text-white" />
+              </button>
+            </div>
           </div>
 
           {/* Title & Metadata Block */}

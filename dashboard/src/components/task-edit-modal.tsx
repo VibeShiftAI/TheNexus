@@ -128,7 +128,7 @@ export function TaskEditModal({ task, isOpen, onClose, onSaved }: TaskEditModalP
   };
 
   const busy = saving || deleting;
-  const detailHref = projectId ? `/project/${projectId}?taskId=${task.id}` : "/";
+  const detailHref = `/task/${task.id}`;
 
   return (
     <div className={`fixed inset-0 z-[60] overflow-hidden transition-all duration-200 ${isOpen ? "visible" : "invisible delay-200"}`}>

@@ -563,7 +563,7 @@ function TaskCard({
   const description = task.description?.trim();
   const metadata = task.metadata || {};
   const hasTranscript = Boolean(metadata.codex_transcript_path || metadata.praxis_transcript_path || metadata.transcript_path);
-  const detailHref = taskProjectId ? `/project/${taskProjectId}?taskId=${task.id}` : "/";
+  const detailHref = `/task/${task.id}`;
 
   return (
     <article className="rounded-lg border border-slate-800 bg-slate-900/80 p-3 shadow-sm shadow-black/20 transition-colors hover:border-slate-700">

@@ -20,7 +20,7 @@
  * guards.
  */
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -32,20 +32,15 @@ import {
 } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
 import {
-  apiModelIdOf,
-  filterClaudeModels,
-  filterCodexModels,
-  getAntigravityModels,
-  getModelControlState,
-} from "@/lib/model-control";
+  EXECUTOR_OPTIONS,
+  useExecutorModelOptions,
+  type ExecutorName,
+} from "@/hooks/use-executor-models";
 
 type ResolveFn = (
   requestId: string,
   input: { choice?: string; freeText?: string; payload?: Record<string, unknown> },
 ) => Promise<void>;
-
-type ExecutorName = "antigravity" | "codex" | "claude-code";
-const EXECUTOR_OPTIONS: ExecutorName[] = ["antigravity", "codex", "claude-code"];
 
 interface ScheduleSlotMeta {
   slotNumber: number;
@@ -228,52 +223,9 @@ export function ScheduleHitlCard({
     if (!schedule) return {};
     return Object.fromEntries(schedule.slots.map((s) => [s.nexusTaskId, s.modelOverride ?? ""]));
   });
-  // Per-executor model options for the per-slot Model dropdown + the
-  // operator-set defaults, for the "(default)" labels. Claude/codex options
-  // come from the discovered roster; antigravity options are the `agy models`
-  // display names (the only values the agy CLI actually pins on).
-  const [claudeModels, setClaudeModels] = useState<Array<{ id: string; label: string }>>([]);
-  const [claudeDefault, setClaudeDefault] = useState<string>("claude-opus-4-8");
-  const [codexModels, setCodexModels] = useState<Array<{ id: string; label: string }>>([]);
-  const [codexDefault, setCodexDefault] = useState<string>("");
-  const [antigravityModels, setAntigravityModels] = useState<Array<{ id: string; label: string }>>([]);
-  const [antigravityDefault, setAntigravityDefault] = useState<string>("");
-  useEffect(() => {
-    let cancelled = false;
-    getModelControlState(null)
-      .then((state) => {
-        if (cancelled) return;
-        const toOption = (m: Parameters<typeof apiModelIdOf>[0]) => ({
-          id: apiModelIdOf(m),
-          label: m.display_name || m.name || m.id,
-        });
-        setClaudeModels(filterClaudeModels(state.models).map(toOption));
-        setCodexModels(filterCodexModels(state.models).map(toOption));
-        if (state.claudeDefault) setClaudeDefault(state.claudeDefault);
-        if (state.codexDefault) setCodexDefault(state.codexDefault);
-        if (state.antigravityDefault) setAntigravityDefault(state.antigravityDefault);
-      })
-      .catch(() => {
-        /* dropdown falls back to the default-only option */
-      });
-    getAntigravityModels()
-      .then((names) => {
-        if (!cancelled) setAntigravityModels(names.map((name) => ({ id: name, label: name })));
-      })
-      .catch(() => {
-        /* dropdown falls back to the default-only option */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  // Options/default/billing note per executor, for the per-slot dropdown.
-  const modelOptionsFor = (executor: ExecutorName) =>
-    executor === "claude-code"
-      ? { options: claudeModels, fallback: claudeDefault, note: "Claude" }
-      : executor === "codex"
-        ? { options: codexModels, fallback: codexDefault, note: "ChatGPT" }
-        : { options: antigravityModels, fallback: antigravityDefault, note: "Google" };
+  // Per-executor model options for the per-slot Model dropdown — shared with
+  // the task screen's dispatch console (use-executor-models).
+  const { optionsFor: modelOptionsFor } = useExecutorModelOptions();
   const [error, setError] = useState<string | null>(null);
 
   if (!schedule) {

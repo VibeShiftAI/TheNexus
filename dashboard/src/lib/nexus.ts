@@ -730,6 +730,51 @@ export async function updateTask(
     return res.json();
 }
 
+/** A task fetched by id alone (flat endpoint) — includes its raw db columns. */
+export interface TaskById extends Task {
+    project_id?: string | null;
+    name?: string;
+    priority?: number;
+    created_at?: string;
+    updated_at?: string;
+    suspended_reason?: string | null;
+    suspended_context?: string | null;
+}
+
+/**
+ * Fetch a single task by id without knowing its project (top-level
+ * /api/tasks/:taskId). Returns null on 404 — the task screen shows a
+ * not-found state instead of throwing.
+ */
+export async function getTaskById(taskId: string): Promise<TaskById | null> {
+    const baseUrl = API_URL.replace('/projects', '/tasks');
+    const res = await authFetch(`${baseUrl}/${encodeURIComponent(taskId)}`, { cache: 'no-store' });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`Failed to fetch task (${res.status})`);
+    return res.json();
+}
+
+/**
+ * Update a task by id alone (top-level /api/tasks/:taskId PATCH) — for the
+ * task screen, which may not have the project loaded yet.
+ */
+export async function updateTaskById(
+    taskId: string,
+    updates: { status?: string; priority?: number; description?: string; model_assignment?: string | null; [key: string]: any },
+): Promise<{ success: boolean; task: Task }> {
+    const baseUrl = API_URL.replace('/projects', '/tasks');
+    const res = await authFetch(`${baseUrl}/${encodeURIComponent(taskId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({} as { error?: string }));
+        throw new Error((body as { error?: string }).error || 'Failed to update task');
+    }
+    return res.json();
+}
+
 /**
  * Update a task's priority (0=low, 1=normal, 2=high).
  * Uses the top-level /api/tasks/:taskId endpoint, which handles the `priority` column directly.

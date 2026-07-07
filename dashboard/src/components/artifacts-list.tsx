@@ -66,7 +66,7 @@ export function ArtifactsList({ items, projectCount, taskCount, projectId, class
                         <Link
                             key={`${item.id}-${idx}`}
                             href={item.level === 'Task'
-                                ? `/project/${item.projectId}?taskId=${item.id}&artifact=${item.type.replace('task-', '')}`
+                                ? `/task/${item.id}`
                                 : `/project/${item.projectId}`
                             }
                             className="block p-3 rounded bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 transition-all group"

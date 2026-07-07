@@ -304,6 +304,8 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
     router.post('/cron/:key/resume', (req, res) => proxyJson(req, res, `/api/cron/${encodeURIComponent(req.params.key)}/resume`));
     // Manual task dispatch with executor/model selection (mobile/cockpit).
     router.post('/dispatch/task', (req, res) => proxyJson(req, res, '/api/dispatch/task'));
+    // Follow-up prompt to a finished dispatch's saved CLI session (task screen).
+    router.post('/dispatch/follow-up', (req, res) => proxyJson(req, res, '/api/dispatch/follow-up'));
     // Inbox "Clear list" — drops failed entries from the Antigravity queue.
     router.post('/dispatch/clear-failed', (req, res) => proxyJson(req, res, '/api/dispatch/clear-failed'));
     // Shared voice-command grammar (classification lives with the agent).
