@@ -521,7 +521,7 @@ export function VoiceCommandBar() {
     const line =
       alertEvent.type === "task.failed"
         ? `Alert. A task has failed: ${alertEvent.error?.slice(0, 120) ?? "unknown error"}`
-        : `Praxis needs your input: ${alertEvent.type === "hitl.created" ? alertEvent.request?.question?.slice(0, 120) ?? "approval required" : ""}`;
+        : `Hi Robert, I need your attention on something: ${alertEvent.type === "hitl.created" ? alertEvent.request?.question?.slice(0, 120) ?? "approval required" : ""}`;
     alertChime();
     setTimeout(() => speak(line, { keepState: true }), 550);
   }, [recentEvents, alertsEnabled, state, speak]);
