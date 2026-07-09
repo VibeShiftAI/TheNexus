@@ -13,6 +13,7 @@
 
 export * from "./entities/index.js";
 export * from "./events/index.js";
+export * from "./endpoints.js";
 
 // Legacy exports — keep until consumers are migrated to the entity-based shapes.
 export * from "./system.js";

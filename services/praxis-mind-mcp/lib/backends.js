@@ -115,8 +115,9 @@ async function nexusTaskById(taskId) {
   return httpJSON(`${cfg.NEXUS}/api/tasks/${encodeURIComponent(taskId)}`);
 }
 
-async function nexusTaskCreate({ project_id, name, description = '', status = 'idea', priority = 1, antigravity_payload = null, dependencies = [], source = 'praxis-mind-mcp' }) {
-  // Use the batch endpoint because it supports antigravity_payload + dependencies.
+async function nexusTaskCreate({ project_id, name, description = '', status = 'idea', priority = 1, antigravity_payload = null, dependencies = [], successor_id = undefined, source = 'praxis-mind-mcp' }) {
+  // Use the batch endpoint because it supports antigravity_payload +
+  // dependencies (predecessors) + successor_id.
   return httpJSON(`${cfg.NEXUS}/api/tasks/batch`, {
     method: 'POST',
     body: {
@@ -129,6 +130,8 @@ async function nexusTaskCreate({ project_id, name, description = '', status = 'i
           priority,
           antigravity_payload: antigravity_payload || undefined,
           dependencies,
+          successor_id: successor_id || undefined,
+          source,
           stable_id: 'task-1',
         },
       ],

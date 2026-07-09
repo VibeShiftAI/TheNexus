@@ -11,7 +11,7 @@ const Database = require('better-sqlite3');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
-const { normalizeTaskBoardStatus } = require('@praxis/contract');
+const { normalizeTaskBoardStatus, isTaskDone } = require('@praxis/contract');
 
 /**
  * Write-side backstop for the canonical task-status enum (@praxis/contract
@@ -122,6 +122,20 @@ try {
         }
     } catch (err) {
         console.warn('[Database] last_activity_at migration skipped:', err.message);
+    }
+
+    // Migration: task sequencing. Predecessors already live in `dependencies`
+    // (JSON array of task ids, migration 023 — all must complete before this
+    // task starts). successor_id is the single task to start immediately
+    // after this one completes.
+    try {
+        const seqCols = db.prepare("PRAGMA table_info(tasks)").all();
+        if (seqCols.length > 0 && !seqCols.find(c => c.name === 'successor_id')) {
+            db.exec("ALTER TABLE tasks ADD COLUMN successor_id TEXT");
+            console.log('[Database] Migration: added successor_id column to tasks');
+        }
+    } catch (err) {
+        console.warn('[Database] successor_id migration skipped:', err.message);
     }
 
     console.log(`[Database] Connected to SQLite: ${DB_PATH}`);
@@ -839,10 +853,7 @@ async function getBoardState(projectId) {
             if (deps.length === 0) {
                 task.is_unblocked = true;
             } else {
-                task.is_unblocked = deps.every(depId => {
-                    const depStatus = taskStatusMap.get(depId);
-                    return depStatus === 'complete' || depStatus === 'completed' || depStatus === 'done';
-                });
+                task.is_unblocked = deps.every(depId => isTaskDone(taskStatusMap.get(depId)));
             }
         }
 

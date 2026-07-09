@@ -7,7 +7,8 @@ const express = require('express');
 const crypto = require('crypto');
 const { resolveModelAssignment, recordModelExecutionSnapshot } = require('../services/model-control');
 const { hasRealActivity } = require('../lib/task-activity');
-const { TaskBoardStatusSchema, normalizeTaskBoardStatus } = require('@praxis/contract');
+const { TaskBoardStatusSchema, normalizeTaskBoardStatus, AntigravityPayloadSchema } = require('@praxis/contract');
+const { checkPredecessorGate, triggerSuccessors } = require('../lib/task-sequence');
 
 /**
  * Canonical-status gate (2026-07-05 unification). Legacy synonyms
@@ -28,6 +29,22 @@ function requireValidStatus(res, rawStatus) {
 
 function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, runDeepResearch, validateInitiativeRequest, pushService }) {
     const router = express.Router();
+
+    // Successor auto-start (task sequencing): the completed transition here
+    // is the single choke point every completion path goes through — UI,
+    // MCP, and the Praxis QA loop all PATCH the task API. Fire-and-forget:
+    // a successor dispatch failure must never fail the completing PATCH.
+    function maybeTriggerSuccessors(existing, updated) {
+        if (!updated) return;
+        const before = normalizeTaskBoardStatus(existing.status);
+        const after = normalizeTaskBoardStatus(updated.status);
+        if (after === 'completed' && before !== 'completed') {
+            setImmediate(() => {
+                triggerSuccessors(db, updated).catch(err =>
+                    console.error('[TaskSequence] Successor trigger crashed:', err.message));
+            });
+        }
+    }
 
     async function resolveTaskModel(task, projectId, extraLinks = {}) {
         const resolved = await resolveModelAssignment(db, {
@@ -79,19 +96,47 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     });
 
     // ─── Create Task (top-level) ─────────────────────────────────────────
+    // Accepts the full dual-layer shape (@praxis/contract TaskCreateInput):
+    // human layer (title/description), machine layer (antigravity_payload),
+    // and sequencing (dependencies = predecessors, successor_id).
     router.post('/', async (req, res) => {
-        const { project_id, title, status, priority, description, model_assignment } = req.body;
-        if (!project_id || !title) return res.status(400).json({ error: 'project_id and title are required' });
+        const { project_id, title, name, status, priority, description, model_assignment, antigravity_payload, dependencies, successor_id, source } = req.body;
+        const taskName = title || name;
+        if (!project_id || !taskName) return res.status(400).json({ error: 'project_id and title are required' });
         let canonicalStatus = 'planning';
         if (status !== undefined && status !== null) {
             canonicalStatus = requireValidStatus(res, status);
             if (canonicalStatus === null) return;
         }
+        let payload;
+        if (antigravity_payload !== undefined && antigravity_payload !== null) {
+            const parsed = AntigravityPayloadSchema.safeParse(antigravity_payload);
+            if (!parsed.success) {
+                return res.status(400).json({ error: 'Invalid antigravity_payload: ' + parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ') });
+            }
+            payload = parsed.data;
+        }
         try {
+            const deps = Array.isArray(dependencies)
+                ? [...new Set(dependencies.filter(d => typeof d === 'string' && d))]
+                : [];
+            for (const depId of deps) {
+                if (!(await db.getTask(depId))) {
+                    return res.status(400).json({ error: `Predecessor task not found: ${depId}` });
+                }
+            }
+            if (successor_id && !(await db.getTask(successor_id))) {
+                return res.status(400).json({ error: `Successor task not found: ${successor_id}` });
+            }
             const result = await db.createTask({
-                project_id, name: title, status: canonicalStatus,
-                priority: priority === 'high' ? 2 : 1, description: description || '',
+                project_id, name: taskName, status: canonicalStatus,
+                priority: priority === 'high' ? 2 : (typeof priority === 'number' ? priority : 1),
+                description: description || '',
                 model_assignment: model_assignment || null,
+                ...(payload ? { antigravity_payload: payload } : {}),
+                ...(deps.length > 0 ? { dependencies: deps } : {}),
+                ...(successor_id ? { successor_id } : {}),
+                ...(source ? { source } : {}),
                 last_activity_at: new Date().toISOString()
             });
             res.status(201).json(result);
@@ -103,7 +148,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // ─── PATCH update task by ID ─────────────────────────────────────────
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, description, model_assignment, antigravity_payload, name, title } = req.body;
+        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title } = req.body;
         try {
             const existing = await db.getTask(taskId);
             if (!existing) return res.status(404).json({ error: 'Task not found' });
@@ -114,6 +159,13 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (status !== undefined) {
                 const canonicalStatus = requireValidStatus(res, status);
                 if (canonicalStatus === null) return;
+                // Predecessor gate — a task may not move into a started
+                // status while predecessors are incomplete. `force` is the
+                // same escape hatch Praxis's forced dispatches use.
+                const gateError = await checkPredecessorGate(db, existing, canonicalStatus, { force: req.body.force === true });
+                if (gateError) {
+                    return res.status(400).json({ error: gateError, code: 'predecessors_incomplete' });
+                }
                 updates.status = canonicalStatus;
             }
             if (research_output !== undefined) updates.research_output = research_output;
@@ -124,8 +176,35 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (model_assignment !== undefined) updates.model_assignment = model_assignment || null;
             // Machine-layer payload (JSON column; ser() encodes, deserRow parses back).
             if (antigravity_payload !== undefined) updates.antigravity_payload = antigravity_payload;
-            // ser() in the db layer JSON-encodes arrays; deserRow parses it back.
-            if (dependencies !== undefined) updates.dependencies = Array.isArray(dependencies) ? dependencies : [];
+            // Predecessors — every listed task must complete before this one
+            // starts. ser() in the db layer JSON-encodes arrays; deserRow
+            // parses it back.
+            if (dependencies !== undefined) {
+                const deps = Array.isArray(dependencies)
+                    ? [...new Set(dependencies.filter(d => typeof d === 'string' && d && d !== taskId))]
+                    : [];
+                for (const depId of deps) {
+                    if (!(await db.getTask(depId))) {
+                        return res.status(400).json({ error: `Predecessor task not found: ${depId}` });
+                    }
+                }
+                updates.dependencies = deps;
+            }
+            // Successor — the single task to start immediately after this one
+            // completes. null/'' clears it.
+            if (successor_id !== undefined) {
+                if (!successor_id) {
+                    updates.successor_id = null;
+                } else {
+                    if (successor_id === taskId) {
+                        return res.status(400).json({ error: 'A task cannot be its own successor' });
+                    }
+                    if (!(await db.getTask(successor_id))) {
+                        return res.status(400).json({ error: `Successor task not found: ${successor_id}` });
+                    }
+                    updates.successor_id = successor_id;
+                }
+            }
             if (status_message !== undefined) {
                 updates.metadata = { ...(existing.metadata || {}), status_message };
             }
@@ -136,6 +215,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             }
             console.log(`[Task Sync] Updating task ${taskId}: ${Object.keys(updates).filter(k => k !== 'updated_at').join(', ')}`);
             const updated = await db.updateTask(taskId, updates);
+            maybeTriggerSuccessors(existing, updated);
             res.json({ success: true, task: updated });
         } catch (err) {
             console.error('[Task Sync] Error updating task:', err);
@@ -168,12 +248,19 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 if (task.dependencies?.length > 0) {
                     task.dependencies = task.dependencies.map(depId => stableIdToRealId.get(depId) || depId);
                 }
+                // successor_id may reference a sibling by stable_id too.
+                if (task.successor_id) {
+                    task.successor_id = stableIdToRealId.get(task.successor_id) || task.successor_id;
+                    if (task.successor_id === task.id) {
+                        return res.status(400).json({ error: `Task "${task.name}" cannot be its own successor` });
+                    }
+                }
                 delete task.stable_id;
             }
             const created = await db.batchCreateTasks(preparedTasks);
             res.status(201).json({
                 success: true, project: project.name, created_count: created.length,
-                tasks: created.map(t => ({ id: t.id, name: t.name, status: t.status, sort_order: t.sort_order, has_payload: !!t.antigravity_payload, dependencies: t.dependencies || [] }))
+                tasks: created.map(t => ({ id: t.id, name: t.name, status: t.status, sort_order: t.sort_order, has_payload: !!t.antigravity_payload, dependencies: t.dependencies || [], successor_id: t.successor_id || null }))
             });
         } catch (error) {
             res.status(500).json({ error: 'Failed to batch-create tasks: ' + error.message });
@@ -209,8 +296,27 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
 
     // POST add task to project
     router.post('/:id/tasks', async (req, res) => {
-        const { title, description, model_assignment } = req.body;
+        const { title, description, model_assignment, dependencies, successor_id, antigravity_payload } = req.body;
         if (!title?.trim()) return res.status(400).json({ error: 'Task title is required' });
+        let payload;
+        if (antigravity_payload !== undefined && antigravity_payload !== null) {
+            const parsed = AntigravityPayloadSchema.safeParse(antigravity_payload);
+            if (!parsed.success) {
+                return res.status(400).json({ error: 'Invalid antigravity_payload: ' + parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ') });
+            }
+            payload = parsed.data;
+        }
+        const deps = Array.isArray(dependencies)
+            ? [...new Set(dependencies.filter(d => typeof d === 'string' && d))]
+            : [];
+        for (const depId of deps) {
+            if (!(await db.getTask(depId))) {
+                return res.status(400).json({ error: `Predecessor task not found: ${depId}` });
+            }
+        }
+        if (successor_id && !(await db.getTask(successor_id))) {
+            return res.status(400).json({ error: `Successor task not found: ${successor_id}` });
+        }
 
         let validation = {};
         try {
@@ -226,6 +332,9 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 project_id: project.id, name: title.trim(), description: description?.trim() || '',
                 status: 'idea', priority: 0, initiative_validation: validation, source: 'user',
                 model_assignment: model_assignment || null,
+                ...(payload ? { antigravity_payload: payload } : {}),
+                ...(deps.length > 0 ? { dependencies: deps } : {}),
+                ...(successor_id ? { successor_id } : {}),
                 metadata: { classifiedAt: new Date().toISOString() },
                 last_activity_at: new Date().toISOString()
             });
@@ -263,6 +372,10 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (priority !== undefined) updates.priority = priority;
             if (model_assignment !== undefined) updates.model_assignment = model_assignment || null;
             if (status !== undefined) {
+                const gateError = await checkPredecessorGate(db, existing, status, { force: req.body.force === true });
+                if (gateError) {
+                    return res.status(400).json({ error: gateError, code: 'predecessors_incomplete' });
+                }
                 updates.status = status;
                 if (status === 'idea') {
                     Object.assign(updates, {
@@ -277,6 +390,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             }
             const oldStatus = existing.status;
             const updated = await db.updateTask(taskId, updates);
+            maybeTriggerSuccessors(existing, updated);
             if (status && status !== oldStatus) {
                 const notifyStatuses = ['completed', 'failed', 'blocked', 'awaiting_approval', 'suspended'];
                 if (notifyStatuses.includes(status)) {

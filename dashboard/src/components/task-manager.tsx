@@ -30,6 +30,10 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [newTaskModelAssignment, setNewTaskModelAssignment] = useState<string>('');
+    // Sequencing: predecessors must all complete before the task starts;
+    // the (single) successor auto-starts the moment it completes.
+    const [newTaskPredecessors, setNewTaskPredecessors] = useState<string[]>([]);
+    const [newTaskSuccessor, setNewTaskSuccessor] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [researchingId, setResearchingId] = useState<string | null>(null);
     const [isAutoResearching, setIsAutoResearching] = useState(false);
@@ -129,10 +133,15 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
 
         setIsSubmitting(true);
         try {
-            await addTask(projectId, title.trim(), description.trim() || undefined, newTaskModelAssignment || null);
+            await addTask(projectId, title.trim(), description.trim() || undefined, newTaskModelAssignment || null, {
+                dependencies: newTaskPredecessors,
+                successor_id: newTaskSuccessor || null,
+            });
             setTitle('');
             setDescription('');
             setNewTaskModelAssignment('');
+            setNewTaskPredecessors([]);
+            setNewTaskSuccessor('');
             setShowForm(false);
             onTasksChange();
         } catch (error) {
@@ -286,6 +295,59 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                             onChange={setNewTaskModelAssignment}
                         />
                     </div>
+                    {/* Sequence — predecessors (many) + successor (one) */}
+                    <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs text-slate-400 mb-1">Predecessors — must complete first</label>
+                            {newTaskPredecessors.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                    {newTaskPredecessors.map((id) => {
+                                        const t = tasks.find((x) => x.id === id);
+                                        return (
+                                            <span key={id} className="inline-flex items-center gap-1 rounded bg-slate-900 border border-slate-700 px-1.5 py-0.5 text-[11px] text-slate-300">
+                                                <span className="max-w-[140px] truncate">{t?.title || id}</span>
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Remove predecessor ${t?.title || id}`}
+                                                    onClick={() => setNewTaskPredecessors((prev) => prev.filter((d) => d !== id))}
+                                                    className="text-slate-500 hover:text-rose-300"
+                                                >
+                                                    ×
+                                                </button>
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            <select
+                                value=""
+                                onChange={(e) => {
+                                    if (e.target.value) setNewTaskPredecessors((prev) => [...prev, e.target.value]);
+                                }}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-purple-500/50"
+                                aria-label="Add predecessor"
+                            >
+                                <option value="">+ Add predecessor…</option>
+                                {tasks.filter((t) => !newTaskPredecessors.includes(t.id)).map((t) => (
+                                    <option key={t.id} value={t.id}>{t.title} ({t.status})</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs text-slate-400 mb-1">Successor — starts when this completes</label>
+                            <select
+                                value={newTaskSuccessor}
+                                onChange={(e) => setNewTaskSuccessor(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-purple-500/50"
+                                aria-label="Successor task"
+                            >
+                                <option value="">No successor</option>
+                                {tasks.map((t) => (
+                                    <option key={t.id} value={t.id}>{t.title} ({t.status})</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
                     <div className="flex gap-2">
                         <button
                             type="submit"
@@ -296,7 +358,7 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setShowForm(false); setTitle(''); setDescription(''); setNewTaskModelAssignment(''); }}
+                            onClick={() => { setShowForm(false); setTitle(''); setDescription(''); setNewTaskModelAssignment(''); setNewTaskPredecessors([]); setNewTaskSuccessor(''); }}
                             className="px-4 py-2 text-sm rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
                         >
                             Cancel

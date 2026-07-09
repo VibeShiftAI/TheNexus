@@ -551,11 +551,28 @@ export async function getTasks(id: string): Promise<TasksResponse> {
     return res.json();
 }
 
-export async function addTask(id: string, title: string, description?: string, model_assignment?: string | null): Promise<{ success: boolean; task: Task }> {
+export async function addTask(
+    id: string,
+    title: string,
+    description?: string,
+    model_assignment?: string | null,
+    sequence?: {
+        /** Predecessor task ids — all must complete before this task starts. */
+        dependencies?: string[];
+        /** The single task to auto-start after this one completes. */
+        successor_id?: string | null;
+    },
+): Promise<{ success: boolean; task: Task }> {
     const res = await authFetch(`${API_URL}/${id}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, model_assignment }),
+        body: JSON.stringify({
+            title,
+            description,
+            model_assignment,
+            ...(sequence?.dependencies?.length ? { dependencies: sequence.dependencies } : {}),
+            ...(sequence?.successor_id ? { successor_id: sequence.successor_id } : {}),
+        }),
     });
     if (!res.ok) {
         const data = await res.json();
@@ -739,6 +756,10 @@ export interface TaskById extends Task {
     updated_at?: string;
     suspended_reason?: string | null;
     suspended_context?: string | null;
+    /** Predecessor task ids — all must complete before this task starts. */
+    dependencies?: string[];
+    /** The single task to start immediately after this one completes. */
+    successor_id?: string | null;
 }
 
 /**

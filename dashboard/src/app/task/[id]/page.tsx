@@ -38,6 +38,7 @@ import {
 import { copyClaudeDispatch } from "@/lib/claude-dispatch";
 import { STATUS_OPTIONS } from "@/components/task-edit-modal";
 import { TaskDispatchConsole } from "@/components/task-view/dispatch-console";
+import { TaskSequencePanel } from "@/components/task-view/task-sequence";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 const TASK_POLL_MS = 20_000;
@@ -336,6 +337,8 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                     <p className="text-sm italic text-slate-500">No description provided.</p>
                   )}
                 </section>
+
+                <TaskSequencePanel task={task} projectId={projectId} onChanged={load} />
 
                 {walkthrough?.content && (
                   <section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">

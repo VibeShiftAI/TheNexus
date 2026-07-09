@@ -66,6 +66,33 @@ export const OperatorProfileSchema = z.object({
 export type OperatorProfile = z.infer<typeof OperatorProfileSchema>;
 
 /**
+ * Working Profile — nightly-synthesized behavioral model of the operator.
+ *
+ * Produced by the Dialectic User Modeling pipeline in TheCortex's Gardener.
+ * Tracks how the operator approaches problems, makes decisions, and
+ * communicates — not just what they like, but how they think.
+ */
+export const WorkingProfileSchema = z.object({
+  /** How the operator approaches debugging, planning, and problem decomposition. */
+  problem_solving: z.string(),
+  /** Decision-making style: risk tolerance, speed vs. thoroughness, consensus vs. directive. */
+  decision_making: z.string(),
+  /** Communication preferences: level of detail, proactive suggestions, preferred formats. */
+  communication: z.string(),
+  /** Work patterns, peak hours, tool preferences, session cadence. */
+  operational_rhythms: z.string(),
+  /** Top 3-5 active interests, projects, or recurring themes. */
+  current_focus: z.array(z.string()),
+  /** ISO timestamp of when this profile was synthesized. */
+  synthesized_at: z.string(),
+  /** How many days of interaction data informed this synthesis. */
+  evidence_window_days: z.number(),
+  /** What changed from the previous profile and why (dialectic audit trail). */
+  change_log: z.array(z.string()),
+});
+export type WorkingProfile = z.infer<typeof WorkingProfileSchema>;
+
+/**
  * Identity — the full object. Any field may be absent; the runtime
  * composes whatever is present into the final system prompt.
  */
@@ -91,6 +118,12 @@ export const IdentitySchema = z.object({
    * Distinct from per-session working memory (which lives in SQLite/Cortex).
    */
   memory: z.string().optional(),
+
+  /**
+   * Working Profile — nightly-synthesized behavioral model of the operator.
+   * Produced by the Dialectic User Modeling pipeline in TheCortex's Gardener.
+   */
+  workingProfile: WorkingProfileSchema.optional(),
 
   /**
    * Channel-keyed voice map. `default` is used when a specific channel

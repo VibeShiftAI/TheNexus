@@ -5,3 +5,5 @@ export * from "./hitl.js";
 export * from "./executor.js";
 export * from "./identity.js";
 export * from "./trading.js";
+export * from "./pact.js";
+

@@ -59,6 +59,7 @@ function register(server, ctx) {
           priority: t.priority,
           has_antigravity_payload: !!t.antigravity_payload,
           dependencies: t.dependencies,
+          successor_id: t.successor_id || null,
           updated_at: t.updated_at,
         }));
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_tasks_read', success: true, latency_ms: Date.now() - started });
@@ -89,9 +90,10 @@ function register(server, ctx) {
         })
         .optional()
         .describe('Optional machine-execution payload. Include when the task is ready for Antigravity to run.'),
-      dependencies: z.array(z.string()).default([]).describe('Task IDs that must complete first.'),
+      dependencies: z.array(z.string()).default([]).describe('Predecessor task IDs — ALL must be completed before this task may start.'),
+      successor_id: z.string().optional().describe('The single task to auto-start immediately after this task completes. Chain tasks with this; there is only ever one successor per task.'),
     },
-    async ({ project_id, title, description, priority, antigravity_payload, dependencies }) => {
+    async ({ project_id, title, description, priority, antigravity_payload, dependencies, successor_id }) => {
       const auth = checkPrivilege(ctx.caller, 'nexus.task_create');
       if (auth) return auth;
       const rl = checkAndIncrement(ctx.caller.identity, 'nexus_task_create', ctx.caller.rate_limits_per_hour?.['nexus.task_create']);
@@ -107,6 +109,7 @@ function register(server, ctx) {
           priority,
           antigravity_payload,
           dependencies,
+          successor_id,
           source: `coding-agents-${ctx.caller.identity}`,
         });
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_create', success: true, latency_ms: Date.now() - started });
@@ -126,7 +129,8 @@ function register(server, ctx) {
       status: z.string().optional().describe('New status, e.g. "todo", "in-progress", "completed", "blocked", "cancelled".'),
       priority: z.number().int().min(0).max(2).optional().describe('0=low, 1=normal, 2=high.'),
       description: z.string().optional().describe('Replacement description / context.'),
-      dependencies: z.array(z.string()).optional().describe('Replacement list of task IDs this task depends on. Replaces the existing list entirely.'),
+      dependencies: z.array(z.string()).optional().describe('Replacement list of predecessor task IDs (all must complete before this task starts). Replaces the existing list entirely.'),
+      successor_id: z.string().nullable().optional().describe('The single task to auto-start when this task completes. Pass null (or empty string) to clear.'),
       antigravity_payload: z
         .object({
           prompt: z.string().describe('Use case / intended outcome + areas of the project impacted, as intent (not prescriptive code steps).'),
@@ -139,7 +143,7 @@ function register(server, ctx) {
         .optional()
         .describe('Replacement machine-execution payload (the "instructions" layer). Replaces the existing payload entirely.'),
     },
-    async ({ task_id, status, priority, description, dependencies, antigravity_payload }) => {
+    async ({ task_id, status, priority, description, dependencies, successor_id, antigravity_payload }) => {
       const auth = checkPrivilege(ctx.caller, 'nexus.task_update');
       if (auth) return auth;
       const rl = checkAndIncrement(ctx.caller.identity, 'nexus_task_update', ctx.caller.rate_limits_per_hour?.['nexus.task_update']);
@@ -151,9 +155,10 @@ function register(server, ctx) {
       if (priority !== undefined) patch.priority = priority;
       if (description !== undefined) patch.description = description;
       if (dependencies !== undefined) patch.dependencies = dependencies;
+      if (successor_id !== undefined) patch.successor_id = successor_id || null;
       if (antigravity_payload !== undefined) patch.antigravity_payload = antigravity_payload;
       if (Object.keys(patch).length === 0) {
-        return { content: [{ type: 'text', text: 'No fields to update. Specify at least one of: status, priority, description, dependencies, antigravity_payload.' }], isError: true };
+        return { content: [{ type: 'text', text: 'No fields to update. Specify at least one of: status, priority, description, dependencies, successor_id, antigravity_payload.' }], isError: true };
       }
       const started = Date.now();
       try {
