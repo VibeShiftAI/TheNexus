@@ -1,9 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, CheckCircle2, HelpCircle, Loader2 } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  HelpCircle,
+  Loader2,
+  PictureInPicture2,
+} from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
+import { hitlTaskMeta, parseResumeContext, REASON_LABELS } from "@/lib/hitl-meta";
 import {
   BoardMaintenanceHitlCard,
   ScheduleHitlCard,
@@ -13,13 +23,14 @@ import {
   isSkillCandidatesHitl,
 } from "./schedule-hitl-card";
 
-const REASON_LABELS: Record<string, string> = {
-  low_confidence: "Low confidence",
-  subjective_validation: "Validation",
-  explicit_request: "Input requested",
-  ontological_guard: "Guardrail",
-  budget_gate: "Budget gate",
-};
+/** Open the pop-up inbox window (or focus it if already open). */
+export function openInboxWindow() {
+  window.open(
+    "/inbox",
+    "praxis-inbox",
+    "popup,width=600,height=860,left=120,top=60",
+  );
+}
 
 export function HitlInbox() {
   const { error, loading, pendingRequests, resolvingId, resolveRequest } = useHitlInbox();
@@ -46,9 +57,18 @@ export function HitlInbox() {
           )}
           <h3 className="text-sm font-bold text-white">Praxis Inbox</h3>
         </div>
-        <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
-          {pendingRequests.length}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
+            {pendingRequests.length}
+          </span>
+          <button
+            onClick={openInboxWindow}
+            title="Open inbox in a pop-up window"
+            className="rounded-md border border-slate-700 p-1 text-slate-400 transition hover:border-cyan-500 hover:text-cyan-300"
+          >
+            <PictureInPicture2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
 
       {error ? <p className="mb-3 text-xs text-rose-300">{error}</p> : null}
@@ -104,7 +124,14 @@ function HitlRequestCard({
   resolving: boolean;
 }) {
   const [reply, setReply] = useState("");
+  const [showContext, setShowContext] = useState(false);
   const reasonLabel = REASON_LABELS[request.reason] ?? request.reason;
+  const meta = hitlTaskMeta(request);
+  const resume = parseResumeContext(request.originalPayload?.prompt);
+  // Only offer the accordion when the payload adds something beyond the
+  // question itself (older records set prompt = question verbatim).
+  const hasContext =
+    (resume.context.length > 0 && resume.context !== request.question) || resume.tail.length > 0;
 
   async function submit(choice?: string) {
     const freeText = reply.trim();
@@ -118,18 +145,73 @@ function HitlRequestCard({
   return (
     <article className="rounded-lg border border-slate-700 bg-slate-950/60 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300">
-          {reasonLabel}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300">
+            {reasonLabel}
+          </span>
+          {meta.executor ? (
+            <span className="rounded-full bg-slate-700/40 px-2 py-0.5 font-mono text-[10px] text-slate-300">
+              {meta.executor}
+            </span>
+          ) : null}
+        </div>
         {request.confidenceScore !== undefined ? (
           <span className="text-[11px] text-slate-400">{request.confidenceScore}% confidence</span>
         ) : null}
       </div>
 
+      {request.taskId ? (
+        <a
+          href={`/task/${encodeURIComponent(request.taskId)}`}
+          target="_blank"
+          rel="noreferrer"
+          title={`Open task ${request.taskId}`}
+          className="mb-2 flex items-center gap-1.5 text-xs text-cyan-300 transition hover:text-cyan-200"
+        >
+          <ExternalLink className="h-3 w-3 shrink-0" />
+          <span className="truncate font-medium">
+            {meta.taskTitle ?? request.taskId}
+          </span>
+          {meta.projectName ? (
+            <span className="shrink-0 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
+              {meta.projectName}
+            </span>
+          ) : null}
+        </a>
+      ) : null}
+
       <div className="mb-3 flex gap-2 text-sm text-slate-100">
         <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
         <p>{request.question}</p>
       </div>
+
+      {hasContext ? (
+        <div className="mb-3">
+          <button
+            onClick={() => setShowContext((v) => !v)}
+            className="flex items-center gap-1 text-[11px] text-slate-400 transition hover:text-slate-200"
+          >
+            {showContext ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+            Agent context
+          </button>
+          {showContext ? (
+            <div className="mt-1.5 space-y-2 rounded-md border border-slate-800 bg-slate-900/70 p-2">
+              {resume.context && resume.context !== request.question ? (
+                <p className="whitespace-pre-wrap text-xs text-slate-300">{resume.context}</p>
+              ) : null}
+              {resume.tail ? (
+                <pre className="max-h-40 overflow-auto rounded bg-slate-950 p-2 font-mono text-[10px] leading-relaxed text-slate-500">
+                  {resume.tail}
+                </pre>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {request.options && request.options.length > 0 ? (
         <div className="mb-3 flex flex-wrap gap-2">
