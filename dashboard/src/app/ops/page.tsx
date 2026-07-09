@@ -40,6 +40,7 @@ function ageSince(iso?: string) {
 
 function executorChip(name: string) {
   const map: Record<string, string> = {
+    antigravity: "border-violet-500/40 bg-violet-500/10 text-violet-300",
     codex: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
     "claude-code": "border-orange-500/40 bg-orange-500/10 text-orange-300",
   };
@@ -224,7 +225,7 @@ export default function OpsConsolePage() {
         {/* Live executor lanes */}
         <DispatchStation />
 
-        {/* Executor runs — all executors (Codex, Claude Code) + agent runs */}
+        {/* Executor runs — all executors (Antigravity, Codex, Claude Code) + agent runs */}
         <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
           <h3 className="mb-3 text-sm font-bold tracking-tight text-white">
             EXECUTOR RUNS{" "}

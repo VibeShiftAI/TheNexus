@@ -1,10 +1,10 @@
 /**
  * DispatchStation — "Ops": live executor lanes showing task packets moving
- * through Praxis's dispatch pipeline (Codex, Claude Code, and the local LLM
- * queue). Lane motion is driven by the shared SSE stream (executor.progress /
- * task.* events); queue depth comes from Praxis /api/dispatch/state. Click a
- * lane for the executor drill-down popup, or through to /ops for the full
- * console.
+ * through Praxis's dispatch pipeline (Antigravity, Codex, Claude Code — all as
+ * CLI executors — plus the local LLM queue). Lane motion is driven by the
+ * shared SSE stream (executor.progress / task.* events) with a fallback to the
+ * run registry from Praxis /api/dispatch/state. Click a lane for the executor
+ * drill-down popup, or through to /ops for the full console.
  */
 "use client";
 
@@ -27,6 +27,7 @@ const PHASE_PCT: Record<ExecutionPhase, number> = {
 };
 
 const LANES: { id: ExecutorName & ExecutorId; label: string }[] = [
+  { id: "antigravity", label: "Antigravity" },
   { id: "codex", label: "Codex" },
   { id: "claude-code", label: "Claude Code" },
 ];
@@ -105,12 +106,6 @@ export interface CronJob {
 }
 
 export interface DispatchStateResponse {
-  antigravity?: {
-    bridge?: { status?: string; activeTasks?: number } | null;
-    active?: number;
-    pending?: number;
-    queue?: { id: string; title: string; status: string; updatedAt: string; nexusTaskId?: string; error?: string | null; workspace?: string }[];
-  };
   dispatchLog?: { id: string; title: string; status: string; dispatchedAt: string }[];
   cron?: CronJob[];
   executors?: {

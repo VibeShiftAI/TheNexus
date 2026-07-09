@@ -86,18 +86,6 @@ export function ExecutorDetailModal({ executor, onClose }: { executor: ExecutorI
         <LocalLlmDetail state={state} />
       ) : (
         <div className="space-y-4">
-          {executor === "antigravity" && (
-            <div className="grid grid-cols-3 gap-2">
-              <HudStat
-                label="bridge"
-                value={state.antigravity?.bridge ? "online" : "offline"}
-                tone={state.antigravity?.bridge ? "text-emerald-300" : "text-red-300"}
-              />
-              <HudStat label="active" value={state.antigravity?.active ?? 0} />
-              <HudStat label="queued" value={state.antigravity?.pending ?? 0} />
-            </div>
-          )}
-
           <section>
             <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               Active runs
@@ -123,26 +111,6 @@ export function ExecutorDetailModal({ executor, onClose }: { executor: ExecutorI
               <div className="space-y-2">
                 {recentRuns.map((r) => (
                   <RunRow key={`${r.taskId}-${r.updatedAt}`} run={r} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {executor === "antigravity" && (state.antigravity?.queue?.length ?? 0) > 0 && (
-            <section>
-              <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                Queue
-              </h4>
-              <div className="space-y-1">
-                {state.antigravity!.queue!.slice(0, 8).map((q) => (
-                  <div
-                    key={q.id}
-                    className="flex items-center gap-2 rounded-md border border-slate-800 bg-slate-900/50 px-2.5 py-1.5 text-[11px]"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-slate-300">{q.title}</span>
-                    <span className="shrink-0 text-[10px] uppercase text-slate-500">{q.status}</span>
-                    <span className="shrink-0 text-[10px] tabular-nums text-slate-600">{fmtWhen(q.updatedAt)}</span>
-                  </div>
                 ))}
               </div>
             </section>
