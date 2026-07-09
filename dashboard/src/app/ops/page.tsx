@@ -1,13 +1,13 @@
 /**
  * Ops console — the dispatch drill-in behind the bridge's Ops station.
- * Live executor lanes, Antigravity bridge health, the task queue, the
- * session dispatch log, and local LLM queue controls.
+ * Live executor lanes, executor runs, CLI conversation sessions, scheduled
+ * jobs, and local LLM queue controls.
  */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, RotateCcw, ShieldCheck, Clock, AlertTriangle, MessageSquare, Terminal } from "lucide-react";
+import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, Clock, AlertTriangle, MessageSquare, Terminal } from "lucide-react";
 import {
   DispatchStation,
   type DispatchStateResponse,
@@ -40,7 +40,6 @@ function ageSince(iso?: string) {
 
 function executorChip(name: string) {
   const map: Record<string, string> = {
-    antigravity: "border-violet-500/40 bg-violet-500/10 text-violet-300",
     codex: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
     "claude-code": "border-orange-500/40 bg-orange-500/10 text-orange-300",
   };
@@ -91,12 +90,6 @@ function statusChip(status: string) {
   return map[status] ?? "border-slate-600 bg-slate-800/60 text-slate-400";
 }
 
-/** An Executor Runs row: a live/recent run, optionally carrying `retryId` when
- * it maps to a failed Antigravity queue item that can be re-dispatched. */
-interface RunRow extends ExecutorRun {
-  retryId?: string;
-}
-
 export default function OpsConsolePage() {
   const router = useRouter();
   const { sseRuns } = useCrewActivity();
@@ -138,7 +131,6 @@ export default function OpsConsolePage() {
   };
 
   const [actionMsg, setActionMsg] = useState<string | null>(null);
-  const [retryingId, setRetryingId] = useState<string | null>(null);
   const [togglingCron, setTogglingCron] = useState<string | null>(null);
 
   const toggleCronJob = async (key: string, paused: boolean, label: string) => {
@@ -162,39 +154,6 @@ export default function OpsConsolePage() {
     }
   };
 
-  const retryTask = async (id: string) => {
-    setRetryingId(id);
-    try {
-      const res = await fetch("/api/praxis/dispatch/retry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      const data = await res.json().catch(() => ({}));
-      setActionMsg(res.ok ? `Task ${id.slice(0, 8)} re-queued — the sweep will re-dispatch it.` : `Retry failed: ${data.error ?? res.status}`);
-      load();
-    } catch {
-      setActionMsg("Retry failed — Praxis unreachable.");
-    } finally {
-      setRetryingId(null);
-    }
-  };
-
-  const reapplyAutoApprove = async () => {
-    try {
-      const res = await fetch("/api/praxis/dispatch/auto-approve", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      setActionMsg(res.ok ? "Auto-approve settings re-applied to Antigravity." : `Auto-approve failed: ${data.error ?? res.status}`);
-    } catch {
-      setActionMsg("Auto-approve failed — Praxis unreachable.");
-    }
-  };
-
-  const bridge = state?.antigravity?.bridge as
-    | { status?: string; version?: string; queueDir?: string; activeTasks?: number; extension?: string }
-    | null
-    | undefined;
-  const queue = state?.antigravity?.queue ?? [];
   // Registry runs plus SSE-synthesized rows: a run that's live on the event
   // stream still shows here even if the running Praxis predates the registry.
   const registryRuns = state?.executors?.runs ?? [];
@@ -207,37 +166,9 @@ export default function OpsConsolePage() {
   const localPaused = Boolean(state?.localLlm?.worker?.paused);
   const activeCount = (localCounts["running"] ?? 0) + (localCounts["queued"] ?? 0);
 
-  // Executor Runs rows: live/recent runs, augmented so failed Antigravity
-  // dispatches keep their retry button here (folded up from the old Dispatch
-  // Log). A failed queue item matches a failed run by title; any failed queue
-  // item not already shown as a run is appended as its own actionable row so a
-  // stuck dispatch is never lost.
-  const runTitles = new Set(runs.map((r) => r.title));
-  const failedQueue = queue.filter((t) => t.status === "failed");
-  const failedQueueByTitle = new Map(failedQueue.map((t) => [t.title, t] as const));
-  const runRows: RunRow[] = runs.map((r) =>
-    r.status === "failed" && failedQueueByTitle.has(r.title)
-      ? { ...r, retryId: failedQueueByTitle.get(r.title)!.id }
-      : r,
-  );
-  for (const t of failedQueue) {
-    if (runTitles.has(t.title)) continue;
-    runRows.push({
-      taskId: `queue-${t.id}`,
-      executor: "antigravity",
-      title: t.title,
-      workspace: t.workspace,
-      kind: "task",
-      phase: "failed",
-      status: "failed",
-      startedAt: t.updatedAt,
-      updatedAt: t.updatedAt,
-      summary: t.error ?? undefined,
-      retryId: t.id,
-    });
-  }
-  // Live work first, then retryable failures, then everything else newest-first.
-  const runRank = (r: RunRow) => (r.status === "active" ? 0 : r.retryId ? 1 : 2);
+  // Executor Runs rows: live work first, then everything else newest-first.
+  const runRows: ExecutorRun[] = [...runs];
+  const runRank = (r: ExecutorRun) => (r.status === "active" ? 0 : 1);
   runRows.sort(
     (a, b) => runRank(a) - runRank(b) || (b.updatedAt || "").localeCompare(a.updatedAt || ""),
   );
@@ -290,52 +221,10 @@ export default function OpsConsolePage() {
           </div>
         )}
 
-        {/* Live lanes + bridge health */}
-        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr] items-start">
-          <DispatchStation />
-          <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-            <h3 className="mb-3 text-sm font-bold tracking-tight text-white">ANTIGRAVITY BRIDGE :54321</h3>
-            {bridge ? (
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">status</span>
-                  <span className="text-emerald-400">{bridge.status ?? "ok"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">bridge</span>
-                  <span className="text-slate-300 font-mono">
-                    {bridge.extension ?? "praxis-antigravity-remote-bridge"} v{bridge.version ?? "?"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">active tasks</span>
-                  <span className="tabular-nums text-slate-300">{bridge.activeTasks ?? 0}</span>
-                </div>
-                {bridge.queueDir && (
-                  <div className="flex justify-between gap-4">
-                    <span className="shrink-0 text-slate-500">queue dir</span>
-                    <span className="truncate font-mono text-slate-400" title={bridge.queueDir}>
-                      {bridge.queueDir}
-                    </span>
-                  </div>
-                )}
-                <button
-                  onClick={reapplyAutoApprove}
-                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1.5 text-[11px] text-emerald-300 hover:bg-emerald-500/20"
-                  title="Merge full-autonomy keys into Antigravity settings.json"
-                >
-                  <ShieldCheck size={12} /> re-apply auto-approve
-                </button>
-              </div>
-            ) : (
-              <div className="rounded border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-300">
-                Bridge unreachable — Antigravity dispatch is down.
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Live executor lanes */}
+        <DispatchStation />
 
-        {/* Executor runs — all executors (Antigravity, Codex, Claude Code) + agent runs */}
+        {/* Executor runs — all executors (Codex, Claude Code) + agent runs */}
         <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
           <h3 className="mb-3 text-sm font-bold tracking-tight text-white">
             EXECUTOR RUNS{" "}
@@ -372,16 +261,6 @@ export default function OpsConsolePage() {
                     <span className="shrink-0 font-mono text-[10px] text-slate-600" title={r.workspace}>
                       {r.workspace.split("/").filter(Boolean).pop()}
                     </span>
-                  )}
-                  {r.retryId && (
-                    <button
-                      onClick={() => retryTask(r.retryId!)}
-                      disabled={retryingId === r.retryId}
-                      className="flex shrink-0 items-center gap-1 rounded border border-cyan-500/40 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
-                      title="Re-queue this failed dispatch"
-                    >
-                      <RotateCcw size={10} className={retryingId === r.retryId ? "animate-spin" : ""} /> retry
-                    </button>
                   )}
                   <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(r.updatedAt)}</span>
                 </div>

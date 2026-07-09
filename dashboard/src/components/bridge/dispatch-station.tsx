@@ -1,10 +1,10 @@
 /**
  * DispatchStation — "Ops": live executor lanes showing task packets moving
- * through Praxis's dispatch pipeline (Antigravity via the :54321 CDP bridge,
- * Codex, Claude Code, and the local LLM queue). Lane motion is driven by the
- * shared SSE stream (executor.progress / task.* events); queue depth and
- * bridge health come from Praxis /api/dispatch/state. Click a lane for the
- * executor drill-down popup, or through to /ops for the full console.
+ * through Praxis's dispatch pipeline (Codex, Claude Code, and the local LLM
+ * queue). Lane motion is driven by the shared SSE stream (executor.progress /
+ * task.* events); queue depth comes from Praxis /api/dispatch/state. Click a
+ * lane for the executor drill-down popup, or through to /ops for the full
+ * console.
  */
 "use client";
 
@@ -27,7 +27,6 @@ const PHASE_PCT: Record<ExecutionPhase, number> = {
 };
 
 const LANES: { id: ExecutorName & ExecutorId; label: string }[] = [
-  { id: "antigravity", label: "Antigravity" },
   { id: "codex", label: "Codex" },
   { id: "claude-code", label: "Claude Code" },
 ];
@@ -206,8 +205,6 @@ export function DispatchStation() {
     setLanes(next);
   }, [recentEvents]);
 
-  const bridge = state?.antigravity?.bridge;
-  const pending = state?.antigravity?.pending ?? 0;
   const today = state?.executors?.dispatchedToday;
   const localCounts = state?.localLlm?.counts ?? {};
   const localRunning = localCounts["running"] ?? 0;
@@ -231,12 +228,6 @@ export function DispatchStation() {
               {today.total} today
             </span>
           )}
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              bridge ? "bg-emerald-400" : err || state ? "bg-red-400" : "bg-slate-600"
-            }`}
-            title={bridge ? "Antigravity bridge online" : "Antigravity bridge unreachable"}
-          />
           <Link href="/ops" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
             console <ArrowUpRight size={12} />
           </Link>
@@ -297,8 +288,6 @@ export function DispatchStation() {
                     <span className={l.status === "failed" ? "text-red-400" : l.status === "done" ? "text-emerald-400" : "text-cyan-400"}>
                       {l.phase}
                     </span>
-                  ) : lane.id === "antigravity" && pending > 0 ? (
-                    `${pending} queued`
                   ) : (
                     "idle"
                   )}
@@ -322,9 +311,6 @@ export function DispatchStation() {
               {localQueued > 0 && <span> · {localQueued} queued</span>}
               {localPaused ? <span className="text-amber-400"> · paused</span> : null}
             </div>
-            <span className="shrink-0 text-[10px] tabular-nums text-slate-600">
-              {bridge?.activeTasks != null ? `bridge tasks: ${bridge.activeTasks}` : ""}
-            </span>
           </button>
         </div>
       )}
