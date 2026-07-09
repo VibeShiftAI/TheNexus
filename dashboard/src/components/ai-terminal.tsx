@@ -148,6 +148,35 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     // Track previous message count to detect newly prepended messages
     const prevMessageCountRef = useRef(messages.length);
     const prevScrollHeightRef = useRef(0);
+    // Stick-to-bottom: true while the user is at (or near) the newest message.
+    // Appends and streaming growth keep the view pinned only in that state —
+    // reading older history is never yanked back down.
+    const isNearBottomRef = useRef(true);
+
+    const jumpToBottom = useCallback(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        container.scrollTop = container.scrollHeight;
+        // Markdown/images settle after first paint — re-pin once layout grows.
+        requestAnimationFrame(() => {
+            if (messagesContainerRef.current) {
+                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+        });
+        isNearBottomRef.current = true;
+    }, []);
+
+    // Open at the LATEST message: pin to the bottom when history finishes
+    // loading and whenever the conversation changes or the terminal opens.
+    // (The old count-diff effect initialized its ref to the mounted length,
+    // so a terminal mounting with history already loaded never scrolled —
+    // it sat at the top and the newest status was off-screen.)
+    useEffect(() => {
+        if (isLoadingHistory) return;
+        jumpToBottom();
+        const settle = setTimeout(jumpToBottom, 150);
+        return () => clearTimeout(settle);
+    }, [isLoadingHistory, conversationId, isOpen, jumpToBottom]);
 
     // Auto-scroll on new messages appended to bottom (not when prepending older ones)
     useEffect(() => {
@@ -163,10 +192,14 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 const newScrollHeight = container.scrollHeight;
                 const scrollDelta = newScrollHeight - prevScrollHeightRef.current;
                 container.scrollTop = scrollDelta;
-            } else {
-                // Messages were appended — scroll to bottom
+            } else if (isNearBottomRef.current) {
+                // Messages were appended while pinned — follow to bottom.
                 container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
             }
+        } else if (newCount === prevCount && isNearBottomRef.current) {
+            // Same count but content grew (streaming deltas into the last
+            // message) — keep the growing reply in view, no smooth jitter.
+            container.scrollTop = container.scrollHeight;
         }
         prevMessageCountRef.current = newCount;
         prevScrollHeightRef.current = container.scrollHeight;
@@ -176,6 +209,9 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const handleMessagesScroll = useCallback(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
+        // Track whether the user is at the newest message (stick-to-bottom).
+        isNearBottomRef.current =
+            container.scrollHeight - container.scrollTop - container.clientHeight < 120;
         // When scrolled near the top (within 50px), load more
         if (container.scrollTop < 50 && hasMoreMessages && !isLoadingMore) {
             prevScrollHeightRef.current = container.scrollHeight;
@@ -1058,7 +1094,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                                 <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-cyan-500/10 text-cyan-400">
                                     <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/70" />
                                 </div>
-                                <div className="max-w-[80%] rounded-lg px-4 py-3 bg-slate-800/60 border border-cyan-500/20 text-slate-200">
+                                <div className="min-w-0 flex-1 rounded-lg px-4 py-3 bg-slate-800/60 border border-cyan-500/20 text-slate-200">
                                     <div className="prose prose-invert prose-sm max-w-none
                                         prose-p:my-1 prose-p:text-slate-200 prose-p:leading-relaxed
                                         prose-strong:text-cyan-300 prose-strong:font-semibold
@@ -1114,7 +1150,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                                 }`}>
                                 {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                             </div>
-                            <div className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.role === 'user'
+                            <div className={`${msg.role === 'user' ? 'max-w-[80%]' : 'max-w-[92%]'} rounded-lg px-4 py-2 ${msg.role === 'user'
                                 ? 'bg-cyan-500/10 text-white'
                                 : msg.role === 'assistant'
                                     ? 'bg-slate-800 text-slate-200'
