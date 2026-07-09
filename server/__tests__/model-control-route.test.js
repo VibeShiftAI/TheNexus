@@ -64,7 +64,7 @@ describe('model control route', () => {
             .resolves.toEqual({
                 status: 200,
                 body: {
-                    models: [{ id: 'local-llama', provider: 'local', api_model_id: 'llama3.2' }],
+                    models: [{ id: 'local-llama', provider: 'local', api_model_id: 'llama3.2', apiModelId: 'llama3.2' }],
                     aliases: [{ alias: 'local_default', target: 'model:local-llama' }],
                     projectAliases: [{ alias: 'coder', target: 'model:local-llama' }],
                     agentBackend: { backend: 'codex', fallbacks: ['claude-code', 'gemini'] },
