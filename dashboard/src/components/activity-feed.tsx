@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { getActivity, Activity } from "@/lib/nexus";
-import { GitCommit, Clock } from "lucide-react";
+import { GitCommit, Clock, Cpu, Coins } from "lucide-react";
+
+// Compact token count: 12345 → "12.3k", 2_000_000 → "2M".
+function formatTokens(n: number) {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+    return String(n);
+}
 
 export function ActivityFeed() {
     const [activities, setActivities] = useState<Activity[]>([]);
@@ -77,7 +84,51 @@ export function ActivityFeed() {
                             <p className="text-sm text-slate-300 truncate" title={activity.message}>
                                 {activity.message}
                             </p>
-                            <span className="text-xs text-slate-500 font-mono">{activity.hash.substring(0, 7)}</span>
+                            <div className="mt-1 flex items-center gap-1.5">
+                                <span className="text-xs text-slate-500 font-mono">{activity.hash.substring(0, 7)}</span>
+                                {/* Model attribution — neutral placeholder when unknown */}
+                                {activity.model ? (
+                                    <span
+                                        className="inline-flex items-center gap-1 rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-medium text-purple-300"
+                                        title={
+                                            activity.modelInferred
+                                                ? `Model: ${activity.model} (inferred from the executor that ran this)`
+                                                : `Model: ${activity.model}`
+                                        }
+                                    >
+                                        <Cpu size={9} className="shrink-0" />
+                                        <span className="max-w-[9rem] truncate">{activity.model}</span>
+                                    </span>
+                                ) : (
+                                    <span
+                                        className="inline-flex items-center gap-1 rounded border border-slate-800 px-1.5 py-0.5 text-[10px] text-slate-600"
+                                        title="No model attribution for this activity"
+                                    >
+                                        <Cpu size={9} className="shrink-0" />—
+                                    </span>
+                                )}
+                                {/* Token usage — neutral placeholder when not recorded */}
+                                {typeof activity.tokens === "number" ? (
+                                    <span
+                                        className="inline-flex items-center gap-1 rounded bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300 tabular-nums"
+                                        title={
+                                            activity.tokensEstimated
+                                                ? `~${activity.tokens.toLocaleString()} tokens (estimated from text volume)`
+                                                : `${activity.tokens.toLocaleString()} tokens`
+                                        }
+                                    >
+                                        <Coins size={9} className="shrink-0" />
+                                        {activity.tokensEstimated ? "~" : ""}{formatTokens(activity.tokens)}
+                                    </span>
+                                ) : (
+                                    <span
+                                        className="inline-flex items-center gap-1 rounded border border-slate-800 px-1.5 py-0.5 text-[10px] text-slate-600"
+                                        title="No token count recorded for this activity"
+                                    >
+                                        <Coins size={9} className="shrink-0" />—
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ))}

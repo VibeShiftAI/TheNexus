@@ -2,16 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { AgentManager } from "@/components/agent-manager";
-import { FleetStation, useFleetHealth } from "@/components/bridge/fleet-station";
-import { Brain, ArrowLeft, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Brain, ArrowLeft } from "lucide-react";
 
 export default function AgentsPage() {
     const router = useRouter();
-    const { services } = useFleetHealth();
-    const online = services?.filter((s) => s.ok).length ?? 0;
-    const total = services?.length ?? 0;
-    const praxisUp = services?.find((s) => s.id === "praxis")?.ok ?? false;
-    const allUp = total > 0 && online === total;
 
     return (
         <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30">
@@ -39,25 +33,12 @@ export default function AgentsPage() {
                             <Brain size={16} />
                             <span>Agent Registry</span>
                         </div>
-                        <div className="flex items-center gap-2" title="Live fleet probe via /api/fleet/health">
-                            {allUp ? (
-                                <ShieldCheck size={16} className="text-emerald-500" />
-                            ) : (
-                                <ShieldAlert size={16} className={total > 0 ? "text-amber-500" : "text-slate-600"} />
-                            )}
-                            <span>{total > 0 ? `FLEET ${online}/${total}` : "FLEET —"}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className={`h-2 w-2 rounded-full ${praxisUp ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`} />
-                            <span>{praxisUp ? "PRAXIS ONLINE" : "PRAXIS DOWN"}</span>
-                        </div>
                     </div>
                 </div>
             </header>
 
-            {/* Content - Fleet health + Agent Registry */}
+            {/* Content - Agent Registry */}
             <div className="container mx-auto p-6 space-y-6">
-                <FleetStation />
                 <AgentManager />
             </div>
         </main>

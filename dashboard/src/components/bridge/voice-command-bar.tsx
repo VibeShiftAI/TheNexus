@@ -192,19 +192,6 @@ export function VoiceCommandBar() {
     if (p?.scheduledTaskCount != null) parts.push(`${p.scheduledTaskCount} tasks scheduled.`);
     if (p?.completedTasksToday != null) parts.push(`${p.completedTasksToday} completed today.`);
     if (p?.budget?.dailyCallsRemaining != null) parts.push(`${p.budget.dailyCallsRemaining} cloud calls remaining.`);
-    try {
-      const res = await fetch("/api/fleet/health", { cache: "no-store" });
-      if (res.ok) {
-        const fleet = await res.json();
-        const services: { ok: boolean; label: string }[] = fleet.services ?? [];
-        const online = services.filter((s) => s.ok);
-        const down = services.filter((s) => !s.ok);
-        parts.push(`Fleet: ${online.length} of ${services.length} services online.`);
-        if (down.length > 0) parts.push(`Down: ${down.map((s) => s.label).join(", ")}.`);
-      }
-    } catch {
-      /* fleet probe optional */
-    }
     return parts.join(" ");
   }, []);
 

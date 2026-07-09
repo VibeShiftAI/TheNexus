@@ -10,9 +10,9 @@ import { ScheduleTimeline } from "@/components/schedule-timeline";
 import { CompactTaskBoard } from "@/components/compact-task-board";
 import { DetailDrawer } from "@/components/detail-drawer";
 import { HitlInbox } from "@/components/hitl-inbox";
+import { ActivityFeed } from "@/components/activity-feed";
 import { PraxisCore } from "@/components/bridge/praxis-core";
 import { DispatchStation } from "@/components/bridge/dispatch-station";
-import { FleetStation } from "@/components/bridge/fleet-station";
 import { KnowledgeStation } from "@/components/bridge/knowledge-station";
 import { PowerStation } from "@/components/bridge/power-station";
 import { AcademyStation } from "@/components/bridge/academy-station";
@@ -117,7 +117,7 @@ export default function Home() {
     <main className="min-h-screen bg-slate-950 hud-backdrop text-slate-200 selection:bg-cyan-500/30 flex flex-col pb-12">
       {/* Header HUD */}
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md shrink-0">
-        <div className="container mx-auto flex h-16 items-center justify-between px-6">
+        <div className="mx-auto w-full max-w-[2400px] flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsNavOpen(true)}
@@ -157,7 +157,7 @@ export default function Home() {
       </header>
 
       {/* Main Workspace */}
-      <div className="container mx-auto p-6 flex-1 flex flex-col min-h-0">
+      <div className="mx-auto w-full max-w-[2400px] p-6 flex-1 flex flex-col min-h-0">
         {error && (
           <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-400 mb-6 flex items-start gap-2.5 text-left">
             <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -176,9 +176,12 @@ export default function Home() {
           <div id="station-core">
             <PraxisCore />
           </div>
-          <div id="panel-inbox" className="grid gap-4">
+          <div id="panel-inbox" className="flex flex-col gap-4 min-w-0">
             <HitlInbox />
             <ScheduleTimeline />
+            <div id="panel-activity">
+              <ActivityFeed />
+            </div>
           </div>
         </div>
 
@@ -186,9 +189,6 @@ export default function Home() {
         <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
           <div id="station-dispatch">
             <DispatchStation />
-          </div>
-          <div id="station-fleet">
-            <FleetStation />
           </div>
           <div id="station-power">
             <PowerStation />

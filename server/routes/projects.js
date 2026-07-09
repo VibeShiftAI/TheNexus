@@ -32,7 +32,123 @@ const path = require('path');
 const fs = require('fs');
 const simpleGit = require('simple-git');
 
-function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync }) {
+// Names/emails that mark a commit trailer as belonging to an AI executor, so
+// the Recent Activity Feed can attribute a commit to the model that authored it.
+const AI_COAUTHOR_HINT = /claude|gpt|gemini|codex|llama|opus|sonnet|haiku|fable|mistral|anthropic|openai|copilot|devin/i;
+
+/**
+ * Best-effort per-activity attribution for the Recent Activity Feed.
+ *
+ * Activities are git commits, which carry no first-class model/token columns —
+ * but autonomous executors stamp the model into a `Co-Authored-By:` (or explicit
+ * `Model:`) trailer, and can stamp a `Tokens:` trailer. This reads those signals
+ * from the commit subject + body and returns { model, tokens }, using nulls when
+ * a commit has no such data (hand-authored or system commits) so the UI can show
+ * a neutral placeholder instead of guessing.
+ *
+ * @param {{ message?: string, body?: string }} commit
+ * @returns {{ model: string|null, tokens: number|null }}
+ */
+function deriveActivityAttribution(commit) {
+    const text = `${commit?.message || ''}\n${commit?.body || ''}`;
+    let model = null;
+    let tokens = null;
+
+    // Explicit "Model:" trailer wins when present.
+    const modelTrailer = text.match(/^\s*Model:\s*(.+?)\s*$/im);
+    if (modelTrailer) {
+        model = modelTrailer[1].replace(/\s*<[^>]*>\s*$/, '').trim() || null;
+    }
+
+    // Otherwise attribute to an AI co-author trailer (skip human co-authors).
+    if (!model) {
+        for (const m of text.matchAll(/^\s*Co-authored-by:\s*(.+?)\s*<([^>]*)>/gim)) {
+            const name = m[1].trim();
+            const email = m[2].trim();
+            if (AI_COAUTHOR_HINT.test(name) || AI_COAUTHOR_HINT.test(email)) {
+                model = name || null;
+                break;
+            }
+        }
+    }
+
+    // Token count trailer: "Tokens: 12345" / "Tokens-Used: 12,345" / "Token-Count: 12k".
+    const tokenTrailer = text.match(/^\s*Tokens?(?:[-\s]?(?:Used|Count))?:\s*([\d.,]+)\s*([kKmM])?\s*$/im);
+    if (tokenTrailer) {
+        let n = parseFloat(tokenTrailer[1].replace(/,/g, ''));
+        const unit = (tokenTrailer[2] || '').toLowerCase();
+        if (unit === 'k') n *= 1_000;
+        else if (unit === 'm') n *= 1_000_000;
+        if (Number.isFinite(n) && n >= 0) tokens = Math.round(n);
+    }
+
+    return { model, tokens };
+}
+
+// When a dispatch row carries no explicit `model` (Codex/Antigravity writers
+// routinely omit it), fall back to a friendly label derived from the executor
+// that ran it — the executor IS the agent that performed the work, so "Codex"
+// or "Gemini" is honest attribution and far better than a blank "—". Returns
+// null for unknown executors so the UI still shows the neutral placeholder.
+const EXECUTOR_MODEL_LABELS = {
+    'claude-code': 'Claude',
+    'claude': 'Claude',
+    'codex': 'Codex',
+    'antigravity': 'Gemini',
+    'gemini': 'Gemini',
+};
+function executorModelLabel(executor) {
+    if (!executor) return null;
+    return EXECUTOR_MODEL_LABELS[String(executor).toLowerCase().trim()] || null;
+}
+
+// A commit is attributed to a dispatch only when it lands inside (or just after)
+// that dispatch's execution window. Executors commit near the end of a run, and
+// the dispatch's completed_at is stamped a moment later, so allow a grace period
+// on the completed side. Human commits made outside any dispatch window match
+// nothing and stay unattributed (a neutral "—" beats a wrong model name).
+const DISPATCH_MATCH_GRACE_MS = 15 * 60 * 1000; // 15 min
+
+/**
+ * Correlate a commit to the dispatch that most plausibly produced it, using the
+ * real per-run executor/model + token count the orchestrator recorded in
+ * task_dispatches. Returns { model, tokens } (nulls when no dispatch matches).
+ *
+ * @param {Date} commitDate
+ * @param {Array} dispatches — rows for the SAME project, any order
+ * @returns {{ model: string|null, tokens: number|null, tokensEstimated: boolean, modelInferred: boolean }}
+ */
+function correlateDispatch(commitDate, dispatches) {
+    const t = commitDate.getTime();
+    if (!Number.isFinite(t) || !Array.isArray(dispatches)) return { model: null, tokens: null, tokensEstimated: false, modelInferred: false };
+    let best = null;
+    let bestDist = Infinity;
+    for (const d of dispatches) {
+        const start = new Date(d.started_at).getTime();
+        if (!Number.isFinite(start) || start > t + 1000) continue; // dispatch began after the commit
+        const end = d.completed_at ? new Date(d.completed_at).getTime() : t;
+        const endWithGrace = (Number.isFinite(end) ? end : start) + DISPATCH_MATCH_GRACE_MS;
+        if (t > endWithGrace) continue; // commit lands well after the run finished
+        // Prefer the dispatch whose completion is closest to the commit time.
+        const ref = Number.isFinite(end) ? end : start;
+        const dist = Math.abs(t - ref);
+        if (dist < bestDist) { bestDist = dist; best = d; }
+    }
+    if (!best) return { model: null, tokens: null, tokensEstimated: false, modelInferred: false };
+    const hasTokens = typeof best.tokens === 'number' && Number.isFinite(best.tokens);
+    // Explicit model on the dispatch row wins; otherwise derive one from the
+    // executor so the row still names the agent that did the work.
+    const explicitModel = best.model || null;
+    const model = explicitModel || executorModelLabel(best.executor);
+    return {
+        model,
+        tokens: hasTokens ? best.tokens : null,
+        tokensEstimated: hasTokens ? !!best.tokens_estimated : false,
+        modelInferred: !explicitModel && !!model,
+    };
+}
+
+function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, getRecentDispatches }) {
     const router = express.Router();
 
     // Scan cache to prevent redundant filesystem scans
@@ -581,13 +697,41 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     // Note: mounted at /api/activity, not under /api/projects
     router.getActivityHandler = async (req, res) => {
         const projects = await getAllProjects(PROJECT_ROOT);
+
+        // Pull recent dispatch rows once and bucket them by project so each
+        // commit can be attributed to the real executor/model + token count the
+        // orchestrator recorded, rather than trailer text executors rarely write.
+        const dispatchesByProject = new Map();
+        try {
+            const rows = typeof getRecentDispatches === 'function' ? (getRecentDispatches(300) || []) : [];
+            for (const row of rows) {
+                if (!row.project_id) continue;
+                if (!dispatchesByProject.has(row.project_id)) dispatchesByProject.set(row.project_id, []);
+                dispatchesByProject.get(row.project_id).push(row);
+            }
+        } catch (e) {
+            console.warn('[Activity] Could not load dispatch attribution:', e.message);
+        }
+
         const activities = [];
         for (const project of projects) {
             if (!fs.existsSync(path.join(project.path, '.git'))) continue;
             try {
                 const log = await simpleGit(project.path).log({ maxCount: 5 });
+                const projectDispatches = dispatchesByProject.get(project.id) || [];
                 for (const commit of log.all) {
-                    activities.push({ projectId: project.id, projectName: project.name, type: 'commit', hash: commit.hash, message: commit.message, author: commit.author_name, date: commit.date });
+                    // Explicit commit trailers (Model:/Tokens:) are precise when present;
+                    // otherwise fall back to correlating the commit with its dispatch.
+                    const trailer = deriveActivityAttribution(commit);
+                    const matched = correlateDispatch(new Date(commit.date), projectDispatches);
+                    const model = trailer.model ?? matched.model;
+                    // An explicit commit trailer is a precise model name; a
+                    // dispatch-sourced model may be an executor-derived label.
+                    const modelInferred = trailer.model != null ? false : matched.modelInferred;
+                    // Explicit Tokens: trailers are exact; dispatch-sourced counts may be estimated.
+                    const tokens = trailer.tokens ?? matched.tokens;
+                    const tokensEstimated = trailer.tokens != null ? false : matched.tokensEstimated;
+                    activities.push({ projectId: project.id, projectName: project.name, type: 'commit', hash: commit.hash, message: commit.message, author: commit.author_name, date: commit.date, model, modelInferred, tokens, tokensEstimated });
                 }
             } catch (error) {
                 if (!error.message?.includes('does not have any commits')) console.warn(`[Activity] Could not get log for ${project.name}: ${error.message}`);
@@ -632,3 +776,6 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
 }
 
 module.exports = createProjectsRouter;
+module.exports.deriveActivityAttribution = deriveActivityAttribution;
+module.exports.correlateDispatch = correlateDispatch;
+module.exports.executorModelLabel = executorModelLabel;

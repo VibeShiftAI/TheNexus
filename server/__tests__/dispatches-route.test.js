@@ -9,6 +9,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
+const Database = require('better-sqlite3');
 
 const createDispatchesRouter = require('../routes/dispatches');
 
@@ -94,6 +95,84 @@ describe('dispatches route', () => {
         expect(row.kind).toBe('dispatch');
     });
 
+    test('persists token counts on create and completion, and exposes them via listRecentDispatches', async () => {
+        // tokens can arrive at dispatch start...
+        const created = await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                task_id: 'task-tok', project_id: 'proj-tok', executor: 'codex',
+                model: 'gpt-5-codex', tokens: '12,000',
+            }),
+        });
+        expect(created.status).toBe(201);
+
+        // ...or be updated at completion (COALESCE keeps the larger final count).
+        const patched = await requestJson(`${handle.baseUrl}/api/dispatches/${created.body.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ outcome: 'success', tokens: 34567 }),
+        });
+        expect(patched.status).toBe(200);
+
+        const listed = await requestJson(`${handle.baseUrl}/api/dispatches?task_id=task-tok`);
+        expect(listed.body.dispatches[0].tokens).toBe(34567);
+
+        // The in-process reader used by the activity feed returns the row.
+        const router = createDispatchesRouter({ dbPath: path.join(tmpDir, 'test.db') });
+        const recent = router.listRecentDispatches(50);
+        const row = recent.find((d) => d.project_id === 'proj-tok');
+        expect(row).toBeTruthy();
+        expect(row.model).toBe('gpt-5-codex');
+        expect(row.tokens).toBe(34567);
+        expect(row.tokens_estimated).toBe(0); // exact count → not flagged as estimated
+    });
+
+    test('listRecentDispatches resolves project_id from the owning task when the dispatch omits it', async () => {
+        // Real Claude dispatch rows routinely ship without a project_id; the
+        // reader must recover it from the task so the activity feed can still
+        // bucket the row into the right project instead of dropping it.
+        const seed = new Database(path.join(tmpDir, 'test.db'));
+        seed.exec('CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, name TEXT, project_id TEXT)');
+        seed.prepare('INSERT INTO tasks (id, name, project_id) VALUES (?, ?, ?)')
+            .run('task-noproj', 'Do the thing', 'proj-from-task');
+        seed.close();
+
+        // Dispatch carries a task_id but NO project_id (the Claude-writer gap).
+        const created = await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ task_id: 'task-noproj', executor: 'claude-code', model: 'claude-opus-4-8' }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/${created.body.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ outcome: 'success', tokens: 1000 }),
+        });
+
+        const router = createDispatchesRouter({ dbPath: path.join(tmpDir, 'test.db') });
+        const recent = router.listRecentDispatches(50);
+        const row = recent.find((d) => d.task_id === 'task-noproj');
+        expect(row).toBeTruthy();
+        expect(row.project_id).toBe('proj-from-task'); // recovered from tasks, not the (null) dispatch column
+        expect(row.model).toBe('claude-opus-4-8');
+    });
+
+    test('estimates a token count from text volume when the executor reports none', async () => {
+        const created = await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                task_id: 'task-est', project_id: 'proj-est', executor: 'antigravity',
+                prompt: 'p'.repeat(400), // 400 chars
+            }),
+        });
+        // Complete with an 800-char output and no tokens → estimate ~ (400+800)/4 = 300.
+        await requestJson(`${handle.baseUrl}/api/dispatches/${created.body.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ outcome: 'success', output: 'o'.repeat(800) }),
+        });
+        const listed = await requestJson(`${handle.baseUrl}/api/dispatches?task_id=task-est`);
+        const row = listed.body.dispatches[0];
+        expect(row.tokens).toBe(300);
+        expect(row.tokens_estimated).toBe(1);
+    });
+
     test('close-open closes only the latest running row for the task/executor', async () => {
         // Two attempts: the first already closed, the second still running.
         const first = await requestJson(`${handle.baseUrl}/api/dispatches`, {
@@ -158,6 +237,69 @@ describe('dispatches route', () => {
         const fu = listed.body.dispatches.find((d) => d.kind === 'follow_up');
         expect(fu.parent_id).toBe(parent.body.id);
         expect(fu.session_id).toBe('sess-1');
+    });
+
+    test('/active returns only running rows, newest first, with task-correlated model and cumulative tokens', async () => {
+        // Seed a tasks table so /active can resolve the human-readable title.
+        const seed = new Database(path.join(tmpDir, 'test.db'));
+        seed.exec("CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, name TEXT)");
+        seed.prepare('INSERT INTO tasks (id, name) VALUES (?, ?)').run('task-live', 'Ship the Now strip');
+        seed.close();
+
+        // A completed earlier attempt on the same task (contributes 5k tokens)...
+        const done = await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ task_id: 'task-live', executor: 'codex', model: 'gpt-5-codex' }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/${done.body.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ outcome: 'success', tokens: 5000 }),
+        });
+        // ...and the currently-running dispatch (no token count yet).
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ task_id: 'task-live', executor: 'claude-code', model: 'claude-opus-4-8' }),
+        });
+        // An unrelated running dispatch on another task — must appear separately,
+        // never fold its tokens/model into task-live.
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ task_id: 'task-other', executor: 'codex', model: 'gpt-5-codex' }),
+        });
+
+        const res = await requestJson(`${handle.baseUrl}/api/dispatches/active`);
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.active)).toBe(true);
+        // Both running dispatches surface; the completed one does not.
+        expect(res.body.active).toHaveLength(2);
+
+        const live = res.body.active.find((d) => d.taskId === 'task-live');
+        expect(live).toBeTruthy();
+        expect(live.title).toBe('Ship the Now strip');
+        expect(live.model).toBe('claude-opus-4-8');     // the in-flight row's model, not the other task's
+        expect(live.executor).toBe('claude-code');
+        expect(live.tokens).toBe(5000);                 // cumulative for THIS task only
+        expect(live.tokensEstimated).toBe(false);
+
+        const other = res.body.active.find((d) => d.taskId === 'task-other');
+        expect(other.tokens).toBeNull();                // nothing recorded yet → unavailable, not borrowed
+        expect(other.model).toBe('gpt-5-codex');
+    });
+
+    test('/active hides stale running rows outside the window', async () => {
+        // A running row that started 30h ago is a ghost — excluded by the 6h default.
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                task_id: 'task-ghost', executor: 'antigravity',
+                started_at: new Date(Date.now() - 30 * 3600_000).toISOString(),
+            }),
+        });
+        const def = await requestJson(`${handle.baseUrl}/api/dispatches/active`);
+        expect(def.body.active).toHaveLength(0);
+        // A wide-enough window surfaces it again.
+        const wide = await requestJson(`${handle.baseUrl}/api/dispatches/active?hours=48`);
+        expect(wide.body.active.some((d) => d.taskId === 'task-ghost')).toBe(true);
     });
 
     test('validates required fields, outcomes, and kinds', async () => {

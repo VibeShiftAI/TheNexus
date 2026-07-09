@@ -16,6 +16,7 @@ import { CoreCanvas, CORE_STYLES } from "@/components/bridge/core-canvas";
 import { HudPanel, HudErrorBoundary } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
 import { AITerminal } from "@/components/ai-terminal";
+import { NowStrip } from "@/components/bridge/now-strip";
 import type { PresenceActivity } from "@praxis/contract";
 
 const CREW_DOT: Record<string, string> = {
@@ -79,6 +80,9 @@ export function PraxisCore() {
         </>
       }
     >
+      {/* Live "now" heartbeat — active model, task, and token counter */}
+      <NowStrip />
+
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Core column — presence, vitals, thought stream */}
         <div className="flex w-full shrink-0 flex-col items-center lg:w-[240px]">

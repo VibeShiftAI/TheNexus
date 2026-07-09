@@ -248,6 +248,14 @@ export interface Activity {
     message: string;
     author: string;
     date: string;
+    /** Model that performed the activity, when attributable (else null/absent). */
+    model?: string | null;
+    /** True when `model` is an executor-derived label (e.g. "Codex") rather than a precise model string. */
+    modelInferred?: boolean;
+    /** Tokens the activity consumed, when recorded (else null/absent). */
+    tokens?: number | null;
+    /** True when `tokens` is an approximation (from text volume) rather than an exact count. */
+    tokensEstimated?: boolean;
 }
 
 export async function getActivity(): Promise<Activity[]> {

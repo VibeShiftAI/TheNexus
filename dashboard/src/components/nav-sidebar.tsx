@@ -91,11 +91,11 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
         onClick={onClose}
       />
 
-      <div className="absolute inset-y-0 right-0 pl-10 max-w-full flex">
-        <div 
+      <div className="absolute inset-y-0 left-0 pr-10 max-w-full flex">
+        <div
           role="dialog"
           aria-modal="true"
-          className={`w-screen max-w-md bg-slate-900 border-l border-slate-800 text-slate-200 p-6 flex flex-col justify-between shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+          className={`w-screen max-w-md bg-slate-900 border-r border-slate-800 text-slate-200 p-6 flex flex-col justify-between shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
           <div>
             <div className="flex items-center justify-between pb-6 border-b border-slate-800">

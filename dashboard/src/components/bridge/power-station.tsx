@@ -118,30 +118,9 @@ export function PowerStation() {
   }, []);
 
   // Daily call burn-down: max sampled daily_call_count per local calendar day.
+  // Fleet decommissioned 2026-07-02; stats-history removed.
   useEffect(() => {
-    let active = true;
-    const loadBurn = async () => {
-      try {
-        const res = await fetch("/api/fleet/stats-history?hours=168", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        const perDay = new Map<string, number>();
-        for (const row of data.rows ?? []) {
-          if (row.daily_call_count == null) continue;
-          const day = new Date(row.at).toLocaleDateString([], { weekday: "short" });
-          perDay.set(day, Math.max(perDay.get(day) ?? 0, row.daily_call_count));
-        }
-        if (active) setBurn([...perDay.entries()].map(([day, calls]) => ({ day, calls })).slice(-7));
-      } catch {
-        /* burn chart is progressive enhancement */
-      }
-    };
-    loadBurn();
-    const t = setInterval(loadBurn, 10 * 60_000);
-    return () => {
-      active = false;
-      clearInterval(t);
-    };
+    setBurn([]);
   }, []);
 
   const toggleLocalOnly = async () => {

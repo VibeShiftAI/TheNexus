@@ -55,14 +55,8 @@ export function KnowledgeStation() {
       }
     };
     const loadHistory = async () => {
-      try {
-        const res = await fetch("/api/fleet/stats-history?hours=168", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (active) setHistory(data.rows ?? []);
-      } catch {
-        /* history is progressive enhancement */
-      }
+      // Fleet decommissioned 2026-07-02; stats-history removed.
+      if (active) setHistory([]);
     };
     loadStats();
     loadHistory();

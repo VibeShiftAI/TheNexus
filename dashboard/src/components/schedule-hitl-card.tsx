@@ -20,14 +20,17 @@
  * guards.
  */
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Loader2,
+  Minus,
+  Plus,
   Trash2,
+  Type,
   XCircle,
 } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
@@ -41,6 +44,94 @@ type ResolveFn = (
   requestId: string,
   input: { choice?: string; freeText?: string; payload?: Record<string, unknown> },
 ) => Promise<void>;
+
+// ── Morning Plan font-size controller ───────────────────────────────────
+// The schedule table is dense with 10–12px text. Robert reads it every
+// morning, so the card exposes a −/+ stepper that scales its body text and
+// remembers the choice per-browser. The scale is applied as CSS custom
+// properties on the card (see scaleStyle in ScheduleHitlCard); nested text
+// classes reference them via `var(--hitl-fs-*, <native>)`, so every size
+// stays proportional (an absolute length per level — no em-compounding) and
+// falls back to its original px on any inbox card that doesn't set the vars.
+const FONT_SCALE_KEY = "praxis.morningPlan.fontScale";
+const FONT_SCALE_MIN = 1;
+const FONT_SCALE_MAX = 1.8;
+const FONT_SCALE_STEP = 0.1;
+const FONT_SCALE_DEFAULT = 1.3; // ~+3.6px on the 12px base — already ≥2pt larger than before
+
+function clampFontScale(n: number): number {
+  if (!Number.isFinite(n)) return FONT_SCALE_DEFAULT;
+  const clamped = Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, n));
+  return Math.round(clamped * 100) / 100;
+}
+
+/** Card-local font scale, hydrated from and persisted to localStorage. */
+function useMorningPlanFontScale() {
+  const [scale, setScale] = useState(FONT_SCALE_DEFAULT);
+
+  // Hydrate after mount so SSR and the first client render agree (localStorage
+  // isn't available during SSR).
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(FONT_SCALE_KEY);
+      if (saved !== null) setScale(clampFontScale(Number(saved)));
+    } catch {
+      /* storage unavailable — keep the default */
+    }
+  }, []);
+
+  const adjust = (delta: number) =>
+    setScale((prev) => {
+      const next = clampFontScale(prev + delta);
+      try {
+        window.localStorage.setItem(FONT_SCALE_KEY, String(next));
+      } catch {
+        /* storage unavailable — the in-memory value still applies */
+      }
+      return next;
+    });
+
+  return { scale, adjust };
+}
+
+/** Compact −/+ stepper that drives useMorningPlanFontScale. */
+function FontScaleControl({
+  scale,
+  onAdjust,
+}: {
+  scale: number;
+  onAdjust: (delta: number) => void;
+}) {
+  return (
+    <div
+      className="flex items-center gap-0.5 rounded-full border border-slate-700 bg-slate-900/60 px-1 py-0.5"
+      title="Text size for the Morning Plan (saved for next time)"
+    >
+      <Type className="mx-0.5 h-3 w-3 text-slate-400" aria-hidden />
+      <button
+        type="button"
+        aria-label="Smaller Morning Plan text"
+        disabled={scale <= FONT_SCALE_MIN}
+        onClick={() => onAdjust(-FONT_SCALE_STEP)}
+        className="rounded p-0.5 text-slate-300 transition hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Minus className="h-3 w-3" />
+      </button>
+      <span className="min-w-[2.75rem] text-center text-[0.6875rem] tabular-nums text-slate-300">
+        {Math.round(scale * 100)}%
+      </span>
+      <button
+        type="button"
+        aria-label="Larger Morning Plan text"
+        disabled={scale >= FONT_SCALE_MAX}
+        onClick={() => onAdjust(FONT_SCALE_STEP)}
+        className="rounded p-0.5 text-slate-300 transition hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Plus className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
 
 interface ScheduleSlotMeta {
   slotNumber: number;
@@ -177,7 +268,7 @@ const COMPLEXITY_LABELS: Record<number, string> = {
 /** Render the Praxis-assigned 1–5 difficulty score, colored by level. */
 function ComplexityBadge({ value }: { value: number | null | undefined }) {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    return <span className="text-[11px] text-slate-600">—</span>;
+    return <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-600">—</span>;
   }
   const level = Math.min(5, Math.max(1, Math.round(value)));
   const tone =
@@ -189,7 +280,7 @@ function ComplexityBadge({ value }: { value: number | null | undefined }) {
   return (
     <span
       title={`${COMPLEXITY_LABELS[level]} (${level}/5)`}
-      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[11px] font-semibold ${tone}`}
+      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-semibold ${tone}`}
     >
       🧩 {level}/5
     </span>
@@ -227,12 +318,13 @@ export function ScheduleHitlCard({
   // the task screen's dispatch console (use-executor-models).
   const { optionsFor: modelOptionsFor } = useExecutorModelOptions();
   const [error, setError] = useState<string | null>(null);
+  const { scale: fontScale, adjust: adjustFontScale } = useMorningPlanFontScale();
 
   if (!schedule) {
     // Defensive — caller should have checked isScheduleHitl, but fall back
     // gracefully if metadata is malformed.
     return (
-      <article className="rounded-lg border border-rose-700/40 bg-rose-950/40 p-3 text-xs text-rose-200">
+      <article className="rounded-lg border border-rose-700/40 bg-rose-950/40 p-3 text-[length:var(--hitl-fs-xs,0.75rem)] text-rose-200">
         Schedule HITL is missing structured slot data.
       </article>
     );
@@ -291,27 +383,41 @@ export function ScheduleHitlCard({
     }
   }
 
+  // Font scale rides down as CSS vars — each an absolute length so nested
+  // text sizes keep their proportions (see useMorningPlanFontScale).
+  const scaleStyle = {
+    "--hitl-fs-xs": `calc(${fontScale} * 0.75rem)`,
+    "--hitl-fs-11": `calc(${fontScale} * 0.6875rem)`,
+    "--hitl-fs-10": `calc(${fontScale} * 0.625rem)`,
+  } as CSSProperties;
+
   return (
-    <article className="rounded-lg border border-cyan-500/30 bg-slate-950/60 p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
-          Morning Plan — {schedule.date}
-        </span>
-        <span className="text-[11px] text-slate-400">
+    <article
+      className="rounded-lg border border-cyan-500/30 bg-slate-950/60 p-3"
+      style={scaleStyle}
+    >
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-medium text-cyan-300">
+            Morning Plan — {schedule.date}
+          </span>
+          <FontScaleControl scale={fontScale} onAdjust={adjustFontScale} />
+        </div>
+        <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
           {activeCount} dispatching{skipCount > 0 ? `, ${skipCount} skipped` : ""}
           {executorChanges > 0 ? `, ${executorChanges} worker changes` : ""}
         </span>
       </div>
 
       {schedule.nightlySummary ? (
-        <div className="mb-3 rounded border border-slate-700/60 bg-slate-900/60 p-2 text-[11px] text-slate-300">
+        <div className="mb-3 rounded border border-slate-700/60 bg-slate-900/60 p-2 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-300">
           <span className="font-semibold text-cyan-300">Nightly:</span>{" "}
           {schedule.nightlySummary}
         </div>
       ) : null}
 
-      <div className="mb-3 overflow-hidden rounded border border-slate-700/60">
-        <table className="w-full text-xs">
+      <div className="mb-3 overflow-x-auto rounded border border-slate-700/60">
+        <table className="w-full text-[length:var(--hitl-fs-xs,0.75rem)]">
           <thead className="bg-slate-900/60 text-slate-400">
             <tr>
               <th className="px-2 py-1 text-left font-semibold">#</th>
@@ -354,7 +460,7 @@ export function ScheduleHitlCard({
                         )}
                         <span className="min-w-0">
                           <span className="block truncate">{slot.title}</span>
-                          <span className="block truncate text-[10px] text-slate-500">
+                          <span className="block truncate text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
                             {slot.workspace} · ~{slot.estimatedMinutes}min
                           </span>
                         </span>
@@ -379,7 +485,7 @@ export function ScheduleHitlCard({
                             // the slot rides the new executor's default.
                             setModels((prev) => ({ ...prev, [slot.nexusTaskId]: "" }));
                           }}
-                          className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed"
+                          className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-200 outline-none focus:border-cyan-500 disabled:cursor-not-allowed"
                         >
                           {EXECUTOR_OPTIONS.map((opt) => (
                             <option key={opt} value={opt}>
@@ -401,7 +507,7 @@ export function ScheduleHitlCard({
                                 }))
                               }
                               title={`${currentExec} model for this slot (billed to the ${note} subscription)`}
-                              className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[11px] text-purple-200 outline-none focus:border-purple-500 disabled:cursor-not-allowed"
+                              className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-purple-200 outline-none focus:border-purple-500 disabled:cursor-not-allowed"
                             >
                               <option value="">default ({fallback || "CLI default"})</option>
                               {options.map((m) => (
@@ -430,7 +536,7 @@ export function ScheduleHitlCard({
                               return next;
                             });
                           }}
-                          className="rounded border border-slate-700 px-2 py-0.5 text-[11px] text-slate-300 hover:border-cyan-500 hover:text-cyan-300"
+                          className="rounded border border-slate-700 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-300 hover:border-cyan-500 hover:text-cyan-300"
                         >
                           Restore
                         </button>
@@ -440,7 +546,7 @@ export function ScheduleHitlCard({
                           onClick={() =>
                             setSkipDraft({ taskId: slot.nexusTaskId, reason: "" })
                           }
-                          className="inline-flex items-center gap-1 rounded border border-rose-500/40 px-2 py-0.5 text-[11px] text-rose-300 hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded border border-rose-500/40 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-rose-300 hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Trash2 className="h-3 w-3" /> Skip
                         </button>
@@ -450,7 +556,7 @@ export function ScheduleHitlCard({
                   {isOpen ? (
                     <tr key={`${slot.nexusTaskId}-detail`} className="border-t border-slate-700/40 bg-slate-900/40">
                       <td colSpan={6} className="px-3 py-2">
-                        <div className="space-y-2 text-[11px] text-slate-300">
+                        <div className="space-y-2 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-300">
                           <div>
                             <span className="font-semibold text-cyan-300">Objective:</span>{" "}
                             {slot.objective ? (
@@ -481,7 +587,7 @@ export function ScheduleHitlCard({
                   {isDraftingSkip ? (
                     <tr key={`${slot.nexusTaskId}-draft`} className="border-t border-slate-700/40 bg-rose-950/20">
                       <td colSpan={6} className="px-2 py-2">
-                        <label className="mb-1 block text-[11px] text-rose-300">
+                        <label className="mb-1 block text-[length:var(--hitl-fs-11,0.6875rem)] text-rose-300">
                           Skip reason (recorded on the task and written to Cortex memory so Praxis stops re-proposing it):
                         </label>
                         <textarea
@@ -491,12 +597,12 @@ export function ScheduleHitlCard({
                             setSkipDraft((prev) => (prev ? { ...prev, reason: e.target.value } : prev))
                           }
                           placeholder="e.g. already built the ios widget outside Praxis"
-                          className="mb-2 min-h-16 w-full resize-y rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 outline-none focus:border-rose-400"
+                          className="mb-2 min-h-16 w-full resize-y rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-100 outline-none focus:border-rose-400"
                         />
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => setSkipDraft(null)}
-                            className="rounded border border-slate-700 px-2 py-0.5 text-[11px] text-slate-300 hover:border-slate-500"
+                            className="rounded border border-slate-700 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-300 hover:border-slate-500"
                           >
                             Cancel
                           </button>
@@ -509,7 +615,7 @@ export function ScheduleHitlCard({
                               }));
                               setSkipDraft(null);
                             }}
-                            className="rounded bg-rose-500 px-2 py-0.5 text-[11px] font-semibold text-slate-950 hover:bg-rose-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                            className="rounded bg-rose-500 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-semibold text-slate-950 hover:bg-rose-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
                           >
                             Confirm skip
                           </button>
@@ -525,7 +631,7 @@ export function ScheduleHitlCard({
       </div>
 
       {error ? (
-        <div className="mb-2 flex items-center gap-1 text-[11px] text-rose-300">
+        <div className="mb-2 flex items-center gap-1 text-[length:var(--hitl-fs-11,0.6875rem)] text-rose-300">
           <AlertCircle className="h-3 w-3" /> {error}
         </div>
       ) : null}
@@ -534,14 +640,14 @@ export function ScheduleHitlCard({
         <button
           disabled={resolving}
           onClick={() => void submit("reject")}
-          className="inline-flex items-center gap-1 rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-md border border-slate-700 px-3 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-300 hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <XCircle className="h-3.5 w-3.5" /> Reject
         </button>
         <button
           disabled={resolving || activeCount === 0}
           onClick={() => void submit("approve")}
-          className="inline-flex items-center gap-1 rounded-md bg-cyan-500 px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+          className="inline-flex items-center gap-1 rounded-md bg-cyan-500 px-3 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)] font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
         >
           {resolving ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -605,7 +711,7 @@ export function SkillCandidatesHitlCard({
 
   if (!meta) {
     return (
-      <article className="rounded-lg border border-rose-700/40 bg-rose-950/40 p-3 text-xs text-rose-200">
+      <article className="rounded-lg border border-rose-700/40 bg-rose-950/40 p-3 text-[length:var(--hitl-fs-xs,0.75rem)] text-rose-200">
         Skill-candidates HITL is missing structured data.
       </article>
     );
@@ -619,15 +725,15 @@ export function SkillCandidatesHitlCard({
   return (
     <article className="rounded-lg border border-violet-500/30 bg-slate-950/60 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="rounded-full bg-violet-400/10 px-2 py-0.5 text-[11px] font-medium text-violet-300">
+        <span className="rounded-full bg-violet-400/10 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-medium text-violet-300">
           🧩 Skill Candidates — {meta.date}
         </span>
-        <span className="text-[11px] text-slate-400">
+        <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
           {decidedCount}/{candidates.length} decided
         </span>
       </div>
 
-      <p className="mb-2 text-[10px] text-slate-400">
+      <p className="mb-2 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
         Each decision applies immediately (approve installs into the live skill library; archive
         moves to _rejected/). Undecided candidates stay for tomorrow. Tap <b>Done</b> to clear this
         from your inbox.
@@ -638,7 +744,7 @@ export function SkillCandidatesHitlCard({
           const state = candidateStates[candidate.id];
           return (
             <li key={candidate.id} className="flex items-start justify-between gap-2 px-2 py-1.5">
-              <div className="min-w-0 text-xs">
+              <div className="min-w-0 text-[length:var(--hitl-fs-xs,0.75rem)]">
                 <div className="flex items-center gap-1.5">
                   <span
                     className={`truncate font-semibold ${
@@ -651,13 +757,13 @@ export function SkillCandidatesHitlCard({
                   >
                     {candidate.name}
                   </span>
-                  <span className="shrink-0 rounded-full border border-slate-700 px-1.5 py-0 text-[10px] text-slate-400">
+                  <span className="shrink-0 rounded-full border border-slate-700 px-1.5 py-0 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
                     {candidate.category}
                   </span>
                 </div>
-                <div className="mt-0.5 text-[11px] text-slate-400">{candidate.summary}</div>
+                <div className="mt-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">{candidate.summary}</div>
                 {candidate.sourceTitle ? (
-                  <div className="mt-0.5 truncate text-[10px] text-slate-500">
+                  <div className="mt-0.5 truncate text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
                     from:{" "}
                     {candidate.sourceUrl ? (
                       <a
@@ -678,7 +784,7 @@ export function SkillCandidatesHitlCard({
                 <button
                   disabled={state !== undefined}
                   onClick={() => void decideCandidate(candidate.id, "approve")}
-                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-50 ${
+                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] disabled:cursor-not-allowed disabled:opacity-50 ${
                     state === "approved"
                       ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
                       : "border-slate-700 text-slate-300 hover:border-emerald-400 hover:text-emerald-300"
@@ -695,7 +801,7 @@ export function SkillCandidatesHitlCard({
                 <button
                   disabled={state !== undefined}
                   onClick={() => void decideCandidate(candidate.id, "archive")}
-                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-50 ${
+                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] disabled:cursor-not-allowed disabled:opacity-50 ${
                     state === "archived"
                       ? "border-rose-400 bg-rose-500/20 text-rose-200"
                       : "border-slate-700 text-slate-300 hover:border-rose-400 hover:text-rose-300"
@@ -712,7 +818,7 @@ export function SkillCandidatesHitlCard({
       </ul>
 
       {error ? (
-        <div className="mb-2 flex items-center gap-1 text-[11px] text-rose-300">
+        <div className="mb-2 flex items-center gap-1 text-[length:var(--hitl-fs-11,0.6875rem)] text-rose-300">
           <AlertCircle className="h-3 w-3" /> {error}
         </div>
       ) : null}
@@ -721,7 +827,7 @@ export function SkillCandidatesHitlCard({
         <button
           disabled={resolving}
           onClick={() => void onResolve(request.id, { choice: "done" })}
-          className="inline-flex items-center gap-1 rounded-md bg-violet-500 px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+          className="inline-flex items-center gap-1 rounded-md bg-violet-500 px-3 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)] font-bold text-slate-950 transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
         >
           {resolving ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -776,7 +882,7 @@ export function BoardMaintenanceHitlCard({
 
   if (!meta) {
     return (
-      <article className="rounded-lg border border-rose-700/40 bg-rose-950/40 p-3 text-xs text-rose-200">
+      <article className="rounded-lg border border-rose-700/40 bg-rose-950/40 p-3 text-[length:var(--hitl-fs-xs,0.75rem)] text-rose-200">
         Board-maintenance HITL is missing structured data.
       </article>
     );
@@ -788,10 +894,10 @@ export function BoardMaintenanceHitlCard({
   return (
     <article className="rounded-lg border border-amber-500/30 bg-slate-950/60 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300">
+        <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-medium text-amber-300">
           🧹 Board Maintenance — {meta.date}
         </span>
-        <span className="text-[11px] text-slate-400">
+        <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
           {proposals.length} proposal{proposals.length === 1 ? "" : "s"}
           {audit.length > 0 ? ` · ${audit.length} QA sample${audit.length === 1 ? "" : "s"}` : ""}
         </span>
@@ -800,8 +906,8 @@ export function BoardMaintenanceHitlCard({
       {proposals.length > 0 ? (
         <div className="mb-3 overflow-hidden rounded border border-amber-500/30">
           <div className="flex items-center justify-between bg-amber-500/10 px-2 py-1">
-            <span className="text-[11px] font-semibold text-amber-300">Archive proposals</span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[length:var(--hitl-fs-11,0.6875rem)] font-semibold text-amber-300">Archive proposals</span>
+            <span className="text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
               Sent with Done · Keep suppresses re-proposal 30d · Undecided → stays for next card ·
               Nothing archives without you
             </span>
@@ -811,7 +917,7 @@ export function BoardMaintenanceHitlCard({
               const decision = pruneDecisions[proposal.id];
               return (
                 <li key={proposal.id} className="flex items-start justify-between gap-2 px-2 py-1.5">
-                  <div className="min-w-0 text-xs">
+                  <div className="min-w-0 text-[length:var(--hitl-fs-xs,0.75rem)]">
                     <div className="flex items-center gap-1.5">
                       <span
                         className={`truncate font-semibold ${
@@ -822,16 +928,16 @@ export function BoardMaintenanceHitlCard({
                       >
                         {proposal.taskTitle ?? proposal.projectName ?? proposal.id}
                       </span>
-                      <span className="shrink-0 rounded-full border border-slate-700 px-1.5 py-0 text-[10px] text-slate-400">
+                      <span className="shrink-0 rounded-full border border-slate-700 px-1.5 py-0 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
                         {proposal.kind}
                       </span>
-                      <span className="shrink-0 text-[10px] text-slate-500">
+                      <span className="shrink-0 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
                         {Math.round(proposal.confidence * 100)}%
                       </span>
                     </div>
-                    <div className="mt-0.5 text-[11px] text-slate-400">{proposal.detail}</div>
+                    <div className="mt-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">{proposal.detail}</div>
                     {proposal.projectName && proposal.taskTitle ? (
-                      <div className="mt-0.5 text-[10px] text-slate-500">
+                      <div className="mt-0.5 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
                         in: {proposal.projectName}
                       </div>
                     ) : null}
@@ -839,7 +945,7 @@ export function BoardMaintenanceHitlCard({
                   <div className="flex shrink-0 gap-1 pt-0.5">
                     <button
                       onClick={() => togglePruneDecision(proposal.id, "archive")}
-                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] ${
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] ${
                         decision === "archive"
                           ? "border-rose-400 bg-rose-500/20 text-rose-200"
                           : "border-slate-700 text-slate-300 hover:border-rose-400 hover:text-rose-300"
@@ -851,7 +957,7 @@ export function BoardMaintenanceHitlCard({
                     </button>
                     <button
                       onClick={() => togglePruneDecision(proposal.id, "keep")}
-                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] ${
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] ${
                         decision === "keep"
                           ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
                           : "border-slate-700 text-slate-300 hover:border-emerald-400 hover:text-emerald-300"
@@ -872,20 +978,20 @@ export function BoardMaintenanceHitlCard({
       {audit.length > 0 ? (
         <div className="mb-3 overflow-hidden rounded border border-sky-500/30">
           <div className="flex items-center justify-between bg-sky-500/10 px-2 py-1">
-            <span className="text-[11px] font-semibold text-sky-300">
+            <span className="text-[length:var(--hitl-fs-11,0.6875rem)] font-semibold text-sky-300">
               🔍 QA spot-audit — {audit.length} sampled pass{audit.length === 1 ? "" : "es"} from last week
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
               Open the task, eyeball the diff — does the pass verdict hold up?
             </span>
           </div>
           <ul className="divide-y divide-slate-700/40">
             {audit.map((sample) => (
-              <li key={sample.origTaskId} className="px-2 py-1.5 text-xs">
+              <li key={sample.origTaskId} className="px-2 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)]">
                 <span className="font-semibold text-slate-100">
                   {sample.title ?? sample.origTaskId}
                 </span>
-                <span className="ml-1.5 text-[10px] text-slate-500">
+                <span className="ml-1.5 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
                   {sample.origTaskId.slice(0, 8)} · by {sample.author ?? "?"} · reviewed by{" "}
                   {sample.reviewer ?? "?"} · {new Date(sample.reviewedAt).toLocaleDateString()}
                 </span>
@@ -896,7 +1002,7 @@ export function BoardMaintenanceHitlCard({
       ) : null}
 
       {error ? (
-        <div className="mb-2 flex items-center gap-1 text-[11px] text-rose-300">
+        <div className="mb-2 flex items-center gap-1 text-[length:var(--hitl-fs-11,0.6875rem)] text-rose-300">
           <AlertCircle className="h-3 w-3" /> {error}
         </div>
       ) : null}
@@ -905,7 +1011,7 @@ export function BoardMaintenanceHitlCard({
         <button
           disabled={resolving}
           onClick={() => void done()}
-          className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+          className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-3 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)] font-bold text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
         >
           {resolving ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -11,7 +11,6 @@ import { Activity, Users, Send, Inbox, Zap, CheckCircle2 } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
-import { useFleetHealth } from "@/components/bridge/fleet-station";
 import { CORE_STYLES } from "@/components/bridge/core-canvas";
 import type { PresenceActivity } from "@praxis/contract";
 
@@ -40,11 +39,8 @@ export function StatusStrip() {
   const { presence, connected } = usePraxisStream();
   const { crew } = useCrewActivity();
   const { pendingRequests } = useHitlInbox();
-  const { services } = useFleetHealth();
 
   const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";
-  const online = services?.filter((s) => s.ok).length;
-  const total = services?.length;
   const busy = crew.filter((m) => m.state === "active").length;
   const pending = pendingRequests.length;
   const callsLeft = presence?.budget?.dailyCallsRemaining;
@@ -59,15 +55,6 @@ export function StatusStrip() {
       tone: CORE_STYLES[activity].textClass,
       target: "station-core",
       title: "Main viewer",
-    },
-    {
-      id: "fleet",
-      label: "FLEET",
-      value: online != null && total != null ? `${online}/${total}` : "—",
-      icon: <Users size={13} />,
-      tone: online != null && total != null && online < total ? "text-amber-300" : "text-emerald-300",
-      target: "station-fleet",
-      title: "Tactical — fleet health",
     },
     {
       id: "crew",
@@ -108,7 +95,7 @@ export function StatusStrip() {
   ];
 
   return (
-    <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+    <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
       {chips.map((c) => (
         <button
           key={c.id}

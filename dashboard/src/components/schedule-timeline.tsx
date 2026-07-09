@@ -94,11 +94,11 @@ export function ScheduleTimeline() {
                     }
                   }}
                 >
-                  <div className="flex items-center gap-3">
-                    {event.status === "completed" && <CheckCircle size={16} className="text-emerald-400" />}
-                    {event.status === "in_progress" && <Play size={16} className="text-amber-400 animate-pulse" />}
-                    {event.status === "scheduled" && <Circle size={16} className="text-cyan-400" />}
-                    <div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {event.status === "completed" && <CheckCircle size={16} className="text-emerald-400 shrink-0" />}
+                    {event.status === "in_progress" && <Play size={16} className="text-amber-400 animate-pulse shrink-0" />}
+                    {event.status === "scheduled" && <Circle size={16} className="text-cyan-400 shrink-0" />}
+                    <div className="min-w-0">
                       <div className="text-xs text-slate-400 font-medium">
                         {formatTime(event.start_time)}
                         {event.end_time && ` - ${formatTime(event.end_time)}`}
@@ -106,7 +106,7 @@ export function ScheduleTimeline() {
                       <h4 className={`text-sm font-semibold ${tone.title}`}>{event.title}</h4>
                     </div>
                   </div>
-                  {isExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                  {isExpanded ? <ChevronUp size={16} className="text-slate-400 shrink-0" /> : <ChevronDown size={16} className="text-slate-400 shrink-0" />}
                 </div>
 
                 {isExpanded && (

@@ -126,7 +126,6 @@ const createPraxisStreamRouter = require('./routes/praxis-stream');
 const createLocalQueueRouter = require('./routes/local-queue');
 const createIngestionControlRouter = require('./routes/ingestion-control');
 const createStudioRouter = require('./routes/studio');
-const createFleetRouter = require('./routes/fleet');
 const createDispatchesRouter = require('./routes/dispatches');
 
 // Health & system
@@ -143,11 +142,11 @@ app.use('/api/local-queue', createLocalQueueRouter());
 app.use('/api/skill-candidates', require('./routes/skill-candidates')());
 app.use('/api/ingestion-control', createIngestionControlRouter());
 app.use('/api/studio',    createStudioRouter({ db, callAI }));
-app.use('/api/fleet',     createFleetRouter());
-app.use('/api/dispatches', createDispatchesRouter());
+const dispatchesRouter = createDispatchesRouter();
+app.use('/api/dispatches', dispatchesRouter);
 
 // Projects & tasks
-const projectsRouter = createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync });
+const projectsRouter = createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, getRecentDispatches: dispatchesRouter.listRecentDispatches });
 app.use('/api/projects', projectsRouter);
 // Mount non-prefix routes from projects
 app.get('/api/activity', projectsRouter.getActivityHandler);
