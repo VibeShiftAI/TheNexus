@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, RotateCcw, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, RotateCcw, ShieldCheck, Clock, AlertTriangle, MessageSquare, Terminal } from "lucide-react";
 import {
   DispatchStation,
   type DispatchStateResponse,
@@ -25,6 +25,17 @@ function relTime(iso?: string) {
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
+}
+
+/** Compact duration since an instant ("23m", "4h", "2d") — session age. */
+function ageSince(iso?: string) {
+  if (!iso) return "—";
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (mins < 1) return "<1m";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
 }
 
 function executorChip(name: string) {
@@ -232,6 +243,11 @@ export default function OpsConsolePage() {
   );
   const activeRuns = runRows.filter((r) => r.status === "active").length;
 
+  // CLI conversations: per-task sessions (open ones are resumable) and the
+  // permanent chat sessions per backend.
+  const openSessions = (state?.executors?.sessions ?? []).filter((s) => s.status === "open");
+  const chatSessions = Object.entries(state?.chatSessions ?? {});
+
   // Scheduled jobs (cron) — the registry list from Praxis.
   const cronJobs = state?.cron ?? [];
   const cronPausedCount = cronJobs.filter((c) => c.paused).length;
@@ -372,6 +388,98 @@ export default function OpsConsolePage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* CLI sessions — resumable per-task conversations (session registry)
+            and the permanent chat session per backend. */}
+        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr] items-start">
+          <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold tracking-tight text-white">
+              <Terminal size={14} className="text-cyan-400" />
+              CLI TASK SESSIONS{" "}
+              <span className="text-xs font-normal text-slate-500">
+                ({openSessions.length} open · resumable conversations)
+              </span>
+            </h3>
+            {openSessions.length === 0 ? (
+              <div className="py-4 text-center text-xs text-slate-500">
+                No open CLI task sessions — every dispatched conversation is closed.
+              </div>
+            ) : (
+              <div className="max-h-60 space-y-1 overflow-y-auto pr-1">
+                {openSessions.map((s) => (
+                  <div
+                    key={s.sessionId}
+                    className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2"
+                  >
+                    <span className={`w-24 shrink-0 rounded border px-1.5 py-0.5 text-center text-[10px] uppercase ${executorChip(s.executor)}`}>
+                      {s.executor}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs text-slate-300" title={`${s.title ?? s.taskId} — session ${s.sessionId}`}>
+                      {s.title ?? s.taskId}
+                    </span>
+                    {s.resumeCount > 0 && (
+                      <span
+                        className="shrink-0 rounded border border-cyan-500/40 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-300"
+                        title={`Resumed ${s.resumeCount} time${s.resumeCount === 1 ? "" : "s"} (corrections / follow-ups)`}
+                      >
+                        ↻ {s.resumeCount}
+                      </span>
+                    )}
+                    {s.workspace && (
+                      <span className="shrink-0 font-mono text-[10px] text-slate-600" title={s.workspace}>
+                        {s.workspace.split("/").filter(Boolean).pop()}
+                      </span>
+                    )}
+                    <span
+                      className="w-16 shrink-0 text-right text-[10px] text-slate-500"
+                      title={`opened ${relTime(s.openedAt)} · last used ${relTime(s.lastUsedAt)}`}
+                    >
+                      open {ageSince(s.openedAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold tracking-tight text-white">
+              <MessageSquare size={14} className="text-cyan-400" />
+              STANDING CHAT
+            </h3>
+            {chatSessions.length === 0 ? (
+              <div className="py-4 text-center text-xs text-slate-500">No standing chat session yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {chatSessions.map(([backend, cs]) => (
+                  <div key={backend} className="rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-24 shrink-0 rounded border px-1.5 py-0.5 text-center text-[10px] uppercase ${executorChip(backend)}`}>
+                        {backend}
+                      </span>
+                      <span className="flex-1 text-xs tabular-nums text-slate-300">
+                        {cs.turns} turn{cs.turns === 1 ? "" : "s"}
+                      </span>
+                      {cs.pendingSeed && (
+                        <span
+                          className="shrink-0 rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] uppercase text-amber-300"
+                          title="A compaction seed will be replayed on the next turn"
+                        >
+                          seed pending
+                        </span>
+                      )}
+                      <span className="shrink-0 text-[10px] text-slate-500">{relTime(cs.lastActivityAt)}</span>
+                    </div>
+                    {cs.sessionId && (
+                      <div className="mt-1 truncate font-mono text-[10px] text-slate-600" title={cs.sessionId}>
+                        {cs.sessionId}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Scheduled jobs — every cron in the system, viewable at once, each

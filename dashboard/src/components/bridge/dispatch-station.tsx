@@ -53,6 +53,32 @@ export interface ExecutorRun {
   summary?: string;
 }
 
+/** A CLI conversation tied to a dispatched task (Praxis session-registry). */
+export interface CliSession {
+  taskId: string;
+  executor: string;
+  sessionId: string;
+  workspace: string;
+  model?: string;
+  title?: string;
+  status: "open" | "closed";
+  openedAt: string;
+  lastUsedAt: string;
+  resumeCount: number;
+  closedAt?: string;
+  closeReason?: string;
+}
+
+/** The permanent chat CLI session for one backend (Praxis chat-cli-session). */
+export interface ChatSessionState {
+  sessionId?: string;
+  openedAt?: string;
+  lastActivityAt?: string;
+  turns: number;
+  pendingSeed?: string;
+  compactAttempts?: number;
+}
+
 export interface DispatchHistoryRow {
   ts: string;
   caller: string;
@@ -90,10 +116,14 @@ export interface DispatchStateResponse {
   cron?: CronJob[];
   executors?: {
     runs?: ExecutorRun[];
+    /** CLI conversations per dispatched task, newest-first (open + recently closed). */
+    sessions?: CliSession[];
     history?: DispatchHistoryRow[];
     /** Executor dispatches since local midnight, from the persistent llm_calls log. */
     dispatchedToday?: { total: number; failed: number };
   };
+  /** Permanent chat CLI sessions, keyed by backend (e.g. "claude-code"). */
+  chatSessions?: Record<string, ChatSessionState>;
   localLlm?: {
     worker?: { paused?: boolean; pauseReason?: string };
     counts?: Record<string, number>;
