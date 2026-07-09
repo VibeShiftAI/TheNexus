@@ -40,10 +40,14 @@ import {
     getAntigravityModels,
     apiModelIdOf,
     setAgentBackend,
+    setChatBackend,
     AGENT_BACKENDS,
     AGENT_BACKEND_LABELS,
+    CHAT_BACKENDS,
+    CHAT_BACKEND_LABELS,
     type AgentBackend,
     type AgentBackendConfig,
+    type ChatBackend,
     type ModelDiscoveryResult,
     type ModelDiscoveryProviderStatus,
     type ModelControlPolicy,
@@ -174,6 +178,7 @@ export default function ModelControlPage() {
     const [savingAntigravityDefault, setSavingAntigravityDefault] = useState(false);
     const [antigravityModels, setAntigravityModels] = useState<string[]>([]);
     const [savingAgentBackend, setSavingAgentBackend] = useState(false);
+    const [savingChatBackend, setSavingChatBackend] = useState(false);
     const [discovering, setDiscovering] = useState(false);
     const [probing, setProbing] = useState<"resolve" | "live" | null>(null);
     const [savingPolicy, setSavingPolicy] = useState(false);
@@ -274,6 +279,19 @@ export default function ModelControlPage() {
             setError(err instanceof Error ? err.message : "Failed to update agent backend");
         } finally {
             setSavingAgentBackend(false);
+        }
+    };
+
+    const updateChatBackend = async (backend: ChatBackend) => {
+        setSavingChatBackend(true);
+        setError(null);
+        try {
+            const saved = await setChatBackend(backend);
+            setState(prev => ({ ...prev, chatBackend: saved }));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update chat backend");
+        } finally {
+            setSavingChatBackend(false);
         }
     };
 
@@ -565,6 +583,39 @@ export default function ModelControlPage() {
                     {!loading && (state.models || []).length === 0 && (
                         <div className="px-4 py-8 text-center text-sm text-slate-500">No active models registered</div>
                     )}
+                </section>
+
+                {/* Praxis Chat Backend — which engine fronts Robert's
+                    interactive chat: a PERMANENT CLI session (Claude/Codex,
+                    resumed per message, auto-compacted after 2h idle) or the
+                    legacy in-process routed-LLM loop. Praxis falls back to the
+                    legacy loop per-message on any CLI failure. */}
+                <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex items-center gap-3">
+                            <Bot size={22} className="text-cyan-300" />
+                            <div>
+                                <div className="text-base font-semibold text-white">Praxis Chat Backend</div>
+                                <div className="text-sm text-slate-500">
+                                    Your primary chat responder: a permanent CLI session with the full toolset (resumes across messages, compacts after 2h idle), or the legacy routed LLM. CLI failures fall back to the legacy loop automatically.
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <label className="text-xs text-slate-400">Session</label>
+                            <select
+                                value={state.chatBackend || "claude-code"}
+                                onChange={(event) => void updateChatBackend(event.target.value as ChatBackend)}
+                                disabled={savingChatBackend || loading}
+                                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500 disabled:opacity-50"
+                            >
+                                {CHAT_BACKENDS.map(backend => (
+                                    <option key={backend} value={backend}>{CHAT_BACKEND_LABELS[backend]}</option>
+                                ))}
+                            </select>
+                            {savingChatBackend && <Loader2 size={15} className="animate-spin text-slate-400" />}
+                        </div>
+                    </div>
                 </section>
 
                 {/* Praxis Agent Backend — which engine runs autonomous system

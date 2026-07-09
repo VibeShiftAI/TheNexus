@@ -109,6 +109,20 @@ function listAntigravityModels() {
 }
 
 /**
+ * Backend for Praxis's interactive chat: the permanent CLI session
+ * ("claude-code" = standing Claude session on the claude-default model,
+ * "codex" = standing Codex session) or "off" = the legacy in-process
+ * routed-LLM loop. Read by Praxis's /api/chat handler (cached 60s there).
+ */
+const CHAT_BACKENDS = ['claude-code', 'codex', 'off'];
+const CHAT_BACKEND_DEFAULT = 'claude-code';
+async function getChatBackend(db) {
+    const setting = await db.getModelControlSetting('chat_backend');
+    const backend = setting && typeof setting.backend === 'string' ? setting.backend : '';
+    return CHAT_BACKENDS.includes(backend) ? backend : CHAT_BACKEND_DEFAULT;
+}
+
+/**
  * Backend chain for Praxis's autonomous system-agent runs. Codex-first
  * (ChatGPT subscription), Claude Code next, Gemini API as the last resort.
  */
@@ -146,6 +160,7 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                 codexDefault: await getCliDefaultModel(db, 'codex_default_model'),
                 antigravityDefault: await getCliDefaultModel(db, 'antigravity_default_model'),
                 agentBackend: await getAgentBackendConfig(db),
+                chatBackend: await getChatBackend(db),
                 projectPolicy: projectId && typeof db.getProjectModelControlSetting === 'function'
                     ? await db.getProjectModelControlSetting(projectId, 'model_policy')
                     : null
@@ -221,6 +236,33 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
         } catch (error) {
             console.error('[Model Control] Failed to list antigravity models:', error);
             res.status(500).json({ error: 'Failed to list antigravity models: ' + error.message });
+        }
+    });
+
+    // ─── Praxis chat backend ──────────────────────────────────────────────
+    // Which engine fronts Robert's interactive chat: the permanent Claude
+    // CLI session, the permanent Codex CLI session, or the legacy in-process
+    // routed-LLM loop ("off").
+    router.get('/chat-backend', async (_req, res) => {
+        try {
+            res.json({ backend: await getChatBackend(db) });
+        } catch (error) {
+            console.error('[Model Control] Failed to read chat backend:', error);
+            res.status(500).json({ error: 'Failed to read chat backend: ' + error.message });
+        }
+    });
+
+    router.put('/chat-backend', async (req, res) => {
+        try {
+            const backend = CHAT_BACKENDS.includes(req.body.backend) ? req.body.backend : null;
+            if (!backend) {
+                return res.status(400).json({ error: `backend must be one of: ${CHAT_BACKENDS.join(', ')}` });
+            }
+            await db.setModelControlSetting('chat_backend', { backend });
+            res.json({ backend });
+        } catch (error) {
+            console.error('[Model Control] Failed to update chat backend:', error);
+            res.status(500).json({ error: 'Failed to update chat backend: ' + error.message });
         }
     });
 

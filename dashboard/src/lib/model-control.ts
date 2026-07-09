@@ -71,6 +71,8 @@ export interface ModelControlOptionsResponse {
     antigravityDefault?: string;
     /** Backend chain for Praxis's autonomous system-agent runs. */
     agentBackend?: AgentBackendConfig;
+    /** Backend fronting Praxis interactive chat (permanent CLI session or legacy loop). */
+    chatBackend?: ChatBackend;
 }
 
 export type AgentBackend = "codex" | "claude-code" | "gemini";
@@ -85,6 +87,14 @@ export interface AgentBackendConfig {
     backend: AgentBackend;
     fallbacks: AgentBackend[];
 }
+
+export type ChatBackend = "claude-code" | "codex" | "off";
+export const CHAT_BACKENDS: ChatBackend[] = ["claude-code", "codex", "off"];
+export const CHAT_BACKEND_LABELS: Record<ChatBackend, string> = {
+    "claude-code": "Claude session (Opus, Claude subscription)",
+    codex: "Codex session (ChatGPT subscription)",
+    off: "Legacy routed LLM (per-token)",
+};
 
 export interface ModelControlPolicy {
     enabled: boolean;
@@ -258,6 +268,18 @@ export async function setAgentBackend(config: AgentBackendConfig): Promise<Agent
     });
     if (!response.ok) throw new Error(`Failed to update agent backend: ${response.status}`);
     return response.json();
+}
+
+export async function setChatBackend(backend: ChatBackend): Promise<ChatBackend> {
+    const response = await fetch(`/api/model-control/chat-backend`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify({ backend }),
+    });
+    if (!response.ok) throw new Error(`Failed to update chat backend: ${response.status}`);
+    const data = await response.json();
+    return data.backend as ChatBackend;
 }
 
 export async function getModelControlOptions(projectId?: string | null): Promise<ModelControlOption[]> {

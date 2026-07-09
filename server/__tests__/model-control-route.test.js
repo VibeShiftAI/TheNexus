@@ -68,6 +68,7 @@ describe('model control route', () => {
                     aliases: [{ alias: 'local_default', target: 'model:local-llama' }],
                     projectAliases: [{ alias: 'coder', target: 'model:local-llama' }],
                     agentBackend: { backend: 'codex', fallbacks: ['claude-code', 'gemini'] },
+                    chatBackend: 'claude-code',
                     claudeDefault: 'claude-opus-4-8',
                     codexDefault: '',
                     antigravityDefault: '',
@@ -184,6 +185,44 @@ describe('model control route', () => {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: 42 })
+        });
+        expect(bad.status).toBe(400);
+    });
+
+    test('reads and updates the Praxis chat backend', async () => {
+        const settings = {};
+        const db = {
+            getModelControlSetting: jest.fn(async (key) => settings[key] ?? null),
+            setModelControlSetting: jest.fn(async (key, value) => { settings[key] = value; return value; }),
+        };
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db }));
+        handle = await listen(app);
+
+        // Unset → the permanent Claude session is the default.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-backend`))
+            .resolves.toEqual({ status: 200, body: { backend: 'claude-code' } });
+
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-backend`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ backend: 'codex' })
+        })).resolves.toEqual({ status: 200, body: { backend: 'codex' } });
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-backend`))
+            .resolves.toEqual({ status: 200, body: { backend: 'codex' } });
+
+        // "off" = legacy routed-LLM loop; anything else is rejected.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-backend`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ backend: 'off' })
+        })).resolves.toEqual({ status: 200, body: { backend: 'off' } });
+        const bad = await requestJson(`${handle.baseUrl}/api/model-control/chat-backend`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ backend: 'gemini' })
         });
         expect(bad.status).toBe(400);
     });
