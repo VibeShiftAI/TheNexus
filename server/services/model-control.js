@@ -43,11 +43,21 @@ function pickRequestedAssignment(context = {}) {
 function providerHasCredentials(provider) {
     switch (normalizeProvider(provider)) {
         case 'google':
-            return !!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+            // Antigravity (agy) dispatches Gemini via the Google subscription
+            // CLI, not an API key — treat as available regardless of GOOGLE_API_KEY.
+            return true;
         case 'openai':
-            return !!process.env.OPENAI_API_KEY;
+            // Codex dispatches GPT via the ChatGPT subscription, not OPENAI_API_KEY.
+            return true;
         case 'anthropic':
-            return !!process.env.ANTHROPIC_API_KEY;
+            // claude-code dispatches Claude via the Claude subscription (OAuth /
+            // Keychain), NOT ANTHROPIC_API_KEY — Praxis deliberately strips that
+            // env var (buildClaudeEnv). Gating Claude models on ANTHROPIC_API_KEY
+            // made every Claude assignment resolve as "unavailable" and silently
+            // fall back to the local Gemma default — 2026-07-10: per-task
+            // Sonnet 5 selections never reached the executor. All three CLI
+            // executors are subscription-authed, so credentials are assumed.
+            return true;
         case 'xai':
             return !!process.env.XAI_API_KEY;
         case 'local':
