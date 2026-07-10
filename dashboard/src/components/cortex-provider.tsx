@@ -160,10 +160,19 @@ function mapStoredMessage(m: any): Message {
 
 /**
  * Merge a freshly fetched tail of the active conversation into the local
- * message list — the reconnect/visibility catch-up. Only messages we don't
- * already hold are appended: dedup by server id when present, then by exact
- * (role, content) so optimistic local copies (in-flight sends, streamed
- * replies that never got an id) aren't duplicated.
+ * message list — the reconnect/visibility catch-up. Messages we don't
+ * already hold are merged in CHRONOLOGICAL position: dedup by server id when
+ * present, then by exact (role, content) so optimistic local copies
+ * (in-flight sends, streamed replies that never got an id) aren't
+ * duplicated.
+ *
+ * Position matters: the fetched window can be LONGER than what we hold (the
+ * mount fetch is a shorter tail than the resync fetch), so additions may be
+ * OLDER than existing messages. Blind appending put yesterday's messages at
+ * the bottom of the chat after a tab refocus — newest messages stranded
+ * mid-list until a hard reload (2026-07-10). The sort is stable: equal
+ * timestamps keep their existing relative order, and messages without one
+ * (optimistic local sends) sink to the newest end.
  */
 export function mergeFetchedMessages(prev: Message[], fetched: Message[]): Message[] {
     if (fetched.length === 0) return prev;
@@ -174,7 +183,11 @@ export function mergeFetchedMessages(prev: Message[], fetched: Message[]): Messa
         !(m.id && ids.has(m.id)) && !bodies.has(`${m.role}\u0000${m.content}`)
     );
     if (additions.length === 0) return prev;
-    return [...prev, ...additions];
+    const at = (m: Message) =>
+        m.timestamp instanceof Date && !Number.isNaN(m.timestamp.getTime())
+            ? m.timestamp.getTime()
+            : Number.MAX_SAFE_INTEGER;
+    return [...prev, ...additions].sort((a, b) => at(a) - at(b));
 }
 
 // ────────────────────────────────────────────────────────────
@@ -244,7 +257,10 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         async function loadActiveConversation() {
             try {
                 setIsLoadingHistory(true);
-                const res = await fetch(`${base}/api/chat/active?mode=praxis`);
+                // Same window as the focus/reconnect resync (limit=30) — a
+                // shorter mount tail is what let the resync surface OLDER
+                // messages as "additions" in the first place.
+                const res = await fetch(`${base}/api/chat/active?mode=praxis&limit=30`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
 
