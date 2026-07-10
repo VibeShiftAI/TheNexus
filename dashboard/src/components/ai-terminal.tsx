@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Send, Bot, User, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw, Maximize2, Mic, Square, Plus, History, ChevronRight, Download, Image, Film, Music, FileArchive, Volume2, Save } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -19,6 +19,15 @@ interface AITerminalProps {
     isOpen?: boolean;
     onClose?: () => void;
     mode?: 'modal' | 'inline';
+    /** Hide the terminal's own header row; the host (e.g. PraxisCore) renders
+     *  the new-conversation / history controls in its station header instead. */
+    hideHeader?: boolean;
+}
+
+/** Imperative controls a host can drive when it hoists the header (hideHeader). */
+export interface AITerminalHandle {
+    newConversation: () => void;
+    toggleHistory: () => void;
 }
 
 // 2026-07-02 simplification: the terminal is praxis-only. The old Agent/Chat
@@ -73,7 +82,7 @@ async function readPraxisEventStream(
     return finalEvent;
 }
 
-export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITerminalProps) {
+export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function AITerminal({ isOpen = true, onClose, mode = 'modal', hideHeader = false }, ref) {
     const isInline = mode === 'inline';
     const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages } = useCortex();
     const [input, setInput] = useState("");
@@ -84,6 +93,20 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
     const [isDragging, setIsDragging] = useState(false); // Drag-and-drop state
     const [showConversations, setShowConversations] = useState(false); // Conversation history panel
     const dragCounter = useRef(0); // Counter to properly track drag enter/leave across child elements
+
+    // Expose chat controls so a host that hides the terminal header (e.g. the
+    // consolidated PraxisCore station bar) can still drive new-conversation /
+    // history from its own toolbar.
+    useImperativeHandle(ref, () => ({
+        newConversation: () => { void startNewConversation(); },
+        toggleHistory: () => {
+            setShowConversations((prev) => {
+                const next = !prev;
+                if (next) loadConversations();
+                return next;
+            });
+        },
+    }), [startNewConversation, loadConversations]);
     // Inline critique feedback state
     const [critiqueFeedback, setCritiqueFeedback] = useState<{ messageIndex: number | null; text: string; loading: boolean }>({
         messageIndex: null,
@@ -920,8 +943,10 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                 );
             })()}
 
-            {/* Header — inline mode wears the station's HUD taxonomy (thin
-                toolbar, no title card); modal mode keeps the full title bar */}
+            {/* Header — modal keeps the full title bar. In the bridge viewscreen
+                the host hides it (hideHeader) and hoists the controls into the
+                PraxisCore station header, so the chat reads as one surface. */}
+            {!hideHeader && (
             <div className={`flex items-center justify-between ${
                 isInline
                     ? 'px-1 pb-1.5 border-b border-slate-800/60'
@@ -983,6 +1008,7 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
                     )}
                 </div>
             </div>
+            )}
 
             {/* Conversation History Panel */}
             {showConversations && (
@@ -1677,4 +1703,4 @@ export function AITerminal({ isOpen = true, onClose, mode = 'modal' }: AITermina
             </div>
         </>);
     }
-}
+});

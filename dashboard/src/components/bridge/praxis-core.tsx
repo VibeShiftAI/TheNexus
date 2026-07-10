@@ -8,14 +8,14 @@
  */
 "use client";
 
-import { useState } from "react";
-import { Radio, Maximize2, Minimize2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { Radio, Maximize2, Minimize2, Plus, History } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
 import { CoreCanvas, CORE_STYLES } from "@/components/bridge/core-canvas";
 import { HudPanel, HudErrorBoundary } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
-import { AITerminal } from "@/components/ai-terminal";
+import { AITerminal, type AITerminalHandle } from "@/components/ai-terminal";
 import { NowStrip } from "@/components/bridge/now-strip";
 import type { PresenceActivity } from "@praxis/contract";
 
@@ -36,6 +36,7 @@ export function PraxisCore() {
   const { crew } = useCrewActivity();
   const [viewscreenMax, setViewscreenMax] = useState(false);
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
+  const terminalRef = useRef<AITerminalHandle>(null);
   const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";
   const style = CORE_STYLES[activity];
   const busyCrew = crew.filter((m) => m.state === "active").length;
@@ -52,14 +53,38 @@ export function PraxisCore() {
     ] as { label: string; value: number | string | null | undefined }[]
   ).filter((s): s is { label: string; value: number | string } => s.value !== undefined && s.value !== null);
 
+  // Chat controls hoisted out of the terminal so the whole header is one row.
+  const chatControls = (
+    <>
+      <button
+        onClick={() => terminalRef.current?.newConversation()}
+        className="rounded-md border border-slate-800 bg-slate-900/60 p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-emerald-300"
+        aria-label="New conversation"
+        title="New conversation"
+      >
+        <Plus size={13} />
+      </button>
+      <button
+        onClick={() => terminalRef.current?.toggleHistory()}
+        className="rounded-md border border-slate-800 bg-slate-900/60 p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-cyan-300"
+        aria-label="Conversation history"
+        title="Conversation history"
+      >
+        <History size={13} />
+      </button>
+    </>
+  );
+
   return (
     <HudPanel
       icon={<Radio size={16} />}
       title="MAIN VIEWER — PRAXIS CORE"
       accent="cyan"
       className="overflow-hidden"
+      headerCenter={<NowStrip bare />}
       headerRight={
         <>
+          {chatControls}
           <span
             className={`rounded-md border px-1.5 py-0.5 text-[10px] uppercase ${
               connected
@@ -80,9 +105,6 @@ export function PraxisCore() {
         </>
       }
     >
-      {/* Live "now" heartbeat — active model, task, and token counter */}
-      <NowStrip />
-
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Core column — presence, vitals, thought stream */}
         <div className="flex w-full shrink-0 flex-col items-center lg:w-[240px]">
@@ -172,16 +194,19 @@ export function PraxisCore() {
           }
         >
           <HudErrorBoundary label="viewscreen">
-            <AITerminal mode="inline" />
+            <AITerminal ref={terminalRef} mode="inline" hideHeader />
           </HudErrorBoundary>
           {viewscreenMax && (
-            <button
-              onClick={() => setViewscreenMax(false)}
-              className="absolute -top-2 -right-2 rounded-full border border-slate-700 bg-slate-900 p-1.5 text-slate-300 shadow-lg transition-colors hover:bg-slate-800 hover:text-white"
-              aria-label="Restore viewscreen"
-            >
-              <Minimize2 size={14} />
-            </button>
+            <div className="absolute -top-3 right-2 flex items-center gap-1.5">
+              {chatControls}
+              <button
+                onClick={() => setViewscreenMax(false)}
+                className="rounded-full border border-slate-700 bg-slate-900 p-1.5 text-slate-300 shadow-lg transition-colors hover:bg-slate-800 hover:text-white"
+                aria-label="Restore viewscreen"
+              >
+                <Minimize2 size={14} />
+              </button>
+            </div>
           )}
         </div>
       </div>

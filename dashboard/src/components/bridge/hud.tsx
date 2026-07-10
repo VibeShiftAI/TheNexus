@@ -86,6 +86,7 @@ export function HudPanel({
   title,
   accent = "cyan",
   headerRight,
+  headerCenter,
   className = "",
   children,
 }: {
@@ -93,6 +94,7 @@ export function HudPanel({
   title: string;
   accent?: HudAccent;
   headerRight?: ReactNode;
+  headerCenter?: ReactNode;
   className?: string;
   children: ReactNode;
 }) {
@@ -104,11 +106,12 @@ export function HudPanel({
         className={`pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent to-transparent ${a.hairline}`}
       />
       <CornerBrackets accent={accent} />
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="mb-3 flex items-center gap-3">
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
           <span className={a.text}>{icon}</span>
           <h3 className="truncate text-sm font-bold tracking-tight text-white">{title}</h3>
         </div>
+        {headerCenter ? <div className="min-w-0 flex-1">{headerCenter}</div> : <div className="flex-1" />}
         {headerRight ? <div className="flex shrink-0 items-center gap-2">{headerRight}</div> : null}
       </div>
       {children}

@@ -171,33 +171,40 @@ export default function Home() {
         {/* Headline KPI strip — click a chip to warp to its station */}
         <StatusStrip />
 
-        {/* Main viewer beside the inbox/schedule rail */}
-        <div className="mb-6 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div id="station-core">
-            <PraxisCore />
+        {/* Bridge deck — the Praxis core viewer and its four stations stack in
+            the left column; the inbox/schedule/activity rail falls beside the
+            whole stack on the right rather than stopping under the core. */}
+        <div className="mb-6 grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          {/* Left column — main viewer over the bridge stations */}
+          <div className="flex min-w-0 flex-col gap-4">
+            <div id="station-core">
+              <PraxisCore />
+            </div>
+
+            {/* Stations, 2-up: Knowledge sits directly under Power */}
+            <div className="grid items-start gap-4 md:grid-cols-2">
+              <div id="station-dispatch">
+                <DispatchStation />
+              </div>
+              <div id="station-power">
+                <PowerStation />
+              </div>
+              <div id="station-academy">
+                <AcademyStation />
+              </div>
+              <div id="station-knowledge">
+                <KnowledgeStation />
+              </div>
+            </div>
           </div>
+
+          {/* Right column — inbox / schedule / activity rail */}
           <div id="panel-inbox" className="flex flex-col gap-4 min-w-0">
             <HitlInbox />
             <ScheduleTimeline />
             <div id="panel-activity">
               <ActivityFeed />
             </div>
-          </div>
-        </div>
-
-        {/* Bridge stations */}
-        <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
-          <div id="station-dispatch">
-            <DispatchStation />
-          </div>
-          <div id="station-power">
-            <PowerStation />
-          </div>
-          <div id="station-knowledge">
-            <KnowledgeStation />
-          </div>
-          <div id="station-academy">
-            <AcademyStation />
           </div>
         </div>
 

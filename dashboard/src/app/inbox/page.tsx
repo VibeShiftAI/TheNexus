@@ -1,23 +1,24 @@
 "use client";
 
 /**
- * /inbox — the pop-up Praxis Inbox window.
+ * /inbox — the full Praxis Inbox route.
  *
- * Opened via openInboxWindow() (hitl-inbox.tsx) as a dedicated popup, but
- * works as a normal route too. Everything the sidebar card shows, plus:
- * filter rails, live-stream status, full agent context per question, task
- * deep links, park-without-answer for task questions, and resolved history.
+ * Navigated to in-app from the inbox card (hitl-inbox.tsx) — never a popup, so
+ * the whole experience stays inside the Tauri window. Everything the sidebar
+ * card shows, plus: filter rails, live-stream status, full agent context per
+ * question, task deep links, park-without-answer, and resolved history.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import {
   Archive,
+  ArrowLeft,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  ExternalLink,
   Inbox,
   Loader2,
   RefreshCw,
@@ -118,11 +119,22 @@ export default function InboxPage() {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-10 border-b border-cyan-500/20 bg-slate-950/90 px-4 pb-3 pt-4 backdrop-blur">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            {/* The inbox is a full in-app route (never a popup), so it needs its
+                own way back to the bridge. */}
+            <Link
+              href="/"
+              title="Back to the bridge"
+              aria-label="Back to the bridge"
+              className="flex shrink-0 items-center gap-1.5 rounded-md border border-slate-800 px-2 py-1.5 text-slate-400 transition hover:border-cyan-500 hover:text-cyan-300"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider">Bridge</span>
+            </Link>
             <div className="rounded-md border border-cyan-500/40 bg-cyan-500/10 p-1.5">
               <Inbox className="h-4 w-4 text-cyan-300" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-sm font-bold uppercase tracking-widest text-white">
                 Praxis Inbox
               </h1>
@@ -321,21 +333,19 @@ function InboxQuestionCard({
 
         {/* task identity */}
         {request.taskId ? (
-          <a
+          <Link
             href={`/task/${encodeURIComponent(request.taskId)}`}
-            target="_blank"
-            rel="noreferrer"
             title={`Open task ${request.taskId}`}
             className="mb-2 flex items-center gap-1.5 text-xs text-cyan-300 transition hover:text-cyan-200"
           >
-            <ExternalLink className="h-3 w-3 shrink-0" />
+            <ChevronRight className="h-3 w-3 shrink-0" />
             <span className="truncate font-semibold">{meta.taskTitle ?? request.taskId}</span>
             {meta.projectName ? (
               <span className="shrink-0 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
                 {meta.projectName}
               </span>
             ) : null}
-          </a>
+          </Link>
         ) : null}
 
         {/* the question */}

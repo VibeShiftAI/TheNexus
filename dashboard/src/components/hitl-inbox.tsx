@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  ExternalLink,
   HelpCircle,
   Loader2,
-  PictureInPicture2,
+  Maximize2,
 } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
@@ -22,15 +22,6 @@ import {
   isScheduleHitl,
   isSkillCandidatesHitl,
 } from "./schedule-hitl-card";
-
-/** Open the pop-up inbox window (or focus it if already open). */
-export function openInboxWindow() {
-  window.open(
-    "/inbox",
-    "praxis-inbox",
-    "popup,width=600,height=860,left=120,top=60",
-  );
-}
 
 export function HitlInbox() {
   const { error, loading, pendingRequests, resolvingId, resolveRequest } = useHitlInbox();
@@ -61,13 +52,14 @@ export function HitlInbox() {
           <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
             {pendingRequests.length}
           </span>
-          <button
-            onClick={openInboxWindow}
-            title="Open inbox in a pop-up window"
+          <Link
+            href="/inbox"
+            title="Open the full inbox"
+            aria-label="Open the full inbox"
             className="rounded-md border border-slate-700 p-1 text-slate-400 transition hover:border-cyan-500 hover:text-cyan-300"
           >
-            <PictureInPicture2 className="h-3.5 w-3.5" />
-          </button>
+            <Maximize2 className="h-3.5 w-3.5" />
+          </Link>
         </div>
       </div>
 
@@ -161,14 +153,12 @@ function HitlRequestCard({
       </div>
 
       {request.taskId ? (
-        <a
+        <Link
           href={`/task/${encodeURIComponent(request.taskId)}`}
-          target="_blank"
-          rel="noreferrer"
           title={`Open task ${request.taskId}`}
           className="mb-2 flex items-center gap-1.5 text-xs text-cyan-300 transition hover:text-cyan-200"
         >
-          <ExternalLink className="h-3 w-3 shrink-0" />
+          <ChevronRight className="h-3 w-3 shrink-0" />
           <span className="truncate font-medium">
             {meta.taskTitle ?? request.taskId}
           </span>
@@ -177,7 +167,7 @@ function HitlRequestCard({
               {meta.projectName}
             </span>
           ) : null}
-        </a>
+        </Link>
       ) : null}
 
       <div className="mb-3 flex gap-2 text-sm text-slate-100">

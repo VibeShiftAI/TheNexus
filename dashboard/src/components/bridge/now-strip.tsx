@@ -23,7 +23,7 @@ function fmtTokens(n: number) {
   return String(n);
 }
 
-export function NowStrip() {
+export function NowStrip({ bare = false }: { bare?: boolean } = {}) {
   const { running, activity, taskLabel, model, tokens, tokensEstimated, connected } = useActiveWork();
   const style = CORE_STYLES[activity];
   const stateLabel = running ? style.label : "Idle";
@@ -34,7 +34,13 @@ export function NowStrip() {
     : "Signal lost — reconnecting";
 
   return (
-    <div className="mb-3 flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
+    <div
+      className={
+        bare
+          ? "flex min-w-0 items-center gap-2.5"
+          : "mb-3 flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+      }
+    >
       {/* Status dot + NOW + activity state */}
       <div className="flex shrink-0 items-center gap-2">
         <span className="relative flex h-2 w-2 items-center justify-center">
