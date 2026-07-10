@@ -288,6 +288,14 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
         return proxyJson(req, res, `/api/llm-log${qs ? `?${qs}` : ''}`);
     });
 
+    // ── Council Chamber (deliberation viewer) ──────────────────────
+    router.get('/council/sessions', (req, res) => {
+        const qs = new URLSearchParams(req.query).toString();
+        return proxyJson(req, res, `/api/council/sessions${qs ? `?${qs}` : ''}`);
+    });
+    router.get('/council/sessions/:id', (req, res) =>
+        proxyJson(req, res, `/api/council/sessions/${encodeURIComponent(req.params.id)}`));
+
     // ── Bridge / cockpit passthroughs (command-deck dashboard) ─────
     router.get('/stats', (req, res) => proxyJson(req, res, '/api/praxis/stats'));
     router.get('/skills', (req, res) => proxyJson(req, res, '/api/skills'));
