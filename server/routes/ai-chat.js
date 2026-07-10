@@ -137,12 +137,53 @@ function inlineFilesIntoMessage(message, files) {
     return `${message}\n\n${blocks.join('\n\n')}`;
 }
 
+// ── Retry join-map (mobile resilience) ───────────────────────────────────
+// A phone on flaky cellular re-POSTs the same message (same clientMessageId)
+// after its connection died mid-wait — the agent run takes minutes and the
+// non-streaming response sends zero bytes until it finishes, so carrier NATs
+// routinely kill the idle socket. Joining the retry onto the ORIGINAL
+// in-flight Praxis run means no double agent execution and no duplicate
+// persisted messages: the retry just resumes waiting on a fresh connection.
+// Completed results stay joinable for a short TTL so a retry that lands just
+// after the run finishes still gets the reply.
+const CHAT_JOIN_TTL_MS = 10 * 60 * 1000;
+const inflightChatRuns = new Map(); // clientMessageId -> Promise<payload>
+
+function rememberChatRun(clientMessageId, runPromise) {
+    inflightChatRuns.set(clientMessageId, runPromise);
+    runPromise.then(
+        () => {
+            const timer = setTimeout(() => inflightChatRuns.delete(clientMessageId), CHAT_JOIN_TTL_MS);
+            timer.unref?.();
+        },
+        // A failed run must not be pinned — the next retry should re-run.
+        () => inflightChatRuns.delete(clientMessageId),
+    );
+}
+
 function createAIChatRouter({ db, io }) {
     const router = express.Router();
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
 
     router.post('/', async (req, res) => {
         const { message, mode, history, projectId, files, attachments, audio, clientMessageId } = req.body || {};
+
+        // Retry join: a re-POST of a message we're already processing (or just
+        // finished) attaches to that run instead of running the agent again.
+        const joinable = typeof clientMessageId === 'string' && clientMessageId && !wantsEventStream(req);
+        if (joinable && inflightChatRuns.has(clientMessageId)) {
+            console.log(`[AI Chat] Retry joined onto in-flight run for message ${clientMessageId}`);
+            try {
+                return res.json(await inflightChatRuns.get(clientMessageId));
+            } catch (error) {
+                if (res.headersSent) return;
+                return res.status(502).json({
+                    error: `Praxis proxy error: ${error.message}`,
+                    response: `⚠️ **Connection to Praxis Failed**\n\nI couldn't reach the Praxis daemon (Port 54322). Ensure the background service is running.\n\nError: ${error.message}`,
+                    model: 'system-error', provider: 'System', mode: 'praxis'
+                });
+            }
+        }
 
         console.log(`\n🤖 [AI Chat] Request Details:`);
         console.log(`   → Mode: ${mode || 'praxis'} (all modes relay to Praxis)`);
@@ -185,18 +226,21 @@ function createAIChatRouter({ db, io }) {
                 ...(isAgentMode ? { agentMode: true } : {}),
                 ...(canStream ? { stream: true } : {})
             };
-            const praxisResponse = await fetch(`${PRAXIS_URL}/api/chat`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}) },
-                body: JSON.stringify(praxisPayload), signal: AbortSignal.timeout(getPraxisChatTimeoutMs()), // local agent loops can be long
-            });
-
-            if (!praxisResponse.ok) {
-                const errorText = await praxisResponse.text().catch(() => '(no body)');
-                console.error(`[AI Chat] Praxis returned ${praxisResponse.status}: ${errorText}`);
-                throw new Error(`Praxis returned ${praxisResponse.status}: ${errorText}`);
-            }
+            const fetchPraxis = async () => {
+                const praxisResponse = await fetch(`${PRAXIS_URL}/api/chat`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}) },
+                    body: JSON.stringify(praxisPayload), signal: AbortSignal.timeout(getPraxisChatTimeoutMs()), // local agent loops can be long
+                });
+                if (!praxisResponse.ok) {
+                    const errorText = await praxisResponse.text().catch(() => '(no body)');
+                    console.error(`[AI Chat] Praxis returned ${praxisResponse.status}: ${errorText}`);
+                    throw new Error(`Praxis returned ${praxisResponse.status}: ${errorText}`);
+                }
+                return praxisResponse;
+            };
 
             if (canStream) {
+                const praxisResponse = await fetchPraxis();
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');
                 res.setHeader('Connection', 'keep-alive');
@@ -219,26 +263,38 @@ function createAIChatRouter({ db, io }) {
                 return res.end();
             }
 
-            const data = await praxisResponse.json();
+            // Non-streaming path (mobile sends, attachments, audio): run the
+            // relay behind a joinable promise so a network-level client retry
+            // with the same clientMessageId resumes THIS run instead of
+            // executing the agent a second time. The reply also reaches the
+            // client via the socket 'chat-message' event once persisted, so a
+            // send whose every connection died still lands on the phone.
+            const runPromise = (async () => {
+                const praxisResponse = await fetchPraxis();
+                const data = await praxisResponse.json();
 
-            // The "🤖 Relayed by Praxis" debug footer is gone (2026-07-02) —
-            // everything relays through Praxis now, so it was pure noise.
-            const fullResponse = data.response || "No response";
-            let assistantMessageId = null;
+                // The "🤖 Relayed by Praxis" debug footer is gone (2026-07-02) —
+                // everything relays through Praxis now, so it was pure noise.
+                const fullResponse = data.response || "No response";
+                let assistantMessageId = null;
 
-            if (conversationId) {
-                try {
-                    const savedAssistantMessage = await db.saveChatMessage({ conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata(data) });
-                    assistantMessageId = savedAssistantMessage?.id || null;
-                    if (savedAssistantMessage && io) {
-                        io.emit('chat-message', buildChatMessageEvent(savedAssistantMessage));
+                if (conversationId) {
+                    try {
+                        const savedAssistantMessage = await db.saveChatMessage({ conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata(data) });
+                        assistantMessageId = savedAssistantMessage?.id || null;
+                        if (savedAssistantMessage && io) {
+                            io.emit('chat-message', buildChatMessageEvent(savedAssistantMessage));
+                        }
+                    } catch (dbErr) {
+                        console.error(`[AI Chat] Failed to persist Praxis response to DB (non-fatal):`, dbErr.message);
                     }
-                } catch (dbErr) {
-                    console.error(`[AI Chat] Failed to persist Praxis response to DB (non-fatal):`, dbErr.message);
                 }
-            }
 
-            return res.json({ response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData });
+                return { response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData };
+            })();
+
+            if (joinable) rememberChatRun(clientMessageId, runPromise);
+            return res.json(await runPromise);
         } catch (error) {
             console.error(`[AI Chat] Praxis Proxy Error:`, error);
             if (res.headersSent) return;

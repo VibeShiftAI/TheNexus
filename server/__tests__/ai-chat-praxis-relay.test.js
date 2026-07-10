@@ -120,6 +120,70 @@ describe('AI chat Praxis relay', () => {
         expect(praxisPayload.message).toContain('line one\nline two');
     });
 
+    test('a retried send with the same clientMessageId joins the in-flight run (no double agent execution)', async () => {
+        // The mobile client re-POSTs after its cellular connection dies
+        // mid-wait; the join-map must attach the retry to the ORIGINAL
+        // Praxis run instead of running the agent twice.
+        let resolvePraxis;
+        const praxisGate = new Promise((resolve) => { resolvePraxis = resolve; });
+        global.fetch = jest.fn(async () => {
+            await praxisGate;
+            return { ok: true, json: async () => ({ response: 'one run, one reply' }) };
+        });
+        const db = createDb();
+        await mount(db);
+
+        const first = post({ message: 'from the gym', mode: 'praxis', clientMessageId: 'msg-retry-1' });
+        // Let the first request reach the relay and register its run.
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const second = post({ message: 'from the gym', mode: 'praxis', clientMessageId: 'msg-retry-1' });
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        resolvePraxis();
+
+        const [a, b] = await Promise.all([first, second]);
+        expect(a.status).toBe(200);
+        expect(b.status).toBe(200);
+        expect(a.body.response).toBe('one run, one reply');
+        expect(b.body.response).toBe('one run, one reply');
+        // The agent ran exactly once, and the messages persisted once each.
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        const savedRoles = db.saveChatMessage.mock.calls.map(([m]) => m.role);
+        expect(savedRoles.filter((r) => r === 'user')).toHaveLength(1);
+        expect(savedRoles.filter((r) => r === 'assistant')).toHaveLength(1);
+    });
+
+    test('a completed run stays joinable, and a failed run is not pinned', async () => {
+        let praxisCalls = 0;
+        global.fetch = jest.fn(async () => {
+            praxisCalls += 1;
+            if (praxisCalls === 1) throw new Error('praxis down');
+            return { ok: true, json: async () => ({ response: 'second try worked' }) };
+        });
+        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        try {
+            await mount(createDb());
+
+            // First run fails → 502, and the failure must NOT be cached.
+            const failed = await post({ message: 'retry me', mode: 'praxis', clientMessageId: 'msg-retry-2' });
+            expect(failed.status).toBe(502);
+
+            // A later retry with the same id re-runs and succeeds…
+            const retried = await post({ message: 'retry me', mode: 'praxis', clientMessageId: 'msg-retry-2' });
+            expect(retried.status).toBe(200);
+            expect(retried.body.response).toBe('second try worked');
+            expect(global.fetch).toHaveBeenCalledTimes(2);
+
+            // …and a straggler retry arriving after completion joins the
+            // cached result instead of running the agent a third time.
+            const straggler = await post({ message: 'retry me', mode: 'praxis', clientMessageId: 'msg-retry-2' });
+            expect(straggler.status).toBe(200);
+            expect(straggler.body.response).toBe('second try worked');
+            expect(global.fetch).toHaveBeenCalledTimes(2);
+        } finally {
+            consoleErrorSpy.mockRestore();
+        }
+    });
+
     test('legacy agent mode still relays with the Cortex System-2 flag', async () => {
         global.fetch = jest.fn(async () => ({
             ok: true,
