@@ -21,6 +21,7 @@ const MODELS_CACHE_TTL = 60000; // 1 minute
 // @praxis/contract's DEFAULT_ENDPOINTS (Nexus can't import the ESM package).
 const PRAXIS_URL = process.env.PRAXIS_URL || 'http://127.0.0.1:54322';
 const CORTEX_URL = process.env.CORTEX_API_URL || 'http://localhost:8100';
+const DASHBOARD_URL = process.env.DASHBOARD_URL || 'http://localhost:3000';
 
 module.exports = {
     PROJECT_ROOT,
@@ -28,5 +29,6 @@ module.exports = {
     SCAN_CACHE_TTL,
     MODELS_CACHE_TTL,
     PRAXIS_URL,
-    CORTEX_URL
+    CORTEX_URL,
+    DASHBOARD_URL
 };

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>The Nexus</title>
+<style>
+  html, body { height: 100%; margin: 0; background: #020617; color: #94a3b8;
+    font-family: "Segoe UI", system-ui, sans-serif; }
+  .wrap { height: 100%; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 18px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent, #22d3ee);
+    box-shadow: 0 0 24px 6px var(--glow, rgba(34, 211, 238, 0.45)); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.72); opacity: 0.55; } }
+  h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.14em; color: #e2e8f0; margin: 0; }
+  p { font-size: 12px; margin: 0; }
+  #status { color: #475569; font-family: ui-monospace, monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="dot"></div>
+  <h1 id="label">THE NEXUS</h1>
+  <p>Establishing tunnel link…</p>
+  <p id="status">initializing</p>
+</div>
+<script>
+  // Generic per-tab loader: asks Rust which tab this webview is (tab_config),
+  // waits for the Access service-token exchange to settle (auth_ready) so we
+  // never race the session cookie into an interactive login page, then polls
+  // the tunnel hostname until the edge answers and hands over.
+  const invoke = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
+  const status = (t) => { document.getElementById("status").textContent = t; };
+
+  function hexToGlow(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, 0.45)`;
+  }
+
+  async function boot() {
+    let cfg = null;
+    try { cfg = invoke && (await invoke("tab_config")); } catch {}
+    if (!cfg) cfg = { label: "THE NEXUS", url: "https://nexus.vibeshiftai.com", accent: "#22d3ee" };
+
+    document.getElementById("label").textContent = cfg.label;
+    document.documentElement.style.setProperty("--accent", cfg.accent);
+    document.documentElement.style.setProperty("--glow", hexToGlow(cfg.accent));
+    const host = new URL(cfg.url).host;
+
+    // Hold for the service-token exchange (bounded — interactive login is
+    // the fallback if the gate never opens or IPC is unavailable).
+    const t0 = Date.now();
+    while (invoke && Date.now() - t0 < 8000) {
+      status("securing tunnel session…");
+      try { if (await invoke("auth_ready")) break; } catch { break; }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+
+    let attempts = 0;
+    const tryConnect = async () => {
+      attempts += 1;
+      status("waiting for " + host + " · attempt " + attempts);
+      try {
+        await fetch(cfg.url, { mode: "no-cors", cache: "no-store" });
+        window.location.replace(cfg.url);
+      } catch {
+        setTimeout(tryConnect, 2000);
+      }
+    };
+    tryConnect();
+  }
+  boot();
+</script>
+</body>
+</html>

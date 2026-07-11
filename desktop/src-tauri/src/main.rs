@@ -173,26 +173,72 @@ fn build_bridge_window(app: &tauri::App) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Windows: the tabbed travel shell. One native window carrying three child
-/// webviews — "chrome" (the local tab strip, the only webview with IPC),
-/// plus "bridge" and "studio" content views that start on local loader pages
-/// and hand over to the tunnel hostnames once they answer.
+/// Windows: the tabbed travel shell. One native window carrying child
+/// webviews — "chrome" (the local tab strip) plus one content webview per
+/// entry in `TABS`, each starting on the local loader page and handing over
+/// to its tunnel hostname once it answers. Local app pages get IPC; the
+/// remote content that replaces them gets none.
 #[cfg(target_os = "windows")]
 mod travel {
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Mutex;
+    use std::time::Duration;
 
+    use serde::Serialize;
     use tauri::{
-        webview::{NewWindowFeatures, NewWindowResponse, WebviewBuilder},
+        webview::{cookie::CookieBuilder, NewWindowFeatures, NewWindowResponse, WebviewBuilder},
         window::WindowBuilder,
-        LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Position, Rect, Size, Url,
-        WebviewUrl, Window, WindowEvent, Wry,
+        LogicalPosition, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Position, Rect,
+        Size, Url, WebviewUrl, Window, WindowEvent, Wry,
     };
 
     /// Logical height of the tab strip, in CSS pixels.
     pub const TAB_BAR_HEIGHT: f64 = 46.0;
 
-    /// Which content tab is showing: "bridge" or "studio".
+    /// The travel shell's tab roster — THE place to grow the ecosystem: add
+    /// an entry here (plus a tunnel ingress + Access app for its hostname)
+    /// and CI ships an installer with the new tab. First entry is the
+    /// startup tab. Every host is expected to sit behind Cloudflare Access.
+    #[derive(Clone, Serialize)]
+    pub struct TabDef {
+        pub id: &'static str,
+        pub label: &'static str,
+        pub url: &'static str,
+        pub accent: &'static str,
+    }
+
+    pub const TABS: &[TabDef] = &[
+        TabDef {
+            id: "bridge",
+            label: "BRIDGE",
+            url: "https://nexus.vibeshiftai.com",
+            accent: "#22d3ee",
+        },
+        TabDef {
+            id: "studio",
+            label: "GAYGUIDE YOUTUBE",
+            url: "https://gayguyde.vibeshiftai.com/admin/studio",
+            accent: "#f472b6",
+        },
+    ];
+
+    /// Which content tab is showing (a `TabDef::id`).
     pub struct ActiveTab(pub Mutex<String>);
+
+    /// Flipped once the Access service-token exchange finished (or was
+    /// skipped — no token file, exchange failed). Loaders hold their first
+    /// connection attempt on this so they never race the session cookie
+    /// into an interactive Access login page.
+    pub struct AuthGate(pub AtomicBool);
+
+    /// Service-token credentials, dropped by hand on the travel laptop at
+    /// %APPDATA%\com.praxis.nexus-bridge\access-token.json — never bundled
+    /// into the (public-repo) binary.
+    #[derive(serde::Deserialize)]
+    struct ServiceToken {
+        client_id: String,
+        client_secret: String,
+    }
 
     /// target=_blank links (YouTube Studio, status-report cards) open in the
     /// system default browser instead of dying inside WebView2.
@@ -204,6 +250,104 @@ mod travel {
             }
         }
         NewWindowResponse::Deny
+    }
+
+    /// Exchange the service token for a `CF_Authorization` session cookie:
+    /// one request per host with the CF-Access-Client-Id/Secret headers;
+    /// Access answers with the cookie when a Service Auth policy matches.
+    /// Redirects stay off — the Set-Cookie is on the first response.
+    fn fetch_access_cookie(agent: &ureq::Agent, host: &str, token: &ServiceToken) -> Option<String> {
+        let result = agent
+            .get(&format!("https://{host}/"))
+            .set("CF-Access-Client-Id", &token.client_id)
+            .set("CF-Access-Client-Secret", &token.client_secret)
+            .call();
+        let response = match result {
+            Ok(response) => response,
+            // 4xx/5xx still carries headers worth checking (and logging).
+            Err(ureq::Error::Status(_, response)) => response,
+            Err(err) => {
+                eprintln!("[nexus] Access exchange request failed for {host}: {err}");
+                return None;
+            }
+        };
+        for header in response.all("set-cookie") {
+            if let Some(rest) = header.strip_prefix("CF_Authorization=") {
+                let value = rest.split(';').next().unwrap_or("").trim();
+                if !value.is_empty() {
+                    return Some(value.to_string());
+                }
+            }
+        }
+        eprintln!(
+            "[nexus] no CF_Authorization cookie from {host} (status {}) — is the service token in a Service Auth policy on that app?",
+            response.status()
+        );
+        None
+    }
+
+    /// Background startup pass: for every unique tab host, trade the service
+    /// token for a session cookie and plant it in the shared WebView2 cookie
+    /// store (any webview handle reaches the same profile). Silent no-op
+    /// when no token file exists — tabs fall back to interactive login.
+    fn exchange_and_inject(app: &tauri::AppHandle, window: &Window) {
+        let token: ServiceToken = {
+            let Ok(dir) = app.path().app_config_dir() else { return };
+            let path = dir.join("access-token.json");
+            match std::fs::read_to_string(&path) {
+                Ok(raw) => match serde_json::from_str(&raw) {
+                    Ok(token) => token,
+                    Err(err) => {
+                        eprintln!("[nexus] {} is not valid JSON: {err}", path.display());
+                        return;
+                    }
+                },
+                Err(_) => {
+                    println!(
+                        "[nexus] no {} — using interactive Access login",
+                        path.display()
+                    );
+                    return;
+                }
+            }
+        };
+        let Some(chrome) = window.webviews().into_iter().find(|w| w.label() == "chrome") else {
+            return;
+        };
+        let Ok(tls) = native_tls::TlsConnector::new() else {
+            eprintln!("[nexus] could not initialize TLS for the Access exchange");
+            return;
+        };
+        let agent = ureq::AgentBuilder::new()
+            .tls_connector(std::sync::Arc::new(tls))
+            .redirects(0)
+            .timeout(Duration::from_secs(6))
+            .build();
+
+        let mut seen_hosts: Vec<String> = Vec::new();
+        for tab in TABS {
+            let Some(host) = Url::parse(tab.url).ok().and_then(|u| u.host_str().map(String::from))
+            else {
+                continue;
+            };
+            if seen_hosts.contains(&host) {
+                continue;
+            }
+            seen_hosts.push(host.clone());
+            let Some(jwt) = fetch_access_cookie(&agent, &host, &token) else {
+                continue;
+            };
+            let cookie = CookieBuilder::new("CF_Authorization", jwt)
+                .domain(host.clone())
+                .path("/")
+                .secure(true)
+                .http_only(true)
+                .build();
+            match chrome.set_cookie(cookie) {
+                Ok(()) => println!("[nexus] Access session planted for {host}"),
+                Err(err) => eprintln!("[nexus] could not set Access cookie for {host}: {err}"),
+            }
+        }
     }
 
     /// Pin the tab strip across the top and fill the rest with content.
@@ -250,19 +394,17 @@ mod travel {
             LogicalPosition::new(0.0, 0.0),
             LogicalSize::new(1400.0, TAB_BAR_HEIGHT),
         )?;
-        window.add_child(
-            WebviewBuilder::new("bridge", WebviewUrl::App("bridge.html".into()))
-                .on_new_window(open_in_browser),
-            content_pos,
-            content_size,
-        )?;
-        let studio = window.add_child(
-            WebviewBuilder::new("studio", WebviewUrl::App("studio.html".into()))
-                .on_new_window(open_in_browser),
-            content_pos,
-            content_size,
-        )?;
-        studio.hide()?;
+        for (index, tab) in TABS.iter().enumerate() {
+            let webview = window.add_child(
+                WebviewBuilder::new(tab.id, WebviewUrl::App("loader.html".into()))
+                    .on_new_window(open_in_browser),
+                content_pos,
+                content_size,
+            )?;
+            if index != 0 {
+                webview.hide()?;
+            }
+        }
 
         layout(&window);
         let handle = window.clone();
@@ -275,12 +417,42 @@ mod travel {
             }
         });
 
+        // Trade the Access service token for session cookies off the main
+        // thread; loaders wait on the AuthGate before first contact.
+        let app_handle = app.handle().clone();
+        let window_handle = window.clone();
+        std::thread::spawn(move || {
+            exchange_and_inject(&app_handle, &window_handle);
+            app_handle
+                .state::<AuthGate>()
+                .0
+                .store(true, Ordering::Release);
+        });
+
         Ok(())
+    }
+
+    /// Tab roster for the chrome strip.
+    #[tauri::command]
+    pub fn list_tabs() -> Vec<TabDef> {
+        TABS.to_vec()
+    }
+
+    /// The calling webview's own tab entry — loaders ask who they are.
+    #[tauri::command]
+    pub fn tab_config(webview: tauri::Webview) -> Option<TabDef> {
+        TABS.iter().find(|t| t.id == webview.label()).cloned()
+    }
+
+    /// True once the service-token exchange settled (either way).
+    #[tauri::command]
+    pub fn auth_ready(state: tauri::State<'_, AuthGate>) -> bool {
+        state.0.load(Ordering::Acquire)
     }
 
     #[tauri::command]
     pub fn switch_tab(window: Window, state: tauri::State<'_, ActiveTab>, tab: String) {
-        if tab != "bridge" && tab != "studio" {
+        if !TABS.iter().any(|t| t.id == tab) {
             return;
         }
         for webview in window.webviews() {
@@ -318,10 +490,14 @@ fn main() {
 
     #[cfg(target_os = "windows")]
     let builder = builder
-        .manage(travel::ActiveTab(Mutex::new("bridge".into())))
+        .manage(travel::ActiveTab(Mutex::new(travel::TABS[0].id.into())))
+        .manage(travel::AuthGate(std::sync::atomic::AtomicBool::new(false)))
         .invoke_handler(tauri::generate_handler![
             travel::switch_tab,
-            travel::reload_active
+            travel::reload_active,
+            travel::list_tabs,
+            travel::tab_config,
+            travel::auth_ready
         ]);
 
     builder
