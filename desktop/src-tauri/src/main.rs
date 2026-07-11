@@ -220,6 +220,48 @@ mod travel {
             url: "https://gayguyde.vibeshiftai.com/admin/studio",
             accent: "#f472b6",
         },
+        TabDef {
+            id: "families",
+            label: "FAMILIES",
+            url: "https://families.apps.vibeshiftai.com",
+            accent: "#fbbf24",
+        },
+        TabDef {
+            // Production Firebase Hosting — the same surface the phones
+            // use. Public hostname, no tunnel or Access involved; the app
+            // gates itself with device tokens.
+            id: "choresmaxxer",
+            label: "CHORESMAXXER",
+            url: "https://choresmaxxer.web.app",
+            accent: "#4ade80",
+        },
+        TabDef {
+            id: "homefinder",
+            label: "HOMEFINDER",
+            url: "https://lab.apps.vibeshiftai.com/p/nyc-home-finder",
+            accent: "#f87171",
+        },
+        TabDef {
+            id: "lars",
+            label: "LARS",
+            url: "https://lars.apps.vibeshiftai.com",
+            accent: "#facc15",
+        },
+        TabDef {
+            id: "worlds",
+            label: "WORLDS",
+            url: "https://lab.apps.vibeshiftai.com/p/impossible-worlds-field-guide",
+            accent: "#a78bfa",
+        },
+        TabDef {
+            // THE LAB — the Project Hub on the node server: every board
+            // project's space, and where the New Project Process lands
+            // fresh experiments before they earn a tab of their own.
+            id: "lab",
+            label: "THE LAB",
+            url: "https://lab.apps.vibeshiftai.com",
+            accent: "#e2e8f0",
+        },
     ];
 
     /// Which content tab is showing (a `TabDef::id`).
