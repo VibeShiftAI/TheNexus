@@ -1,7 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Loader window; the dashboard itself needs no Tauri IPC.",
+  "description": "Loader window (macOS) and travel-shell tab strip (Windows). Only local app pages get IPC; the remote content webviews (bridge/studio through the tunnel) have no Tauri access.",
   "windows": ["main"],
+  "webviews": ["chrome"],
   "permissions": ["core:default"]
 }

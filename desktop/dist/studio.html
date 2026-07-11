@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>GayGuide YouTube</title>
+<style>
+  html, body { height: 100%; margin: 0; background: #020617; color: #94a3b8;
+    font-family: "Segoe UI", system-ui, sans-serif; }
+  .wrap { height: 100%; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 18px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; background: #f472b6;
+    box-shadow: 0 0 24px 6px rgba(244, 114, 182, 0.45); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.72); opacity: 0.55; } }
+  h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.14em; color: #e2e8f0; margin: 0; }
+  p { font-size: 12px; margin: 0; }
+  #status { color: #475569; font-family: ui-monospace, monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="dot"></div>
+  <h1>GAYGUIDE YOUTUBE</h1>
+  <p>Opening the studio…</p>
+  <p id="status">waiting for gayguyde.vibeshiftai.com</p>
+</div>
+<script>
+  // TheGayGuyde studio server (:3777 on the Mac) through the Cloudflare
+  // tunnel, behind Cloudflare Access. Poll until the edge answers, then
+  // hand over to the video-production suite.
+  const TARGET = "https://gayguyde.vibeshiftai.com/admin/studio";
+  let attempts = 0;
+  async function tryConnect() {
+    attempts += 1;
+    document.getElementById("status").textContent =
+      "waiting for gayguyde.vibeshiftai.com · attempt " + attempts;
+    try {
+      await fetch(TARGET, { mode: "no-cors", cache: "no-store" });
+      window.location.replace(TARGET);
+    } catch {
+      setTimeout(tryConnect, 2000);
+    }
+  }
+  tryConnect();
+</script>
+</body>
+</html>

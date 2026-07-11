@@ -1,14 +1,24 @@
 // The Nexus — native shell for the bridge dashboard.
 //
-// A Tauri v2 window (macOS WKWebView) that loads the local loader page, which
-// hands over to http://localhost:3000 once the dashboard answers. The tray
-// menu carries the ship-systems controls that need native power:
-//   - Keep Mac awake: a real IOKit power assertion (display + idle sleep),
-//     stronger than the browser Wake Lock the ambient mode holds.
+// Two personalities, chosen at compile time:
+//
+//   macOS (home bridge station): a Tauri v2 window (WKWebView) that loads the
+//   local loader page, which hands over to http://localhost:3000 once the
+//   dashboard answers.
+//
+//   Windows (travel shell, for the ARM laptop): a tabbed cockpit that rides
+//   the Cloudflare tunnel home. A thin tab strip (child webview, travel.html)
+//   switches between BRIDGE (nexus.vibeshiftai.com, behind Cloudflare Access)
+//   and GAYGUIDE YOUTUBE (gayguyde.vibeshiftai.com/admin/studio — the
+//   TheGayGuyde video-production studio served from the Mac on :3777).
+//
+// The tray menu carries the ship-systems controls that need native power:
+//   - Keep awake: IOKit power assertion on macOS (display + idle sleep);
+//     SetThreadExecutionState on Windows.
 //   - Always on top: pin the bridge over other windows.
-//   - Reload bridge / Show window / Quit.
+//   - Reload / Show window / Quit.
 // Launch-at-login is enabled on first run via tauri-plugin-autostart
-// (macOS LaunchAgent), consistent with the rest of the Praxis stack.
+// (LaunchAgent on macOS, registry Run key on Windows).
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -17,10 +27,19 @@ use std::sync::Mutex;
 use tauri::{
     menu::{CheckMenuItem, MenuBuilder, MenuItem},
     tray::TrayIconBuilder,
-    webview::NewWindowResponse,
-    Manager, WebviewUrl, WebviewWindowBuilder,
+    Manager,
 };
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+
+#[cfg(target_os = "macos")]
+const KEEP_AWAKE_LABEL: &str = "Keep Mac awake";
+#[cfg(target_os = "windows")]
+const KEEP_AWAKE_LABEL: &str = "Keep laptop awake";
+
+#[cfg(target_os = "macos")]
+const RELOAD_LABEL: &str = "Reload bridge";
+#[cfg(target_os = "windows")]
+const RELOAD_LABEL: &str = "Reload current tab";
 
 /// IOKit power assertions — direct FFI instead of the keepawake crate, whose
 /// apple-sys bindings don't compile on current Rust. Two assertions are held
@@ -85,38 +104,232 @@ mod power {
     }
 }
 
-/// Holds the live power assertion while "Keep Mac awake" is checked.
+/// SetThreadExecutionState keeps the laptop (and display) awake while the
+/// returned guard lives. The flags are per-thread: both `engage` and the
+/// drop run on the main thread (tray menu handler), so the ES_CONTINUOUS
+/// bookkeeping stays consistent.
+#[cfg(target_os = "windows")]
+mod power {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn SetThreadExecutionState(es_flags: u32) -> u32;
+    }
+
+    const ES_CONTINUOUS: u32 = 0x8000_0000;
+    const ES_SYSTEM_REQUIRED: u32 = 0x0000_0001;
+    const ES_DISPLAY_REQUIRED: u32 = 0x0000_0002;
+
+    pub struct AwakeGuard;
+
+    impl AwakeGuard {
+        pub fn engage() -> Result<Self, i32> {
+            let previous = unsafe {
+                SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED)
+            };
+            if previous == 0 {
+                Err(0)
+            } else {
+                Ok(Self)
+            }
+        }
+    }
+
+    impl Drop for AwakeGuard {
+        fn drop(&mut self) {
+            unsafe { SetThreadExecutionState(ES_CONTINUOUS) };
+        }
+    }
+}
+
+/// Holds the live power assertion while "Keep … awake" is checked.
 /// Dropping the guard releases the assertion.
 struct AwakeState(Mutex<Option<power::AwakeGuard>>);
 
+/// macOS: the classic single-webview bridge window.
+#[cfg(target_os = "macos")]
+fn build_bridge_window(app: &tauri::App) -> tauri::Result<()> {
+    use tauri::{webview::NewWindowResponse, WebviewUrl, WebviewWindowBuilder};
+
+    // Main bridge window — built in code (not tauri.conf.json) so we
+    // can attach the new-window handler: target=_blank links (e.g.
+    // the [STATUS REPORT] cards in chat) open in the system default
+    // browser. Without a handler WKWebView's new-window request goes
+    // nowhere and the click is a silent no-op.
+    WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+        .title("The Nexus")
+        .inner_size(1512.0, 945.0)
+        .min_inner_size(900.0, 600.0)
+        .theme(Some(tauri::Theme::Dark))
+        .on_new_window(|url, _features| {
+            let scheme = url.scheme();
+            if scheme == "http" || scheme == "https" {
+                if let Err(err) = open::that(url.as_str()) {
+                    eprintln!("[nexus] could not open {url} in the browser: {err}");
+                }
+            }
+            NewWindowResponse::Deny
+        })
+        .build()?;
+    Ok(())
+}
+
+/// Windows: the tabbed travel shell. One native window carrying three child
+/// webviews — "chrome" (the local tab strip, the only webview with IPC),
+/// plus "bridge" and "studio" content views that start on local loader pages
+/// and hand over to the tunnel hostnames once they answer.
+#[cfg(target_os = "windows")]
+mod travel {
+    use std::sync::Mutex;
+
+    use tauri::{
+        webview::{NewWindowFeatures, NewWindowResponse, WebviewBuilder},
+        window::WindowBuilder,
+        LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Position, Rect, Size, Url,
+        WebviewUrl, Window, WindowEvent, Wry,
+    };
+
+    /// Logical height of the tab strip, in CSS pixels.
+    pub const TAB_BAR_HEIGHT: f64 = 46.0;
+
+    /// Which content tab is showing: "bridge" or "studio".
+    pub struct ActiveTab(pub Mutex<String>);
+
+    /// target=_blank links (YouTube Studio, status-report cards) open in the
+    /// system default browser instead of dying inside WebView2.
+    fn open_in_browser(url: Url, _features: NewWindowFeatures) -> NewWindowResponse<Wry> {
+        let scheme = url.scheme();
+        if scheme == "http" || scheme == "https" {
+            if let Err(err) = open::that(url.as_str()) {
+                eprintln!("[nexus] could not open {url} in the browser: {err}");
+            }
+        }
+        NewWindowResponse::Deny
+    }
+
+    /// Pin the tab strip across the top and fill the rest with content.
+    /// Hidden webviews are laid out too, so switching tabs never re-flows.
+    pub fn layout(window: &Window) {
+        let Ok(size) = window.inner_size() else {
+            return;
+        };
+        let scale = window.scale_factor().unwrap_or(1.0);
+        let tab_h = ((TAB_BAR_HEIGHT * scale).round() as u32).min(size.height);
+        for webview in window.webviews() {
+            let bounds = if webview.label() == "chrome" {
+                Rect {
+                    position: Position::Physical(PhysicalPosition::new(0, 0)),
+                    size: Size::Physical(PhysicalSize::new(size.width, tab_h)),
+                }
+            } else {
+                Rect {
+                    position: Position::Physical(PhysicalPosition::new(0, tab_h as i32)),
+                    size: Size::Physical(PhysicalSize::new(
+                        size.width,
+                        size.height.saturating_sub(tab_h),
+                    )),
+                }
+            };
+            let _ = webview.set_bounds(bounds);
+        }
+    }
+
+    pub fn build_travel_window(app: &tauri::App) -> tauri::Result<()> {
+        let window = WindowBuilder::new(app, "main")
+            .title("The Nexus")
+            .inner_size(1400.0, 900.0)
+            .min_inner_size(900.0, 600.0)
+            .theme(Some(tauri::Theme::Dark))
+            .build()?;
+
+        // Rough initial bounds; layout() below sets the exact ones.
+        let content_size = LogicalSize::new(1400.0, 900.0 - TAB_BAR_HEIGHT);
+        let content_pos = LogicalPosition::new(0.0, TAB_BAR_HEIGHT);
+
+        window.add_child(
+            WebviewBuilder::new("chrome", WebviewUrl::App("travel.html".into())),
+            LogicalPosition::new(0.0, 0.0),
+            LogicalSize::new(1400.0, TAB_BAR_HEIGHT),
+        )?;
+        window.add_child(
+            WebviewBuilder::new("bridge", WebviewUrl::App("bridge.html".into()))
+                .on_new_window(open_in_browser),
+            content_pos,
+            content_size,
+        )?;
+        let studio = window.add_child(
+            WebviewBuilder::new("studio", WebviewUrl::App("studio.html".into()))
+                .on_new_window(open_in_browser),
+            content_pos,
+            content_size,
+        )?;
+        studio.hide()?;
+
+        layout(&window);
+        let handle = window.clone();
+        window.on_window_event(move |event| {
+            if matches!(
+                event,
+                WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. }
+            ) {
+                layout(&handle);
+            }
+        });
+
+        Ok(())
+    }
+
+    #[tauri::command]
+    pub fn switch_tab(window: Window, state: tauri::State<'_, ActiveTab>, tab: String) {
+        if tab != "bridge" && tab != "studio" {
+            return;
+        }
+        for webview in window.webviews() {
+            match webview.label() {
+                "chrome" => {}
+                label if label == tab => {
+                    let _ = webview.show();
+                }
+                _ => {
+                    let _ = webview.hide();
+                }
+            }
+        }
+        *state.0.lock().unwrap() = tab;
+    }
+
+    #[tauri::command]
+    pub fn reload_active(window: Window, state: tauri::State<'_, ActiveTab>) {
+        let active = state.0.lock().unwrap().clone();
+        for webview in window.webviews() {
+            if webview.label() == active {
+                let _ = webview.eval("window.location.reload()");
+            }
+        }
+    }
+}
+
 fn main() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             None,
         ))
-        .manage(AwakeState(Mutex::new(None)))
+        .manage(AwakeState(Mutex::new(None)));
+
+    #[cfg(target_os = "windows")]
+    let builder = builder
+        .manage(travel::ActiveTab(Mutex::new("bridge".into())))
+        .invoke_handler(tauri::generate_handler![
+            travel::switch_tab,
+            travel::reload_active
+        ]);
+
+    builder
         .setup(|app| {
-            // Main bridge window — built in code (not tauri.conf.json) so we
-            // can attach the new-window handler: target=_blank links (e.g.
-            // the [STATUS REPORT] cards in chat) open in the system default
-            // browser. Without a handler WKWebView's new-window request goes
-            // nowhere and the click is a silent no-op.
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("The Nexus")
-                .inner_size(1512.0, 945.0)
-                .min_inner_size(900.0, 600.0)
-                .theme(Some(tauri::Theme::Dark))
-                .on_new_window(|url, _features| {
-                    let scheme = url.scheme();
-                    if scheme == "http" || scheme == "https" {
-                        if let Err(err) = open::that(url.as_str()) {
-                            eprintln!("[nexus] could not open {url} in the browser: {err}");
-                        }
-                    }
-                    NewWindowResponse::Deny
-                })
-                .build()?;
+            #[cfg(target_os = "macos")]
+            build_bridge_window(app)?;
+            #[cfg(target_os = "windows")]
+            travel::build_travel_window(app)?;
 
             // Start on login — enable once; harmless if already enabled.
             let autostart = app.autolaunch();
@@ -126,11 +339,17 @@ fn main() {
                 }
             }
 
-            let keep_awake =
-                CheckMenuItem::with_id(app, "keep_awake", "Keep Mac awake", true, false, None::<&str>)?;
+            let keep_awake = CheckMenuItem::with_id(
+                app,
+                "keep_awake",
+                KEEP_AWAKE_LABEL,
+                true,
+                false,
+                None::<&str>,
+            )?;
             let on_top =
                 CheckMenuItem::with_id(app, "on_top", "Always on top", true, false, None::<&str>)?;
-            let reload = MenuItem::with_id(app, "reload", "Reload bridge", true, None::<&str>)?;
+            let reload = MenuItem::with_id(app, "reload", RELOAD_LABEL, true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "Show window", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit The Nexus", true, None::<&str>)?;
 
@@ -161,7 +380,7 @@ fn main() {
                             match power::AwakeGuard::engage() {
                                 Ok(awake) => *guard = Some(awake),
                                 Err(status) => {
-                                    eprintln!("[nexus] power assertion failed: IOKit status {status}");
+                                    eprintln!("[nexus] power assertion failed: status {status}");
                                     let _ = keep_awake_handle.set_checked(false);
                                 }
                             }
@@ -170,18 +389,27 @@ fn main() {
                         }
                     }
                     "on_top" => {
-                        if let Some(window) = app.get_webview_window("main") {
+                        if let Some(window) = app.get_window("main") {
                             let pinned = on_top_handle.is_checked().unwrap_or(false);
                             let _ = window.set_always_on_top(pinned);
                         }
                     }
                     "reload" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.eval("window.location.reload()");
+                        if let Some(window) = app.get_window("main") {
+                            #[cfg(target_os = "windows")]
+                            let active =
+                                app.state::<travel::ActiveTab>().0.lock().unwrap().clone();
+                            for webview in window.webviews() {
+                                #[cfg(target_os = "windows")]
+                                if webview.label() != active {
+                                    continue;
+                                }
+                                let _ = webview.eval("window.location.reload()");
+                            }
                         }
                     }
                     "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
+                        if let Some(window) = app.get_window("main") {
                             let _ = window.show();
                             let _ = window.unminimize();
                             let _ = window.set_focus();

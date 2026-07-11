@@ -54,6 +54,9 @@ Thumbs.db
 dist/
 build/
 .next/
+# …but the desktop shell's static pages are source, not build output
+!desktop/dist/
+!desktop/dist/**
 
 # Neo4j data files
 docker/data/neo4j_data/
