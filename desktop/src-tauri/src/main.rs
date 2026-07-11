@@ -233,11 +233,27 @@ mod travel {
 
     /// Service-token credentials, dropped by hand on the travel laptop at
     /// %APPDATA%\com.praxis.nexus-bridge\access-token.json — never bundled
-    /// into the (public-repo) binary.
-    #[derive(serde::Deserialize)]
+    /// into the (public-repo) binary. Used both to plant Access session
+    /// cookies in the webviews and to authorize the self-updater's pull.
+    #[derive(serde::Deserialize, Clone)]
     struct ServiceToken {
         client_id: String,
         client_secret: String,
+    }
+
+    /// Read the Access service token from the app config dir, if present.
+    /// Absent file = interactive Access login (cookies) + unauthenticated
+    /// updater pull (which Access will simply bounce) — both non-fatal.
+    fn read_service_token(app: &tauri::AppHandle) -> Option<ServiceToken> {
+        let path = app.path().app_config_dir().ok()?.join("access-token.json");
+        let raw = std::fs::read_to_string(&path).ok()?;
+        match serde_json::from_str(&raw) {
+            Ok(token) => Some(token),
+            Err(err) => {
+                eprintln!("[nexus] {} is not valid JSON: {err}", path.display());
+                None
+            }
+        }
     }
 
     /// target=_blank links (YouTube Studio, status-report cards) open in the
@@ -291,25 +307,9 @@ mod travel {
     /// store (any webview handle reaches the same profile). Silent no-op
     /// when no token file exists — tabs fall back to interactive login.
     fn exchange_and_inject(app: &tauri::AppHandle, window: &Window) {
-        let token: ServiceToken = {
-            let Ok(dir) = app.path().app_config_dir() else { return };
-            let path = dir.join("access-token.json");
-            match std::fs::read_to_string(&path) {
-                Ok(raw) => match serde_json::from_str(&raw) {
-                    Ok(token) => token,
-                    Err(err) => {
-                        eprintln!("[nexus] {} is not valid JSON: {err}", path.display());
-                        return;
-                    }
-                },
-                Err(_) => {
-                    println!(
-                        "[nexus] no {} — using interactive Access login",
-                        path.display()
-                    );
-                    return;
-                }
-            }
+        let Some(token) = read_service_token(app) else {
+            println!("[nexus] no access-token.json — using interactive Access login");
+            return;
         };
         let Some(chrome) = window.webviews().into_iter().find(|w| w.label() == "chrome") else {
             return;
@@ -346,6 +346,71 @@ mod travel {
             match chrome.set_cookie(cookie) {
                 Ok(()) => println!("[nexus] Access session planted for {host}"),
                 Err(err) => eprintln!("[nexus] could not set Access cookie for {host}: {err}"),
+            }
+        }
+    }
+
+    /// Self-update: ask the tunnel endpoint (`plugins.updater.endpoints` in
+    /// tauri.windows.conf.json) whether a newer signed build is published,
+    /// carrying the Access service token so the request clears the same wall
+    /// the tabs do. If so, prompt and install, then restart. Signature is
+    /// verified against the baked-in pubkey before anything is applied, so a
+    /// compromised endpoint can't ship an unsigned binary. Runs on its own
+    /// thread — a slow or absent endpoint never delays the UI.
+    fn check_for_updates(app: tauri::AppHandle) {
+        use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
+        use tauri_plugin_updater::UpdaterExt;
+
+        let token = read_service_token(&app);
+        let outcome = tauri::async_runtime::block_on(async {
+            let mut builder = app.updater_builder();
+            if let Some(token) = &token {
+                builder = builder
+                    .header("CF-Access-Client-Id", &token.client_id)?
+                    .header("CF-Access-Client-Secret", &token.client_secret)?;
+            }
+            builder.build()?.check().await
+        });
+
+        let update = match outcome {
+            Ok(Some(update)) => update,
+            Ok(None) => {
+                println!("[nexus] already up to date");
+                return;
+            }
+            Err(err) => {
+                eprintln!("[nexus] update check failed: {err}");
+                return;
+            }
+        };
+
+        let prompt = format!(
+            "The Nexus {} is available (you have {}).\n\nDownload and install it now? The app will restart.",
+            update.version, update.current_version
+        );
+        let accepted = app
+            .dialog()
+            .message(prompt)
+            .title("The Nexus — update available")
+            .buttons(MessageDialogButtons::OkCancel)
+            .blocking_show();
+        if !accepted {
+            println!("[nexus] update {} deferred by user", update.version);
+            return;
+        }
+
+        match tauri::async_runtime::block_on(update.download_and_install(|_, _| {}, || {})) {
+            Ok(()) => {
+                println!("[nexus] update installed; restarting");
+                app.restart();
+            }
+            Err(err) => {
+                eprintln!("[nexus] update install failed: {err}");
+                let _ = app
+                    .dialog()
+                    .message(format!("The update could not be installed:\n{err}"))
+                    .title("The Nexus")
+                    .blocking_show();
             }
         }
     }
@@ -429,6 +494,14 @@ mod travel {
                 .store(true, Ordering::Release);
         });
 
+        // Look for a newer signed build on its own thread, after a short beat
+        // so the window is up before any prompt appears.
+        let updater_handle = app.handle().clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_secs(3));
+            check_for_updates(updater_handle);
+        });
+
         Ok(())
     }
 
@@ -490,6 +563,8 @@ fn main() {
 
     #[cfg(target_os = "windows")]
     let builder = builder
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .manage(travel::ActiveTab(Mutex::new(travel::TABS[0].id.into())))
         .manage(travel::AuthGate(std::sync::atomic::AtomicBool::new(false)))
         .invoke_handler(tauri::generate_handler![

@@ -58,6 +58,10 @@ build/
 !desktop/dist/
 !desktop/dist/**
 
+# Staged travel-app update payloads (signed installers + manifest) — served
+# through the tunnel by /api/updates, produced by CI, never committed.
+desktop/updates/
+
 # Rust/Cargo build output (Tauri) — build locally, never commit
 target/
 

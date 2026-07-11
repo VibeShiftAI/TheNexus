@@ -1,6 +1,13 @@
 # Builds the Windows ARM64 travel shell — The Nexus desktop app for the
 # travel laptop. Native build on GitHub's windows-11-arm runner (free for
-# public repos); produces an NSIS installer artifact.
+# public repos).
+#
+# Two modes, chosen by whether the updater signing secret is present:
+#   • no secret  → plain unsigned NSIS installer (manual install only).
+#   • secret set → signed installer + latest.json update payload, so the
+#     app can self-update through the tunnel (/api/updates). Add the secret
+#     with:  gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.nexus-updater-signing.key
+#            gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD   (empty value)
 name: Desktop (Windows ARM64)
 
 on:
@@ -37,10 +44,72 @@ jobs:
       - name: Install Tauri CLI
         run: npm ci
 
-      - name: Build NSIS installer
+      # Signing secret drives whether we produce updater artifacts. Reading it
+      # into a step output keeps the empty-secret case a clean green build.
+      - name: Detect signing secret
+        id: signing
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
+            echo "has=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No TAURI_SIGNING_PRIVATE_KEY secret — building an unsigned installer (no auto-update payload)."
+          fi
+
+      - name: Build signed installer + updater artifacts
+        if: steps.signing.outputs.has == 'true'
+        shell: bash
+        run: npm run build -- --config '{"bundle":{"createUpdaterArtifacts":true}}'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Build unsigned installer
+        if: steps.signing.outputs.has != 'true'
         run: npm run build
 
-      - name: Upload installer
+      # Assemble what /api/updates serves: the installer under a stable name,
+      # its signature, and the manifest the app polls. stage-travel-update.sh
+      # on the Mac just drops this folder into desktop/updates/.
+      - name: Assemble update payload
+        if: steps.signing.outputs.has == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $nsis = "src-tauri/target/release/bundle/nsis"
+          $exe  = Get-ChildItem "$nsis/*_arm64-setup.exe" | Select-Object -First 1
+          if (-not $exe) { throw "no NSIS installer found" }
+          $sig  = (Get-Content "$($exe.FullName).sig" -Raw).Trim()
+          $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $out = "update-payload"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          Copy-Item $exe.FullName "$out/nexus-travel-setup.exe"
+          Copy-Item "$($exe.FullName).sig" "$out/nexus-travel-setup.exe.sig"
+          $manifest = [ordered]@{
+            version   = $version
+            notes     = "The Nexus travel shell $version"
+            pub_date  = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-aarch64" = [ordered]@{
+                signature = $sig
+                url       = "https://nexus.vibeshiftai.com/api/updates/nexus-travel-setup.exe"
+              }
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 6 | Set-Content "$out/latest.json" -Encoding utf8
+          Write-Host "Assembled update payload for v$version"
+
+      - name: Upload update payload (signed)
+        if: steps.signing.outputs.has == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-nexus-windows-arm64
+          path: desktop/update-payload/*
+          if-no-files-found: error
+
+      - name: Upload installer (unsigned)
+        if: steps.signing.outputs.has != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: the-nexus-windows-arm64

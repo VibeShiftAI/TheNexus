@@ -6,5 +6,16 @@
   "bundle": {
     "targets": ["nsis"],
     "icon": ["icons/icon.ico"]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVEMEVGOTk3NzkwQzFEOUIKUldTYkhReDVsL2tPWGR0UWUzVlRDUGI3WjJNZ0d0NWlRSklaaWtKVGlWdmhtaDh2QTd6K3hlVmEK",
+      "endpoints": [
+        "https://nexus.vibeshiftai.com/api/updates/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
