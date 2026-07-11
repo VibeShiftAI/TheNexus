@@ -58,6 +58,9 @@ build/
 !desktop/dist/
 !desktop/dist/**
 
+# Rust/Cargo build output (Tauri) — build locally, never commit
+target/
+
 # Neo4j data files
 docker/data/neo4j_data/
 
