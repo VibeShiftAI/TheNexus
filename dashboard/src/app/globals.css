@@ -77,6 +77,21 @@ body {
   }
 }
 
+/* Energy flow along an active dispatch lane */
+@keyframes hud-lane-flow {
+  to {
+    background-position: 24px 0;
+  }
+}
+.hud-lane-flow {
+  animation: hud-lane-flow 1.1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-lane-flow {
+    animation: none;
+  }
+}
+
 /* Modal pop-in */
 @keyframes hud-pop {
   from {

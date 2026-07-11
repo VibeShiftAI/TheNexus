@@ -8,9 +8,9 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Send, ArrowUpRight } from "lucide-react";
+import { Send, ArrowUpRight, CalendarClock } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { HudPanel } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
@@ -127,6 +127,18 @@ export interface DispatchStateResponse {
 
 const LANE_SETTLE_MS = 60_000;
 
+/** Countdown to a cron nextRun, e.g. "in 3h 12m". */
+function inFmt(iso: string) {
+  const m = Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 60_000));
+  if (m < 60) return `in ${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `in ${h}h ${m % 60}m`;
+  return `in ${Math.floor(h / 24)}d`;
+}
+
+const PULSE_BINS = 12;
+const PULSE_BIN_MS = 2 * 3600_000; // 12 bins × 2h = 24h window
+
 export function DispatchStation() {
   const { recentEvents } = usePraxisStream();
   const [state, setState] = useState<DispatchStateResponse | null>(null);
@@ -208,11 +220,40 @@ export function DispatchStation() {
 
   const now = Date.now();
 
+  // 24h dispatch pulse from the executor history log (state refreshes every 20s).
+  const pulse = useMemo(() => {
+    const rows = state?.executors?.history ?? [];
+    const bins = Array.from({ length: PULSE_BINS }, () => ({ ok: 0, fail: 0 }));
+    const at = Date.now();
+    for (const r of rows) {
+      const age = at - new Date(r.ts).getTime();
+      if (age < 0 || age >= PULSE_BINS * PULSE_BIN_MS) continue;
+      const bin = PULSE_BINS - 1 - Math.floor(age / PULSE_BIN_MS);
+      const ok = r.success === 1 || r.success === true;
+      if (ok) bins[bin].ok++;
+      else bins[bin].fail++;
+    }
+    return bins;
+  }, [state]);
+  const pulseMax = Math.max(1, ...pulse.map((b) => b.ok + b.fail));
+  const hasPulse = (state?.executors?.history?.length ?? 0) > 0;
+
+  // Next scheduled ops from the Praxis cron registry.
+  const upcoming = useMemo(() => {
+    const jobs = state?.cron ?? [];
+    const at = Date.now();
+    return jobs
+      .filter((j) => !j.paused && j.nextRun && new Date(j.nextRun).getTime() > at)
+      .sort((a, b) => new Date(a.nextRun!).getTime() - new Date(b.nextRun!).getTime())
+      .slice(0, 2);
+  }, [state]);
+
   return (
     <HudPanel
       icon={<Send size={16} />}
       title="OPS — DISPATCH"
       accent="cyan"
+      className="flex h-full flex-col"
       headerRight={
         <>
           {today && (
@@ -232,7 +273,8 @@ export function DispatchStation() {
       {err && !state ? (
         <div className="py-4 text-center text-xs text-slate-500">Dispatch telemetry unavailable</div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="space-y-2.5">
           {LANES.map((lane) => {
             // Live SSE events win; fall back to the run registry snapshot so
             // a run started before this page loaded still shows as active.
@@ -264,13 +306,23 @@ export function DispatchStation() {
                 title={`${lane.label} drill-down`}
               >
                 <span className="w-[76px] shrink-0 truncate text-[11px] text-slate-300">{lane.label}</span>
-                <div className="relative h-1.5 flex-1 overflow-visible rounded-full bg-slate-800/70">
+                <div className="relative h-2 flex-1 overflow-visible rounded-full bg-slate-800/70">
                   {show && (
                     <>
                       <div
                         className={`h-full rounded-full ${barColor} opacity-30 transition-all duration-700`}
                         style={{ width: `${l.pct}%` }}
                       />
+                      {l.status === "active" && (
+                        <div
+                          className="hud-lane-flow absolute inset-y-0 left-0 rounded-full"
+                          style={{
+                            width: `${l.pct}%`,
+                            background:
+                              "repeating-linear-gradient(90deg, transparent 0px, transparent 8px, rgba(34,211,238,0.45) 8px, rgba(34,211,238,0.45) 12px)",
+                          }}
+                        />
+                      )}
                       <span
                         className={`absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full ${barColor} ${dotGlow} transition-all duration-700`}
                         style={{ left: `calc(${l.pct}% - 5px)` }}
@@ -307,6 +359,61 @@ export function DispatchStation() {
               {localPaused ? <span className="text-amber-400"> · paused</span> : null}
             </div>
           </button>
+          </div>
+
+          {/* Bottom instruments pin to the panel floor so the station fills
+              its row evenly beside the knowledge constellation. */}
+          <div className="mt-auto space-y-2.5 pt-3">
+            {hasPulse && (
+              <div className="border-t border-slate-800/60 pt-2">
+                <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-slate-600">
+                  <span>dispatch pulse · 24h</span>
+                  {today && today.failed > 0 ? (
+                    <span className="normal-case tracking-normal text-red-400/80">{today.failed} failed today</span>
+                  ) : null}
+                </div>
+                <div className="flex h-9 items-end gap-1">
+                  {pulse.map((b, i) => {
+                    const total = b.ok + b.fail;
+                    return (
+                      <div
+                        key={i}
+                        className="flex h-full flex-1 flex-col justify-end gap-px"
+                        title={`${total} dispatch${total === 1 ? "" : "es"}${b.fail > 0 ? ` · ${b.fail} failed` : ""}`}
+                      >
+                        {b.fail > 0 && (
+                          <div className="w-full rounded-sm bg-red-400/70" style={{ height: `${(b.fail / pulseMax) * 100}%` }} />
+                        )}
+                        {b.ok > 0 && (
+                          <div className="w-full rounded-sm bg-cyan-400/60" style={{ height: `${(b.ok / pulseMax) * 100}%` }} />
+                        )}
+                        {total === 0 && <div className="h-px w-full bg-slate-800" />}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-0.5 flex justify-between text-[9px] text-slate-600">
+                  <span>-24h</span>
+                  <span>now</span>
+                </div>
+              </div>
+            )}
+
+            {upcoming.length > 0 && (
+              <div className="space-y-1 border-t border-slate-800/60 pt-2">
+                <div className="text-[10px] uppercase tracking-wide text-slate-600">next scheduled ops</div>
+                {upcoming.map((j) => (
+                  <div key={j.key} className="flex items-center gap-2 text-[11px]">
+                    <CalendarClock size={11} className="shrink-0 text-cyan-500/70" />
+                    <span className="min-w-0 flex-1 truncate text-slate-300" title={j.description}>
+                      {j.label}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-slate-500">{inFmt(j.nextRun!)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

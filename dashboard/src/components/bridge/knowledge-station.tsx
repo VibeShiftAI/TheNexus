@@ -1,10 +1,11 @@
 /**
  * KnowledgeStation — "Science": live cortex telemetry. Headline knowledge-base
- * counters from Praxis /api/praxis/stats (Neo4j nodes, Pinecone vectors) over
- * an animated constellation of the knowledge graph's topic communities, fed
- * live from the ingestion topic map (Leiden communities over Neo4j). Replaces
- * the old growth chart, whose fleet stats-history source was decommissioned
- * 2026-07-02. Links through to the full graph console on /knowledge-ingestion.
+ * counters from Praxis /api/praxis/stats (Neo4j nodes, Pinecone vectors) in a
+ * left rail beside an animated constellation of the knowledge graph's topic
+ * communities, fed live from the ingestion topic map (Leiden communities over
+ * Neo4j). Replaces the old growth chart, whose fleet stats-history source was
+ * decommissioned 2026-07-02. Links through to the full graph console on
+ * /knowledge-ingestion.
  */
 "use client";
 
@@ -81,31 +82,30 @@ interface StarLink extends SimulationLinkDatum<StarNode> {
 
 /**
  * TopicConstellation — canvas star-map of the largest topic communities.
- * Layout is a pre-ticked d3-force simulation (static, cheap); the render
- * loop animates star pulses and photons drifting along the strongest
+ * Fills its parent (measure via ResizeObserver), so the parent decides the
+ * footprint. Layout is a pre-ticked d3-force simulation (static, cheap); the
+ * render loop animates star pulses and photons drifting along the strongest
  * inter-topic bridges. Hover a star for its top entities.
  */
 function TopicConstellation({
   data,
-  height,
   maxNodes,
   labelCount,
 }: {
   data: TopicMapData;
-  height: number;
   maxNodes: number;
   labelCount: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const projectRef = useRef<{ px: (n: StarNode) => number; py: (n: StarNode) => number; s: number } | null>(null);
-  const [width, setWidth] = useState(0);
+  const [dims, setDims] = useState({ w: 0, h: 0 });
   const [hover, setHover] = useState<StarNode | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const update = () => setWidth(el.clientWidth);
+    const update = () => setDims({ w: el.clientWidth, h: el.clientHeight });
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
@@ -171,7 +171,8 @@ function TopicConstellation({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || width === 0) return;
+    const { w: width, h: height } = dims;
+    if (!canvas || width === 0 || height === 0) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const dpr = window.devicePixelRatio || 1;
@@ -316,7 +317,7 @@ function TopicConstellation({
       raf = requestAnimationFrame(loop);
     });
     return () => cancelAnimationFrame(raf);
-  }, [layout, width, height, hover]);
+  }, [layout, dims, hover]);
 
   const handleMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -337,10 +338,10 @@ function TopicConstellation({
   };
 
   return (
-    <div ref={containerRef} className="relative" style={{ height }}>
+    <div ref={containerRef} className="relative h-full w-full">
       <canvas
         ref={canvasRef}
-        style={{ width: "100%", height }}
+        style={{ width: "100%", height: "100%" }}
         className="block cursor-crosshair"
         onMouseMove={handleMove}
         onMouseLeave={() => setHover(null)}
@@ -423,6 +424,7 @@ export function KnowledgeStation() {
   const tiles: { value: string; label: string }[] = [
     { value: fmt(stats?.neo4jNodes), label: "graph nodes" },
     { value: fmt(stats?.pineconeVectors), label: "vectors" },
+    { value: fmt(topicMap?.nodes.length), label: "topics" },
     { value: fmt(stats?.mcpToolCount), label: "mcp tools" },
   ];
 
@@ -431,6 +433,7 @@ export function KnowledgeStation() {
       icon={<BrainCircuit size={16} />}
       title="SCIENCE — KNOWLEDGE"
       accent="teal"
+      className="flex h-full flex-col"
       headerRight={
         <Link href="/knowledge-ingestion" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
           graph console <ArrowUpRight size={12} />
@@ -440,48 +443,51 @@ export function KnowledgeStation() {
       {err && !stats && !hasMap ? (
         <div className="py-4 text-center text-xs text-slate-500">Cortex stats unavailable</div>
       ) : (
-        <>
-          <div className="mb-2 grid grid-cols-3 gap-2">
-            {tiles.map((t) => (
-              <button
-                key={t.label}
-                onClick={() => setExpanded(true)}
-                className="rounded-md px-1 py-0.5 text-left transition-colors hover:bg-slate-800/50"
-                title="Expand knowledge telemetry"
-              >
-                <div className="text-xl font-bold tabular-nums text-white">{t.value}</div>
-                <div className="text-[10px] uppercase tracking-wide text-slate-500">{t.label}</div>
-              </button>
-            ))}
-          </div>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 gap-3">
+            {/* Stats rail */}
+            <div className="flex w-[96px] shrink-0 flex-col justify-between gap-2">
+              {tiles.map((t) => (
+                <button
+                  key={t.label}
+                  onClick={() => setExpanded(true)}
+                  className="rounded-md border border-slate-800/60 bg-slate-950/40 px-2 py-1.5 text-left transition-colors hover:border-teal-500/30 hover:bg-slate-800/40"
+                  title="Expand knowledge telemetry"
+                >
+                  <div className="text-lg font-bold leading-tight tabular-nums text-white">{t.value}</div>
+                  <div className="text-[9px] uppercase tracking-wide text-slate-500">{t.label}</div>
+                </button>
+              ))}
+            </div>
 
-          {hasMap ? (
-            <>
+            {/* Constellation fills the rest */}
+            {hasMap ? (
               <button
                 onClick={() => setExpanded(true)}
-                className="block w-full overflow-hidden rounded-md border border-slate-800/70 bg-slate-950/60 text-left transition-colors hover:border-teal-500/30"
+                className="relative min-h-[196px] min-w-0 flex-1 overflow-hidden rounded-md border border-slate-800/70 bg-slate-950/60 text-left transition-colors hover:border-teal-500/30"
                 title="Expand the topic constellation"
               >
-                <TopicConstellation data={topicMap!} height={150} maxNodes={26} labelCount={5} />
+                <TopicConstellation data={topicMap!} maxNodes={26} labelCount={5} />
               </button>
-              <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-500">
-                <span className="truncate">
-                  <span className="text-teal-400">◉</span> live topic constellation · {topicMap!.nodes.length} communities ·{" "}
-                  {topicMap!.links.length} bridges
-                </span>
-                <span className="shrink-0 text-slate-600">mapped {timeAgo(topicMap!.computed_at)}</span>
+            ) : (
+              <div className="flex min-h-[196px] min-w-0 flex-1 items-center justify-center rounded-md border border-dashed border-slate-800 px-2 text-center text-[10px] text-slate-600">
+                {mapErr
+                  ? "topic map offline — the constellation returns when the cortex answers"
+                  : "resolving cortex topology…"}
               </div>
-            </>
-          ) : mapErr ? (
-            <div className="rounded border border-dashed border-slate-800 px-2 py-3 text-center text-[10px] text-slate-600">
-              topic map offline — the constellation returns when the cortex answers
-            </div>
-          ) : (
-            <div className="rounded border border-dashed border-slate-800 px-2 py-3 text-center text-[10px] text-slate-600">
-              resolving cortex topology…
+            )}
+          </div>
+
+          {hasMap && (
+            <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-slate-500">
+              <span className="truncate">
+                <span className="text-teal-400">◉</span> live topic constellation · {topicMap!.links.length} bridges ·
+                hover a star for its entities
+              </span>
+              <span className="shrink-0 text-slate-600">mapped {timeAgo(topicMap!.computed_at)}</span>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {expanded && (
@@ -506,8 +512,8 @@ export function KnowledgeStation() {
 
             {hasMap ? (
               <>
-                <div className="overflow-hidden rounded-md border border-slate-800/70 bg-slate-950/60">
-                  <TopicConstellation data={topicMap!} height={400} maxNodes={72} labelCount={14} />
+                <div className="h-[400px] overflow-hidden rounded-md border border-slate-800/70 bg-slate-950/60">
+                  <TopicConstellation data={topicMap!} maxNodes={72} labelCount={14} />
                 </div>
                 <div className="grid gap-1.5 sm:grid-cols-2">
                   {legend.map((l) => (

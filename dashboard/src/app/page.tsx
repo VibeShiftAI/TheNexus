@@ -181,8 +181,10 @@ export default function Home() {
               <PraxisCore />
             </div>
 
-            {/* Stations, 2-up: Dispatch and Knowledge sit directly under the core */}
-            <div className="grid items-start gap-4 md:grid-cols-2">
+            {/* Stations, 2-up: Dispatch and Knowledge sit directly under the
+                core. Rows stretch so paired stations stay flush — Dispatch and
+                Knowledge both fill their row height (h-full panels). */}
+            <div className="grid gap-4 md:grid-cols-2">
               <div id="station-dispatch">
                 <DispatchStation />
               </div>
