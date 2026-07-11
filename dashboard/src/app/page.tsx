@@ -181,19 +181,19 @@ export default function Home() {
               <PraxisCore />
             </div>
 
-            {/* Stations, 2-up: Knowledge sits directly under Power */}
+            {/* Stations, 2-up: Dispatch and Knowledge sit directly under the core */}
             <div className="grid items-start gap-4 md:grid-cols-2">
               <div id="station-dispatch">
                 <DispatchStation />
               </div>
-              <div id="station-power">
-                <PowerStation />
+              <div id="station-knowledge">
+                <KnowledgeStation />
               </div>
               <div id="station-academy">
                 <AcademyStation />
               </div>
-              <div id="station-knowledge">
-                <KnowledgeStation />
+              <div id="station-power">
+                <PowerStation />
               </div>
             </div>
           </div>
