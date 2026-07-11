@@ -108,6 +108,21 @@ try {
         console.warn('[Database] project archival migration skipped:', err.message);
     }
 
+    // Migration: knowledge-need tags on projects (task abdf62d0). A JSON array of
+    // kebab-case tags (e.g. 'board-game-accessibility') written by Praxis's
+    // project-tagger; the knowledge graph binds them to topic nodes. Stored as a
+    // JSON TEXT column with DEFAULT '[]' so projects created before this migration
+    // read back an empty array rather than NULL. Deserialised via JSON_COLS below.
+    try {
+        const tagCols = db.prepare("PRAGMA table_info(projects)").all();
+        if (tagCols.length > 0 && !tagCols.find(c => c.name === 'tags')) {
+            db.exec("ALTER TABLE projects ADD COLUMN tags TEXT DEFAULT '[]'");
+            console.log('[Database] Migration: added tags column to projects');
+        }
+    } catch (err) {
+        console.warn('[Database] projects tags migration skipped:', err.message);
+    }
+
     // Migration: real-activity timestamp for the Board Groundskeeper (task
     // 02f3c8a7). Seeded from created_at, deliberately NOT updated_at — the
     // daily sweeps have touched updated_at on every row, so it carries no
@@ -183,7 +198,8 @@ const JSON_COLS = new Set([
     'value',
     'stages', 'outputs',
     'antigravity_payload', 'dependencies',
-    'suspended_context', 'resume_action'
+    'suspended_context', 'resume_action',
+    'tags'
 ]);
 
 function deserRow(row) {

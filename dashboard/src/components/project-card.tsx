@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Project, getProjectStatus, GitStatus, initGitRepo, addGitRemote, pingProject, PingResult, pinProject, unpinProject, commitAndPush, generateCommitMessage } from "@/lib/nexus";
-import { Folder, GitBranch, Zap, Layers, Activity, AlertTriangle, XCircle, ExternalLink, Globe, Star, Upload } from "lucide-react";
+import { Folder, GitBranch, Zap, Layers, Activity, AlertTriangle, XCircle, ExternalLink, Globe, Star, Upload, Tag } from "lucide-react";
 import Link from "next/link";
 
 interface ProjectCardProps {
@@ -354,6 +354,21 @@ export function ProjectCard({ project, isPinned = false, onPinChange, pendingRev
                         <span>
                             {Object.values(project.stack).join(" • ")}
                         </span>
+                    </div>
+                )}
+
+                {/* Knowledge-need tags. Array.isArray, not truthiness: an API
+                    server that predates the tags migration serves the raw TEXT
+                    column ("[]"), and a non-empty string passes a length check
+                    but has no .map (crashed every card on 2026-07-10). */}
+                {Array.isArray(project.tags) && project.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                        {project.tags.map(tag => (
+                            <div key={tag} className="flex items-center gap-1 text-xs text-slate-500 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
+                                <Tag size={10} />
+                                {tag}
+                            </div>
+                        ))}
                     </div>
                 )}
 

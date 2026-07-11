@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS projects (
     stack TEXT DEFAULT '{}',           -- JSON object
     urls TEXT DEFAULT '{}',            -- JSON object
     tasks_list TEXT DEFAULT '[]',      -- JSON array of strings
+    tags TEXT DEFAULT '[]',            -- JSON array of kebab-case knowledge-need tags
     end_state TEXT,                    -- The desired end-state for the project (goal-regression)
     user_id TEXT,
     created_at TEXT DEFAULT (datetime('now')),

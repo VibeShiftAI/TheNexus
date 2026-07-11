@@ -82,6 +82,7 @@ export interface Project {
         repo?: string;
     };
     end_state?: string;
+    tags?: string[];
     status?: 'active' | 'paused' | 'archived' | string;
     archived_at?: string | null;
     stats?: {
