@@ -97,6 +97,9 @@ export default function TaskBoardPage() {
   );
   const [laneSort, setLaneSort] = useState<LaneSortMap>(() => defaultLaneSort());
   const [editingTask, setEditingTask] = useState<BoardTask | null>(null);
+  // Lane requested via ?lane=<id> (e.g. the bridge's "needs your attention"
+  // counter links here) — forced visible, then scrolled to and flashed once.
+  const [focusLane, setFocusLane] = useState<BoardLaneId | null>(null);
 
   const toggleLane = useCallback((id: BoardLaneId) => {
     setVisibleLaneIds((prev) => {
@@ -120,8 +123,30 @@ export default function TaskBoardPage() {
   const didHydrateRef = useRef(false);
   useEffect(() => {
     const stored = readStoredVisibleLanes();
-    if (stored) setVisibleLaneIds(stored);
+    const laneParam = new URLSearchParams(window.location.search).get("lane");
+    const lane =
+      laneParam && KNOWN_LANE_IDS.has(laneParam as BoardLaneId) ? (laneParam as BoardLaneId) : null;
+    if (stored || lane) {
+      const next = new Set(stored ?? DEFAULT_VISIBLE_LANE_IDS);
+      if (lane) next.add(lane);
+      setVisibleLaneIds(next);
+    }
+    if (lane) setFocusLane(lane);
   }, []);
+
+  // Once the board has data, warp to the requested lane and flash it.
+  useEffect(() => {
+    if (loading || !focusLane) return;
+    const el = document.getElementById(`lane-${focusLane}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    el.classList.add("hud-flash");
+    const t = window.setTimeout(() => {
+      el.classList.remove("hud-flash");
+      setFocusLane(null);
+    }, 1900);
+    return () => window.clearTimeout(t);
+  }, [loading, focusLane]);
   useEffect(() => {
     if (!didHydrateRef.current) {
       didHydrateRef.current = true;
@@ -327,6 +352,7 @@ export default function TaskBoardPage() {
             {visibleLanes.map((lane) => (
               <LaneColumn
                 key={lane.id}
+                id={`lane-${lane.id}`}
                 lane={lane}
                 sortKey={laneSort[lane.id]}
                 onSortChange={(sortKey) => setLaneSortKey(lane.id, sortKey)}
@@ -472,12 +498,14 @@ function LaneSortControl({
 }
 
 function LaneColumn({
+  id,
   lane,
   sortKey,
   onSortChange,
   onManage,
   onQuickStatus,
 }: {
+  id?: string;
   lane: BoardLane;
   sortKey: BoardSortKey;
   onSortChange: (sortKey: BoardSortKey) => void;
@@ -485,7 +513,7 @@ function LaneColumn({
   onQuickStatus: (task: BoardTask, nextStatus: string) => void;
 }) {
   return (
-    <div className="flex min-h-[520px] w-72 shrink-0 flex-col rounded-lg border border-slate-800 bg-slate-950 xl:w-auto xl:flex-1">
+    <div id={id} className="flex min-h-[520px] w-72 shrink-0 flex-col rounded-lg border border-slate-800 bg-slate-950 xl:w-auto xl:flex-1">
       <div className={`border-b px-3 py-3 ${lane.accentClass}`}>
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold uppercase">{lane.title}</h3>

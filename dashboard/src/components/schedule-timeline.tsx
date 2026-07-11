@@ -1,10 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { calendarEventsUrl, calendarEventTone, type CalendarEvent } from "@/lib/calendar";
+import { calendarEventsUrl, calendarEventTone, type CalendarEvent, type CalendarEventStatus } from "@/lib/calendar";
 import { useStreamRefetch } from "@/hooks/use-stream-refetch";
-import { Calendar, ChevronDown, ChevronUp, CheckCircle, Play, Circle, ScrollText, ArrowRight, Clock } from "lucide-react";
+import { HudPanel } from "@/components/bridge/hud";
+import { CalendarDays, ChevronDown, ChevronUp, ScrollText, ArrowRight, ArrowUpRight, Clock } from "lucide-react";
 
 // A scheduled item has logs to drill into once it has actually run (or is
 // running). Upcoming items that haven't started yet carry no dispatch history,
@@ -13,10 +14,108 @@ function eventHasLogs(event: CalendarEvent): boolean {
   return event.status === "in_progress" || event.status === "completed" || Boolean(event.result);
 }
 
+function formatTime(isoString: string) {
+  return new Date(isoString).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Position (0–100%) of a timestamp across the local calendar day. */
+function pctOfDay(ts: number) {
+  const d = new Date(ts);
+  return ((d.getHours() * 60 + d.getMinutes()) / 1440) * 100;
+}
+
+/** Glowing status node on the timeline rail. */
+function nodeClasses(status: CalendarEventStatus): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]";
+    case "in_progress":
+      return "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)] motion-safe:animate-pulse";
+    case "skipped":
+      return "bg-slate-700";
+    default:
+      return "border border-cyan-400/70 bg-slate-950";
+  }
+}
+
+/** Event dot on the day track. */
+function trackDot(status: CalendarEventStatus): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-400";
+    case "in_progress":
+      return "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.9)] motion-safe:animate-pulse";
+    case "skipped":
+      return "bg-slate-600";
+    default:
+      return "bg-cyan-400/70";
+  }
+}
+
+/**
+ * DayTrack — the whole day as one strip: hour ticks, the elapsed portion lit,
+ * a glowing NOW cursor, and one dot per scheduled item (click warps the list
+ * to that item).
+ */
+function DayTrack({
+  events,
+  nowTs,
+  onJump,
+}: {
+  events: CalendarEvent[];
+  nowTs: number;
+  onJump: (id: string) => void;
+}) {
+  const nowPct = pctOfDay(nowTs);
+  return (
+    <div className="mb-2.5">
+      <div className="relative h-5">
+        <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-slate-800" />
+        <span
+          className="absolute left-0 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-purple-500/20 to-cyan-500/60"
+          style={{ width: `${nowPct}%` }}
+        />
+        {[0, 6, 12, 18, 24].map((h) => (
+          <span
+            key={h}
+            className="absolute top-1/2 h-1.5 w-px -translate-y-1/2 bg-slate-700"
+            style={{ left: `${(h / 24) * 100}%` }}
+          />
+        ))}
+        {events.map((e) => (
+          <button
+            key={e.id}
+            onClick={() => onJump(e.id)}
+            className={`absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform hover:scale-150 ${trackDot(e.status)}`}
+            style={{ left: `${pctOfDay(new Date(e.start_time).getTime())}%` }}
+            title={`${formatTime(e.start_time)} · ${e.title}`}
+            aria-label={`Jump to ${e.title}`}
+          />
+        ))}
+        <span
+          className="absolute top-0 h-full w-px bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]"
+          style={{ left: `${nowPct}%` }}
+        />
+      </div>
+      <div className="flex justify-between text-[8px] tabular-nums text-slate-600">
+        <span>00</span>
+        <span>06</span>
+        <span>12</span>
+        <span>18</span>
+        <span>24</span>
+      </div>
+    </div>
+  );
+}
+
 export function ScheduleTimeline() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  const listRef = useRef<HTMLDivElement>(null);
+  const nowMarkerRef = useRef<HTMLDivElement>(null);
+  const didAutoScrollRef = useRef(false);
 
   const fetchTodayEvents = useCallback(async () => {
     try {
@@ -48,127 +147,189 @@ export function ScheduleTimeline() {
   // Live refresh when the day plan or task state changes.
   useStreamRefetch(["schedule.updated", "task.completed", "task.started"], fetchTodayEvents);
 
+  // Keep the NOW cursor and past/upcoming split current.
+  useEffect(() => {
+    const t = setInterval(() => setNowTs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const scrollListTo = useCallback((el: HTMLElement | null) => {
+    const list = listRef.current;
+    if (!list || !el) return;
+    list.scrollTop =
+      el.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop - list.clientHeight / 2 + 20;
+  }, []);
+
+  // First load: center the list on the NOW divider so the operator lands on
+  // the live part of the day, not 2 AM.
+  useEffect(() => {
+    if (loading || didAutoScrollRef.current || events.length === 0) return;
+    didAutoScrollRef.current = true;
+    scrollListTo(nowMarkerRef.current);
+  }, [loading, events, scrollListTo]);
+
   const toggleExpand = (id: string) => {
     setExpandedEventId(prev => (prev === id ? null : id));
   };
 
-  const formatTime = (isoString: string) => {
-    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  const jumpToEvent = useCallback(
+    (id: string) => {
+      setExpandedEventId(id);
+      scrollListTo(document.getElementById(`sched-${id}`));
+    },
+    [scrollListTo],
+  );
 
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
-      <div className="bg-slate-950/60 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Calendar size={16} className="text-teal-400" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Today's Schedule</span>
-        </div>
-        <span className="text-xs text-slate-500 font-medium">{events.length} items</span>
-      </div>
+  const doneCount = events.filter((e) => e.status === "completed").length;
+  const nowIndex = events.findIndex((e) => new Date(e.start_time).getTime() > nowTs);
+  const nowAt = nowIndex === -1 ? events.length : nowIndex;
+  const nextUp = events.find((e) => e.status === "scheduled" && new Date(e.start_time).getTime() > nowTs);
 
-      <div className="p-4 max-h-[300px] overflow-y-auto space-y-3">
-        {loading ? (
-          <div className="text-center text-xs text-slate-500 py-6">Loading schedule...</div>
-        ) : events.length === 0 ? (
-          <div className="text-center text-xs text-slate-500 py-6">No events scheduled for today.</div>
-        ) : (
-          events.map((event) => {
-            const tone = calendarEventTone(event);
-            const isExpanded = expandedEventId === event.id;
+  const nowDivider = (
+    <div key="now-divider" ref={nowMarkerRef} className="relative flex items-center gap-2 py-0.5 pl-5">
+      <span className="absolute left-0 h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.9)] motion-safe:animate-pulse" />
+      <span className="text-[9px] font-semibold uppercase tracking-widest text-cyan-300">
+        now · {new Date(nowTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+      </span>
+      <span className="h-px flex-1 bg-gradient-to-r from-cyan-500/50 to-transparent" />
+    </div>
+  );
 
-            return (
-              <div 
-                key={event.id}
-                className={`border rounded-lg transition-all ${tone.block}`}
-              >
-                <div 
-                  className="p-3 flex items-center justify-between cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50 rounded-lg"
-                  onClick={() => toggleExpand(event.id)}
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={isExpanded}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      toggleExpand(event.id);
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {event.status === "completed" && <CheckCircle size={16} className="text-emerald-400 shrink-0" />}
-                    {event.status === "in_progress" && <Play size={16} className="text-amber-400 animate-pulse shrink-0" />}
-                    {event.status === "scheduled" && <Circle size={16} className="text-cyan-400 shrink-0" />}
-                    <div className="min-w-0">
-                      <div className="text-xs text-slate-400 font-medium">
-                        {formatTime(event.start_time)}
-                        {event.end_time && ` - ${formatTime(event.end_time)}`}
-                      </div>
-                      <h4 className={`text-sm font-semibold ${tone.title}`}>{event.title}</h4>
-                    </div>
-                  </div>
-                  {isExpanded ? <ChevronUp size={16} className="text-slate-400 shrink-0" /> : <ChevronDown size={16} className="text-slate-400 shrink-0" />}
-                </div>
+  const renderEvent = (event: CalendarEvent) => {
+    const tone = calendarEventTone(event);
+    const isExpanded = expandedEventId === event.id;
+    const isPast = new Date(event.start_time).getTime() <= nowTs;
 
-                {isExpanded && (
-                  <div className="px-3 pb-3 pt-1 border-t border-slate-800/40 text-xs text-slate-400 space-y-2 bg-slate-950/20">
-                    {event.description && (
-                      <div>
-                        <span className="font-semibold text-slate-300">Description:</span>
-                        <p className="mt-0.5">{event.description}</p>
-                      </div>
-                    )}
-                    {event.result && (
-                      <div>
-                        <span className="font-semibold text-slate-300">Result:</span>
-                        <p className="mt-0.5 font-mono text-[10px] bg-slate-950 p-2 rounded border border-slate-800/60 overflow-x-auto whitespace-pre-wrap">{event.result}</p>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center pt-1 text-[10px] text-slate-500">
-                      <span>Status: <span className="font-semibold uppercase">{event.status}</span></span>
-                      {event.event_type && <span>Type: {event.event_type}</span>}
-                    </div>
+    return (
+      <div
+        key={event.id}
+        id={`sched-${event.id}`}
+        className={`relative pl-5 ${event.status === "skipped" ? "opacity-50" : isPast && event.status === "completed" ? "opacity-80" : ""}`}
+      >
+        <span className={`absolute left-[1px] top-[7px] h-2 w-2 rounded-full ${nodeClasses(event.status)}`} />
+        <button
+          onClick={() => toggleExpand(event.id)}
+          aria-expanded={isExpanded}
+          className="flex w-full min-w-0 items-center gap-2 rounded px-1 py-0.5 text-left transition-colors hover:bg-slate-800/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-purple-500/60"
+        >
+          <span className="w-[46px] shrink-0 font-mono text-[10px] tabular-nums text-slate-500">
+            {formatTime(event.start_time)}
+          </span>
+          <span className={`min-w-0 flex-1 truncate text-xs font-semibold ${tone.title}`} title={event.title}>
+            {event.title}
+          </span>
+          {isExpanded ? (
+            <ChevronUp size={13} className="shrink-0 text-slate-500" />
+          ) : (
+            <ChevronDown size={13} className="shrink-0 text-slate-600" />
+          )}
+        </button>
 
-                    {/* Drill-down: one more click into the run logs (the task's
-                        dispatch console on /task/[id]) when this item maps to a
-                        task. Upcoming items with no run yet get a clean
-                        "no logs" state rather than an empty viewer. */}
-                    {event.task_id && (
-                      <div className="pt-2 border-t border-slate-800/40">
-                        {eventHasLogs(event) ? (
-                          <Link
-                            href={`/task/${event.task_id}`}
-                            className="group flex items-center gap-1.5 text-[11px] font-semibold text-teal-300 transition-colors hover:text-teal-200"
-                            title="Open the task detail and its run logs"
-                          >
-                            <ScrollText size={12} />
-                            View run logs &amp; full detail
-                            <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
-                          </Link>
-                        ) : (
-                          <div className="flex flex-col gap-1">
-                            <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                              <Clock size={12} />
-                              No logs yet — this run hasn&apos;t started.
-                            </span>
-                            <Link
-                              href={`/task/${event.task_id}`}
-                              className="flex items-center gap-1 text-[11px] text-slate-400 transition-colors hover:text-teal-300"
-                              title="Open the task detail"
-                            >
-                              Open task detail
-                              <ArrowRight size={11} />
-                            </Link>
-                          </div>
-                        )}
-                      </div>
-                    )}
+        {isExpanded && (
+          <div className="ml-1 mt-1 space-y-2 rounded-md border border-slate-800/60 bg-slate-950/50 p-2.5 text-xs text-slate-400">
+            {event.description && (
+              <div>
+                <span className="font-semibold text-slate-300">Description:</span>
+                <p className="mt-0.5">{event.description}</p>
+              </div>
+            )}
+            {event.result && (
+              <div>
+                <span className="font-semibold text-slate-300">Result:</span>
+                <p className="mt-0.5 overflow-x-auto whitespace-pre-wrap rounded border border-slate-800/60 bg-slate-950 p-2 font-mono text-[10px]">{event.result}</p>
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500">
+              <span>
+                Status: <span className="font-semibold uppercase">{event.status}</span>
+              </span>
+              <span className="flex items-center gap-2">
+                {event.end_time && <span>until {formatTime(event.end_time)}</span>}
+                {event.event_type && <span>Type: {event.event_type}</span>}
+              </span>
+            </div>
+
+            {/* Drill-down: one more click into the run logs (the task's
+                dispatch console on /task/[id]) when this item maps to a
+                task. Upcoming items with no run yet get a clean
+                "no logs" state rather than an empty viewer. */}
+            {event.task_id && (
+              <div className="border-t border-slate-800/40 pt-2">
+                {eventHasLogs(event) ? (
+                  <Link
+                    href={`/task/${event.task_id}`}
+                    className="group flex items-center gap-1.5 text-[11px] font-semibold text-purple-300 transition-colors hover:text-purple-200"
+                    title="Open the task detail and its run logs"
+                  >
+                    <ScrollText size={12} />
+                    View run logs &amp; full detail
+                    <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                      <Clock size={12} />
+                      No logs yet — this run hasn&apos;t started.
+                    </span>
+                    <Link
+                      href={`/task/${event.task_id}`}
+                      className="flex items-center gap-1 text-[11px] text-slate-400 transition-colors hover:text-purple-300"
+                      title="Open the task detail"
+                    >
+                      Open task detail
+                      <ArrowRight size={11} />
+                    </Link>
                   </div>
                 )}
               </div>
-            );
-          })
+            )}
+          </div>
         )}
       </div>
-    </div>
+    );
+  };
+
+  return (
+    <HudPanel
+      icon={<CalendarDays size={16} />}
+      title="TODAY'S SCHEDULE"
+      accent="purple"
+      headerRight={
+        <>
+          <span className="text-[10px] tabular-nums text-slate-500" title={`${doneCount} of ${events.length} items completed`}>
+            {doneCount}/{events.length} done
+          </span>
+          <Link href="/calendar" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
+            calendar <ArrowUpRight size={12} />
+          </Link>
+        </>
+      }
+    >
+      {loading ? (
+        <div className="py-6 text-center text-xs text-slate-500">Loading schedule…</div>
+      ) : events.length === 0 ? (
+        <div className="rounded border border-dashed border-slate-800 px-2 py-6 text-center text-xs text-slate-600">
+          No events scheduled for today.
+        </div>
+      ) : (
+        <>
+          <DayTrack events={events} nowTs={nowTs} onJump={jumpToEvent} />
+
+          <div ref={listRef} className="custom-scrollbar relative max-h-[300px] space-y-1 overflow-y-auto pr-1">
+            {/* Timeline rail behind the status nodes */}
+            <span className="pointer-events-none absolute bottom-1 left-[4px] top-1 w-px bg-slate-800/70" />
+            {events.slice(0, nowAt).map(renderEvent)}
+            {nowDivider}
+            {events.slice(nowAt).map(renderEvent)}
+          </div>
+
+          {nextUp && (
+            <div className="mt-2 truncate border-t border-slate-800/60 pt-1.5 text-[10px] text-slate-500">
+              up next: <span className="text-purple-300">{nextUp.title}</span> · {formatTime(nextUp.start_time)}
+            </div>
+          )}
+        </>
+      )}
+    </HudPanel>
   );
 }

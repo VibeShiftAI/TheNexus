@@ -8,12 +8,15 @@
  */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Send, ArrowUpRight, CalendarClock } from "lucide-react";
+import { Send, ArrowUpRight, CalendarClock, AlertTriangle } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useStreamRefetch } from "@/hooks/use-stream-refetch";
 import { HudPanel } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
+import { getBoardState } from "@/lib/nexus";
+import { getBoardLaneId } from "@/lib/task-board";
 import type { ExecutorName, ExecutionPhase } from "@praxis/contract";
 
 const PHASE_PCT: Record<ExecutionPhase, number> = {
@@ -145,6 +148,37 @@ export function DispatchStation() {
   const [err, setErr] = useState(false);
   const [lanes, setLanes] = useState<Partial<Record<ExecutorName, LaneState>>>({});
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
+  const [attention, setAttention] = useState<number | null>(null);
+
+  // Count of board tasks in the Needs Attention lane (blocked / failed /
+  // awaiting input). Raw dispatch failures that were retried and succeeded
+  // don't land here, so this is the honest "act on this" number.
+  const loadAttention = useCallback(async () => {
+    try {
+      const projects = await getBoardState();
+      let count = 0;
+      for (const p of projects ?? []) {
+        for (const t of p.tasks ?? []) {
+          if (getBoardLaneId(t) === "needs_attention") count++;
+        }
+      }
+      setAttention(count);
+    } catch {
+      /* keep the last known count */
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAttention();
+    const t = setInterval(loadAttention, 60_000);
+    return () => clearInterval(t);
+  }, [loadAttention]);
+
+  // Recount the moment task lifecycle events land on the Praxis stream.
+  useStreamRefetch(
+    ["task.created", "task.updated", "task.started", "task.completed", "task.failed", "task.blocked"],
+    loadAttention,
+  );
 
   useEffect(() => {
     let active = true;
@@ -368,9 +402,16 @@ export function DispatchStation() {
               <div className="border-t border-slate-800/60 pt-2">
                 <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-slate-600">
                   <span>dispatch pulse · 24h</span>
-                  {today && today.failed > 0 ? (
-                    <span className="normal-case tracking-normal text-red-400/80">{today.failed} failed today</span>
-                  ) : null}
+                  <Link
+                    href="/task-board?lane=needs_attention"
+                    className={`flex items-center gap-1 normal-case tracking-normal transition-colors ${
+                      attention ? "text-rose-400 hover:text-rose-300" : "text-slate-600 hover:text-slate-400"
+                    }`}
+                    title="Open the task board focused on the Needs Attention lane"
+                  >
+                    <AlertTriangle size={10} />
+                    {attention ?? "—"} {attention === 1 ? "needs" : "need"} your attention
+                  </Link>
                 </div>
                 <div className="flex h-9 items-end gap-1">
                   {pulse.map((b, i) => {
