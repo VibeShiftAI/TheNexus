@@ -13,9 +13,9 @@ import Link from "next/link";
 import { Send, ArrowUpRight, CalendarClock, AlertTriangle } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { useStreamRefetch } from "@/hooks/use-stream-refetch";
+import { useBoardState } from "@/hooks/use-board-state";
 import { HudPanel } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
-import { getBoardState } from "@/lib/nexus";
 import { getBoardLaneId } from "@/lib/task-board";
 import type { ExecutorName, ExecutionPhase } from "@praxis/contract";
 
@@ -148,37 +148,26 @@ export function DispatchStation() {
   const [err, setErr] = useState(false);
   const [lanes, setLanes] = useState<Partial<Record<ExecutorName, LaneState>>>({});
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
-  const [attention, setAttention] = useState<number | null>(null);
 
   // Count of board tasks in the Needs Attention lane (blocked / failed /
   // awaiting input). Raw dispatch failures that were retried and succeeded
-  // don't land here, so this is the honest "act on this" number.
-  const loadAttention = useCallback(async () => {
-    try {
-      const projects = await getBoardState();
-      let count = 0;
-      for (const p of projects ?? []) {
-        for (const t of p.tasks ?? []) {
-          if (getBoardLaneId(t) === "needs_attention") count++;
-        }
-      }
-      setAttention(count);
-    } catch {
-      /* keep the last known count */
-    }
-  }, []);
-
-  useEffect(() => {
-    loadAttention();
-    const t = setInterval(loadAttention, 60_000);
-    return () => clearInterval(t);
-  }, [loadAttention]);
-
-  // Recount the moment task lifecycle events land on the Praxis stream.
+  // don't land here, so this is the honest "act on this" number. The board
+  // snapshot is the deck-wide shared poller; stream events nudge it.
+  const { projects: boardProjects, refresh: refreshBoard } = useBoardState();
   useStreamRefetch(
     ["task.created", "task.updated", "task.started", "task.completed", "task.failed", "task.blocked"],
-    loadAttention,
+    refreshBoard,
   );
+  const attention = useMemo(() => {
+    if (!boardProjects) return null;
+    let count = 0;
+    for (const p of boardProjects) {
+      for (const t of p.tasks ?? []) {
+        if (getBoardLaneId(t) === "needs_attention") count++;
+      }
+    }
+    return count;
+  }, [boardProjects]);
 
   useEffect(() => {
     let active = true;

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
   --font-sans: var(--font-geist-sans);
@@ -89,6 +90,25 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .hud-lane-flow {
     animation: none;
+  }
+}
+
+/* Light sweep across an actively-running task card */
+@keyframes hud-sheen {
+  0% {
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(340%) skewX(-18deg);
+  }
+}
+.hud-sheen {
+  animation: hud-sheen 2.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-sheen {
+    animation: none;
+    opacity: 0;
   }
 }
 

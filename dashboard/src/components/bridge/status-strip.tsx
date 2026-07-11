@@ -7,10 +7,12 @@
  */
 "use client";
 
-import { Activity, Users, Send, Inbox, Zap, CheckCircle2 } from "lucide-react";
+import { Activity, Send, Inbox, Zap, CheckCircle2 } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
+import { useTokenUsage } from "@/hooks/use-token-usage";
+import { fmtTokens } from "@/lib/token-usage";
 import { CORE_STYLES } from "@/components/bridge/core-canvas";
 import type { PresenceActivity } from "@praxis/contract";
 
@@ -31,6 +33,8 @@ interface Chip {
   value: string;
   icon: React.ReactNode;
   tone: string;
+  /** Optional separate tone for the value text (e.g. gradient) so the icon keeps a solid color. */
+  valueTone?: string;
   target: string;
   title: string;
 }
@@ -39,11 +43,11 @@ export function StatusStrip() {
   const { presence, connected } = usePraxisStream();
   const { crew } = useCrewActivity();
   const { pendingRequests } = useHitlInbox();
+  const { usage } = useTokenUsage();
 
   const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";
   const busy = crew.filter((m) => m.state === "active").length;
   const pending = pendingRequests.length;
-  const callsLeft = presence?.budget?.dailyCallsRemaining;
   const doneToday = presence?.completedTasksToday;
 
   const chips: Chip[] = [
@@ -76,12 +80,13 @@ export function StatusStrip() {
     },
     {
       id: "power",
-      label: "CALLS LEFT",
-      value: callsLeft != null ? String(callsLeft) : "—",
+      label: "TOKENS TODAY",
+      value: usage ? fmtTokens(usage.today.total) : "—",
       icon: <Zap size={13} />,
-      tone: callsLeft != null && callsLeft < 20 ? "text-red-300" : "text-amber-300",
+      tone: "text-amber-300",
+      valueTone: "bg-gradient-to-r from-cyan-300 via-violet-300 to-emerald-300 bg-clip-text text-transparent",
       target: "station-power",
-      title: "Engineering — power budget",
+      title: "Engineering — token throughput",
     },
     {
       id: "done",
@@ -89,8 +94,8 @@ export function StatusStrip() {
       value: doneToday != null ? String(doneToday) : "—",
       icon: <CheckCircle2 size={13} />,
       tone: "text-emerald-300",
-      target: "task-board",
-      title: "Task board",
+      target: "station-taskboard",
+      title: "Tactical — task board",
     },
   ];
 
@@ -108,7 +113,7 @@ export function StatusStrip() {
             <span className="block text-[9px] font-semibold uppercase tracking-widest text-slate-500">
               {c.label}
             </span>
-            <span className={`block truncate text-[13px] font-bold leading-tight ${c.tone}`}>{c.value}</span>
+            <span className={`block truncate text-[13px] font-bold leading-tight ${c.valueTone ?? c.tone}`}>{c.value}</span>
           </span>
         </button>
       ))}

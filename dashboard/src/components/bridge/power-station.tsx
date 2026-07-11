@@ -1,16 +1,20 @@
 /**
- * PowerStation — "Engineering": who is drawing LLM power right now (caller
- * bars from the Praxis usage log), today's call budget, and the local-only
- * lever promoted from the nav drawer to a proper engineering control.
+ * PowerStation — "Engineering": token throughput across every engine (the
+ * old daily-call budget is dead — work is dispatched to subscription CLIs
+ * now, not billed per call). A multicolor reactor gauge stacks today's
+ * tokens by source (claude-code / codex / local / cloud API) against the
+ * best day on record, plus who is drawing LLM power right now (caller bars
+ * from the Praxis usage log) and the local-only lever.
  */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Zap, ArrowUpRight, WifiOff, Cloud } from "lucide-react";
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { HudPanel, HudModal, HudStat } from "@/components/bridge/hud";
 import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
+import { fmtTokens, type TokenDay } from "@/lib/token-usage";
+import { useTokenUsage } from "@/hooks/use-token-usage";
 
 interface CallerAgg {
   caller: string;
@@ -29,16 +33,6 @@ interface LogResponse {
 function shortName(caller: string) {
   return caller.replace(/^praxis\./, "").replace(/^mcp\./, "");
 }
-function fmtTokens(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(0)}k`;
-  return String(n);
-}
-
-interface BurnDay {
-  day: string;
-  calls: number;
-}
 
 function arcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: number) {
   const s = (startDeg * Math.PI) / 180;
@@ -49,44 +43,80 @@ function arcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: nu
   }`;
 }
 
-/** Reactor-style arc gauge for today's cloud-call budget. */
-function BudgetGauge({ used, remaining }: { used: number; remaining: number }) {
-  const total = Math.max(1, used + remaining);
-  const pct = Math.min(1, used / total);
-  const SIZE = 96;
+const TOKEN_SOURCES: { key: keyof TokenDay & ("claudeCode" | "codex" | "local" | "cloud"); label: string; color: string }[] = [
+  { key: "claudeCode", label: "claude code", color: "#22d3ee" },
+  { key: "codex", label: "codex", color: "#a78bfa" },
+  { key: "local", label: "local llm", color: "#34d399" },
+  { key: "cloud", label: "cloud api", color: "#60a5fa" },
+];
+
+/**
+ * Reactor-style arc gauge: today's tokens stacked by source, scaled against
+ * the single-day record (the pale tick). Full arc = your biggest day ever.
+ */
+function TokenGauge({ today, record }: { today: TokenDay; record: { date: string; total: number } }) {
+  const SIZE = 112;
   const c = SIZE / 2;
-  const r = c - 8;
+  const r = c - 9;
   const START = 135;
   const SWEEP = 270;
-  const color = pct < 0.6 ? "#34d399" : pct < 0.85 ? "#fbbf24" : "#f87171";
+  const scale = Math.max(record.total, today.total, 1);
+
+  const segs: { color: string; from: number; to: number }[] = [];
+  let acc = 0;
+  for (const src of TOKEN_SOURCES) {
+    const v = today[src.key];
+    if (v <= 0) continue;
+    const from = START + SWEEP * (acc / scale);
+    acc += v;
+    const to = START + SWEEP * (acc / scale);
+    segs.push({ color: src.color, from, to: Math.max(to - 0.6, from + 0.05) });
+  }
+  const recDeg = START + SWEEP * Math.min(1, record.total / scale);
+  const recRad = (recDeg * Math.PI) / 180;
+
   return (
-    <div className="relative shrink-0" style={{ width: SIZE, height: SIZE }} title={`${used} used / ${remaining} left today`}>
+    <div
+      className="relative shrink-0"
+      style={{ width: SIZE, height: SIZE }}
+      title={`${today.total.toLocaleString()} tokens today · day record ${record.total.toLocaleString()} on ${record.date}`}
+    >
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
         <path d={arcPath(c, c, r, START, START + SWEEP)} fill="none" stroke="#1e293b" strokeWidth="7" strokeLinecap="round" />
-        {pct > 0.005 && (
+        {segs.map((s, i) => (
           <path
-            d={arcPath(c, c, r, START, START + SWEEP * pct)}
+            key={i}
+            d={arcPath(c, c, r, s.from, s.to)}
             fill="none"
-            stroke={color}
+            stroke={s.color}
             strokeWidth="7"
-            strokeLinecap="round"
-            style={{ filter: `drop-shadow(0 0 4px ${color})`, transition: "d 0.6s" }}
+            strokeLinecap="butt"
+            style={{ filter: `drop-shadow(0 0 3px ${s.color})` }}
           />
-        )}
+        ))}
+        {/* Day-record tick */}
+        <line
+          x1={c + (r - 6) * Math.cos(recRad)}
+          y1={c + (r - 6) * Math.sin(recRad)}
+          x2={c + (r + 6) * Math.cos(recRad)}
+          y2={c + (r + 6) * Math.sin(recRad)}
+          stroke="#e2e8f0"
+          strokeWidth="1.5"
+          opacity="0.75"
+        />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-lg font-bold tabular-nums leading-none text-white">{remaining}</span>
-        <span className="mt-0.5 text-[8px] uppercase tracking-wider text-slate-500">calls left</span>
+        <span className="text-lg font-bold leading-none tabular-nums text-white">{fmtTokens(today.total)}</span>
+        <span className="mt-0.5 text-[8px] uppercase tracking-wider text-slate-500">tokens today</span>
       </div>
     </div>
   );
 }
 
 export function PowerStation() {
-  const { presence } = usePraxisStream();
+  const { usage } = useTokenUsage();
   const [log, setLog] = useState<LogResponse | null>(null);
   const [err, setErr] = useState(false);
-  const [burn, setBurn] = useState<BurnDay[]>([]);
   const [localOnly, setLocalOnly] = useState<{ enabled: boolean; reason: string | null }>({
     enabled: false,
     reason: null,
@@ -117,12 +147,6 @@ export function PowerStation() {
       .catch(() => {});
   }, []);
 
-  // Daily call burn-down: max sampled daily_call_count per local calendar day.
-  // Fleet decommissioned 2026-07-02; stats-history removed.
-  useEffect(() => {
-    setBurn([]);
-  }, []);
-
   const toggleLocalOnly = async () => {
     if (toggling) return;
     setToggling(true);
@@ -140,14 +164,16 @@ export function PowerStation() {
   const agg = log?.aggregates;
   const callers = (agg?.by_caller ?? []).slice(0, 4);
   const max = Math.max(1, ...callers.map((c) => c.calls));
-  const used = presence?.budget?.dailyCallsUsed;
-  const remaining = presence?.budget?.dailyCallsRemaining;
+  const recordDate = usage
+    ? new Date(`${usage.record.date}T00:00:00`).toLocaleDateString([], { month: "short", day: "numeric" })
+    : "";
 
   return (
     <HudPanel
       icon={<Zap size={16} />}
       title="ENGINEERING — POWER"
       accent="amber"
+      className="flex h-full flex-col"
       headerRight={
         <Link href="/llm-activity" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
           details <ArrowUpRight size={12} />
@@ -155,31 +181,66 @@ export function PowerStation() {
       }
     >
       <div className="mb-3 flex items-center gap-3">
-        {used != null && remaining != null && <BudgetGauge used={used} remaining={remaining} />}
-        <div className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md border border-slate-800 bg-slate-950/50 px-2.5 py-2">
-          <div className="flex min-w-0 items-center gap-2 text-[11px]">
-            {localOnly.enabled ? <WifiOff size={13} className="shrink-0 text-amber-300" /> : <Cloud size={13} className="shrink-0 text-slate-400" />}
-            <span className={`truncate ${localOnly.enabled ? "text-amber-200" : "text-slate-300"}`}>
-              {localOnly.enabled ? "Local only" : "Cloud enabled"}
-              {used != null ? <span className="text-slate-600"> · {used} used today</span> : null}
-            </span>
+        {usage ? (
+          <TokenGauge today={usage.today} record={usage.record} />
+        ) : (
+          <div className="flex h-[112px] w-[112px] shrink-0 items-center justify-center text-[10px] text-slate-600">
+            reading…
           </div>
-          <button
-            onClick={toggleLocalOnly}
-            disabled={toggling}
-            className={`h-5 w-10 shrink-0 rounded-full border p-0.5 transition-colors ${
-              localOnly.enabled ? "border-amber-400/50 bg-amber-400/30" : "border-slate-700 bg-slate-800"
-            } ${toggling ? "opacity-50" : ""}`}
-            aria-pressed={localOnly.enabled}
-            aria-label="Toggle local-only mode"
-          >
-            <span
-              className={`block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                localOnly.enabled ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+            {TOKEN_SOURCES.map((src) => (
+              <div key={src.key} className="flex min-w-0 items-center gap-1.5">
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: src.color }} />
+                <span className="min-w-0 flex-1 truncate text-[10px] text-slate-400">{src.label}</span>
+                <span className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-200">
+                  {usage ? fmtTokens(usage.today[src.key]) : "—"}
+                </span>
+              </div>
+            ))}
+            <div
+              className="flex min-w-0 items-center gap-1.5"
+              title="Antigravity exposes no token telemetry — dispatches tracked, tokens unknown"
+            >
+              <span className="h-2 w-2 shrink-0 rounded-full bg-slate-700" />
+              <span className="min-w-0 flex-1 truncate text-[10px] text-slate-500">antigravity</span>
+              <span className="shrink-0 text-[11px] tabular-nums text-slate-600">—</span>
+            </div>
+          </div>
+          {usage && (
+            <div className="mt-1.5 border-t border-slate-800/60 pt-1 text-[10px] text-slate-500">
+              day record <span className="font-semibold text-slate-300">{fmtTokens(usage.record.total)}</span> · {recordDate}
+              {usage.record.total > 0 && (
+                <span className="text-slate-600"> · today at {Math.round((usage.today.total / usage.record.total) * 100)}%</span>
+              )}
+            </div>
+          )}
         </div>
+      </div>
+
+      <div className="mb-3 flex min-w-0 items-center justify-between gap-3 rounded-md border border-slate-800 bg-slate-950/50 px-2.5 py-2">
+        <div className="flex min-w-0 items-center gap-2 text-[11px]">
+          {localOnly.enabled ? <WifiOff size={13} className="shrink-0 text-amber-300" /> : <Cloud size={13} className="shrink-0 text-slate-400" />}
+          <span className={`truncate ${localOnly.enabled ? "text-amber-200" : "text-slate-300"}`}>
+            {localOnly.enabled ? "Local only" : "Cloud enabled"}
+          </span>
+        </div>
+        <button
+          onClick={toggleLocalOnly}
+          disabled={toggling}
+          className={`h-5 w-10 shrink-0 rounded-full border p-0.5 transition-colors ${
+            localOnly.enabled ? "border-amber-400/50 bg-amber-400/30" : "border-slate-700 bg-slate-800"
+          } ${toggling ? "opacity-50" : ""}`}
+          aria-pressed={localOnly.enabled}
+          aria-label="Toggle local-only mode"
+        >
+          <span
+            className={`block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+              localOnly.enabled ? "translate-x-5" : "translate-x-0"
+            }`}
+          />
+        </button>
       </div>
 
       {err && !log ? (
@@ -189,7 +250,7 @@ export function PowerStation() {
       ) : agg.total_calls === 0 ? (
         <div className="py-3 text-center text-xs text-slate-500">No LLM calls in the last hour.</div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="mt-auto space-y-1.5">
           {callers.map((c) => (
             <button
               key={c.caller}
@@ -211,26 +272,6 @@ export function PowerStation() {
           <div className="pt-0.5 text-[10px] text-slate-600">
             {agg.total_calls} calls / {agg.by_provider.length} provider{agg.by_provider.length === 1 ? "" : "s"} in the
             last hour
-          </div>
-        </div>
-      )}
-
-      {burn.length >= 2 && (
-        <div className="mt-3 border-t border-slate-800/60 pt-2">
-          <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-600">daily cloud-call burn</div>
-          <div className="flex h-10 items-end gap-1.5">
-            {burn.map((b) => {
-              const max = Math.max(1, ...burn.map((x) => x.calls));
-              return (
-                <div key={b.day} className="flex flex-1 flex-col items-center gap-0.5" title={`${b.day}: ${b.calls} calls`}>
-                  <div
-                    className="w-full rounded-t bg-amber-500/50"
-                    style={{ height: `${Math.max(6, (b.calls / max) * 100)}%` }}
-                  />
-                  <span className="text-[9px] text-slate-600">{b.day}</span>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}

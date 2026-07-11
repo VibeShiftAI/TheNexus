@@ -18,6 +18,30 @@ function formatTime(isoString: string) {
   return new Date(isoString).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+/**
+ * Where an event actually sits in the day: completed items move to the time
+ * they finished and running items to the time they started (updated_at flips
+ * on the status change) rather than their planned slot — otherwise early
+ * completions read as "future work already done" and an early-started run
+ * shows as a future task somehow live. Waiting items stay at their slot.
+ */
+function effectiveTimeIso(event: CalendarEvent): string {
+  const started = event.status === "completed" || event.status === "in_progress";
+  if (started && event.updated_at && !Number.isNaN(new Date(event.updated_at).getTime())) {
+    return event.updated_at;
+  }
+  return event.start_time;
+}
+
+/** True when an event actually ran meaningfully off its planned slot. */
+function ranOffSchedule(event: CalendarEvent): boolean {
+  const effective = effectiveTimeIso(event);
+  return (
+    effective !== event.start_time &&
+    Math.abs(new Date(effective).getTime() - new Date(event.start_time).getTime()) > 60_000
+  );
+}
+
 /** Position (0–100%) of a timestamp across the local calendar day. */
 function pctOfDay(ts: number) {
   const d = new Date(ts);
@@ -87,8 +111,8 @@ function DayTrack({
             key={e.id}
             onClick={() => onJump(e.id)}
             className={`absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform hover:scale-150 ${trackDot(e.status)}`}
-            style={{ left: `${pctOfDay(new Date(e.start_time).getTime())}%` }}
-            title={`${formatTime(e.start_time)} · ${e.title}`}
+            style={{ left: `${pctOfDay(new Date(effectiveTimeIso(e)).getTime())}%` }}
+            title={`${formatTime(effectiveTimeIso(e))} · ${e.title}${ranOffSchedule(e) ? ` (planned ${formatTime(e.start_time)})` : ""}`}
             aria-label={`Jump to ${e.title}`}
           />
         ))}
@@ -126,7 +150,7 @@ export function ScheduleTimeline() {
       if (res.ok) {
         const data = await res.json();
         const sorted = (data || []).sort((a: CalendarEvent, b: CalendarEvent) =>
-          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+          new Date(effectiveTimeIso(a)).getTime() - new Date(effectiveTimeIso(b)).getTime()
         );
         setEvents(sorted);
       }
@@ -181,7 +205,7 @@ export function ScheduleTimeline() {
   );
 
   const doneCount = events.filter((e) => e.status === "completed").length;
-  const nowIndex = events.findIndex((e) => new Date(e.start_time).getTime() > nowTs);
+  const nowIndex = events.findIndex((e) => new Date(effectiveTimeIso(e)).getTime() > nowTs);
   const nowAt = nowIndex === -1 ? events.length : nowIndex;
   const nextUp = events.find((e) => e.status === "scheduled" && new Date(e.start_time).getTime() > nowTs);
 
@@ -198,7 +222,8 @@ export function ScheduleTimeline() {
   const renderEvent = (event: CalendarEvent) => {
     const tone = calendarEventTone(event);
     const isExpanded = expandedEventId === event.id;
-    const isPast = new Date(event.start_time).getTime() <= nowTs;
+    const shownTime = effectiveTimeIso(event);
+    const isPast = new Date(shownTime).getTime() <= nowTs;
 
     return (
       <div
@@ -212,8 +237,15 @@ export function ScheduleTimeline() {
           aria-expanded={isExpanded}
           className="flex w-full min-w-0 items-center gap-2 rounded px-1 py-0.5 text-left transition-colors hover:bg-slate-800/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-purple-500/60"
         >
-          <span className="w-[46px] shrink-0 font-mono text-[10px] tabular-nums text-slate-500">
-            {formatTime(event.start_time)}
+          <span
+            className="w-[46px] shrink-0 font-mono text-[10px] tabular-nums text-slate-500"
+            title={
+              ranOffSchedule(event)
+                ? `${event.status === "completed" ? "completed" : "started"} ${formatTime(shownTime)} · planned ${formatTime(event.start_time)}`
+                : undefined
+            }
+          >
+            {formatTime(shownTime)}
           </span>
           <span className={`min-w-0 flex-1 truncate text-xs font-semibold ${tone.title}`} title={event.title}>
             {event.title}
@@ -244,6 +276,7 @@ export function ScheduleTimeline() {
                 Status: <span className="font-semibold uppercase">{event.status}</span>
               </span>
               <span className="flex items-center gap-2">
+                {ranOffSchedule(event) && <span>planned {formatTime(event.start_time)}</span>}
                 {event.end_time && <span>until {formatTime(event.end_time)}</span>}
                 {event.event_type && <span>Type: {event.event_type}</span>}
               </span>

@@ -1,21 +1,19 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react";
-import { getProjects, getPins, getTasks, type Project, type Task } from "@/lib/nexus";
+import { getProjects, getPins, type Project } from "@/lib/nexus";
 import { ProjectCard } from "@/components/project-card";
 import { NewProjectModal } from "@/components/new-project-modal";
 import { SettingsModal } from "@/components/settings-modal";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { ScheduleTimeline } from "@/components/schedule-timeline";
-import { CompactTaskBoard } from "@/components/compact-task-board";
-import { DetailDrawer } from "@/components/detail-drawer";
 import { HitlInbox } from "@/components/hitl-inbox";
 import { ActivityFeed } from "@/components/activity-feed";
 import { PraxisCore } from "@/components/bridge/praxis-core";
 import { DispatchStation } from "@/components/bridge/dispatch-station";
 import { KnowledgeStation } from "@/components/bridge/knowledge-station";
 import { PowerStation } from "@/components/bridge/power-station";
-import { AcademyStation } from "@/components/bridge/academy-station";
+import { TaskBoardStation } from "@/components/bridge/taskboard-station";
 import { VoiceCommandBar } from "@/components/bridge/voice-command-bar";
 import { AmbientMode } from "@/components/bridge/ambient-mode";
 import { StatusStrip } from "@/components/bridge/status-strip";
@@ -31,14 +29,6 @@ export default function Home() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-
-  // Inspector Drawer State
-  const [inspectorOpen, setInspectorOpen] = useState(false);
-  const [inspectingTask, setInspectingTask] = useState<Task | null>(null);
-  const [inspectingProjectId, setInspectingProjectId] = useState<string | null>(null);
-
-  // Refresh signals
-  const [boardRefreshKey, setBoardRefreshKey] = useState(0);
 
   const loadData = useCallback(async () => {
     try {
@@ -69,38 +59,6 @@ export default function Home() {
       setPins(prev => [...prev, id]);
     } else {
       setPins(prev => prev.filter(p => p !== id));
-    }
-  };
-
-  // Select a task to inspect in detail drawer
-  const handleSelectTask = async (taskId: string, projectId: string) => {
-    setInspectingProjectId(projectId);
-    setInspectingTask(null);
-    setInspectorOpen(true);
-    try {
-      const res = await getTasks(projectId);
-      const foundTask = res.tasks?.find(t => t.id === taskId);
-      if (foundTask) {
-        setInspectingTask(foundTask);
-      }
-    } catch (err) {
-      console.error("Error loading task details for inspector:", err);
-    }
-  };
-
-  // Called when a task is updated in the inspector (e.g. description edit saved)
-  const handleTaskChanged = () => {
-    setBoardRefreshKey(prev => prev + 1);
-    if (inspectingTask && inspectingProjectId) {
-      // Re-fetch detail task to show updated information in the drawer
-      getTasks(inspectingProjectId)
-        .then(res => {
-          const foundTask = res.tasks?.find(t => t.id === inspectingTask.id);
-          if (foundTask) {
-            setInspectingTask(foundTask);
-          }
-        })
-        .catch(err => console.error("Error updating drawer task details:", err));
     }
   };
 
@@ -191,8 +149,8 @@ export default function Home() {
               <div id="station-knowledge">
                 <KnowledgeStation />
               </div>
-              <div id="station-academy">
-                <AcademyStation />
+              <div id="station-taskboard">
+                <TaskBoardStation />
               </div>
               <div id="station-power">
                 <PowerStation />
@@ -208,11 +166,6 @@ export default function Home() {
               <ActivityFeed />
             </div>
           </div>
-        </div>
-
-        {/* Task board — full width below the stations */}
-        <div id="task-board">
-          <CompactTaskBoard key={boardRefreshKey} onSelectTask={handleSelectTask} />
         </div>
 
         {/* Pinned / Active Projects Section */}
@@ -253,15 +206,6 @@ export default function Home() {
         isOpen={isNavOpen}
         onClose={() => setIsNavOpen(false)}
         onOpenSettings={() => setShowSettings(true)}
-      />
-
-      {/* Global Right Slide-over Task Inspector Drawer */}
-      <DetailDrawer
-        task={inspectingTask}
-        projectId={inspectingProjectId}
-        isOpen={inspectorOpen}
-        onClose={() => setInspectorOpen(false)}
-        onTaskChange={handleTaskChanged}
       />
 
       {/* Modals */}
