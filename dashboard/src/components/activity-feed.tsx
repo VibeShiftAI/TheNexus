@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getActivity, Activity } from "@/lib/nexus";
-import { GitCommit, Clock, Cpu, Coins } from "lucide-react";
+import { GitCommit, Clock, Cpu, Coins, ChevronRight, FileX2 } from "lucide-react";
 
 // Compact token count: 12345 → "12.3k", 2_000_000 → "2M".
 function formatTokens(n: number) {
@@ -12,8 +13,18 @@ function formatTokens(n: number) {
 }
 
 export function ActivityFeed() {
+    const router = useRouter();
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Navigate to the run's logs: the task Dispatch Console is the drill-down Log
+    // Viewer. The #dispatch-<id> hash tells it which run this activity came from,
+    // so it opens scoped to this activity rather than the newest attempt.
+    const openLogs = (activity: Activity) => {
+        if (!activity.taskId) return;
+        const hash = activity.dispatchId ? `#dispatch-${activity.dispatchId}` : "";
+        router.push(`/task/${activity.taskId}${hash}`);
+    };
 
     useEffect(() => {
         getActivity()
@@ -70,9 +81,32 @@ export function ActivityFeed() {
                 <Clock size={18} className="text-cyan-400" />
                 Recent Activity
             </h3>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                {activities.map((activity, i) => (
-                    <div key={`${activity.hash}-${i}`} className="flex items-start gap-3 group">
+            <div className="custom-scrollbar max-h-[400px] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
+                {activities.map((activity, i) => {
+                  const hasLogs = Boolean(activity.taskId);
+                  return (
+                    <div
+                        key={`${activity.hash}-${i}`}
+                        className={`flex items-start gap-3 group rounded-lg -mx-2 px-2 py-1 transition-colors ${
+                            hasLogs
+                                ? "cursor-pointer hover:bg-slate-800/50 focus-visible:bg-slate-800/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500/40"
+                                : ""
+                        }`}
+                        {...(hasLogs
+                            ? {
+                                  role: "button",
+                                  tabIndex: 0,
+                                  title: "Open the log viewer for this activity",
+                                  onClick: () => openLogs(activity),
+                                  onKeyDown: (e: React.KeyboardEvent) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          openLogs(activity);
+                                      }
+                                  },
+                              }
+                            : {})}
+                    >
                         <div className="rounded-full bg-slate-800 p-1.5 mt-0.5">
                             <GitCommit size={12} className="text-cyan-400" />
                         </div>
@@ -128,10 +162,26 @@ export function ActivityFeed() {
                                         <Coins size={9} className="shrink-0" />—
                                     </span>
                                 )}
+                                {/* Drill-down affordance — logs to open, or a clear no-logs state */}
+                                {hasLogs ? (
+                                    <span className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-medium text-cyan-400/50 transition-colors group-hover:text-cyan-300">
+                                        Logs
+                                        <ChevronRight size={11} className="shrink-0" />
+                                    </span>
+                                ) : (
+                                    <span
+                                        className="ml-auto inline-flex items-center gap-1 text-[10px] text-slate-600"
+                                        title="No logs available for this activity"
+                                    >
+                                        <FileX2 size={10} className="shrink-0" />
+                                        no logs
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
-                ))}
+                  );
+                })}
             </div>
         </div>
     );

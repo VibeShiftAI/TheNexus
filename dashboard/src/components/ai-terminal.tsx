@@ -1064,7 +1064,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             {/* Messages - with drag-and-drop support */}
             <div
                 ref={messagesContainerRef}
-                className={`flex-1 overflow-y-auto p-4 space-y-4 relative ${isDragging ? 'bg-cyan-500/10' : ''}`}
+                className={`custom-scrollbar flex-1 overflow-y-auto p-4 space-y-4 relative ${isDragging ? 'bg-cyan-500/10' : ''}`}
                 onDragEnter={handleDragEnter}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
