@@ -18,16 +18,19 @@ import {
     ChevronRight,
     Cpu,
     FastForward,
-    History,
     Landmark,
     LayoutDashboard,
     Library,
     Orbit,
     Radio,
+    RefreshCw,
     Scale,
     Send,
     ShieldCheck,
+    Tag,
+    Telescope,
     Terminal,
+    TrendingUp,
     Waypoints,
     Zap,
 } from "lucide-react";
@@ -253,42 +256,122 @@ const DIRECTIVES = [
     },
 ];
 
-// ── Data: epochs ──────────────────────────────────────────────────────────
+// ── Data: the knowledge flywheel ──────────────────────────────────────────
+// Stations sit on a ring (viewBox 600×600, center 300,300, radius 210) at
+// 72° intervals starting from the top, running clockwise.
 
-const EPOCHS = [
+type StationId = "tag" | "hunt" | "route" | "apply" | "progress";
+
+interface LoopStation {
+    id: StationId;
+    name: string;
+    designation: string;
+    cadence: string;
+    icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>;
+    hex: string;
+    chip: string;
+    x: number; // viewBox 0..600
+    y: number; // viewBox 0..600
+    body: string;
+    facts: string[];
+    effect: string;
+}
+
+const STATIONS: LoopStation[] = [
     {
-        date: "2026 · 07 · 02",
-        title: "LangGraph decommissioned",
-        body: "The external orchestrator retired after two lifetime runs, both zombies. Orchestration folded into Praxis, where it stayed.",
-        hex: "#f87171",
+        id: "tag",
+        name: "TAG",
+        designation: "Projects declare their frontier",
+        cadence: "Weekly · Mon 07:30",
+        icon: Tag,
+        hex: "#f472b6",
+        chip: "bg-pink-500/10 border-pink-500/30 text-pink-300",
+        x: 300,
+        y: 90,
+        body:
+            "The project-tagger reads every active project and tags what it is actually about — end to end: database column, API whitelist, dashboard chips, vault frontmatter. Each tag binds its project into the knowledge graph as a TRACKS edge. A tag with nothing to bind to becomes a Gap node — and a standing hunt term.",
+        facts: ["tags → TRACKS edges", "Gap nodes", "vault frontmatter mirror"],
+        effect: "A gap is not a failure. It is the system noticing what it does not know yet.",
     },
     {
-        date: "2026 · 07 · 03",
-        title: "The reliability spine",
-        body: "Wave 1 lands: the event-sourced execution log becomes the source of truth, runs detach and survive restarts, the pressure governor learns restraint, and cross-executor QA goes live.",
-        hex: "#34d399",
+        id: "hunt",
+        name: "HUNT",
+        designation: "The nightly sweep",
+        cadence: "Nightly · 22:00",
+        icon: Telescope,
+        hex: "#22d3ee",
+        chip: "bg-cyan-500/10 border-cyan-500/30 text-cyan-300",
+        x: 499.7,
+        y: 235.1,
+        body:
+            "Standing terms — gap-born and council-ordered — sweep the outside world every night. Papers and sources come home to the Cortex: vectors into Pinecone, entities and citations into the Neo4j graph, ready for the morning's deliberation.",
+        facts: ["standing terms", "gap cap: 15", "Pinecone + Neo4j"],
+        effect: "The system only hunts what a project or a council asked for. Curiosity is budgeted.",
     },
     {
-        date: "2026 · 07 · 06",
-        title: "Supervision consolidation",
-        body: "The dashboard and Cortex gateway become Praxis-supervised children; their launchd plists retire. The health model learns that a missing label is not a missing service.",
-        hex: "#60a5fa",
-    },
-    {
-        date: "2026 · 07 · 10",
-        title: "The knowledge loop closes",
-        body: "Knowledge Council v1 takes the 06:15 cron. The system now reads, deliberates, and files what it learns into the shared mind — on its own.",
+        id: "route",
+        name: "ROUTE",
+        designation: "Findings meet gaps",
+        cadence: "Nightly · post-ingest",
+        icon: Waypoints,
         hex: "#a78bfa",
+        chip: "bg-violet-500/10 border-violet-500/30 text-violet-300",
+        x: 423.4,
+        y: 469.9,
+        body:
+            "The finalizer routes the night's catch: new knowledge is matched against every project's TRACKS bindings, gap fills are detected against their current targets, and a routing file is written for the morning council. A filled gap retires its own hunt term.",
+        facts: ["routing file", "gap-fill detection", "auto-retire on fill"],
+        effect: "Knowledge that reaches no project becomes a cull candidate. The Sunday cull keeps the mind lean.",
+    },
+    {
+        id: "apply",
+        name: "APPLY",
+        designation: "Council turns knowledge into work",
+        cadence: "Daily · 05:40",
+        icon: Landmark,
+        hex: "#fbbf24",
+        chip: "bg-amber-500/10 border-amber-500/30 text-amber-300",
+        x: 176.6,
+        y: 469.9,
+        body:
+            "The knowledge council reads the routing file and files up to three deduped tasks on the projects the knowledge targets — same-day candidates for the 06:00 pipeline and the morning slate. What it cannot apply yet, it converts into fresh hunt orders.",
+        facts: ["≤3 tasks / day", "same-day slate", "HUNT orders"],
+        effect: "Same-day loop closure: something learned overnight can be shipping by the afternoon.",
+    },
+    {
+        id: "progress",
+        name: "PROGRESS",
+        designation: "Work changes the frontier",
+        cadence: "All day · the pipeline",
+        icon: TrendingUp,
+        hex: "#34d399",
+        chip: "bg-emerald-500/10 border-emerald-500/30 text-emerald-300",
+        x: 100.3,
+        y: 235.1,
+        body:
+            "Executors ship the council's tasks through the pipeline above. Shipped work changes what each project is — and the next tagger pass reads that change, binds new tags, and opens new gaps. The wheel comes back around with a different question.",
+        facts: ["executor pipeline", "re-tagged Monday", "new gaps open"],
+        effect: "Progress is what unlocks the next question. The wheel does not end — it winds tighter.",
     },
 ];
 
-const ROADMAP = [
-    { wave: "W2", item: "Improvement ledger feeding the morning slate" },
-    { wave: "W2", item: "The Groundskeeper" },
-    { wave: "W2", item: "Backups — 3 of 4 legs live, Neo4j leg pending" },
-    { wave: "W3", item: "Project context packs" },
-    { wave: "W3", item: "Pre-LLM setup latency burn-down (~58s)" },
+// Chevrons at the arc midpoints between stations (angle°, rotation°).
+const LOOP_CHEVRONS = [
+    { x: 423.4, y: 130.1, r: 36 },
+    { x: 499.7, y: 364.9, r: 108 },
+    { x: 300, y: 510, r: 180 },
+    { x: 100.3, y: 364.9, r: 252 },
+    { x: 176.6, y: 130.1, r: 324 },
 ];
+
+// Full ring, clockwise from the top — the pulses ride this.
+const LOOP_PATH = "M 300 90 A 210 210 0 0 1 300 510 A 210 210 0 0 1 300 90";
+
+// Colored arc from each station to the next (clockwise).
+const LOOP_ARCS = STATIONS.map((s, i) => {
+    const next = STATIONS[(i + 1) % STATIONS.length];
+    return { hex: s.hex, d: `M ${s.x} ${s.y} A 210 210 0 0 1 ${next.x} ${next.y}` };
+});
 
 // ── Hooks ─────────────────────────────────────────────────────────────────
 
@@ -494,6 +577,188 @@ function OrganDetail({ organ }: { organ: Organ }) {
     );
 }
 
+// ── The knowledge flywheel ────────────────────────────────────────────────
+
+const LOOP_VB = 600;
+
+function KnowledgeLoop({
+    selected,
+    onSelect,
+}: {
+    selected: StationId;
+    onSelect: (id: StationId) => void;
+}) {
+    const reduced = useReducedMotion();
+
+    return (
+        <div className="relative rounded-2xl border border-slate-800 bg-slate-950/60 p-4 hud-scanlines">
+            <div className="relative mx-auto w-full max-w-[560px]" style={{ aspectRatio: "1 / 1" }}>
+                <svg
+                    viewBox={`0 0 ${LOOP_VB} ${LOOP_VB}`}
+                    preserveAspectRatio="none"
+                    className="absolute inset-0 h-full w-full"
+                    aria-hidden="true"
+                >
+                    {/* Segmented ring, colored by source station */}
+                    {LOOP_ARCS.map((arc) => (
+                        <path
+                            key={arc.d}
+                            d={arc.d}
+                            fill="none"
+                            stroke={arc.hex}
+                            strokeOpacity={0.3}
+                            strokeWidth={1.5}
+                            strokeDasharray="6 7"
+                            className="codex-anim codex-beam"
+                        />
+                    ))}
+                    {/* Direction chevrons */}
+                    {LOOP_CHEVRONS.map((c) => (
+                        <polygon
+                            key={`${c.x}-${c.y}`}
+                            points="0,-4.5 9,0 0,4.5"
+                            fill="#64748b"
+                            opacity={0.8}
+                            transform={`translate(${c.x} ${c.y}) rotate(${c.r})`}
+                        />
+                    ))}
+                    {/* Inner rotating ring */}
+                    <g className="codex-anim codex-spin" style={{ transformOrigin: "300px 300px" }}>
+                        <circle
+                            cx={300}
+                            cy={300}
+                            r={120}
+                            fill="none"
+                            stroke="#22d3ee"
+                            strokeOpacity={0.12}
+                            strokeWidth={1}
+                            strokeDasharray="3 14"
+                        />
+                    </g>
+                    {/* Orbiting pulses */}
+                    {!reduced &&
+                        STATIONS.map((s, i) => (
+                            <circle key={s.id} r={3} fill={s.hex} opacity={0.9}>
+                                <animateMotion
+                                    dur="14s"
+                                    begin={`${i * 2.8}s`}
+                                    repeatCount="indefinite"
+                                    path={LOOP_PATH}
+                                />
+                            </circle>
+                        ))}
+                </svg>
+
+                {/* Center label */}
+                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                    <div className="font-mono text-[11px] font-bold tracking-[0.32em] text-slate-300">
+                        THE
+                        <br />
+                        FLYWHEEL
+                    </div>
+                    <div className="mt-2 font-mono text-[9px] uppercase tracking-[0.24em] text-slate-600">
+                        learning compounds
+                    </div>
+                </div>
+
+                {/* Station nodes */}
+                {STATIONS.map((s) => {
+                    const isSelected = selected === s.id;
+                    const Icon = s.icon;
+                    return (
+                        <button
+                            key={s.id}
+                            onClick={() => onSelect(s.id)}
+                            aria-pressed={isSelected}
+                            aria-label={`${s.name} — ${s.designation}`}
+                            className="group absolute -translate-x-1/2 -translate-y-1/2 outline-none"
+                            style={{
+                                left: `${(s.x / LOOP_VB) * 100}%`,
+                                top: `${(s.y / LOOP_VB) * 100}%`,
+                            }}
+                        >
+                            <span className="flex flex-col items-center gap-1.5">
+                                <span className="relative flex items-center justify-center">
+                                    <span
+                                        className="codex-anim codex-ring absolute h-12 w-12 rounded-full border"
+                                        style={{ borderColor: s.hex, opacity: isSelected ? 0.7 : 0.25 }}
+                                    />
+                                    <span
+                                        className="relative flex h-12 w-12 items-center justify-center rounded-full border bg-slate-950 transition-all duration-300 group-focus-visible:ring-2 group-focus-visible:ring-white/60"
+                                        style={{
+                                            borderColor: s.hex,
+                                            borderWidth: isSelected ? 2 : 1,
+                                            boxShadow: isSelected ? `0 0 24px ${s.hex}55` : `0 0 10px ${s.hex}22`,
+                                        }}
+                                    >
+                                        <Icon size={19} className="transition-transform duration-300 group-hover:scale-110" style={{ color: s.hex }} />
+                                    </span>
+                                </span>
+                                <span
+                                    className={`whitespace-nowrap font-mono text-[10px] font-bold tracking-[0.2em] transition-colors ${isSelected ? "text-white" : "text-slate-400 group-hover:text-slate-200"}`}
+                                >
+                                    {s.name}
+                                </span>
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function StationDetail({ station }: { station: LoopStation }) {
+    const Icon = station.icon;
+    return (
+        <div className="flex h-full flex-col rounded-2xl border border-slate-800 bg-slate-900/50 p-6 backdrop-blur-sm">
+            <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
+                <span
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border bg-slate-950"
+                    style={{ borderColor: station.hex, boxShadow: `0 0 18px ${station.hex}33` }}
+                >
+                    <Icon size={22} style={{ color: station.hex }} />
+                </span>
+                <div>
+                    <div className="font-mono text-lg font-bold tracking-[0.14em] text-white">{station.name}</div>
+                    <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-slate-500">
+                        {station.designation}
+                    </div>
+                </div>
+            </div>
+
+            <p className="mt-4 text-sm leading-relaxed text-slate-300">{station.body}</p>
+
+            <dl className="mt-5 space-y-2 font-mono text-xs">
+                <div className="flex gap-3">
+                    <dt className="w-16 shrink-0 uppercase tracking-widest text-slate-600">Cadence</dt>
+                    <dd className="text-slate-300">{station.cadence}</dd>
+                </div>
+            </dl>
+
+            <div className="mt-4 flex flex-wrap gap-1.5">
+                {station.facts.map((f) => (
+                    <span key={f} className={`rounded-md border px-2 py-0.5 font-mono text-[10px] tracking-wider ${station.chip}`}>
+                        {f}
+                    </span>
+                ))}
+            </div>
+
+            <div className="mt-auto pt-5">
+                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                    <div className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.28em] text-slate-500">
+                        <RefreshCw size={11} />
+                        Flywheel effect
+                    </div>
+                    <p className="text-sm italic leading-relaxed" style={{ color: station.hex }}>
+                        {station.effect}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── Section scaffolding ───────────────────────────────────────────────────
 
 function SectionHeader({
@@ -524,6 +789,8 @@ function SectionHeader({
 export default function CodexPage() {
     const [selected, setSelected] = useState<OrganId>("praxis");
     const organ = ORGANS.find((o) => o.id === selected) ?? ORGANS[0];
+    const [station, setStation] = useState<StationId>("tag");
+    const stationData = STATIONS.find((s) => s.id === station) ?? STATIONS[0];
 
     return (
         <main className="hud-backdrop min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30">
@@ -540,6 +807,8 @@ export default function CodexPage() {
                     to { opacity: 1; transform: translateY(0); }
                 }
                 .codex-rise { animation: codex-rise 700ms ease-out both; }
+                @keyframes codex-spin { to { transform: rotate(360deg); } }
+                .codex-spin { animation: codex-spin 40s linear infinite; }
                 @media (prefers-reduced-motion: reduce) {
                     .codex-anim, .codex-beam, .codex-ring, .codex-rise { animation: none !important; }
                 }
@@ -685,49 +954,28 @@ export default function CodexPage() {
                     </div>
                 </section>
 
-                {/* 04 · Epochs */}
+                {/* 04 · The flywheel */}
                 <section>
                     <SectionHeader
-                        index="04 · Epochs"
-                        icon={History}
-                        title="How we got here"
-                        subtitle="The convergence, in four moves. Praxis became the agent; everything else found its station."
+                        index="04 · The flywheel"
+                        icon={RefreshCw}
+                        title="How the system learns"
+                        subtitle="The newest machinery on the ship. Tags bind every project to the knowledge graph; unbound tags become gaps; gaps become nightly hunts; last night's findings become this morning's tasks — and shipped work opens the next gap."
                     />
-                    <div className="relative ml-2 space-y-8 border-l border-slate-800 pl-8">
-                        {EPOCHS.map((e) => (
-                            <div key={e.title} className="relative">
-                                <span
-                                    className="absolute -left-[38.5px] top-1 h-2.5 w-2.5 rounded-full border-2 border-slate-950"
-                                    style={{ backgroundColor: e.hex, boxShadow: `0 0 10px ${e.hex}66` }}
-                                />
-                                <div className="font-mono text-[11px] tracking-[0.25em] text-slate-500">{e.date}</div>
-                                <div className="mt-1 text-base font-semibold text-white">{e.title}</div>
-                                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">{e.body}</p>
-                            </div>
-                        ))}
+                    <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+                        <KnowledgeLoop selected={station} onSelect={setStation} />
+                        <StationDetail station={stationData} />
                     </div>
-                </section>
-
-                {/* 05 · Course laid in */}
-                <section>
-                    <SectionHeader
-                        index="05 · Course laid in"
-                        icon={Waypoints}
-                        title="What comes next"
-                        subtitle="The wave roadmap on the board. The shape is converged; this is refinement, not surgery."
-                    />
-                    <div className="flex flex-wrap gap-3">
-                        {ROADMAP.map((r) => (
-                            <div
-                                key={r.item}
-                                className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-2.5"
-                            >
-                                <span className="rounded bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-widest text-cyan-400">
-                                    {r.wave}
-                                </span>
-                                <span className="text-sm text-slate-300">{r.item}</span>
-                            </div>
-                        ))}
+                    <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-slate-500">
+                        <RefreshCw size={12} className="text-cyan-400" />
+                        <span>The loop, plainly:</span>
+                        <span className="text-slate-400">learning fuels progress</span>
+                        <span className="text-slate-700">→</span>
+                        <span className="text-slate-400">progress opens gaps</span>
+                        <span className="text-slate-700">→</span>
+                        <span className="text-slate-400">gaps become hunts</span>
+                        <span className="text-slate-700">→</span>
+                        <span className="text-slate-400">hunts become learning</span>
                     </div>
                 </section>
 
