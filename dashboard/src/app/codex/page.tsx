@@ -15,7 +15,6 @@ import {
     ArrowLeft,
     BookOpen,
     BrainCircuit,
-    ChevronRight,
     Cpu,
     FastForward,
     Landmark,
@@ -759,6 +758,171 @@ function StationDetail({ station }: { station: LoopStation }) {
     );
 }
 
+// ── The pipeline rail ─────────────────────────────────────────────────────
+// Stations ride a single conduit (viewBox 1000×230, rail at y=80); the QA
+// fail path is the violet arc looping from REVIEW back to EXECUTE.
+
+const RAIL_VB_W = 1000;
+const RAIL_VB_H = 230;
+const RAIL_Y = 80;
+const RAIL_XS = PIPELINE.map((_, i) => 100 + i * 200);
+
+function PipelineRail() {
+    const reduced = useReducedMotion();
+    const railPct = (RAIL_Y / RAIL_VB_H) * 100;
+
+    return (
+        <div className="overflow-x-auto pb-2">
+            <div className="min-w-[960px]">
+                <div className="relative rounded-2xl border border-slate-800 bg-slate-950/60 hud-scanlines">
+                    <div className="relative" style={{ aspectRatio: `${RAIL_VB_W} / ${RAIL_VB_H}` }}>
+                        <svg
+                            viewBox={`0 0 ${RAIL_VB_W} ${RAIL_VB_H}`}
+                            preserveAspectRatio="none"
+                            className="absolute inset-0 h-full w-full"
+                            aria-hidden="true"
+                        >
+                            {/* Rail segments, colored by source stage; discs hide the joints */}
+                            {PIPELINE.slice(0, -1).map((s, i) => (
+                                <line
+                                    key={s.title}
+                                    x1={RAIL_XS[i]}
+                                    y1={RAIL_Y}
+                                    x2={RAIL_XS[i + 1]}
+                                    y2={RAIL_Y}
+                                    stroke={s.hex}
+                                    strokeOpacity={0.35}
+                                    strokeWidth={1.5}
+                                    strokeDasharray="6 7"
+                                    className="codex-anim codex-beam"
+                                />
+                            ))}
+                            {/* Intake lead-in and outflow to the advanced schedule */}
+                            <line x1={22} y1={RAIL_Y} x2={RAIL_XS[0]} y2={RAIL_Y} stroke="#fbbf24" strokeOpacity={0.15} strokeWidth={1.5} strokeDasharray="2 7" />
+                            <line
+                                x1={RAIL_XS[4]}
+                                y1={RAIL_Y}
+                                x2={962}
+                                y2={RAIL_Y}
+                                stroke="#f472b6"
+                                strokeOpacity={0.4}
+                                strokeWidth={1.5}
+                                strokeDasharray="6 7"
+                                className="codex-anim codex-beam"
+                            />
+                            <polygon points="960,74 974,80 960,86" fill="#f472b6" opacity={0.7} />
+                            <text
+                                x={974}
+                                y={RAIL_Y + 28}
+                                textAnchor="end"
+                                fontSize={10}
+                                letterSpacing={2}
+                                fill="#f472b6"
+                                opacity={0.75}
+                                style={{ fontFamily: "var(--font-geist-mono), monospace" }}
+                            >
+                                SCHEDULE +1
+                            </text>
+                            {/* Forward chevrons at segment midpoints */}
+                            {RAIL_XS.slice(0, -1).map((x, i) => (
+                                <polygon
+                                    key={x}
+                                    points="0,-4.5 9,0 0,4.5"
+                                    fill="#64748b"
+                                    opacity={0.8}
+                                    transform={`translate(${(x + RAIL_XS[i + 1]) / 2} ${RAIL_Y})`}
+                                />
+                            ))}
+                            {/* QA fail path: REVIEW loops back to EXECUTE */}
+                            <path
+                                d={`M ${RAIL_XS[3]} ${RAIL_Y} C ${RAIL_XS[3]} 195, ${RAIL_XS[2]} 195, ${RAIL_XS[2]} ${RAIL_Y}`}
+                                fill="none"
+                                stroke="#a78bfa"
+                                strokeOpacity={0.35}
+                                strokeWidth={1.5}
+                                strokeDasharray="6 7"
+                                className="codex-anim codex-beam"
+                            />
+                            <polygon points="0,-4.5 9,0 0,4.5" fill="#a78bfa" opacity={0.8} transform={`translate(${(RAIL_XS[2] + RAIL_XS[3]) / 2} 166) rotate(180)`} />
+                            <text
+                                x={(RAIL_XS[2] + RAIL_XS[3]) / 2}
+                                y={196}
+                                textAnchor="middle"
+                                fontSize={10}
+                                letterSpacing={2}
+                                fill="#a78bfa"
+                                opacity={0.7}
+                                style={{ fontFamily: "var(--font-geist-mono), monospace" }}
+                            >
+                                FAIL → RE-DISPATCH WITH CORRECTIONS
+                            </text>
+                            {/* Pulses riding the rail */}
+                            {!reduced && (
+                                <>
+                                    {["#22d3ee", "#34d399", "#fbbf24"].map((hex, i) => (
+                                        <circle key={hex} r={3} fill={hex} opacity={0.9}>
+                                            <animateMotion
+                                                dur="7s"
+                                                begin={`${i * 2.3}s`}
+                                                repeatCount="indefinite"
+                                                path={`M 22 ${RAIL_Y} L 974 ${RAIL_Y}`}
+                                            />
+                                        </circle>
+                                    ))}
+                                    <circle r={2.5} fill="#a78bfa" opacity={0.8}>
+                                        <animateMotion
+                                            dur="4s"
+                                            repeatCount="indefinite"
+                                            path={`M ${RAIL_XS[3]} ${RAIL_Y} C ${RAIL_XS[3]} 195, ${RAIL_XS[2]} 195, ${RAIL_XS[2]} ${RAIL_Y}`}
+                                        />
+                                    </circle>
+                                </>
+                            )}
+                        </svg>
+
+                        {/* Station discs + chips (HTML layer) */}
+                        {PIPELINE.map((s, i) => {
+                            const Icon = s.icon;
+                            const left = `${(RAIL_XS[i] / RAIL_VB_W) * 100}%`;
+                            return (
+                                <React.Fragment key={s.title}>
+                                    <div
+                                        className={`absolute inline-block whitespace-nowrap rounded border bg-slate-950/90 px-2 py-0.5 font-mono text-[11px] font-bold tracking-[0.2em] ${s.chip}`}
+                                        style={{ left, top: `${railPct}%`, transform: "translate(-50%, calc(-100% - 38px))" }}
+                                    >
+                                        0{i + 1} · {s.title}
+                                    </div>
+                                    <div
+                                        className="absolute flex h-12 w-12 items-center justify-center rounded-full border bg-slate-950"
+                                        style={{
+                                            left,
+                                            top: `${railPct}%`,
+                                            transform: "translate(-50%, -50%)",
+                                            borderColor: s.hex,
+                                            boxShadow: `0 0 16px ${s.hex}33`,
+                                        }}
+                                    >
+                                        <Icon size={20} style={{ color: s.hex }} />
+                                    </div>
+                                </React.Fragment>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Stage descriptions aligned under their stations */}
+                <div className="mt-4 grid grid-cols-5 gap-4 px-1">
+                    {PIPELINE.map((s) => (
+                        <p key={s.title} className="text-[13px] leading-relaxed text-slate-400">
+                            {s.body}
+                        </p>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── Section scaffolding ───────────────────────────────────────────────────
 
 function SectionHeader({
@@ -890,74 +1054,20 @@ export default function CodexPage() {
                         title="How work moves"
                         subtitle="From the 06:15 council to an atomically advanced schedule — every task rides the same rail, and nobody reviews their own work."
                     />
-                    <div className="flex snap-x gap-0 overflow-x-auto pb-2">
-                        {PIPELINE.map((stage, i) => {
-                            const Icon = stage.icon;
-                            return (
-                                <React.Fragment key={stage.title}>
-                                    <div className="min-w-[208px] flex-1 snap-start rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-                                        <div className="flex items-center justify-between">
-                                            <span
-                                                className="flex h-9 w-9 items-center justify-center rounded-lg border bg-slate-950"
-                                                style={{ borderColor: `${stage.hex}55` }}
-                                            >
-                                                <Icon size={17} style={{ color: stage.hex } as React.CSSProperties} />
-                                            </span>
-                                            <span className="font-mono text-[10px] text-slate-600">0{i + 1}</span>
-                                        </div>
-                                        <div className={`mt-3 inline-block rounded border px-2 py-0.5 font-mono text-[11px] font-bold tracking-[0.2em] ${stage.chip}`}>
-                                            {stage.title}
-                                        </div>
-                                        <p className="mt-3 text-[13px] leading-relaxed text-slate-400">{stage.body}</p>
-                                    </div>
-                                    {i < PIPELINE.length - 1 && (
-                                        <div className="flex shrink-0 items-center px-1">
-                                            <ChevronRight size={16} className="text-slate-700" />
-                                        </div>
-                                    )}
-                                </React.Fragment>
-                            );
-                        })}
-                    </div>
+                    <PipelineRail />
                     <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-slate-500">
                         <ShieldCheck size={12} className="text-violet-400" />
-                        <span>Fail path:</span>
-                        <span className="text-slate-400">review fail → re-dispatch with corrections</span>
+                        <span>The breaker:</span>
+                        <span className="text-slate-400">3 failed reviews trip the circuit</span>
                         <span className="text-slate-700">·</span>
-                        <span className="text-slate-400">3 strikes → circuit breaker</span>
-                        <span className="text-slate-700">·</span>
-                        <span className="text-slate-400">fail-open only when no reviewer remains</span>
+                        <span className="text-slate-400">fail-open (complete + warning) only when no reviewer remains</span>
                     </div>
                 </section>
 
-                {/* 03 · Prime directives */}
+                {/* 03 · The flywheel */}
                 <section>
                     <SectionHeader
-                        index="03 · Prime directives"
-                        icon={Scale}
-                        title="The laws that keep it sane"
-                        subtitle="Doctrine written in scar tissue. Each one exists because its absence, at some point, hurt."
-                    />
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {DIRECTIVES.map((d, i) => (
-                            <div
-                                key={d.law}
-                                className="group rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition-colors hover:border-cyan-500/30"
-                            >
-                                <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-cyan-500/70">
-                                    Law 0{i + 1}
-                                </div>
-                                <div className="mt-2 text-base font-semibold text-white">{d.law}</div>
-                                <p className="mt-2 text-[13px] leading-relaxed text-slate-400">{d.why}</p>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
-                {/* 04 · The flywheel */}
-                <section>
-                    <SectionHeader
-                        index="04 · The flywheel"
+                        index="03 · The flywheel"
                         icon={RefreshCw}
                         title="How the system learns"
                         subtitle="The newest machinery on the ship. Tags bind every project to the knowledge graph; unbound tags become gaps; gaps become nightly hunts; last night's findings become this morning's tasks — and shipped work opens the next gap."
@@ -976,6 +1086,30 @@ export default function CodexPage() {
                         <span className="text-slate-400">gaps become hunts</span>
                         <span className="text-slate-700">→</span>
                         <span className="text-slate-400">hunts become learning</span>
+                    </div>
+                </section>
+
+                {/* 04 · Prime directives */}
+                <section>
+                    <SectionHeader
+                        index="04 · Prime directives"
+                        icon={Scale}
+                        title="The laws that keep it sane"
+                        subtitle="Doctrine written in scar tissue. Each one exists because its absence, at some point, hurt."
+                    />
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {DIRECTIVES.map((d, i) => (
+                            <div
+                                key={d.law}
+                                className="group rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition-colors hover:border-cyan-500/30"
+                            >
+                                <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-cyan-500/70">
+                                    Law 0{i + 1}
+                                </div>
+                                <div className="mt-2 text-base font-semibold text-white">{d.law}</div>
+                                <p className="mt-2 text-[13px] leading-relaxed text-slate-400">{d.why}</p>
+                            </div>
+                        ))}
                     </div>
                 </section>
 
