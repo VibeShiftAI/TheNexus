@@ -1,6 +1,6 @@
 [package]
 name = "nexus-desktop"
-version = "1.0.0"
+version = "1.1.0"
 description = "Native shell for The Nexus bridge dashboard"
 edition = "2021"
 
@@ -25,6 +25,12 @@ core-foundation = "0.10"
 # avoiding ring/rustls (fussy to build on aarch64-pc-windows-msvc).
 ureq = { version = "2", default-features = false, features = ["native-tls"] }
 native-tls = "0.2"
+# Self-updater: pulls signed builds from the tunnel (nexus.vibeshiftai.com),
+# carrying the same Access service token. native-tls (schannel) instead of the
+# default rustls keeps ring — and its Windows C toolchain need — out of the
+# tree, matching ureq above. Dialog plugin drives the update prompt.
+tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "zip"] }
+tauri-plugin-dialog = "2"
 
 [profile.release]
 strip = true
