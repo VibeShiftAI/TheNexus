@@ -141,6 +141,9 @@ app.use('/api',        createSystemRouter({ db, systemMonitor, tokenTracker, isC
 app.use('/api/ai/usage',  createUsageRouter({ db, tokenTracker }));
 app.use('/api/calendar',  createCalendarRouter({ db }));
 app.use('/api/praxis',    createPraxisStreamRouter({ io, pushService }));
+// Tunnel sends all /api/* here, but token-usage is computed by the Next.js
+// dashboard — forward so remote viewers get the same numbers as localhost.
+app.use('/api/token-usage', require('./routes/token-usage')());
 app.use('/api/local-queue', createLocalQueueRouter());
 app.use('/api/skill-candidates', require('./routes/skill-candidates')());
 app.use('/api/ingestion-control', createIngestionControlRouter());

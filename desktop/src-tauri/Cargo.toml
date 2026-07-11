@@ -20,6 +20,12 @@ open = "5"
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"
 
+[target.'cfg(target_os = "windows")'.dependencies]
+# Cloudflare Access service-token exchange at startup. native-tls = schannel,
+# avoiding ring/rustls (fussy to build on aarch64-pc-windows-msvc).
+ureq = { version = "2", default-features = false, features = ["native-tls"] }
+native-tls = "0.2"
+
 [profile.release]
 strip = true
 lto = true

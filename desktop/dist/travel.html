@@ -15,10 +15,8 @@
     color: #64748b; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; }
   .tab:hover { color: #94a3b8; }
   .tab .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.5; }
-  .tab.active[data-tab="bridge"] { color: #22d3ee; border-color: rgba(34, 211, 238, 0.35);
-    background: rgba(34, 211, 238, 0.08); box-shadow: 0 0 14px rgba(34, 211, 238, 0.15); }
-  .tab.active[data-tab="studio"] { color: #f472b6; border-color: rgba(244, 114, 182, 0.35);
-    background: rgba(244, 114, 182, 0.08); box-shadow: 0 0 14px rgba(244, 114, 182, 0.15); }
+  .tab.active { color: var(--accent); border-color: var(--border);
+    background: var(--bg); box-shadow: 0 0 14px var(--shadow); }
   .tab.active .dot { opacity: 1; box-shadow: 0 0 8px currentColor; }
   .spacer { flex: 1; }
   .btn { display: flex; align-items: center; padding: 0 12px; margin: 7px 0;
@@ -27,23 +25,46 @@
 </style>
 </head>
 <body>
-<div class="bar">
+<div class="bar" id="bar">
   <div class="brand">THE NEXUS</div>
-  <div class="tab active" data-tab="bridge"><span class="dot"></span>BRIDGE</div>
-  <div class="tab" data-tab="studio"><span class="dot"></span>GAYGUIDE YOUTUBE</div>
   <div class="spacer"></div>
   <div class="btn" id="reload" title="Reload current tab">&#10227;</div>
 </div>
 <script>
-  // The tab strip is the only webview with Tauri IPC. Content webviews are
-  // remote (through the Cloudflare tunnel) and get no Tauri access.
+  // Tab roster comes from Rust (travel::TABS) so growing the ecosystem is a
+  // one-line change there. Local app pages get IPC; the remote content that
+  // replaces the loaders gets none.
   const invoke = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
-  document.querySelectorAll(".tab").forEach((el) => {
-    el.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === el));
-      if (invoke) invoke("switch_tab", { tab: el.dataset.tab });
+
+  function glow(hex, alpha) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  }
+
+  async function boot() {
+    if (!invoke) return;
+    const tabs = await invoke("list_tabs");
+    const bar = document.getElementById("bar");
+    const spacer = bar.querySelector(".spacer");
+    tabs.forEach((tab, index) => {
+      const el = document.createElement("div");
+      el.className = "tab" + (index === 0 ? " active" : "");
+      el.dataset.tab = tab.id;
+      el.style.setProperty("--accent", tab.accent);
+      el.style.setProperty("--border", glow(tab.accent, 0.35));
+      el.style.setProperty("--bg", glow(tab.accent, 0.08));
+      el.style.setProperty("--shadow", glow(tab.accent, 0.15));
+      el.innerHTML = '<span class="dot"></span>';
+      el.appendChild(document.createTextNode(tab.label));
+      el.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === el));
+        invoke("switch_tab", { tab: tab.id });
+      });
+      bar.insertBefore(el, spacer);
     });
-  });
+  }
+  boot();
+
   document.getElementById("reload").addEventListener("click", () => {
     if (invoke) invoke("reload_active");
   });
