@@ -24,6 +24,10 @@ export interface TaskDispatch {
     parent_id: string | null;
     executor: DispatchExecutor | string;
     model: string | null;
+    /** Tokens this run consumed, when recorded (else null). */
+    tokens?: number | null;
+    /** 1 when `tokens` is an estimate from text volume rather than an exact count. */
+    tokens_estimated?: number | null;
     prompt: string | null;
     instructions: string | null;
     output: string | null;

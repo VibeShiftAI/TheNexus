@@ -148,7 +148,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // ─── PATCH update task by ID ─────────────────────────────────────────
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title } = req.body;
+        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title, default_executor, default_model, dispatch_instructions } = req.body;
         try {
             const existing = await db.getTask(taskId);
             if (!existing) return res.status(404).json({ error: 'Task not found' });
@@ -174,6 +174,11 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (priority !== undefined) updates.priority = priority;
             if (description !== undefined) updates.description = description;
             if (model_assignment !== undefined) updates.model_assignment = model_assignment || null;
+            // Saved dispatch-console defaults (Worker/Model/instructions) — the
+            // task screen auto-saves these as the operator edits them.
+            if (default_executor !== undefined) updates.default_executor = default_executor || null;
+            if (default_model !== undefined) updates.default_model = default_model || null;
+            if (dispatch_instructions !== undefined) updates.dispatch_instructions = dispatch_instructions || null;
             // Machine-layer payload (JSON column; ser() encodes, deserRow parses back).
             if (antigravity_payload !== undefined) updates.antigravity_payload = antigravity_payload;
             // Predecessors — every listed task must complete before this one

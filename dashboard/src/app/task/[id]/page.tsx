@@ -358,7 +358,13 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                   <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
                     <Rocket size={15} className="text-cyan-400" /> Dispatch console
                   </h3>
-                  <TaskDispatchConsole taskId={task.id} projectId={projectId} />
+                  <TaskDispatchConsole
+                    taskId={task.id}
+                    projectId={projectId}
+                    defaultExecutor={task.default_executor}
+                    defaultModel={task.default_model}
+                    defaultInstructions={task.dispatch_instructions}
+                  />
                 </section>
               </div>
 

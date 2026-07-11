@@ -15,7 +15,7 @@
  *     the exchange lands back in the history as a follow-up row.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -42,6 +42,7 @@ import {
   useExecutorModelOptions,
   type ExecutorName,
 } from "@/hooks/use-executor-models";
+import { updateTaskById } from "@/lib/nexus";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 const POLL_ACTIVE_MS = 6_000;
@@ -110,22 +111,135 @@ function OutputMarkdown({ content }: { content: string }) {
 
 // ── Dispatch bar ──────────────────────────────────────────────────────────
 
+type SaveState = "idle" | "saving" | "saved" | "error";
+
+/** Tiny inline indicator for the dispatch-defaults auto-save. */
+function SaveStatus({ state }: { state: SaveState }) {
+  if (state === "idle") return null;
+  const map: Record<Exclude<SaveState, "idle">, { icon: ReactNode; text: string; cls: string }> = {
+    saving: { icon: <Loader2 size={12} className="animate-spin" />, text: "Saving…", cls: "text-slate-400" },
+    saved: { icon: <CheckCircle2 size={12} />, text: "Saved", cls: "text-emerald-300" },
+    error: { icon: <AlertTriangle size={12} />, text: "Save failed", cls: "text-rose-300" },
+  };
+  const { icon, text, cls } = map[state];
+  return (
+    <span
+      className={`flex items-center gap-1.5 text-xs ${cls}`}
+      title="Worker, Model, and instructions save to this task automatically"
+    >
+      {icon}
+      {text}
+    </span>
+  );
+}
+
 function DispatchBar({
   taskId,
+  defaultExecutor,
+  defaultModel,
+  defaultInstructions,
   onDispatched,
 }: {
   taskId: string;
+  /** Saved Worker for this task (persisted dispatch default). */
+  defaultExecutor?: string | null;
+  /** Saved Model id ("" = executor default). */
+  defaultModel?: string | null;
+  /** Saved standing instructions that ride every dispatch. */
+  defaultInstructions?: string | null;
   onDispatched: () => void;
 }) {
   const { optionsFor } = useExecutorModelOptions();
-  const [executor, setExecutor] = useState<ExecutorName>("claude-code");
-  const [model, setModel] = useState("");
-  const [instructions, setInstructions] = useState("");
-  const [showInstructions, setShowInstructions] = useState(false);
+
+  // Initial values come straight from the task's saved dispatch defaults. The
+  // task is already loaded before this bar mounts, so there's no empty flash.
+  const initialExecutor: ExecutorName = EXECUTOR_OPTIONS.includes(defaultExecutor as ExecutorName)
+    ? (defaultExecutor as ExecutorName)
+    : "claude-code";
+  const initialModel = defaultModel ?? "";
+  const initialInstructions = defaultInstructions ?? "";
+
+  const [executor, setExecutor] = useState<ExecutorName>(initialExecutor);
+  const [model, setModel] = useState(initialModel);
+  const [instructions, setInstructions] = useState(initialInstructions);
+  const [showInstructions, setShowInstructions] = useState(Boolean(initialInstructions));
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ tone: "ok" | "refused" | "error"; text: string } | null>(null);
 
   const { options, fallback, note } = optionsFor(executor);
+
+  // ── Auto-save of the saved dispatch defaults ────────────────────────────
+  // Saving is action-driven — the onChange handlers call scheduleSave(), it is
+  // never triggered by a state-watching effect — so programmatic hydration can
+  // never be mistaken for a user edit. savedSnapshotRef holds the last-persisted
+  // [executor, model, instructions]; hydratedTaskRef guards re-hydration so the
+  // parent's 20s task poll can't clobber an in-flight edit.
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const hydratedTaskRef = useRef(taskId);
+  const savedSnapshotRef = useRef(JSON.stringify([initialExecutor, initialModel, initialInstructions]));
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestRef = useRef({ executor, model, instructions });
+  latestRef.current = { executor, model, instructions };
+
+  const scheduleSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSaveState("saving");
+    saveTimerRef.current = setTimeout(() => {
+      const { executor: ex, model: md, instructions: ins } = latestRef.current;
+      const snapshot = JSON.stringify([ex, md, ins]);
+      if (snapshot === savedSnapshotRef.current) {
+        setSaveState("idle"); // reverted to the saved value — nothing to write
+        return;
+      }
+      updateTaskById(taskId, {
+        default_executor: ex,
+        default_model: md || null,
+        dispatch_instructions: ins.trim() || null,
+      })
+        .then(() => {
+          savedSnapshotRef.current = snapshot;
+          setSaveState("saved");
+        })
+        .catch(() => setSaveState("error"));
+    }, 700);
+  }, [taskId]);
+
+  // Re-hydrate only when the bar is reused for a DIFFERENT task (a route change
+  // without remount). First mount is already covered by the initial state above.
+  useEffect(() => {
+    if (hydratedTaskRef.current === taskId) return;
+    hydratedTaskRef.current = taskId;
+    const nextExecutor: ExecutorName = EXECUTOR_OPTIONS.includes(defaultExecutor as ExecutorName)
+      ? (defaultExecutor as ExecutorName)
+      : "claude-code";
+    const nextModel = defaultModel ?? "";
+    const nextInstructions = defaultInstructions ?? "";
+    setExecutor(nextExecutor);
+    setModel(nextModel);
+    setInstructions(nextInstructions);
+    setShowInstructions(Boolean(nextInstructions));
+    savedSnapshotRef.current = JSON.stringify([nextExecutor, nextModel, nextInstructions]);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSaveState("idle");
+  }, [taskId, defaultExecutor, defaultModel, defaultInstructions]);
+
+  // Flush a pending edit on unmount / task switch so a just-typed instruction or
+  // a last-second Worker/Model change isn't lost before the debounce fires.
+  useEffect(() => {
+    const currentTaskId = taskId;
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      const { executor: ex, model: md, instructions: ins } = latestRef.current;
+      const snapshot = JSON.stringify([ex, md, ins]);
+      if (snapshot !== savedSnapshotRef.current) {
+        void updateTaskById(currentTaskId, {
+          default_executor: ex,
+          default_model: md || null,
+          dispatch_instructions: ins.trim() || null,
+        }).catch(() => {});
+      }
+    };
+  }, [taskId]);
 
   const submit = useCallback(
     async (force: boolean) => {
@@ -143,7 +257,8 @@ function DispatchBar({
           setResult({ tone: "refused", text: res.reply });
         } else {
           setResult({ tone: "ok", text: res.reply });
-          setInstructions("");
+          // Instructions are a saved standing default now — keep them so they
+          // ride the next dispatch too, rather than clearing after each run.
           onDispatched();
         }
       } catch (err) {
@@ -168,6 +283,7 @@ function DispatchBar({
               // A chosen model is executor-specific — clear it so the dispatch
               // rides the new executor's default (same rule as the morning plan).
               setModel("");
+              scheduleSave();
             }}
             className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100 outline-none focus:border-cyan-500/60"
           >
@@ -182,7 +298,10 @@ function DispatchBar({
           <select
             value={model}
             disabled={busy}
-            onChange={(e) => setModel(e.target.value)}
+            onChange={(e) => {
+              setModel(e.target.value);
+              scheduleSave();
+            }}
             title={`${executor} model for this dispatch (billed to the ${note} subscription)`}
             className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-purple-200 outline-none focus:border-purple-500/60"
           >
@@ -202,23 +321,29 @@ function DispatchBar({
           {showInstructions ? "Hide instructions" : "Add instructions"}
         </button>
 
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => submit(false)}
-          className="ml-auto flex h-9 items-center gap-2 rounded-md bg-gradient-to-r from-cyan-600 to-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-cyan-900/30 transition-colors hover:from-cyan-500 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {busy ? <Loader2 size={15} className="animate-spin" /> : <Rocket size={15} />}
-          Dispatch
-        </button>
+        <div className="ml-auto flex items-center gap-3">
+          <SaveStatus state={saveState} />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => submit(false)}
+            className="flex h-9 items-center gap-2 rounded-md bg-gradient-to-r from-cyan-600 to-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-cyan-900/30 transition-colors hover:from-cyan-500 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? <Loader2 size={15} className="animate-spin" /> : <Rocket size={15} />}
+            Dispatch
+          </button>
+        </div>
       </div>
 
       {showInstructions && (
         <textarea
           value={instructions}
           disabled={busy}
-          onChange={(e) => setInstructions(e.target.value)}
-          placeholder="Extra dispatch-time instructions for the worker (optional — the task description always rides along)"
+          onChange={(e) => {
+            setInstructions(e.target.value);
+            scheduleSave();
+          }}
+          placeholder="Standing instructions for this task — saved automatically and sent with every dispatch (the task description always rides along too)"
           className="mt-3 min-h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-cyan-500/60"
         />
       )}
@@ -345,22 +470,39 @@ function DispatchRow({
   projectId,
   dispatch,
   defaultOpen,
+  highlight = false,
   onRefresh,
 }: {
   taskId: string;
   projectId: string | null;
   dispatch: TaskDispatch;
   defaultOpen: boolean;
+  /** True when this row is the deep-link target (e.g. from the activity feed). */
+  highlight?: boolean;
   onRefresh: () => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const isFollowUp = dispatch.kind === "follow_up";
   const duration = formatDuration(dispatch.started_at, dispatch.completed_at);
+  const articleRef = useRef<HTMLElement>(null);
+
+  // Scroll the deep-linked run into view once, so arriving from the activity
+  // feed lands directly on that activity's logs rather than the top of the list.
+  useEffect(() => {
+    if (highlight && articleRef.current) {
+      articleRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlight]);
 
   return (
     <article
+      ref={articleRef}
       className={`rounded-lg border bg-slate-900/50 ${
-        dispatch.outcome === "running" ? "border-cyan-500/40" : "border-slate-800"
+        highlight
+          ? "border-cyan-500/60 ring-1 ring-cyan-500/30"
+          : dispatch.outcome === "running"
+            ? "border-cyan-500/40"
+            : "border-slate-800"
       } ${isFollowUp ? "ml-5" : ""}`}
     >
       <button
@@ -383,6 +525,19 @@ function DispatchRow({
         {dispatch.model && (
           <span className="rounded border border-purple-500/30 bg-purple-500/10 px-1.5 py-0.5 text-[11px] text-purple-200">
             {dispatch.model}
+          </span>
+        )}
+        {typeof dispatch.tokens === "number" && (
+          <span
+            className="rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[11px] tabular-nums text-cyan-200"
+            title={
+              dispatch.tokens_estimated
+                ? `~${dispatch.tokens.toLocaleString()} tokens (estimated from text volume)`
+                : `${dispatch.tokens.toLocaleString()} tokens`
+            }
+          >
+            {dispatch.tokens_estimated ? "~" : ""}
+            {dispatch.tokens.toLocaleString()} tok
           </span>
         )}
         <OutcomeChip outcome={dispatch.outcome} />
@@ -473,14 +628,29 @@ function DispatchRow({
 export function TaskDispatchConsole({
   taskId,
   projectId,
+  defaultExecutor,
+  defaultModel,
+  defaultInstructions,
 }: {
   taskId: string;
   projectId: string | null;
+  /** Saved dispatch defaults for this task — hydrate + auto-save the bar. */
+  defaultExecutor?: string | null;
+  defaultModel?: string | null;
+  defaultInstructions?: string | null;
 }) {
   const [dispatches, setDispatches] = useState<TaskDispatch[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Deep-link target from the activity feed: /task/[id]#dispatch-<id>. Open and
+  // highlight that specific run so drilling down from a feed row lands on it.
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const match = window.location.hash.match(/^#dispatch-(.+)$/);
+    if (match) setHighlightId(decodeURIComponent(match[1]));
+  }, []);
 
   const anyRunning = useMemo(
     () => dispatches.some((d) => d.outcome === "running"),
@@ -513,7 +683,13 @@ export function TaskDispatchConsole({
 
   return (
     <section className="space-y-3">
-      <DispatchBar taskId={taskId} onDispatched={() => void load()} />
+      <DispatchBar
+        taskId={taskId}
+        defaultExecutor={defaultExecutor}
+        defaultModel={defaultModel}
+        defaultInstructions={defaultInstructions}
+        onDispatched={() => void load()}
+      />
 
       {error && (
         <p className="flex items-center gap-2 rounded border border-rose-500/30 bg-rose-500/10 p-2 text-xs text-rose-200">
@@ -537,7 +713,9 @@ export function TaskDispatchConsole({
               taskId={taskId}
               projectId={projectId}
               dispatch={d}
-              defaultOpen={idx === 0}
+              // Open the deep-linked run if present, else the newest attempt.
+              defaultOpen={highlightId ? d.id === highlightId : idx === 0}
+              highlight={d.id === highlightId}
               onRefresh={() => void load()}
             />
           ))}

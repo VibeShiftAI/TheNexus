@@ -64,6 +64,9 @@ CREATE TABLE IF NOT EXISTS tasks (
     sort_order INTEGER DEFAULT 0,          -- Explicit sequencing within a project
     user_id TEXT,
     source TEXT,                       -- Origin of the task (e.g. 'cortex', 'manual')
+    default_executor TEXT,             -- Saved dispatch-console Worker (executor) for this task
+    default_model TEXT,                -- Saved dispatch-console Model id (NULL/'' = executor default)
+    dispatch_instructions TEXT,        -- Saved standing dispatch instructions (ride every dispatch)
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
