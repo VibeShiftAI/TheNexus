@@ -1,0 +1,48 @@
+# Builds the Windows ARM64 travel shell — The Nexus desktop app for the
+# travel laptop. Native build on GitHub's windows-11-arm runner (free for
+# public repos); produces an NSIS installer artifact.
+name: Desktop (Windows ARM64)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/desktop-windows-arm.yml'
+
+jobs:
+  build:
+    runs-on: windows-11-arm
+    defaults:
+      run:
+        working-directory: desktop
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Rust (aarch64-pc-windows-msvc)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Install Tauri CLI
+        run: npm ci
+
+      - name: Build NSIS installer
+        run: npm run build
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-nexus-windows-arm64
+          path: desktop/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error

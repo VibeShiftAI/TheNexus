@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>The Nexus — tabs</title>
+<style>
+  html, body { height: 100%; margin: 0; background: #020617; overflow: hidden;
+    font-family: "Segoe UI", system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
+  .bar { height: 100%; display: flex; align-items: stretch; gap: 6px; padding: 0 10px;
+    box-sizing: border-box; border-bottom: 1px solid #0f1e33; }
+  .brand { display: flex; align-items: center; color: #334155; font-size: 11px;
+    font-weight: 700; letter-spacing: 0.22em; padding: 0 10px 0 4px; }
+  .tab { display: flex; align-items: center; gap: 8px; padding: 0 16px; margin: 7px 0;
+    border: 1px solid transparent; border-radius: 8px; cursor: default;
+    color: #64748b; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; }
+  .tab:hover { color: #94a3b8; }
+  .tab .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.5; }
+  .tab.active[data-tab="bridge"] { color: #22d3ee; border-color: rgba(34, 211, 238, 0.35);
+    background: rgba(34, 211, 238, 0.08); box-shadow: 0 0 14px rgba(34, 211, 238, 0.15); }
+  .tab.active[data-tab="studio"] { color: #f472b6; border-color: rgba(244, 114, 182, 0.35);
+    background: rgba(244, 114, 182, 0.08); box-shadow: 0 0 14px rgba(244, 114, 182, 0.15); }
+  .tab.active .dot { opacity: 1; box-shadow: 0 0 8px currentColor; }
+  .spacer { flex: 1; }
+  .btn { display: flex; align-items: center; padding: 0 12px; margin: 7px 0;
+    border: 1px solid transparent; border-radius: 8px; color: #64748b; font-size: 15px; }
+  .btn:hover { color: #e2e8f0; border-color: #1e293b; background: rgba(148, 163, 184, 0.06); }
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="brand">THE NEXUS</div>
+  <div class="tab active" data-tab="bridge"><span class="dot"></span>BRIDGE</div>
+  <div class="tab" data-tab="studio"><span class="dot"></span>GAYGUIDE YOUTUBE</div>
+  <div class="spacer"></div>
+  <div class="btn" id="reload" title="Reload current tab">&#10227;</div>
+</div>
+<script>
+  // The tab strip is the only webview with Tauri IPC. Content webviews are
+  // remote (through the Cloudflare tunnel) and get no Tauri access.
+  const invoke = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
+  document.querySelectorAll(".tab").forEach((el) => {
+    el.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === el));
+      if (invoke) invoke("switch_tab", { tab: el.dataset.tab });
+    });
+  });
+  document.getElementById("reload").addEventListener("click", () => {
+    if (invoke) invoke("reload_active");
+  });
+</script>
+</body>
+</html>
