@@ -34,7 +34,10 @@ function createUpdatesRouter() {
         const full = path.join(UPDATES_DIR, path.basename(name));
         if (!fs.existsSync(full)) {
             // A missing manifest is the normal "no updates published yet"
-            // state; the updater treats a 404 as "up to date".
+            // state — answer 204 so the Tauri updater reads it as
+            // "up to date" (a 404 it logs as an error). Missing installer
+            // files are a genuine 404.
+            if (name.endsWith('.json')) return res.status(204).end();
             return res.status(404).json({ error: 'not found' });
         }
         if (name.endsWith('.json')) res.type('application/json');
