@@ -69,6 +69,22 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
+// ─── Project Hub (THE LAB) ──────────────────────────────────────────────────
+// lab.apps.vibeshiftai.com serves the hub at its root — that's the travel
+// shell's THE LAB tab plus the /p/<slug> spaces for projects without a web
+// UI of their own. Registered ahead of the root JSON route so the lab
+// hostname can own '/'; /hub/ keeps it reachable on localhost for dev.
+const projectHub = require('./routes/project-hub')({ db });
+app.use((req, res, next) => (
+    (req.hostname || '').startsWith('lab.') ? projectHub(req, res, next) : next()
+));
+// Non-strict routing matches /hub/ here too — only bounce the bare /hub so
+// relative links resolve under /hub/, and let the router take /hub/ itself.
+app.get('/hub', (req, res, next) => (
+    req.originalUrl.split('?')[0] === '/hub' ? res.redirect('/hub/') : next()
+));
+app.use('/hub', projectHub);
+
 // ─── Root & Public Routes ───────────────────────────────────────────────────
 app.get('/', (_req, res) => {
     res.json({ name: 'The Nexus API', version: '2.0.0', status: 'running',
