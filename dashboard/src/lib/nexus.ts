@@ -68,6 +68,28 @@ export interface UsageStats {
 // PROJECT TYPES
 // ═══════════════════════════════════════════════════════════════
 
+/** One revision of a project's end state (appended server-side on every change). */
+export interface EndStateRevision {
+    end_state: string;
+    at: string;
+    source?: string;
+    reason?: string;
+}
+
+/** A declared need — something the project is missing on the way to its end state. */
+export interface ProjectNeed {
+    id: string;
+    kind: 'capability' | 'resource' | 'credential' | 'decision' | 'information';
+    description: string;
+    status: 'open' | 'met' | 'dropped';
+    created_at: string;
+    resolved_at?: string;
+    source?: string;
+    notes?: string;
+}
+
+export type UpgradePosture = 'auto' | 'propose' | 'off';
+
 export interface Project {
     id: string;
     name: string;
@@ -82,8 +104,15 @@ export interface Project {
         repo?: string;
     };
     end_state?: string;
+    end_state_updated_at?: string | null;
+    end_state_history?: EndStateRevision[];
     tags?: string[];
-    status?: 'active' | 'paused' | 'archived' | string;
+    status?: 'active' | 'parked' | 'paused' | 'completed' | 'archived' | string;
+    /** Attention priority: 0 = normal, >0 elevated, <0 backburner. */
+    priority?: number;
+    /** auto = system files + schedules improvements; propose = files only; off = no autonomous filings. */
+    upgrade_posture?: UpgradePosture | string;
+    needs?: ProjectNeed[];
     archived_at?: string | null;
     stats?: {
         pending_reviews?: number;
@@ -612,7 +641,12 @@ export async function deleteTask(id: string, taskId: string): Promise<{ success:
 /**
  * Update project details
  */
-export async function updateProject(id: string, updates: Partial<Project>): Promise<Project> {
+export async function updateProject(
+    id: string,
+    // end_state_reason/source are revision metadata consumed by the server's
+    // end-state history appender (not stored as columns).
+    updates: Partial<Project> & { end_state_reason?: string; end_state_source?: string },
+): Promise<Project> {
     const res = await authFetch(`${API_URL}/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

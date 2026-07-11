@@ -5,7 +5,9 @@
  * POST   /api/projects                          — Create project
  * POST   /api/projects/scaffold                 — Scaffold new project
  * GET    /api/projects/:id                      — Get project details
- * PATCH  /api/projects/:id                      — Update project
+ * PATCH  /api/projects/:id                      — Update project (status/priority/end_state/upgrade_posture/needs/…)
+ * POST   /api/projects/:id/needs                — Add one need to the project's needs registry
+ * PATCH  /api/projects/:id/needs/:needId        — Update one need (status → met/dropped/open, notes)
  * DELETE /api/projects/:id                      — Delete project
  * POST   /api/projects/:id/archive              — Archive project + its tasks (files left intact)
  * POST   /api/projects/:id/unarchive            — Restore an archived project + its tasks
@@ -30,6 +32,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const simpleGit = require('simple-git');
 
 // Names/emails that mark a commit trailer as belonging to an AI executor, so
@@ -112,15 +115,18 @@ const DISPATCH_MATCH_GRACE_MS = 15 * 60 * 1000; // 15 min
 /**
  * Correlate a commit to the dispatch that most plausibly produced it, using the
  * real per-run executor/model + token count the orchestrator recorded in
- * task_dispatches. Returns { model, tokens } (nulls when no dispatch matches).
+ * task_dispatches. Also returns the matched dispatch/task identity so the
+ * activity feed can drill down into that run's logs (the Dispatch Console log
+ * viewer is scoped by task_id). All identity fields are null when nothing
+ * matches — a commit with no dispatch behind it has no logs to open.
  *
  * @param {Date} commitDate
  * @param {Array} dispatches — rows for the SAME project, any order
- * @returns {{ model: string|null, tokens: number|null, tokensEstimated: boolean, modelInferred: boolean }}
+ * @returns {{ model: string|null, tokens: number|null, tokensEstimated: boolean, modelInferred: boolean, dispatchId: string|null, taskId: string|null }}
  */
 function correlateDispatch(commitDate, dispatches) {
     const t = commitDate.getTime();
-    if (!Number.isFinite(t) || !Array.isArray(dispatches)) return { model: null, tokens: null, tokensEstimated: false, modelInferred: false };
+    if (!Number.isFinite(t) || !Array.isArray(dispatches)) return { model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null };
     let best = null;
     let bestDist = Infinity;
     for (const d of dispatches) {
@@ -134,7 +140,7 @@ function correlateDispatch(commitDate, dispatches) {
         const dist = Math.abs(t - ref);
         if (dist < bestDist) { bestDist = dist; best = d; }
     }
-    if (!best) return { model: null, tokens: null, tokensEstimated: false, modelInferred: false };
+    if (!best) return { model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null };
     const hasTokens = typeof best.tokens === 'number' && Number.isFinite(best.tokens);
     // Explicit model on the dispatch row wins; otherwise derive one from the
     // executor so the row still names the agent that did the work.
@@ -145,6 +151,10 @@ function correlateDispatch(commitDate, dispatches) {
         tokens: hasTokens ? best.tokens : null,
         tokensEstimated: hasTokens ? !!best.tokens_estimated : false,
         modelInferred: !explicitModel && !!model,
+        // The dispatch (and its task) that produced this commit — the drill-down
+        // handle the feed hands to the Dispatch Console log viewer.
+        dispatchId: best.id || null,
+        taskId: best.task_id || null,
     };
 }
 
@@ -358,15 +368,75 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     });
 
     // ─── Update project ──────────────────────────────────────────────────
+    // Controlled vocabularies (mirror @praxis/contract ProjectStatusSchema /
+    // UpgradePostureSchema / ProjectNeedKindSchema) — validated here so every
+    // writer (dashboard, Praxis, praxis-mind MCP) gets the same clear error
+    // instead of silently storing a typo the schedulers then can't interpret.
+    const PROJECT_STATUSES = ['active', 'parked', 'paused', 'completed', 'archived'];
+    const UPGRADE_POSTURES = ['auto', 'propose', 'off'];
+    const NEED_KINDS = ['capability', 'resource', 'credential', 'decision', 'information'];
+    const NEED_STATUSES = ['open', 'met', 'dropped'];
+    const MAX_NEEDS = 50;
+
+    /** Normalize + validate a full needs array. Returns { needs } or { error }. */
+    function normalizeNeeds(raw) {
+        if (!Array.isArray(raw)) return { error: 'needs must be an array' };
+        if (raw.length > MAX_NEEDS) return { error: `needs capped at ${MAX_NEEDS} entries` };
+        const needs = [];
+        for (const item of raw) {
+            if (!item || typeof item !== 'object') return { error: 'each need must be an object' };
+            const description = String(item.description || '').trim();
+            if (!description) return { error: 'each need requires a description' };
+            if (!NEED_KINDS.includes(item.kind)) {
+                return { error: `need kind must be one of: ${NEED_KINDS.join(', ')}` };
+            }
+            const status = item.status || 'open';
+            if (!NEED_STATUSES.includes(status)) {
+                return { error: `need status must be one of: ${NEED_STATUSES.join(', ')}` };
+            }
+            const need = {
+                id: item.id || crypto.randomUUID().slice(0, 8),
+                kind: item.kind,
+                description: description.slice(0, 500),
+                status,
+                created_at: item.created_at || new Date().toISOString(),
+            };
+            if (item.resolved_at) need.resolved_at = item.resolved_at;
+            if (status !== 'open' && !need.resolved_at) need.resolved_at = new Date().toISOString();
+            if (item.source) need.source = String(item.source).slice(0, 80);
+            if (item.notes) need.notes = String(item.notes).slice(0, 500);
+            needs.push(need);
+        }
+        return { needs };
+    }
+
     router.patch('/:id', async (req, res) => {
         const { id } = req.params;
-        const allowedFields = ['name', 'description', 'type', 'vibe', 'stack', 'urls', 'path', 'status', 'priority', 'end_state', 'tags'];
+        const allowedFields = [
+            'name', 'description', 'type', 'vibe', 'stack', 'urls', 'path',
+            'status', 'priority', 'end_state', 'tags',
+            'upgrade_posture', 'needs',
+            // end_state revision metadata — consumed by db.updateProject's
+            // history appender, never stored as columns.
+            'end_state_source', 'end_state_reason',
+        ];
         const filteredUpdates = {};
         for (const key of Object.keys(req.body)) {
             if (allowedFields.includes(key)) filteredUpdates[key] = req.body[key];
         }
         if (Object.keys(filteredUpdates).length === 0) {
             return res.status(400).json({ error: 'No valid fields to update' });
+        }
+        if (filteredUpdates.status !== undefined && !PROJECT_STATUSES.includes(filteredUpdates.status)) {
+            return res.status(400).json({ error: `status must be one of: ${PROJECT_STATUSES.join(', ')}` });
+        }
+        if (filteredUpdates.upgrade_posture !== undefined && !UPGRADE_POSTURES.includes(filteredUpdates.upgrade_posture)) {
+            return res.status(400).json({ error: `upgrade_posture must be one of: ${UPGRADE_POSTURES.join(', ')}` });
+        }
+        if (filteredUpdates.needs !== undefined) {
+            const result = normalizeNeeds(filteredUpdates.needs);
+            if (result.error) return res.status(400).json({ error: result.error });
+            filteredUpdates.needs = result.needs;
         }
         try {
             const updated = await db.updateProject(id, filteredUpdates);
@@ -375,6 +445,55 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         } catch (error) {
             console.error(`Error updating project ${id}:`, error);
             res.status(500).json({ error: 'Failed to update project' });
+        }
+    });
+
+    // ─── Needs registry (add / resolve one need without racing the array) ─
+    // POST adds a single open need; PATCH updates one need's status/notes.
+    // Server-side read-modify-write so concurrent agents don't clobber each
+    // other the way full-array PATCHes would.
+    router.post('/:id/needs', async (req, res) => {
+        const { kind, description, source, notes } = req.body || {};
+        const project = await getProjectById(PROJECT_ROOT, req.params.id);
+        if (!project) return res.status(404).json({ error: 'Project not found' });
+        const existing = Array.isArray(project.needs) ? project.needs : [];
+        const result = normalizeNeeds([...existing, { kind, description, source, notes }]);
+        if (result.error) return res.status(400).json({ error: result.error });
+        try {
+            const updated = await db.updateProject(project.id, { needs: result.needs });
+            if (!updated) return res.status(500).json({ error: 'Failed to add need' });
+            res.status(201).json({ success: true, need: result.needs[result.needs.length - 1], needs: updated.needs });
+        } catch (error) {
+            console.error(`Error adding need to project ${req.params.id}:`, error);
+            res.status(500).json({ error: 'Failed to add need' });
+        }
+    });
+
+    router.patch('/:id/needs/:needId', async (req, res) => {
+        const { status, notes } = req.body || {};
+        if (status !== undefined && !NEED_STATUSES.includes(status)) {
+            return res.status(400).json({ error: `need status must be one of: ${NEED_STATUSES.join(', ')}` });
+        }
+        const project = await getProjectById(PROJECT_ROOT, req.params.id);
+        if (!project) return res.status(404).json({ error: 'Project not found' });
+        const needs = Array.isArray(project.needs) ? [...project.needs] : [];
+        const idx = needs.findIndex(n => n && n.id === req.params.needId);
+        if (idx === -1) return res.status(404).json({ error: 'Need not found' });
+        const need = { ...needs[idx] };
+        if (status !== undefined) {
+            need.status = status;
+            if (status === 'open') delete need.resolved_at;
+            else need.resolved_at = new Date().toISOString();
+        }
+        if (notes !== undefined) need.notes = String(notes).slice(0, 500);
+        needs[idx] = need;
+        try {
+            const updated = await db.updateProject(project.id, { needs });
+            if (!updated) return res.status(500).json({ error: 'Failed to update need' });
+            res.json({ success: true, need, needs: updated.needs });
+        } catch (error) {
+            console.error(`Error updating need on project ${req.params.id}:`, error);
+            res.status(500).json({ error: 'Failed to update need' });
         }
     });
 
@@ -731,7 +850,12 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                     // Explicit Tokens: trailers are exact; dispatch-sourced counts may be estimated.
                     const tokens = trailer.tokens ?? matched.tokens;
                     const tokensEstimated = trailer.tokens != null ? false : matched.tokensEstimated;
-                    activities.push({ projectId: project.id, projectName: project.name, type: 'commit', hash: commit.hash, message: commit.message, author: commit.author_name, date: commit.date, model, modelInferred, tokens, tokensEstimated });
+                    // Drill-down handle: when the commit correlates to a dispatch,
+                    // carry its task/dispatch id so the feed row can open that run's
+                    // logs. Null when nothing matched → the row has no logs to show.
+                    const dispatchId = matched.dispatchId;
+                    const taskId = matched.taskId;
+                    activities.push({ projectId: project.id, projectName: project.name, type: 'commit', hash: commit.hash, message: commit.message, author: commit.author_name, date: commit.date, model, modelInferred, tokens, tokensEstimated, dispatchId, taskId });
                 }
             } catch (error) {
                 if (!error.message?.includes('does not have any commits')) console.warn(`[Activity] Could not get log for ${project.name}: ${error.message}`);

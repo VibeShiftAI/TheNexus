@@ -148,6 +148,34 @@ async function nexusTaskUpdate(taskId, patch) {
   });
 }
 
+async function nexusProjectUpdate(projectId, patch) {
+  // PATCH /api/projects/:id — partial update (status, priority, description,
+  // end_state [+end_state_source/end_state_reason revision metadata],
+  // upgrade_posture, tags). The server validates vocabularies and appends
+  // end-state revisions to end_state_history.
+  return httpJSON(`${cfg.NEXUS}/api/projects/${encodeURIComponent(projectId)}`, {
+    method: 'PATCH',
+    body: patch,
+  });
+}
+
+async function nexusProjectAddNeed(projectId, need) {
+  // POST /api/projects/:id/needs — append one need (server-side
+  // read-modify-write, safe against concurrent writers).
+  return httpJSON(`${cfg.NEXUS}/api/projects/${encodeURIComponent(projectId)}/needs`, {
+    method: 'POST',
+    body: need,
+  });
+}
+
+async function nexusProjectUpdateNeed(projectId, needId, patch) {
+  // PATCH /api/projects/:id/needs/:needId — resolve/reopen/annotate one need.
+  return httpJSON(`${cfg.NEXUS}/api/projects/${encodeURIComponent(projectId)}/needs/${encodeURIComponent(needId)}`, {
+    method: 'PATCH',
+    body: patch,
+  });
+}
+
 module.exports = {
   httpJSON,
   cortexSearch,
@@ -161,4 +189,7 @@ module.exports = {
   nexusTaskById,
   nexusTaskCreate,
   nexusTaskUpdate,
+  nexusProjectUpdate,
+  nexusProjectAddNeed,
+  nexusProjectUpdateNeed,
 };

@@ -2,13 +2,31 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Project, updateProject, archiveProject } from "@/lib/nexus";
-import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen, Target, Archive } from "lucide-react";
+import { Project, ProjectNeed, updateProject, archiveProject } from "@/lib/nexus";
+import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen, Target, Archive, PauseCircle, Gauge, Bot, ListChecks, History } from "lucide-react";
 
 interface ProjectSettingsProps {
     project: Project;
     onUpdate: () => void;
 }
+
+// Status → chip styling. "parked"/"paused" are deliberately dormant states —
+// Praxis skips them for scheduling, goal regression, tagging, and councils.
+const STATUS_STYLES: Record<string, string> = {
+    active: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+    parked: "bg-slate-500/10 text-slate-400 border-slate-500/30",
+    paused: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    completed: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
+    archived: "bg-slate-700/30 text-slate-500 border-slate-600/30",
+};
+
+const POSTURE_LABELS: Record<string, string> = {
+    auto: "Upgrades: auto",
+    propose: "Upgrades: propose-only",
+    off: "Upgrades: off",
+};
+
+const NEED_KINDS: ProjectNeed["kind"][] = ["capability", "resource", "credential", "decision", "information"];
 
 export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
     const router = useRouter();
@@ -18,6 +36,37 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
     const [confirmArchive, setConfirmArchive] = useState(false);
     const [editedProject, setEditedProject] = useState<Project>(project);
     const [stackEntry, setStackEntry] = useState({ key: '', value: '' });
+    const [endStateReason, setEndStateReason] = useState('');
+    const [showHistory, setShowHistory] = useState(false);
+    const [needEntry, setNeedEntry] = useState<{ kind: ProjectNeed["kind"]; description: string }>({ kind: 'capability', description: '' });
+
+    const openNeeds = (project.needs ?? []).filter(n => n.status === 'open');
+    const endStateChanged = (editedProject.end_state || '') !== (project.end_state || '');
+
+    const handleAddNeed = () => {
+        if (!needEntry.description.trim()) return;
+        const need: ProjectNeed = {
+            id: crypto.randomUUID().slice(0, 8),
+            kind: needEntry.kind,
+            description: needEntry.description.trim(),
+            status: 'open',
+            created_at: new Date().toISOString(),
+            source: 'operator',
+        };
+        setEditedProject(prev => ({ ...prev, needs: [...(prev.needs ?? []), need] }));
+        setNeedEntry({ kind: 'capability', description: '' });
+    };
+
+    const handleNeedStatus = (id: string, status: ProjectNeed["status"]) => {
+        setEditedProject(prev => ({
+            ...prev,
+            needs: (prev.needs ?? []).map(n => n.id === id ? { ...n, status } : n),
+        }));
+    };
+
+    const handleRemoveNeed = (id: string) => {
+        setEditedProject(prev => ({ ...prev, needs: (prev.needs ?? []).filter(n => n.id !== id) }));
+    };
 
     const handleArchive = async () => {
         setArchiving(true);
@@ -76,13 +125,21 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                 vibe: editedProject.vibe,
                 urls: editedProject.urls,
                 stack: editedProject.stack,
-                end_state: editedProject.end_state
+                end_state: editedProject.end_state,
+                // Revision metadata — recorded on the end_state_history entry
+                // when the end state actually changed.
+                ...(endStateChanged ? { end_state_source: 'operator', ...(endStateReason.trim() ? { end_state_reason: endStateReason.trim() } : {}) } : {}),
+                status: editedProject.status,
+                priority: editedProject.priority ?? 0,
+                upgrade_posture: editedProject.upgrade_posture ?? 'auto',
+                needs: editedProject.needs ?? [],
             });
             setIsEditing(false);
+            setEndStateReason('');
             onUpdate();
         } catch (error) {
             console.error('Failed to update project:', error);
-            alert('Failed to update project');
+            alert(error instanceof Error ? error.message : 'Failed to update project');
         } finally {
             setLoading(false);
         }
@@ -125,6 +182,26 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                     </div>
                 </div>
 
+                {/* Classification chips: status / priority / upgrade posture */}
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-semibold uppercase tracking-wide ${STATUS_STYLES[project.status ?? 'active'] ?? STATUS_STYLES.active}`}>
+                        {(project.status === 'parked' || project.status === 'paused') && <PauseCircle size={11} />}
+                        {project.status ?? 'active'}
+                    </span>
+                    {(project.priority ?? 0) !== 0 && (
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${(project.priority ?? 0) > 0 ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' : 'bg-slate-500/10 text-slate-400 border-slate-500/30'}`}>
+                            <Gauge size={11} />
+                            priority {project.priority}
+                        </span>
+                    )}
+                    {(project.upgrade_posture ?? 'auto') !== 'auto' && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-semibold bg-violet-500/10 text-violet-400 border-violet-500/30">
+                            <Bot size={11} />
+                            {POSTURE_LABELS[project.upgrade_posture ?? 'auto'] ?? project.upgrade_posture}
+                        </span>
+                    )}
+                </div>
+
                 {/* URL links */}
                 {(project.urls?.production || project.urls?.repo) && (
                     <div className="flex flex-wrap items-center gap-3 text-sm mt-2">
@@ -153,14 +230,38 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                     </div>
                 )}
 
-                {/* End State display */}
+                {/* End State display — the evolving goal */}
                 {project.end_state && (
                     <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 border border-emerald-500/20">
-                        <div className="flex items-center gap-2 mb-1">
-                            <Target size={14} className="text-emerald-400" />
-                            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">End State</span>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2">
+                                <Target size={14} className="text-emerald-400" />
+                                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">End State</span>
+                            </div>
+                            <span className="text-[11px] text-slate-500">
+                                {(project.end_state_history?.length ?? 0) > 1 && `evolved ×${(project.end_state_history!.length - 1)} · `}
+                                {project.end_state_updated_at && `updated ${new Date(project.end_state_updated_at).toLocaleDateString()}`}
+                            </span>
                         </div>
                         <p className="text-sm text-slate-300 leading-relaxed">{project.end_state}</p>
+                    </div>
+                )}
+
+                {/* Open needs — what this project is missing */}
+                {openNeeds.length > 0 && (
+                    <div className="mt-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <ListChecks size={14} className="text-amber-400" />
+                            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Open Needs ({openNeeds.length})</span>
+                        </div>
+                        <ul className="space-y-1">
+                            {openNeeds.map(n => (
+                                <li key={n.id} className="text-sm text-slate-300 flex items-start gap-2">
+                                    <span className="shrink-0 mt-0.5 px-1.5 py-px rounded bg-amber-500/15 text-amber-300 text-[10px] font-mono uppercase">{n.kind}</span>
+                                    <span>{n.description}</span>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 )}
             </div>
@@ -236,6 +337,47 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                     />
                 </div>
 
+                {/* Classification: status / priority / upgrade posture */}
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-slate-500 uppercase">Status</label>
+                        <select
+                            value={editedProject.status ?? 'active'}
+                            onChange={(e) => handleChange('status', e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition-colors appearance-none"
+                        >
+                            <option value="active">Active</option>
+                            <option value="parked">Parked (dormant, keep data)</option>
+                            <option value="paused">Paused</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                        <p className="text-xs text-slate-500">Parked/paused projects are skipped by scheduling, goal regression, tagging, and councils.</p>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-slate-500 uppercase">Priority</label>
+                        <input
+                            type="number"
+                            value={editedProject.priority ?? 0}
+                            onChange={(e) => handleChange('priority', Number.parseInt(e.target.value, 10) || 0)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                        />
+                        <p className="text-xs text-slate-500">0 = normal · higher = more attention · negative = backburner.</p>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-slate-500 uppercase">Upgrade Posture</label>
+                        <select
+                            value={editedProject.upgrade_posture ?? 'auto'}
+                            onChange={(e) => handleChange('upgrade_posture', e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition-colors appearance-none"
+                        >
+                            <option value="auto">Auto — file + schedule</option>
+                            <option value="propose">Propose — file only, I promote</option>
+                            <option value="off">Off — no autonomous filings</option>
+                        </select>
+                        <p className="text-xs text-slate-500">How much improvement work Praxis may invent here on his own.</p>
+                    </div>
+                </div>
+
                 <div className="space-y-2">
                     <label className="text-xs font-medium text-emerald-400 uppercase flex items-center gap-2">
                         <Target size={12} />
@@ -247,7 +389,101 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                         placeholder="Describe the desired end state of this project. Praxis will use this to backward-chain tasks and evaluate progress."
                         className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-400 transition-colors h-28 resize-none placeholder:text-slate-600"
                     />
-                    <p className="text-xs text-slate-500">Praxis uses this to evaluate progress, identify gaps, and auto-generate missing tasks.</p>
+                    <p className="text-xs text-slate-500">Praxis uses this to evaluate progress, identify gaps, and auto-generate missing tasks. Every change is versioned.</p>
+                    {endStateChanged && (
+                        <input
+                            type="text"
+                            value={endStateReason}
+                            onChange={(e) => setEndStateReason(e.target.value)}
+                            placeholder="Why is the goal moving? (optional — stored on this revision)"
+                            className="w-full bg-slate-950 border border-emerald-500/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors placeholder:text-slate-600"
+                        />
+                    )}
+                    {(project.end_state_history?.length ?? 0) > 0 && (
+                        <div>
+                            <button
+                                type="button"
+                                onClick={() => setShowHistory(v => !v)}
+                                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 transition-colors"
+                            >
+                                <History size={12} />
+                                {showHistory ? 'Hide' : 'Show'} end-state history ({project.end_state_history!.length} revision{project.end_state_history!.length === 1 ? '' : 's'})
+                            </button>
+                            {showHistory && (
+                                <ul className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-1">
+                                    {[...project.end_state_history!].reverse().map((rev, i) => (
+                                        <li key={i} className="text-xs bg-slate-950 border border-slate-800 rounded-lg p-2">
+                                            <div className="text-slate-500 mb-1">
+                                                {new Date(rev.at).toLocaleString()}
+                                                {rev.source && <span> · {rev.source}</span>}
+                                                {rev.reason && <span className="text-emerald-500/80"> · {rev.reason}</span>}
+                                            </div>
+                                            <div className="text-slate-300">{rev.end_state || <em className="text-slate-600">(cleared)</em>}</div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Needs registry — what this project is missing */}
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-amber-400 uppercase flex items-center gap-2">
+                        <ListChecks size={12} />
+                        Needs — What This Project Is Missing
+                    </label>
+                    <div className="bg-slate-950 border border-amber-500/20 rounded-lg p-3 space-y-2">
+                        {(editedProject.needs ?? []).length === 0 && (
+                            <p className="text-xs text-slate-600">No declared needs. Add capabilities, resources, credentials, decisions, or information this project is missing — Praxis's councils aim work at open needs.</p>
+                        )}
+                        {(editedProject.needs ?? []).map(n => (
+                            <div key={n.id} className={`flex items-center justify-between gap-2 text-sm rounded px-2 py-1.5 ${n.status === 'open' ? 'bg-slate-900' : 'bg-slate-900/40 opacity-60'}`}>
+                                <div className="flex items-start gap-2 min-w-0">
+                                    <span className="shrink-0 mt-0.5 px-1.5 py-px rounded bg-amber-500/15 text-amber-300 text-[10px] font-mono uppercase">{n.kind}</span>
+                                    <span className={`text-slate-300 ${n.status !== 'open' ? 'line-through' : ''}`}>{n.description}</span>
+                                    {n.status !== 'open' && <span className="shrink-0 text-[10px] uppercase text-slate-500 mt-0.5">{n.status}</span>}
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                    {n.status === 'open' ? (
+                                        <>
+                                            <button type="button" onClick={() => handleNeedStatus(n.id, 'met')} title="Mark met" className="px-1.5 py-0.5 text-[10px] rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25">MET</button>
+                                            <button type="button" onClick={() => handleNeedStatus(n.id, 'dropped')} title="Drop" className="px-1.5 py-0.5 text-[10px] rounded bg-slate-700/50 text-slate-400 hover:bg-slate-700">DROP</button>
+                                        </>
+                                    ) : (
+                                        <button type="button" onClick={() => handleNeedStatus(n.id, 'open')} title="Reopen" className="px-1.5 py-0.5 text-[10px] rounded bg-slate-700/50 text-slate-400 hover:bg-slate-700">REOPEN</button>
+                                    )}
+                                    <button type="button" onClick={() => handleRemoveNeed(n.id)} className="text-slate-600 hover:text-red-400 ml-1">
+                                        <Trash2 size={13} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        <div className="flex gap-2 pt-1">
+                            <select
+                                value={needEntry.kind}
+                                onChange={(e) => setNeedEntry(prev => ({ ...prev, kind: e.target.value as ProjectNeed["kind"] }))}
+                                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:border-amber-500 outline-none appearance-none"
+                            >
+                                {NEED_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                            </select>
+                            <input
+                                type="text"
+                                placeholder="What's missing? (e.g. YouTube Data API credentials)"
+                                value={needEntry.description}
+                                onChange={(e) => setNeedEntry(prev => ({ ...prev, description: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddNeed(); } }}
+                                className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:border-amber-500 outline-none"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleAddNeed}
+                                className="p-1.5 bg-amber-500/20 text-amber-400 rounded hover:bg-amber-500/30"
+                            >
+                                <Plus size={16} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

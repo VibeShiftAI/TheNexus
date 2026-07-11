@@ -123,6 +123,50 @@ try {
         console.warn('[Database] projects tags migration skipped:', err.message);
     }
 
+    // Migration: project data system — upgrade posture, needs registry, and
+    // evolving end states. `upgrade_posture` gates autonomous improvement
+    // filings (auto/propose/off — see @praxis/contract UpgradePostureSchema).
+    // `needs` is a JSON array of ProjectNeed rows (what the project is missing
+    // on the way to its end state). `end_state_history` is the append-only
+    // revision log for end_state (newest entry mirrors the live value; the
+    // append happens in updateProject so every writer — dashboard, Praxis,
+    // MCP — gets versioning for free). Existing end_states are seeded as the
+    // first revision so history never starts empty for a project that has one.
+    try {
+        const pdCols = db.prepare("PRAGMA table_info(projects)").all();
+        if (pdCols.length > 0) {
+            if (!pdCols.find(c => c.name === 'upgrade_posture')) {
+                db.exec("ALTER TABLE projects ADD COLUMN upgrade_posture TEXT DEFAULT 'auto'");
+                console.log('[Database] Migration: added upgrade_posture column to projects');
+            }
+            if (!pdCols.find(c => c.name === 'needs')) {
+                db.exec("ALTER TABLE projects ADD COLUMN needs TEXT DEFAULT '[]'");
+                console.log('[Database] Migration: added needs column to projects');
+            }
+            if (!pdCols.find(c => c.name === 'end_state_updated_at')) {
+                db.exec("ALTER TABLE projects ADD COLUMN end_state_updated_at TEXT");
+                console.log('[Database] Migration: added end_state_updated_at column to projects');
+            }
+            if (!pdCols.find(c => c.name === 'end_state_history')) {
+                db.exec("ALTER TABLE projects ADD COLUMN end_state_history TEXT DEFAULT '[]'");
+                const seedTs = new Date().toISOString();
+                const withEndState = db.prepare(
+                    "SELECT id, end_state, updated_at FROM projects WHERE end_state IS NOT NULL AND trim(end_state) != ''"
+                ).all();
+                const seedStmt = db.prepare(
+                    'UPDATE projects SET end_state_history = ?, end_state_updated_at = COALESCE(end_state_updated_at, ?) WHERE id = ?'
+                );
+                for (const p of withEndState) {
+                    const revision = [{ end_state: p.end_state, at: p.updated_at || seedTs, source: 'backfill' }];
+                    seedStmt.run(JSON.stringify(revision), p.updated_at || seedTs, p.id);
+                }
+                console.log(`[Database] Migration: added end_state_history column to projects (seeded ${withEndState.length} existing end state(s))`);
+            }
+        }
+    } catch (err) {
+        console.warn('[Database] project data system migration skipped:', err.message);
+    }
+
     // Migration: real-activity timestamp for the Board Groundskeeper (task
     // 02f3c8a7). Seeded from created_at, deliberately NOT updated_at — the
     // daily sweeps have touched updated_at on every row, so it carries no
@@ -151,6 +195,26 @@ try {
         }
     } catch (err) {
         console.warn('[Database] successor_id migration skipped:', err.message);
+    }
+
+    // Migration: per-task dispatch defaults (task-screen dispatch console
+    // auto-save). The console persists the operator's chosen Worker, Model, and
+    // standing instructions onto the task so they survive reloads, ride every
+    // dispatch, and are reusable by scheduling. Deliberately NOT activity fields
+    // (see server/lib/task-activity.js) — saving a default must not make a stale
+    // task look freshly active.
+    try {
+        const dispatchCols = db.prepare("PRAGMA table_info(tasks)").all();
+        if (dispatchCols.length > 0) {
+            for (const col of ['default_executor', 'default_model', 'dispatch_instructions']) {
+                if (!dispatchCols.find(c => c.name === col)) {
+                    db.exec(`ALTER TABLE tasks ADD COLUMN ${col} TEXT`);
+                    console.log(`[Database] Migration: added ${col} column to tasks`);
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('[Database] dispatch defaults migration skipped:', err.message);
     }
 
     console.log(`[Database] Connected to SQLite: ${DB_PATH}`);
@@ -199,7 +263,8 @@ const JSON_COLS = new Set([
     'stages', 'outputs',
     'antigravity_payload', 'dependencies',
     'suspended_context', 'resume_action',
-    'tags'
+    'tags',
+    'needs', 'end_state_history'
 ]);
 
 function deserRow(row) {
@@ -491,7 +556,37 @@ async function upsertProject(project) {
 async function updateProject(projectId, updates) {
     if (!db) return null;
     try {
-        const { sql, values } = buildUpdate('projects', { ...updates }, 'id', projectId);
+        const patch = { ...updates };
+        // end_state_source / end_state_reason are revision metadata, not
+        // columns — consume them here so buildUpdate never sees them.
+        const revisionSource = patch.end_state_source;
+        const revisionReason = patch.end_state_reason;
+        delete patch.end_state_source;
+        delete patch.end_state_reason;
+
+        // Evolving end states: every end_state change appends a revision to
+        // end_state_history (newest entry mirrors the live value), so the
+        // goal can move without losing where it came from. Done here — not in
+        // the route — so the dashboard, Praxis, and the MCP all get
+        // versioning for free.
+        if (Object.prototype.hasOwnProperty.call(patch, 'end_state')) {
+            const current = db.prepare('SELECT end_state, end_state_history FROM projects WHERE id = ?').get(projectId);
+            if (current && (current.end_state || '') !== (patch.end_state || '')) {
+                let history = [];
+                try {
+                    const parsed = JSON.parse(current.end_state_history || '[]');
+                    if (Array.isArray(parsed)) history = parsed;
+                } catch { /* corrupted history — restart the log rather than fail the update */ }
+                const revision = { end_state: patch.end_state || '', at: now() };
+                if (revisionSource) revision.source = revisionSource;
+                if (revisionReason) revision.reason = revisionReason;
+                history.push(revision);
+                patch.end_state_history = history;
+                patch.end_state_updated_at = revision.at;
+            }
+        }
+
+        const { sql, values } = buildUpdate('projects', patch, 'id', projectId);
         db.prepare(sql).run(...values);
         return deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
     } catch (err) {

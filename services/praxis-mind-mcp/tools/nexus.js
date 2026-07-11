@@ -12,7 +12,7 @@ const ledger = require('../lib/ledger');
 function register(server, ctx) {
   server.tool(
     'nexus_projects_list',
-    'List all projects in The Nexus. Returns id, name, path, type, status for each. USE FIRST when you need a project_id for nexus_task_create.',
+    'List all projects in The Nexus with their full project card: id, name, path, type, status (active/parked/paused/completed/archived), priority (0=normal, >0 elevated, <0 backburner), upgrade_posture (auto/propose/off — how much autonomous improvement work the project accepts), end_state (the evolving goal, with end_state_updated_at), tags, and open needs (what the project is missing). USE FIRST when you need a project_id, and to understand which projects are eligible for work.',
     {},
     async () => {
       const auth = checkPrivilege(ctx.caller, 'nexus.projects_list');
@@ -20,19 +20,121 @@ function register(server, ctx) {
       const started = Date.now();
       try {
         const data = await backends.nexusProjects();
-        const trimmed = (Array.isArray(data) ? data : []).map((p) => ({
-          id: p.id,
-          name: p.name,
-          path: p.path,
-          type: p.type,
-          status: p.status,
-          description: p.description,
-        }));
+        const trimmed = (Array.isArray(data) ? data : []).map((p) => {
+          const needs = Array.isArray(p.needs) ? p.needs : [];
+          const openNeeds = needs.filter((n) => n && n.status === 'open');
+          return {
+            id: p.id,
+            name: p.name,
+            path: p.path,
+            type: p.type,
+            status: p.status,
+            priority: p.priority ?? 0,
+            upgrade_posture: p.upgrade_posture || 'auto',
+            description: p.description,
+            end_state: p.end_state || null,
+            end_state_updated_at: p.end_state_updated_at || null,
+            tags: Array.isArray(p.tags) ? p.tags : [],
+            open_needs: openNeeds.map((n) => ({ id: n.id, kind: n.kind, description: n.description })),
+          };
+        });
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_projects_list', success: true, latency_ms: Date.now() - started });
         return { content: [{ type: 'text', text: JSON.stringify(trimmed, null, 2) }] };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_projects_list', success: false, latency_ms: Date.now() - started, error: e.message });
         return { content: [{ type: 'text', text: `nexus_projects_list failed: ${e.message}` }], isError: true };
+      }
+    },
+  );
+
+  server.tool(
+    'nexus_project_update',
+    'Update project-level data in The Nexus. USE FOR: setting status (parked = dormant, excluded from all autonomous work; active = full participation), priority (0=normal, >0 elevated, <0 backburner), upgrade_posture (auto = system may file+schedule improvement tasks; propose = file but never auto-schedule; off = no autonomous filings), evolving the end_state (every change is versioned into end_state_history — pass end_state_reason to say why the goal moved), editing the description, and maintaining the needs registry (add_need to declare something the project is missing; resolve_need to mark it met/dropped). Does NOT touch tasks — use nexus_task_update for those.',
+    {
+      project_id: z.string().describe('Project UUID (from nexus_projects_list).'),
+      status: z.enum(['active', 'parked', 'paused', 'completed', 'archived']).optional()
+        .describe('Lifecycle status. "parked" keeps all data but removes the project from scheduling, goal regression, tagging, and council filings.'),
+      priority: z.number().int().min(-100).max(100).optional()
+        .describe('Attention priority: 0 normal (default), higher = more council/scheduling attention, negative = backburner.'),
+      description: z.string().optional().describe('Replacement project description.'),
+      end_state: z.string().optional()
+        .describe('New/evolved end state (the goal the system works toward). Every change is appended to end_state_history automatically.'),
+      end_state_reason: z.string().optional()
+        .describe('Why the end state changed (e.g. "previous horizon reached", "scope pivot"). Stored on the revision.'),
+      upgrade_posture: z.enum(['auto', 'propose', 'off']).optional()
+        .describe('How much autonomous improvement work this project accepts.'),
+      add_need: z.object({
+        kind: z.enum(['capability', 'resource', 'credential', 'decision', 'information'])
+          .describe('capability = missing component/ability, resource = compute/money/hardware, credential = key/account Robert must provision, decision = human call needed, information = knowledge to hunt first.'),
+        description: z.string().describe('What is missing, concretely.'),
+        notes: z.string().optional(),
+      }).optional().describe('Declare one thing the project is missing on the way to its end state.'),
+      resolve_need: z.object({
+        id: z.string().describe('Need id (from nexus_projects_list open_needs).'),
+        status: z.enum(['met', 'dropped', 'open']).describe('met = satisfied, dropped = no longer relevant, open = reopen.'),
+        notes: z.string().optional().describe('How it was met / why dropped.'),
+      }).optional().describe('Close out (or reopen) one existing need.'),
+    },
+    async ({ project_id, status, priority, description, end_state, end_state_reason, upgrade_posture, add_need, resolve_need }) => {
+      // Project data writes ride the same trust tier as task writes: accept
+      // the dedicated privilege when provisioned, else fall back to the
+      // board-writer privilege existing keys already hold.
+      let auth = checkPrivilege(ctx.caller, 'nexus.project_update');
+      if (auth) auth = checkPrivilege(ctx.caller, 'nexus.task_update');
+      if (auth) return auth;
+      const rl = checkAndIncrement(ctx.caller.identity, 'nexus_project_update', ctx.caller.rate_limits_per_hour?.['nexus.project_update']);
+      if (!rl.allowed) {
+        return { content: [{ type: 'text', text: `Rate limit exceeded for nexus_project_update: ${rl.count}/${rl.limit} this hour.` }], isError: true };
+      }
+
+      const patch = {};
+      if (status !== undefined) patch.status = status;
+      if (priority !== undefined) patch.priority = priority;
+      if (description !== undefined) patch.description = description;
+      if (upgrade_posture !== undefined) patch.upgrade_posture = upgrade_posture;
+      if (end_state !== undefined) {
+        patch.end_state = end_state;
+        patch.end_state_source = `coding-agents-${ctx.caller.identity}`;
+        if (end_state_reason) patch.end_state_reason = end_state_reason;
+      }
+      if (Object.keys(patch).length === 0 && !add_need && !resolve_need) {
+        return { content: [{ type: 'text', text: 'No fields to update. Specify at least one of: status, priority, description, end_state, upgrade_posture, add_need, resolve_need.' }], isError: true };
+      }
+
+      const started = Date.now();
+      try {
+        const result = {};
+        if (Object.keys(patch).length > 0) {
+          const updated = await backends.nexusProjectUpdate(project_id, patch);
+          result.project = {
+            id: updated.id,
+            name: updated.name,
+            status: updated.status,
+            priority: updated.priority,
+            upgrade_posture: updated.upgrade_posture,
+            end_state: updated.end_state,
+            end_state_updated_at: updated.end_state_updated_at,
+          };
+        }
+        if (add_need) {
+          const added = await backends.nexusProjectAddNeed(project_id, {
+            ...add_need,
+            source: `coding-agents-${ctx.caller.identity}`,
+          });
+          result.added_need = added.need;
+        }
+        if (resolve_need) {
+          const resolved = await backends.nexusProjectUpdateNeed(project_id, resolve_need.id, {
+            status: resolve_need.status,
+            notes: resolve_need.notes,
+          });
+          result.resolved_need = resolved.need;
+        }
+        ledger.record({ caller: ctx.caller.identity, tool: 'nexus_project_update', success: true, latency_ms: Date.now() - started });
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      } catch (e) {
+        ledger.record({ caller: ctx.caller.identity, tool: 'nexus_project_update', success: false, latency_ms: Date.now() - started, error: e.message });
+        return { content: [{ type: 'text', text: `nexus_project_update failed: ${e.message}` }], isError: true };
       }
     },
   );
