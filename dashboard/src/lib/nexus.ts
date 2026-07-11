@@ -94,7 +94,8 @@ export interface Note {
     id: string;
     project_id: string | null;
     content: string;
-    category: 'general' | 'decision' | 'blocker' | 'reminder' | 'daily-log';
+    /** Free-form in the DB; common values: general, decision, blocker, reminder, daily-log, idea, bug, archived. */
+    category: string;
     source: 'praxis' | 'operator';
     pinned: boolean;
     created_at: string;
@@ -257,6 +258,14 @@ export interface Activity {
     tokens?: number | null;
     /** True when `tokens` is an approximation (from text volume) rather than an exact count. */
     tokensEstimated?: boolean;
+    /**
+     * The dispatch that produced this activity, when the commit correlates to a
+     * recorded run. Present alongside `taskId`; both null when no dispatch
+     * matched — the row then has no logs to drill into.
+     */
+    dispatchId?: string | null;
+    /** Task the correlated dispatch belongs to — the Log Viewer is scoped to it. */
+    taskId?: string | null;
 }
 
 export async function getActivity(): Promise<Activity[]> {
@@ -769,6 +778,10 @@ export interface TaskById extends Task {
     dependencies?: string[];
     /** The single task to start immediately after this one completes. */
     successor_id?: string | null;
+    /** Saved dispatch-console defaults — the task screen auto-saves these. */
+    default_executor?: string | null;
+    default_model?: string | null;
+    dispatch_instructions?: string | null;
 }
 
 /**

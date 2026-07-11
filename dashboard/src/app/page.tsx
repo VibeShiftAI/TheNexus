@@ -7,6 +7,7 @@ import { NewProjectModal } from "@/components/new-project-modal";
 import { SettingsModal } from "@/components/settings-modal";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { ScheduleTimeline } from "@/components/schedule-timeline";
+import { NotesButton } from "@/components/notes-console";
 import { HitlInbox } from "@/components/hitl-inbox";
 import { ActivityFeed } from "@/components/activity-feed";
 import { PraxisCore } from "@/components/bridge/praxis-core";
@@ -96,6 +97,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <VoiceCommandBar />
             <AmbientMode />
+            <NotesButton />
             <button
               onClick={() => setShowNewProjectModal(true)}
               className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/30 hover:border-cyan-500/50 px-3.5 py-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-all shadow-lg shadow-cyan-500/5"

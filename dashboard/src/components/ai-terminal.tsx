@@ -82,6 +82,74 @@ async function readPraxisEventStream(
     return finalEvent;
 }
 
+// One shared prose scale for every conversational message — Praxis replies,
+// [MORNING ROUTINE] / [PRAXIS EVENT] system cards, plans, etc. Keeping the
+// sizing in a single constant is what makes the stream uniform: before this,
+// assistant turns rendered as a raw `whitespace-pre-wrap` block (no markdown)
+// while system cards rendered markdown, so headings/lists/paragraphs came out
+// at different sizes. prose-sm pins the body to 0.875rem and the overrides tame
+// heading/list/code sizing so nothing balloons to browser-default proportions.
+const MESSAGE_PROSE = [
+    "prose prose-invert prose-sm max-w-none break-words",
+    "prose-p:my-1.5 prose-p:leading-relaxed prose-p:text-slate-200",
+    "prose-headings:text-cyan-300 prose-headings:font-semibold prose-headings:mb-1",
+    "prose-h1:text-base prose-h1:mt-1 prose-h2:text-sm prose-h2:mt-2 prose-h3:text-sm prose-h3:mt-2 prose-h4:text-sm prose-h4:mt-2",
+    "prose-strong:text-cyan-300 prose-strong:font-semibold",
+    "prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-li:text-slate-200 prose-li:leading-relaxed",
+    "prose-code:text-cyan-200 prose-code:bg-slate-900/60 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[0.8em] prose-code:font-mono prose-code:before:content-none prose-code:after:content-none",
+    "prose-pre:my-2 prose-pre:rounded-lg prose-pre:bg-slate-950",
+    "prose-a:text-cyan-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-cyan-300",
+    "prose-table:text-xs prose-th:text-cyan-300 prose-th:bg-slate-900/40 prose-th:px-2 prose-th:py-1 prose-td:text-slate-200 prose-td:px-2 prose-td:py-1 prose-td:border-slate-700/50",
+    "prose-hr:border-slate-700/50 prose-hr:my-3",
+    "prose-blockquote:border-l-cyan-500/60 prose-blockquote:text-slate-300 prose-blockquote:not-italic",
+].join(" ");
+
+/** Renders message content as normalized markdown at the shared prose scale.
+ *  Used for every assistant reply and every multi-line system card so the whole
+ *  transcript reads as one consistent, well-formatted surface. */
+function MarkdownMessage({ content }: { content: string }) {
+    return (
+        <div className={MESSAGE_PROSE}>
+            <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                    // Links open in a new tab — never navigate the bridge away.
+                    a: ({ node: _node, ...props }) => (
+                        <a {...props} target="_blank" rel="noopener noreferrer" />
+                    ),
+                    // Keep wide tables (e.g. the Day Schedule) from blowing out
+                    // the narrow viewscreen — scroll them horizontally instead.
+                    table: ({ node: _node, ...props }) => (
+                        <div className="overflow-x-auto">
+                            <table {...props} />
+                        </div>
+                    ),
+                    code({ node: _node, className, children, ...props }: any) {
+                        const match = /language-(\w+)/.exec(className || "");
+                        const raw = String(children);
+                        // Fenced or multi-line → highlighted block; otherwise inline code.
+                        return match || raw.includes("\n") ? (
+                            <SyntaxHighlighter
+                                style={oneDark as any}
+                                language={match ? match[1] : "text"}
+                                PreTag="div"
+                                className="rounded-lg !bg-slate-950 !text-xs"
+                                {...props}
+                            >
+                                {raw.replace(/\n$/, "")}
+                            </SyntaxHighlighter>
+                        ) : (
+                            <code className={className} {...props}>{children}</code>
+                        );
+                    },
+                }}
+            >
+                {normalizeMarkdown(content)}
+            </ReactMarkdown>
+        </div>
+    );
+}
+
 export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function AITerminal({ isOpen = true, onClose, mode = 'modal', hideHeader = false }, ref) {
     const isInline = mode === 'inline';
     const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages } = useCortex();
@@ -248,6 +316,21 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             inputRef.current.focus();
         }
     }, [isOpen, isInline]);
+
+    // Any deck surface can drop text into the composer (e.g. the notes
+    // console's "chat about it"): dispatch `nexus:chat-seed` with
+    // { detail: { text } } — the terminal fills the input and focuses so the
+    // operator can edit before sending.
+    useEffect(() => {
+        const onSeed = (e: Event) => {
+            const text = (e as CustomEvent<{ text?: string }>).detail?.text;
+            if (!text) return;
+            setInput(text);
+            inputRef.current?.focus();
+        };
+        window.addEventListener("nexus:chat-seed", onSeed);
+        return () => window.removeEventListener("nexus:chat-seed", onSeed);
+    }, []);
 
     // Socket.IO connection and artifact handling are now managed by CortexProvider
 
@@ -1121,33 +1204,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                     <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/70" />
                                 </div>
                                 <div className="min-w-0 flex-1 rounded-lg px-4 py-3 bg-slate-800/60 border border-cyan-500/20 text-slate-200">
-                                    <div className="prose prose-invert prose-sm max-w-none
-                                        prose-p:my-1 prose-p:text-slate-200 prose-p:leading-relaxed
-                                        prose-strong:text-cyan-300 prose-strong:font-semibold
-                                        prose-headings:text-cyan-300 prose-headings:font-semibold prose-h1:text-base prose-h2:text-sm prose-h3:text-sm prose-h1:mt-0 prose-h2:mt-2 prose-h3:mt-2
-                                        prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-li:text-slate-200
-                                        prose-code:text-cyan-300 prose-code:bg-slate-900/60 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:before:content-none prose-code:after:content-none
-                                        prose-table:text-xs prose-th:text-cyan-300 prose-th:bg-slate-900/40 prose-th:px-2 prose-th:py-1 prose-td:text-slate-200 prose-td:px-2 prose-td:py-1 prose-td:border-slate-700/50
-                                        prose-hr:border-slate-700/50 prose-hr:my-3
-                                    ">
-                                        <ReactMarkdown
-                                            remarkPlugins={[remarkGfm]}
-                                            components={{
-                                                /* Links (e.g. [STATUS REPORT] cards) open in a new
-                                                   browser window — never navigate the bridge away. */
-                                                a: ({ node: _node, ...props }) => (
-                                                    <a
-                                                        {...props}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-cyan-400 underline decoration-cyan-500/50 underline-offset-2 hover:text-cyan-300"
-                                                    />
-                                                ),
-                                            }}
-                                        >
-                                            {msg.content}
-                                        </ReactMarkdown>
-                                    </div>
+                                    <MarkdownMessage content={msg.content} />
                                 </div>
                             </div>
                         ) : (
@@ -1182,7 +1239,12 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                     ? 'bg-slate-800 text-slate-200'
                                     : 'bg-red-500/10 text-red-400'
                                 }`}>
-                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                {/* Assistant turns render as markdown at the shared prose
+                                    scale so Praxis's replies match the system cards; user
+                                    turns stay literal (no markdown surprises on typed text). */}
+                                {msg.content && (msg.role === 'assistant'
+                                    ? <MarkdownMessage content={msg.content} />
+                                    : <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>)}
                                 {/* Render PLAN_DRAFT and PLAN_REVISED artifacts */}
                                 {(msg.artifact?.type?.trim().toUpperCase() === 'PLAN_DRAFT' || msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED') && (
                                     <div className={`mt-3 p-4 rounded-lg ${msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
