@@ -18,6 +18,7 @@ import { TaskBoardStation } from "@/components/bridge/taskboard-station";
 import { VoiceCommandBar } from "@/components/bridge/voice-command-bar";
 import { AmbientMode } from "@/components/bridge/ambient-mode";
 import { StatusStrip } from "@/components/bridge/status-strip";
+import { ShellTabs } from "@/components/shell-tabs";
 import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-react";
 
 export default function Home() {
@@ -92,6 +93,12 @@ export default function Home() {
                 Bridge
               </span>
             </h1>
+          </div>
+
+          {/* Travel-shell tabs — renders only inside the Windows shell,
+              collapsing its native strip and this header into one row. */}
+          <div className="flex-1 flex justify-center min-w-0">
+            <ShellTabs />
           </div>
 
           <div className="flex items-center gap-3">

@@ -162,6 +162,9 @@ app.use('/api/praxis',    createPraxisStreamRouter({ io, pushService }));
 app.use('/api/token-usage', require('./routes/token-usage')());
 // Self-update feed for the Windows travel shell (served through the tunnel).
 app.use('/api/updates', require('./routes/updates')());
+// Travel-shell tab roster — the shell pulls this at launch; the dashboard
+// settings modal edits it. Tab changes need no rebuild.
+app.use('/api/tabs', require('./routes/tabs')());
 app.use('/api/local-queue', createLocalQueueRouter());
 app.use('/api/skill-candidates', require('./routes/skill-candidates')());
 app.use('/api/ingestion-control', createIngestionControlRouter());

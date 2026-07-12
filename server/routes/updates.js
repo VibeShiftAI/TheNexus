@@ -27,6 +27,9 @@ function createUpdatesRouter() {
 
     const serve = (req, res) => {
         const name = req.params.file || 'latest.json';
+        // One line per updater pull — the only way to tell from this box
+        // whether the travel laptop's check cleared Access at all.
+        console.log(`[updates] ${req.method} ${name} from ${req.ip} ua=${req.get('user-agent') || '-'}`);
         if (!ALLOWED.test(name)) {
             return res.status(400).json({ error: 'bad update file name' });
         }

@@ -97,3 +97,6 @@ nodemon.json
 
 # Build artifacts — too large for GitHub (100MB limit); build locally instead
 dashboard/public/*.apk
+
+# Travel-shell tab roster — runtime settings, edited from the dashboard
+data/travel-tabs.json

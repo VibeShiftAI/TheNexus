@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { getEnvSettings, saveEnvSettings, EnvSettings } from "@/lib/nexus";
 import { ArchivedProjectsList } from "@/components/archived-projects-list";
+import { TravelTabsEditor } from "@/components/travel-tabs-editor";
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -233,6 +234,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                     Shared secret between Cortex and the API server. Auto-generated if empty.
                                 </p>
                             </div>
+
+                            {/* Travel shell tab roster */}
+                            <TravelTabsEditor reloadKey={isOpen} />
 
                             {/* Archived Projects */}
                             <ArchivedProjectsList reloadKey={isOpen} />

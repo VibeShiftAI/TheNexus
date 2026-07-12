@@ -1571,3 +1571,38 @@ export async function deleteNote(noteId: string): Promise<void> {
     });
     if (!res.ok) throw new Error('Failed to delete note');
 }
+
+// ─── Travel Shell Tabs ──────────────────────────────────────────────────────
+// The Windows travel shell pulls its tab roster from /api/tabs at launch;
+// editing here means no rebuild/reinstall to change the tab lineup.
+
+export interface TravelTab {
+    id: string;
+    label: string;
+    url: string;
+    accent: string;
+    hosted?: boolean;
+    enabled: boolean;
+}
+
+export async function getTravelTabs(): Promise<TravelTab[]> {
+    const baseUrl = API_URL.replace(/\/projects$/, '');
+    const res = await authFetch(`${baseUrl}/tabs?all=1`);
+    if (!res.ok) throw new Error("Failed to fetch travel tabs");
+    const data = await res.json();
+    return data.tabs;
+}
+
+export async function saveTravelTabs(tabs: TravelTab[]): Promise<TravelTab[]> {
+    const baseUrl = API_URL.replace(/\/projects$/, '');
+    const res = await authFetch(`${baseUrl}/tabs`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tabs }),
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save travel tabs");
+    }
+    return (await res.json()).tabs;
+}
