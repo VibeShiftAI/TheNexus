@@ -223,7 +223,7 @@ mod travel {
         TabDef {
             id: "families",
             label: "FAMILIES",
-            url: "https://families.apps.vibeshiftai.com",
+            url: "https://families.vibeshiftai.com",
             accent: "#fbbf24",
         },
         TabDef {
@@ -238,19 +238,19 @@ mod travel {
         TabDef {
             id: "homefinder",
             label: "HOMEFINDER",
-            url: "https://lab.apps.vibeshiftai.com/p/nyc-home-finder",
+            url: "https://lab.vibeshiftai.com/p/nyc-home-finder",
             accent: "#f87171",
         },
         TabDef {
             id: "lars",
             label: "LARS",
-            url: "https://lars.apps.vibeshiftai.com",
+            url: "https://lars.vibeshiftai.com",
             accent: "#facc15",
         },
         TabDef {
             id: "worlds",
             label: "WORLDS",
-            url: "https://lab.apps.vibeshiftai.com/p/impossible-worlds-field-guide",
+            url: "https://lab.vibeshiftai.com/p/impossible-worlds-field-guide",
             accent: "#a78bfa",
         },
         TabDef {
@@ -259,7 +259,7 @@ mod travel {
             // fresh experiments before they earn a tab of their own.
             id: "lab",
             label: "THE LAB",
-            url: "https://lab.apps.vibeshiftai.com",
+            url: "https://lab.vibeshiftai.com",
             accent: "#e2e8f0",
         },
     ];
