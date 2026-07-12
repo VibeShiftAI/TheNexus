@@ -195,74 +195,118 @@ mod travel {
     /// Logical height of the tab strip, in CSS pixels.
     pub const TAB_BAR_HEIGHT: f64 = 46.0;
 
-    /// The travel shell's tab roster — THE place to grow the ecosystem: add
-    /// an entry here (plus a tunnel ingress + Access app for its hostname)
-    /// and CI ships an installer with the new tab. First entry is the
-    /// startup tab. Every host is expected to sit behind Cloudflare Access.
-    #[derive(Clone, Serialize)]
+    /// One tab in the travel shell. `hosted` marks a page that renders the
+    /// tab strip inside its own header (the bridge dashboard) — the native
+    /// strip hides while such a tab is active, so the app shows ONE header.
+    #[derive(Clone, Serialize, serde::Deserialize)]
     pub struct TabDef {
-        pub id: &'static str,
-        pub label: &'static str,
-        pub url: &'static str,
-        pub accent: &'static str,
+        pub id: String,
+        pub label: String,
+        pub url: String,
+        pub accent: String,
+        #[serde(default)]
+        pub hosted: bool,
     }
 
-    pub const TABS: &[TabDef] = &[
+    /// The resolved tab roster, fetched from `/api/tabs` at launch (so tab
+    /// changes are a dashboard-settings edit, no rebuild) with these baked-in
+    /// defaults as the offline fallback. First entry is the startup tab.
+    pub struct Roster(pub Vec<TabDef>);
+
+    /// Where the shell asks for its roster — same Access-gated hostname the
+    /// updater uses, authorized by the same service token.
+    const ROSTER_URL: &str = "https://nexus.vibeshiftai.com/api/tabs";
+
+    fn tab(id: &str, label: &str, url: &str, accent: &str, hosted: bool) -> TabDef {
         TabDef {
-            id: "bridge",
-            label: "BRIDGE",
-            url: "https://nexus.vibeshiftai.com",
-            accent: "#22d3ee",
-        },
-        TabDef {
-            id: "studio",
-            label: "GAYGUIDE YOUTUBE",
-            url: "https://gayguyde.vibeshiftai.com/admin/studio",
-            accent: "#f472b6",
-        },
-        TabDef {
-            id: "families",
-            label: "FAMILIES",
-            url: "https://families.vibeshiftai.com",
-            accent: "#fbbf24",
-        },
-        TabDef {
-            // Production Firebase Hosting — the same surface the phones
-            // use. Public hostname, no tunnel or Access involved; the app
-            // gates itself with device tokens.
-            id: "choresmaxxer",
-            label: "CHORESMAXXER",
-            url: "https://choresmaxxer.web.app",
-            accent: "#4ade80",
-        },
-        TabDef {
-            id: "homefinder",
-            label: "HOMEFINDER",
-            url: "https://lab.vibeshiftai.com/p/nyc-home-finder",
-            accent: "#f87171",
-        },
-        TabDef {
-            id: "lars",
-            label: "LARS",
-            url: "https://lars.vibeshiftai.com",
-            accent: "#facc15",
-        },
-        TabDef {
-            id: "worlds",
-            label: "WORLDS",
-            url: "https://lab.vibeshiftai.com/p/impossible-worlds-field-guide",
-            accent: "#a78bfa",
-        },
-        TabDef {
-            // THE LAB — the Project Hub on the node server: every board
-            // project's space, and where the New Project Process lands
-            // fresh experiments before they earn a tab of their own.
-            id: "lab",
-            label: "THE LAB",
-            url: "https://lab.vibeshiftai.com",
-            accent: "#e2e8f0",
-        },
-    ];
+            id: id.into(),
+            label: label.into(),
+            url: url.into(),
+            accent: accent.into(),
+            hosted,
+        }
+    }
+
+    /// Baked-in fallback roster — keep loosely in sync with DEFAULT_TABS in
+    /// TheNexus/server/routes/tabs.js, which is what the shell normally gets.
+    fn default_tabs() -> Vec<TabDef> {
+        vec![
+            tab("bridge", "BRIDGE", "https://nexus.vibeshiftai.com", "#22d3ee", true),
+            tab("studio", "GAYGUIDE YOUTUBE", "https://gayguyde.vibeshiftai.com/admin/studio", "#f472b6", false),
+            tab("families", "FAMILIES", "https://families.vibeshiftai.com", "#fbbf24", false),
+            // Production Firebase Hosting — the same surface the phones use.
+            // Public hostname, no tunnel or Access; device tokens gate it.
+            tab("choresmaxxer", "CHORESMAXXER", "https://choresmaxxer.web.app", "#4ade80", false),
+            tab("homefinder", "HOMEFINDER", "https://lab.vibeshiftai.com/p/nyc-home-finder", "#f87171", false),
+            tab("lars", "LARS", "https://lars.vibeshiftai.com", "#facc15", false),
+            tab("worlds", "WORLDS", "https://lab.vibeshiftai.com/p/impossible-worlds-field-guide", "#a78bfa", false),
+            // THE LAB — the Project Hub: every board project's space, where
+            // new experiments land before they earn a tab of their own.
+            tab("lab", "THE LAB", "https://lab.vibeshiftai.com", "#e2e8f0", false),
+        ]
+    }
+
+    /// A usable roster entry: sane id, https URL, #rrggbb accent. Anything
+    /// else from the remote roster is dropped rather than trusted.
+    fn tab_is_valid(tab: &TabDef) -> bool {
+        !tab.id.is_empty()
+            && tab.id.len() <= 32
+            && tab.id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+            && !tab.label.trim().is_empty()
+            && tab.label.len() <= 28
+            && Url::parse(&tab.url).map(|u| u.scheme() == "https").unwrap_or(false)
+            && tab.accent.len() == 7
+            && tab.accent.starts_with('#')
+            && tab.accent[1..].chars().all(|c| c.is_ascii_hexdigit())
+    }
+
+    /// Pull the roster from the node server, riding the Access service token.
+    /// Any failure (no token, edge bounce, bad JSON) falls back to the baked
+    /// defaults — a dead tunnel must never brick the shell.
+    fn fetch_remote_tabs(app: &tauri::AppHandle) -> Option<Vec<TabDef>> {
+        #[derive(serde::Deserialize)]
+        struct RosterBody {
+            tabs: Vec<TabDef>,
+        }
+
+        let token = read_service_token(app);
+        let tls = native_tls::TlsConnector::new().ok()?;
+        let agent = ureq::AgentBuilder::new()
+            .tls_connector(std::sync::Arc::new(tls))
+            .redirects(0)
+            .timeout(Duration::from_secs(4))
+            .build();
+        let mut request = agent.get(ROSTER_URL);
+        if let Some(token) = &token {
+            request = request
+                .set("CF-Access-Client-Id", &token.client_id)
+                .set("CF-Access-Client-Secret", &token.client_secret);
+        }
+        let body = match request.call() {
+            Ok(response) => response.into_string().ok()?,
+            Err(err) => {
+                eprintln!("[nexus] roster fetch failed ({ROSTER_URL}): {err}");
+                return None;
+            }
+        };
+        let parsed: RosterBody = match serde_json::from_str(&body) {
+            Ok(parsed) => parsed,
+            Err(err) => {
+                eprintln!("[nexus] roster response is not JSON (Access bounce?): {err}");
+                return None;
+            }
+        };
+        let tabs: Vec<TabDef> = parsed.tabs.into_iter().filter(tab_is_valid).collect();
+        if tabs.is_empty() {
+            eprintln!("[nexus] remote roster had no usable tabs — using defaults");
+            return None;
+        }
+        println!(
+            "[nexus] roster from server: {}",
+            tabs.iter().map(|t| t.id.as_str()).collect::<Vec<_>>().join(", ")
+        );
+        Some(tabs)
+    }
 
     /// Which content tab is showing (a `TabDef::id`).
     pub struct ActiveTab(pub Mutex<String>);
@@ -367,8 +411,9 @@ mod travel {
             .build();
 
         let mut seen_hosts: Vec<String> = Vec::new();
-        for tab in TABS {
-            let Some(host) = Url::parse(tab.url).ok().and_then(|u| u.host_str().map(String::from))
+        let tabs = app.state::<Roster>().0.clone();
+        for tab in &tabs {
+            let Some(host) = Url::parse(&tab.url).ok().and_then(|u| u.host_str().map(String::from))
             else {
                 continue;
             };
@@ -457,34 +502,100 @@ mod travel {
         }
     }
 
-    /// Pin the tab strip across the top and fill the rest with content.
+    /// True when the active tab's page hosts the strip itself (the bridge
+    /// header) — the native strip stays hidden and content gets full height.
+    fn active_tab_is_hosted(window: &Window) -> bool {
+        let app = window.app_handle();
+        let active = app.state::<ActiveTab>().0.lock().unwrap().clone();
+        app.state::<Roster>()
+            .0
+            .iter()
+            .find(|t| t.id == active)
+            .map(|t| t.hosted)
+            .unwrap_or(false)
+    }
+
+    /// Pin the tab strip across the top and fill the rest with content —
+    /// unless the active tab hosts its own strip, in which case the native
+    /// strip collapses and content takes the whole window (ONE header).
     /// Hidden webviews are laid out too, so switching tabs never re-flows.
     pub fn layout(window: &Window) {
         let Ok(size) = window.inner_size() else {
             return;
         };
+        let hosted = active_tab_is_hosted(window);
         let scale = window.scale_factor().unwrap_or(1.0);
-        let tab_h = ((TAB_BAR_HEIGHT * scale).round() as u32).min(size.height);
+        let tab_h = if hosted {
+            0
+        } else {
+            ((TAB_BAR_HEIGHT * scale).round() as u32).min(size.height)
+        };
         for webview in window.webviews() {
-            let bounds = if webview.label() == "chrome" {
-                Rect {
+            if webview.label() == "chrome" {
+                let _ = if hosted { webview.hide() } else { webview.show() };
+                let _ = webview.set_bounds(Rect {
                     position: Position::Physical(PhysicalPosition::new(0, 0)),
-                    size: Size::Physical(PhysicalSize::new(size.width, tab_h)),
-                }
+                    size: Size::Physical(PhysicalSize::new(size.width, tab_h.max(1))),
+                });
             } else {
-                Rect {
+                let _ = webview.set_bounds(Rect {
                     position: Position::Physical(PhysicalPosition::new(0, tab_h as i32)),
                     size: Size::Physical(PhysicalSize::new(
                         size.width,
                         size.height.saturating_sub(tab_h),
                     )),
-                }
-            };
-            let _ = webview.set_bounds(bounds);
+                });
+            }
         }
     }
 
+    /// The one true tab switch — used by the native strip's IPC command and
+    /// the hosted header's intercepted `/__shell/switch/<id>` navigations.
+    /// Shows/hides content webviews, re-lays-out (strip visibility can flip),
+    /// and syncs the highlight in both the native strip and hosted headers.
+    fn do_switch(window: &Window, tab: &str) {
+        let app = window.app_handle();
+        let roster = app.state::<Roster>();
+        if !roster.0.iter().any(|t| t.id == tab) {
+            return;
+        }
+        let hosted_ids: Vec<String> =
+            roster.0.iter().filter(|t| t.hosted).map(|t| t.id.clone()).collect();
+        *app.state::<ActiveTab>().0.lock().unwrap() = tab.to_string();
+        for webview in window.webviews() {
+            match webview.label() {
+                "chrome" => {
+                    let _ = webview.eval(&format!(
+                        "window.__setActiveTab && window.__setActiveTab({});",
+                        serde_json::to_string(tab).unwrap_or_default()
+                    ));
+                }
+                label if label == tab => {
+                    let _ = webview.show();
+                }
+                _ => {
+                    let _ = webview.hide();
+                }
+            }
+            if hosted_ids.iter().any(|id| id == webview.label()) {
+                let js_id = serde_json::to_string(tab).unwrap_or_default();
+                let _ = webview.eval(&format!(
+                    "window.__NEXUS_SHELL__ && (window.__NEXUS_SHELL__.active = {js_id}, \
+                     window.dispatchEvent(new CustomEvent('nexus-shell-active', {{ detail: {js_id} }})));"
+                ));
+            }
+        }
+        layout(window);
+    }
+
     pub fn build_travel_window(app: &tauri::App) -> tauri::Result<()> {
+        // Resolve the roster before any webview exists: server copy if the
+        // tunnel answers (tab changes without a rebuild), baked-in defaults
+        // otherwise. Managed state — everything else reads it from there.
+        let tabs = fetch_remote_tabs(app.handle()).unwrap_or_else(default_tabs);
+        app.manage(ActiveTab(Mutex::new(tabs[0].id.clone())));
+        app.manage(Roster(tabs.clone()));
+
         let window = WindowBuilder::new(app, "main")
             .title("The Nexus")
             .inner_size(1400.0, 900.0)
@@ -501,13 +612,51 @@ mod travel {
             LogicalPosition::new(0.0, 0.0),
             LogicalSize::new(1400.0, TAB_BAR_HEIGHT),
         )?;
-        for (index, tab) in TABS.iter().enumerate() {
-            let webview = window.add_child(
-                WebviewBuilder::new(tab.id, WebviewUrl::App("loader.html".into()))
-                    .on_new_window(open_in_browser),
-                content_pos,
-                content_size,
-            )?;
+
+        // Hosted pages (the bridge) render the strip inside their own header:
+        // they get the roster injected as `window.__NEXUS_SHELL__`, and their
+        // tab clicks navigate to /__shell/switch/<id>, which we intercept
+        // here and turn into a native switch — remote pages get no IPC.
+        let shell_global = format!(
+            "window.__NEXUS_SHELL__ = {{ tabs: {}, active: {} }};",
+            serde_json::to_string(
+                &tabs
+                    .iter()
+                    .map(|t| serde_json::json!({ "id": t.id, "label": t.label, "accent": t.accent }))
+                    .collect::<Vec<_>>()
+            )
+            .unwrap_or_else(|_| "[]".into()),
+            serde_json::to_string(&tabs[0].id).unwrap_or_default(),
+        );
+
+        for (index, tab) in tabs.iter().enumerate() {
+            let mut builder = WebviewBuilder::new(tab.id.clone(), WebviewUrl::App("loader.html".into()))
+                .on_new_window(open_in_browser);
+            if tab.hosted {
+                let nav_app = app.handle().clone();
+                builder = builder
+                    .initialization_script(&shell_global)
+                    .on_navigation(move |url| {
+                        let switch_target = if url.scheme() == "nexus-shell" {
+                            url.host_str().map(String::from)
+                        } else if let Some(rest) = url.path().strip_prefix("/__shell/switch/") {
+                            Some(rest.trim_matches('/').to_string())
+                        } else {
+                            None
+                        };
+                        let Some(target) = switch_target else {
+                            return true; // a real navigation — let it through
+                        };
+                        let handle = nav_app.clone();
+                        let _ = nav_app.run_on_main_thread(move || {
+                            if let Some(window) = handle.get_window("main") {
+                                do_switch(&window, &target);
+                            }
+                        });
+                        false // cancel — the "navigation" was a switch request
+                    });
+            }
+            let webview = window.add_child(builder, content_pos, content_size)?;
             if index != 0 {
                 webview.hide()?;
             }
@@ -549,14 +698,14 @@ mod travel {
 
     /// Tab roster for the chrome strip.
     #[tauri::command]
-    pub fn list_tabs() -> Vec<TabDef> {
-        TABS.to_vec()
+    pub fn list_tabs(state: tauri::State<'_, Roster>) -> Vec<TabDef> {
+        state.0.clone()
     }
 
     /// The calling webview's own tab entry — loaders ask who they are.
     #[tauri::command]
-    pub fn tab_config(webview: tauri::Webview) -> Option<TabDef> {
-        TABS.iter().find(|t| t.id == webview.label()).cloned()
+    pub fn tab_config(webview: tauri::Webview, state: tauri::State<'_, Roster>) -> Option<TabDef> {
+        state.0.iter().find(|t| t.id == webview.label()).cloned()
     }
 
     /// True once the service-token exchange settled (either way).
@@ -566,22 +715,8 @@ mod travel {
     }
 
     #[tauri::command]
-    pub fn switch_tab(window: Window, state: tauri::State<'_, ActiveTab>, tab: String) {
-        if !TABS.iter().any(|t| t.id == tab) {
-            return;
-        }
-        for webview in window.webviews() {
-            match webview.label() {
-                "chrome" => {}
-                label if label == tab => {
-                    let _ = webview.show();
-                }
-                _ => {
-                    let _ = webview.hide();
-                }
-            }
-        }
-        *state.0.lock().unwrap() = tab;
+    pub fn switch_tab(window: Window, tab: String) {
+        do_switch(&window, &tab);
     }
 
     #[tauri::command]
@@ -607,7 +742,8 @@ fn main() {
     let builder = builder
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
-        .manage(travel::ActiveTab(Mutex::new(travel::TABS[0].id.into())))
+        // ActiveTab + Roster are managed in build_travel_window, after the
+        // roster is resolved (server copy or baked defaults).
         .manage(travel::AuthGate(std::sync::atomic::AtomicBool::new(false)))
         .invoke_handler(tauri::generate_handler![
             travel::switch_tab,

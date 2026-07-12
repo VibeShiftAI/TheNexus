@@ -41,6 +41,12 @@
     return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
   }
 
+  // Rust calls this after every switch (including ones made from the bridge
+  // header's hosted tabs) so the highlight never drifts from reality.
+  window.__setActiveTab = (id) => {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === id));
+  };
+
   async function boot() {
     if (!invoke) return;
     const tabs = await invoke("list_tabs");
@@ -57,7 +63,7 @@
       el.innerHTML = '<span class="dot"></span>';
       el.appendChild(document.createTextNode(tab.label));
       el.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === el));
+        window.__setActiveTab(tab.id);
         invoke("switch_tab", { tab: tab.id });
       });
       bar.insertBefore(el, spacer);
