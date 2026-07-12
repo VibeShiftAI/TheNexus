@@ -90,6 +90,24 @@ export interface ProjectNeed {
 
 export type UpgradePosture = 'auto' | 'propose' | 'off';
 
+/**
+ * A machine-checkable end-state acceptance criterion. The Project Data
+ * Steward evaluates these weekly and cites per-criterion pass/fail instead
+ * of the bare "no open tasks" heuristic.
+ */
+export interface EndStateCriterion {
+    id: string;
+    kind: 'url_up' | 'command' | 'task_set';
+    description: string;
+    url?: string;
+    expect_status?: number;
+    command?: string;
+    task_ids?: string[];
+    enabled?: boolean;
+    created_at?: string;
+    source?: string;
+}
+
 export interface Project {
     id: string;
     name: string;
@@ -113,6 +131,7 @@ export interface Project {
     /** auto = system files + schedules improvements; propose = files only; off = no autonomous filings. */
     upgrade_posture?: UpgradePosture | string;
     needs?: ProjectNeed[];
+    end_state_criteria?: EndStateCriterion[];
     archived_at?: string | null;
     stats?: {
         pending_reviews?: number;

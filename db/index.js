@@ -147,6 +147,10 @@ try {
                 db.exec("ALTER TABLE projects ADD COLUMN end_state_updated_at TEXT");
                 console.log('[Database] Migration: added end_state_updated_at column to projects');
             }
+            if (!pdCols.find(c => c.name === 'end_state_criteria')) {
+                db.exec("ALTER TABLE projects ADD COLUMN end_state_criteria TEXT DEFAULT '[]'");
+                console.log('[Database] Migration: added end_state_criteria column to projects');
+            }
             if (!pdCols.find(c => c.name === 'end_state_history')) {
                 db.exec("ALTER TABLE projects ADD COLUMN end_state_history TEXT DEFAULT '[]'");
                 const seedTs = new Date().toISOString();
@@ -264,7 +268,7 @@ const JSON_COLS = new Set([
     'antigravity_payload', 'dependencies',
     'suspended_context', 'resume_action',
     'tags',
-    'needs', 'end_state_history'
+    'needs', 'end_state_history', 'end_state_criteria'
 ]);
 
 function deserRow(row) {

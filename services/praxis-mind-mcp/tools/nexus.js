@@ -36,6 +36,9 @@ function register(server, ctx) {
             end_state_updated_at: p.end_state_updated_at || null,
             tags: Array.isArray(p.tags) ? p.tags : [],
             open_needs: openNeeds.map((n) => ({ id: n.id, kind: n.kind, description: n.description })),
+            end_state_criteria: Array.isArray(p.end_state_criteria)
+              ? p.end_state_criteria.map((c) => ({ id: c.id, kind: c.kind, description: c.description, enabled: c.enabled !== false }))
+              : [],
           };
         });
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_projects_list', success: true, latency_ms: Date.now() - started });

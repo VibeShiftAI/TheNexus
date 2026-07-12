@@ -378,6 +378,48 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     const NEED_STATUSES = ['open', 'met', 'dropped'];
     const MAX_NEEDS = 50;
 
+    const CRITERION_KINDS = ['url_up', 'command', 'task_set'];
+    const MAX_CRITERIA = 20;
+
+    /** Normalize + validate a full end_state_criteria array (mirrors
+     *  @praxis/contract EndStateCriterionSchema). Returns { criteria } or { error }. */
+    function normalizeCriteria(raw) {
+        if (!Array.isArray(raw)) return { error: 'end_state_criteria must be an array' };
+        if (raw.length > MAX_CRITERIA) return { error: `end_state_criteria capped at ${MAX_CRITERIA} entries` };
+        const criteria = [];
+        for (const item of raw) {
+            if (!item || typeof item !== 'object') return { error: 'each criterion must be an object' };
+            const description = String(item.description || '').trim();
+            if (!description) return { error: 'each criterion requires a description' };
+            if (!CRITERION_KINDS.includes(item.kind)) {
+                return { error: `criterion kind must be one of: ${CRITERION_KINDS.join(', ')}` };
+            }
+            if (item.kind === 'url_up' && !String(item.url || '').match(/^https?:\/\//)) {
+                return { error: 'url_up criterion requires an http(s) url' };
+            }
+            if (item.kind === 'command' && !String(item.command || '').trim()) {
+                return { error: 'command criterion requires a command' };
+            }
+            if (item.kind === 'task_set' && (!Array.isArray(item.task_ids) || item.task_ids.length === 0)) {
+                return { error: 'task_set criterion requires a non-empty task_ids array' };
+            }
+            const criterion = {
+                id: item.id || crypto.randomUUID().slice(0, 8),
+                kind: item.kind,
+                description: description.slice(0, 300),
+                enabled: item.enabled !== false,
+                created_at: item.created_at || new Date().toISOString(),
+            };
+            if (item.url) criterion.url = String(item.url).slice(0, 500);
+            if (item.expect_status !== undefined) criterion.expect_status = Number(item.expect_status);
+            if (item.command) criterion.command = String(item.command).slice(0, 300);
+            if (Array.isArray(item.task_ids)) criterion.task_ids = item.task_ids.map(String).slice(0, 50);
+            if (item.source) criterion.source = String(item.source).slice(0, 80);
+            criteria.push(criterion);
+        }
+        return { criteria };
+    }
+
     /** Normalize + validate a full needs array. Returns { needs } or { error }. */
     function normalizeNeeds(raw) {
         if (!Array.isArray(raw)) return { error: 'needs must be an array' };
@@ -415,7 +457,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         const allowedFields = [
             'name', 'description', 'type', 'vibe', 'stack', 'urls', 'path',
             'status', 'priority', 'end_state', 'tags',
-            'upgrade_posture', 'needs',
+            'upgrade_posture', 'needs', 'end_state_criteria',
             // end_state revision metadata — consumed by db.updateProject's
             // history appender, never stored as columns.
             'end_state_source', 'end_state_reason',
@@ -437,6 +479,11 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             const result = normalizeNeeds(filteredUpdates.needs);
             if (result.error) return res.status(400).json({ error: result.error });
             filteredUpdates.needs = result.needs;
+        }
+        if (filteredUpdates.end_state_criteria !== undefined) {
+            const result = normalizeCriteria(filteredUpdates.end_state_criteria);
+            if (result.error) return res.status(400).json({ error: result.error });
+            filteredUpdates.end_state_criteria = result.criteria;
         }
         try {
             const updated = await db.updateProject(id, filteredUpdates);

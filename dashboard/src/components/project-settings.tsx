@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Project, ProjectNeed, updateProject, archiveProject } from "@/lib/nexus";
+import { Project, ProjectNeed, EndStateCriterion, updateProject, archiveProject } from "@/lib/nexus";
 import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen, Target, Archive, PauseCircle, Gauge, Bot, ListChecks, History } from "lucide-react";
 
 interface ProjectSettingsProps {
@@ -28,6 +28,13 @@ const POSTURE_LABELS: Record<string, string> = {
 
 const NEED_KINDS: ProjectNeed["kind"][] = ["capability", "resource", "credential", "decision", "information"];
 
+const CRITERION_KINDS: EndStateCriterion["kind"][] = ["url_up", "command", "task_set"];
+const CRITERION_HINT: Record<EndStateCriterion["kind"], string> = {
+    url_up: "https://… (passes when the URL responds 2xx/3xx)",
+    command: "npm test (runs in the project workspace; passes on exit 0)",
+    task_set: "task-id, task-id (passes when all listed tasks are completed)",
+};
+
 export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
     const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
@@ -39,6 +46,7 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
     const [endStateReason, setEndStateReason] = useState('');
     const [showHistory, setShowHistory] = useState(false);
     const [needEntry, setNeedEntry] = useState<{ kind: ProjectNeed["kind"]; description: string }>({ kind: 'capability', description: '' });
+    const [criterionEntry, setCriterionEntry] = useState<{ kind: EndStateCriterion["kind"]; description: string; target: string }>({ kind: 'url_up', description: '', target: '' });
 
     const openNeeds = (project.needs ?? []).filter(n => n.status === 'open');
     const endStateChanged = (editedProject.end_state || '') !== (project.end_state || '');
@@ -66,6 +74,38 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
 
     const handleRemoveNeed = (id: string) => {
         setEditedProject(prev => ({ ...prev, needs: (prev.needs ?? []).filter(n => n.id !== id) }));
+    };
+
+    const handleAddCriterion = () => {
+        const target = criterionEntry.target.trim();
+        const description = criterionEntry.description.trim();
+        if (!description || !target) return;
+        const criterion: EndStateCriterion = {
+            id: crypto.randomUUID().slice(0, 8),
+            kind: criterionEntry.kind,
+            description,
+            enabled: true,
+            created_at: new Date().toISOString(),
+            source: 'operator',
+            ...(criterionEntry.kind === 'url_up' ? { url: target } : {}),
+            ...(criterionEntry.kind === 'command' ? { command: target } : {}),
+            ...(criterionEntry.kind === 'task_set'
+                ? { task_ids: target.split(',').map(s => s.trim()).filter(Boolean) }
+                : {}),
+        };
+        setEditedProject(prev => ({ ...prev, end_state_criteria: [...(prev.end_state_criteria ?? []), criterion] }));
+        setCriterionEntry({ kind: 'url_up', description: '', target: '' });
+    };
+
+    const handleToggleCriterion = (id: string) => {
+        setEditedProject(prev => ({
+            ...prev,
+            end_state_criteria: (prev.end_state_criteria ?? []).map(c => c.id === id ? { ...c, enabled: c.enabled === false } : c),
+        }));
+    };
+
+    const handleRemoveCriterion = (id: string) => {
+        setEditedProject(prev => ({ ...prev, end_state_criteria: (prev.end_state_criteria ?? []).filter(c => c.id !== id) }));
     };
 
     const handleArchive = async () => {
@@ -133,6 +173,7 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                 priority: editedProject.priority ?? 0,
                 upgrade_posture: editedProject.upgrade_posture ?? 'auto',
                 needs: editedProject.needs ?? [],
+                end_state_criteria: editedProject.end_state_criteria ?? [],
             });
             setIsEditing(false);
             setEndStateReason('');
@@ -479,6 +520,69 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                                 type="button"
                                 onClick={handleAddNeed}
                                 className="p-1.5 bg-amber-500/20 text-amber-400 rounded hover:bg-amber-500/30"
+                            >
+                                <Plus size={16} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* End-state acceptance criteria — how "done" is verified */}
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-cyan-400 uppercase flex items-center gap-2">
+                        <ListChecks size={12} />
+                        End-State Acceptance Criteria — How &quot;Done&quot; Is Verified
+                    </label>
+                    <div className="bg-slate-950 border border-cyan-500/20 rounded-lg p-3 space-y-2">
+                        {(editedProject.end_state_criteria ?? []).length === 0 && (
+                            <p className="text-xs text-slate-600">No machine-checkable criteria. Declare URL probes, test commands, or task sets — the weekly steward verifies these and reports per-criterion pass/fail instead of guessing from open-task counts.</p>
+                        )}
+                        {(editedProject.end_state_criteria ?? []).map(c => (
+                            <div key={c.id} className={`flex items-center justify-between gap-2 text-sm rounded px-2 py-1.5 ${c.enabled !== false ? 'bg-slate-900' : 'bg-slate-900/40 opacity-60'}`}>
+                                <div className="flex items-start gap-2 min-w-0">
+                                    <span className="shrink-0 mt-0.5 px-1.5 py-px rounded bg-cyan-500/15 text-cyan-300 text-[10px] font-mono uppercase">{c.kind}</span>
+                                    <span className={`text-slate-300 ${c.enabled === false ? 'line-through' : ''}`}>
+                                        {c.description}
+                                        <span className="text-slate-500 ml-1 font-mono text-xs">{c.url || c.command || (c.task_ids ?? []).join(', ')}</span>
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <button type="button" onClick={() => handleToggleCriterion(c.id)} className={`px-1.5 py-0.5 text-[10px] rounded ${c.enabled !== false ? 'bg-slate-700/50 text-slate-400 hover:bg-slate-700' : 'bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25'}`}>
+                                        {c.enabled !== false ? 'DISABLE' : 'ENABLE'}
+                                    </button>
+                                    <button type="button" onClick={() => handleRemoveCriterion(c.id)} className="text-slate-600 hover:text-red-400 ml-1">
+                                        <Trash2 size={13} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        <div className="flex gap-2 pt-1">
+                            <select
+                                value={criterionEntry.kind}
+                                onChange={(e) => setCriterionEntry(prev => ({ ...prev, kind: e.target.value as EndStateCriterion["kind"] }))}
+                                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:border-cyan-500 outline-none appearance-none"
+                            >
+                                {CRITERION_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                            </select>
+                            <input
+                                type="text"
+                                placeholder="What this proves (e.g. site is live)"
+                                value={criterionEntry.description}
+                                onChange={(e) => setCriterionEntry(prev => ({ ...prev, description: e.target.value }))}
+                                className="w-56 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:border-cyan-500 outline-none"
+                            />
+                            <input
+                                type="text"
+                                placeholder={CRITERION_HINT[criterionEntry.kind]}
+                                value={criterionEntry.target}
+                                onChange={(e) => setCriterionEntry(prev => ({ ...prev, target: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCriterion(); } }}
+                                className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:border-cyan-500 outline-none"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleAddCriterion}
+                                className="p-1.5 bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30"
                             >
                                 <Plus size={16} />
                             </button>
