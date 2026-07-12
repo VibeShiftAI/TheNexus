@@ -7,7 +7,7 @@
  *   GET /p/:slug   a project's space — card, end state, needs, tasks, README
  *
  * Mounted twice by server.js: under /hub on every hostname (local dev), and
- * at the root of lab.apps.vibeshiftai.com through the tunnel (the shell tab).
+ * at the root of lab.vibeshiftai.com through the tunnel (the shell tab).
  * Access gates the hostname at the edge; like /api/updates we do no auth
  * here ourselves. READMEs are read from the project's workspace path as
  * recorded on the board — display only, never executed.

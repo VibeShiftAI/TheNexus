@@ -70,7 +70,7 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter);
 
 // ─── Project Hub (THE LAB) ──────────────────────────────────────────────────
-// lab.apps.vibeshiftai.com serves the hub at its root — that's the travel
+// lab.vibeshiftai.com serves the hub at its root — that's the travel
 // shell's THE LAB tab plus the /p/<slug> spaces for projects without a web
 // UI of their own. Registered ahead of the root JSON route so the lab
 // hostname can own '/'; /hub/ keeps it reachable on localhost for dev.
