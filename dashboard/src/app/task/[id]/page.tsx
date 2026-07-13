@@ -38,6 +38,7 @@ import {
 import { copyClaudeDispatch } from "@/lib/claude-dispatch";
 import { STATUS_OPTIONS } from "@/components/task-edit-modal";
 import { TaskDispatchConsole } from "@/components/task-view/dispatch-console";
+import { QaReviewPanel } from "@/components/task-view/qa-review-panel";
 import { TaskSequencePanel } from "@/components/task-view/task-sequence";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
@@ -353,6 +354,8 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                     <Markdown content={walkthrough.content} />
                   </section>
                 )}
+
+                <QaReviewPanel taskId={task.id} />
 
                 <section>
                   <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">

@@ -38,6 +38,7 @@ import {
   type TaskDispatch,
 } from "@/lib/dispatches";
 import {
+  DEFAULT_EXECUTOR,
   EXECUTOR_OPTIONS,
   useExecutorModelOptions,
   type ExecutorName,
@@ -155,7 +156,7 @@ function DispatchBar({
   // task is already loaded before this bar mounts, so there's no empty flash.
   const initialExecutor: ExecutorName = EXECUTOR_OPTIONS.includes(defaultExecutor as ExecutorName)
     ? (defaultExecutor as ExecutorName)
-    : "claude-code";
+    : DEFAULT_EXECUTOR;
   const initialModel = defaultModel ?? "";
   const initialInstructions = defaultInstructions ?? "";
 
@@ -163,10 +164,22 @@ function DispatchBar({
   const [model, setModel] = useState(initialModel);
   const [instructions, setInstructions] = useState(initialInstructions);
   const [showInstructions, setShowInstructions] = useState(Boolean(initialInstructions));
+  // Progressive disclosure: keep the worker/model dropdowns hidden while this
+  // task rides the managed default (Claude Code + CLI default model). A task
+  // carrying a custom executor or a pinned model opens expanded so the operator
+  // sees what's configured without hunting for it.
+  const [showAdvanced, setShowAdvanced] = useState(
+    !(initialExecutor === DEFAULT_EXECUTOR && !initialModel),
+  );
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ tone: "ok" | "refused" | "error"; text: string } | null>(null);
 
   const { options, fallback, note } = optionsFor(executor);
+  // Human-readable model for the collapsed summary — the pinned model's label,
+  // or the executor default when nothing is pinned.
+  const modelLabel = model
+    ? options.find((o) => o.id === model)?.label ?? model
+    : `default (${fallback || "CLI default"})`;
 
   // ── Auto-save of the saved dispatch defaults ────────────────────────────
   // Saving is action-driven — the onChange handlers call scheduleSave(), it is
@@ -211,13 +224,14 @@ function DispatchBar({
     hydratedTaskRef.current = taskId;
     const nextExecutor: ExecutorName = EXECUTOR_OPTIONS.includes(defaultExecutor as ExecutorName)
       ? (defaultExecutor as ExecutorName)
-      : "claude-code";
+      : DEFAULT_EXECUTOR;
     const nextModel = defaultModel ?? "";
     const nextInstructions = defaultInstructions ?? "";
     setExecutor(nextExecutor);
     setModel(nextModel);
     setInstructions(nextInstructions);
     setShowInstructions(Boolean(nextInstructions));
+    setShowAdvanced(!(nextExecutor === DEFAULT_EXECUTOR && !nextModel));
     savedSnapshotRef.current = JSON.stringify([nextExecutor, nextModel, nextInstructions]);
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSaveState("idle");
@@ -273,50 +287,87 @@ function DispatchBar({
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-xs text-slate-400">
-          Worker
-          <select
-            value={executor}
-            disabled={busy}
-            onChange={(e) => {
-              setExecutor(e.target.value as ExecutorName);
-              // A chosen model is executor-specific — clear it so the dispatch
-              // rides the new executor's default (same rule as the morning plan).
-              setModel("");
-              scheduleSave();
-            }}
-            className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100 outline-none focus:border-cyan-500/60"
-          >
-            {EXECUTOR_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-        </label>
+        {showAdvanced ? (
+          <>
+            <label className="flex flex-col gap-1 text-xs text-slate-400">
+              Worker
+              <select
+                value={executor}
+                disabled={busy}
+                onChange={(e) => {
+                  setExecutor(e.target.value as ExecutorName);
+                  // A chosen model is executor-specific — clear it so the dispatch
+                  // rides the new executor's default (same rule as the morning plan).
+                  setModel("");
+                  scheduleSave();
+                }}
+                className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100 outline-none focus:border-cyan-500/60"
+              >
+                {EXECUTOR_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </label>
 
-        <label className="flex min-w-52 flex-col gap-1 text-xs text-slate-400">
-          Model
-          <select
-            value={model}
+            <label className="flex min-w-52 flex-col gap-1 text-xs text-slate-400">
+              Model
+              <select
+                value={model}
+                disabled={busy}
+                onChange={(e) => {
+                  setModel(e.target.value);
+                  scheduleSave();
+                }}
+                title={`${executor} model for this dispatch (billed to the ${note} subscription)`}
+                className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-purple-200 outline-none focus:border-purple-500/60"
+              >
+                <option value="">default ({fallback || "CLI default"})</option>
+                {options.map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                // Collapse back to the managed default: reset the worker/model to
+                // the opinionated default so "hide" actually returns to default.
+                setExecutor(DEFAULT_EXECUTOR);
+                setModel("");
+                setShowAdvanced(false);
+                scheduleSave();
+              }}
+              title="Return to the managed default (Claude Code · CLI default model)"
+              className="h-9 self-end rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200 disabled:opacity-50"
+            >
+              Use default
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
             disabled={busy}
-            onChange={(e) => {
-              setModel(e.target.value);
-              scheduleSave();
-            }}
-            title={`${executor} model for this dispatch (billed to the ${note} subscription)`}
-            className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-purple-200 outline-none focus:border-purple-500/60"
+            onClick={() => setShowAdvanced(true)}
+            title="Choose a different worker or model for this dispatch"
+            className="group flex h-9 items-center gap-2 rounded-md border border-slate-800 bg-slate-950/60 px-3 text-xs text-slate-400 transition-colors hover:border-cyan-500/40 hover:text-slate-200 disabled:opacity-50"
           >
-            <option value="">default ({fallback || "CLI default"})</option>
-            {options.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
-            ))}
-          </select>
-        </label>
+            <span className="text-slate-500">Worker</span>
+            <span className="font-semibold text-slate-200">{executor}</span>
+            <span className="text-slate-700">·</span>
+            <span className="text-slate-500">Model</span>
+            <span className="font-semibold text-purple-200">{modelLabel}</span>
+            <ChevronRight size={13} className="text-slate-600 transition-transform group-hover:translate-x-0.5" />
+            <span className="text-cyan-300/80">Change</span>
+          </button>
+        )}
 
         <button
           type="button"
           disabled={busy}
           onClick={() => setShowInstructions((v) => !v)}
-          className="h-9 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-300 transition-colors hover:border-cyan-500/40 hover:text-cyan-200 disabled:opacity-50"
+          className="h-9 self-end rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-300 transition-colors hover:border-cyan-500/40 hover:text-cyan-200 disabled:opacity-50"
         >
           {showInstructions ? "Hide instructions" : "Add instructions"}
         </button>

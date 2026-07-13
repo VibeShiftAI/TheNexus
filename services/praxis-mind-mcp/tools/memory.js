@@ -9,6 +9,7 @@ const { checkPrivilege } = require('../lib/auth');
 const { checkAndIncrement } = require('../lib/ratelimit');
 const backends = require('../lib/backends');
 const ledger = require('../lib/ledger');
+const { executeTransaction, compareFields } = require('../lib/transactions');
 
 const READ_ONLY_CYPHER_RE = /\b(CREATE|DELETE|MERGE|SET|REMOVE|DROP|CALL\s+apoc\.create)\b/i;
 
@@ -104,20 +105,43 @@ function register(server, ctx) {
       const started = Date.now();
       try {
         const uuid = `coding-${ctx.caller.identity}_${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}_${crypto.randomBytes(3).toString('hex')}`;
-        const data = await backends.cortexIngestAtoms({
-          episode_uuid: uuid,
-          episode_text: text,
-          entities,
-          relations: [],
-          factoids,
-          source: `coding-agents-${ctx.caller.identity}`,
-          namespace: ctx.caller.namespace,
+        const source = `coding-agents-${ctx.caller.identity}`;
+        const target = { episode_uuid: uuid, namespace: ctx.caller.namespace };
+        const tx = await executeTransaction({
+          tool: 'memory_write',
+          caller: ctx.caller,
+          target,
+          intent: { text, kind, entities, factoids },
+          captureBefore: () => backends.cortexEpisodeById(uuid),
+          validatePreconditions: ({ before }) => before === null
+            ? []
+            : [{ field: 'episode_uuid', expected: null, actual: before.name || uuid }],
+          apply: () => backends.cortexIngestAtoms({
+            episode_uuid: uuid,
+            episode_text: text,
+            entities,
+            relations: [],
+            factoids,
+            source,
+            namespace: ctx.caller.namespace,
+          }),
+          readAfter: () => backends.cortexEpisodeById(uuid),
+          verify: ({ after }) => {
+            const mismatches = compareFields(after, {
+              name: uuid,
+              content: text.slice(0, 8000),
+              source,
+              factoids,
+            });
+            return { ok: mismatches.length === 0, mismatches };
+          },
         });
         ledger.record({ caller: ctx.caller.identity, tool: 'memory_write', success: true, latency_ms: Date.now() - started });
-        return { content: [{ type: 'text', text: JSON.stringify({ episode_uuid: uuid, kind, ...data }, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify({ episode_uuid: uuid, kind, ...tx.result, transaction_id: tx.transactionId }, null, 2) }] };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'memory_write', success: false, latency_ms: Date.now() - started, error: e.message });
-        return { content: [{ type: 'text', text: `memory_write failed: ${e.message}` }], isError: true };
+        const suffix = e.transactionId ? ` (transaction ${e.transactionId})` : '';
+        return { content: [{ type: 'text', text: `memory_write failed${suffix}: ${e.message}` }], isError: true };
       }
     },
   );

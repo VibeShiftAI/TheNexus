@@ -21,6 +21,13 @@ import {
 export type ExecutorName = "antigravity" | "codex" | "claude-code";
 export const EXECUTOR_OPTIONS: ExecutorName[] = ["antigravity", "codex", "claude-code"];
 
+/**
+ * The managed default worker. Every dispatch surface starts here and only
+ * exposes the full executor/model picker on explicit opt-in (progressive
+ * disclosure) — an opinionated default beats a paradox-of-choice roster.
+ */
+export const DEFAULT_EXECUTOR: ExecutorName = "claude-code";
+
 export interface ExecutorModelOption {
   id: string;
   label: string;

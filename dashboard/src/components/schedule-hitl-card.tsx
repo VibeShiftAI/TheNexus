@@ -13,7 +13,8 @@
  *     each candidate Approve/Archive posts immediately, then Done clears the item.
  *   • BoardMaintenanceHitlCard (kind "board-maintenance") — Groundskeeper
  *     archive proposals (Archive/Keep ride the Done payload) + the Monday QA
- *     spot-audit (informational); Done clears the item.
+ *     spot-audit (each sample links to its task + a Holds up/Flag verdict that
+ *     also rides the Done payload); Done clears the item.
  *
  * The generic HitlInbox dispatches by `request.metadata.kind` using the
  * exported `isScheduleHitl` / `isSkillCandidatesHitl` / `isBoardMaintenanceHitl`
@@ -21,11 +22,14 @@
  */
 
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
+  Flag,
   Loader2,
   Minus,
   Plus,
@@ -187,6 +191,14 @@ interface QaSpotAuditMeta {
   reviewedAt: string;
 }
 
+/**
+ * Human verdict on a sampled QA pass: "ok" = the pass holds up, "flag" = it
+ * doesn't (reviewer may have rubber-stamped). Rides back on Done's
+ * `payload.auditDecisions` (origTaskId → verdict); the Praxis side records a
+ * durable signal so a flagged pass isn't lost. Undecided samples send nothing.
+ */
+type AuditDecision = "ok" | "flag";
+
 interface ScheduleMetadata {
   kind: "day-schedule";
   date: string;
@@ -205,7 +217,7 @@ interface MaintenanceMetadata {
   date: string;
   /** Groundskeeper archive proposals — decisions ride Done's payload.pruneDecisions. */
   pruneProposals?: PruneProposalMeta[];
-  /** Monday QA spot-audit — informational only, no decision rides back. */
+  /** Monday QA spot-audit — Holds up/Flag verdicts ride Done's payload.auditDecisions. */
   qaSpotAudit?: QaSpotAuditMeta[];
 }
 
@@ -856,6 +868,8 @@ export function BoardMaintenanceHitlCard({
   // Groundskeeper decisions are batched into the Done payload — toggling a
   // button stages the decision; Done sends it.
   const [pruneDecisions, setPruneDecisions] = useState<Record<string, PruneDecision>>({});
+  // QA spot-audit verdicts ride the same Done payload (origTaskId → verdict).
+  const [auditDecisions, setAuditDecisions] = useState<Record<string, AuditDecision>>({});
   const [error, setError] = useState<string | null>(null);
 
   function togglePruneDecision(id: string, decision: PruneDecision) {
@@ -867,13 +881,30 @@ export function BoardMaintenanceHitlCard({
     });
   }
 
+  function toggleAuditDecision(origTaskId: string, decision: AuditDecision) {
+    setAuditDecisions((prev) => {
+      const next = { ...prev };
+      if (next[origTaskId] === decision) delete next[origTaskId];
+      else next[origTaskId] = decision;
+      return next;
+    });
+  }
+
   async function done() {
     setError(null);
     try {
       const hasPrune = Object.keys(pruneDecisions).length > 0;
+      const hasAudit = Object.keys(auditDecisions).length > 0;
+      const payload =
+        hasPrune || hasAudit
+          ? {
+              ...(hasPrune ? { pruneDecisions } : {}),
+              ...(hasAudit ? { auditDecisions } : {}),
+            }
+          : undefined;
       await onResolve(request.id, {
         choice: "done",
-        ...(hasPrune ? { payload: { pruneDecisions } } : {}),
+        ...(payload ? { payload } : {}),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Resolution failed");
@@ -982,21 +1013,62 @@ export function BoardMaintenanceHitlCard({
               🔍 QA spot-audit — {audit.length} sampled pass{audit.length === 1 ? "" : "es"} from last week
             </span>
             <span className="text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
-              Open the task, eyeball the diff — does the pass verdict hold up?
+              Open the task to read the reviewer&apos;s verdict — does the pass hold up?
             </span>
           </div>
           <ul className="divide-y divide-slate-700/40">
-            {audit.map((sample) => (
-              <li key={sample.origTaskId} className="px-2 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)]">
-                <span className="font-semibold text-slate-100">
-                  {sample.title ?? sample.origTaskId}
-                </span>
-                <span className="ml-1.5 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
-                  {sample.origTaskId.slice(0, 8)} · by {sample.author ?? "?"} · reviewed by{" "}
-                  {sample.reviewer ?? "?"} · {new Date(sample.reviewedAt).toLocaleDateString()}
-                </span>
-              </li>
-            ))}
+            {audit.map((sample) => {
+              const verdict = auditDecisions[sample.origTaskId];
+              return (
+                <li
+                  key={sample.origTaskId}
+                  className="flex items-start justify-between gap-2 px-2 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)]"
+                >
+                  <Link
+                    href={`/task/${sample.origTaskId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group min-w-0 flex-1"
+                    title="Open the reviewed task in a new tab — includes the QA review transcript"
+                  >
+                    <span className="flex items-center gap-1 font-semibold text-slate-100 group-hover:text-sky-300">
+                      <span className="truncate">{sample.title ?? sample.origTaskId}</span>
+                      <ExternalLink className="h-3 w-3 shrink-0 text-slate-500 group-hover:text-sky-300" />
+                    </span>
+                    <span className="mt-0.5 block text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
+                      {sample.origTaskId.slice(0, 8)} · by {sample.author ?? "?"} · reviewed by{" "}
+                      {sample.reviewer ?? "?"} · {new Date(sample.reviewedAt).toLocaleDateString()}
+                    </span>
+                  </Link>
+                  <div className="flex shrink-0 gap-1 pt-0.5">
+                    <button
+                      onClick={() => toggleAuditDecision(sample.origTaskId, "ok")}
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] ${
+                        verdict === "ok"
+                          ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
+                          : "border-slate-700 text-slate-300 hover:border-emerald-400 hover:text-emerald-300"
+                      }`}
+                      title="The pass holds up — recorded when you tap Done"
+                    >
+                      <CheckCircle2 className="h-3 w-3" />
+                      Holds up
+                    </button>
+                    <button
+                      onClick={() => toggleAuditDecision(sample.origTaskId, "flag")}
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] ${
+                        verdict === "flag"
+                          ? "border-rose-400 bg-rose-500/20 text-rose-200"
+                          : "border-slate-700 text-slate-300 hover:border-rose-400 hover:text-rose-300"
+                      }`}
+                      title="The pass does NOT hold up — records a durable re-review signal on Done"
+                    >
+                      <Flag className="h-3 w-3" />
+                      Flag
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

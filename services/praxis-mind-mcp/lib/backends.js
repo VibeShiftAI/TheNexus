@@ -81,6 +81,14 @@ async function cortexIngestAtoms(payload) {
   });
 }
 
+async function cortexEpisodeById(episodeUuid) {
+  const data = await cortexCypher({
+    query: 'MATCH (episode:Episodic {name: $episode_uuid}) RETURN episode LIMIT 1',
+    params: { episode_uuid: episodeUuid },
+  });
+  return data?.rows?.[0]?.episode || null;
+}
+
 // ─────────────────── Praxis ───────────────────
 
 async function praxisChat({ messages, system = null, max_tokens = 2048, depth = 1, caller = 'unknown' }) {
@@ -105,6 +113,10 @@ async function praxisChat({ messages, system = null, max_tokens = 2048, depth = 
 
 async function nexusProjects() {
   return httpJSON(`${cfg.NEXUS}/api/projects`);
+}
+
+async function nexusProjectById(projectId) {
+  return httpJSON(`${cfg.NEXUS}/api/projects/${encodeURIComponent(projectId)}`);
 }
 
 async function nexusTasksByProject(projectId) {
@@ -183,8 +195,10 @@ module.exports = {
   cortexCypher,
   cortexVaultSearch,
   cortexIngestAtoms,
+  cortexEpisodeById,
   praxisChat,
   nexusProjects,
+  nexusProjectById,
   nexusTasksByProject,
   nexusTaskById,
   nexusTaskCreate,

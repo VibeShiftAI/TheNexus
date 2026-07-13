@@ -12,6 +12,7 @@ const { cortexVaultSearch } = require('../lib/backends');
 const { checkPrivilege } = require('../lib/auth');
 const { checkAndIncrement } = require('../lib/ratelimit');
 const ledger = require('../lib/ledger');
+const { executeTransaction, compareFields } = require('../lib/transactions');
 
 const WATCHER_ONLY = new Set(['MEMORY.md', 'AGENTS.md', 'shared-mind-context.md']);
 const ROBERT_ONLY = new Set(['SOUL.md', 'USER.md', 'CONTEXT.md']);
@@ -76,8 +77,12 @@ function register(server, ctx) {
       path: z.string().describe('Relative path inside the vault. Must live under memories/, projects/, workflows/, incidents/, skills/, or personas/.'),
       content: z.string().describe('Full file content (markdown).'),
       mode: z.enum(['replace', 'append']).default('replace').describe('replace overwrites; append concatenates.'),
+      expected_exists: z.boolean().optional()
+        .describe('Optimistic concurrency guard: reject unless file existence matches.'),
+      expected_content: z.string().optional()
+        .describe('Optimistic concurrency guard: reject unless the current full file content exactly matches.'),
     },
-    async ({ path: rel, content, mode }) => {
+    async ({ path: rel, content, mode, expected_exists, expected_content }) => {
       const auth = checkPrivilege(ctx.caller, 'vault.write');
       if (auth) return auth;
       const rl = checkAndIncrement(ctx.caller.identity, 'vault_write', ctx.caller.rate_limits_per_hour?.['vault.write']);
@@ -91,17 +96,41 @@ function register(server, ctx) {
       }
       try {
         const abs = resolveVaultPath(rel);
-        fs.mkdirSync(path.dirname(abs), { recursive: true });
-        if (mode === 'append') {
-          fs.appendFileSync(abs, content);
-        } else {
-          fs.writeFileSync(abs, content);
-        }
+        const expected = {};
+        if (expected_exists !== undefined) expected.exists = expected_exists;
+        if (expected_content !== undefined) expected.content = expected_content;
+        const tx = await executeTransaction({
+          tool: 'vault_write',
+          caller: ctx.caller,
+          target: { path: rel },
+          intent: { mode, content, expected },
+          captureBefore: async () => {
+            const exists = fs.existsSync(abs);
+            return { exists, content: exists ? fs.readFileSync(abs, 'utf8') : null };
+          },
+          validatePreconditions: ({ before }) => compareFields(before, expected),
+          apply: async () => {
+            fs.mkdirSync(path.dirname(abs), { recursive: true });
+            if (mode === 'append') fs.appendFileSync(abs, content);
+            else fs.writeFileSync(abs, content);
+            return { bytes_written: Buffer.byteLength(content), path: rel, mode };
+          },
+          readAfter: async () => {
+            const exists = fs.existsSync(abs);
+            return { exists, content: exists ? fs.readFileSync(abs, 'utf8') : null };
+          },
+          verify: ({ before, after }) => {
+            const expectedAfter = mode === 'append' ? `${before.content || ''}${content}` : content;
+            const mismatches = compareFields(after, { exists: true, content: expectedAfter });
+            return { ok: mismatches.length === 0, mismatches };
+          },
+        });
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_write', success: true });
-        return { content: [{ type: 'text', text: `Wrote ${content.length} bytes to ${rel}` }] };
+        return { content: [{ type: 'text', text: `Wrote ${Buffer.byteLength(content)} bytes to ${rel} (transaction ${tx.transactionId})` }] };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_write', success: false, error: e.message });
-        return { content: [{ type: 'text', text: `Error writing ${rel}: ${e.message}` }], isError: true };
+        const suffix = e.transactionId ? ` (transaction ${e.transactionId})` : '';
+        return { content: [{ type: 'text', text: `Error writing ${rel}${suffix}: ${e.message}` }], isError: true };
       }
     },
   );

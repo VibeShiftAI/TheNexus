@@ -38,6 +38,8 @@ module.exports = {
   // State files (shared across ephemeral MCP spawns — must be WAL/atomic)
   KEYS_FILE: path.join(os.homedir(), '.praxis-mind', 'keys.json'),
   LEDGER_DB: path.join(os.homedir(), '.praxis-mind', 'cost_ledger.sqlite'),
+  TRANSITION_LOG: process.env.PRAXIS_MIND_TRANSITION_LOG
+    || path.join(os.homedir(), '.praxis-mind', 'transition-log.jsonl'),
 
   // Defaults
   HTTP_TIMEOUT_MS: 30000,

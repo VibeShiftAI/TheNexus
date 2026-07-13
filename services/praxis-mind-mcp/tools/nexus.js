@@ -8,6 +8,18 @@ const { checkPrivilege } = require('../lib/auth');
 const { checkAndIncrement } = require('../lib/ratelimit');
 const backends = require('../lib/backends');
 const ledger = require('../lib/ledger');
+const { executeTransaction, compareFields } = require('../lib/transactions');
+
+function withTransactionId(result, transactionId) {
+  return result && typeof result === 'object' && !Array.isArray(result)
+    ? { ...result, transaction_id: transactionId }
+    : { result, transaction_id: transactionId };
+}
+
+function transactionFailure(tool, error) {
+  const suffix = error.transactionId ? ` (transaction ${error.transactionId})` : '';
+  return `${tool} failed${suffix}: ${error.message}`;
+}
 
 function register(server, ctx) {
   server.tool(
@@ -66,6 +78,10 @@ function register(server, ctx) {
         .describe('Why the end state changed (e.g. "previous horizon reached", "scope pivot"). Stored on the revision.'),
       upgrade_posture: z.enum(['auto', 'propose', 'off']).optional()
         .describe('How much autonomous improvement work this project accepts.'),
+      expected_status: z.enum(['active', 'parked', 'paused', 'completed', 'archived']).optional()
+        .describe('Optimistic concurrency guard: reject unless the current project status exactly matches.'),
+      expected_end_state_updated_at: z.string().optional()
+        .describe('Optimistic concurrency guard: reject unless the current end-state revision timestamp exactly matches.'),
       add_need: z.object({
         kind: z.enum(['capability', 'resource', 'credential', 'decision', 'information'])
           .describe('capability = missing component/ability, resource = compute/money/hardware, credential = key/account Robert must provision, decision = human call needed, information = knowledge to hunt first.'),
@@ -78,7 +94,7 @@ function register(server, ctx) {
         notes: z.string().optional().describe('How it was met / why dropped.'),
       }).optional().describe('Close out (or reopen) one existing need.'),
     },
-    async ({ project_id, status, priority, description, end_state, end_state_reason, upgrade_posture, add_need, resolve_need }) => {
+    async ({ project_id, status, priority, description, end_state, end_state_reason, upgrade_posture, add_need, resolve_need, expected_status, expected_end_state_updated_at }) => {
       // Project data writes ride the same trust tier as task writes: accept
       // the dedicated privilege when provisioned, else fall back to the
       // board-writer privilege existing keys already hold.
@@ -106,38 +122,79 @@ function register(server, ctx) {
 
       const started = Date.now();
       try {
-        const result = {};
-        if (Object.keys(patch).length > 0) {
-          const updated = await backends.nexusProjectUpdate(project_id, patch);
-          result.project = {
-            id: updated.id,
-            name: updated.name,
-            status: updated.status,
-            priority: updated.priority,
-            upgrade_posture: updated.upgrade_posture,
-            end_state: updated.end_state,
-            end_state_updated_at: updated.end_state_updated_at,
-          };
-        }
-        if (add_need) {
-          const added = await backends.nexusProjectAddNeed(project_id, {
-            ...add_need,
-            source: `coding-agents-${ctx.caller.identity}`,
-          });
-          result.added_need = added.need;
-        }
-        if (resolve_need) {
-          const resolved = await backends.nexusProjectUpdateNeed(project_id, resolve_need.id, {
-            status: resolve_need.status,
-            notes: resolve_need.notes,
-          });
-          result.resolved_need = resolved.need;
-        }
+        const expected = {};
+        if (expected_status !== undefined) expected.status = expected_status;
+        if (expected_end_state_updated_at !== undefined) expected.end_state_updated_at = expected_end_state_updated_at;
+        const target = { project_id };
+        const tx = await executeTransaction({
+          tool: 'nexus_project_update',
+          caller: ctx.caller,
+          target,
+          intent: { patch, add_need, resolve_need, expected },
+          captureBefore: () => backends.nexusProjectById(project_id),
+          validatePreconditions: ({ before }) => compareFields(before, expected),
+          apply: async () => {
+            const result = {};
+            if (Object.keys(patch).length > 0) {
+              const updated = await backends.nexusProjectUpdate(project_id, patch);
+              result.project = {
+                id: updated.id,
+                name: updated.name,
+                status: updated.status,
+                priority: updated.priority,
+                upgrade_posture: updated.upgrade_posture,
+                end_state: updated.end_state,
+                end_state_updated_at: updated.end_state_updated_at,
+              };
+            }
+            if (add_need) {
+              const added = await backends.nexusProjectAddNeed(project_id, {
+                ...add_need,
+                source: `coding-agents-${ctx.caller.identity}`,
+              });
+              result.added_need = added.need;
+            }
+            if (resolve_need) {
+              const resolved = await backends.nexusProjectUpdateNeed(project_id, resolve_need.id, {
+                status: resolve_need.status,
+                notes: resolve_need.notes,
+              });
+              result.resolved_need = resolved.need;
+            }
+            return result;
+          },
+          readAfter: () => backends.nexusProjectById(project_id),
+          verify: ({ after, applyResult }) => {
+            const intendedPatch = { ...patch };
+            delete intendedPatch.end_state_source;
+            delete intendedPatch.end_state_reason;
+            const mismatches = compareFields(after, intendedPatch);
+            if (add_need) {
+              const added = (after?.needs || []).find((need) => need.id === applyResult?.added_need?.id);
+              if (!added) {
+                mismatches.push({ field: 'add_need', expected: applyResult?.added_need?.id, actual: null });
+              } else {
+                mismatches.push(...compareFields(added, add_need).map((m) => ({ ...m, field: `add_need.${m.field}` })));
+              }
+            }
+            if (resolve_need) {
+              const resolved = (after?.needs || []).find((need) => need.id === resolve_need.id);
+              const expectedNeed = { status: resolve_need.status };
+              if (resolve_need.notes !== undefined) expectedNeed.notes = resolve_need.notes;
+              if (!resolved) {
+                mismatches.push({ field: 'resolve_need.id', expected: resolve_need.id, actual: null });
+              } else {
+                mismatches.push(...compareFields(resolved, expectedNeed).map((m) => ({ ...m, field: `resolve_need.${m.field}` })));
+              }
+            }
+            return { ok: mismatches.length === 0, mismatches };
+          },
+        });
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_project_update', success: true, latency_ms: Date.now() - started });
-        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(withTransactionId(tx.result, tx.transactionId), null, 2) }] };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_project_update', success: false, latency_ms: Date.now() - started, error: e.message });
-        return { content: [{ type: 'text', text: `nexus_project_update failed: ${e.message}` }], isError: true };
+        return { content: [{ type: 'text', text: transactionFailure('nexus_project_update', e) }], isError: true };
       }
     },
   );
@@ -207,21 +264,57 @@ function register(server, ctx) {
       }
       const started = Date.now();
       try {
-        const data = await backends.nexusTaskCreate({
+        const target = { project_id };
+        const createIntent = {
           project_id,
-          name: title,
+          title,
           description,
           priority,
           antigravity_payload,
           dependencies,
           successor_id,
-          source: `coding-agents-${ctx.caller.identity}`,
+        };
+        const tx = await executeTransaction({
+          tool: 'nexus_task_create',
+          caller: ctx.caller,
+          target,
+          intent: createIntent,
+          captureBefore: async () => null,
+          apply: () => backends.nexusTaskCreate({
+            project_id,
+            name: title,
+            description,
+            priority,
+            antigravity_payload,
+            dependencies,
+            successor_id,
+            source: `coding-agents-${ctx.caller.identity}`,
+          }),
+          readAfter: async ({ applyResult }) => {
+            const taskId = applyResult?.tasks?.[0]?.id;
+            if (!taskId) throw new Error('Create response did not include a task id.');
+            target.task_id = taskId;
+            return backends.nexusTaskById(taskId);
+          },
+          verify: ({ after }) => {
+            const expectedTask = {
+              project_id,
+              name: title,
+              description,
+              priority,
+              dependencies,
+              successor_id: successor_id || null,
+            };
+            if (antigravity_payload !== undefined) expectedTask.antigravity_payload = antigravity_payload;
+            const mismatches = compareFields(after, expectedTask);
+            return { ok: mismatches.length === 0, mismatches };
+          },
         });
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_create', success: true, latency_ms: Date.now() - started });
-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(withTransactionId(tx.result, tx.transactionId), null, 2) }] };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_create', success: false, latency_ms: Date.now() - started, error: e.message });
-        return { content: [{ type: 'text', text: `nexus_task_create failed: ${e.message}` }], isError: true };
+        return { content: [{ type: 'text', text: transactionFailure('nexus_task_create', e) }], isError: true };
       }
     },
   );
@@ -231,6 +324,10 @@ function register(server, ctx) {
     'Update an existing Nexus task by id. Supply only the fields you want to change. USE FOR: changing status (e.g. retiring/cancelling a task), repointing dependencies, adjusting priority, editing the human description, or backfilling/replacing the machine antigravity_payload (the "instructions" layer). Does NOT create tasks — use nexus_task_create for that.',
     {
       task_id: z.string().describe('Task UUID (from nexus_tasks_read / nexus_task_status).'),
+      expected_status: z.string().optional()
+        .describe('Optimistic concurrency guard: reject unless the current task status exactly matches.'),
+      expected_updated_at: z.string().optional()
+        .describe('Optimistic concurrency guard: reject unless the current task updated_at exactly matches.'),
       status: z.string().optional().describe('New status, e.g. "todo", "in-progress", "completed", "blocked", "cancelled".'),
       priority: z.number().int().min(0).max(2).optional().describe('0=low, 1=normal, 2=high.'),
       description: z.string().optional().describe('Replacement description / context.'),
@@ -245,10 +342,11 @@ function register(server, ctx) {
           commands: z.array(z.string()).optional(),
           acceptance_criteria: z.array(z.string()).optional(),
         })
+        .nullable()
         .optional()
-        .describe('Replacement machine-execution payload (the "instructions" layer). Replaces the existing payload entirely.'),
+        .describe('Replacement machine-execution payload (the "instructions" layer). Replaces the existing payload entirely; pass null to clear it.'),
     },
-    async ({ task_id, status, priority, description, dependencies, successor_id, antigravity_payload }) => {
+    async ({ task_id, status, priority, description, dependencies, successor_id, antigravity_payload, expected_status, expected_updated_at }) => {
       const auth = checkPrivilege(ctx.caller, 'nexus.task_update');
       if (auth) return auth;
       const rl = checkAndIncrement(ctx.caller.identity, 'nexus_task_update', ctx.caller.rate_limits_per_hour?.['nexus.task_update']);
@@ -267,12 +365,28 @@ function register(server, ctx) {
       }
       const started = Date.now();
       try {
-        const data = await backends.nexusTaskUpdate(task_id, patch);
+        const expected = {};
+        if (expected_status !== undefined) expected.status = expected_status;
+        if (expected_updated_at !== undefined) expected.updated_at = expected_updated_at;
+        const tx = await executeTransaction({
+          tool: 'nexus_task_update',
+          caller: ctx.caller,
+          target: { task_id },
+          intent: { patch, expected },
+          captureBefore: () => backends.nexusTaskById(task_id),
+          validatePreconditions: ({ before }) => compareFields(before, expected),
+          apply: () => backends.nexusTaskUpdate(task_id, patch),
+          readAfter: () => backends.nexusTaskById(task_id),
+          verify: ({ after }) => {
+            const mismatches = compareFields(after, patch);
+            return { ok: mismatches.length === 0, mismatches };
+          },
+        });
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_update', success: true, latency_ms: Date.now() - started });
-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(withTransactionId(tx.result, tx.transactionId), null, 2) }] };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_update', success: false, latency_ms: Date.now() - started, error: e.message });
-        return { content: [{ type: 'text', text: `nexus_task_update failed: ${e.message}` }], isError: true };
+        return { content: [{ type: 'text', text: transactionFailure('nexus_task_update', e) }], isError: true };
       }
     },
   );

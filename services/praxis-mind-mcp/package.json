@@ -4,7 +4,11 @@
   "description": "MCP server exposing Praxis's vault, Cortex memory, brain, and Nexus tasks to coding agents.",
   "private": true,
   "main": "stdio.js",
+  "bin": {
+    "praxis-mind-transitions": "bin/transition-log.js"
+  },
   "scripts": {
-    "start": "node stdio.js"
+    "start": "node stdio.js",
+    "transitions": "node bin/transition-log.js"
   }
 }

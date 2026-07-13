@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownToLine, ArrowUpFromLine, Loader2, X } from "lucide-react";
-import { isTaskDone } from "@praxis/contract";
+import { isTaskDone, TASK_AUTO_START_STATUSES, normalizeTaskBoardStatus } from "@praxis/contract";
 import { getTasks, updateTaskById, type Task, type TaskById } from "@/lib/nexus";
 
 function isDone(status: string | undefined): boolean {
@@ -91,9 +91,24 @@ export function TaskSequencePanel({
     () => projectTasks.filter((t) => t.id !== task.id && !predecessorIds.includes(t.id)),
     [projectTasks, task.id, predecessorIds],
   );
+  // A successor auto-starts the moment this task completes, so only offer
+  // tasks the runtime can actually dispatch. TASK_AUTO_START_STATUSES is the
+  // same canonical set the server's triggerSuccessors gates on — anything
+  // else (already running, in review, terminal, or owned by the day
+  // schedule) it silently skips, so surfacing it here would be misleading.
+  // Keep the currently-saved successor even if it has since moved to a
+  // non-startable status so the picker still reflects the stored value.
   const successorOptions = useMemo(
-    () => projectTasks.filter((t) => t.id !== task.id),
-    [projectTasks, task.id],
+    () =>
+      projectTasks.filter(
+        (t) =>
+          t.id !== task.id &&
+          ((TASK_AUTO_START_STATUSES as readonly string[]).includes(
+            normalizeTaskBoardStatus(t.status) ?? "",
+          ) ||
+            t.id === successorId),
+      ),
+    [projectTasks, task.id, successorId],
   );
 
   const incompletePredecessors = predecessorIds.filter((id) => {

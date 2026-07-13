@@ -155,7 +155,7 @@ export function EventTicker() {
           </span>
         )}
 
-        <div className="flex min-w-0 flex-1 items-center gap-6 overflow-hidden whitespace-nowrap font-mono text-[11px]">
+        <div className="flex min-w-0 flex-1 items-center gap-6 overflow-hidden whitespace-nowrap font-mono text-[13px]">
           {alert !== "none" && alertText ? (
             <span className={alert === "red" ? "text-red-200" : "text-amber-200"}>{alertText}</span>
           ) : null}

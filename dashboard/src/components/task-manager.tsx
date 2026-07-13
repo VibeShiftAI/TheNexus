@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Task, TaskStatus, addTask, deleteTask, researchTasks, getResearchStatus, updateTask, updateTaskDetails } from "@/lib/nexus";
+import { TASK_AUTO_START_STATUSES, normalizeTaskBoardStatus } from "@praxis/contract";
 import { Lightbulb, Plus, Search, Rocket, CheckCircle2, Clock, Loader2, ChevronRight, Sparkles, XCircle, Undo2, Pencil, Bug, HelpCircle, AlertTriangle, Fingerprint, Pause, ClipboardCopy, Check } from "lucide-react";
 import { copyClaudeDispatch } from "@/lib/claude-dispatch";
 import { ModelAssignmentControl } from "@/components/model-assignment-control";
@@ -342,9 +343,15 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                                 aria-label="Successor task"
                             >
                                 <option value="">No successor</option>
-                                {tasks.map((t) => (
-                                    <option key={t.id} value={t.id}>{t.title} ({t.status})</option>
-                                ))}
+                                {tasks
+                                    .filter((t) =>
+                                        (TASK_AUTO_START_STATUSES as readonly string[]).includes(
+                                            normalizeTaskBoardStatus(t.status) ?? "",
+                                        ) || t.id === newTaskSuccessor,
+                                    )
+                                    .map((t) => (
+                                        <option key={t.id} value={t.id}>{t.title} ({t.status})</option>
+                                    ))}
                             </select>
                         </div>
                     </div>
