@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { getProject, getProjectStatus, getProjectCommits, getTasks, getProjectReadme, Project, GitStatus, Commit, Task, getDashboardStats, ReviewItem, unarchiveProject } from "@/lib/nexus";
-import { ArrowLeft, GitBranch, Zap, Bot, Activity, Brain, FolderOpen as Folders, FileText, ChevronDown, ChevronUp, Archive } from "lucide-react";
+import { getProject, getProjectCommits, getTasks, getProjectReadme, getProjectBrief, Project, ProjectBrief, Commit, Task, getDashboardStats, ReviewItem, unarchiveProject } from "@/lib/nexus";
+import { ArrowLeft, GitBranch, Zap, Bot, Activity, Brain, FolderOpen as Folders, FileText, ChevronDown, ChevronUp, Archive, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { AITerminal } from "@/components/ai-terminal";
 import { TaskManager } from "@/components/task-manager";
@@ -11,8 +11,11 @@ import { TaskArchive } from "@/components/task-archive";
 import { ProjectSettings } from "@/components/project-settings";
 import { ProjectContextManager } from "@/components/project-context-manager";
 import { ArtifactsList } from "@/components/artifacts-list";
-import { TaskStatusTiles } from "@/components/task-status-tiles";
 import { ProjectNotes } from "@/components/project-notes";
+import { MissionBrief } from "@/components/project-brief/mission-brief";
+import { ActivityReport } from "@/components/project-brief/activity-report";
+import { HudPanel } from "@/components/bridge/hud";
+import { ActivityLed, activityBand, timeAgo } from "@/components/pulse-visuals";
 
 export default function ProjectDetailPage() {
     const params = useParams();
@@ -20,13 +23,13 @@ export default function ProjectDetailPage() {
     const router = useRouter();
 
     const [project, setProject] = useState<Project | null>(null);
-    const [status, setStatus] = useState<GitStatus | null>(null);
+    const [brief, setBrief] = useState<ProjectBrief | null>(null);
     const [commits, setCommits] = useState<Commit[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAITerminal, setShowAITerminal] = useState(false);
     const [readme, setReadme] = useState<{ exists: boolean; content: string | null }>({ exists: false, content: null });
-    const [readmeExpanded, setReadmeExpanded] = useState(true);
+    const [readmeExpanded, setReadmeExpanded] = useState(false);
     const [artifactsInReview, setArtifactsInReview] = useState<{ items: ReviewItem[], project: number, task: number }>({ items: [], project: 0, task: 0 });
 
     // Opening a task navigates to its own screen (/task/[id]) — the old
@@ -65,15 +68,15 @@ export default function ProjectDetailPage() {
 
         Promise.all([
             getProject(projectId),
-            getProjectStatus(projectId).catch(() => null),
+            getProjectBrief(projectId).catch(() => null),
             getProjectCommits(projectId).catch(() => ({ commits: [], hasGit: false })),
             getTasks(projectId),
             getProjectReadme(projectId).catch(() => ({ exists: false, content: null })),
             getDashboardStats().catch(() => null)
         ])
-            .then(([proj, stat, commitsRes, tasksRes, readmeRes, statsRes]) => {
+            .then(([proj, briefRes, commitsRes, tasksRes, readmeRes, statsRes]) => {
                 setProject(proj);
-                setStatus(stat);
+                setBrief(briefRes);
                 setCommits(commitsRes.commits);
                 setTasks(tasksRes.tasks);
                 setReadme(readmeRes);
@@ -99,42 +102,13 @@ export default function ProjectDetailPage() {
         if (taskId) router.replace(`/task/${taskId}`);
     }, [searchParams, router]);
 
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    // Calculate task stats for the tiles
-    const taskStats = useMemo(() => {
-        const stats: Record<string, number> = {
-            idea: 0,
-            researching: 0,
-            researched: 0,  // Added
-            planning: 0,
-            planned: 0,     // Added
-            implementing: 0,
-            testing: 0,
-            complete: 0
-        };
-        tasks.forEach(t => {
-            if (stats[t.status] !== undefined) {
-                stats[t.status]++;
-            }
-        });
-        return stats;
-    }, [tasks]);
-
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
+            <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col items-center justify-center gap-3">
                 <div className="animate-spin text-cyan-500">
                     <GitBranch size={32} />
                 </div>
+                <span className="text-[11px] uppercase tracking-widest text-slate-600">compiling project brief…</span>
             </div>
         );
     }
@@ -150,8 +124,12 @@ export default function ProjectDetailPage() {
         );
     }
 
+    const band = activityBand(brief?.lastActivityAt);
+    const lastSeen = timeAgo(brief?.lastActivityAt);
+    const git = brief?.git;
+
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30">
+        <main className="min-h-screen bg-slate-950 hud-backdrop text-slate-200 selection:bg-cyan-500/30">
             {/* Header HUD */}
             <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
                 <div className="container mx-auto flex h-16 items-center justify-between px-6">
@@ -161,12 +139,18 @@ export default function ProjectDetailPage() {
                             className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
                         >
                             <ArrowLeft size={18} />
-                            <span className="text-sm">Dashboard</span>
+                            <span className="text-sm">Bridge</span>
                         </Link>
                         <div className="h-6 w-px bg-slate-700" />
-                        <div className="flex items-center gap-2">
-                            <Folders className="text-cyan-500" size={20} />
+                        <div className="flex items-center gap-2.5">
+                            <Folders className="text-cyan-500" size={18} />
                             <span className="text-sm font-bold tracking-tight text-white uppercase">{project.name}</span>
+                            <span className="flex items-center gap-1.5 rounded border border-slate-800 bg-slate-900/60 px-2 py-0.5">
+                                <ActivityLed band={band} />
+                                <span className="font-mono text-[10px] text-slate-500">
+                                    {lastSeen ? `Δ ${lastSeen}` : "no signal"}
+                                </span>
+                            </span>
                         </div>
                     </div>
                     <div className="flex items-center gap-6 text-sm font-medium text-slate-400">
@@ -229,85 +213,77 @@ export default function ProjectDetailPage() {
                     </div>
                 )}
 
-                {/* Project Overview Row - right column drives height, left fills to match */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Project Details + Context Manager (unified) */}
-                    <div className="lg:col-span-2 relative min-w-0">
-                        <div className="lg:absolute lg:inset-0 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden flex flex-col">
-                            <div className="px-4 py-3 border-b border-slate-800 shrink-0 max-h-full overflow-y-auto min-h-0">
-                                <ProjectSettings
-                                    project={project}
-                                    onUpdate={() => {
-                                        getProject(projectId).then(setProject);
-                                    }}
-                                />
-                            </div>
-                            <div className="overflow-y-auto flex-1 min-h-0">
-                                <ProjectContextManager project={project} />
-                            </div>
-                        </div>
-                    </div>
+                {/* Mission brief hero */}
+                <div className="hud-boot">
+                    <MissionBrief project={project} brief={brief} />
+                </div>
 
-                    {/* Git Status + Artifacts */}
-                    <div className="flex flex-col gap-4">
-                        <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                                    <GitBranch size={14} className="text-cyan-400" />
-                                    Git Status
-                                </h3>
-                                {status && (
-                                    <span className="text-white font-mono font-bold text-xs bg-slate-800/80 px-2 py-0.5 rounded">{status.current || 'N/A'}</span>
-                                )}
-                            </div>
-                            {status ? (
-                                <div className="space-y-2">
+                {/* Reports row — operations report beside git + artifacts rail */}
+                <div className="hud-boot hud-boot-1 grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2 min-w-0">
+                        <ActivityReport brief={brief} />
+                    </div>
+                    <div className="flex flex-col gap-4 min-w-0">
+                        <HudPanel icon={<GitBranch size={16} />} title="Repository" accent="emerald"
+                            headerRight={git?.branch ? (
+                                <span className="rounded bg-slate-800/80 px-2 py-0.5 font-mono text-xs font-bold text-white">{git.branch}</span>
+                            ) : undefined}
+                        >
+                            {git?.hasGit ? (
+                                <div className="space-y-3">
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div className="p-2 bg-slate-800/50 rounded-lg text-center">
-                                            <div className={`text-lg font-bold ${status.uncommittedCount > 0 ? "text-orange-400" : "text-emerald-400"}`}>
-                                                {status.uncommittedCount}
+                                        <div className="rounded-lg bg-slate-800/50 p-2 text-center">
+                                            <div className={`text-lg font-bold tabular-nums ${git.uncommitted > 0 ? "text-orange-400" : "text-emerald-400"}`}>
+                                                {git.uncommitted}
                                             </div>
-                                            <div className="text-xs text-slate-500 uppercase">Changes</div>
+                                            <div className="text-xs uppercase text-slate-500">Changes</div>
                                         </div>
-                                        <div className="p-2 bg-slate-800/50 rounded-lg text-center">
-                                            <div className="text-lg font-bold text-blue-400">
-                                                {status.ahead} / {status.behind}
+                                        <div className="rounded-lg bg-slate-800/50 p-2 text-center">
+                                            <div className="text-lg font-bold tabular-nums text-blue-400">
+                                                {git.ahead} / {git.behind}
                                             </div>
-                                            <div className="text-xs text-slate-500 uppercase">Sync (↑/↓)</div>
+                                            <div className="text-xs uppercase text-slate-500">Sync (↑/↓)</div>
                                         </div>
                                     </div>
                                     {commits.length > 0 && (
                                         <div>
-                                            <p className="text-xs text-slate-500 uppercase mb-1">Recent Commits</p>
+                                            <p className="mb-1 text-xs uppercase text-slate-500">Recent Commits</p>
                                             <div className="space-y-1.5">
-                                                {commits.slice(0, 3).map((commit, idx) => (
-                                                    <div key={commit.hash} className={`text-xs border-l-2 pl-2 ${idx === 0 ? 'border-cyan-500/50' : 'border-slate-700/50'}`}>
-                                                        <div className="font-mono text-cyan-400 text-xs">{commit.hash.substring(0, 7)}</div>
-                                                        <div className="text-slate-300 line-clamp-1">{commit.message}</div>
+                                                {commits.slice(0, 4).map((commit, idx) => (
+                                                    <div key={commit.hash} className={`border-l-2 pl-2 text-xs ${idx === 0 ? 'border-cyan-500/50' : 'border-slate-700/50'}`}>
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className="font-mono text-cyan-400">{commit.hash.substring(0, 7)}</span>
+                                                            <span className="font-mono text-[10px] text-slate-600">Δ {timeAgo(commit.date)}</span>
+                                                        </div>
+                                                        <div className="line-clamp-1 text-slate-300">{commit.message}</div>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
                                     )}
+                                    {git.remoteUrl && (
+                                        <a href={git.remoteUrl} target="_blank" rel="noopener noreferrer"
+                                            className="inline-block truncate font-mono text-[11px] text-slate-500 transition-colors hover:text-cyan-400">
+                                            {git.remoteUrl.replace('https://github.com/', 'github.com/')}
+                                        </a>
+                                    )}
                                 </div>
                             ) : (
-                                <div className="text-slate-500 text-center py-3 text-sm">No git repository detected</div>
+                                <div className="py-3 text-center text-sm text-slate-500">No git repository detected</div>
                             )}
-                        </div>
-                        <div className="flex-1">
-                            <ArtifactsList
-                                items={artifactsInReview.items}
-                                projectCount={artifactsInReview.project}
-                                taskCount={artifactsInReview.task}
-                                projectId={projectId}
-                            />
-                        </div>
+                        </HudPanel>
+                        <ArtifactsList
+                            items={artifactsInReview.items}
+                            projectCount={artifactsInReview.project}
+                            taskCount={artifactsInReview.task}
+                            projectId={projectId}
+                        />
                     </div>
                 </div>
 
-                {/* Task Status + Task Manager Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2">
+                {/* Task operations row */}
+                <div className="hud-boot hud-boot-2 grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2 min-w-0">
                         <TaskManager
                             projectId={projectId}
                             tasks={tasks}
@@ -315,23 +291,37 @@ export default function ProjectDetailPage() {
                             onTaskSelect={openTask}
                         />
                     </div>
-                    <div className="lg:col-span-1 space-y-3">
-                        <TaskStatusTiles stats={taskStats} />
+                    <div className="min-w-0 space-y-4">
                         <TaskArchive
                             projectId={projectId}
                             tasks={tasks}
                             onTasksChange={loadTasks}
                             onTaskSelect={openTask}
                         />
+                        <ProjectNotes projectId={projectId} />
                     </div>
                 </div>
 
-                {/* Project Notes */}
-                <ProjectNotes projectId={projectId} />
+                {/* Configuration + context — the editable underbelly of the brief */}
+                <div className="hud-boot hud-boot-3">
+                    <HudPanel icon={<Settings2 size={16} />} title="Project Configuration" accent="purple">
+                        <div className="overflow-hidden rounded-lg">
+                            <div className="border-b border-slate-800 px-1 pb-3">
+                                <ProjectSettings
+                                    project={project}
+                                    onUpdate={() => {
+                                        getProject(projectId).then(setProject);
+                                    }}
+                                />
+                            </div>
+                            <ProjectContextManager project={project} />
+                        </div>
+                    </HudPanel>
+                </div>
 
                 {/* README Section */}
                 {readme.exists && readme.content && (
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+                    <div className="hud-boot hud-boot-4 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
                         <button
                             onClick={() => setReadmeExpanded(!readmeExpanded)}
                             className="w-full flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors"
@@ -339,6 +329,7 @@ export default function ProjectDetailPage() {
                             <div className="flex items-center gap-2">
                                 <FileText size={18} className="text-cyan-400" />
                                 <h3 className="text-lg font-bold text-white">README.md</h3>
+                                <span className="text-[10px] uppercase tracking-widest text-slate-600">technical annex</span>
                             </div>
                             {readmeExpanded ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
                         </button>

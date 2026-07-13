@@ -70,7 +70,7 @@ export function accentText(accent: HudAccent) {
   return ACCENTS[accent].text;
 }
 
-function CornerBrackets({ accent }: { accent: HudAccent }) {
+export function CornerBrackets({ accent }: { accent: HudAccent }) {
   const b = ACCENTS[accent].bracket;
   return (
     <>

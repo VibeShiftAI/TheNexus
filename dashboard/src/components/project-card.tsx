@@ -1,65 +1,75 @@
 "use client"
 
-import { useEffect, useState } from "react";
-import { Project, getProjectStatus, GitStatus, initGitRepo, addGitRemote, pingProject, PingResult, pinProject, unpinProject, commitAndPush, generateCommitMessage } from "@/lib/nexus";
-import { Folder, GitBranch, Zap, Layers, Activity, AlertTriangle, XCircle, ExternalLink, Globe, Star, Upload, Tag } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+    Project, ProjectPulse, PulseGit, getProjectStatus, GitStatus, initGitRepo, addGitRemote,
+    pingProject, PingResult, pinProject, unpinProject, commitAndPush, generateCommitMessage,
+} from "@/lib/nexus";
+import { GitBranch, Zap, AlertTriangle, ExternalLink, Star, Upload, Tag, ListTodo, Eye, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { CornerBrackets } from "@/components/bridge/hud";
+import { PulseSparkline, ActivityLed, CrewChip, timeAgo, activityBand, BAND_STYLES } from "@/components/pulse-visuals";
 
 interface ProjectCardProps {
     pendingReviews?: number;
     project: Project;
+    pulse?: ProjectPulse;
     isPinned?: boolean;
     onPinChange?: (id: string, pinned: boolean) => void;
 }
 
-export function ProjectCard({ project, isPinned = false, onPinChange, pendingReviews = 0 }: ProjectCardProps) {
-    const [status, setStatus] = useState<GitStatus | null>(null);
-    const [loading, setLoading] = useState(true);
+/** Map a fresh per-card GitStatus (post git-action refresh) onto the pulse git shape. */
+function gitFromStatus(s: GitStatus, prev: PulseGit | null): PulseGit {
+    return {
+        hasGit: s.hasGit,
+        hasRemote: s.hasRemote,
+        hasCommits: s.hasCommits ?? Boolean(s.latest_commit),
+        remoteUrl: s.remoteUrl,
+        branch: s.current,
+        uncommitted: s.uncommittedCount ?? 0,
+        ahead: s.ahead ?? 0,
+        behind: s.behind ?? 0,
+        lastCommit: s.latest_commit
+            ? { hash: s.latest_commit.hash, message: s.latest_commit.message, date: s.latest_commit.date }
+            : null,
+        series: prev?.series ?? [],
+        total: prev?.total ?? 0,
+    };
+}
+
+export function ProjectCard({ project, pulse, isPinned = false, onPinChange, pendingReviews = 0 }: ProjectCardProps) {
     const [actionLoading, setActionLoading] = useState(false);
     const [deployStatus, setDeployStatus] = useState<PingResult | null>(null);
     const [pinLoading, setPinLoading] = useState(false);
+    // Git actions (init / remote / push) refresh just this card without
+    // waiting out the batched pulse cache.
+    const [gitOverride, setGitOverride] = useState<PulseGit | null>(null);
 
-    const loadStatus = async () => {
-        try {
-            const data = await getProjectStatus(project.id);
-            setStatus(data);
-        } catch (e) {
-            console.error("Failed to load status for", project.name, e);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const git = gitOverride ?? pulse?.git ?? null;
+    const band = activityBand(pulse?.lastActivityAt);
+    const bandStyle = BAND_STYLES[band];
+    const lastSeen = timeAgo(pulse?.lastActivityAt);
 
-    useEffect(() => {
-        let mounted = true;
-        async function load() {
-            try {
-                const data = await getProjectStatus(project.id);
-                if (mounted) setStatus(data);
-            } catch (e) {
-                console.error("Failed to load status for", project.name, e);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        }
-        load();
-        return () => { mounted = false; };
-    }, [project.id, project.name]);
-
-    // Fetch deploy status if project has production URL
     useEffect(() => {
         if (project.urls?.production) {
-            pingProject(project.id)
-                .then(setDeployStatus)
-                .catch(console.error);
+            pingProject(project.id).then(setDeployStatus).catch(console.error);
         }
     }, [project.id, project.urls?.production]);
+
+    const refreshGit = async () => {
+        try {
+            const status = await getProjectStatus(project.id);
+            setGitOverride(prev => gitFromStatus(status, prev ?? pulse?.git ?? null));
+        } catch (e) {
+            console.error("Failed to refresh git status for", project.name, e);
+        }
+    };
 
     const handleInitGit = async () => {
         setActionLoading(true);
         try {
             await initGitRepo(project.id);
-            await loadStatus();
+            await refreshGit();
         } catch (e) {
             console.error("Failed to init git:", e);
             alert("Failed to initialize git: " + (e instanceof Error ? e.message : "Unknown error"));
@@ -72,11 +82,10 @@ export function ProjectCard({ project, isPinned = false, onPinChange, pendingRev
         const repoName = project.name.replace(/\s+/g, '-');
         const url = prompt(`Enter GitHub repo URL:`, `git@github.com:Guatapickl/${repoName}.git`);
         if (!url) return;
-
         setActionLoading(true);
         try {
             await addGitRemote(project.id, url);
-            await loadStatus();
+            await refreshGit();
         } catch (e) {
             console.error("Failed to add remote:", e);
             alert("Failed to add remote: " + (e instanceof Error ? e.message : "Unknown error"));
@@ -105,10 +114,9 @@ export function ProjectCard({ project, isPinned = false, onPinChange, pendingRev
     const handleCommitAndPush = async () => {
         setActionLoading(true);
         try {
-            // Generate a commit message using AI
             const result = await generateCommitMessage(project.id);
             await commitAndPush(project.id, result.message);
-            await loadStatus();
+            await refreshGit();
         } catch (e) {
             console.error("Failed to commit and push:", e);
             alert("Failed to commit and push: " + (e instanceof Error ? e.message : "Unknown error"));
@@ -117,265 +125,245 @@ export function ProjectCard({ project, isPinned = false, onPinChange, pendingRev
         }
     };
 
-    const getGitStateDisplay = () => {
-        if (loading) {
+    // Ops chips — only render signals that are non-zero so quiet projects stay quiet.
+    const opsChips = useMemo(() => {
+        if (!pulse) return [];
+        const chips: { key: string; icon: React.ReactNode; label: string; cls: string; title: string }[] = [];
+        const t = pulse.tasks;
+        if (t.active > 0) chips.push({
+            key: "active", icon: <Zap size={10} />, label: `${t.active} active`,
+            cls: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300", title: t.activeNames.join("\n"),
+        });
+        if (t.attention > 0) chips.push({
+            key: "attention", icon: <AlertTriangle size={10} />, label: `${t.attention} need input`,
+            cls: "border-amber-500/40 bg-amber-500/10 text-amber-300", title: "Tasks blocked or awaiting input",
+        });
+        if (t.review + pendingReviews > 0) chips.push({
+            key: "review", icon: <Eye size={10} />, label: `${t.review + pendingReviews} in review`,
+            cls: "border-purple-500/40 bg-purple-500/10 text-purple-300", title: "Awaiting review",
+        });
+        if (t.done7d > 0) chips.push({
+            key: "done", icon: <CheckCircle2 size={10} />, label: `${t.done7d} done/7d`,
+            cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300", title: "Tasks completed in the last 7 days",
+        });
+        if (chips.length === 0 && t.queued > 0) chips.push({
+            key: "queued", icon: <ListTodo size={10} />, label: `${t.queued} queued`,
+            cls: "border-slate-700 bg-slate-800/60 text-slate-400", title: "Backlog",
+        });
+        return chips;
+    }, [pulse, pendingReviews]);
+
+    const gitFooter = () => {
+        if (!pulse && !gitOverride) {
             return (
-                <div className="flex items-center gap-2 text-slate-500">
-                    <div className="animate-spin h-3 w-3 border border-slate-500 border-t-transparent rounded-full" />
-                    <span className="text-xs">Loading...</span>
+                <div className="flex items-center gap-2 text-slate-600">
+                    <div className="h-3 w-3 animate-spin rounded-full border border-slate-600 border-t-transparent" />
+                    <span className="text-[11px] uppercase tracking-wider">scanning…</span>
                 </div>
             );
         }
-
-        if (!status || !status.hasGit) {
+        if (!git?.hasGit) {
             return (
                 <button
                     onClick={handleInitGit}
                     disabled={actionLoading}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 rounded border border-slate-700 bg-slate-800/60 px-2.5 py-1 text-[11px] text-slate-300 transition-colors hover:bg-slate-700 hover:text-white disabled:opacity-50"
                 >
-                    <Zap size={12} />
+                    <Zap size={11} />
                     Initialize Git
                 </button>
             );
         }
-
-        if (!status.hasRemote) {
+        if (!git.hasRemote) {
             return (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-amber-500">
-                        <AlertTriangle size={12} />
-                        <span className="text-xs">No remote configured</span>
-                    </div>
+                <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-[11px] text-amber-400">
+                        <AlertTriangle size={11} />
+                        No remote
+                    </span>
                     <button
                         onClick={handleAddRemote}
                         disabled={actionLoading}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 rounded text-xs text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300 transition-colors hover:bg-amber-500/20 disabled:opacity-50"
                     >
-                        <GitBranch size={12} />
+                        <GitBranch size={11} />
                         Add Remote
                     </button>
                 </div>
             );
         }
-
-        // Show indicator when git is set up but no commits exist yet
-        if (status.hasCommits === false) {
-            return (
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 text-amber-500">
-                        <GitBranch size={12} />
-                        <span className="text-xs">No commits yet</span>
-                    </div>
-                    {status.remoteUrl && (
-                        <a
-                            href={status.remoteUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs text-cyan-500 hover:text-cyan-400 transition-colors"
-                        >
-                            <ExternalLink size={10} />
-                            <span className="truncate">{status.remoteUrl.replace('https://github.com/', '')}</span>
-                        </a>
-                    )}
-                </div>
-            );
-        }
-
         return (
-            <div className="space-y-1.5">
-                {/* Status badges row */}
-                <div className="flex items-center gap-2">
-                    {status.uncommittedCount !== undefined && status.uncommittedCount > 0 && (
+            <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                <span className="flex min-w-0 items-center gap-1.5 text-slate-400">
+                    <GitBranch size={11} className="shrink-0 text-emerald-400" />
+                    <span className="truncate" title={git.lastCommit?.message}>
+                        {git.branch || "main"}
+                        {git.lastCommit && (
+                            <span className="text-slate-600"> @{git.lastCommit.hash.substring(0, 7)}</span>
+                        )}
+                    </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                    {(git.ahead > 0 || git.behind > 0) && (
+                        <span>
+                            {git.ahead > 0 && <span className="text-emerald-400">↑{git.ahead}</span>}
+                            {git.behind > 0 && <span className="text-red-400">↓{git.behind}</span>}
+                        </span>
+                    )}
+                    {git.uncommitted > 0 ? (
                         <button
                             onClick={handleCommitAndPush}
                             disabled={actionLoading}
-                            className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 transition-colors group/commit"
-                            title="Click to commit and push"
+                            title={`${git.uncommitted} uncommitted file(s) — click to commit & push`}
+                            className="group/commit flex items-center gap-1 rounded border border-orange-500/30 bg-orange-500/10 px-1.5 py-0.5 text-orange-300 transition-colors hover:bg-orange-500/25 disabled:opacity-50"
                         >
-                            <span className="px-1.5 py-0.5 rounded bg-orange-500/20 font-mono group-hover/commit:bg-orange-500/30">
-                                {status.uncommittedCount}
-                            </span>
-                            <span>uncommitted</span>
-                            <Upload size={10} className="opacity-0 group-hover/commit:opacity-100 transition-opacity" />
+                            {actionLoading
+                                ? <span className="h-2.5 w-2.5 animate-spin rounded-full border border-orange-300 border-t-transparent" />
+                                : <Upload size={10} />}
+                            {git.uncommitted}
                         </button>
-                    )}
-
-                    {/* Ahead/behind sync status */}
-                    {(status.ahead > 0 || status.behind > 0) && (
-                        <span className="flex items-center gap-1 text-xs font-mono">
-                            {status.ahead > 0 && <span className="text-green-400">↑{status.ahead}</span>}
-                            {status.behind > 0 && <span className="text-red-400">↓{status.behind}</span>}
-                        </span>
-                    )}
-                </div>
-
-                {/* Git info row */}
-                <div className="flex items-center gap-2 text-emerald-400">
-                    <GitBranch size={12} />
-                    {status.latest_commit ? (
-                        <>
-                            <span className="font-mono">{status.latest_commit.hash.substring(0, 7)}</span>
-                            <span className="text-slate-500">•</span>
-                            <span className="text-slate-400">{status.current}</span>
-                        </>
                     ) : (
-                        <span className="text-slate-400">{status.current || 'main'}</span>
+                        <span className="text-emerald-500/80" title="Working tree clean">clean</span>
                     )}
-                </div>
-
-                {/* Commit message */}
-                {status.latest_commit && (
-                    <p className="text-slate-500 truncate text-xs" title={status.latest_commit.message}>
-                        {status.latest_commit.message}
-                    </p>
-                )}
-
-                {/* Remote URL */}
-                {status.remoteUrl && (
-                    <a
-                        href={status.remoteUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs text-cyan-500 hover:text-cyan-400 transition-colors"
-                    >
-                        <ExternalLink size={10} />
-                        <span className="truncate">{status.remoteUrl.replace('https://github.com/', '')}</span>
-                    </a>
-                )}
+                    {git.remoteUrl && (
+                        <a
+                            href={git.remoteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-slate-500 transition-colors hover:text-cyan-400"
+                            title={git.remoteUrl.replace('https://github.com/', '')}
+                        >
+                            <ExternalLink size={11} />
+                        </a>
+                    )}
+                </span>
             </div>
         );
     };
 
+    const isHot = band === "hot";
+
     return (
-        <div className="group relative overflow-hidden rounded-lg border border-slate-800 bg-gradient-to-br from-slate-900/90 to-slate-950/90 p-5 hover:border-slate-700/80 transition-all hover:shadow-lg hover:shadow-indigo-500/5 flex flex-col h-full">
-            {/* Pin button */}
+        <div
+            className={`hud-scanlines group relative flex h-full flex-col overflow-hidden rounded-lg border bg-gradient-to-br from-slate-900/80 to-slate-950/90 p-4 transition-all
+                ${isHot ? "border-cyan-500/25 hover:border-cyan-400/50 hover:shadow-[0_0_24px_rgba(34,211,238,0.12)]" : "border-slate-800 hover:border-slate-600 hover:shadow-lg hover:shadow-cyan-500/5"}
+                ${band === "dormant" ? "opacity-75 hover:opacity-100" : ""}`}
+        >
+            <CornerBrackets accent={isHot ? "cyan" : "teal"} />
+            {/* top hairline glow, brighter on hot projects */}
+            <span className={`pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent to-transparent ${isHot ? "via-cyan-400/60" : "via-slate-500/30"}`} />
+
+            {/* Pin */}
             <button
                 onClick={handlePinToggle}
                 disabled={pinLoading}
-                className={`absolute top-3 right-3 p-1.5 rounded-full transition-all ${isPinned
-                    ? 'text-yellow-400 bg-yellow-500/20'
-                    : 'text-slate-500 hover:text-slate-300 opacity-0 group-hover:opacity-100'
+                className={`absolute right-2.5 top-2.5 z-10 rounded-full p-1.5 transition-all ${isPinned
+                    ? "bg-yellow-500/20 text-yellow-400"
+                    : "text-slate-500 opacity-0 hover:text-slate-300 group-hover:opacity-100"
                     } disabled:opacity-50`}
-                title={isPinned ? 'Unpin project' : 'Pin project'}
+                title={isPinned ? "Unpin project" : "Pin project"}
             >
-                <Star size={16} fill={isPinned ? 'currentColor' : 'none'} />
+                <Star size={14} fill={isPinned ? "currentColor" : "none"} />
             </button>
 
-            {/* Main card content - link to project page */}
             <Link href={`/project/${project.id}`} className="block flex-grow">
-                {/* Header */}
-                <div className="flex items-start gap-3 mb-3 pr-8">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 flex-shrink-0">
-                        <Folder size={20} />
-                    </div>
-                    <div className="min-w-0">
-                        <h3 className="font-semibold text-white truncate group-hover:text-indigo-300 transition-colors">
-                            {project.name}
-                        </h3>
-                        <span className="text-xs text-slate-500 uppercase tracking-wider">
-                            {project.type}
+                {/* Designation row */}
+                <div className="mb-1 flex items-center gap-2 pr-7">
+                    <ActivityLed band={band} />
+                    <h3 className="truncate text-sm font-bold tracking-tight text-white transition-colors group-hover:text-cyan-300">
+                        {project.name}
+                    </h3>
+                </div>
+                <div className="mb-2.5 flex items-center gap-2 pl-4 text-[10px] uppercase tracking-widest">
+                    <span className="text-slate-500">{project.type}</span>
+                    <span className={`${bandStyle.text} font-semibold`}>{bandStyle.label}</span>
+                    {lastSeen && <span className="font-mono normal-case text-slate-600">Δ {lastSeen}</span>}
+                    {deployStatus?.isUp === true && (
+                        <span
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                window.open(project.urls?.production, "_blank");
+                            }}
+                            className="flex cursor-pointer items-center gap-1 text-emerald-400 hover:text-emerald-300"
+                            title={project.urls?.production}
+                        >
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.9)]" />
+                            LIVE
                         </span>
-                    </div>
+                    )}
+                    {deployStatus?.isUp === false && (
+                        <span className="flex items-center gap-1 text-red-400" title="Production URL unreachable">
+                            <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                            DOWN
+                        </span>
+                    )}
                 </div>
 
                 {/* Description */}
                 {project.description && (
-                    <p className="text-sm text-slate-400 line-clamp-2 mb-3">
+                    <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-slate-400">
                         {project.description}
                     </p>
                 )}
 
-                {/* Review status */}
-                {pendingReviews > 0 && (
-                    <div className="mb-3">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs border border-amber-500/20">
-                            <Activity size={12} />
-                            <span>{pendingReviews} docs needing review</span>
+                {/* 14-day tempo */}
+                <div className="mb-2.5">
+                    <div className="mb-0.5 flex items-baseline justify-between">
+                        <span className="text-[9px] uppercase tracking-widest text-slate-600">Tempo · 14d</span>
+                        <span className="font-mono text-[10px] text-slate-500">
+                            {pulse ? `${pulse.git.total} commits` : "—"}
                         </span>
                     </div>
-                )}
+                    {pulse ? (
+                        <PulseSparkline series={pulse.git.series} color={bandStyle.bar} height={22} />
+                    ) : (
+                        <div className="h-[22px] w-full animate-pulse rounded bg-slate-800/50" />
+                    )}
+                </div>
 
-                {/* Deploy status badge */}
-                {deployStatus && (
-                    <div className="mb-3">
-                        {deployStatus.isUp === true ? (
+                {/* Ops + crew */}
+                {(opsChips.length > 0 || pulse?.crew.last || (pulse?.crew.running ?? 0) > 0) && (
+                    <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                        {opsChips.map(c => (
                             <span
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    window.open(project.urls?.production, '_blank');
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 text-green-400 text-xs hover:bg-green-500/20 transition-colors cursor-pointer"
+                                key={c.key}
+                                title={c.title}
+                                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium ${c.cls}`}
                             >
-                                <Activity size={12} className="animate-pulse" />
-                                <span>Live</span>
+                                {c.icon}
+                                {c.label}
                             </span>
-                        ) : deployStatus.isUp === false ? (
-                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/10 text-red-400 text-xs">
-                                <XCircle size={12} />
-                                <span>Down</span>
-                            </div>
-                        ) : deployStatus.error ? (
-                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs">
-                                <AlertTriangle size={12} />
-                                <span>Error</span>
-                            </div>
-                        ) : null}
-                    </div>
-                )}
-
-                {/* URLs */}
-                {project.urls && (
-                    <div className="flex flex-wrap gap-2 mb-3">
-                        {project.urls.production && (
-                            <span
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    window.open(project.urls?.production, '_blank');
-                                }}
-                                className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
-                            >
-                                <Globe size={12} />
-                                <span>Production</span>
-                            </span>
-                        )}
+                        ))}
+                        {pulse && <CrewChip crew={pulse.crew} />}
                     </div>
                 )}
             </Link>
 
-            {/* Non-clickable footer section - outside the Link */}
+            {/* Footer — git console line + knowledge tags */}
             <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
-                {/* Stack badges */}
-                {project.stack && (
-                    <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                        <Layers size={14} className="text-slate-500" />
-                        <span>
-                            {Object.values(project.stack).join(" • ")}
-                        </span>
-                    </div>
-                )}
-
                 {/* Knowledge-need tags. Array.isArray, not truthiness: an API
                     server that predates the tags migration serves the raw TEXT
                     column ("[]"), and a non-empty string passes a length check
                     but has no .map (crashed every card on 2026-07-10). */}
                 {Array.isArray(project.tags) && project.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                        {project.tags.map(tag => (
-                            <div key={tag} className="flex items-center gap-1 text-xs text-slate-500 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
-                                <Tag size={10} />
+                    <div className="mt-1 flex flex-wrap gap-1">
+                        {project.tags.slice(0, 3).map(tag => (
+                            <span key={tag} className="flex items-center gap-1 rounded border border-slate-800 bg-slate-900/80 px-1.5 py-0.5 text-[10px] text-slate-500">
+                                <Tag size={9} />
                                 {tag}
-                            </div>
+                            </span>
                         ))}
+                        {project.tags.length > 3 && (
+                            <span className="px-1 py-0.5 text-[10px] text-slate-600" title={project.tags.slice(3).join(", ")}>
+                                +{project.tags.length - 3}
+                            </span>
+                        )}
                     </div>
                 )}
 
-                <div className="mt-auto pt-4 border-t border-slate-800">
-                    <div className="min-h-[4rem] text-xs">
-                        {getGitStateDisplay()}
-                    </div>
+                <div className="mt-3 border-t border-slate-800/80 pt-2.5">
+                    {gitFooter()}
                 </div>
             </div>
         </div>

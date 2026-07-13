@@ -173,6 +173,9 @@ const dispatchesRouter = createDispatchesRouter();
 app.use('/api/dispatches', dispatchesRouter);
 
 // Projects & tasks
+// Pulse first: the projects router's GET /:id would otherwise swallow /pulse.
+const createProjectPulseRouter = require('./routes/project-pulse');
+app.use('/api/projects', createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById }));
 const projectsRouter = createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, getRecentDispatches: dispatchesRouter.listRecentDispatches });
 app.use('/api/projects', projectsRouter);
 // Mount non-prefix routes from projects

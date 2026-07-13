@@ -112,6 +112,30 @@ body {
   }
 }
 
+/* Project-brief sections boot in sequence, like panels powering on */
+@keyframes hud-boot {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.hud-boot {
+  animation: hud-boot 0.45s ease-out both;
+}
+.hud-boot-1 { animation-delay: 90ms; }
+.hud-boot-2 { animation-delay: 180ms; }
+.hud-boot-3 { animation-delay: 270ms; }
+.hud-boot-4 { animation-delay: 360ms; }
+@media (prefers-reduced-motion: reduce) {
+  .hud-boot {
+    animation: none;
+  }
+}
+
 /* Modal pop-in */
 @keyframes hud-pop {
   from {
@@ -122,6 +146,14 @@ body {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
+}
+
+/* Hide the scrollbar entirely (referenced as scrollbar-none by tab strips) */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 /* Custom Scrollbar */

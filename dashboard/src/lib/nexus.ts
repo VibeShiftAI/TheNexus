@@ -229,6 +229,83 @@ export async function getArchivedProjects(): Promise<Project[]> {
     return res.json();
 }
 
+// ─── Project pulse (batched activity rollups for cards + brief screen) ──────
+
+export interface PulseGit {
+    hasGit: boolean;
+    hasRemote: boolean;
+    hasCommits: boolean;
+    remoteUrl: string | null;
+    branch: string | null;
+    uncommitted: number;
+    ahead: number;
+    behind: number;
+    lastCommit: { hash: string; message: string; date: string } | null;
+    /** Daily commit counts, oldest first (14 buckets batched, 30 on detail). */
+    series: number[];
+    total: number;
+}
+
+export interface PulseTasks {
+    active: number;
+    activeNames: string[];
+    queued: number;
+    attention: number;
+    review: number;
+    done7d: number;
+    total: number;
+}
+
+export interface PulseCrew {
+    running: number;
+    last: {
+        executor: string;
+        model: string | null;
+        outcome: string;
+        taskName: string | null;
+        at: string;
+        tokens: number | null;
+    } | null;
+    tokens24h: number;
+    tokens7d: number;
+    dispatches7d: number;
+}
+
+export interface ProjectPulse {
+    projectId: string;
+    git: PulseGit;
+    tasks: PulseTasks;
+    crew: PulseCrew;
+    lastActivityAt: string | null;
+}
+
+export interface OpsLogEvent {
+    type: 'commit' | 'dispatch' | 'task';
+    at: string;
+    title: string;
+    meta?: string;
+    by?: string;
+    outcome?: string;
+    tokens?: number | null;
+}
+
+export interface ProjectBrief extends ProjectPulse {
+    opsLog: OpsLogEvent[];
+}
+
+export async function getProjectsPulse(): Promise<Record<string, ProjectPulse>> {
+    const res = await authFetch(`${API_URL}/pulse`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Failed to fetch project pulse (${res.status})`);
+    const data = await res.json();
+    return data.pulses ?? {};
+}
+
+export async function getProjectBrief(id: string): Promise<ProjectBrief> {
+    const res = await authFetch(`${API_URL}/${id}/pulse`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Failed to fetch project brief (${res.status})`);
+    return res.json();
+}
+
 export async function getProjectStatus(id: string): Promise<GitStatus> {
     const res = await authFetch(`${API_URL}/${id}/status`);
     if (!res.ok) {

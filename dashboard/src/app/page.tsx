@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react";
-import { getProjects, getPins, type Project } from "@/lib/nexus";
+import { getProjects, getPins, getProjectsPulse, type Project, type ProjectPulse } from "@/lib/nexus";
 import { ProjectCard } from "@/components/project-card";
 import { NewProjectModal } from "@/components/new-project-modal";
 import { SettingsModal } from "@/components/settings-modal";
@@ -24,6 +24,7 @@ import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [pins, setPins] = useState<string[]>([]);
+  const [pulses, setPulses] = useState<Record<string, ProjectPulse>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +47,13 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+    // Pulse is heavier (git scan across every repo) — let the cards render
+    // first and stream the activity readouts in when the batch lands.
+    try {
+      setPulses(await getProjectsPulse());
+    } catch (e) {
+      console.error("Failed to load project pulse:", e);
+    }
   }, []);
 
   useEffect(() => {
@@ -64,13 +72,15 @@ export default function Home() {
     }
   };
 
-  // Sort projects: pinned first
+  // Sort projects: pinned first, then most recently active
   const sortedProjects = [...projects].sort((a, b) => {
     const aPinned = pins.includes(a.id);
     const bPinned = pins.includes(b.id);
     if (aPinned && !bPinned) return -1;
     if (!aPinned && bPinned) return 1;
-    return 0;
+    const aAt = Date.parse(pulses[a.id]?.lastActivityAt ?? "") || 0;
+    const bAt = Date.parse(pulses[b.id]?.lastActivityAt ?? "") || 0;
+    return bAt - aAt;
   });
 
   return (
@@ -200,6 +210,7 @@ export default function Home() {
                 <ProjectCard
                   key={p.id}
                   project={p}
+                  pulse={pulses[p.id]}
                   isPinned={pins.includes(p.id)}
                   onPinChange={handlePinChange}
                   pendingReviews={p.stats?.pending_reviews}
