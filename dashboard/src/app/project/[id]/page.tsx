@@ -12,6 +12,7 @@ import { ProjectSettings } from "@/components/project-settings";
 import { ProjectContextManager } from "@/components/project-context-manager";
 import { ArtifactsList } from "@/components/artifacts-list";
 import { ProjectNotes } from "@/components/project-notes";
+import { ProjectStakeholders } from "@/components/project-stakeholders";
 import { MissionBrief } from "@/components/project-brief/mission-brief";
 import { ActivityReport } from "@/components/project-brief/activity-report";
 import { HudPanel } from "@/components/bridge/hud";
@@ -298,6 +299,7 @@ export default function ProjectDetailPage() {
                             onTasksChange={loadTasks}
                             onTaskSelect={openTask}
                         />
+                        <ProjectStakeholders projectId={projectId} />
                         <ProjectNotes projectId={projectId} />
                     </div>
                 </div>

@@ -135,6 +135,7 @@ const createAIChatRouter    = require('./routes/ai-chat');
 const createIngestRouter    = require('./routes/ingest');
 const createAgentsRouter    = require('./routes/agents');
 const createNotesRouter     = require('./routes/notes');
+const createContactsRouter  = require('./routes/contacts');
 const createChatHistoryRouter = require('./routes/chat-history');
 const createChatFilesRouter   = require('./routes/chat-files');
 const createPushRouter      = require('./routes/push');
@@ -217,6 +218,7 @@ app.use('/api/ai/chat',  createAIChatRouter({ db, callAI, pushService, io }));
 app.use('/api/ingest',   createIngestRouter({ db }));
 app.use('/api/agents',   createAgentsRouter({ db }));
 app.use('/api/notes',    createNotesRouter({ db }));
+app.use('/api/contacts', createContactsRouter({ db }));
 app.use('/api/chat',     createChatHistoryRouter({ db, io }));
 app.use('/api/chat/files', createChatFilesRouter());
 

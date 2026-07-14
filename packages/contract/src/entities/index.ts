@@ -6,4 +6,6 @@ export * from "./executor.js";
 export * from "./identity.js";
 export * from "./trading.js";
 export * from "./pact.js";
+export * from "./feedback.js";
+export * from "./contact.js";
 

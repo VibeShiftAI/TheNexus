@@ -298,6 +298,11 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
 
     // ── Bridge / cockpit passthroughs (command-deck dashboard) ─────
     router.get('/stats', (req, res) => proxyJson(req, res, '/api/praxis/stats'));
+    // External-comms feed (feedback gateway in/out) — forwards ?since/?limit.
+    router.get('/comms', (req, res) => {
+        const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+        return proxyJson(req, res, `/api/comms${qs}`);
+    });
     router.get('/skills', (req, res) => proxyJson(req, res, '/api/skills'));
     router.get('/dispatch-state', (req, res) => proxyJson(req, res, '/api/dispatch/state'));
     router.post('/transcribe', (req, res) => proxyJson(req, res, '/api/transcribe'));

@@ -53,6 +53,7 @@ try {
     }
 
     runModelControlMigrations(db);
+    runContactsMigrations(db);
 
     // Canonical-status sweep (2026-07-05 unification): idempotent, runs every
     // boot. Writers normalize at createTask/updateTask, but a process still on
@@ -268,7 +269,8 @@ const JSON_COLS = new Set([
     'antigravity_payload', 'dependencies',
     'suspended_context', 'resume_action',
     'tags',
-    'needs', 'end_state_history', 'end_state_criteria'
+    'needs', 'end_state_history', 'end_state_criteria',
+    'preferences', 'expertise', 'interests'
 ]);
 
 function deserRow(row) {
@@ -434,6 +436,50 @@ function runModelControlMigrations(sqlite) {
         `);
     } catch (err) {
         console.warn('[Database] model-control migration skipped:', err.message);
+    }
+}
+
+/**
+ * Contacts — the shared people directory (stakeholders across projects) plus
+ * per-project role links. Contract shapes: @praxis/contract entities/contact.ts.
+ * Praxis's feedback pipeline auto-observes submitters here; the dashboard's
+ * project pages manage them; the knowledge loop will read expertise/interests
+ * to pick WHO to ask (askHuman) for off-internet knowledge.
+ */
+function runContactsMigrations(sqlite) {
+    try {
+        sqlite.exec(`
+            CREATE TABLE IF NOT EXISTS contacts (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT,
+                phone TEXT,
+                relationship TEXT,
+                notes TEXT,
+                preferences TEXT DEFAULT '{}',
+                expertise TEXT DEFAULT '[]',
+                interests TEXT DEFAULT '[]',
+                source TEXT DEFAULT 'operator',
+                last_contact_at TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_email
+                ON contacts(lower(email)) WHERE email IS NOT NULL AND email != '';
+
+            CREATE TABLE IF NOT EXISTS project_contacts (
+                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                contact_id TEXT NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+                role TEXT,
+                notes TEXT,
+                added_at TEXT DEFAULT (datetime('now')),
+                PRIMARY KEY (project_id, contact_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_project_contacts_contact
+                ON project_contacts(contact_id);
+        `);
+    } catch (err) {
+        console.warn('[Database] contacts migration skipped:', err.message);
     }
 }
 
@@ -2061,6 +2107,198 @@ async function getUningestedNotes(category = null) {
 }
 
 // ============================================================================
+// CONTACTS (shared stakeholder directory + per-project role links)
+// ============================================================================
+
+async function listContacts({ search = null, limit = 200 } = {}) {
+    if (!db) return [];
+    try {
+        if (search) {
+            const q = `%${search.toLowerCase()}%`;
+            return deserRows(db.prepare(
+                `SELECT * FROM contacts
+                 WHERE lower(name) LIKE ? OR lower(coalesce(email,'')) LIKE ? OR lower(coalesce(relationship,'')) LIKE ?
+                 ORDER BY name COLLATE NOCASE LIMIT ?`
+            ).all(q, q, q, limit));
+        }
+        return deserRows(db.prepare('SELECT * FROM contacts ORDER BY name COLLATE NOCASE LIMIT ?').all(limit));
+    } catch (err) {
+        console.error('[Database] Error listing contacts:', err.message);
+        return [];
+    }
+}
+
+async function getContact(id) {
+    if (!db) return null;
+    const row = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
+    if (!row) return null;
+    const contact = deserRow(row);
+    contact.projects = deserRows(db.prepare(
+        `SELECT pc.project_id, pc.role, pc.notes AS link_notes, pc.added_at, p.name AS project_name
+         FROM project_contacts pc JOIN projects p ON p.id = pc.project_id
+         WHERE pc.contact_id = ? ORDER BY pc.added_at DESC`
+    ).all(id));
+    return contact;
+}
+
+async function findContactByEmail(email) {
+    if (!db || !email) return null;
+    const row = db.prepare('SELECT * FROM contacts WHERE lower(email) = lower(?)').get(String(email).trim());
+    return row ? deserRow(row) : null;
+}
+
+async function createContact({ name, email, phone, relationship, notes, preferences, expertise, interests, source }) {
+    if (!db) return null;
+    try {
+        const contact = {
+            id: crypto.randomUUID(),
+            name: String(name).trim(),
+            email: email ? String(email).trim() : null,
+            phone: phone || null,
+            relationship: relationship || null,
+            notes: notes || null,
+            preferences: JSON.stringify(preferences || {}),
+            expertise: JSON.stringify(expertise || []),
+            interests: JSON.stringify(interests || []),
+            source: source || 'operator',
+            last_contact_at: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        const { sql, values } = buildInsert('contacts', contact);
+        db.prepare(sql).run(...values);
+        return getContact(contact.id);
+    } catch (err) {
+        console.error('[Database] Error creating contact:', err.message);
+        return null;
+    }
+}
+
+async function updateContact(id, updates) {
+    if (!db) return null;
+    const allowed = ['name', 'email', 'phone', 'relationship', 'notes', 'preferences', 'expertise', 'interests', 'last_contact_at'];
+    const sets = [];
+    const values = [];
+    for (const key of allowed) {
+        if (!(key in updates)) continue;
+        sets.push(`${key} = ?`);
+        const v = updates[key];
+        values.push(JSON_COLS.has(key) ? JSON.stringify(v ?? (key === 'preferences' ? {} : [])) : (v ?? null));
+    }
+    if (sets.length === 0) return getContact(id);
+    sets.push(`updated_at = ?`);
+    values.push(new Date().toISOString());
+    try {
+        const result = db.prepare(`UPDATE contacts SET ${sets.join(', ')} WHERE id = ?`).run(...values, id);
+        return result.changes > 0 ? getContact(id) : null;
+    } catch (err) {
+        console.error('[Database] Error updating contact:', err.message);
+        return null;
+    }
+}
+
+async function deleteContact(id) {
+    if (!db) return false;
+    try {
+        db.prepare('DELETE FROM project_contacts WHERE contact_id = ?').run(id);
+        return db.prepare('DELETE FROM contacts WHERE id = ?').run(id).changes > 0;
+    } catch (err) {
+        console.error('[Database] Error deleting contact:', err.message);
+        return false;
+    }
+}
+
+/** Contacts attached to a project, joined with their per-project role. */
+async function listProjectContacts(projectId) {
+    if (!db) return [];
+    try {
+        return deserRows(db.prepare(
+            `SELECT c.*, pc.role, pc.notes AS link_notes, pc.added_at
+             FROM project_contacts pc JOIN contacts c ON c.id = pc.contact_id
+             WHERE pc.project_id = ? ORDER BY pc.added_at ASC`
+        ).all(projectId));
+    } catch (err) {
+        console.error('[Database] Error listing project contacts:', err.message);
+        return [];
+    }
+}
+
+async function linkContactToProject(projectId, contactId, { role, notes } = {}) {
+    if (!db) return false;
+    try {
+        // Re-linking is an upsert that never downgrades operator data: an
+        // existing role/notes wins over the incoming default (role edits go
+        // through updateProjectContactLink instead).
+        db.prepare(
+            `INSERT INTO project_contacts (project_id, contact_id, role, notes, added_at)
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(project_id, contact_id) DO UPDATE SET
+               role = coalesce(project_contacts.role, excluded.role),
+               notes = coalesce(project_contacts.notes, excluded.notes)`
+        ).run(projectId, contactId, role || null, notes || null, new Date().toISOString());
+        return true;
+    } catch (err) {
+        console.error('[Database] Error linking contact:', err.message);
+        return false;
+    }
+}
+
+async function updateProjectContactLink(projectId, contactId, { role, notes }) {
+    if (!db) return false;
+    try {
+        const result = db.prepare(
+            `UPDATE project_contacts SET role = ?, notes = ? WHERE project_id = ? AND contact_id = ?`
+        ).run(role ?? null, notes ?? null, projectId, contactId);
+        return result.changes > 0;
+    } catch (err) {
+        console.error('[Database] Error updating contact link:', err.message);
+        return false;
+    }
+}
+
+async function unlinkContactFromProject(projectId, contactId) {
+    if (!db) return false;
+    try {
+        return db.prepare('DELETE FROM project_contacts WHERE project_id = ? AND contact_id = ?')
+            .run(projectId, contactId).changes > 0;
+    } catch (err) {
+        console.error('[Database] Error unlinking contact:', err.message);
+        return false;
+    }
+}
+
+/**
+ * Observe a communication with a (possibly new) human — used by Praxis's
+ * feedback pipeline. Upserts by email (never clobbers operator-entered
+ * fields), stamps last_contact_at, and optionally links to a project by
+ * NAME (case-insensitive) with a default role.
+ */
+async function observeContact({ email, name, projectName, role, source } = {}) {
+    if (!db || !email) return null;
+    try {
+        let contact = await findContactByEmail(email);
+        if (!contact) {
+            contact = await createContact({
+                name: name || String(email).split('@')[0],
+                email,
+                source: source || 'feedback'
+            });
+            if (!contact) return null;
+        }
+        db.prepare('UPDATE contacts SET last_contact_at = ?, updated_at = ? WHERE id = ?')
+            .run(new Date().toISOString(), new Date().toISOString(), contact.id);
+        if (projectName) {
+            const project = db.prepare('SELECT id FROM projects WHERE lower(name) = lower(?)').get(String(projectName).trim());
+            if (project) await linkContactToProject(project.id, contact.id, { role: role || 'Tester' });
+        }
+        return getContact(contact.id);
+    } catch (err) {
+        console.error('[Database] Error observing contact:', err.message);
+        return null;
+    }
+}
+
+// ============================================================================
 // CHAT CONVERSATIONS & MESSAGES (persistent Praxis / terminal chat history)
 // ============================================================================
 
@@ -2452,6 +2690,18 @@ module.exports = {
     deleteNote,
     markNoteIngested,
     getUningestedNotes,
+    // Contacts (shared stakeholder directory + project links)
+    listContacts,
+    getContact,
+    findContactByEmail,
+    createContact,
+    updateContact,
+    deleteContact,
+    listProjectContacts,
+    linkContactToProject,
+    updateProjectContactLink,
+    unlinkContactFromProject,
+    observeContact,
     // Chat Conversations & Messages (persistent Praxis chat history)
     getChatConversations,
     getActiveConversation,

@@ -7,11 +7,14 @@
  */
 "use client";
 
-import { Activity, Send, Inbox, Zap, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { Activity, Send, Inbox, Zap, CheckCircle2, Radio } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
 import { useTokenUsage } from "@/hooks/use-token-usage";
+import { useComms } from "@/hooks/use-comms";
+import { CommsModal } from "@/components/bridge/comms-modal";
 import { fmtTokens } from "@/lib/token-usage";
 import { CORE_STYLES } from "@/components/bridge/core-canvas";
 import type { PresenceActivity } from "@praxis/contract";
@@ -35,8 +38,11 @@ interface Chip {
   tone: string;
   /** Optional separate tone for the value text (e.g. gradient) so the icon keeps a solid color. */
   valueTone?: string;
-  target: string;
+  /** Warp target panel id — used unless onClick is provided. */
+  target?: string;
   title: string;
+  /** Chips without a station open their own drill-down instead of warping. */
+  onClick?: () => void;
 }
 
 export function StatusStrip() {
@@ -44,11 +50,21 @@ export function StatusStrip() {
   const { crew } = useCrewActivity();
   const { pendingRequests } = useHitlInbox();
   const { usage } = useTokenUsage();
+  const { feed, newCount, available: commsAvailable, lastSeen, markSeen } = useComms();
+  const [commsOpen, setCommsOpen] = useState(false);
 
   const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";
   const busy = crew.filter((m) => m.state === "active").length;
   const pending = pendingRequests.length;
   const doneToday = presence?.completedTasksToday;
+
+  const commsValue = !commsAvailable
+    ? "—"
+    : newCount > 0
+      ? `${newCount} new`
+      : feed
+        ? `${feed.counts.in}↓ ${feed.counts.out}↑`
+        : "…";
 
   const chips: Chip[] = [
     {
@@ -89,6 +105,18 @@ export function StatusStrip() {
       title: "Engineering — token throughput",
     },
     {
+      id: "comms",
+      label: "COMMS",
+      value: commsValue,
+      icon: <Radio size={13} />,
+      tone: newCount > 0 ? "text-amber-300" : commsAvailable ? "text-cyan-300" : "text-slate-500",
+      title: "External comms — feedback + human channel",
+      onClick: () => {
+        setCommsOpen(true);
+        markSeen();
+      },
+    },
+    {
       id: "done",
       label: "DONE TODAY",
       value: doneToday != null ? String(doneToday) : "—",
@@ -100,13 +128,13 @@ export function StatusStrip() {
   ];
 
   return (
-    <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+    <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
       {chips.map((c) => (
         <button
           key={c.id}
-          onClick={() => flashPanel(c.target)}
+          onClick={() => (c.onClick ? c.onClick() : c.target && flashPanel(c.target))}
           className="hud-scanlines group relative flex items-center gap-2.5 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-left transition-colors hover:border-cyan-500/40 hover:bg-slate-900"
-          title={`Warp to ${c.title}`}
+          title={c.onClick ? c.title : `Warp to ${c.title}`}
         >
           <span className={`shrink-0 ${c.tone}`}>{c.icon}</span>
           <span className="min-w-0">
@@ -117,6 +145,9 @@ export function StatusStrip() {
           </span>
         </button>
       ))}
+      {commsOpen && (
+        <CommsModal feed={feed} lastSeen={lastSeen} onClose={() => setCommsOpen(false)} />
+      )}
     </div>
   );
 }
