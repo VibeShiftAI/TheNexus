@@ -8,7 +8,8 @@
  * — approving the schedule used to clear skills + archive along with it):
  *
  *   • ScheduleHitlCard         (kind "day-schedule")      — proposed slots with
- *     per-row Worker/Model dropdowns + Skip; Approve activates dispatch, Reject holds.
+ *     per-row Worker/Model dropdowns + Skip + an add-instructions note (rides
+ *     scheduleOverrides.instructions); Approve activates dispatch, Reject holds.
  *   • SkillCandidatesHitlCard  (kind "skill-candidates")  — nightly harvest;
  *     each candidate Approve/Archive posts immediately, then Done clears the item.
  *   • BoardMaintenanceHitlCard (kind "board-maintenance") — Groundskeeper
@@ -326,6 +327,10 @@ export function ScheduleHitlCard({
     if (!schedule) return {};
     return Object.fromEntries(schedule.slots.map((s) => [s.nexusTaskId, s.modelOverride ?? ""]));
   });
+  // Per-slot extra instructions typed before approving, keyed by
+  // nexus_task_id. Sent as scheduleOverrides.instructions on Approve; the
+  // Praxis side APPENDS them to the planner's instructions (never replaces).
+  const [notes, setNotes] = useState<Record<string, string>>({});
   // Per-executor model options for the per-slot Model dropdown — shared with
   // the task screen's dispatch console (use-executor-models).
   const { optionsFor: modelOptionsFor } = useExecutorModelOptions();
@@ -347,6 +352,9 @@ export function ScheduleHitlCard({
     (s) => executors[s.nexusTaskId] !== s.executor,
   ).length;
   const activeCount = schedule.slots.length - skipCount;
+  const noteCount = schedule.slots.filter(
+    (s) => skips[s.nexusTaskId] === undefined && (notes[s.nexusTaskId] ?? "").trim() !== "",
+  ).length;
 
   async function submit(choice: "approve" | "reject") {
     setError(null);
@@ -360,6 +368,7 @@ export function ScheduleHitlCard({
       // that actually differ from the proposed defaults; always include skips.
       const executorOverrides: Record<string, string> = {};
       const modelOverrides: Record<string, string> = {};
+      const instructionOverrides: Record<string, string> = {};
       for (const slot of schedule!.slots) {
         const chosen = executors[slot.nexusTaskId];
         if (chosen && chosen !== slot.executor) {
@@ -370,18 +379,26 @@ export function ScheduleHitlCard({
           // "" rides through intentionally — it clears a proposed override.
           modelOverrides[slot.nexusTaskId] = chosenModel;
         }
+        // Notes on skipped slots stay local — a skipped slot never dispatches,
+        // so sending its note would only confuse the audit trail.
+        const note = (notes[slot.nexusTaskId] ?? "").trim();
+        if (note && skips[slot.nexusTaskId] === undefined) {
+          instructionOverrides[slot.nexusTaskId] = note;
+        }
       }
       const hasExecutorChanges = Object.keys(executorOverrides).length > 0;
       const hasModelChanges = Object.keys(modelOverrides).length > 0;
       const hasSkips = Object.keys(skips).length > 0;
+      const hasNotes = Object.keys(instructionOverrides).length > 0;
 
       const payload =
-        hasExecutorChanges || hasModelChanges || hasSkips
+        hasExecutorChanges || hasModelChanges || hasSkips || hasNotes
           ? {
               scheduleOverrides: {
                 ...(hasExecutorChanges ? { executors: executorOverrides } : {}),
                 ...(hasModelChanges ? { models: modelOverrides } : {}),
                 ...(hasSkips ? { skips } : {}),
+                ...(hasNotes ? { instructions: instructionOverrides } : {}),
               },
             }
           : undefined;
@@ -418,6 +435,7 @@ export function ScheduleHitlCard({
         <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
           {activeCount} dispatching{skipCount > 0 ? `, ${skipCount} skipped` : ""}
           {executorChanges > 0 ? `, ${executorChanges} worker changes` : ""}
+          {noteCount > 0 ? `, ${noteCount} note${noteCount === 1 ? "" : "s"}` : ""}
         </span>
       </div>
 
@@ -446,6 +464,7 @@ export function ScheduleHitlCard({
               const currentExec = executors[slot.nexusTaskId] ?? slot.executor;
               const isDraftingSkip = skipDraft?.taskId === slot.nexusTaskId;
               const isOpen = expanded[slot.nexusTaskId] === true;
+              const hasNote = (notes[slot.nexusTaskId] ?? "").trim() !== "";
               return (
                 <Fragment key={slot.nexusTaskId}>
                   <tr
@@ -473,6 +492,14 @@ export function ScheduleHitlCard({
                         <span className="min-w-0">
                           <span className="block truncate">{slot.title}</span>
                           <span className="block truncate text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
+                            {hasNote && !isSkipped ? (
+                              <span
+                                className="text-cyan-300"
+                                title="Instructions added — sent to the executor when you approve"
+                              >
+                                📝 note ·{" "}
+                              </span>
+                            ) : null}
                             {slot.workspace} · ~{slot.estimatedMinutes}min
                           </span>
                         </span>
@@ -592,6 +619,27 @@ export function ScheduleHitlCard({
                               <span className="whitespace-pre-wrap">{slot.taskDescription}</span>
                             </div>
                           ) : null}
+                          <div>
+                            <label className="mb-1 block font-semibold text-cyan-300">
+                              Add instructions for this run:
+                            </label>
+                            <textarea
+                              value={notes[slot.nexusTaskId] ?? ""}
+                              disabled={isSkipped || resolving}
+                              onChange={(e) =>
+                                setNotes((prev) => ({
+                                  ...prev,
+                                  [slot.nexusTaskId]: e.target.value,
+                                }))
+                              }
+                              placeholder="e.g. use the staging DB, not prod"
+                              className="min-h-14 w-full resize-y rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-100 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                            <p className="mt-0.5 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
+                              Appended to the planner&apos;s instructions and sent to the executor
+                              when you approve the plan.
+                            </p>
+                          </div>
                         </div>
                       </td>
                     </tr>
