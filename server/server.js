@@ -146,9 +146,11 @@ const createLocalQueueRouter = require('./routes/local-queue');
 const createIngestionControlRouter = require('./routes/ingestion-control');
 const createStudioRouter = require('./routes/studio');
 const createDispatchesRouter = require('./routes/dispatches');
+const createFleetRouter     = require('./routes/fleet');
 
 // Health & system
 app.use('/api/health',    createHealthRouter());
+app.use('/api/fleet',     createFleetRouter());
 app.use('/api/models',    createModelsRouter({ db, getModels }));
 app.use('/api/model-control', createModelControlRouter({ db, io, discoverModelRegistry, callAI }));
 app.use('/api/settings',  createSettingsRouter());
