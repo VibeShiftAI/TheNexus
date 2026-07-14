@@ -427,7 +427,10 @@ function runModelControlMigrations(sqlite) {
               ('agent.epistemic',         'alias:gemini_default', 'Trust-gap / epistemic evaluation'),
               ('brain.chat',              'alias:gemini_default', 'External reasoning offload (praxis-mind brain_chat)'),
               ('router.classify',         'alias:gemini_fast',    'Turn classifier (fast)'),
-              ('context.plan',            'alias:gemini_fast',    'Context planner (fast)');
+              ('context.plan',            'alias:gemini_fast',    'Context planner (fast)'),
+              ('feedback.triage',            'alias:local_default',  'Feedback gateway: classify + route an end-user submission'),
+              ('feedback.council_synthesis', 'alias:gemini_default', 'Feedback gateway: fuse council theses into an implementation plan'),
+              ('feedback.reply',             'alias:gemini_default', 'Feedback gateway: compose outbound email prose to submitters');
         `);
     } catch (err) {
         console.warn('[Database] model-control migration skipped:', err.message);
