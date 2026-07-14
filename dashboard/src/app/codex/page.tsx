@@ -26,6 +26,7 @@ import {
     Scale,
     Send,
     ShieldCheck,
+    Smartphone,
     Tag,
     Telescope,
     Terminal,
@@ -34,7 +35,7 @@ import {
     Zap,
 } from "lucide-react";
 
-const ATLAS_REV = "2026.07.11";
+const ATLAS_REV = "2026.07.14";
 
 // ── Data: the seven organs ────────────────────────────────────────────────
 
@@ -194,7 +195,14 @@ const PIPELINE = [
         title: "COUNCIL",
         hex: "#fbbf24",
         chip: "border-amber-500/30 text-amber-300",
-        body: "At 06:15 the Knowledge Council convenes — in-house seats deliberate and draft the morning slate. Robert approves it slot by slot from the mobile deck.",
+        body: "At 06:15 the Knowledge Council convenes — codex, claude-code, and antigravity deliberate concurrently, and a separate one-shot aggregator synthesizes their theses into the morning slate.",
+    },
+    {
+        icon: Smartphone,
+        title: "APPROVE",
+        hex: "#2dd4bf",
+        chip: "border-teal-500/30 text-teal-300",
+        body: "The drafted slate rides push to the mobile deck, where Robert approves it slot by slot. An unapproved slot never reaches dispatch.",
     },
     {
         icon: Send,
@@ -371,6 +379,12 @@ const LOOP_ARCS = STATIONS.map((s, i) => {
     const next = STATIONS[(i + 1) % STATIONS.length];
     return { hex: s.hex, d: `M ${s.x} ${s.y} A 210 210 0 0 1 ${next.x} ${next.y}` };
 });
+
+// The Cortex sits at the hub of the flywheel — every spoke feeds it. HUNT
+// deposits the night's catch; APPLY draws it back out as morning tasks.
+const HUB = { x: 300, y: 300 };
+const HUNT_STATION = STATIONS.find((s) => s.id === "hunt") ?? STATIONS[0];
+const APPLY_STATION = STATIONS.find((s) => s.id === "apply") ?? STATIONS[0];
 
 // ── Hooks ─────────────────────────────────────────────────────────────────
 
@@ -598,6 +612,21 @@ function KnowledgeLoop({
                     className="absolute inset-0 h-full w-full"
                     aria-hidden="true"
                 >
+                    {/* Spokes: every station reads and writes the Cortex at the hub */}
+                    {STATIONS.map((s) => (
+                        <line
+                            key={`spoke-${s.id}`}
+                            x1={s.x}
+                            y1={s.y}
+                            x2={HUB.x}
+                            y2={HUB.y}
+                            stroke={s.hex}
+                            strokeOpacity={selected === s.id ? 0.4 : 0.12}
+                            strokeWidth={1}
+                            strokeDasharray="2 8"
+                            style={{ transition: "stroke-opacity 300ms" }}
+                        />
+                    ))}
                     {/* Segmented ring, colored by source station */}
                     {LOOP_ARCS.map((arc) => (
                         <path
@@ -621,14 +650,14 @@ function KnowledgeLoop({
                             transform={`translate(${c.x} ${c.y}) rotate(${c.r})`}
                         />
                     ))}
-                    {/* Inner rotating ring */}
+                    {/* The Cortex's halo — inner rotating ring */}
                     <g className="codex-anim codex-spin" style={{ transformOrigin: "300px 300px" }}>
                         <circle
                             cx={300}
                             cy={300}
                             r={120}
                             fill="none"
-                            stroke="#22d3ee"
+                            stroke="#a78bfa"
                             strokeOpacity={0.12}
                             strokeWidth={1}
                             strokeDasharray="3 14"
@@ -646,17 +675,47 @@ function KnowledgeLoop({
                                 />
                             </circle>
                         ))}
+                    {/* Deposits and withdrawals at the hub */}
+                    {!reduced && (
+                        <>
+                            <circle r={2.5} fill={HUNT_STATION.hex} opacity={0.8}>
+                                <animateMotion
+                                    dur="5s"
+                                    repeatCount="indefinite"
+                                    path={`M ${HUNT_STATION.x} ${HUNT_STATION.y} L ${HUB.x} ${HUB.y}`}
+                                />
+                            </circle>
+                            <circle r={2.5} fill={APPLY_STATION.hex} opacity={0.8}>
+                                <animateMotion
+                                    dur="5s"
+                                    begin="2.5s"
+                                    repeatCount="indefinite"
+                                    path={`M ${HUB.x} ${HUB.y} L ${APPLY_STATION.x} ${APPLY_STATION.y}`}
+                                />
+                            </circle>
+                        </>
+                    )}
                 </svg>
 
-                {/* Center label */}
-                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                    <div className="font-mono text-[11px] font-bold tracking-[0.32em] text-slate-300">
-                        THE
-                        <br />
-                        FLYWHEEL
-                    </div>
-                    <div className="mt-2 font-mono text-[9px] uppercase tracking-[0.24em] text-slate-600">
-                        learning compounds
+                {/* The Cortex — the repository every spoke feeds */}
+                <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 text-center">
+                    <span className="relative flex items-center justify-center">
+                        <span
+                            className="codex-anim codex-ring absolute h-20 w-20 rounded-full border"
+                            style={{ borderColor: "#a78bfa", opacity: 0.3 }}
+                        />
+                        <span
+                            className="relative flex h-20 w-20 items-center justify-center rounded-full border-2 bg-slate-950"
+                            style={{ borderColor: "#a78bfa", boxShadow: "0 0 32px rgba(167,139,250,0.35)" }}
+                        >
+                            <BrainCircuit size={30} style={{ color: "#a78bfa" }} />
+                        </span>
+                    </span>
+                    <div className="rounded bg-slate-950/70 px-2 py-1">
+                        <div className="font-mono text-[11px] font-bold tracking-[0.28em] text-white">THE CORTEX</div>
+                        <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.24em] text-slate-500">
+                            repository of knowledge
+                        </div>
                     </div>
                 </div>
 
@@ -759,21 +818,34 @@ function StationDetail({ station }: { station: LoopStation }) {
 }
 
 // ── The pipeline rail ─────────────────────────────────────────────────────
-// Stations ride a single conduit (viewBox 1000×230, rail at y=80); the QA
-// fail path is the violet arc looping from REVIEW back to EXECUTE.
+// One graph, chamber to schedule (viewBox 1200×400, rail at y=260). The
+// 06:15 council sits over station 01: three reference seats deliberate
+// concurrently and their theses converge on the aggregator at the rail; the
+// slate crosses Robert's slot-by-slot approval at station 02 and the work
+// rides the conduit from there. The QA fail path is the violet arc looping
+// from REVIEW back to EXECUTE.
 
-const RAIL_VB_W = 1000;
-const RAIL_VB_H = 230;
-const RAIL_Y = 80;
-const RAIL_XS = PIPELINE.map((_, i) => 100 + i * 200);
+const RAIL_VB_W = 1200;
+const RAIL_VB_H = 400;
+const RAIL_Y = 260;
+const RAIL_XS = [170, 350, 545, 740, 935, 1105];
+const RAIL_EXIT_X = 1180;
+
+// The chamber: seats on a 140-radius table arc over station 01.
+const COUNCIL_SEATS = [
+    { name: "CODEX", hex: "#22d3ee", x: 49, y: 190 },
+    { name: "CLAUDE CODE", hex: "#34d399", x: 170, y: 120 },
+    { name: "ANTIGRAVITY", hex: "#a78bfa", x: 291, y: 190 },
+];
 
 function PipelineRail() {
     const reduced = useReducedMotion();
     const railPct = (RAIL_Y / RAIL_VB_H) * 100;
+    const councilX = RAIL_XS[0];
 
     return (
         <div className="overflow-x-auto pb-2">
-            <div className="min-w-[960px]">
+            <div className="min-w-[1160px]">
                 <div className="relative rounded-2xl border border-slate-800 bg-slate-950/60 hud-scanlines">
                     <div className="relative" style={{ aspectRatio: `${RAIL_VB_W} / ${RAIL_VB_H}` }}>
                         <svg
@@ -782,6 +854,56 @@ function PipelineRail() {
                             className="absolute inset-0 h-full w-full"
                             aria-hidden="true"
                         >
+                            {/* The table arc the council seats sit on */}
+                            <path
+                                d={`M ${COUNCIL_SEATS[0].x} ${COUNCIL_SEATS[0].y} A 140 140 0 0 1 ${COUNCIL_SEATS[2].x} ${COUNCIL_SEATS[2].y}`}
+                                fill="none"
+                                stroke="#1e293b"
+                                strokeWidth={1.5}
+                                strokeDasharray="3 5"
+                            />
+
+                            {/* Theses converge on the aggregator at station 01 */}
+                            {COUNCIL_SEATS.map((s, i) => (
+                                <g key={s.name}>
+                                    <line
+                                        x1={s.x}
+                                        y1={s.y}
+                                        x2={councilX}
+                                        y2={RAIL_Y}
+                                        stroke={s.hex}
+                                        strokeOpacity={0.35}
+                                        strokeWidth={1.5}
+                                        strokeDasharray="6 7"
+                                        className="codex-anim codex-beam"
+                                    />
+                                    {!reduced && (
+                                        <circle r={3} fill={s.hex} opacity={0.9}>
+                                            <animateMotion
+                                                dur={`${2.6 + i * 0.4}s`}
+                                                begin={`${i * 0.5}s`}
+                                                repeatCount="indefinite"
+                                                path={`M${s.x},${s.y} L${councilX},${RAIL_Y}`}
+                                            />
+                                        </circle>
+                                    )}
+                                </g>
+                            ))}
+
+                            {/* Chamber annotation, upper right */}
+                            <text
+                                x={RAIL_EXIT_X}
+                                y={40}
+                                textAnchor="end"
+                                fontSize={10}
+                                letterSpacing={2}
+                                fill="#64748b"
+                                opacity={0.7}
+                                style={{ fontFamily: "var(--font-geist-mono), monospace" }}
+                            >
+                                06:15 · THREE SEATS · CONCURRENT · ONE VERDICT
+                            </text>
+
                             {/* Rail segments, colored by source stage; discs hide the joints */}
                             {PIPELINE.slice(0, -1).map((s, i) => (
                                 <line
@@ -797,12 +919,24 @@ function PipelineRail() {
                                     className="codex-anim codex-beam"
                                 />
                             ))}
-                            {/* Intake lead-in and outflow to the advanced schedule */}
-                            <line x1={22} y1={RAIL_Y} x2={RAIL_XS[0]} y2={RAIL_Y} stroke="#fbbf24" strokeOpacity={0.15} strokeWidth={1.5} strokeDasharray="2 7" />
+                            {/* The slate crossing from council to approval */}
+                            <text
+                                x={(RAIL_XS[0] + RAIL_XS[1]) / 2}
+                                y={RAIL_Y - 14}
+                                textAnchor="middle"
+                                fontSize={10}
+                                letterSpacing={2}
+                                fill="#fbbf24"
+                                opacity={0.7}
+                                style={{ fontFamily: "var(--font-geist-mono), monospace" }}
+                            >
+                                MORNING SLATE
+                            </text>
+                            {/* Outflow to the advanced schedule */}
                             <line
-                                x1={RAIL_XS[4]}
+                                x1={RAIL_XS[5]}
                                 y1={RAIL_Y}
-                                x2={962}
+                                x2={RAIL_EXIT_X - 12}
                                 y2={RAIL_Y}
                                 stroke="#f472b6"
                                 strokeOpacity={0.4}
@@ -810,9 +944,13 @@ function PipelineRail() {
                                 strokeDasharray="6 7"
                                 className="codex-anim codex-beam"
                             />
-                            <polygon points="960,74 974,80 960,86" fill="#f472b6" opacity={0.7} />
+                            <polygon
+                                points={`${RAIL_EXIT_X - 14},${RAIL_Y - 6} ${RAIL_EXIT_X},${RAIL_Y} ${RAIL_EXIT_X - 14},${RAIL_Y + 6}`}
+                                fill="#f472b6"
+                                opacity={0.7}
+                            />
                             <text
-                                x={974}
+                                x={RAIL_EXIT_X}
                                 y={RAIL_Y + 28}
                                 textAnchor="end"
                                 fontSize={10}
@@ -835,7 +973,7 @@ function PipelineRail() {
                             ))}
                             {/* QA fail path: REVIEW loops back to EXECUTE */}
                             <path
-                                d={`M ${RAIL_XS[3]} ${RAIL_Y} C ${RAIL_XS[3]} 195, ${RAIL_XS[2]} 195, ${RAIL_XS[2]} ${RAIL_Y}`}
+                                d={`M ${RAIL_XS[4]} ${RAIL_Y} C ${RAIL_XS[4]} 375, ${RAIL_XS[3]} 375, ${RAIL_XS[3]} ${RAIL_Y}`}
                                 fill="none"
                                 stroke="#a78bfa"
                                 strokeOpacity={0.35}
@@ -843,10 +981,10 @@ function PipelineRail() {
                                 strokeDasharray="6 7"
                                 className="codex-anim codex-beam"
                             />
-                            <polygon points="0,-4.5 9,0 0,4.5" fill="#a78bfa" opacity={0.8} transform={`translate(${(RAIL_XS[2] + RAIL_XS[3]) / 2} 166) rotate(180)`} />
+                            <polygon points="0,-4.5 9,0 0,4.5" fill="#a78bfa" opacity={0.8} transform={`translate(${(RAIL_XS[3] + RAIL_XS[4]) / 2} 346) rotate(180)`} />
                             <text
-                                x={(RAIL_XS[2] + RAIL_XS[3]) / 2}
-                                y={196}
+                                x={(RAIL_XS[3] + RAIL_XS[4]) / 2}
+                                y={376}
                                 textAnchor="middle"
                                 fontSize={10}
                                 letterSpacing={2}
@@ -865,7 +1003,7 @@ function PipelineRail() {
                                                 dur="7s"
                                                 begin={`${i * 2.3}s`}
                                                 repeatCount="indefinite"
-                                                path={`M 22 ${RAIL_Y} L 974 ${RAIL_Y}`}
+                                                path={`M ${RAIL_XS[0]} ${RAIL_Y} L ${RAIL_EXIT_X} ${RAIL_Y}`}
                                             />
                                         </circle>
                                     ))}
@@ -873,22 +1011,57 @@ function PipelineRail() {
                                         <animateMotion
                                             dur="4s"
                                             repeatCount="indefinite"
-                                            path={`M ${RAIL_XS[3]} ${RAIL_Y} C ${RAIL_XS[3]} 195, ${RAIL_XS[2]} 195, ${RAIL_XS[2]} ${RAIL_Y}`}
+                                            path={`M ${RAIL_XS[4]} ${RAIL_Y} C ${RAIL_XS[4]} 375, ${RAIL_XS[3]} 375, ${RAIL_XS[3]} ${RAIL_Y}`}
                                         />
                                     </circle>
                                 </>
                             )}
                         </svg>
 
+                        {/* Council seats (HTML layer) */}
+                        {COUNCIL_SEATS.map((s) => (
+                            <React.Fragment key={s.name}>
+                                <div
+                                    className="absolute inline-block whitespace-nowrap rounded border bg-slate-950/90 px-2 py-0.5 font-mono text-[11px] font-bold tracking-[0.2em]"
+                                    style={{
+                                        left: `${(s.x / RAIL_VB_W) * 100}%`,
+                                        top: `${(s.y / RAIL_VB_H) * 100}%`,
+                                        transform: "translate(-50%, calc(-100% - 36px))",
+                                        borderColor: `${s.hex}4d`,
+                                        color: s.hex,
+                                    }}
+                                >
+                                    {s.name}
+                                </div>
+                                <div
+                                    className="absolute flex h-12 w-12 items-center justify-center rounded-full border bg-slate-950"
+                                    style={{
+                                        left: `${(s.x / RAIL_VB_W) * 100}%`,
+                                        top: `${(s.y / RAIL_VB_H) * 100}%`,
+                                        transform: "translate(-50%, -50%)",
+                                        borderColor: s.hex,
+                                        boxShadow: `0 0 16px ${s.hex}33`,
+                                    }}
+                                >
+                                    <Terminal size={20} style={{ color: s.hex }} />
+                                </div>
+                            </React.Fragment>
+                        ))}
+
                         {/* Station discs + chips (HTML layer) */}
                         {PIPELINE.map((s, i) => {
                             const Icon = s.icon;
                             const left = `${(RAIL_XS[i] / RAIL_VB_W) * 100}%`;
+                            const isCouncil = i === 0;
                             return (
                                 <React.Fragment key={s.title}>
                                     <div
                                         className={`absolute inline-block whitespace-nowrap rounded border bg-slate-950/90 px-2 py-0.5 font-mono text-[11px] font-bold tracking-[0.2em] ${s.chip}`}
-                                        style={{ left, top: `${railPct}%`, transform: "translate(-50%, calc(-100% - 38px))" }}
+                                        style={{
+                                            left,
+                                            top: `${railPct}%`,
+                                            transform: isCouncil ? "translate(-50%, 38px)" : "translate(-50%, calc(-100% - 38px))",
+                                        }}
                                     >
                                         0{i + 1} · {s.title}
                                     </div>
@@ -907,11 +1080,28 @@ function PipelineRail() {
                                 </React.Fragment>
                             );
                         })}
+
+                        {/* Sub-captions for the chamber stations */}
+                        <div
+                            className="absolute whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.22em] text-slate-600"
+                            style={{ left: `${(RAIL_XS[0] / RAIL_VB_W) * 100}%`, top: `${railPct}%`, transform: "translate(-50%, 66px)" }}
+                        >
+                            one-shot aggregator · drafts the slate
+                        </div>
+                        <div
+                            className="absolute whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.22em] text-slate-600"
+                            style={{ left: `${(RAIL_XS[1] / RAIL_VB_W) * 100}%`, top: `${railPct}%`, transform: "translate(-50%, 32px)" }}
+                        >
+                            robert · slot by slot · mobile deck
+                        </div>
                     </div>
                 </div>
 
                 {/* Stage descriptions aligned under their stations */}
-                <div className="mt-4 grid grid-cols-5 gap-4 px-1">
+                <div
+                    className="mt-4 grid gap-4 px-1"
+                    style={{ gridTemplateColumns: "260fr 187.5fr 195fr 195fr 182.5fr 180fr" }}
+                >
                     {PIPELINE.map((s) => (
                         <p key={s.title} className="text-[13px] leading-relaxed text-slate-400">
                             {s.body}
@@ -1070,7 +1260,7 @@ export default function CodexPage() {
                         index="03 · The flywheel"
                         icon={RefreshCw}
                         title="How the system learns"
-                        subtitle="The newest machinery on the ship. Tags bind every project to the knowledge graph; unbound tags become gaps; gaps become nightly hunts; last night's findings become this morning's tasks — and shipped work opens the next gap."
+                        subtitle="The newest machinery on the ship. Tags bind every project to the knowledge graph; unbound tags become gaps; gaps become nightly hunts; last night's findings become this morning's tasks — and shipped work opens the next gap. The Cortex sits at the hub: every turn of the wheel deposits what it learned."
                     />
                     <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
                         <KnowledgeLoop selected={station} onSelect={setStation} />
