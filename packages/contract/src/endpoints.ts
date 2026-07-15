@@ -22,8 +22,6 @@ export const DEFAULT_ENDPOINTS = {
   nexus: "http://localhost:4000",
   /** TheCortex FastAPI cognitive gateway. */
   cortex: "http://localhost:8100",
-  /** TheNexus LangGraph Python engine. */
-  langgraph: "http://127.0.0.1:8000",
   /** Local LLM (LM Studio, OpenAI-compatible). */
   localLlm: "http://127.0.0.1:1234",
 } as const;
@@ -35,7 +33,6 @@ export const ENDPOINT_ENV_KEYS: Record<EndpointName, string> = {
   praxis: "PRAXIS_URL",
   nexus: "NEXUS_API_URL",
   cortex: "CORTEX_API_URL",
-  langgraph: "LANGGRAPH_URL",
   localLlm: "LOCAL_LLM_URL",
 };
 

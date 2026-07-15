@@ -1,7 +1,7 @@
 ---
 context_type: tech-stack
 status: active
-updated_at: 2026-07-13T21:19:32.993Z
+updated_at: 2026-07-14T17:30:26.874Z
 ---
 
 # Technology Stack: The Nexus
