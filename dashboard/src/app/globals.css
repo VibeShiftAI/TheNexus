@@ -173,6 +173,23 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(71, 85, 105, 0.8);
 }
+
+/* Document scrollbar — the page's far-right rail. Match .custom-scrollbar so
+   the outer scrollbar reads the same as every in-panel scroller. */
+html::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+html::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+html::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.5);
+  border-radius: 10px;
+}
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.8);
+}
 /* Compact HUD form input — used by the stakeholders panel and other small
    inline editors on HUD panels. */
 .hud-input {
