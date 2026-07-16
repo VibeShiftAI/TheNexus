@@ -45,17 +45,19 @@ const AI_COAUTHOR_HINT = /claude|gpt|gemini|codex|llama|opus|sonnet|haiku|fable|
  * Activities are git commits, which carry no first-class model/token columns —
  * but autonomous executors stamp the model into a `Co-Authored-By:` (or explicit
  * `Model:`) trailer, and can stamp a `Tokens:` trailer. This reads those signals
- * from the commit subject + body and returns { model, tokens }, using nulls when
- * a commit has no such data (hand-authored or system commits) so the UI can show
- * a neutral placeholder instead of guessing.
+ * from the commit subject + body and returns { model, tokens, tokensEstimated },
+ * using nulls when a commit has no such data (hand-authored or system commits)
+ * so the UI can show a neutral placeholder instead of guessing. A ~ prefix on
+ * the token count ("Tokens: ~12345") marks it as an estimate.
  *
  * @param {{ message?: string, body?: string }} commit
- * @returns {{ model: string|null, tokens: number|null }}
+ * @returns {{ model: string|null, tokens: number|null, tokensEstimated: boolean }}
  */
 function deriveActivityAttribution(commit) {
     const text = `${commit?.message || ''}\n${commit?.body || ''}`;
     let model = null;
     let tokens = null;
+    let tokensEstimated = false;
 
     // Explicit "Model:" trailer wins when present.
     const modelTrailer = text.match(/^\s*Model:\s*(.+?)\s*$/im);
@@ -76,16 +78,20 @@ function deriveActivityAttribution(commit) {
     }
 
     // Token count trailer: "Tokens: 12345" / "Tokens-Used: 12,345" / "Token-Count: 12k".
-    const tokenTrailer = text.match(/^\s*Tokens?(?:[-\s]?(?:Used|Count))?:\s*([\d.,]+)\s*([kKmM])?\s*$/im);
+    // A ~ prefix ("Tokens: ~9000") marks an estimated count.
+    const tokenTrailer = text.match(/^\s*Tokens?(?:[-\s]?(?:Used|Count))?:\s*(~)?\s*([\d.,]+)\s*([kKmM])?\s*$/im);
     if (tokenTrailer) {
-        let n = parseFloat(tokenTrailer[1].replace(/,/g, ''));
-        const unit = (tokenTrailer[2] || '').toLowerCase();
+        let n = parseFloat(tokenTrailer[2].replace(/,/g, ''));
+        const unit = (tokenTrailer[3] || '').toLowerCase();
         if (unit === 'k') n *= 1_000;
         else if (unit === 'm') n *= 1_000_000;
-        if (Number.isFinite(n) && n >= 0) tokens = Math.round(n);
+        if (Number.isFinite(n) && n >= 0) {
+            tokens = Math.round(n);
+            tokensEstimated = Boolean(tokenTrailer[1]);
+        }
     }
 
-    return { model, tokens };
+    return { model, tokens, tokensEstimated };
 }
 
 // When a dispatch row carries no explicit `model` (Codex/Antigravity writers
@@ -112,6 +118,12 @@ function executorModelLabel(executor) {
 // nothing and stay unattributed (a neutral "—" beats a wrong model name).
 const DISPATCH_MATCH_GRACE_MS = 15 * 60 * 1000; // 15 min
 
+// A still-running dispatch row may claim a commit made mid-run, but only for a
+// bounded stretch after it started. Real runs finish (or time out) well inside
+// this window; anything older at outcome='running' is a ghost row whose
+// completion callback never landed, and must not soak up later commits.
+const MAX_OPEN_DISPATCH_CLAIM_MS = 6 * 60 * 60 * 1000; // 6 h
+
 /**
  * Correlate a commit to the dispatch that most plausibly produced it, using the
  * real per-run executor/model + token count the orchestrator recorded in
@@ -127,18 +139,33 @@ const DISPATCH_MATCH_GRACE_MS = 15 * 60 * 1000; // 15 min
 function correlateDispatch(commitDate, dispatches) {
     const t = commitDate.getTime();
     if (!Number.isFinite(t) || !Array.isArray(dispatches)) return { model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null };
+    // Two tiers: a completed dispatch whose window contains the commit always
+    // beats a still-running row. An open row used to match ANY later commit at
+    // distance 0 (its "end" defaulted to the commit time), so one ghost row —
+    // a run that crashed before its completion callback — would out-compete
+    // every real completed dispatch behind it. Open rows now rank second and
+    // only claim commits made within a bounded window of their start (a real
+    // in-flight run is the right match for a mid-run commit; a days-old ghost
+    // is not).
     let best = null;
+    let bestTier = Infinity;
     let bestDist = Infinity;
     for (const d of dispatches) {
         const start = new Date(d.started_at).getTime();
         if (!Number.isFinite(start) || start > t + 1000) continue; // dispatch began after the commit
-        const end = d.completed_at ? new Date(d.completed_at).getTime() : t;
-        const endWithGrace = (Number.isFinite(end) ? end : start) + DISPATCH_MATCH_GRACE_MS;
-        if (t > endWithGrace) continue; // commit lands well after the run finished
-        // Prefer the dispatch whose completion is closest to the commit time.
-        const ref = Number.isFinite(end) ? end : start;
-        const dist = Math.abs(t - ref);
-        if (dist < bestDist) { bestDist = dist; best = d; }
+        const end = d.completed_at ? new Date(d.completed_at).getTime() : NaN;
+        let tier, dist;
+        if (Number.isFinite(end)) {
+            if (t > end + DISPATCH_MATCH_GRACE_MS) continue; // commit lands well after the run finished
+            tier = 0;
+            // Prefer the dispatch whose completion is closest to the commit time.
+            dist = Math.abs(t - end);
+        } else {
+            if (t - start > MAX_OPEN_DISPATCH_CLAIM_MS) continue; // stale open row — likely a ghost
+            tier = 1;
+            dist = t - start;
+        }
+        if (tier < bestTier || (tier === bestTier && dist < bestDist)) { bestTier = tier; bestDist = dist; best = d; }
     }
     if (!best) return { model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null };
     const hasTokens = typeof best.tokens === 'number' && Number.isFinite(best.tokens);
@@ -894,9 +921,9 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                     // An explicit commit trailer is a precise model name; a
                     // dispatch-sourced model may be an executor-derived label.
                     const modelInferred = trailer.model != null ? false : matched.modelInferred;
-                    // Explicit Tokens: trailers are exact; dispatch-sourced counts may be estimated.
+                    // Trailer counts are exact unless ~-prefixed; dispatch-sourced counts may be estimated.
                     const tokens = trailer.tokens ?? matched.tokens;
-                    const tokensEstimated = trailer.tokens != null ? false : matched.tokensEstimated;
+                    const tokensEstimated = trailer.tokens != null ? trailer.tokensEstimated : matched.tokensEstimated;
                     // Drill-down handle: when the commit correlates to a dispatch,
                     // carry its task/dispatch id so the feed row can open that run's
                     // logs. Null when nothing matched → the row has no logs to show.

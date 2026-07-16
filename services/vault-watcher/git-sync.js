@@ -81,7 +81,10 @@ async function runGitSync(vault, log = console.log) {
       .slice(0, 50)
       .map((f) => `  ${f.index || ' '}${f.working_dir || ' '} ${f.path}`)
       .join('\n');
-    const message = `${summary}\n\n${detail}`;
+    // Attribution trailers for the Recent Activity Feed: this is automated
+    // bookkeeping by the watcher daemon — no LLM ran, so zero tokens is exact.
+    const trailers = 'Model: vault-watcher\nTokens: 0';
+    const message = `${summary}\n\n${detail}\n\n${trailers}`;
     await git.commit(message);
     log(`[GitSync] Committed: ${summary}`);
   }

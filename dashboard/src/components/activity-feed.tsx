@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getActivity, Activity } from "@/lib/nexus";
-import { GitCommit, Clock, Cpu, Coins, ChevronRight, FileX2 } from "lucide-react";
+import { GitCommit, Clock, Cpu, Coins, ChevronRight, FileX2, User } from "lucide-react";
 
 // Compact token count: 12345 → "12.3k", 2_000_000 → "2M".
 function formatTokens(n: number) {
@@ -120,7 +120,8 @@ export function ActivityFeed() {
                             </p>
                             <div className="mt-1 flex items-center gap-1.5">
                                 <span className="text-xs text-slate-500 font-mono">{activity.hash.substring(0, 7)}</span>
-                                {/* Model attribution — neutral placeholder when unknown */}
+                                {/* Who made the update: the model when an AI ran it, else the
+                                    git author (hand-authored and system commits), else "—". */}
                                 {activity.model ? (
                                     <span
                                         className="inline-flex items-center gap-1 rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-medium text-purple-300"
@@ -132,6 +133,14 @@ export function ActivityFeed() {
                                     >
                                         <Cpu size={9} className="shrink-0" />
                                         <span className="max-w-[9rem] truncate">{activity.model}</span>
+                                    </span>
+                                ) : activity.author ? (
+                                    <span
+                                        className="inline-flex items-center gap-1 rounded bg-slate-500/10 border border-slate-500/20 px-1.5 py-0.5 text-[10px] font-medium text-slate-400"
+                                        title={`Committed by ${activity.author} (no model attribution)`}
+                                    >
+                                        <User size={9} className="shrink-0" />
+                                        <span className="max-w-[9rem] truncate">{activity.author}</span>
                                     </span>
                                 ) : (
                                     <span

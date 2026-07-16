@@ -18,6 +18,7 @@ describe('deriveActivityAttribution', () => {
         expect(deriveActivityAttribution(commit)).toEqual({
             model: 'Claude Fable 5',
             tokens: null,
+            tokensEstimated: false,
         });
     });
 
@@ -33,6 +34,13 @@ describe('deriveActivityAttribution', () => {
         expect(deriveActivityAttribution({ body: 'Tokens: 12,345' }).tokens).toBe(12345);
         expect(deriveActivityAttribution({ body: 'Tokens-Used: 12k' }).tokens).toBe(12000);
         expect(deriveActivityAttribution({ body: 'Token-Count: 2M' }).tokens).toBe(2000000);
+        expect(deriveActivityAttribution({ body: 'Tokens: 12,345' }).tokensEstimated).toBe(false);
+    });
+
+    it('flags a ~-prefixed token trailer as estimated', () => {
+        const out = deriveActivityAttribution({ body: 'Tokens: ~9,000' });
+        expect(out.tokens).toBe(9000);
+        expect(out.tokensEstimated).toBe(true);
     });
 
     it('ignores human co-authors', () => {
@@ -40,17 +48,17 @@ describe('deriveActivityAttribution', () => {
             message: 'chore: EOD auto-commit',
             body: 'Co-Authored-By: Robert Washko <robert.washko@gmail.com>',
         };
-        expect(deriveActivityAttribution(commit)).toEqual({ model: null, tokens: null });
+        expect(deriveActivityAttribution(commit)).toEqual({ model: null, tokens: null, tokensEstimated: false });
     });
 
     it('returns nulls for a plain commit with no attribution', () => {
         expect(deriveActivityAttribution({ message: 'chore: remove retired AG bridge', body: '' }))
-            .toEqual({ model: null, tokens: null });
+            .toEqual({ model: null, tokens: null, tokensEstimated: false });
     });
 
     it('does not crash on missing/empty input', () => {
-        expect(deriveActivityAttribution(undefined)).toEqual({ model: null, tokens: null });
-        expect(deriveActivityAttribution({})).toEqual({ model: null, tokens: null });
+        expect(deriveActivityAttribution(undefined)).toEqual({ model: null, tokens: null, tokensEstimated: false });
+        expect(deriveActivityAttribution({})).toEqual({ model: null, tokens: null, tokensEstimated: false });
     });
 });
 
@@ -140,6 +148,33 @@ describe('correlateDispatch', () => {
     it('handles empty/invalid input without throwing', () => {
         expect(correlateDispatch(new Date('2026-07-08T10:00:00.000Z'), [])).toEqual({ model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
         expect(correlateDispatch(new Date('invalid'), [run])).toEqual({ model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
+    });
+
+    // Ghost rows: a run that crashed before its completion callback sits at
+    // outcome='running' (completed_at null) forever. It must not out-compete
+    // real completed dispatches, and must stop claiming commits once stale.
+    describe('still-running dispatch rows', () => {
+        const ghost = { executor: 'antigravity', model: null, tokens: null, started_at: '2026-07-08T08:00:00.000Z', completed_at: null };
+
+        it('a completed dispatch beats an open row even when the open row started closer to the commit', () => {
+            const openCloser = { ...ghost, started_at: '2026-07-08T10:03:00.000Z' };
+            const out = correlateDispatch(new Date('2026-07-08T10:04:30.000Z'), [openCloser, run]);
+            expect(out.model).toBe('claude-opus-4-8');
+            expect(out.tokens).toBe(48200);
+        });
+
+        it('an open row still claims a mid-run commit when no completed dispatch matches', () => {
+            const inFlight = { ...ghost, executor: 'codex', started_at: '2026-07-08T10:00:00.000Z', id: 'disp-open', task_id: 'task-open' };
+            const out = correlateDispatch(new Date('2026-07-08T10:20:00.000Z'), [inFlight]);
+            expect(out.model).toBe('Codex');
+            expect(out.modelInferred).toBe(true);
+            expect(out.dispatchId).toBe('disp-open');
+        });
+
+        it('an open row older than the claim window matches nothing (stale ghost)', () => {
+            const commit = new Date('2026-07-08T20:00:00.000Z'); // 12 h after the ghost started
+            expect(correlateDispatch(commit, [ghost])).toEqual({ model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
+        });
     });
 });
 
