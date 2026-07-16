@@ -13,6 +13,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MonitorPlay } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useTokenUsage } from "@/hooks/use-token-usage";
+import { fmtTokens } from "@/lib/token-usage";
 import { CoreCanvas, CORE_STYLES } from "@/components/bridge/core-canvas";
 import type { PresenceActivity } from "@praxis/contract";
 
@@ -35,6 +37,7 @@ export function setAmbientIdleMinutes(minutes: number) {
 
 export function AmbientMode() {
   const { presence, recentEvents, connected } = usePraxisStream();
+  const { usage } = useTokenUsage();
   const [active, setActive] = useState(false);
   const [clock, setClock] = useState("");
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
@@ -143,7 +146,7 @@ export function AmbientMode() {
     [
       { label: "scheduled", value: presence?.scheduledTaskCount },
       { label: "done today", value: presence?.completedTasksToday },
-      { label: "calls left", value: presence?.budget?.dailyCallsRemaining },
+      { label: "tokens today", value: usage ? fmtTokens(usage.today.total) : undefined },
     ] as { label: string; value: number | string | null | undefined }[]
   ).filter((s): s is { label: string; value: number | string } => s.value != null);
 

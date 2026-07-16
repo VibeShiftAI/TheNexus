@@ -1,7 +1,9 @@
 /**
  * Token-usage client — types + fetch for /api/token-usage, the daily token
  * throughput aggregated from CLI session logs (claude-code, codex) and the
- * Praxis cost ledger (local + cloud API). Antigravity has no telemetry.
+ * Praxis cost ledger (local + cloud API). Antigravity emits no real telemetry,
+ * so its field carries a char/4 estimate (rendered "~N") and is excluded from
+ * every DayRow.total.
  */
 
 export interface TokenDay {
@@ -17,7 +19,12 @@ export interface TokenUsage {
   today: TokenDay;
   record: { date: string; total: number };
   days: TokenDay[];
-  antigravity: null;
+  /**
+   * Antigravity's char/4 text-volume estimate for today — the agy CLI emits no
+   * real token signal. Null when there was no antigravity activity today (UI
+   * shows "—"). Never included in any DayRow.total.
+   */
+  antigravity: { today: number; estimated: true } | null;
   windowDays: number;
   computedAt: string;
 }

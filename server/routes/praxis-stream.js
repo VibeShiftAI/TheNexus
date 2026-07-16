@@ -104,6 +104,23 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
         }
     }
 
+    function councilSummonArgs(body = {}) {
+        const args = {};
+        const stringFields = ['topic', 'context', 'deliverable', 'project', 'domain', 'preset'];
+        for (const field of stringFields) {
+            if (typeof body[field] === 'string' && body[field].trim()) {
+                args[field] = body[field].trim();
+            }
+        }
+        if (typeof body.focus === 'boolean') args.focus = body.focus;
+        if (typeof body.include_consultations === 'boolean') args.include_consultations = body.include_consultations;
+        if (Array.isArray(body.consultations)) {
+            const consultations = body.consultations.filter((id) => typeof id === 'string' && id.trim()).map((id) => id.trim());
+            if (consultations.length) args.consultations = consultations;
+        }
+        return args;
+    }
+
     function connectUpstream() {
         if (upstreamReq) return;
         const url = new URL(UPSTREAM_PATH, PRAXIS_URL);
@@ -295,6 +312,14 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
     });
     router.get('/council/sessions/:id', (req, res) =>
         proxyJson(req, res, `/api/council/sessions/${encodeURIComponent(req.params.id)}`));
+    router.post('/council/summon', (req, res) => {
+        const args = councilSummonArgs(req.body);
+        if (!args.topic) {
+            return res.status(400).json({ ok: false, error: 'topic is required' });
+        }
+        req.body = { name: 'spawn_council', args };
+        return proxyJson(req, res, '/agent-tool');
+    });
 
     // ── Bridge / cockpit passthroughs (command-deck dashboard) ─────
     router.get('/stats', (req, res) => proxyJson(req, res, '/api/praxis/stats'));

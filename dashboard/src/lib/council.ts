@@ -16,6 +16,8 @@ export interface CouncilVoice {
     model: string;
     status: CouncilVoiceStatus;
     elapsedMs?: number;
+    tokensUsed?: number;
+    tokens_used?: number;
     registeredAt: number;
 }
 
@@ -27,6 +29,8 @@ export interface CouncilThesis {
     raw?: string;
     error?: string;
     elapsedMs: number;
+    tokensUsed?: number;
+    tokens_used?: number;
     recordedAt: number;
 }
 
@@ -94,10 +98,62 @@ export async function getCouncilSession(sessionId: string): Promise<CouncilSessi
     return res.json();
 }
 
+export type CouncilDeliverable = "analysis" | "project_plan" | "task_series";
+export type CouncilDomain = "engineering" | "research" | "strategy";
+
+export interface CouncilSummonRequest {
+    topic: string;
+    context?: string;
+    deliverable?: CouncilDeliverable;
+    project?: string;
+    domain?: CouncilDomain;
+    preset?: string;
+    focus?: boolean;
+    consultations?: string[];
+    include_consultations?: boolean;
+}
+
+export interface CouncilSummonResponse {
+    ok: boolean;
+    result?: string;
+    error?: string;
+}
+
+export async function summonCouncil(input: CouncilSummonRequest): Promise<CouncilSummonResponse> {
+    const res = await fetch("/api/praxis/council/summon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : `Council summon failed (${res.status})`);
+    }
+    if (data?.ok === false) {
+        throw new Error(typeof data.error === "string" ? data.error : "Council summon failed");
+    }
+    return data;
+}
+
+export function sessionIdFromCouncilAck(text: string | undefined): string | null {
+    const match =
+        text?.match(/\bsession\s+`(council-[^`]+)`/i) ??
+        text?.match(/\bsession\s+(council-[A-Za-z0-9_-]+)/i);
+    return match?.[1] ?? null;
+}
+
 /** Duration for a full snapshot — mirrors the server's list computation. */
 export function detailDurationMs(detail: CouncilSessionDetail): number {
     const last = Math.max(detail.createdAt, ...detail.theses.map((t) => t.recordedAt ?? 0));
     return detail.phase === "complete" ? last - detail.createdAt : Date.now() - detail.createdAt;
+}
+
+export function tokenUsageForCouncilResponse(item: {
+    tokensUsed?: number | null;
+    tokens_used?: number | null;
+}): number | null {
+    const value = item.tokensUsed ?? item.tokens_used;
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 // ── Display helpers ─────────────────────────────────────────────────────

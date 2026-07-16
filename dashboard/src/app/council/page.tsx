@@ -27,6 +27,7 @@ import {
     Loader2,
     RefreshCw,
     ScrollText,
+    Send,
     Users,
     X,
     XCircle,
@@ -39,8 +40,11 @@ import {
     isLiveSession,
     isAggregatorVoice,
     seatDisplayName,
+    sessionIdFromCouncilAck,
     sessionKind,
+    summonCouncil,
     detailDurationMs,
+    tokenUsageForCouncilResponse,
     type CouncilSessionDetail,
     type CouncilSessionSummary,
     type CouncilVoice,
@@ -63,6 +67,30 @@ function formatWhen(ts: number): string {
     const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     if (sameDay) return `Today ${time}`;
     return `${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })} ${time}`;
+}
+
+function formatTokens(tokens: number): string {
+    return new Intl.NumberFormat("en-US").format(tokens);
+}
+
+function providerLabel(model: string): string {
+    const normalized = model.replace(/\s*\(aggregator\)\s*$/, "");
+    if (normalized.startsWith("cli:")) return "CLI subscription";
+    const vendor = normalized.includes("/") ? normalized.split("/")[0].toLowerCase() : "";
+    const lower = normalized.toLowerCase();
+    if (vendor === "google" || lower.startsWith("gemini")) return "Google";
+    if (vendor === "openai" || lower.startsWith("gpt") || lower.startsWith("o1") || lower.startsWith("o3")) return "OpenAI";
+    if (vendor === "anthropic" || lower.startsWith("claude")) return "Anthropic";
+    if (vendor === "xai" || lower.startsWith("grok")) return "xAI";
+    if (vendor === "deepseek" || lower.startsWith("deepseek")) return "DeepSeek";
+    if (vendor === "openrouter") return "OpenRouter";
+    return vendor ? vendor.charAt(0).toUpperCase() + vendor.slice(1) : "Provider unknown";
+}
+
+function tokenLabel(status: CouncilVoice["status"], tokens: number | null): string {
+    if (tokens !== null) return `${formatTokens(tokens)} tokens`;
+    if (status === "pending" || status === "running") return "tokens pending";
+    return "tokens not reported";
 }
 
 const ACCENT_STYLES: Record<string, string> = {
@@ -312,6 +340,121 @@ function LiveSessionPanel({ session, onOpen }: { session: CouncilSessionSummary;
     );
 }
 
+// ── Summon panel ─────────────────────────────────────────────────────────
+
+function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | null) => void }) {
+    const [topic, setTopic] = useState("");
+    const [context, setContext] = useState("");
+    const [domain, setDomain] = useState<"" | "engineering" | "research" | "strategy">("");
+    const [focus, setFocus] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [ack, setAck] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const canSubmit = topic.trim().length > 0 && !submitting;
+
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (!canSubmit) return;
+        setSubmitting(true);
+        setAck(null);
+        setError(null);
+        try {
+            const response = await summonCouncil({
+                topic: topic.trim(),
+                ...(context.trim() ? { context: context.trim() } : {}),
+                deliverable: "analysis",
+                ...(domain ? { domain } : {}),
+                focus,
+            });
+            const message = response.result || "Council convened.";
+            setAck(message);
+            onSummoned(sessionIdFromCouncilAck(message));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Council summon failed");
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    return (
+        <section className="rounded-2xl border border-amber-500/25 bg-slate-900/50 overflow-hidden">
+            <div className="border-b border-slate-800 px-5 py-4">
+                <div className="flex items-center gap-2">
+                    <Gavel size={15} className="text-amber-300" />
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-amber-300">Summon the Cabinet</h2>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                    Runs the configured council seats and may use paid API or subscription capacity.
+                </p>
+            </div>
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                <textarea
+                    value={topic}
+                    onChange={(event) => setTopic(event.target.value)}
+                    rows={3}
+                    placeholder="Question for the Cortex Council"
+                    className="w-full resize-y rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-amber-500/70"
+                />
+                <textarea
+                    value={context}
+                    onChange={(event) => setContext(event.target.value)}
+                    rows={2}
+                    placeholder="Optional context, constraints, or notes"
+                    className="w-full resize-y rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-200 outline-none transition-colors placeholder:text-slate-600 focus:border-slate-600"
+                />
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-wrap items-center gap-2">
+                        {(["", "engineering", "research", "strategy"] as const).map((value) => (
+                            <button
+                                key={value || "general"}
+                                type="button"
+                                onClick={() => setDomain(value)}
+                                className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                    domain === value
+                                        ? "border-amber-500/60 bg-amber-500/15 text-amber-200"
+                                        : "border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                                }`}
+                            >
+                                {value || "General"}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-2 text-xs text-slate-400">
+                            <input
+                                type="checkbox"
+                                checked={focus}
+                                onChange={(event) => setFocus(event.target.checked)}
+                                className="h-4 w-4 rounded border-slate-700 bg-slate-950 accent-amber-500"
+                            />
+                            Focused bench
+                        </label>
+                        <button
+                            type="submit"
+                            disabled={!canSubmit}
+                            className="inline-flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-amber-100 transition-colors hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
+                        >
+                            {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                            Summon
+                        </button>
+                    </div>
+                </div>
+                {ack && (
+                    <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
+                        {ack}
+                    </div>
+                )}
+                {error && (
+                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                        {error}
+                    </div>
+                )}
+            </form>
+        </section>
+    );
+}
+
 // ── Session detail (transcript) ───────────────────────────────────────────
 
 const MARKDOWN_CLASSES =
@@ -322,6 +465,7 @@ function ThesisCard({ voice, detail }: { voice: CouncilVoice; detail: CouncilSes
     const thesis = detail.theses.find((t) => t.voice === voice.name || t.model === voice.name);
     const v = seatVisual(voice);
     const c = SEAT_COLORS[v];
+    const tokens = thesis ? tokenUsageForCouncilResponse(thesis) : tokenUsageForCouncilResponse(voice);
     const text =
         (typeof thesis?.parsed === "string" && thesis.parsed) || thesis?.raw || "";
 
@@ -341,8 +485,9 @@ function ThesisCard({ voice, detail }: { voice: CouncilVoice; detail: CouncilSes
                     <div className="min-w-0">
                         <div className="text-xs font-semibold text-slate-200">{seatDisplayName(voice.name)}</div>
                         <div className="text-[10px] text-slate-500 font-mono truncate">
-                            {voice.model.replace(/\s*\(aggregator\)\s*$/, "")}
+                            {providerLabel(voice.model)} · {voice.model.replace(/\s*\(aggregator\)\s*$/, "")}
                             {thesis ? ` · ${formatDuration(thesis.elapsedMs)}` : ""}
+                            {` · ${tokenLabel(voice.status, tokens)}`}
                             {thesis && thesis.status !== "success" ? ` · ${thesis.status}` : ""}
                         </div>
                     </div>
@@ -579,6 +724,15 @@ export default function CouncilPage() {
         setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     }, []);
 
+    const handleSummoned = useCallback(
+        async (sessionId: string | null) => {
+            setLoading(true);
+            await load();
+            if (sessionId) openDetail(sessionId);
+        },
+        [load, openDetail],
+    );
+
     return (
         <main className="min-h-screen bg-slate-950 text-slate-200">
             {/* Custom chamber animations */}
@@ -632,6 +786,8 @@ export default function CouncilPage() {
                 {error && (
                     <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>
                 )}
+
+                <SummonCouncilPanel onSummoned={handleSummoned} />
 
                 {/* Live chamber, or the dark chamber idle state */}
                 {liveSession ? (

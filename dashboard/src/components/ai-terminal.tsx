@@ -795,6 +795,12 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
     // --- Extracted inner content shared by both modes ---
     function renderTerminalContent() {
+        // Composer control sizing — compact & sleek to match the Bridge panel
+        // when embedded inline; roomier in the floating/modal chat overlay.
+        const composerIcon = isInline ? 16 : 18;
+        const composerBtn = isInline
+            ? "flex items-center justify-center p-1.5 rounded-md border border-slate-800 bg-slate-900/60 text-slate-400 hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            : "px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
         return (<>
             {/* Fullscreen Plan Review Modal */}
             {reviewModalData && (() => {
@@ -1688,21 +1694,21 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     </div>
                 )}
 
-                <div className="flex gap-2">
+                <div className={isInline ? "flex items-stretch gap-1.5" : "flex gap-2"}>
                     {/* Voice Record button */}
                     {!isRecording && !audioBlob && (
                         <button
                             onClick={startRecording}
                             disabled={loading || isDragging}
-                            className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={`${composerBtn} ${isInline ? "hover:text-red-300" : "hover:text-red-400"}`}
                             title="Record voice memo"
                         >
-                            <Mic size={18} />
+                            <Mic size={composerIcon} />
                         </button>
                     )}
 
                     {isRecording && (
-                        <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 animate-pulse">
+                        <div className={`flex items-center gap-3 rounded-md bg-red-500/10 border border-red-500/20 animate-pulse ${isInline ? "px-3 py-1.5" : "px-4 py-2 rounded-lg"}`}>
                             <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
                             <span className="text-red-400 font-mono text-sm font-medium">
                                 {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
@@ -1722,10 +1728,10 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                         <button
                             onClick={() => mediaInputRef.current?.click()}
                             disabled={loading}
-                            className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-violet-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={`${composerBtn} ${isInline ? "hover:text-violet-300" : "hover:text-violet-400"}`}
                             title="Photo / Gallery"
                         >
-                            <Image size={18} />
+                            <Image size={composerIcon} />
                         </button>
                     )}
 
@@ -1734,10 +1740,10 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={loading}
-                            className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-cyan-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={`${composerBtn} ${isInline ? "hover:text-cyan-300" : "hover:text-cyan-400"}`}
                             title="Attach file"
                         >
-                            <Paperclip size={18} />
+                            <Paperclip size={composerIcon} />
                         </button>
                     )}
 
@@ -1749,7 +1755,9 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder={audioBlob ? "Add a message (optional)..." : (attachedFiles.length > 0 ? "Add a message (optional)..." : "Message Praxis...")}
-                            className="flex-1 rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+                            className={isInline
+                                ? "flex-1 min-w-0 rounded-md bg-slate-900/60 border border-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-cyan-500/60 focus:outline-none transition-colors"
+                                : "flex-1 rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"}
                             disabled={loading}
                         />
                     )}
@@ -1757,9 +1765,11 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     <button
                         onClick={handleSend}
                         disabled={loading || (!input.trim() && attachedFiles.length === 0 && !audioBlob) || isRecording}
-                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium hover:from-cyan-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className={isInline
+                            ? "flex items-center justify-center px-3 rounded-md bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:from-cyan-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            : "px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium hover:from-cyan-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"}
                     >
-                        {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                        {loading ? <Loader2 size={composerIcon} className="animate-spin" /> : <Send size={composerIcon} />}
                     </button>
                 </div>
             </div>

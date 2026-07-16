@@ -93,6 +93,58 @@ describe('praxis-stream route', () => {
     ]);
   });
 
+  it('summons a council by calling the Praxis spawn_council agent tool', async () => {
+    const praxis = express();
+    praxis.use(express.json());
+    let seenBody = null;
+
+    praxis.post('/agent-tool', (req, res) => {
+      seenBody = req.body;
+      res.json({
+        ok: true,
+        result: '🏛️ **Council convened** — session `council-abc-123`.\nSeats: cli:codex.',
+      });
+    });
+
+    praxisHandle = await listen(praxis);
+    process.env.PRAXIS_URL = praxisHandle.baseUrl;
+
+    const createPraxisStreamRouter = require('../routes/praxis-stream');
+    const nexus = express();
+    nexus.use(express.json());
+    nexus.use('/api/praxis', createPraxisStreamRouter());
+    nexusHandle = await listen(nexus);
+
+    await expect(requestJson(`${nexusHandle.baseUrl}/api/praxis/council/summon`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: 'Should we ship the cabinet panel now?',
+        context: 'Keep the first version small.',
+        deliverable: 'analysis',
+        domain: 'engineering',
+        focus: true,
+      }),
+    })).resolves.toEqual({
+      status: 200,
+      body: {
+        ok: true,
+        result: '🏛️ **Council convened** — session `council-abc-123`.\nSeats: cli:codex.',
+      },
+    });
+
+    expect(seenBody).toEqual({
+      name: 'spawn_council',
+      args: {
+        topic: 'Should we ship the cabinet panel now?',
+        context: 'Keep the first version small.',
+        deliverable: 'analysis',
+        domain: 'engineering',
+        focus: true,
+      },
+    });
+  });
+
   it('serves the Praxis snapshot at both dashboard and mobile paths', async () => {
     const praxis = express();
     praxis.get('/presence', (_req, res) => {

@@ -11,7 +11,13 @@
  *     ((input − cached) + output).
  *   - local + cloud API: the Praxis cost ledger
  *     (~/.praxis-mind/cost_ledger.sqlite, read-only via the sqlite3 CLI).
- *   - antigravity: exposes no token telemetry — reported as null.
+ *   - antigravity: the agy headless CLI emits NO usage signal anywhere
+ *     (verified end-to-end: no CLI flag, nothing in run transcripts, nothing
+ *     in the agy conversation DBs). The only number available is the char/4
+ *     text-volume estimate the Nexus server backfills into task_dispatches
+ *     (tokens_estimated=1) on dispatch close — surfaced here as today's sum in
+ *     the `antigravity` field ONLY, rendered "~N", and deliberately kept OUT
+ *     of every DayRow.total so the reactor gauge stays 100% real telemetry.
  *
  * Per-file results are cached by mtime+size (session logs never rewrite old
  * entries), and the assembled response is cached for 30s, so the two bridge
@@ -169,6 +175,32 @@ async function scanLedger(days: number): Promise<{ local: Map<string, number>; c
   return { local, cloud };
 }
 
+// Antigravity emits no real token telemetry, so its only number is the char/4
+// estimate the Nexus server backfills into task_dispatches on dispatch close
+// (tokens_estimated=1). Sum it per day from the board DB — read-only, same
+// sqlite3-CLI pattern as the cost ledger. Failure (DB missing / locked) yields
+// an empty map, so antigravity gracefully reports null and the UI shows "—".
+async function scanAntigravityEstimate(days: number): Promise<Map<string, number>> {
+  const perDay = new Map<string, number>();
+  const db = process.env.NEXUS_DB_PATH || path.resolve(process.cwd(), "..", "nexus.db");
+  try {
+    const sql =
+      `SELECT date(COALESCE(completed_at, started_at),'localtime') AS day, ` +
+      `SUM(COALESCE(tokens,0)) AS tokens FROM task_dispatches ` +
+      `WHERE executor='antigravity' AND tokens_estimated=1 ` +
+      `AND COALESCE(completed_at, started_at) >= datetime('now','-${days} days') GROUP BY day;`;
+    const { stdout } = await execFileP("sqlite3", ["-json", "-readonly", db, sql], { timeout: 8000 });
+    const rows: Array<{ day?: string; tokens?: number }> = stdout.trim() ? JSON.parse(stdout) : [];
+    for (const r of rows) {
+      if (!r.day || !r.tokens) continue;
+      perDay.set(r.day, (perDay.get(r.day) ?? 0) + r.tokens);
+    }
+  } catch {
+    /* board DB unavailable — antigravity estimate reports null */
+  }
+  return perDay;
+}
+
 export async function GET() {
   if (responseCache && Date.now() - responseCache.at < RESPONSE_TTL_MS) {
     return NextResponse.json(responseCache.body);
@@ -184,10 +216,11 @@ export async function GET() {
     listJsonl(path.join(home, ".claude", "projects")),
     listJsonl(path.join(home, ".codex", "sessions")),
   ]);
-  const [claude, codex, ledger] = await Promise.all([
+  const [claude, codex, ledger, agyEstimate] = await Promise.all([
     scanFiles(claudeFiles, cutoff.getTime(), parseClaudeFile),
     scanFiles(codexFiles, cutoff.getTime(), parseCodexFile),
     scanLedger(WINDOW_DAYS),
+    scanAntigravityEstimate(WINDOW_DAYS),
   ]);
 
   const today = dayKey(now);
@@ -221,12 +254,17 @@ export async function GET() {
   };
   const record = days.reduce((best, d) => (d.total > best.total ? d : best), todayRow);
 
+  // Antigravity's char/4 estimate for today, surfaced in its own field so the
+  // UI can render "~N" — never folded into any DayRow.total. Null when there
+  // was no antigravity activity today (or the board DB was unreadable), so the
+  // row stays "—" rather than an unfounded "~0".
+  const agyToday = agyEstimate.get(today) ?? 0;
+
   const body = {
     today: todayRow,
     record: { date: record.date, total: record.total },
     days,
-    // Antigravity exposes no token telemetry — reported so the UI can say so.
-    antigravity: null,
+    antigravity: agyToday > 0 ? { today: agyToday, estimated: true as const } : null,
     windowDays: WINDOW_DAYS,
     computedAt: now.toISOString(),
   };

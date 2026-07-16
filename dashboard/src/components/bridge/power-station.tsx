@@ -201,11 +201,17 @@ export function PowerStation() {
             ))}
             <div
               className="flex min-w-0 items-center gap-1.5"
-              title="Antigravity exposes no token telemetry — dispatches tracked, tokens unknown"
+              title={
+                usage?.antigravity
+                  ? "Antigravity emits no token telemetry — estimated from dispatch text volume (~chars/4); excluded from the reactor total"
+                  : "Antigravity exposes no token telemetry — dispatches tracked, tokens unknown"
+              }
             >
               <span className="h-2 w-2 shrink-0 rounded-full bg-slate-700" />
               <span className="min-w-0 flex-1 truncate text-[10px] text-slate-500">antigravity</span>
-              <span className="shrink-0 text-[11px] tabular-nums text-slate-600">—</span>
+              <span className="shrink-0 text-[11px] tabular-nums text-slate-500">
+                {usage?.antigravity ? `~${fmtTokens(usage.antigravity.today)}` : "—"}
+              </span>
             </div>
           </div>
           {usage && (
