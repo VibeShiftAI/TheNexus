@@ -270,7 +270,7 @@ const JSON_COLS = new Set([
     'suspended_context', 'resume_action',
     'tags',
     'needs', 'end_state_history', 'end_state_criteria',
-    'preferences', 'expertise', 'interests'
+    'preferences', 'expertise', 'interests', 'claims', 'interaction_log'
 ]);
 
 function deserRow(row) {
@@ -440,11 +440,14 @@ function runModelControlMigrations(sqlite) {
 }
 
 /**
- * Contacts — the shared people directory (stakeholders across projects) plus
- * per-project role links. Contract shapes: @praxis/contract entities/contact.ts.
- * Praxis's feedback pipeline auto-observes submitters here; the dashboard's
- * project pages manage them; the knowledge loop will read expertise/interests
- * to pick WHO to ask (askHuman) for off-internet knowledge.
+ * Members — the ONE shared people directory (contacts + council members were
+ * unified 2026-07-16 on Robert's directive): humans AND AI council seats,
+ * with per-project role links. Contract shapes: @praxis/contract
+ * entities/contact.ts (Member = Contact). Praxis's feedback pipeline
+ * auto-observes submitters here; the dashboard's project pages manage them;
+ * the council reads claims/expertise + `seat_id` (its reputation-ledger key)
+ * to decide WHO to ask for off-internet knowledge, and appends its own
+ * interaction notes to `interaction_log`.
  */
 function runContactsMigrations(sqlite) {
     try {
@@ -480,6 +483,54 @@ function runContactsMigrations(sqlite) {
         `);
     } catch (err) {
         console.warn('[Database] contacts migration skipped:', err.message);
+    }
+    // 2026-07-16 unification: member profile columns (additive, idempotent).
+    const memberColumns = [
+        ["kind", "TEXT DEFAULT 'human'"],
+        ["seat_id", "TEXT"],
+        ["birthday", "TEXT"],
+        ["claims", "TEXT DEFAULT '[]'"],
+        ["interaction_log", "TEXT DEFAULT '[]'"],
+        ["status", "TEXT DEFAULT 'active'"],
+    ];
+    for (const [col, type] of memberColumns) {
+        try {
+            sqlite.exec(`ALTER TABLE contacts ADD COLUMN ${col} ${type}`);
+        } catch (err) {
+            if (!/duplicate column/i.test(err.message)) {
+                console.warn(`[Database] contacts.${col} migration skipped:`, err.message);
+            }
+        }
+    }
+    try {
+        sqlite.exec(`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_seat
+                ON contacts(seat_id) WHERE seat_id IS NOT NULL AND seat_id != '';
+        `);
+    } catch (err) {
+        console.warn('[Database] contacts seat index skipped:', err.message);
+    }
+    // Backfill: pre-unification humans get their council seat key minted so
+    // the reputation ledger can fold on them from day one.
+    try {
+        const unseated = sqlite.prepare(
+            "SELECT id, name FROM contacts WHERE (seat_id IS NULL OR seat_id = '') AND kind != 'ai'"
+        ).all();
+        for (const row of unseated) {
+            const slug = String(row.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'member';
+            let candidate = `human:${slug}`;
+            for (let n = 2; n < 100; n++) {
+                const taken = sqlite.prepare('SELECT 1 FROM contacts WHERE seat_id = ?').get(candidate);
+                if (!taken) break;
+                candidate = `human:${slug}-${n}`;
+            }
+            sqlite.prepare('UPDATE contacts SET seat_id = ? WHERE id = ?').run(candidate, row.id);
+        }
+        if (unseated.length > 0) {
+            console.log(`[Database] Members unification: minted seat ids for ${unseated.length} existing contact(s)`);
+        }
+    } catch (err) {
+        console.warn('[Database] contacts seat backfill skipped:', err.message);
     }
 }
 
@@ -2147,19 +2198,48 @@ async function findContactByEmail(email) {
     return row ? deserRow(row) : null;
 }
 
-async function createContact({ name, email, phone, relationship, notes, preferences, expertise, interests, source }) {
+/**
+ * Mint a unique seat id for a human member: "human:<name-slug>", suffixed
+ * -2/-3… on collision. The seat id is the council reputation ledger's key,
+ * so it must be stable and unique for the member's lifetime.
+ */
+function mintSeatId(name) {
+    const slug = String(name)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 40) || 'member';
+    let candidate = `human:${slug}`;
+    for (let n = 2; n < 100; n++) {
+        const taken = db.prepare('SELECT 1 FROM contacts WHERE seat_id = ?').get(candidate);
+        if (!taken) return candidate;
+        candidate = `human:${slug}-${n}`;
+    }
+    return `human:${slug}-${crypto.randomUUID().slice(0, 6)}`;
+}
+
+async function createContact({ name, email, phone, relationship, birthday, notes, preferences, expertise, interests, claims, source, kind, seat_id, status }) {
     if (!db) return null;
     try {
+        const memberKind = kind === 'ai' ? 'ai' : 'human';
         const contact = {
             id: crypto.randomUUID(),
             name: String(name).trim(),
+            kind: memberKind,
+            // AI members carry their council seat id ("cli:codex"); humans get
+            // a minted "human:<slug>" unless the caller supplied one.
+            seat_id: seat_id || (memberKind === 'human' ? mintSeatId(name) : null),
             email: email ? String(email).trim() : null,
             phone: phone || null,
             relationship: relationship || null,
+            birthday: birthday || null,
             notes: notes || null,
             preferences: JSON.stringify(preferences || {}),
             expertise: JSON.stringify(expertise || []),
             interests: JSON.stringify(interests || []),
+            claims: JSON.stringify(claims || []),
+            interaction_log: JSON.stringify([]),
+            status: status === 'dormant' ? 'dormant' : 'active',
             source: source || 'operator',
             last_contact_at: null,
             created_at: new Date().toISOString(),
@@ -2174,9 +2254,39 @@ async function createContact({ name, email, phone, relationship, notes, preferen
     }
 }
 
+async function findContactBySeat(seatId) {
+    if (!db || !seatId) return null;
+    const row = db.prepare('SELECT * FROM contacts WHERE seat_id = ?').get(String(seatId).trim());
+    return row ? deserRow(row) : null;
+}
+
+/** Append a Praxis interaction note ({ note, source?, at? }); optionally stamp last_contact_at. */
+async function appendContactLog(id, { note, source, at, touchContact = false } = {}) {
+    if (!db || !note) return null;
+    try {
+        const row = db.prepare('SELECT interaction_log FROM contacts WHERE id = ?').get(id);
+        if (!row) return null;
+        let log = [];
+        try {
+            log = JSON.parse(row.interaction_log || '[]');
+        } catch { /* rebuild from empty */ }
+        log.push({ at: at || new Date().toISOString(), note: String(note).slice(0, 2000), source: source || 'praxis' });
+        // Keep the log bounded — the newest 200 entries tell the story.
+        if (log.length > 200) log = log.slice(-200);
+        const now = new Date().toISOString();
+        db.prepare(
+            `UPDATE contacts SET interaction_log = ?, updated_at = ?${touchContact ? ', last_contact_at = ?' : ''} WHERE id = ?`
+        ).run(...(touchContact ? [JSON.stringify(log), now, now, id] : [JSON.stringify(log), now, id]));
+        return getContact(id);
+    } catch (err) {
+        console.error('[Database] Error appending contact log:', err.message);
+        return null;
+    }
+}
+
 async function updateContact(id, updates) {
     if (!db) return null;
-    const allowed = ['name', 'email', 'phone', 'relationship', 'notes', 'preferences', 'expertise', 'interests', 'last_contact_at'];
+    const allowed = ['name', 'email', 'phone', 'relationship', 'birthday', 'notes', 'preferences', 'expertise', 'interests', 'claims', 'status', 'kind', 'seat_id', 'last_contact_at'];
     const sets = [];
     const values = [];
     for (const key of allowed) {
@@ -2694,8 +2804,10 @@ module.exports = {
     listContacts,
     getContact,
     findContactByEmail,
+    findContactBySeat,
     createContact,
     updateContact,
+    appendContactLog,
     deleteContact,
     listProjectContacts,
     linkContactToProject,

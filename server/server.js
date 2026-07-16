@@ -218,6 +218,9 @@ app.use('/api/ai/chat',  createAIChatRouter({ db, callAI, pushService, io }));
 app.use('/api/ingest',   createIngestRouter({ db }));
 app.use('/api/agents',   createAgentsRouter({ db }));
 app.use('/api/notes',    createNotesRouter({ db }));
+// Members — the unified people directory (2026-07-16). /api/members is the
+// canonical mount; /api/contacts stays as the legacy alias (same router).
+app.use('/api/members',  createContactsRouter({ db }));
 app.use('/api/contacts', createContactsRouter({ db }));
 app.use('/api/chat',     createChatHistoryRouter({ db, io }));
 app.use('/api/chat/files', createChatFilesRouter());

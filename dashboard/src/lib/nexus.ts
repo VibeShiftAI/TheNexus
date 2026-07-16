@@ -1697,6 +1697,9 @@ import type {
 export type Contact = _Contact & { projects?: Array<{ project_id: string; project_name: string; role?: string | null }> };
 export type ProjectContact = _ProjectContact;
 export type CommsFeed = _CommsFeed;
+/** Unified directory naming (2026-07-16): a Member IS a Contact row. */
+export type Member = Contact;
+export type ProjectMember = ProjectContact;
 
 const CONTACTS_URL = '/api/contacts';
 

@@ -1,15 +1,17 @@
 /**
- * ProjectStakeholders — the people attached to a project (client, testers,
- * domain experts), backed by the SHARED contacts directory: one person can
- * serve many projects with a different role on each, and their preferences /
- * expertise / interests travel with them. Praxis's feedback pipeline
- * auto-registers submitters here (source "feedback"), so this panel fills
- * itself as family testers use the widget.
+ * ProjectStakeholders — the members attached to a project (client, testers,
+ * domain experts), backed by the UNIFIED Members directory (2026-07-16):
+ * one person can serve many projects with a different role on each, sit on
+ * the Praxis council, and their whole profile — age, communication
+ * preferences, expertise, Praxis's interaction notes — travels with them.
+ * Praxis's feedback pipeline auto-registers submitters here (source
+ * "feedback"), so this panel fills itself as family testers use the widget.
  */
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Mail, Plus, Trash2, UserRound, Users, X } from "lucide-react";
+import { memberAge } from "@praxis/contract";
 import { HudPanel } from "@/components/bridge/hud";
 import {
   createContact,
@@ -68,7 +70,7 @@ export function ProjectStakeholders({ projectId }: { projectId: string }) {
   return (
     <HudPanel
       icon={<Users size={16} />}
-      title="Stakeholders"
+      title="Members"
       accent="cyan"
       headerRight={
         <button
@@ -95,7 +97,8 @@ export function ProjectStakeholders({ projectId }: { projectId: string }) {
 
       {contacts.length === 0 && !adding ? (
         <p className="py-3 text-center text-sm text-slate-500">
-          No stakeholders yet. Add the humans this project serves — feedback-widget
+          No members on this project yet. Add the humans it serves — they join the shared
+          Members directory (stakeholders + council advisors), and feedback-widget
           submitters register themselves automatically.
         </p>
       ) : (
@@ -132,10 +135,13 @@ function StakeholderRow({
   const [draft, setDraft] = useState(() => ({
     role: contact.role ?? "",
     relationship: contact.relationship ?? "",
+    birthday: contact.birthday ?? "",
     notes: contact.notes ?? "",
     expertise: csv(contact.expertise),
     interests: csv(contact.interests),
     tone: contact.preferences?.tone ?? "",
+    availability: contact.preferences?.availability ?? "",
+    requireApproval: Boolean(contact.preferences?.requireApproval),
   }));
   const [saving, setSaving] = useState(false);
 
@@ -144,10 +150,16 @@ function StakeholderRow({
     try {
       await updateContact(contact.id, {
         relationship: draft.relationship || null,
+        birthday: draft.birthday || null,
         notes: draft.notes || null,
         expertise: parseCsv(draft.expertise),
         interests: parseCsv(draft.interests),
-        preferences: { ...(contact.preferences ?? {}), tone: draft.tone || undefined },
+        preferences: {
+          ...(contact.preferences ?? {}),
+          tone: draft.tone || undefined,
+          availability: draft.availability || undefined,
+          requireApproval: draft.requireApproval || undefined,
+        },
       });
       if ((contact.role ?? "") !== draft.role) {
         await updateContactLink(contact.id, projectId, draft.role || null, contact.link_notes ?? null);
@@ -182,6 +194,14 @@ function StakeholderRow({
             {contact.relationship && (
               <span className="text-[11px] text-slate-500">{contact.relationship}</span>
             )}
+            {memberAge(contact.birthday) !== null && (
+              <span className="text-[11px] text-slate-500">{memberAge(contact.birthday)}y</span>
+            )}
+            {contact.kind === "ai" && (
+              <span className="rounded bg-violet-500/15 px-1.5 text-[10px] font-semibold uppercase tracking-wider text-violet-300">
+                AI seat
+              </span>
+            )}
           </span>
           {contact.email && (
             <span className="flex items-center gap-1 text-[11px] text-slate-500">
@@ -215,21 +235,51 @@ function StakeholderRow({
               ))}
             </datalist>
           </Field>
-          <Field label="Relationship">
-            <input value={draft.relationship} onChange={(e) => setDraft({ ...draft, relationship: e.target.value })} className="hud-input" placeholder="nephew, sister, client…" />
-          </Field>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Field label="Relationship">
+              <input value={draft.relationship} onChange={(e) => setDraft({ ...draft, relationship: e.target.value })} className="hud-input" placeholder="nephew, sister, client…" />
+            </Field>
+            <Field label="Birthday (YYYY-MM-DD or YYYY — age derives)">
+              <input value={draft.birthday} onChange={(e) => setDraft({ ...draft, birthday: e.target.value })} className="hud-input" placeholder="1985-06-12" />
+            </Field>
+          </div>
           <Field label="Expertise (comma-separated — what they know that Praxis can't google)">
             <input value={draft.expertise} onChange={(e) => setDraft({ ...draft, expertise: e.target.value })} className="hud-input" placeholder="board games, video production" />
           </Field>
           <Field label="Interests (comma-separated)">
             <input value={draft.interests} onChange={(e) => setDraft({ ...draft, interests: e.target.value })} className="hud-input" placeholder="dinosaurs, space" />
           </Field>
-          <Field label="Comms tone preference">
-            <input value={draft.tone} onChange={(e) => setDraft({ ...draft, tone: e.target.value })} className="hud-input" placeholder="kid-friendly / formal / brief" />
-          </Field>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Field label="Comms tone preference">
+              <input value={draft.tone} onChange={(e) => setDraft({ ...draft, tone: e.target.value })} className="hud-input" placeholder="kid-friendly / formal / brief" />
+            </Field>
+            <Field label="Availability">
+              <input value={draft.availability} onChange={(e) => setDraft({ ...draft, availability: e.target.value })} className="hud-input" placeholder="weekends only" />
+            </Field>
+          </div>
+          <label className="flex items-center gap-2 text-[11px] text-slate-400">
+            <input
+              type="checkbox"
+              checked={draft.requireApproval}
+              onChange={(e) => setDraft({ ...draft, requireApproval: e.target.checked })}
+            />
+            Require Robert&apos;s approval before Praxis contacts them
+          </label>
           <Field label="Notes">
             <textarea value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} className="hud-input min-h-[54px]" />
           </Field>
+          {(contact.interaction_log?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-0.5 text-[10px] uppercase tracking-widest text-slate-500">Praxis interaction notes</p>
+              <ul className="space-y-0.5">
+                {(contact.interaction_log ?? []).slice(-4).reverse().map((entry, i) => (
+                  <li key={i} className="text-[11px] text-slate-400">
+                    <span className="text-slate-600">{entry.at.slice(0, 10)}</span> — {entry.note}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {contact.last_contact_at && (
             <p className="text-[10px] text-slate-600">Last contact: {new Date(contact.last_contact_at).toLocaleString()}</p>
           )}

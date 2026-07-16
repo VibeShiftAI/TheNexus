@@ -1,31 +1,39 @@
 /**
- * Contacts Routes — the shared stakeholder directory.
+ * Members Routes — the ONE shared people directory (canonical mount
+ * /api/members; /api/contacts remains as a legacy alias).
  *
- * Contacts are people (family testers, clients, domain experts) shared
- * across projects; project_contacts links carry the per-project role.
+ * Members are people (family testers, clients, domain experts) AND AI
+ * council seats, shared across projects; project_contacts links carry the
+ * per-project role, `claims`/`seat_id` carry council membership, and
+ * `interaction_log` accumulates Praxis's notes on every exchange.
  * Praxis's feedback pipeline reports communications via POST /observe.
- * Shapes: @praxis/contract entities/contact.ts.
+ * Shapes: @praxis/contract entities/contact.ts (Member = Contact).
  */
 const express = require('express');
 
 function createContactsRouter({ db }) {
     const router = express.Router();
 
-    // GET /api/contacts?search=&email=&project_id=
+    // GET /api/members?search=&email=&seat_id=&project_id=
     router.get('/', async (req, res) => {
         try {
             if (req.query.email) {
                 const contact = await db.findContactByEmail(String(req.query.email));
-                return res.json({ contacts: contact ? [contact] : [] });
+                return res.json({ contacts: contact ? [contact] : [], members: contact ? [contact] : [] });
+            }
+            if (req.query.seat_id) {
+                const contact = await db.findContactBySeat(String(req.query.seat_id));
+                return res.json({ contacts: contact ? [contact] : [], members: contact ? [contact] : [] });
             }
             if (req.query.project_id) {
-                return res.json({ contacts: await db.listProjectContacts(String(req.query.project_id)) });
+                const linked = await db.listProjectContacts(String(req.query.project_id));
+                return res.json({ contacts: linked, members: linked });
             }
             const contacts = await db.listContacts({ search: req.query.search || null });
-            res.json({ contacts });
+            res.json({ contacts, members: contacts });
         } catch (error) {
-            console.error('Error listing contacts:', error);
-            res.status(500).json({ error: 'Failed to list contacts' });
+            console.error('Error listing members:', error);
+            res.status(500).json({ error: 'Failed to list members' });
         }
     });
 
@@ -62,6 +70,28 @@ function createContactsRouter({ db }) {
         } catch (error) {
             console.error('Error observing contact:', error);
             res.status(500).json({ error: 'Failed to observe contact' });
+        }
+    });
+
+    /**
+     * POST /api/members/:id/log — append a Praxis interaction note:
+     * { note, source?, touch_contact? }. touch_contact also stamps
+     * last_contact_at (use when the note records an actual exchange).
+     */
+    router.post('/:id/log', async (req, res) => {
+        try {
+            const { note, source, touch_contact } = req.body || {};
+            if (!note?.trim()) return res.status(400).json({ error: 'note required' });
+            const contact = await db.appendContactLog(req.params.id, {
+                note,
+                source,
+                touchContact: Boolean(touch_contact),
+            });
+            if (!contact) return res.status(404).json({ error: 'Member not found' });
+            res.json({ success: true, contact, member: contact });
+        } catch (error) {
+            console.error('Error appending member log:', error);
+            res.status(500).json({ error: 'Failed to append log' });
         }
     });
 
