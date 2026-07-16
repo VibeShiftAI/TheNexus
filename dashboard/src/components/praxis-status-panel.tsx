@@ -7,6 +7,8 @@
 
 import { Cpu } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useTokenUsage } from "@/hooks/use-token-usage";
+import { fmtTokens } from "@/lib/token-usage";
 import { getPresenceVisualState } from "@/components/presence-indicator";
 
 function fmtTime(iso?: string) {
@@ -16,6 +18,7 @@ function fmtTime(iso?: string) {
 
 export function PraxisStatusPanel() {
   const { presence, connected } = usePraxisStream();
+  const { usage } = useTokenUsage();
   const activity = presence?.activity ?? "offline";
   const style = getPresenceVisualState(activity, connected);
   const summary = presence?.summary ?? (connected ? "Connecting…" : "Disconnected");
@@ -24,7 +27,7 @@ export function PraxisStatusPanel() {
     [
       { label: "Scheduled", value: presence?.scheduledTaskCount },
       { label: "Done today", value: presence?.completedTasksToday },
-      { label: "Calls left", value: presence?.budget?.dailyCallsRemaining },
+      { label: "Tokens today", value: usage ? fmtTokens(usage.today.total) : undefined },
       { label: "Next wake", value: fmtTime(presence?.nextWakeAt) },
     ] as { label: string; value: number | string | null | undefined }[]
   ).filter((s): s is { label: string; value: number | string } => s.value !== undefined && s.value !== null);

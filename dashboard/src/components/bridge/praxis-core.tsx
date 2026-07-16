@@ -12,6 +12,8 @@ import { useState, useRef } from "react";
 import { Radio, Maximize2, Minimize2, Plus, History } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
+import { useTokenUsage } from "@/hooks/use-token-usage";
+import { fmtTokens } from "@/lib/token-usage";
 import { CoreCanvas, CORE_STYLES } from "@/components/bridge/core-canvas";
 import { HudPanel, HudErrorBoundary } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
@@ -34,6 +36,7 @@ function fmtTime(iso?: string) {
 export function PraxisCore() {
   const { presence, recentEvents, connected } = usePraxisStream();
   const { crew } = useCrewActivity();
+  const { usage } = useTokenUsage();
   const [viewscreenMax, setViewscreenMax] = useState(false);
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
   const terminalRef = useRef<AITerminalHandle>(null);
@@ -48,7 +51,7 @@ export function PraxisCore() {
     [
       { label: "Scheduled", value: presence?.scheduledTaskCount },
       { label: "Done today", value: presence?.completedTasksToday },
-      { label: "Calls left", value: presence?.budget?.dailyCallsRemaining },
+      { label: "Tokens today", value: usage ? fmtTokens(usage.today.total) : undefined },
       { label: "Next wake", value: fmtTime(presence?.nextWakeAt) },
     ] as { label: string; value: number | string | null | undefined }[]
   ).filter((s): s is { label: string; value: number | string } => s.value !== undefined && s.value !== null);
