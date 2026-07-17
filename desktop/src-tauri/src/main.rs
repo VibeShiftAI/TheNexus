@@ -217,6 +217,51 @@ mod travel {
     /// updater uses, authorized by the same service token.
     const ROSTER_URL: &str = "https://nexus.vibeshiftai.com/api/tabs";
 
+    /// Praxis feedback widget, mounted on every content tab so feedback can
+    /// be filed from the road. The project/token pair must be registered in
+    /// the relay's FEEDBACK_PROJECT_TOKENS (tokens route, they don't guard).
+    const FEEDBACK_WIDGET_URL: &str = "https://vibeshiftai.com/feedback/widget.js";
+    const FEEDBACK_PROJECT: &str = "the-nexus";
+    const FEEDBACK_TOKEN: &str = "nx_pub_7381315e";
+
+    /// Initialization script that mounts the feedback widget. Runs at
+    /// document creation on every navigation in the webview: skips frames,
+    /// the local loader, and pages that ship their own widget embed (their
+    /// per-site config wins over the shell's generic one).
+    fn feedback_widget_script(tab: &TabDef) -> String {
+        format!(
+            r#"(function () {{
+  if (window.self !== window.top) return;
+  if (location.protocol !== "https:") return;
+  function mount() {{
+    if (window.PraxisFeedback) return;
+    if (document.querySelector("script[data-project][src*='widget']")) return;
+    var s = document.createElement("script");
+    s.defer = true;
+    s.src = "{url}";
+    s.dataset.project = "{project}";
+    s.dataset.token = "{token}";
+    s.dataset.position = "bottom-right";
+    s.dataset.accent = "{accent}";
+    s.dataset.label = "Send feedback to Praxis";
+    s.dataset.appVersion = "travel-shell/{version}/{tab_id}";
+    document.head.appendChild(s);
+  }}
+  if (document.readyState === "loading") {{
+    document.addEventListener("DOMContentLoaded", mount);
+  }} else {{
+    mount();
+  }}
+}})();"#,
+            url = FEEDBACK_WIDGET_URL,
+            project = FEEDBACK_PROJECT,
+            token = FEEDBACK_TOKEN,
+            accent = tab.accent,
+            version = env!("CARGO_PKG_VERSION"),
+            tab_id = tab.id,
+        )
+    }
+
     fn tab(id: &str, label: &str, url: &str, accent: &str, hosted: bool) -> TabDef {
         TabDef {
             id: id.into(),
@@ -631,6 +676,7 @@ mod travel {
 
         for (index, tab) in tabs.iter().enumerate() {
             let mut builder = WebviewBuilder::new(tab.id.clone(), WebviewUrl::App("loader.html".into()))
+                .initialization_script(&feedback_widget_script(tab))
                 .on_new_window(open_in_browser);
             if tab.hosted {
                 let nav_app = app.handle().clone();
