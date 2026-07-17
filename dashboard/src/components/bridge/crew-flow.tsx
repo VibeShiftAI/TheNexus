@@ -275,7 +275,10 @@ export function CrewFlow({
 
   const anyActive = edges.some((e) => e.flow || e.packet);
   const localColors = local.running > 0 ? CYAN : IDLE;
-  const localStatus = local.paused
+  // Visible caption stays short so it can't clip the left edge; the queue
+  // depth lives in the tooltip.
+  const localStatus = local.paused ? "paused" : local.running > 0 ? `${local.running} running` : "quiet";
+  const localTip = local.paused
     ? "paused"
     : local.running > 0
       ? `${local.running} running${local.queued > 0 ? ` · ${local.queued} queued` : ""}`
@@ -345,19 +348,19 @@ export function CrewFlow({
           fill={anyActive ? "#22d3ee" : "#0e7490"}
           className={anyActive ? "hud-crew-breathe" : undefined}
         />
-        <text x={HUB.x} y={HUB.y + 31} textAnchor="middle" fontSize="7" fontWeight="600" fill="#475569">
+        <text x={HUB.x + 21} y={HUB.y + 3} textAnchor="start" fontSize="10" fontWeight="600" fill="#475569">
           PRAXIS
         </text>
       </g>
 
       {/* Local LLM satellite */}
       <g onClick={() => onInspect("local-llm")} className="cursor-pointer">
-        <title>{`Local LLM — ${localStatus}`}</title>
+        <title>{`Local LLM — ${localTip}`}</title>
         <circle cx={LOCAL.x} cy={LOCAL.y} r="8" fill={localColors.fill} stroke={localColors.ring} strokeWidth="1.5" />
-        <text x={LOCAL.x} y={LOCAL.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize="7" fill={localColors.text}>
+        <text x={LOCAL.x} y={LOCAL.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize="9" fill={localColors.text}>
           {local.running > 0 ? "…" : "·"}
         </text>
-        <text x={LOCAL.x} y={LOCAL.y + 22} textAnchor="middle" fontSize="6.5" fill={local.paused ? "#fbbf24" : localColors.text}>
+        <text x={LOCAL.x} y={LOCAL.y + 21} textAnchor="middle" fontSize="10.5" fill={local.paused ? "#fbbf24" : localColors.text}>
           Local LLM · {localStatus}
         </text>
       </g>
@@ -398,13 +401,13 @@ export function CrewFlow({
               strokeWidth="1.5"
               className={n.breathe ? "hud-crew-breathe" : undefined}
             />
-            <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize="9" fill={n.colors.text}>
+            <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize="11" fill={n.colors.text}>
               {n.glyph}
             </text>
-            <text x={pos.x} y={pos.y - 17} textAnchor="middle" fontSize="8.5" fontWeight="600" fill={n.colors.text}>
+            <text x={pos.x} y={pos.y - 19} textAnchor="middle" fontSize="12" fontWeight="600" fill={n.colors.text}>
               {n.label}
             </text>
-            <text x={pos.x} y={pos.y + 23} textAnchor="middle" fontSize="6.5" fill={n.role === "idle" ? "#475569" : n.colors.text}>
+            <text x={pos.x} y={pos.y + 25} textAnchor="middle" fontSize="11" fill={n.role === "idle" ? "#475569" : n.colors.text}>
               {n.role}
             </text>
           </g>
