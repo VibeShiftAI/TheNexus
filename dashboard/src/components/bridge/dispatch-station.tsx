@@ -141,6 +141,36 @@ export interface DispatchStateResponse {
     counts?: Record<string, number>;
     jobs?: { id?: string; type?: string; status?: string; attempts?: number; maxAttempts?: number; updatedAt?: string }[];
   };
+  /**
+   * LM Studio live state (Praxis host-telemetry). Direct traffic — e.g.
+   * TheCortex embedding calls — bypasses the local queue, so residency and
+   * last-activity come from the server itself, not our job counts.
+   */
+  lmStudio?: {
+    reachable?: boolean;
+    models?: { id?: string; state?: string; type?: string }[];
+    loadedCount?: number;
+    lastActivityAt?: string | null;
+  };
+  /** Mac Studio host snapshot (Praxis runs on the box the models run on). */
+  system?: {
+    memory?: { totalBytes?: number; availBytes?: number; availPct?: number; swapUsedBytes?: number | null };
+  };
+}
+
+/** "38.2 GB" — host-memory readouts. */
+export function fmtGb(bytes: number) {
+  return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+}
+
+/**
+ * LM Studio saw traffic within the last two minutes. Paired with an idle
+ * queue this means a direct caller (TheCortex embeddings) is on the box —
+ * the state that used to read as "idle".
+ */
+export function lmStudioActive(lastActivityAt?: string | null) {
+  if (!lastActivityAt) return false;
+  return Date.now() - new Date(lastActivityAt).getTime() < 2 * 60_000;
 }
 
 const LANE_SETTLE_MS = 60_000;
@@ -327,6 +357,8 @@ export function DispatchStation() {
   const localRunning = localCounts["running"] ?? 0;
   const localQueued = localCounts["queued"] ?? 0;
   const localPaused = Boolean(state?.localLlm?.worker?.paused);
+  const lmStudio = state?.lmStudio;
+  const memory = state?.system?.memory;
 
   const now = Date.now();
 
@@ -414,7 +446,15 @@ export function DispatchStation() {
             lanes={laneView}
             runs={state?.executors?.runs}
             council={liveCouncil}
-            local={{ running: localRunning, queued: localQueued, paused: localPaused }}
+            local={{
+              running: localRunning,
+              queued: localQueued,
+              paused: localPaused,
+              // undefined = old Praxis payload without the field (say nothing);
+              // null = probe ran and LM Studio is unreachable.
+              resident: lmStudio ? (lmStudio.reachable ? (lmStudio.loadedCount ?? 0) : null) : undefined,
+              directActive: localRunning === 0 && lmStudioActive(lmStudio?.lastActivityAt),
+            }}
             arbiter={arbiter}
             onSetArbiter={handleSetArbiter}
             onInspect={setInspecting}
@@ -464,6 +504,31 @@ export function DispatchStation() {
           {/* Bottom instruments pin to the panel floor so the station fills
               its row evenly beside the knowledge constellation. */}
           <div className="mt-auto space-y-2.5 pt-2">
+            {memory?.availBytes != null && memory.totalBytes != null && (
+              <div
+                className="flex items-center gap-2 border-t border-slate-800/60 pt-2 text-[10px]"
+                title={`Mac Studio available memory (kern.memorystatus_level)${
+                  memory.swapUsedBytes ? ` · swap used ${fmtGb(memory.swapUsedBytes)}` : ""
+                }${lmStudio?.reachable ? ` · LM Studio: ${lmStudio.loadedCount ?? 0} model(s) resident` : " · LM Studio offline"}`}
+              >
+                <span className="uppercase tracking-wide text-slate-600">mac studio mem</span>
+                <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className={`h-full rounded-full ${
+                      (memory.availPct ?? 0) < 10 ? "bg-rose-500" : (memory.availPct ?? 0) < 25 ? "bg-amber-400" : "bg-emerald-500"
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(2, memory.availPct ?? 0))}%` }}
+                  />
+                </div>
+                <span
+                  className={`shrink-0 tabular-nums ${
+                    (memory.availPct ?? 0) < 10 ? "text-rose-300" : (memory.availPct ?? 0) < 25 ? "text-amber-300" : "text-slate-400"
+                  }`}
+                >
+                  {fmtGb(memory.availBytes)} free of {fmtGb(memory.totalBytes)}
+                </span>
+              </div>
+            )}
             {(upcoming.length > 0 || attention !== null) && (
               <div className="space-y-1 border-t border-slate-800/60 pt-2">
                 <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-slate-600">

@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, Clock, AlertTriangle, MessageSquare, Terminal } from "lucide-react";
 import {
   DispatchStation,
+  fmtGb,
+  lmStudioActive,
   type DispatchStateResponse,
   type ExecutorRun,
   type CronJob,
@@ -166,6 +168,11 @@ export default function OpsConsolePage() {
   const localCounts = state?.localLlm?.counts ?? {};
   const localPaused = Boolean(state?.localLlm?.worker?.paused);
   const activeCount = (localCounts["running"] ?? 0) + (localCounts["queued"] ?? 0);
+  const lmStudio = state?.lmStudio;
+  const memory = state?.system?.memory;
+  // Queue idle but LM Studio saw traffic in the last two minutes: a direct
+  // caller (TheCortex embeddings) is working the box outside this queue.
+  const lmDirectActive = (localCounts["running"] ?? 0) === 0 && lmStudioActive(lmStudio?.lastActivityAt);
 
   // Executor Runs rows: live work first, then everything else newest-first.
   const runRows: ExecutorRun[] = [...runs];
@@ -450,8 +457,71 @@ export default function OpsConsolePage() {
                 {localPaused ? "resume worker" : "pause worker"}
               </button>
             </div>
+            {/* LM Studio live state — direct traffic (TheCortex embeddings)
+                bypasses the queue below, so the box gets its own strip. The
+                strip hides entirely on old Praxis payloads without the field. */}
+            {lmStudio && (
+            <div className="mb-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                <span className="font-semibold uppercase tracking-wide text-slate-400">LM Studio</span>
+                {!lmStudio.reachable ? (
+                  <span className="text-amber-300/90">unreachable — resident-model telemetry unavailable</span>
+                ) : (
+                  <>
+                    <span className="text-slate-500">
+                      {(lmStudio.loadedCount ?? 0)} of {lmStudio.models?.length ?? 0} models resident
+                    </span>
+                    {lmStudio.lastActivityAt && (
+                      <span
+                        className={lmDirectActive ? "text-cyan-300" : "text-slate-500"}
+                        title="Last LM Studio server activity — includes direct callers (e.g. TheCortex embeddings) invisible to this queue"
+                      >
+                        activity {relTime(lmStudio.lastActivityAt)}
+                        {lmDirectActive ? " · direct traffic" : ""}
+                      </span>
+                    )}
+                    {memory?.availBytes != null && memory.totalBytes != null && (
+                      <span
+                        className={`tabular-nums ${
+                          (memory.availPct ?? 100) < 10
+                            ? "text-rose-300"
+                            : (memory.availPct ?? 100) < 25
+                              ? "text-amber-300"
+                              : "text-slate-500"
+                        }`}
+                        title={`Mac Studio available memory${memory.swapUsedBytes ? ` · swap ${fmtGb(memory.swapUsedBytes)} used` : ""}`}
+                      >
+                        mem {fmtGb(memory.availBytes)} / {fmtGb(memory.totalBytes)} free
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              {lmStudio.reachable && (lmStudio.models?.length ?? 0) > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {lmStudio.models!.map((m, i) => (
+                    <span
+                      key={m.id ?? i}
+                      className={`rounded border px-1.5 py-0.5 font-mono text-[10px] ${
+                        m.state === "loaded"
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                          : "border-slate-800 bg-slate-900/60 text-slate-600"
+                      }`}
+                      title={`${m.id}${m.type ? ` (${m.type})` : ""} — ${m.state === "loaded" ? "resident in memory" : "not loaded"}`}
+                    >
+                      {m.id}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            )}
             {localJobs.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-500">No active jobs in local queue.</div>
+              <div className="py-4 text-center text-xs text-slate-500">
+                {lmDirectActive
+                  ? "No queue jobs — but LM Studio is serving direct traffic."
+                  : "No active jobs in local queue."}
+              </div>
             ) : (
               <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
                 {localJobs.map((j, i) => (

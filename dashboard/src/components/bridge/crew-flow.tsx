@@ -119,7 +119,15 @@ export function CrewFlow({
   lanes: Partial<Record<string, CrewLaneView>>;
   runs: ExecutorRun[] | undefined;
   council: CouncilSessionSummary | null;
-  local: { running: number; queued: number; paused: boolean };
+  local: {
+    running: number;
+    queued: number;
+    paused: boolean;
+    /** LM Studio resident (loaded) models; null when LM Studio is unreachable. */
+    resident?: number | null;
+    /** LM Studio saw traffic recently while the queue is idle — a direct caller (TheCortex embeddings). */
+    directActive?: boolean;
+  };
   /** Arbiter preference; null hides the badges (endpoint unavailable). */
   arbiter?: CouncilArbiterState | null;
   onSetArbiter?: (seat: ArbiterSeat) => void;
@@ -285,15 +293,35 @@ export function CrewFlow({
   }
 
   const anyActive = edges.some((e) => e.flow || e.packet);
-  const localColors = local.running > 0 ? CYAN : IDLE;
+  // Direct traffic (queue idle, LM Studio busy — TheCortex embeddings) lights
+  // the node like queue work does: the box IS working, just not for us.
+  const localBusy = local.running > 0 || Boolean(local.directActive);
+  const localColors = localBusy ? CYAN : IDLE;
   // Visible caption stays short so it can't clip the left edge; the queue
-  // depth lives in the tooltip.
-  const localStatus = local.paused ? "paused" : local.running > 0 ? `${local.running} running` : "quiet";
-  const localTip = local.paused
+  // depth and residency live in the tooltip.
+  const localStatus = local.paused
     ? "paused"
     : local.running > 0
-      ? `${local.running} running${local.queued > 0 ? ` · ${local.queued} queued` : ""}`
-      : "quiet";
+      ? `${local.running} running`
+      : local.directActive
+        ? "direct traffic"
+        : local.resident === null
+          ? "LM Studio off"
+          : "quiet";
+  const localResidentTip =
+    local.resident === null ? "LM Studio unreachable" : local.resident != null ? `${local.resident} model(s) resident` : null;
+  const localTip = [
+    local.paused
+      ? "paused"
+      : local.running > 0
+        ? `${local.running} running${local.queued > 0 ? ` · ${local.queued} queued` : ""}`
+        : local.directActive
+          ? "direct traffic (bypasses the queue — e.g. TheCortex embeddings)"
+          : "quiet",
+    localResidentTip,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Crew dispatch flow">
@@ -369,7 +397,7 @@ export function CrewFlow({
         <title>{`Local LLM — ${localTip}`}</title>
         <circle cx={LOCAL.x} cy={LOCAL.y} r="8" fill={localColors.fill} stroke={localColors.ring} strokeWidth="1.5" />
         <text x={LOCAL.x} y={LOCAL.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize="9" fill={localColors.text}>
-          {local.running > 0 ? "…" : "·"}
+          {localBusy ? "…" : "·"}
         </text>
         <text x={LOCAL.x} y={LOCAL.y + 21} textAnchor="middle" fontSize="10.5" fill={local.paused ? "#fbbf24" : localColors.text}>
           Local LLM · {localStatus}
