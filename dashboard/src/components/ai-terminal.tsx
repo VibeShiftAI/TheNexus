@@ -12,6 +12,7 @@ import { getAuthHeader } from "@/lib/auth";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 import { useCortex } from "@/components/cortex-provider";
 import { dispatchMorningKickoff } from "@/components/bridge/bridge-fx";
+import { isThisClientActive } from "@/lib/active-client";
 import type { Message, CortexArtifact, PlanDraftData, CompiledPlanData, ChatResponseData, LineCommentData, VoteSummaryData, StatusUpdateData, UnknownArtifactData } from "@/components/cortex-provider";
 
 // Types are now imported from cortex-provider.tsx
@@ -256,22 +257,51 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
     const playNextQueuedVoice = useCallback(() => {
         if (voiceStartPendingRef.current) return;
-        while (voiceQueueRef.current.length > 0) {
-            const key = voiceQueueRef.current.shift()!;
-            const el = voiceAudioRefs.current.get(key);
-            if (!el || el.ended) continue;
-            nowPlayingVoiceRef.current = key;
-            voiceStartPendingRef.current = true;
-            playCommChirp().then(() => {
-                voiceStartPendingRef.current = false;
-                el.play().catch(() => {
-                    // Autoplay blocked (no user gesture yet) — drop, don't loop.
-                    if (nowPlayingVoiceRef.current === key) nowPlayingVoiceRef.current = null;
-                });
-            });
+        if (voiceQueueRef.current.length === 0) {
+            nowPlayingVoiceRef.current = null;
             return;
         }
-        nowPlayingVoiceRef.current = null;
+        voiceStartPendingRef.current = true;
+        // Last-active-location gate: announcements auto-play only on the
+        // device Robert most recently touched (2026-07-17 — the Studio's
+        // desktop app AND a web tab both spoke while he worked on the
+        // laptop). Inactive clients keep the "New Voice Message" badge for
+        // manual play; the queue is dropped so a stale note never blurts
+        // out minutes later when this device becomes active again.
+        isThisClientActive().then((active) => {
+            if (!active) {
+                voiceQueueRef.current = [];
+                voiceStartPendingRef.current = false;
+                nowPlayingVoiceRef.current = null;
+                return;
+            }
+            let key: string | null = null;
+            let el: HTMLAudioElement | null = null;
+            while (voiceQueueRef.current.length > 0) {
+                const candidateKey = voiceQueueRef.current.shift()!;
+                const candidate = voiceAudioRefs.current.get(candidateKey);
+                if (candidate && !candidate.ended) {
+                    key = candidateKey;
+                    el = candidate;
+                    break;
+                }
+            }
+            if (!key || !el) {
+                voiceStartPendingRef.current = false;
+                nowPlayingVoiceRef.current = null;
+                return;
+            }
+            const playKey = key;
+            const playEl = el;
+            nowPlayingVoiceRef.current = playKey;
+            playCommChirp().then(() => {
+                voiceStartPendingRef.current = false;
+                playEl.play().catch(() => {
+                    // Autoplay blocked (no user gesture yet) — drop, don't loop.
+                    if (nowPlayingVoiceRef.current === playKey) nowPlayingVoiceRef.current = null;
+                });
+            });
+        });
     }, [playCommChirp]);
 
     useEffect(() => {

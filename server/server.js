@@ -163,6 +163,7 @@ app.use('/api/praxis',    createPraxisStreamRouter({ io, pushService }));
 // Tunnel sends all /api/* here, but token-usage is computed by the Next.js
 // dashboard — forward so remote viewers get the same numbers as localhost.
 app.use('/api/token-usage', require('./routes/token-usage')());
+app.use('/api/presence', require('./routes/presence')());
 // Self-update feed for the Windows travel shell (served through the tunnel).
 app.use('/api/updates', require('./routes/updates')());
 // Travel-shell tab roster — the shell pulls this at launch; the dashboard

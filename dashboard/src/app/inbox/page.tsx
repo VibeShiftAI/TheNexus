@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -76,9 +77,28 @@ function timeAgo(iso: string | undefined): string {
 export default function InboxPage() {
   const { error, loading, pendingRequests, refresh, resolvingId, resolveRequest } = useHitlInbox();
   const { connected } = usePraxisStream();
+  const router = useRouter();
   const [filter, setFilter] = useState<FilterId>("all");
   const [history, setHistory] = useState<HITLRequest[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Approving the day schedule drops Robert straight back on the bridge
+  // (2026-07-17): the "Engage" confirmation voice plays in the dashboard
+  // terminal, which isn't mounted on this route — without the hop the
+  // announcement sat unplayed until he navigated home by hand. Only the
+  // schedule approve warps; other inbox items resolve in place so a
+  // triage session isn't interrupted.
+  const resolveScheduleAndReturn = useCallback(
+    async (requestId: string, input: Parameters<typeof resolveRequest>[1]) => {
+      await resolveRequest(requestId, input);
+      const choice = (input.choice ?? "").toLowerCase();
+      const freeText = (input.freeText ?? "").toLowerCase();
+      if (choice.includes("approve") || /\bapprove\b/.test(freeText)) {
+        router.push("/");
+      }
+    },
+    [resolveRequest, router],
+  );
 
   const loadHistory = useCallback(async () => {
     try {
@@ -220,7 +240,7 @@ export default function InboxPage() {
                   <ScheduleHitlCard
                     request={request}
                     resolving={resolvingId === request.id}
-                    onResolve={resolveRequest}
+                    onResolve={resolveScheduleAndReturn}
                   />
                 ) : isSkillCandidatesHitl(request) ? (
                   <SkillCandidatesHitlCard

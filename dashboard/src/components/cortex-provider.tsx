@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode, Dispatch, SetStateAction, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
+import { reportClientActivity } from "@/lib/active-client";
 
 // ────────────────────────────────────────────────────────────
 // Shared types (also used by ai-terminal.tsx)
@@ -535,15 +536,31 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         // comes back into view or focus. Throttled inside resync, so the
         // visibility+focus double-fire costs one fetch.
         const onVisible = () => {
-            if (document.visibilityState === 'visible') void resyncActiveConversation('visible');
+            if (document.visibilityState === 'visible') {
+                void resyncActiveConversation('visible');
+                reportClientActivity();
+            }
         };
-        const onFocus = () => void resyncActiveConversation('focus');
+        const onFocus = () => {
+            void resyncActiveConversation('focus');
+            reportClientActivity();
+        };
         document.addEventListener('visibilitychange', onVisible);
         window.addEventListener('focus', onFocus);
+
+        // Last-active-location heartbeat (see lib/active-client.ts): real user
+        // input marks THIS device as where Robert is working, which is where
+        // voice announcements auto-play. Throttled inside the lib.
+        const onUserInput = () => reportClientActivity();
+        window.addEventListener('pointerdown', onUserInput, { passive: true });
+        window.addEventListener('keydown', onUserInput, { passive: true });
+        if (document.visibilityState === 'visible' && document.hasFocus()) reportClientActivity();
 
         return () => {
             document.removeEventListener('visibilitychange', onVisible);
             window.removeEventListener('focus', onFocus);
+            window.removeEventListener('pointerdown', onUserInput);
+            window.removeEventListener('keydown', onUserInput);
             socket.disconnect();
             socketRef.current = null;
             initialised.current = false;
