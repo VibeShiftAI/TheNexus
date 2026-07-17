@@ -1,6 +1,6 @@
 [package]
 name = "nexus-desktop"
-version = "1.3.0"
+version = "1.4.0"
 description = "Native shell for The Nexus bridge dashboard"
 edition = "2021"
 
