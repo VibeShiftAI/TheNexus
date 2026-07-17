@@ -1,13 +1,13 @@
 /**
- * DispatchStation — "Ops": live executor lanes showing task packets moving
- * through Praxis's dispatch pipeline (Antigravity, Codex, Claude Code — all as
- * CLI executors — plus the local LLM queue). Lane motion is driven by the
- * shared SSE stream (executor.progress / task.* events) with a fallback to the
- * run registry from Praxis /api/dispatch/state. Below the lanes sits the
- * council chamber miniature — seats light up live as a deliberation runs
- * (data from /api/praxis/council/sessions, polled fast while a council sits).
- * Click a lane for the executor drill-down popup, the chamber for /council,
- * or through to /ops for the full console.
+ * DispatchStation — "Ops": the crew flow graph. The three CLI providers, the
+ * local LLM, and the Praxis hub render as one network (see CrewFlow); each
+ * provider node wears its current role — executor, QA gatekeeper, council
+ * seat, aggregator — with packets flowing along the edges as work moves.
+ * Role/progress data comes from the shared SSE stream (executor.progress /
+ * task.* events) with a fallback to the run registry from Praxis
+ * /api/dispatch/state; council state from /api/praxis/council/sessions,
+ * polled fast while a council sits. Click a node for the drill-down popup,
+ * the status line for /council, or through to /ops for the full console.
  */
 "use client";
 
@@ -19,7 +19,7 @@ import { useStreamRefetch } from "@/hooks/use-stream-refetch";
 import { useBoardState } from "@/hooks/use-board-state";
 import { HudPanel } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
-import { CouncilChamberMini } from "@/components/bridge/council-chamber-mini";
+import { CrewFlow, type CrewLaneView } from "@/components/bridge/crew-flow";
 import { getBoardLaneId } from "@/lib/task-board";
 import {
   getCouncilSessions,
@@ -308,7 +308,44 @@ export function DispatchStation() {
     const midnight = new Date().setHours(0, 0, 0, 0);
     return councilSessions.filter((s) => s.createdAt >= midnight).length;
   }, [councilSessions]);
-  const chamberSession = liveCouncil ?? councilSessions?.[0] ?? null;
+  const lastCouncil = councilSessions?.[0] ?? null;
+
+  // Per-provider lane view for the crew graph: live SSE events win, the run
+  // registry backfills runs started before this page loaded, and settled
+  // (done/failed > 60s) lanes drop back to idle.
+  const laneView = useMemo(() => {
+    const out: Partial<Record<ExecutorName, CrewLaneView>> = {};
+    for (const lane of LANES) {
+      const registryRun = lanes[lane.id]
+        ? undefined
+        : state?.executors?.runs?.find((r) => r.executor === lane.id && r.status === "active");
+      const l: LaneState | undefined =
+        lanes[lane.id] ??
+        (registryRun
+          ? {
+              taskId: registryRun.taskId,
+              pct: PHASE_PCT[registryRun.phase as ExecutionPhase] ?? 50,
+              phase: registryRun.phase,
+              status: "active",
+              at: new Date(registryRun.updatedAt).getTime(),
+            }
+          : undefined);
+      if (!l) continue;
+      if (l.status !== "active" && now - l.at > LANE_SETTLE_MS) continue;
+      out[lane.id] = { pct: l.pct, phase: l.phase, status: l.status };
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lanes, state, now]);
+
+  // Headline for the status line when no council sits: the freshest active run.
+  const activeRun = useMemo(() => {
+    const active = (state?.executors?.runs ?? []).filter((r) => r.status === "active");
+    return active.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0] ?? null;
+  }, [state]);
+
+  const councilRefs = liveCouncil?.voices.filter((v) => !isAggregatorVoice(v)) ?? [];
+  const councilReported = councilRefs.filter((v) => v.status !== "pending" && v.status !== "running").length;
 
   // Next scheduled ops from the Praxis cron registry.
   const upcoming = useMemo(() => {
@@ -346,159 +383,58 @@ export function DispatchStation() {
         <div className="py-4 text-center text-xs text-slate-500">Dispatch telemetry unavailable</div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="space-y-2.5">
-          {LANES.map((lane) => {
-            // Live SSE events win; fall back to the run registry snapshot so
-            // a run started before this page loaded still shows as active.
-            const registryRun = lanes[lane.id]
-              ? undefined
-              : state?.executors?.runs?.find((r) => r.executor === lane.id && r.status === "active");
-            const l: LaneState | undefined =
-              lanes[lane.id] ??
-              (registryRun
-                ? {
-                    taskId: registryRun.taskId,
-                    pct: PHASE_PCT[registryRun.phase as ExecutionPhase] ?? 50,
-                    phase: registryRun.phase,
-                    status: "active",
-                    at: new Date(registryRun.updatedAt).getTime(),
-                  }
-                : undefined);
-            const settled = l && now - l.at > LANE_SETTLE_MS && l.status !== "active";
-            const show = l && !settled;
-            const barColor =
-              !show ? "" : l.status === "failed" ? "bg-red-400" : l.status === "done" ? "bg-emerald-400" : "bg-cyan-400";
-            const dotGlow =
-              !show ? "" : l.status === "failed" ? "shadow-[0_0_8px_rgba(248,113,113,0.9)]" : "shadow-[0_0_8px_rgba(34,211,238,0.9)]";
-            return (
-              <button
-                key={lane.id}
-                onClick={() => setInspecting(lane.id)}
-                className="flex w-full items-center gap-2.5 rounded px-1 py-0.5 text-left transition-colors hover:bg-slate-800/50"
-                title={`${lane.label} drill-down`}
-              >
-                <span className="w-[76px] shrink-0 truncate text-[11px] text-slate-300">{lane.label}</span>
-                <div className="relative h-2 flex-1 overflow-visible rounded-full bg-slate-800/70">
-                  {show && (
-                    <>
-                      <div
-                        className={`h-full rounded-full ${barColor} opacity-30 transition-all duration-700`}
-                        style={{ width: `${l.pct}%` }}
-                      />
-                      {l.status === "active" && (
-                        <div
-                          className="hud-lane-flow absolute inset-y-0 left-0 rounded-full"
-                          style={{
-                            width: `${l.pct}%`,
-                            background:
-                              "repeating-linear-gradient(90deg, transparent 0px, transparent 8px, rgba(34,211,238,0.45) 8px, rgba(34,211,238,0.45) 12px)",
-                          }}
-                        />
-                      )}
-                      <span
-                        className={`absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full ${barColor} ${dotGlow} transition-all duration-700`}
-                        style={{ left: `calc(${l.pct}% - 5px)` }}
-                      />
-                    </>
-                  )}
-                </div>
-                <span className="w-[86px] shrink-0 truncate text-right text-[10px] tabular-nums text-slate-500">
-                  {show ? (
-                    <span className={l.status === "failed" ? "text-red-400" : l.status === "done" ? "text-emerald-400" : "text-cyan-400"}>
-                      {l.phase}
-                    </span>
-                  ) : (
-                    "idle"
-                  )}
-                </span>
-              </button>
-            );
-          })}
+          <CrewFlow
+            lanes={laneView}
+            runs={state?.executors?.runs}
+            council={liveCouncil}
+            local={{ running: localRunning, queued: localQueued, paused: localPaused }}
+            onInspect={setInspecting}
+          />
 
-          <button
-            onClick={() => setInspecting("local-llm")}
-            className="flex w-full items-center gap-2.5 border-t border-slate-800/60 px-1 pt-2 text-left transition-colors hover:bg-slate-800/50"
-            title="Local LLM queue drill-down"
-          >
-            <span className="w-[76px] shrink-0 text-[11px] text-slate-300">Local LLM</span>
-            <div className="flex-1 text-[10px] text-slate-500">
-              {localRunning > 0 ? (
-                <span className="text-cyan-400">{localRunning} running</span>
-              ) : (
-                <span>quiet</span>
-              )}
-              {localQueued > 0 && <span> · {localQueued} queued</span>}
-              {localPaused ? <span className="text-amber-400"> · paused</span> : null}
-            </div>
-          </button>
+          {/* Status ticker: the one thing moving through the system right now */}
+          <div className="mt-1.5 flex items-center gap-2 border-t border-slate-800/60 pt-1.5 text-[10px] leading-4">
+            {liveCouncil ? (
+              <Link href="/council" className="flex min-w-0 flex-1 items-center gap-2" title="Council in session — open the chamber">
+                <span className="flex min-w-0 flex-1 items-center gap-1.5 text-amber-200">
+                  <Landmark size={10} className="shrink-0 text-amber-400" />
+                  <span className="shrink-0 font-semibold uppercase tracking-wide text-amber-400">
+                    {sessionKind(liveCouncil.metadata).label}
+                  </span>
+                  <span className="truncate">{liveCouncil.topic}</span>
+                </span>
+                <span className="shrink-0 tabular-nums text-amber-300">
+                  {councilPhaseLabel(liveCouncil.phase)} · {councilReported}/{councilRefs.length} in ·{" "}
+                  {Math.max(0, Math.floor((now - liveCouncil.createdAt) / 60_000))}m
+                </span>
+              </Link>
+            ) : activeRun ? (
+              <>
+                <span className="min-w-0 flex-1 truncate text-slate-400" title={activeRun.title}>
+                  <span className="text-cyan-400">
+                    {LANES.find((l) => l.id === activeRun.executor)?.label ?? activeRun.executor}
+                  </span>{" "}
+                  {activeRun.title}
+                </span>
+                <span className="shrink-0 tabular-nums text-slate-500">
+                  {activeRun.kind === "qa" ? "qa" : activeRun.kind === "agent" ? "agent" : "exec"} · {activeRun.phase}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="min-w-0 flex-1 truncate text-slate-500">crew standing by — chamber dark</span>
+                {lastCouncil && (
+                  <Link href="/council" className="shrink-0 tabular-nums text-slate-500 transition-colors hover:text-slate-300">
+                    {councilToday > 0 ? `${councilToday} council${councilToday === 1 ? "" : "s"} today · ` : ""}
+                    last {agoFmt(lastCouncil.createdAt)}
+                  </Link>
+                )}
+              </>
+            )}
           </div>
 
           {/* Bottom instruments pin to the panel floor so the station fills
               its row evenly beside the knowledge constellation. */}
-          <div className="mt-auto space-y-2.5 pt-3">
-            {chamberSession && (
-              <div className="border-t border-slate-800/60 pt-2">
-                <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-slate-600">
-                  <span className="flex items-center gap-1.5">
-                    <Landmark size={10} className={liveCouncil ? "text-amber-400" : "text-slate-600"} />
-                    council chamber
-                    {liveCouncil && (
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
-                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-400" />
-                      </span>
-                    )}
-                  </span>
-                  <span className="flex items-center gap-2 normal-case tracking-normal">
-                    {councilToday > 0 && (
-                      <span className="tabular-nums text-slate-600">{councilToday} today</span>
-                    )}
-                    <Link href="/council" className="flex items-center gap-1 text-cyan-400 transition-colors hover:text-cyan-300">
-                      chamber <ArrowUpRight size={10} />
-                    </Link>
-                  </span>
-                </div>
-                <Link
-                  href="/council"
-                  className={`block rounded transition-opacity hover:opacity-100 ${liveCouncil ? "" : "opacity-45"}`}
-                  title={liveCouncil ? "Council in session — open the chamber" : "Open the council chamber"}
-                >
-                  <CouncilChamberMini
-                    voices={chamberSession.voices}
-                    phase={chamberSession.phase}
-                    live={Boolean(liveCouncil)}
-                  />
-                </Link>
-                <div className="mt-1 flex items-center gap-2 text-[10px]">
-                  <span
-                    className={`min-w-0 flex-1 truncate ${liveCouncil ? "text-amber-200" : "text-slate-500"}`}
-                    title={chamberSession.topic}
-                  >
-                    {liveCouncil && (
-                      <span className="mr-1.5 font-semibold uppercase tracking-wide text-amber-400">
-                        {sessionKind(chamberSession.metadata).label} ·
-                      </span>
-                    )}
-                    {chamberSession.topic}
-                  </span>
-                  <span className="shrink-0 tabular-nums text-slate-500">
-                    {liveCouncil ? (
-                      <span className="text-amber-300">
-                        {councilPhaseLabel(chamberSession.phase)} ·{" "}
-                        {chamberSession.voices.filter(
-                          (v) => !isAggregatorVoice(v) && v.status !== "pending" && v.status !== "running",
-                        ).length}
-                        /{chamberSession.voices.filter((v) => !isAggregatorVoice(v)).length} in ·{" "}
-                        {Math.max(0, Math.floor((Date.now() - chamberSession.createdAt) / 60_000))}m
-                      </span>
-                    ) : (
-                      `last convened ${agoFmt(chamberSession.createdAt)}`
-                    )}
-                  </span>
-                </div>
-              </div>
-            )}
-
+          <div className="mt-auto space-y-2.5 pt-2">
             {(upcoming.length > 0 || attention !== null) && (
               <div className="space-y-1 border-t border-slate-800/60 pt-2">
                 <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-slate-600">
