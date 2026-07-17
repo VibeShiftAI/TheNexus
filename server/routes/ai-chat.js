@@ -38,6 +38,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
     let streamedResponse = '';
     let finalResponse = '';
     let voiceData = [];
+    let morningKickoff = false;
 
     async function handleFrame(frame) {
         const dataLines = frame
@@ -64,6 +65,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         if (event.type === 'final' || event.response) {
             finalResponse = event.response || streamedResponse;
             voiceData = Array.isArray(event.voiceData) ? event.voiceData : [];
+            morningKickoff = event.morningKickoff === true;
         }
 
         return false;
@@ -121,6 +123,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         tokenUsage: { total: 0 },
         artifacts: [],
         voiceData,
+        morningKickoff,
     })}\n\n`);
     res.write('data: [DONE]\n\n');
 }
@@ -290,7 +293,7 @@ function createAIChatRouter({ db, io }) {
                     }
                 }
 
-                return { response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData };
+                return { response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData, morningKickoff: data.morningKickoff === true };
             })();
 
             if (joinable) rememberChatRun(clientMessageId, runPromise);

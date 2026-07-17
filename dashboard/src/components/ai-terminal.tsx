@@ -11,6 +11,7 @@ import { useParams } from "next/navigation";
 import { getAuthHeader } from "@/lib/auth";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 import { useCortex } from "@/components/cortex-provider";
+import { dispatchMorningKickoff } from "@/components/bridge/bridge-fx";
 import type { Message, CortexArtifact, PlanDraftData, CompiledPlanData, ChatResponseData, LineCommentData, VoteSummaryData, StatusUpdateData, UnknownArtifactData } from "@/components/cortex-provider";
 
 // Types are now imported from cortex-provider.tsx
@@ -215,21 +216,63 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
     const nowPlayingVoiceRef = useRef<string | null>(null);
     const voiceQueueRef = useRef<string[]>([]);
     const voiceScanCountRef = useRef<number | null>(null);
+    // True from chirp-start until the voice element actually starts — guards
+    // the queue against double-starts during the ~0.5s chirp window.
+    const voiceStartPendingRef = useRef(false);
+
+    // TNG-style comm chirp: two quick rising tones synthesized with WebAudio
+    // (no audio asset, no copyright), played a beat before each auto-played
+    // Praxis voice note. Resolves after the chirp (or immediately on any
+    // failure/blocked-autoplay) so the voice always follows.
+    const playCommChirp = useCallback((): Promise<void> => new Promise((resolve) => {
+        try {
+            type WindowWithWebkitAudio = Window & { webkitAudioContext?: typeof AudioContext };
+            const Ctx = window.AudioContext || (window as WindowWithWebkitAudio).webkitAudioContext;
+            if (!Ctx) return resolve();
+            const ctx = new Ctx();
+            const tone = (start: number, dur: number, f0: number, f1: number) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(f0, ctx.currentTime + start);
+                osc.frequency.exponentialRampToValueAtTime(f1, ctx.currentTime + start + dur);
+                gain.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+                gain.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + start + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(ctx.currentTime + start);
+                osc.stop(ctx.currentTime + start + dur + 0.05);
+            };
+            tone(0, 0.16, 620, 1320);
+            tone(0.2, 0.22, 980, 1980);
+            window.setTimeout(() => {
+                ctx.close().catch(() => {});
+                resolve();
+            }, 560);
+        } catch {
+            resolve();
+        }
+    }), []);
 
     const playNextQueuedVoice = useCallback(() => {
+        if (voiceStartPendingRef.current) return;
         while (voiceQueueRef.current.length > 0) {
             const key = voiceQueueRef.current.shift()!;
             const el = voiceAudioRefs.current.get(key);
             if (!el || el.ended) continue;
             nowPlayingVoiceRef.current = key;
-            el.play().catch(() => {
-                // Autoplay blocked (no user gesture yet) — drop, don't loop.
-                if (nowPlayingVoiceRef.current === key) nowPlayingVoiceRef.current = null;
+            voiceStartPendingRef.current = true;
+            playCommChirp().then(() => {
+                voiceStartPendingRef.current = false;
+                el.play().catch(() => {
+                    // Autoplay blocked (no user gesture yet) — drop, don't loop.
+                    if (nowPlayingVoiceRef.current === key) nowPlayingVoiceRef.current = null;
+                });
             });
             return;
         }
         nowPlayingVoiceRef.current = null;
-    }, []);
+    }, [playCommChirp]);
 
     useEffect(() => {
         // Enqueue voice notes from newly appended messages. On the initial
@@ -250,7 +293,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
         const playingKey = nowPlayingVoiceRef.current;
         const playingEl = playingKey ? voiceAudioRefs.current.get(playingKey) : null;
-        if (!playingEl || playingEl.paused || playingEl.ended) {
+        if (!voiceStartPendingRef.current && (!playingEl || playingEl.paused || playingEl.ended)) {
             playNextQueuedVoice();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -769,6 +812,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     }
                     return [...withoutStreaming, finalMessage];
                 });
+                if (finalEvent?.morningKickoff) dispatchMorningKickoff();
                 return;
             }
 
@@ -788,6 +832,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 }
                 return [...prev, assistantMessage];
             });
+            if (data.morningKickoff) dispatchMorningKickoff();
         } catch (error: any) {
             console.error('AI Chat error:', error);
             // Show a diagnostic error instead of the misleading "429 Rate Limit"

@@ -18,6 +18,7 @@ import { TaskBoardStation } from "@/components/bridge/taskboard-station";
 import { VoiceCommandBar } from "@/components/bridge/voice-command-bar";
 import { AmbientMode } from "@/components/bridge/ambient-mode";
 import { StatusStrip } from "@/components/bridge/status-strip";
+import { BridgeFX, useBridgeCondition, conditionGlowClass } from "@/components/bridge/bridge-fx";
 import { ShellTabs } from "@/components/shell-tabs";
 import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-react";
 
@@ -32,6 +33,9 @@ export default function Home() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Status-report condition glow on the header (bridge-fx).
+  const bridgeCondition = useBridgeCondition();
 
   const loadData = useCallback(async () => {
     try {
@@ -85,8 +89,9 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-slate-950 hud-backdrop text-slate-200 selection:bg-cyan-500/30 flex flex-col pb-12">
+      <BridgeFX />
       {/* Header HUD */}
-      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md shrink-0">
+      <header className={`sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md shrink-0 ${conditionGlowClass(bridgeCondition)}`}>
         <div className="mx-auto w-full max-w-[2400px] flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <button

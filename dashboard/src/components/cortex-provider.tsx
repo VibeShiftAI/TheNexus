@@ -491,6 +491,16 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
+            // Status report landed → tint the bridge header its condition
+            // color (bridge-fx). Presentation-only, fires regardless of which
+            // conversation is on screen.
+            const meta = incoming.metadata as { eventType?: string; condition?: string } | undefined;
+            if (meta?.eventType === 'status_report_ready' && typeof meta.condition === 'string') {
+                import("@/components/bridge/bridge-fx")
+                    .then(({ dispatchStatusCondition }) => dispatchStatusCondition(meta.condition!))
+                    .catch(() => { /* presentation only */ });
+            }
+
             const nextMessage: Message = {
                 id: incoming.id,
                 conversation_id: incoming.conversation_id || event.conversationId,

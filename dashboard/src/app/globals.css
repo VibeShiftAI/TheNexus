@@ -208,3 +208,56 @@ html::-webkit-scrollbar-thumb:hover {
 .hud-input::placeholder {
   color: rgb(71 85 105);
 }
+
+/* ── Bridge FX (2026-07-17 morning-cinema layer) ─────────────────────── */
+
+/* Power-up sweep: panels wake dim, surge with a cyan edge glow, and settle.
+   Applied in sequence by BridgeFX on the praxis:morning-kickoff event. */
+@keyframes bridge-powerup {
+  0% {
+    opacity: 0.25;
+    filter: brightness(0.55) saturate(0.4);
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+  }
+  45% {
+    opacity: 1;
+    filter: brightness(1.3) saturate(1.25);
+    box-shadow: 0 0 26px rgba(34, 211, 238, 0.35), inset 0 0 14px rgba(34, 211, 238, 0.12);
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+  }
+}
+.bridge-powerup {
+  animation: bridge-powerup 1.4s ease-out both;
+  border-radius: 0.75rem;
+}
+
+/* Condition glow: the header pulses the report condition color three times,
+   then settles into a subtle persistent tint (cleared by BridgeFX later). */
+@keyframes bridge-condition-pulse {
+  0%, 100% { box-shadow: 0 1px 0 var(--bridge-condition-color); }
+  50% { box-shadow: 0 3px 22px var(--bridge-condition-glow); }
+}
+.bridge-condition-green,
+.bridge-condition-yellow,
+.bridge-condition-red {
+  animation: bridge-condition-pulse 1.6s ease-in-out 3;
+  box-shadow: 0 1px 0 var(--bridge-condition-color);
+  border-bottom-color: var(--bridge-condition-color) !important;
+  transition: box-shadow 0.8s ease, border-color 0.8s ease;
+}
+.bridge-condition-green {
+  --bridge-condition-color: rgba(43, 217, 124, 0.55);
+  --bridge-condition-glow: rgba(43, 217, 124, 0.45);
+}
+.bridge-condition-yellow {
+  --bridge-condition-color: rgba(255, 184, 77, 0.55);
+  --bridge-condition-glow: rgba(255, 184, 77, 0.45);
+}
+.bridge-condition-red {
+  --bridge-condition-color: rgba(255, 77, 94, 0.6);
+  --bridge-condition-glow: rgba(255, 77, 94, 0.5);
+}
