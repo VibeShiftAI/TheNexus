@@ -204,6 +204,58 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
     const [dismissedVoice, setDismissedVoice] = useState<Set<string>>(new Set());
     const [listenedVoice, setListenedVoice] = useState<Set<string>>(new Set());
 
+    // ── Sequential voice playback (2026-07-17) ──
+    // Exactly ONE Praxis voice note plays at a time. New arrivals QUEUE behind
+    // whatever is playing instead of talking over it (the morning status-report
+    // announcement lands while Praxis is still walking through the schedule),
+    // and manual playback pauses everything else. Previously each newest
+    // message autoPlayed independently and never paused the prior one — two
+    // greetings in quick succession produced two simultaneous voices.
+    const voiceAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
+    const nowPlayingVoiceRef = useRef<string | null>(null);
+    const voiceQueueRef = useRef<string[]>([]);
+    const voiceScanCountRef = useRef<number | null>(null);
+
+    const playNextQueuedVoice = useCallback(() => {
+        while (voiceQueueRef.current.length > 0) {
+            const key = voiceQueueRef.current.shift()!;
+            const el = voiceAudioRefs.current.get(key);
+            if (!el || el.ended) continue;
+            nowPlayingVoiceRef.current = key;
+            el.play().catch(() => {
+                // Autoplay blocked (no user gesture yet) — drop, don't loop.
+                if (nowPlayingVoiceRef.current === key) nowPlayingVoiceRef.current = null;
+            });
+            return;
+        }
+        nowPlayingVoiceRef.current = null;
+    }, []);
+
+    useEffect(() => {
+        // Enqueue voice notes from newly appended messages. On the initial
+        // history load only the final message is eligible (parity with the
+        // old newest-message autoplay); after that, every new arrival queues.
+        const scanned = voiceScanCountRef.current;
+        const startIdx = scanned === null ? Math.max(0, messages.length - 1) : scanned;
+        for (let i = startIdx; i < messages.length; i++) {
+            const voice = messages[i]?.voiceData;
+            if (!voice || voice.length === 0) continue;
+            const key = `${i}-0`;
+            if (dismissedVoice.has(key) || listenedVoice.has(key)) continue;
+            if (!voiceQueueRef.current.includes(key) && nowPlayingVoiceRef.current !== key) {
+                voiceQueueRef.current.push(key);
+            }
+        }
+        voiceScanCountRef.current = messages.length;
+
+        const playingKey = nowPlayingVoiceRef.current;
+        const playingEl = playingKey ? voiceAudioRefs.current.get(playingKey) : null;
+        if (!playingEl || playingEl.paused || playingEl.ended) {
+            playNextQueuedVoice();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [messages]);
+
     // Save voice memo to disk (browser download)
     const saveVoiceMemo = useCallback((audio: string, mimeType: string, msgIndex: number, voiceIndex: number) => {
         const ext = mimeType.includes('mpeg') ? 'mp3' : mimeType.includes('ogg') ? 'ogg' : mimeType.includes('wav') ? 'wav' : 'mp3';
@@ -1565,12 +1617,28 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                     </button>
                                                 </div>
                                             </div>
-                                            <audio 
-                                                src={`data:${v.mimeType};base64,${v.audio}`} 
-                                                controls 
-                                                autoPlay={vidx === 0 && i === messages.length - 1 && !isListened}
-                                                onEnded={() => setListenedVoice(prev => new Set([...prev, voiceKey]))}
-                                                className="h-8 max-w-[260px] [&::-webkit-media-controls-enclosure]:bg-transparent" 
+                                            <audio
+                                                src={`data:${v.mimeType};base64,${v.audio}`}
+                                                controls
+                                                ref={(el) => {
+                                                    if (el) voiceAudioRefs.current.set(voiceKey, el);
+                                                    else voiceAudioRefs.current.delete(voiceKey);
+                                                }}
+                                                onPlay={() => {
+                                                    // One voice at a time — a manual play preempts everything else.
+                                                    voiceAudioRefs.current.forEach((el, k) => {
+                                                        if (k !== voiceKey && !el.paused) el.pause();
+                                                    });
+                                                    nowPlayingVoiceRef.current = voiceKey;
+                                                }}
+                                                onEnded={() => {
+                                                    setListenedVoice(prev => new Set([...prev, voiceKey]));
+                                                    if (nowPlayingVoiceRef.current === voiceKey) {
+                                                        nowPlayingVoiceRef.current = null;
+                                                    }
+                                                    playNextQueuedVoice();
+                                                }}
+                                                className="h-8 max-w-[260px] [&::-webkit-media-controls-enclosure]:bg-transparent"
                                             />
                                         </div>
                                     );
