@@ -320,6 +320,9 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
         req.body = { name: 'spawn_council', args };
         return proxyJson(req, res, '/agent-tool');
     });
+    // Arbiter preference (bridge Ops control) — which CLI seat writes the verdict.
+    router.get('/council/arbiter', (req, res) => proxyJson(req, res, '/api/council/arbiter'));
+    router.post('/council/arbiter', (req, res) => proxyJson(req, res, '/api/council/arbiter'));
 
     // ── Bridge / cockpit passthroughs (command-deck dashboard) ─────
     router.get('/stats', (req, res) => proxyJson(req, res, '/api/praxis/stats'));

@@ -10,7 +10,13 @@
  */
 "use client";
 
-import { isAggregatorVoice, type CouncilSessionSummary, type CouncilVoice } from "@/lib/council";
+import {
+  isAggregatorVoice,
+  type ArbiterSeat,
+  type CouncilArbiterState,
+  type CouncilSessionSummary,
+  type CouncilVoice,
+} from "@/lib/council";
 import type { ExecutorId } from "@/components/bridge/executor-detail";
 import type { ExecutorRun } from "@/components/bridge/dispatch-station";
 
@@ -106,12 +112,17 @@ export function CrewFlow({
   runs,
   council,
   local,
+  arbiter,
+  onSetArbiter,
   onInspect,
 }: {
   lanes: Partial<Record<string, CrewLaneView>>;
   runs: ExecutorRun[] | undefined;
   council: CouncilSessionSummary | null;
   local: { running: number; queued: number; paused: boolean };
+  /** Arbiter preference; null hides the badges (endpoint unavailable). */
+  arbiter?: CouncilArbiterState | null;
+  onSetArbiter?: (seat: ArbiterSeat) => void;
   onInspect: (id: ExecutorId) => void;
 }) {
   const deliberating = council?.phase === "deliberation";
@@ -368,6 +379,12 @@ export function CrewFlow({
       {/* Provider nodes */}
       {nodes.map((n) => {
         const pos = POS[n.id];
+        // Arbiter badge on the two seats that can hold the gavel.
+        const seatId = `cli:${n.id}` as ArbiterSeat;
+        const canArbit =
+          arbiter && onSetArbiter && (n.id === "claude-code" || n.id === "codex");
+        const pinnedHere = canArbit && arbiter.preference === seatId;
+        const nextHere = canArbit && arbiter.preference === "auto" && arbiter.next === seatId;
         return (
           <g key={n.id} onClick={() => onInspect(n.id)} className="cursor-pointer">
             <title>{n.tip}</title>
@@ -410,6 +427,41 @@ export function CrewFlow({
             <text x={pos.x} y={pos.y + 25} textAnchor="middle" fontSize="11" fill={n.role === "idle" ? "#475569" : n.colors.text}>
               {n.role}
             </text>
+            {canArbit && (
+              <g
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSetArbiter(seatId);
+                }}
+              >
+                <title>
+                  {pinnedHere
+                    ? `Council arbiter — pinned to ${n.label}. Click to return to auto rotation.`
+                    : nextHere
+                      ? `Council arbiter: auto — ${n.label} writes the next verdict. Click to pin ${n.label}.`
+                      : `Council arbiter: click to pin ${n.label} as the verdict writer.`}
+                </title>
+                <circle
+                  cx={pos.x + 14}
+                  cy={pos.y - 10}
+                  r="7"
+                  fill={pinnedHere ? "#1e1305" : "#0f172a"}
+                  stroke={pinnedHere ? "#f59e0b" : nextHere ? "#b45309" : "#334155"}
+                  strokeWidth="1.5"
+                  strokeDasharray={nextHere ? "2.5 2" : "none"}
+                />
+                <text
+                  x={pos.x + 14}
+                  y={pos.y - 9}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize="8"
+                  fill={pinnedHere ? "#fbbf24" : nextHere ? "#d97706" : "#475569"}
+                >
+                  ⚖
+                </text>
+              </g>
+            )}
           </g>
         );
       })}

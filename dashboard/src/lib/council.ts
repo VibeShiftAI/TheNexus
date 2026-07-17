@@ -156,6 +156,33 @@ export function tokenUsageForCouncilResponse(item: {
     return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+// ── Council arbiter (bridge Ops control) ────────────────────────────────
+
+export type ArbiterSeat = "cli:claude-code" | "cli:codex";
+export type ArbiterPreference = ArbiterSeat | "auto";
+
+export interface CouncilArbiterState {
+    preference: ArbiterPreference;
+    /** The seat that would write the verdict for a council convened now. */
+    next: ArbiterSeat;
+}
+
+export async function getCouncilArbiter(): Promise<CouncilArbiterState> {
+    const res = await fetch("/api/praxis/council/arbiter", { cache: "no-store" });
+    if (!res.ok) throw new Error(`Council arbiter request failed (${res.status})`);
+    return res.json();
+}
+
+export async function setCouncilArbiter(preference: ArbiterPreference): Promise<CouncilArbiterState> {
+    const res = await fetch("/api/praxis/council/arbiter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preference }),
+    });
+    if (!res.ok) throw new Error(`Council arbiter update failed (${res.status})`);
+    return res.json();
+}
+
 // ── Display helpers ─────────────────────────────────────────────────────
 
 const SEAT_NAMES: Record<string, string> = {

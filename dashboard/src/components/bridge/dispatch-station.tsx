@@ -23,9 +23,13 @@ import { CrewFlow, type CrewLaneView } from "@/components/bridge/crew-flow";
 import { getBoardLaneId } from "@/lib/task-board";
 import {
   getCouncilSessions,
+  getCouncilArbiter,
+  setCouncilArbiter,
   isLiveSession,
   isAggregatorVoice,
   sessionKind,
+  type ArbiterSeat,
+  type CouncilArbiterState,
   type CouncilSessionSummary,
 } from "@/lib/council";
 import type { ExecutorName, ExecutionPhase } from "@praxis/contract";
@@ -269,6 +273,7 @@ export function DispatchStation() {
   // Key the poll effect on a stable boolean — keying on the session object
   // would tear the interval down on every fetch (fresh references each time).
   const councilSitting = Boolean(liveCouncil);
+  const [arbiter, setArbiter] = useState<CouncilArbiterState | null>(null);
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -278,6 +283,12 @@ export function DispatchStation() {
       } catch {
         // Council telemetry is best-effort; the section hides itself.
       }
+      try {
+        const arb = await getCouncilArbiter();
+        if (active) setArbiter(arb);
+      } catch {
+        // Older Praxis without the endpoint — the badges just don't render.
+      }
     };
     load();
     const t = setInterval(load, councilSitting ? 5_000 : 30_000);
@@ -286,6 +297,22 @@ export function DispatchStation() {
       clearInterval(t);
     };
   }, [councilSitting]);
+
+  // Pin a seat as arbiter; clicking the pinned seat releases back to auto.
+  const handleSetArbiter = useCallback(
+    async (seat: ArbiterSeat) => {
+      const target = arbiter?.preference === seat ? "auto" : seat;
+      setArbiter((prev) =>
+        prev ? { ...prev, preference: target, next: target === "auto" ? prev.next : target } : prev,
+      );
+      try {
+        setArbiter(await setCouncilArbiter(target));
+      } catch {
+        // Poll refetch reconciles if the write failed.
+      }
+    },
+    [arbiter],
+  );
 
   // Tick each second while a council sits so the elapsed readout runs.
   const [, setTick] = useState(0);
@@ -388,6 +415,8 @@ export function DispatchStation() {
             runs={state?.executors?.runs}
             council={liveCouncil}
             local={{ running: localRunning, queued: localQueued, paused: localPaused }}
+            arbiter={arbiter}
+            onSetArbiter={handleSetArbiter}
             onInspect={setInspecting}
           />
 
