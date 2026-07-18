@@ -123,6 +123,34 @@ async function getChatBackend(db) {
 }
 
 /**
+ * Thinking level for the permanent chat session. "default" = whatever the
+ * CLI does on its own; the rest map to MAX_THINKING_TOKENS (claude) /
+ * model_reasoning_effort (codex) on the Praxis side.
+ */
+const CHAT_THINKING_LEVELS = ['default', 'low', 'medium', 'high'];
+async function getChatThinkingLevel(db) {
+    const setting = await db.getModelControlSetting('chat_thinking_level');
+    const level = setting && typeof setting.level === 'string' ? setting.level : '';
+    return CHAT_THINKING_LEVELS.includes(level) ? level : 'default';
+}
+
+/** Chat-specific model override; empty = the executor's default-model chain. */
+async function getChatModel(db, key) {
+    const setting = await db.getModelControlSetting(key);
+    return setting && typeof setting.model === 'string' ? setting.model : '';
+}
+
+/** The whole chat-session config in one payload (Praxis fetches this per turn, cached 60s). */
+async function getChatConfig(db) {
+    return {
+        backend: await getChatBackend(db),
+        claudeModel: await getChatModel(db, 'chat_claude_model'),
+        codexModel: await getChatModel(db, 'chat_codex_model'),
+        thinkingLevel: await getChatThinkingLevel(db)
+    };
+}
+
+/**
  * Backend chain for Praxis's autonomous system-agent runs. Codex-first
  * (ChatGPT subscription), Claude Code next, Gemini API as the last resort.
  */
@@ -161,6 +189,7 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                 antigravityDefault: await getCliDefaultModel(db, 'antigravity_default_model'),
                 agentBackend: await getAgentBackendConfig(db),
                 chatBackend: await getChatBackend(db),
+                chatConfig: await getChatConfig(db),
                 projectPolicy: projectId && typeof db.getProjectModelControlSetting === 'function'
                     ? await db.getProjectModelControlSetting(projectId, 'model_policy')
                     : null
@@ -263,6 +292,47 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
         } catch (error) {
             console.error('[Model Control] Failed to update chat backend:', error);
             res.status(500).json({ error: 'Failed to update chat backend: ' + error.message });
+        }
+    });
+
+    // ─── Praxis chat config (backend + model + thinking level) ────────────
+    // One payload for everything that shapes the permanent chat session.
+    // Read by Praxis chat-cli-session.ts (cached 60s) and the dashboard
+    // settings modal. PUT accepts partial updates; chat models may be empty
+    // (= fall back to the executor's default-model chain).
+    router.get('/chat-config', async (_req, res) => {
+        try {
+            res.json(await getChatConfig(db));
+        } catch (error) {
+            console.error('[Model Control] Failed to read chat config:', error);
+            res.status(500).json({ error: 'Failed to read chat config: ' + error.message });
+        }
+    });
+
+    router.put('/chat-config', async (req, res) => {
+        try {
+            const body = req.body || {};
+            // Validate everything up front — a bad field must not leave a
+            // partial update behind.
+            if ('backend' in body && !CHAT_BACKENDS.includes(body.backend)) {
+                return res.status(400).json({ error: `backend must be one of: ${CHAT_BACKENDS.join(', ')}` });
+            }
+            if ('thinkingLevel' in body && !CHAT_THINKING_LEVELS.includes(body.thinkingLevel)) {
+                return res.status(400).json({ error: `thinkingLevel must be one of: ${CHAT_THINKING_LEVELS.join(', ')}` });
+            }
+            for (const field of ['claudeModel', 'codexModel']) {
+                if (field in body && typeof body[field] !== 'string') {
+                    return res.status(400).json({ error: `${field} must be a string (empty = executor default)` });
+                }
+            }
+            if ('backend' in body) await db.setModelControlSetting('chat_backend', { backend: body.backend });
+            if ('thinkingLevel' in body) await db.setModelControlSetting('chat_thinking_level', { level: body.thinkingLevel });
+            if ('claudeModel' in body) await db.setModelControlSetting('chat_claude_model', { model: body.claudeModel.trim() });
+            if ('codexModel' in body) await db.setModelControlSetting('chat_codex_model', { model: body.codexModel.trim() });
+            res.json(await getChatConfig(db));
+        } catch (error) {
+            console.error('[Model Control] Failed to update chat config:', error);
+            res.status(500).json({ error: 'Failed to update chat config: ' + error.message });
         }
     });
 

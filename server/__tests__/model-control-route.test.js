@@ -69,6 +69,7 @@ describe('model control route', () => {
                     projectAliases: [{ alias: 'coder', target: 'model:local-llama' }],
                     agentBackend: { backend: 'codex', fallbacks: ['claude-code', 'gemini'] },
                     chatBackend: 'claude-code',
+                    chatConfig: { backend: 'claude-code', claudeModel: '', codexModel: '', thinkingLevel: 'default' },
                     claudeDefault: 'claude-opus-4-8',
                     codexDefault: '',
                     antigravityDefault: '',
@@ -225,6 +226,55 @@ describe('model control route', () => {
             body: JSON.stringify({ backend: 'gemini' })
         });
         expect(bad.status).toBe(400);
+    });
+
+    test('reads and updates the chat config (backend + models + thinking level)', async () => {
+        const settings = {};
+        const db = {
+            getModelControlSetting: jest.fn(async (key) => settings[key] ?? null),
+            setModelControlSetting: jest.fn(async (key, value) => { settings[key] = value; return value; }),
+        };
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db }));
+        handle = await listen(app);
+
+        // Unset → all defaults.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`))
+            .resolves.toEqual({
+                status: 200,
+                body: { backend: 'claude-code', claudeModel: '', codexModel: '', thinkingLevel: 'default' }
+            });
+
+        // Partial update: model + thinking level only — backend untouched.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ claudeModel: ' claude-fable-5 ', thinkingLevel: 'high' })
+        })).resolves.toEqual({
+            status: 200,
+            body: { backend: 'claude-code', claudeModel: 'claude-fable-5', codexModel: '', thinkingLevel: 'high' }
+        });
+
+        // Backend rides the SAME chat_backend key the /chat-backend route uses.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ backend: 'codex', codexModel: 'gpt-5.5' })
+        })).resolves.toMatchObject({ status: 200, body: { backend: 'codex', codexModel: 'gpt-5.5' } });
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-backend`))
+            .resolves.toEqual({ status: 200, body: { backend: 'codex' } });
+
+        // A bad field rejects WITHOUT applying any other field in the body.
+        const bad = await requestJson(`${handle.baseUrl}/api/model-control/chat-config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ claudeModel: 'claude-opus-4-8', thinkingLevel: 'ultra' })
+        });
+        expect(bad.status).toBe(400);
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`))
+            .resolves.toMatchObject({ status: 200, body: { claudeModel: 'claude-fable-5', thinkingLevel: 'high' } });
     });
 
     test('serves the antigravity model roster', async () => {

@@ -282,6 +282,45 @@ export async function setChatBackend(backend: ChatBackend): Promise<ChatBackend>
     return data.backend as ChatBackend;
 }
 
+// ─── Praxis Terminal chat config (backend + model + thinking level) ────────
+
+export type ChatThinkingLevel = "default" | "low" | "medium" | "high";
+export const CHAT_THINKING_LEVELS: ChatThinkingLevel[] = ["default", "low", "medium", "high"];
+export const CHAT_THINKING_LABELS: Record<ChatThinkingLevel, string> = {
+    default: "Default",
+    low: "Low",
+    medium: "Medium",
+    high: "High",
+};
+
+export interface ChatConfig {
+    backend: ChatBackend;
+    /** Chat-only model overrides; empty string = the executor's default-model chain. */
+    claudeModel: string;
+    codexModel: string;
+    thinkingLevel: ChatThinkingLevel;
+}
+
+export async function getChatConfig(): Promise<ChatConfig> {
+    const response = await fetch(`/api/model-control/chat-config`, {
+        credentials: "include",
+        headers: { ...getAuthHeader() as any },
+    });
+    if (!response.ok) throw new Error(`Failed to load chat config: ${response.status}`);
+    return response.json();
+}
+
+export async function saveChatConfig(update: Partial<ChatConfig>): Promise<ChatConfig> {
+    const response = await fetch(`/api/model-control/chat-config`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify(update),
+    });
+    if (!response.ok) throw new Error(`Failed to update chat config: ${response.status}`);
+    return response.json();
+}
+
 export async function getModelControlOptions(projectId?: string | null): Promise<ModelControlOption[]> {
     const data = await getModelControlState(projectId);
 

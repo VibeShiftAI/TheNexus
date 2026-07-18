@@ -8,6 +8,8 @@ import {
 import { getEnvSettings, saveEnvSettings, EnvSettings } from "@/lib/nexus";
 import { ArchivedProjectsList } from "@/components/archived-projects-list";
 import { TravelTabsEditor } from "@/components/travel-tabs-editor";
+import { ChatSettingsSection } from "@/components/chat-settings-section";
+import { KeyRotationPanel } from "@/components/key-rotation-panel";
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -93,7 +95,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-lg mx-4 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
+            <div className="relative w-full max-w-2xl mx-4 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-gradient-to-r from-slate-900 to-slate-800">
                     <div className="flex items-center gap-3">
@@ -129,6 +131,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         </div>
                     ) : settings ? (
                         <>
+                            {/* Praxis Terminal chat: executor + model + thinking level */}
+                            <div className="flex items-center gap-3">
+                                <div className="h-px flex-1 bg-slate-800" />
+                                <span className="text-xs font-medium text-slate-500">Praxis Terminal</span>
+                                <div className="h-px flex-1 bg-slate-800" />
+                            </div>
+                            <ChatSettingsSection reloadKey={isOpen} />
+
+                            {/* Divider */}
+                            <div className="flex items-center gap-3 pt-2">
+                                <div className="h-px flex-1 bg-slate-800" />
+                                <span className="text-xs font-medium text-slate-500">Environment</span>
+                                <div className="h-px flex-1 bg-slate-800" />
+                            </div>
+
                             {/* Project Root */}
                             <div>
                                 <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-2">
@@ -234,6 +251,17 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                     Shared secret between Cortex and the API server. Auto-generated if empty.
                                 </p>
                             </div>
+
+                            {/* Cross-project API key rotation */}
+                            <div className="flex items-center gap-3 pt-2">
+                                <div className="h-px flex-1 bg-slate-800" />
+                                <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                                    <Key size={12} />
+                                    API Key Rotation
+                                </span>
+                                <div className="h-px flex-1 bg-slate-800" />
+                            </div>
+                            <KeyRotationPanel reloadKey={isOpen} />
 
                             {/* Travel shell tab roster */}
                             <TravelTabsEditor reloadKey={isOpen} />
