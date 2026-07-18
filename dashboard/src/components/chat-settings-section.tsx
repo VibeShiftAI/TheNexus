@@ -6,6 +6,7 @@ import {
     getChatConfig, saveChatConfig, ChatConfig,
     ChatBackend, CHAT_BACKENDS, CHAT_BACKEND_LABELS,
     ChatThinkingLevel, CHAT_THINKING_LEVELS, CHAT_THINKING_LABELS,
+    formatClaudeModelName,
 } from "@/lib/model-control";
 
 /** Suggested slugs per backend — free text is still allowed. */
@@ -15,7 +16,7 @@ const MODEL_SUGGESTIONS: Record<Exclude<ChatBackend, "off">, string[]> = {
 };
 
 const MODEL_PLACEHOLDER: Record<Exclude<ChatBackend, "off">, string> = {
-    "claude-code": "Default (dispatch claude-default, Opus 4.8)",
+    "claude-code": "Default (follows dispatch claude-default)",
     codex: "Default (dispatch codex-default / CLI default)",
 };
 
@@ -80,6 +81,17 @@ export function ChatSettingsSection({ reloadKey }: { reloadKey: boolean }) {
 
     const activeBackend = config.backend;
 
+    // Executor labels reflect the configured chat model, not a hardcoded name.
+    const backendLabel = (backend: ChatBackend): string => {
+        if (backend === "claude-code" && config.claudeModel.trim()) {
+            return `Claude session (${formatClaudeModelName(config.claudeModel)}, Claude subscription)`;
+        }
+        if (backend === "codex" && config.codexModel.trim()) {
+            return `Codex session (${config.codexModel.trim()}, ChatGPT subscription)`;
+        }
+        return CHAT_BACKEND_LABELS[backend];
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -106,7 +118,7 @@ export function ChatSettingsSection({ reloadKey }: { reloadKey: boolean }) {
                                 : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
                         }`}
                     >
-                        {CHAT_BACKEND_LABELS[backend]}
+                        {backendLabel(backend)}
                     </button>
                 ))}
             </div>

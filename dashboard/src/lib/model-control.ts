@@ -91,10 +91,17 @@ export interface AgentBackendConfig {
 export type ChatBackend = "claude-code" | "codex" | "off";
 export const CHAT_BACKENDS: ChatBackend[] = ["claude-code", "codex", "off"];
 export const CHAT_BACKEND_LABELS: Record<ChatBackend, string> = {
-    "claude-code": "Claude session (Opus, Claude subscription)",
+    "claude-code": "Claude session (Claude subscription)",
     codex: "Codex session (ChatGPT subscription)",
     off: "Legacy routed LLM (per-token)",
 };
+
+/** Human name for a claude-* slug: "claude-fable-5" → "Fable 5", "claude-haiku-4-5-20251001" → "Haiku 4.5". */
+export function formatClaudeModelName(slug: string): string {
+    const match = slug.trim().match(/^claude-([a-z]+)-(\d+(?:-\d+)?)/);
+    if (!match) return slug.trim();
+    return `${match[1][0].toUpperCase()}${match[1].slice(1)} ${match[2].replace("-", ".")}`;
+}
 
 export interface ModelControlPolicy {
     enabled: boolean;
