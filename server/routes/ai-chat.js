@@ -14,6 +14,27 @@ const { PRAXIS_URL } = require('../shared/constants');
 
 const DEFAULT_PRAXIS_CHAT_TIMEOUT_MS = 20 * 60 * 1000;
 
+// Non-streaming chat turns (attachments/audio disable SSE) sit with zero bytes
+// on the wire while the Praxis agent works, and undici's default headersTimeout
+// (5 min) fires long before the 20-minute budget below — killing the relay with
+// UND_ERR_HEADERS_TIMEOUT and losing the reply. The Praxis call therefore uses
+// undici's fetch with its phase timeouts disabled; the AbortSignal is the only clock.
+let praxisChatDispatcher;
+function getPraxisChatDispatcher() {
+    if (praxisChatDispatcher === undefined) {
+        try {
+            const { Agent } = require('undici');
+            praxisChatDispatcher = new Agent({ headersTimeout: 0, bodyTimeout: 0 });
+        } catch (err) {
+            // undici is a transitive dep; without it, keep default fetch behavior
+            // (restores the 5-min ceiling instead of crashing the chat route).
+            console.warn(`[AI Chat] undici unavailable (${err.message}) — long non-streaming turns may time out at 5 min`);
+            praxisChatDispatcher = null;
+        }
+    }
+    return praxisChatDispatcher || undefined;
+}
+
 function getPraxisChatTimeoutMs() {
     const configured = Number.parseInt(process.env.PRAXIS_CHAT_TIMEOUT_MS || '', 10);
     return Number.isFinite(configured) && configured > 0
@@ -233,6 +254,7 @@ function createAIChatRouter({ db, io }) {
                 const praxisResponse = await fetch(`${PRAXIS_URL}/api/chat`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}) },
                     body: JSON.stringify(praxisPayload), signal: AbortSignal.timeout(getPraxisChatTimeoutMs()), // local agent loops can be long
+                    dispatcher: getPraxisChatDispatcher(),
                 });
                 if (!praxisResponse.ok) {
                     const errorText = await praxisResponse.text().catch(() => '(no body)');
