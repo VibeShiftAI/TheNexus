@@ -69,7 +69,11 @@ describe('model control route', () => {
                     projectAliases: [{ alias: 'coder', target: 'model:local-llama' }],
                     agentBackend: { backend: 'codex', fallbacks: ['claude-code', 'gemini'] },
                     chatBackend: 'claude-code',
-                    chatConfig: { backend: 'claude-code', claudeModel: '', codexModel: '', thinkingLevel: 'default' },
+                    chatConfig: {
+                        backend: 'claude-code', claudeModel: '', codexModel: '', thinkingLevel: 'default',
+                        // Tiers for the effective model (the Opus 4.8 default).
+                        thinkingTiers: ['default', 'low', 'medium', 'high', 'xhigh', 'max']
+                    },
                     claudeDefault: 'claude-opus-4-8',
                     codexDefault: '',
                     antigravityDefault: '',
@@ -240,11 +244,17 @@ describe('model control route', () => {
         app.use('/api/model-control', createModelControlRouter({ db }));
         handle = await listen(app);
 
-        // Unset → all defaults.
+        // Unset → all defaults. Tiers are computed against the EFFECTIVE model
+        // (empty override → the claude default, Opus 4.8), which supports the
+        // extended reasoning set.
+        const OPUS_TIERS = ['default', 'low', 'medium', 'high', 'xhigh', 'max'];
         await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`))
             .resolves.toEqual({
                 status: 200,
-                body: { backend: 'claude-code', claudeModel: '', codexModel: '', thinkingLevel: 'default' }
+                body: {
+                    backend: 'claude-code', claudeModel: '', codexModel: '',
+                    thinkingLevel: 'default', thinkingTiers: OPUS_TIERS
+                }
             });
 
         // Partial update: model + thinking level only — backend untouched.
@@ -254,8 +264,21 @@ describe('model control route', () => {
             body: JSON.stringify({ claudeModel: ' claude-fable-5 ', thinkingLevel: 'high' })
         })).resolves.toEqual({
             status: 200,
-            body: { backend: 'claude-code', claudeModel: 'claude-fable-5', codexModel: '', thinkingLevel: 'high' }
+            body: {
+                backend: 'claude-code', claudeModel: 'claude-fable-5', codexModel: '',
+                thinkingLevel: 'high', thinkingTiers: OPUS_TIERS
+            }
         });
+
+        // Fable 5's deeper tiers round-trip without a 400 — the whole point of
+        // the extended set.
+        for (const level of ['xhigh', 'max']) {
+            await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ thinkingLevel: level })
+            })).resolves.toMatchObject({ status: 200, body: { thinkingLevel: level } });
+        }
 
         // Backend rides the SAME chat_backend key the /chat-backend route uses.
         await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`, {
@@ -270,11 +293,84 @@ describe('model control route', () => {
         const bad = await requestJson(`${handle.baseUrl}/api/model-control/chat-config`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ claudeModel: 'claude-opus-4-8', thinkingLevel: 'ultra' })
+            // "ultra" used to be the invalid example here — it's a real codex
+            // tier now (gpt-5.6-sol), so this needs a genuinely bogus value.
+            body: JSON.stringify({ claudeModel: 'claude-opus-4-8', thinkingLevel: 'nonsense' })
         });
         expect(bad.status).toBe(400);
+        // Backend is codex on gpt-5.5 now, which tops out at xhigh — so the
+        // stored "max" (picked while on Fable 5) CLAMPS rather than being
+        // forwarded. Sending it would 400 the codex turn at the OpenAI API.
         await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`))
-            .resolves.toMatchObject({ status: 200, body: { claudeModel: 'claude-fable-5', thinkingLevel: 'high' } });
+            .resolves.toMatchObject({
+                status: 200,
+                body: {
+                    claudeModel: 'claude-fable-5',
+                    thinkingLevel: 'default',
+                    thinkingTiers: ['default', 'low', 'medium', 'high', 'xhigh']
+                }
+            });
+
+        // Switching to a model that tops out at "high" CLAMPS the stored "max"
+        // rather than handing Praxis a tier the backend would reject — codex
+        // forwards this to the OpenAI API, which 400s an unsupported enum.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ backend: 'claude-code', claudeModel: 'claude-haiku-4-5-20251001' })
+        })).resolves.toMatchObject({
+            status: 200,
+            body: { thinkingLevel: 'default', thinkingTiers: ['default', 'low', 'medium', 'high'] }
+        });
+    });
+
+    test('an unnameable codex model falls back to the conservative tier floor', async () => {
+        const settings = {};
+        const db = {
+            getModelControlSetting: jest.fn(async (key) => settings[key] ?? null),
+            setModelControlSetting: jest.fn(async (key, value) => { settings[key] = value; return value; }),
+        };
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db }));
+        handle = await listen(app);
+
+        // Codex with NO chat override and NO codex_default_model: the CLI picks
+        // its own default, so we have no capability data for it. Praxis forwards
+        // whatever we return verbatim, so offering the full union here could
+        // send max/ultra to a model that 400s on it.
+        const empty = await requestJson(`${handle.baseUrl}/api/model-control/chat-config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ backend: 'codex', codexModel: '' })
+        });
+        expect(empty.status).toBe(200);
+        expect(empty.body.thinkingTiers).toEqual(['default', 'low', 'medium', 'high']);
+        for (const risky of ['xhigh', 'max', 'ultra']) {
+            expect(empty.body.thinkingTiers).not.toContain(risky);
+        }
+
+        // Storing a deep tier while unnameable must CLAMP, not pass through.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ thinkingLevel: 'max' })
+        })).resolves.toMatchObject({ status: 200, body: { thinkingLevel: 'default' } });
+
+        // Naming the model re-opens its real tiers — the floor is a fallback,
+        // not a cap.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/chat-config`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codexModel: 'gpt-5.6-sol', thinkingLevel: 'ultra' })
+        })).resolves.toMatchObject({
+            status: 200,
+            body: {
+                thinkingLevel: 'ultra',
+                thinkingTiers: ['default', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']
+            }
+        });
     });
 
     test('serves the antigravity model roster', async () => {

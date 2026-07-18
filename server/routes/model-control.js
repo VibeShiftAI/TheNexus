@@ -7,6 +7,11 @@ const {
     recordModelExecutionSnapshot,
     writeModelSystemMessage
 } = require('../services/model-control');
+const {
+    thinkingTiersForModelId,
+    ALL_THINKING_TIERS,
+    CONSERVATIVE_THINKING_TIERS
+} = require('../services/model-discovery');
 
 function normalizePolicyInput(body = {}) {
     const budget = body.budget && typeof body.budget === 'object' ? body.budget : {};
@@ -124,10 +129,16 @@ async function getChatBackend(db) {
 
 /**
  * Thinking level for the permanent chat session. "default" = whatever the
- * CLI does on its own; the rest map to MAX_THINKING_TOKENS (claude) /
- * model_reasoning_effort (codex) on the Praxis side.
+ * CLI does on its own; the rest map to `claude --effort` / codex's
+ * model_reasoning_effort on the Praxis side.
+ *
+ * This is the ACCEPT list (the union of every tier any model supports) — the
+ * narrower per-model set lives in discovery and rides along in the chat-config
+ * payload as `thinkingTiers`. Validating against the union rather than the
+ * effective model's set means switching models never retroactively 400s a
+ * stored value; getChatConfig clamps instead (see below).
  */
-const CHAT_THINKING_LEVELS = ['default', 'low', 'medium', 'high'];
+const CHAT_THINKING_LEVELS = ALL_THINKING_TIERS;
 async function getChatThinkingLevel(db) {
     const setting = await db.getModelControlSetting('chat_thinking_level');
     const level = setting && typeof setting.level === 'string' ? setting.level : '';
@@ -140,13 +151,42 @@ async function getChatModel(db, key) {
     return setting && typeof setting.model === 'string' ? setting.model : '';
 }
 
+/**
+ * The model that will actually front the next chat turn — the chat-only
+ * override if set, otherwise the executor's default-model chain. This is what
+ * the thinking tiers must be computed against, not the (often empty) override.
+ */
+async function getEffectiveChatModel(db, backend, claudeModel, codexModel) {
+    if (backend === 'codex') return codexModel || await getCliDefaultModel(db, 'codex_default_model');
+    if (backend === 'claude-code') return claudeModel || await getClaudeDefaultModel(db);
+    return '';
+}
+
 /** The whole chat-session config in one payload (Praxis fetches this per turn, cached 60s). */
 async function getChatConfig(db) {
+    const backend = await getChatBackend(db);
+    const claudeModel = await getChatModel(db, 'chat_claude_model');
+    const codexModel = await getChatModel(db, 'chat_codex_model');
+    const storedLevel = await getChatThinkingLevel(db);
+
+    const effectiveModel = await getEffectiveChatModel(db, backend, claudeModel, codexModel);
+    // An EMPTY model means codex will pick its own default, which we can't
+    // name — so we have no capability data for it. Fall back to the
+    // conservative floor, NOT the full union: Praxis forwards this selection
+    // verbatim, and codex's default could be a model that 400s on max/ultra.
+    // Better to under-offer a tier than to kill the turn.
+    const thinkingTiers = thinkingTiersForModelId(effectiveModel) || CONSERVATIVE_THINKING_TIERS;
+
     return {
-        backend: await getChatBackend(db),
-        claudeModel: await getChatModel(db, 'chat_claude_model'),
-        codexModel: await getChatModel(db, 'chat_codex_model'),
-        thinkingLevel: await getChatThinkingLevel(db)
+        backend,
+        claudeModel,
+        codexModel,
+        // Clamp, don't 400: a level picked for one model (say "max" on Fable 5)
+        // must not survive a switch to a model whose backend would reject it.
+        // Codex forwards this straight to the OpenAI API, which 400s an
+        // unsupported enum and kills the turn outright.
+        thinkingLevel: thinkingTiers.includes(storedLevel) ? storedLevel : 'default',
+        thinkingTiers
     };
 }
 

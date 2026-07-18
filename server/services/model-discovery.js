@@ -34,6 +34,122 @@ const THINKING_INDICATORS = [
     /-thinking/,
 ];
 
+/**
+ * Reasoning-effort tiers. Provider listing APIs don't expose these, so this map
+ * is the registry's source of truth. Every value was verified against the real
+ * CLI/API, not inferred:
+ *
+ *   claude → `claude --effort <level>`; --help enumerates
+ *            "low, medium, high, xhigh, max" (no "ultra", no "minimal"). An
+ *            unknown value only warns and falls back, so claude is forgiving.
+ *   codex  → `-c model_reasoning_effort="<level>"`, forwarded verbatim to the
+ *            OpenAI API, which HARD-REJECTS an unsupported tier with a 400
+ *            (confirmed live: bogus → invalid_enum_value, turn killed). Codex
+ *            is the strict backend, so its sets must be exact.
+ *
+ * "default" is our own sentinel (pass no flag) and is prepended to every set
+ * rather than stored here.
+ */
+const EXTENDED_EFFORT_TIERS = ['low', 'medium', 'high', 'xhigh', 'max'];
+const BASIC_EFFORT_TIERS = ['low', 'medium', 'high'];
+
+/**
+ * EXACT per-slug OpenAI capability rules. Sourced from the codex CLI's own
+ * model metadata (`~/.codex/models_cache.json` → supported_reasoning_levels),
+ * which is what the backend actually validates against.
+ *
+ * Version-range guessing was wrong here in both directions and is deliberately
+ * not used: gpt-5.5/5.4 stop at xhigh (offering them "max" gets the turn
+ * rejected), 5.6-sol/terra go one PAST max to "ultra", and "minimal"/"none" —
+ * though valid in the API's global enum — are offered by no current model.
+ *
+ * To refresh: read supported_reasoning_levels out of models_cache.json.
+ */
+const OPENAI_MODEL_EFFORT_TIERS = {
+    'gpt-5.6-sol': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+    'gpt-5.6-terra': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+    'gpt-5.6-luna': ['low', 'medium', 'high', 'xhigh', 'max'],
+    'gpt-5.5': ['low', 'medium', 'high', 'xhigh'],
+    'gpt-5.4': ['low', 'medium', 'high', 'xhigh'],
+    'gpt-5.4-mini': ['low', 'medium', 'high', 'xhigh'],
+    'codex-auto-review': ['low', 'medium', 'high', 'xhigh'],
+};
+
+/**
+ * Claude tiers still gate on family + version: the claude CLI takes the same
+ * five levels for every model it accepts, so the only question is which
+ * generations expose deep reasoning at all — and a version floor lets a future
+ * Sonnet 6 inherit it without a code change. This is safe precisely because
+ * claude DOWNGRADES an unsupported --effort instead of erroring; the codex
+ * side above can't afford the same latitude.
+ */
+const THINKING_TIER_RULES = [
+    { family: 'Claude Fable', minVersion: 0, tiers: EXTENDED_EFFORT_TIERS },
+    { family: 'Claude Opus', minVersion: 4.8, tiers: EXTENDED_EFFORT_TIERS },
+    { family: 'Claude Sonnet', minVersion: 5, tiers: EXTENDED_EFFORT_TIERS },
+];
+
+/**
+ * The reasoning-effort tiers a model supports, always led by "default".
+ * An exact OpenAI slug match wins over any family rule; anything we can't
+ * identify falls back to the conservative low/medium/high set, which every
+ * reasoning model on both backends accepts.
+ */
+function thinkingTiersFor(family, version, slug) {
+    const exact = OPENAI_MODEL_EFFORT_TIERS[String(slug || '').trim()];
+    if (exact) return ['default', ...exact];
+    const numericVersion = typeof version === 'number' ? version : parseVersion(String(version || ''));
+    const rule = THINKING_TIER_RULES.find(r => r.family === family && numericVersion >= r.minVersion);
+    return ['default', ...(rule ? rule.tiers : BASIC_EFFORT_TIERS)];
+}
+
+/**
+ * Tiers for a raw model slug typed into the dashboard (e.g. "claude-fable-5",
+ * "gpt-5.5") rather than a discovered roster entry. Reuses the same family
+ * patterns discovery matches on, so the two can't drift apart. An unmatched
+ * slug gets the conservative set — a model we can't identify never gets
+ * offered a tier its backend might reject.
+ */
+function thinkingTiersForModelId(modelId) {
+    const slug = String(modelId || '').trim();
+    if (!slug) return null;
+    // Exact OpenAI capability rules first — the roster's GPT pattern skips
+    // codex/mini variants, but those are exactly what the codex backend runs.
+    if (OPENAI_MODEL_EFFORT_TIERS[slug]) return ['default', ...OPENAI_MODEL_EFFORT_TIERS[slug]];
+    // An unrecognised gpt-* slug must NOT inherit a sibling's tiers — OpenAI
+    // 400s an unsupported effort, so stay conservative rather than guess.
+    if (/^gpt-/.test(slug)) return ['default', ...BASIC_EFFORT_TIERS];
+    for (const families of Object.values(MODEL_FAMILIES)) {
+        for (const familyDef of families) {
+            const match = slug.match(familyDef.pattern);
+            if (match) return thinkingTiersFor(familyDef.family, parseVersion(match[1]));
+        }
+    }
+    return ['default', ...BASIC_EFFORT_TIERS];
+}
+
+/**
+ * The floor every reasoning model on both backends accepts — every entry in
+ * OPENAI_MODEL_EFFORT_TIERS includes low/medium/high, and so does claude
+ * --effort. Use this whenever the effective model can't be NAMED (e.g. codex
+ * with no --model flag, where the CLI picks its own default): offering the
+ * full union there would hand Praxis a tier the API may 400 on.
+ */
+const CONSERVATIVE_THINKING_TIERS = ['default', ...BASIC_EFFORT_TIERS];
+
+/**
+ * Every tier any model could report — the validation whitelist. Derived from
+ * the maps above so a capability edit can't leave validation behind.
+ */
+const ALL_THINKING_TIERS = [
+    'default',
+    ...new Set([
+        ...EXTENDED_EFFORT_TIERS,
+        ...BASIC_EFFORT_TIERS,
+        ...Object.values(OPENAI_MODEL_EFFORT_TIERS).flat(),
+    ]),
+];
+
 // Provider display names
 const PROVIDER_DISPLAY = {
     google: 'Google',
@@ -162,6 +278,7 @@ function filterLatestPerFamily(provider, rawModelIds) {
                 provider: PROVIDER_DISPLAY[provider],
                 providerId: provider,
                 isThinking,
+                thinkingTiers: thinkingTiersFor(familyDef.family, bestVersion, apiModelId),
                 parameters: {},
                 limits: null, // Provider APIs don't always return this; we leave it flexible
                 family: familyDef.family,
@@ -178,7 +295,10 @@ function inferCapabilities(model) {
     return {
         chat: true,
         reasoning: !!model.isThinking,
-        local: model.providerId === 'local'
+        local: model.providerId === 'local',
+        // Durable so consumers reading the registry db (rather than the live
+        // discovery result) still see which effort tiers this model accepts.
+        thinkingTiers: model.thinkingTiers || thinkingTiersFor(model.family, model.discoveredVersion, model.apiModelId)
     };
 }
 
@@ -301,4 +421,8 @@ module.exports = {
     discoverModelRegistry,
     getModels,
     filterLatestPerFamily,
+    thinkingTiersFor,
+    thinkingTiersForModelId,
+    ALL_THINKING_TIERS,
+    CONSERVATIVE_THINKING_TIERS,
 };
