@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { ModelAliasManager } from "@/components/model-alias-manager";
 import { ModelRoleManager } from "@/components/model-role-manager";
+import { UsageRoutingPanel } from "@/components/usage-routing-panel";
 import {
     getModelControlState,
     getModelBudgetStatus,
@@ -1063,6 +1064,8 @@ export default function ModelControlPage() {
                         </div>
                     </div>
                 </section>
+
+                <UsageRoutingPanel />
 
                 <section className="rounded-lg border border-slate-800 bg-slate-950/50">
                     <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">

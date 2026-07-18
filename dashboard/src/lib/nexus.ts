@@ -1602,6 +1602,68 @@ export interface ProjectKeyGroup {
     locations: ProjectKeyLocation[];
 }
 
+// ── Usage monitor / model routing (Praxis via /api/usage-monitor proxy) ────
+
+export interface UsageWindow {
+    startedAt: number;
+    endsAt: number;
+    events: number;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+}
+
+export interface UsageRateLimit {
+    ts: number;
+    windowMinutes: number;
+    usedPercent: number;
+    resetsAt: number | null;
+    planType?: string;
+}
+
+export interface UsageFamilyState {
+    today: {
+        events: number;
+        inputTokens: number;
+        outputTokens: number;
+        cacheReadTokens: number;
+        cacheWriteTokens: number;
+        byModel: Record<string, { events: number; inputTokens: number; outputTokens: number }>;
+        estCostUsd: number;
+    };
+    window: UsageWindow | null;
+    rateLimits: UsageRateLimit[];
+    limit: { coolingDown: boolean; lastHitAt: number | null; resetAt: number | null };
+}
+
+export interface RoutingDecision {
+    ts: string;
+    task_id: string | null;
+    task_title: string | null;
+    complexity: number | null;
+    confidence: number | null;
+    scorer: string | null;
+    executor: string | null;
+    model: string | null;
+    thinking_level: string | null;
+    applied: number;
+    rationale: string | null;
+}
+
+export interface UsageMonitorState {
+    generatedAt: number;
+    families: { claude: UsageFamilyState; codex: UsageFamilyState };
+    recentDecisions: RoutingDecision[];
+}
+
+export async function getUsageMonitorState(): Promise<UsageMonitorState> {
+    const baseUrl = API_URL.replace(/\/projects$/, '');
+    const res = await authFetch(`${baseUrl}/usage-monitor/state`);
+    if (!res.ok) throw new Error("Failed to load usage monitor state");
+    return res.json();
+}
+
 export async function getProjectKeys(): Promise<{ root: string; keys: ProjectKeyGroup[] }> {
     const baseUrl = API_URL.replace(/\/projects$/, '');
     const res = await authFetch(`${baseUrl}/settings/project-keys`);
