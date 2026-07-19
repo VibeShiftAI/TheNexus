@@ -12,8 +12,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePraxisStream } from "./use-praxis-stream";
+import { useDispatchState } from "./use-dispatch-state";
 import type { ExecutorName } from "@praxis/contract";
-import type { ExecutorRun, DispatchStateResponse } from "@/components/bridge/dispatch-station";
+import type { ExecutorRun } from "@/components/bridge/dispatch-station";
 
 export interface CrewMember {
   id: string;
@@ -36,32 +37,21 @@ interface SseLane {
   at: number;
 }
 
-export function useCrewActivity(): { crew: CrewMember[]; sseRuns: ExecutorRun[] } {
+export function useCrewActivity(): {
+  crew: CrewMember[];
+  sseRuns: ExecutorRun[];
+  dispatchedToday?: { total: number; failed: number };
+} {
   const { recentEvents } = usePraxisStream();
-  const [dispatchState, setDispatchState] = useState<DispatchStateResponse | null>(null);
+  // Deck-wide shared dispatch-state poller — one fetch loop no matter how
+  // many components call this hook (crew strip, task board, Ops console).
+  const { state: dispatchState } = useDispatchState();
   // Re-render periodically so settle timeouts expire visually.
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/praxis/dispatch-state", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = (await res.json()) as DispatchStateResponse;
-        if (active) setDispatchState(data);
-      } catch {
-        /* crew strip degrades to SSE-only */
-      }
-    };
-    load();
-    const poll = setInterval(load, 30_000);
     const tick = setInterval(() => setTick((n) => n + 1), 20_000);
-    return () => {
-      active = false;
-      clearInterval(poll);
-      clearInterval(tick);
-    };
+    return () => clearInterval(tick);
   }, []);
 
   return useMemo(() => {
@@ -149,6 +139,6 @@ export function useCrewActivity(): { crew: CrewMember[]; sseRuns: ExecutorRun[] 
         : undefined,
     });
 
-    return { crew, sseRuns };
+    return { crew, sseRuns, dispatchedToday: dispatchState?.executors?.dispatchedToday };
   }, [recentEvents, dispatchState]);
 }

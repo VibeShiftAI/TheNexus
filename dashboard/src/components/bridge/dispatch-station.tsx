@@ -21,6 +21,8 @@ import { HudPanel } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
 import { CrewFlow, type CrewLaneView } from "@/components/bridge/crew-flow";
 import { getBoardLaneId } from "@/lib/task-board";
+import { isDayWellUnderway } from "@/lib/day-underway";
+import { useDispatchState } from "@/hooks/use-dispatch-state";
 import {
   getCouncilSessions,
   getCouncilArbiter,
@@ -202,8 +204,9 @@ function councilPhaseLabel(phase: CouncilSessionSummary["phase"]) {
 
 export function DispatchStation() {
   const { recentEvents } = usePraxisStream();
-  const [state, setState] = useState<DispatchStateResponse | null>(null);
-  const [err, setErr] = useState(false);
+  // Deck-wide shared dispatch-state poller (see useDispatchState) — the crew
+  // strip and task board read the same snapshot from one fetch loop.
+  const { state, error: err } = useDispatchState();
   const [lanes, setLanes] = useState<Partial<Record<ExecutorName, LaneState>>>({});
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
 
@@ -226,29 +229,6 @@ export function DispatchStation() {
     }
     return count;
   }, [boardProjects]);
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/praxis/dispatch-state", { cache: "no-store" });
-        if (!res.ok) throw new Error();
-        const data = (await res.json()) as DispatchStateResponse;
-        if (active) {
-          setState(data);
-          setErr(false);
-        }
-      } catch {
-        if (active) setErr(true);
-      }
-    };
-    load();
-    const t = setInterval(load, 20_000);
-    return () => {
-      active = false;
-      clearInterval(t);
-    };
-  }, []);
 
   // Fold stream events into lane state (newest event wins per executor).
   useEffect(() => {
@@ -416,23 +396,27 @@ export function DispatchStation() {
       .slice(0, 2);
   }, [state]);
 
+  // Zero dispatches since midnight only signals a stalled pipeline once the
+  // day's well underway — before dawn it's just an early idle fleet.
+  const degraded = today?.total === 0 && !activeRun && isDayWellUnderway();
+
   return (
     <HudPanel
       icon={<Send size={16} />}
       title="OPS — DISPATCH"
-      accent="cyan"
+      accent={degraded ? "amber" : "cyan"}
       className="flex h-full flex-col"
       headerRight={
         <>
           {today && (
             <span
-              className="text-[10px] tabular-nums text-slate-500"
+              className={`text-[10px] tabular-nums ${degraded ? "font-semibold text-amber-400" : "text-slate-500"}`}
               title={`${today.total} dispatches since midnight${today.failed > 0 ? ` (${today.failed} failed)` : ""} — persistent count, survives Praxis restarts`}
             >
-              {today.total} today
+              {today.total} today {degraded && <span className="ml-1 uppercase tracking-widest opacity-80">(degraded)</span>}
             </span>
           )}
-          <Link href="/ops" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
+          <Link href="/ops" className={`flex items-center gap-1 text-[11px] ${degraded ? "text-amber-400 hover:text-amber-300" : "text-cyan-400 hover:text-cyan-300"}`}>
             console <ArrowUpRight size={12} />
           </Link>
         </>

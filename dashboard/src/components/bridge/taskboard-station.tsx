@@ -9,11 +9,13 @@
 "use client";
 
 import Link from "next/link";
-import { ClipboardList, ArrowUpRight, AlertTriangle, Play, CircleDashed } from "lucide-react";
+import { ClipboardList, ArrowUpRight, AlertTriangle, Play, CircleDashed, Radio } from "lucide-react";
 import { HudPanel } from "@/components/bridge/hud";
 import { groupBoardTasks, type BoardTask } from "@/lib/task-board";
 import { useBoardState } from "@/hooks/use-board-state";
 import { useStreamRefetch } from "@/hooks/use-stream-refetch";
+import { useCrewActivity } from "@/hooks/use-crew-activity";
+import { isDayWellUnderway } from "@/lib/day-underway";
 
 const QUEUE_LIMIT = 5;
 
@@ -122,11 +124,22 @@ export function TaskBoardStation() {
   const queued = [...grouped.ready.tasks, ...grouped.new.tasks];
   const onBoard = attention.length + active.length + queued.length;
 
+  // A clear board (nothing queued, nothing active) reads the same whether the
+  // fleet is genuinely idle or the dispatch pipeline has silently stalled —
+  // the only signal that tells them apart is whether anything dispatched at
+  // all today. Reads the deck-wide shared dispatch-state store (useDispatchState
+  // via useCrewActivity) — no extra request loop. Only judge that once the day's
+  // well underway (early morning zero is normal, not degraded); an unreachable
+  // dispatch-state feed leaves `dispatchedToday` undefined, which also stays
+  // non-degraded rather than guessing.
+  const { dispatchedToday } = useCrewActivity();
+  const degraded = onBoard === 0 && dispatchedToday?.total === 0 && isDayWellUnderway();
+
   return (
     <HudPanel
       icon={<ClipboardList size={16} />}
       title="TACTICAL — TASK BOARD"
-      accent="emerald"
+      accent={degraded ? "red" : "emerald"}
       className="flex h-full flex-col"
       headerRight={
         <>
@@ -139,6 +152,14 @@ export function TaskBoardStation() {
     >
       {loading ? (
         <div className="py-4 text-center text-xs text-slate-500">Reading the board…</div>
+      ) : onBoard === 0 && degraded ? (
+        <div
+          className="flex items-center justify-center gap-1.5 rounded border border-dashed border-red-500/40 bg-red-500/5 px-2 py-6 text-center text-xs text-red-300"
+          title="Board is clear and zero dispatches have run since local midnight — this can mean an idle fleet or a stalled dispatch pipeline. Check Ops."
+        >
+          <Radio size={13} className="shrink-0 motion-safe:animate-pulse" />
+          Degraded — no dispatches today, board clear.
+        </div>
       ) : onBoard === 0 ? (
         <div className="rounded border border-dashed border-slate-800 px-2 py-6 text-center text-xs text-slate-600">
           Board clear — nothing dispatched or queued.
