@@ -5,7 +5,7 @@ import { Loader2, MessageSquare, CheckCircle2 } from "lucide-react";
 import {
     getChatConfig, saveChatConfig, ChatConfig,
     ChatBackend, CHAT_BACKENDS, CHAT_BACKEND_LABELS,
-    ChatThinkingLevel, CHAT_THINKING_LEVELS, CHAT_THINKING_LABELS,
+    ChatThinkingLevel, LEGACY_CHAT_THINKING_LEVELS, CHAT_THINKING_LABELS,
     formatClaudeModelName,
 } from "@/lib/model-control";
 
@@ -81,6 +81,11 @@ export function ChatSettingsSection({ reloadKey }: { reloadKey: boolean }) {
 
     const activeBackend = config.backend;
 
+    // Server-supplied per-model tiers. A server old enough to omit the field is
+    // also old enough to reject anything beyond the legacy four, so fall back to
+    // those — NOT to the full union, which would render options that 400.
+    const thinkingTiers = config.thinkingTiers?.length ? config.thinkingTiers : LEGACY_CHAT_THINKING_LEVELS;
+
     // Executor labels reflect the configured chat model, not a hardcoded name.
     const backendLabel = (backend: ChatBackend): string => {
         if (backend === "claude-code" && config.claudeModel.trim()) {
@@ -148,11 +153,16 @@ export function ChatSettingsSection({ reloadKey }: { reloadKey: boolean }) {
                         </p>
                     </div>
 
-                    {/* Thinking level */}
+                    {/* Thinking level — tiers come from the server's per-model
+                        capability map, so Fable 5 exposes xhigh/max while a
+                        model capped at High simply never renders them. */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">Thinking Level</label>
-                        <div className="grid grid-cols-4 gap-2">
-                            {CHAT_THINKING_LEVELS.map(level => (
+                        <div
+                            className="grid gap-2"
+                            style={{ gridTemplateColumns: `repeat(${Math.min(thinkingTiers.length, 4)}, minmax(0, 1fr))` }}
+                        >
+                            {thinkingTiers.map(level => (
                                 <button
                                     key={level}
                                     onClick={() => apply({ thinkingLevel: level })}
@@ -167,7 +177,8 @@ export function ChatSettingsSection({ reloadKey }: { reloadKey: boolean }) {
                             ))}
                         </div>
                         <p className="mt-1 text-xs text-slate-500">
-                            Claude: thinking-token budget · Codex: reasoning effort. Default leaves the CLI untouched.
+                            Claude: <code>--effort</code> · Codex: reasoning effort. Only tiers the selected model
+                            supports are shown. Default leaves the CLI untouched.
                         </p>
                     </div>
                 </>

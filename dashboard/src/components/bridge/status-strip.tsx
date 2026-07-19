@@ -17,6 +17,7 @@ import { useComms } from "@/hooks/use-comms";
 import { CommsModal } from "@/components/bridge/comms-modal";
 import { fmtTokens } from "@/lib/token-usage";
 import { CORE_STYLES } from "@/components/bridge/core-canvas";
+import { isDayWellUnderway } from "@/lib/day-underway";
 import type { PresenceActivity } from "@praxis/contract";
 
 function flashPanel(id: string) {
@@ -47,7 +48,7 @@ interface Chip {
 
 export function StatusStrip() {
   const { presence, connected } = usePraxisStream();
-  const { crew } = useCrewActivity();
+  const { crew, dispatchedToday } = useCrewActivity();
   const { pendingRequests } = useHitlInbox();
   const { usage } = useTokenUsage();
   const { feed, newCount, available: commsAvailable, lastSeen, markSeen } = useComms();
@@ -57,6 +58,9 @@ export function StatusStrip() {
   const busy = crew.filter((m) => m.state === "active").length;
   const pending = pendingRequests.length;
   const doneToday = presence?.completedTasksToday;
+  // Zero dispatches only reads as degraded once the day's well underway —
+  // before dawn it's an early idle fleet, not a dead one.
+  const crewDegraded = dispatchedToday?.total === 0 && isDayWellUnderway();
 
   const commsValue = !commsAvailable
     ? "—"
@@ -79,9 +83,9 @@ export function StatusStrip() {
     {
       id: "crew",
       label: "CREW",
-      value: busy > 0 ? `${busy} working` : "idle",
+      value: busy > 0 ? `${busy} working` : (crewDegraded ? "degraded" : "idle"),
       icon: <Send size={13} />,
-      tone: busy > 0 ? "text-cyan-300" : "text-slate-400",
+      tone: busy > 0 ? "text-cyan-300" : (crewDegraded ? "text-amber-400" : "text-slate-400"),
       target: "station-dispatch",
       title: "Ops — dispatch lanes",
     },

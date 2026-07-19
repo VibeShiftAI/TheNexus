@@ -405,7 +405,7 @@ function runModelControlMigrations(sqlite) {
               ('ingestion.extract',       'alias:local_default',  'Nightly Pass-1 entity/factoid extraction'),
               ('ingestion.refine',        'alias:local_default',  'Pass-2 refinement'),
               ('ingestion.journal',       'alias:local_default',  'Overnight journal reflection'),
-              ('ingestion.summary',       'alias:gemini_default', 'Nightly AI-intelligence briefing narrative'),
+              ('ingestion.summary',       'cli:claude-code/claude-sonnet-5@medium', 'Nightly AI-intelligence briefing narrative'),
               ('report.upload',           'alias:local_default',  'Report-upload chunk summaries'),
               ('maintenance.synthesis',   'alias:local_default',  'Nightly synthesis'),
               ('maintenance.lars',        'alias:local_default',  'LARS analysis'),
@@ -420,20 +420,56 @@ function runModelControlMigrations(sqlite) {
               ('agent.consolidate',       'alias:local_default',  'Tool-output fusion / compression'),
               ('rag.counter_query',       'alias:local_default',  'Counter-evidence query rewrite'),
               ('memory.prune',            'alias:local_default',  'Conversation context summarization'),
-              ('agent.interactive',       'alias:gemini_default', 'Human-facing interactive chat replies'),
-              ('agent.intermediate_eval', 'alias:gemini_default', 'Agent intermediate rubric self-check'),
-              ('agent.skill_rank',        'alias:gemini_default', 'Skill ranking / selection'),
-              ('memory.multimodal',       'alias:gemini_default', 'Image description (needs a vision model)'),
-              ('research.deep',           'alias:gemini_default', 'Deep-research worker (SOTA reasoning)'),
-              ('agent.self_consistency',  'alias:gemini_default', 'Multi-path reasoning sampler'),
-              ('agent.epistemic',         'alias:gemini_default', 'Trust-gap / epistemic evaluation'),
-              ('brain.chat',              'alias:gemini_default', 'External reasoning offload (praxis-mind brain_chat)'),
-              ('router.classify',         'alias:gemini_fast',    'Turn classifier (fast)'),
-              ('context.plan',            'alias:gemini_fast',    'Context planner (fast)'),
+              ('agent.interactive',       'cli:claude-code/claude-sonnet-5@low',    'Human-facing interactive chat replies'),
+              ('agent.intermediate_eval', 'cli:claude-code/claude-haiku-4-5@low',   'Agent intermediate rubric self-check'),
+              ('agent.skill_rank',        'cli:claude-code/claude-haiku-4-5@low',   'Skill ranking / selection'),
+              ('memory.multimodal',       'cli:claude-code/claude-sonnet-5@low',    'Image description (vision; image paths ride the CLI seat)'),
+              ('research.deep',           'cli:claude-code/claude-opus-4-8@high',   'Deep-research worker (SOTA reasoning)'),
+              ('agent.self_consistency',  'alias:gemini_default', 'Multi-path reasoning sampler (stays on the Gemini API — parallel samples suit an API, not a CLI)'),
+              ('agent.epistemic',         'alias:gemini_default', 'Trust-gap / epistemic evaluation (stays on the Gemini API — parallel samples suit an API, not a CLI)'),
+              ('brain.chat',              'cli:claude-code/claude-opus-4-8@high',   'External reasoning offload (praxis-mind brain_chat + Nexus ai-service relays)'),
+              ('router.classify',         'cli:claude-code/claude-haiku-4-5@low',   'Turn classifier (fast; low = CLI effort floor, latency-guarded)'),
+              ('context.plan',            'cli:claude-code/claude-haiku-4-5@low',   'Context planner (fast; low = CLI effort floor, latency-guarded)'),
               ('feedback.triage',            'alias:local_default',  'Feedback gateway: classify + route an end-user submission'),
-              ('feedback.council_synthesis', 'alias:gemini_default', 'Feedback gateway: fuse council theses into an implementation plan'),
-              ('feedback.reply',             'alias:gemini_default', 'Feedback gateway: compose outbound email prose to submitters');
+              ('feedback.council_synthesis', 'cli:claude-code/claude-sonnet-5@high', 'Feedback gateway: fuse council theses into an implementation plan'),
+              ('feedback.reply',             'cli:claude-code/claude-sonnet-5@low',  'Feedback gateway: compose outbound email prose to submitters');
         `);
+
+        // 2026-07-18 (task 0a62d8a6): one-time migration of the Gemini-allowlist
+        // roles onto the subscription CLI lane. The INSERT OR IGNORE seed above
+        // only covers fresh databases; existing rows still carry their old
+        // gemini_default/gemini_fast assignments, so update them ONCE — keyed in
+        // model_control_settings so later operator tuning via PUT /roles is
+        // never clobbered by a restart. agent.epistemic and agent.self_consistency
+        // deliberately stay on the Gemini API (Robert's call: they fire many
+        // fast parallel samples, which a CLI session handles poorly).
+        const cliLaneMigrated = sqlite
+            .prepare("SELECT key FROM model_control_settings WHERE key = 'cli_lane_roles_v1'")
+            .get();
+        if (!cliLaneMigrated) {
+            const CLI_LANE_ROLES_V1 = {
+                'agent.interactive':          'cli:claude-code/claude-sonnet-5@low',
+                'agent.intermediate_eval':    'cli:claude-code/claude-haiku-4-5@low',
+                'agent.skill_rank':           'cli:claude-code/claude-haiku-4-5@low',
+                'router.classify':            'cli:claude-code/claude-haiku-4-5@low',
+                'context.plan':               'cli:claude-code/claude-haiku-4-5@low',
+                'memory.multimodal':          'cli:claude-code/claude-sonnet-5@low',
+                'research.deep':              'cli:claude-code/claude-opus-4-8@high',
+                'brain.chat':                 'cli:claude-code/claude-opus-4-8@high',
+                'ingestion.summary':          'cli:claude-code/claude-sonnet-5@medium',
+                'feedback.council_synthesis': 'cli:claude-code/claude-sonnet-5@high',
+                'feedback.reply':             'cli:claude-code/claude-sonnet-5@low',
+            };
+            const updateRole = sqlite.prepare(
+                "UPDATE model_roles SET assignment = ?, updated_at = datetime('now') WHERE role = ?"
+            );
+            for (const [role, assignment] of Object.entries(CLI_LANE_ROLES_V1)) {
+                updateRole.run(assignment, role);
+            }
+            sqlite.prepare(
+                "INSERT OR IGNORE INTO model_control_settings (key, value) VALUES ('cli_lane_roles_v1', ?)"
+            ).run(JSON.stringify({ appliedAt: new Date().toISOString() }));
+        }
     } catch (err) {
         console.warn('[Database] model-control migration skipped:', err.message);
     }

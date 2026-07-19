@@ -284,7 +284,6 @@ mod travel {
             tab("choresmaxxer", "CHORESMAXXER", "https://choresmaxxer.web.app", "#4ade80", false),
             tab("homefinder", "HOMEFINDER", "https://lab.vibeshiftai.com/p/nyc-home-finder", "#f87171", false),
             tab("lars", "LARS", "https://lars.vibeshiftai.com", "#facc15", false),
-            tab("worlds", "WORLDS", "https://lab.vibeshiftai.com/p/impossible-worlds-field-guide", "#a78bfa", false),
             // THE LAB — the Project Hub: every board project's space, where
             // new experiments land before they earn a tab of their own.
             tab("lab", "THE LAB", "https://lab.vibeshiftai.com", "#e2e8f0", false),

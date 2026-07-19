@@ -13,6 +13,10 @@ const ROLES = {
     'ingestion.extract': { role: 'ingestion.extract', assignment: 'alias:local_default', is_active: 1 },
     'ingestion.summary': { role: 'ingestion.summary', assignment: 'alias:gemini_default', is_active: 1 },
     'inactive.role': { role: 'inactive.role', assignment: 'alias:gemini_default', is_active: 0 },
+    'agent.interactive': { role: 'agent.interactive', assignment: 'cli:claude-code/claude-sonnet-5@low', is_active: 1 },
+    'brain.chat': { role: 'brain.chat', assignment: 'cli:claude-code/claude-opus-4-8@high', is_active: 1 },
+    'agent.epistemic': { role: 'agent.epistemic', assignment: 'alias:gemini_default', is_active: 1 },
+    'bad.cli': { role: 'bad.cli', assignment: 'cli:not-a-backend/whatever', is_active: 1 },
 };
 
 function makeDb(localOnly = { enabled: false }) {
@@ -58,6 +62,40 @@ describe('model-control role resolution', () => {
 
     test('local-only kill switch forces a Gemini role to local', async () => {
         const r = await resolveModelAssignment(makeDb({ enabled: true, reason: 'test' }), { role: 'ingestion.summary' });
+        expect(r.provider).toBe('local');
+    });
+
+    // ── CLI subscription lane (task 0a62d8a6) ────────────────────────────
+    test('cli: assignment resolves to the CLI lane with per-role model + thinking', async () => {
+        const r = await resolveModelAssignment(makeDb(), { role: 'agent.interactive' });
+        expect(r.provider).toBe('cli');
+        expect(r.apiModelId).toBe('claude-sonnet-5');
+        expect(r.cli).toEqual({ backend: 'claude-code', model: 'claude-sonnet-5', thinking: 'low' });
+        expect(r.parameters.thinking_level).toBe('low');
+        expect(r.label).toContain('claude-sonnet-5');
+        expect(r.label).toContain('low thinking');
+    });
+
+    test('cli: assignment carries a different model/thinking per role', async () => {
+        const r = await resolveModelAssignment(makeDb(), { role: 'brain.chat' });
+        expect(r.provider).toBe('cli');
+        expect(r.cli).toEqual({ backend: 'claude-code', model: 'claude-opus-4-8', thinking: 'high' });
+    });
+
+    test('retained sampler roles still resolve to the Gemini API, not the lane', async () => {
+        const r = await resolveModelAssignment(makeDb(), { role: 'agent.epistemic' });
+        expect(r.provider).toBe('google');
+        expect(r.cli).toBeUndefined();
+    });
+
+    test('cli: assignment with an unknown backend falls back to local, not an error', async () => {
+        const r = await resolveModelAssignment(makeDb(), { role: 'bad.cli' });
+        expect(r.provider).toBe('local');
+        expect(r.fallbackUsed).toBe(true);
+    });
+
+    test('local-only kill switch overrides the CLI lane too', async () => {
+        const r = await resolveModelAssignment(makeDb({ enabled: true, reason: 'test' }), { role: 'agent.interactive' });
         expect(r.provider).toBe('local');
     });
 });

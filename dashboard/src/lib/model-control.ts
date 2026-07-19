@@ -291,13 +291,32 @@ export async function setChatBackend(backend: ChatBackend): Promise<ChatBackend>
 
 // ─── Praxis Terminal chat config (backend + model + thinking level) ────────
 
-export type ChatThinkingLevel = "default" | "low" | "medium" | "high";
-export const CHAT_THINKING_LEVELS: ChatThinkingLevel[] = ["default", "low", "medium", "high"];
+/**
+ * Reasoning-effort tiers. Which of these a given model actually accepts is
+ * decided server-side (model-discovery's per-family map) and arrives on
+ * ChatConfig.thinkingTiers — never assume the full set is offerable.
+ */
+export type ChatThinkingLevel =
+    | "default" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra";
+/** The union of every tier; the offerable subset is per-model. */
+export const CHAT_THINKING_LEVELS: ChatThinkingLevel[] = [
+    "default", "low", "medium", "high", "xhigh", "max", "ultra",
+];
+/**
+ * What every server understood before per-model tiers existed — the safe
+ * fallback when a response carries no thinkingTiers.
+ */
+export const LEGACY_CHAT_THINKING_LEVELS: ChatThinkingLevel[] = [
+    "default", "low", "medium", "high",
+];
 export const CHAT_THINKING_LABELS: Record<ChatThinkingLevel, string> = {
     default: "Default",
     low: "Low",
     medium: "Medium",
     high: "High",
+    xhigh: "X-High",
+    max: "Max",
+    ultra: "Ultra",
 };
 
 export interface ChatConfig {
@@ -306,6 +325,12 @@ export interface ChatConfig {
     claudeModel: string;
     codexModel: string;
     thinkingLevel: ChatThinkingLevel;
+    /**
+     * Tiers the effective chat model supports, in ascending order and always
+     * led by "default". Server-derived — render the picker from this, not from
+     * CHAT_THINKING_LEVELS. Optional so an older server still renders.
+     */
+    thinkingTiers?: ChatThinkingLevel[];
 }
 
 export async function getChatConfig(): Promise<ChatConfig> {

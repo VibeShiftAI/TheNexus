@@ -131,6 +131,10 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
         body: JSON.stringify({
             provider,
             model: modelId,
+            // Role-tagged relay (task 0a62d8a6): when set, Praxis routes by
+            // model-control role (subscription CLI lane first) and the
+            // provider/model pin above is ignored on that side.
+            role: options.role || undefined,
             system: systemPrompt || undefined,
             messages,
             max_tokens: options.maxTokens || 8192
@@ -189,7 +193,7 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
  * @returns {Promise<string|Object>} The AI response text, or { text, usage } if returnFullResult=true
  */
 async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], options = {}) {
-    let provider, modelId;
+    let provider, modelId, role;
 
     // Determine if this is a task name or direct config
     if (typeof taskOrConfig === 'string') {
@@ -197,15 +201,22 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
         const taskConfig = await getAIModelConfig(taskOrConfig);
         provider = normalizeProvider(taskConfig.provider);
         modelId = taskConfig.api_model_id || taskConfig.apiModelId || taskConfig.model;
-        console.log(`[callAI] Task: ${taskOrConfig}, Provider: ${provider}, Model: ${modelId} (via Praxis)`);
+        // Task-type pins that resolve to a per-token API provider ride
+        // Praxis's brain.chat role instead (task 0a62d8a6) — model-control
+        // now routes that role through the subscription CLI lane, with the
+        // local/Gemini chain (and the pin below) as Praxis-side fallback.
+        // Local pins stay pinned: local is already free.
+        role = provider === 'local' ? undefined : 'brain.chat';
+        console.log(`[callAI] Task: ${taskOrConfig}, Provider: ${provider}, Model: ${modelId}${role ? `, Role: ${role}` : ''} (via Praxis)`);
     } else {
-        // Direct config provided
+        // Direct config provided (studio picks, model-control probes) keeps
+        // its explicit pin — the caller chose a specific model on purpose.
         provider = normalizeProvider(taskOrConfig.provider || 'google');
         modelId = taskOrConfig.apiModelId || taskOrConfig.api_model_id || taskOrConfig.model;
         console.log(`[callAI] Direct: Provider: ${provider}, Model: ${modelId} (via Praxis)`);
     }
 
-    const result = await callPraxisBrain(userPrompt, provider, modelId, systemPrompt, history, options);
+    const result = await callPraxisBrain(userPrompt, provider, modelId, systemPrompt, history, { ...options, role });
 
     // Return full result or just text based on options
     if (options.returnFullResult) {

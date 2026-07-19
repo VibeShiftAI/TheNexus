@@ -156,6 +156,10 @@ interface ScheduleSlotMeta {
   instructions?: string | null;
   /** Snapshot of the underlying Nexus task description. */
   taskDescription?: string | null;
+  /** Explainable risk verdict from Praxis's task-risk policy engine. */
+  risk?: { tier: "low" | "standard" | "high"; signals: string[] };
+  /** Low-risk slot admitted by the project's standing-consent policy. */
+  approvalSource?: "standing_consent" | null;
 }
 
 interface SkillCandidateMeta {
@@ -300,6 +304,24 @@ function ComplexityBadge({ value }: { value: number | null | undefined }) {
   );
 }
 
+function RiskBadge({ risk }: { risk: ScheduleSlotMeta["risk"] }) {
+  const tier = risk?.tier ?? "standard";
+  const tone =
+    tier === "low"
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+      : tier === "high"
+        ? "border-rose-500/40 bg-rose-500/10 text-rose-300"
+        : "border-amber-500/40 bg-amber-500/10 text-amber-300";
+  return (
+    <span
+      title={risk?.signals.length ? risk.signals.join(" · ") : "No matched risk signals"}
+      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-semibold tracking-wide ${tone}`}
+    >
+      {tier.toUpperCase()}
+    </span>
+  );
+}
+
 // ── Schedule card (kind "day-schedule") ─────────────────────────────────
 
 export function ScheduleHitlCard({
@@ -320,6 +342,7 @@ export function ScheduleHitlCard({
     return Object.fromEntries(schedule.slots.map((s) => [s.nexusTaskId, s.executor]));
   });
   const [skips, setSkips] = useState<Record<string, string>>({});
+  const [revokedApprovals, setRevokedApprovals] = useState<Record<string, true>>({});
   const [skipDraft, setSkipDraft] = useState<{ taskId: string; reason: string } | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   // Per-slot model override, keyed by nexus_task_id ("" = executor default).
@@ -348,10 +371,13 @@ export function ScheduleHitlCard({
   }
 
   const skipCount = Object.keys(skips).length;
+  const revokedCount = Object.keys(revokedApprovals).filter(
+    (taskId) => skips[taskId] === undefined,
+  ).length;
   const executorChanges = schedule.slots.filter(
     (s) => executors[s.nexusTaskId] !== s.executor,
   ).length;
-  const activeCount = schedule.slots.length - skipCount;
+  const activeCount = schedule.slots.length - skipCount - revokedCount;
   const noteCount = schedule.slots.filter(
     (s) => skips[s.nexusTaskId] === undefined && (notes[s.nexusTaskId] ?? "").trim() !== "",
   ).length;
@@ -390,15 +416,24 @@ export function ScheduleHitlCard({
       const hasModelChanges = Object.keys(modelOverrides).length > 0;
       const hasSkips = Object.keys(skips).length > 0;
       const hasNotes = Object.keys(instructionOverrides).length > 0;
+      const standingConsentRevocations = Object.keys(revokedApprovals).filter(
+        (taskId) => skips[taskId] === undefined,
+      );
+      const hasStandingConsentRevocations = standingConsentRevocations.length > 0;
 
       const payload =
-        hasExecutorChanges || hasModelChanges || hasSkips || hasNotes
+        hasExecutorChanges ||
+        hasModelChanges ||
+        hasSkips ||
+        hasNotes ||
+        hasStandingConsentRevocations
           ? {
               scheduleOverrides: {
                 ...(hasExecutorChanges ? { executors: executorOverrides } : {}),
                 ...(hasModelChanges ? { models: modelOverrides } : {}),
                 ...(hasSkips ? { skips } : {}),
                 ...(hasNotes ? { instructions: instructionOverrides } : {}),
+                ...(hasStandingConsentRevocations ? { standingConsentRevocations } : {}),
               },
             }
           : undefined;
@@ -434,6 +469,7 @@ export function ScheduleHitlCard({
         </div>
         <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
           {activeCount} dispatching{skipCount > 0 ? `, ${skipCount} skipped` : ""}
+          {revokedCount > 0 ? `, ${revokedCount} revoked` : ""}
           {executorChanges > 0 ? `, ${executorChanges} worker changes` : ""}
           {noteCount > 0 ? `, ${noteCount} note${noteCount === 1 ? "" : "s"}` : ""}
         </span>
@@ -452,6 +488,7 @@ export function ScheduleHitlCard({
             <tr>
               <th className="px-2 py-1 text-left font-semibold">#</th>
               <th className="px-2 py-1 text-left font-semibold">Task</th>
+              <th className="px-2 py-1 text-left font-semibold">Risk</th>
               <th className="px-2 py-1 text-left font-semibold">Difficulty</th>
               <th className="px-2 py-1 text-left font-semibold">Start</th>
               <th className="px-2 py-1 text-left font-semibold">Worker</th>
@@ -465,10 +502,14 @@ export function ScheduleHitlCard({
               const isDraftingSkip = skipDraft?.taskId === slot.nexusTaskId;
               const isOpen = expanded[slot.nexusTaskId] === true;
               const hasNote = (notes[slot.nexusTaskId] ?? "").trim() !== "";
+              const standingApproved =
+                slot.approvalSource === "standing_consent" && slot.risk?.tier === "low";
+              const isRevoked = standingApproved && revokedApprovals[slot.nexusTaskId] === true;
+              const isInactive = isSkipped || isRevoked;
               return (
                 <Fragment key={slot.nexusTaskId}>
                   <tr
-                    className={`border-t border-slate-700/40 ${isSkipped ? "opacity-50 line-through decoration-rose-400/60" : ""}`}
+                    className={`border-t border-slate-700/40 ${isInactive ? "opacity-50 line-through decoration-rose-400/60" : ""}`}
                   >
                     <td className="px-2 py-1 text-slate-400">{slot.slotNumber}</td>
                     <td className="px-2 py-1 text-slate-100">
@@ -491,6 +532,13 @@ export function ScheduleHitlCard({
                         )}
                         <span className="min-w-0">
                           <span className="block truncate">{slot.title}</span>
+                          {standingApproved ? (
+                            <span className="block text-[length:var(--hitl-fs-10,0.625rem)] font-medium text-emerald-300">
+                              {isRevoked
+                                ? "Standing consent · revoked"
+                                : "Standing consent · pre-approved"}
+                            </span>
+                          ) : null}
                           <span className="block truncate text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
                             {hasNote && !isSkipped ? (
                               <span
@@ -506,13 +554,16 @@ export function ScheduleHitlCard({
                       </button>
                     </td>
                     <td className="px-2 py-1">
+                      <RiskBadge risk={slot.risk} />
+                    </td>
+                    <td className="px-2 py-1">
                       <ComplexityBadge value={slot.complexity} />
                     </td>
                     <td className="px-2 py-1 text-slate-300">{formatTime(slot.startTime)}</td>
                     <td className="px-2 py-1">
                       <div className="flex flex-col gap-1">
                         <select
-                          disabled={isSkipped || resolving}
+                          disabled={isInactive || resolving}
                           value={currentExec}
                           onChange={(e) => {
                             const nextExec = e.target.value as ExecutorName;
@@ -537,7 +588,7 @@ export function ScheduleHitlCard({
                           const chosen = models[slot.nexusTaskId] ?? "";
                           return (
                             <select
-                              disabled={isSkipped || resolving}
+                              disabled={isInactive || resolving}
                               value={chosen}
                               onChange={(e) =>
                                 setModels((prev) => ({
@@ -580,21 +631,39 @@ export function ScheduleHitlCard({
                           Restore
                         </button>
                       ) : (
-                        <button
-                          disabled={resolving}
-                          onClick={() =>
-                            setSkipDraft({ taskId: slot.nexusTaskId, reason: "" })
-                          }
-                          className="inline-flex items-center gap-1 rounded border border-rose-500/40 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-rose-300 hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Trash2 className="h-3 w-3" /> Skip
-                        </button>
+                        <div className="flex justify-end gap-1">
+                          {standingApproved ? (
+                            <button
+                              disabled={resolving}
+                              onClick={() =>
+                                setRevokedApprovals((prev) => {
+                                  const next = { ...prev };
+                                  if (next[slot.nexusTaskId]) delete next[slot.nexusTaskId];
+                                  else next[slot.nexusTaskId] = true;
+                                  return next;
+                                })
+                              }
+                              className="rounded border border-emerald-500/40 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-emerald-300 hover:border-emerald-400 disabled:opacity-50"
+                            >
+                              {isRevoked ? "Restore approval" : "Revoke approval"}
+                            </button>
+                          ) : null}
+                          <button
+                            disabled={resolving}
+                            onClick={() =>
+                              setSkipDraft({ taskId: slot.nexusTaskId, reason: "" })
+                            }
+                            className="inline-flex items-center gap-1 rounded border border-rose-500/40 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-rose-300 hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3 w-3" /> Skip
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
                   {isOpen ? (
                     <tr key={`${slot.nexusTaskId}-detail`} className="border-t border-slate-700/40 bg-slate-900/40">
-                      <td colSpan={6} className="px-3 py-2">
+                      <td colSpan={7} className="px-3 py-2">
                         <div className="space-y-2 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-300">
                           <div>
                             <span className="font-semibold text-cyan-300">Objective:</span>{" "}
@@ -620,12 +689,20 @@ export function ScheduleHitlCard({
                             </div>
                           ) : null}
                           <div>
+                            <span className="font-semibold text-cyan-300">Risk signals:</span>{" "}
+                            <span>
+                              {slot.risk?.signals.length
+                                ? slot.risk.signals.join(" · ")
+                                : "No matched signals"}
+                            </span>
+                          </div>
+                          <div>
                             <label className="mb-1 block font-semibold text-cyan-300">
                               Add instructions for this run:
                             </label>
                             <textarea
                               value={notes[slot.nexusTaskId] ?? ""}
-                              disabled={isSkipped || resolving}
+                              disabled={isInactive || resolving}
                               onChange={(e) =>
                                 setNotes((prev) => ({
                                   ...prev,
@@ -646,7 +723,7 @@ export function ScheduleHitlCard({
                   ) : null}
                   {isDraftingSkip ? (
                     <tr key={`${slot.nexusTaskId}-draft`} className="border-t border-slate-700/40 bg-rose-950/20">
-                      <td colSpan={6} className="px-2 py-2">
+                      <td colSpan={7} className="px-2 py-2">
                         <label className="mb-1 block text-[length:var(--hitl-fs-11,0.6875rem)] text-rose-300">
                           Skip reason (recorded on the task and written to Cortex memory so Praxis stops re-proposing it):
                         </label>
@@ -673,6 +750,11 @@ export function ScheduleHitlCard({
                                 ...prev,
                                 [skipDraft.taskId]: skipDraft.reason.trim(),
                               }));
+                              setRevokedApprovals((prev) => {
+                                const next = { ...prev };
+                                delete next[skipDraft.taskId];
+                                return next;
+                              });
                               setSkipDraft(null);
                             }}
                             className="rounded bg-rose-500 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-semibold text-slate-950 hover:bg-rose-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"

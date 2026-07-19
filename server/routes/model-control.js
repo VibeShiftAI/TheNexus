@@ -584,6 +584,10 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                     resolvedProvider: resolution?.provider || null,
                     resolvedModel: resolution?.apiModelId || null,
                     resolvedLabel: resolution?.label || null,
+                    // CLI-lane roles: the per-role thinking selector and the
+                    // full lane target, so the UI shows model+thinking at a glance.
+                    resolvedThinking: resolution?.cli?.thinking || resolution?.parameters?.thinking_level || null,
+                    cli: resolution?.cli || null,
                     source: resolution?.source || null
                 };
             }));

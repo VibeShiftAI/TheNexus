@@ -32,7 +32,6 @@ const DEFAULT_TABS = [
     { id: 'choresmaxxer', label: 'CHORESMAXXER', url: 'https://choresmaxxer.web.app', accent: '#4ade80', enabled: true },
     { id: 'homefinder', label: 'HOMEFINDER', url: 'https://lab.vibeshiftai.com/p/nyc-home-finder', accent: '#f87171', enabled: true },
     { id: 'lars', label: 'LARS', url: 'https://lars.vibeshiftai.com', accent: '#facc15', enabled: true },
-    { id: 'worlds', label: 'WORLDS', url: 'https://lab.vibeshiftai.com/p/impossible-worlds-field-guide', accent: '#a78bfa', enabled: true },
     { id: 'lab', label: 'THE LAB', url: 'https://lab.vibeshiftai.com', accent: '#e2e8f0', enabled: true },
 ];
 

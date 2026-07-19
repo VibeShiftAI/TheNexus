@@ -267,6 +267,55 @@ async function evaluateBudgetGuardrail(db, policy, provider = null) {
     };
 }
 
+/**
+ * CLI-lane assignments (task 0a62d8a6): `cli:<backend>[/<model>][@<thinking>]`
+ * routes a role onto Praxis's subscription CLI chain (claude-code → codex →
+ * antigravity) instead of a per-token API model. The model/thinking selector
+ * applies to the named PRIMARY backend's seat; Praxis appends the other
+ * backends with their own defaults and keeps its local/Gemini chain as the
+ * final fallback. Always "available" — there is no registry row or API key
+ * to gate on (all three CLIs are subscription-authed).
+ */
+const CLI_LANE_BACKENDS = ['claude-code', 'codex', 'antigravity'];
+
+function parseCliLaneAssignment(assignment) {
+    const rest = assignment.slice('cli:'.length).trim();
+    const at = rest.lastIndexOf('@');
+    const thinking = at === -1 ? null : rest.slice(at + 1).trim() || null;
+    const beforeAt = at === -1 ? rest : rest.slice(0, at);
+    const slash = beforeAt.indexOf('/');
+    const backend = (slash === -1 ? beforeAt : beforeAt.slice(0, slash)).trim();
+    const model = slash === -1 ? null : beforeAt.slice(slash + 1).trim() || null;
+    if (!CLI_LANE_BACKENDS.includes(backend)) return null;
+    return { backend, model, thinking };
+}
+
+function resolveCliLane(assignment, requestedAssignment, fallbackState = {}) {
+    const cli = parseCliLaneAssignment(assignment);
+    if (!cli) {
+        return { unavailable: true, reason: `unknown CLI backend in assignment "${assignment}"` };
+    }
+    const labelParts = [cli.backend];
+    if (cli.model) labelParts.push(cli.model);
+    if (cli.thinking) labelParts.push(`${cli.thinking} thinking`);
+    return {
+        requestedAssignment,
+        assignment,
+        resolvedModelId: null,
+        provider: 'cli',
+        apiModelId: cli.model,
+        model: cli.model,
+        parameters: cli.thinking ? { thinking_level: cli.thinking } : {},
+        label: `CLI lane · ${labelParts.join(' · ')}`,
+        capabilities: { cli: true },
+        source: fallbackState.sourceOverride || 'cli_lane',
+        localOnlyActive: false,
+        fallbackUsed: !!fallbackState.fallbackUsed,
+        fallbackReason: fallbackState.fallbackReason || null,
+        cli
+    };
+}
+
 function parseFallbackChain(assignment) {
     const raw = assignment.replace(/^fallback_chain:/, '').trim();
     if (!raw) return [];
@@ -367,6 +416,9 @@ async function resolveAssignment(db, assignment, context, requestedAssignment, f
         return { unavailable: true, reason: fallbackReason || 'fallback chain did not resolve' };
     }
 
+    if (normalized.startsWith('cli:')) {
+        return resolveCliLane(normalized, requestedAssignment, fallbackState);
+    }
     if (normalized.startsWith('model:')) {
         return resolveModel(db, normalized.slice('model:'.length), requestedAssignment, fallbackState);
     }

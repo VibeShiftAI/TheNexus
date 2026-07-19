@@ -48,7 +48,7 @@ export function ShellTabs() {
   return (
     <nav
       aria-label="Shell tabs"
-      className="flex items-center gap-1.5 overflow-x-auto px-2 min-w-0"
+      className="flex items-center gap-1.5 overflow-x-auto scrollbar-none px-2 min-w-0"
     >
       {tabs.map((tab) => {
         const isActive = tab.id === active;
