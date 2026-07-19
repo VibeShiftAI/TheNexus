@@ -18,6 +18,15 @@ interface ProjectCardProps {
     onPinChange?: (id: string, pinned: boolean) => void;
 }
 
+/** Best-effort hostname for a compact link label; falls back to the raw string on parse failure. */
+function hostnameOf(url: string): string {
+    try {
+        return new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+        return url;
+    }
+}
+
 /** Map a fresh per-card GitStatus (post git-action refresh) onto the pulse git shape. */
 function gitFromStatus(s: GitStatus, prev: PulseGit | null): PulseGit {
     return {
@@ -278,24 +287,24 @@ export function ProjectCard({ project, pulse, isPinned = false, onPinChange, pen
                     <span className="text-slate-500">{project.type}</span>
                     <span className={`${bandStyle.text} font-semibold`}>{bandStyle.label}</span>
                     {lastSeen && <span className="font-mono normal-case text-slate-600">Δ {lastSeen}</span>}
-                    {deployStatus?.isUp === true && (
+                    {project.urls?.production && (
                         <span
                             onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
-                                window.open(project.urls?.production, "_blank");
+                                window.open(project.urls?.production, "_blank", "noopener,noreferrer");
                             }}
-                            className="flex cursor-pointer items-center gap-1 text-emerald-400 hover:text-emerald-300"
-                            title={project.urls?.production}
+                            className="flex cursor-pointer items-center gap-1 text-slate-400 hover:text-cyan-300"
+                            title={project.urls.production}
                         >
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.9)]" />
-                            LIVE
-                        </span>
-                    )}
-                    {deployStatus?.isUp === false && (
-                        <span className="flex items-center gap-1 text-red-400" title="Production URL unreachable">
-                            <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
-                            DOWN
+                            {deployStatus?.isUp === true && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.9)]" title="Live" />
+                            )}
+                            {deployStatus?.isUp === false && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-red-400" title="Production URL unreachable" />
+                            )}
+                            <span className="max-w-[110px] truncate normal-case">{hostnameOf(project.urls.production)}</span>
+                            <ExternalLink size={10} />
                         </span>
                     )}
                 </div>

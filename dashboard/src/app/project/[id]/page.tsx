@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { getProject, getProjectCommits, getTasks, getProjectReadme, getProjectBrief, Project, ProjectBrief, Commit, Task, getDashboardStats, ReviewItem, unarchiveProject } from "@/lib/nexus";
-import { ArrowLeft, GitBranch, Zap, Bot, Activity, Brain, FolderOpen as Folders, FileText, ChevronDown, ChevronUp, Archive, Settings2 } from "lucide-react";
+import { ArrowLeft, GitBranch, Zap, Bot, Activity, Brain, FolderOpen as Folders, FileText, ChevronDown, ChevronUp, Archive, Settings2, Globe, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { AITerminal } from "@/components/ai-terminal";
 import { TaskManager } from "@/components/task-manager";
@@ -17,6 +17,15 @@ import { MissionBrief } from "@/components/project-brief/mission-brief";
 import { ActivityReport } from "@/components/project-brief/activity-report";
 import { HudPanel } from "@/components/bridge/hud";
 import { ActivityLed, activityBand, timeAgo } from "@/components/pulse-visuals";
+
+/** Best-effort hostname for a compact link label; falls back to the raw string on parse failure. */
+function hostnameOf(url: string): string {
+    try {
+        return new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+        return url;
+    }
+}
 
 export default function ProjectDetailPage() {
     const params = useParams();
@@ -152,6 +161,32 @@ export default function ProjectDetailPage() {
                                     {lastSeen ? `Δ ${lastSeen}` : "no signal"}
                                 </span>
                             </span>
+                            {project.urls?.production && (
+                                <a
+                                    href={project.urls.production}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-emerald-400 transition-colors hover:bg-emerald-500/20 hover:text-emerald-300"
+                                    title={project.urls.production}
+                                >
+                                    <Globe size={11} />
+                                    <span className="normal-case">{hostnameOf(project.urls.production)}</span>
+                                    <ExternalLink size={10} />
+                                </a>
+                            )}
+                            {project.urls?.repo && (
+                                <a
+                                    href={project.urls.repo}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-400 transition-colors hover:text-white"
+                                    title={project.urls.repo}
+                                >
+                                    <GitBranch size={11} />
+                                    Repo
+                                    <ExternalLink size={10} />
+                                </a>
+                            )}
                         </div>
                     </div>
                     <div className="flex items-center gap-6 text-sm font-medium text-slate-400">
