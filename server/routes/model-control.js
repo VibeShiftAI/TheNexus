@@ -206,6 +206,28 @@ async function getAgentBackendConfig(db) {
     return { backend, fallbacks };
 }
 
+/**
+ * Fable-5 credit availability. When Robert exhausts his Fable credits this
+ * flips `out:true`, and the Praxis model-router reroutes Fable-tier work per
+ * his 2026-07-20 rule: primary/autonomous work → GPT-5.6 Sol, QA & correction
+ * rounds → Opus 4.8. `until` (optional ISO) auto-clears the state once it
+ * passes, so a "credits back Thursday" note reverts itself with no follow-up.
+ */
+async function getFableAvailability(db) {
+    const setting = await db.getModelControlSetting('fable_availability');
+    const out = !!(setting && setting.out === true);
+    const until = setting && typeof setting.until === 'string' ? setting.until : null;
+    const reason = setting && typeof setting.reason === 'string' ? setting.reason : null;
+    // Auto-expire: a past `until` means credits are expected back — report available.
+    if (out && until) {
+        const untilMs = Date.parse(until);
+        if (Number.isFinite(untilMs) && untilMs <= Date.now()) {
+            return { out: false, until, reason, expired: true };
+        }
+    }
+    return { out, until, reason };
+}
+
 function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
     const router = express.Router();
 
@@ -405,6 +427,39 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
         } catch (error) {
             console.error('[Model Control] Failed to update agent backend:', error);
             res.status(500).json({ error: 'Failed to update agent backend: ' + error.message });
+        }
+    });
+
+    // ─── Fable-5 credit availability ──────────────────────────────────────
+    // out:true → Praxis reroutes Fable-tier dispatches (primary → Sol,
+    // QA/correction → Opus 4.8). `until` (ISO) auto-reverts when it passes.
+    router.get('/fable-availability', async (_req, res) => {
+        try {
+            res.json(await getFableAvailability(db));
+        } catch (error) {
+            console.error('[Model Control] Failed to read fable availability:', error);
+            res.status(500).json({ error: 'Failed to read fable availability: ' + error.message });
+        }
+    });
+
+    router.put('/fable-availability', async (req, res) => {
+        try {
+            const body = req.body || {};
+            const out = body.out === true || body.out === 'true';
+            let until = null;
+            if (body.until != null && body.until !== '') {
+                const ms = Date.parse(body.until);
+                if (!Number.isFinite(ms)) {
+                    return res.status(400).json({ error: 'until must be an ISO date string' });
+                }
+                until = new Date(ms).toISOString();
+            }
+            const reason = typeof body.reason === 'string' ? body.reason.slice(0, 300) : null;
+            await db.setModelControlSetting('fable_availability', { out, until, reason });
+            res.json(await getFableAvailability(db));
+        } catch (error) {
+            console.error('[Model Control] Failed to update fable availability:', error);
+            res.status(500).json({ error: 'Failed to update fable availability: ' + error.message });
         }
     });
 
