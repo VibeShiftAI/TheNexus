@@ -82,6 +82,13 @@ backups/
 # Blackboard session data
 data/blackboard/
 
+# Studio reference-image scratch — the studio-route test suite uploads a
+# throwaway `fake-png-bytes` blob that server/routes/studio.js persists here
+# on every `npx jest` run and never cleans up. These are invalid test
+# artifacts, not real references; keep new ones out of the working tree.
+# (Root-cause follow-up: studio-route.test.js should unlink its upload.)
+data/studio-references/
+
 # Local-only files
 .worktrees/
 start-nexus.bat
