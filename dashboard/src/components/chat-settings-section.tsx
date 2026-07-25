@@ -11,7 +11,7 @@ import {
 
 /** Suggested slugs per backend — free text is still allowed. */
 const MODEL_SUGGESTIONS: Record<Exclude<ChatBackend, "off">, string[]> = {
-    "claude-code": ["claude-fable-5", "claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
+    "claude-code": ["claude-fable-5", "claude-opus-5", "claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
     codex: ["gpt-5.5", "gpt-5-codex"],
 };
 

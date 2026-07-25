@@ -10,6 +10,7 @@ const { checkAndIncrement } = require('../lib/ratelimit');
 const backends = require('../lib/backends');
 const ledger = require('../lib/ledger');
 const { executeTransaction, compareFields } = require('../lib/transactions');
+const { classifyNamespace, formatRetrieved } = require('../lib/provenance');
 
 const READ_ONLY_CYPHER_RE = /\b(CREATE|DELETE|MERGE|SET|REMOVE|DROP|CALL\s+apoc\.create)\b/i;
 
@@ -27,9 +28,20 @@ function register(server, ctx) {
       if (auth) return auth;
       const started = Date.now();
       try {
-        const data = await backends.cortexSearch({ query, k, namespace: namespace || 'ai-research' });
+        const ns = namespace || 'ai-research';
+        const data = await backends.cortexSearch({ query, k, namespace: ns });
         ledger.record({ caller: ctx.caller.identity, tool: 'memory_search', success: true, latency_ms: Date.now() - started });
-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        // The research corpus is externally ingested (papers, articles) — the
+        // exact material the authority-laundering finding is about.
+        return {
+          content: [{
+            type: 'text',
+            text: formatRetrieved(
+              { origin: `cortex:search:${ns}`, tier: classifyNamespace(ns) },
+              JSON.stringify(data, null, 2),
+            ),
+          }],
+        };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'memory_search', success: false, latency_ms: Date.now() - started, error: e.message });
         return { content: [{ type: 'text', text: `memory_search failed: ${e.message}` }], isError: true };
@@ -52,7 +64,16 @@ function register(server, ctx) {
       try {
         const data = await backends.cortexRecent({ hours, limit, types: types || null });
         ledger.record({ caller: ctx.caller.identity, tool: 'memory_recent', success: true, latency_ms: Date.now() - started });
-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        // Graph nodes span our own episodes and ingested material — floor to advisory.
+        return {
+          content: [{
+            type: 'text',
+            text: formatRetrieved(
+              { origin: 'cortex:recent', tier: 'external', note: 'Mixed-provenance graph nodes.' },
+              JSON.stringify(data, null, 2),
+            ),
+          }],
+        };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'memory_recent', success: false, latency_ms: Date.now() - started, error: e.message });
         return { content: [{ type: 'text', text: `memory_recent failed: ${e.message}` }], isError: true };
@@ -78,7 +99,15 @@ function register(server, ctx) {
       try {
         const data = await backends.cortexCypher({ query, params: params || {} });
         ledger.record({ caller: ctx.caller.identity, tool: 'memory_cite', success: true, latency_ms: Date.now() - started });
-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        return {
+          content: [{
+            type: 'text',
+            text: formatRetrieved(
+              { origin: 'cortex:cypher', tier: 'external', note: 'Mixed-provenance graph nodes.' },
+              JSON.stringify(data, null, 2),
+            ),
+          }],
+        };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'memory_cite', success: false, latency_ms: Date.now() - started, error: e.message });
         return { content: [{ type: 'text', text: `memory_cite failed: ${e.message}` }], isError: true };

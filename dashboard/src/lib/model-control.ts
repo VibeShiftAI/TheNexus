@@ -225,7 +225,7 @@ export async function getClaudeDefaultModel(): Promise<string> {
     });
     if (!response.ok) throw new Error(`Failed to load claude default: ${response.status}`);
     const data = await response.json();
-    return data.model || "claude-opus-4-8";
+    return data.model || "claude-opus-5";
 }
 
 export async function setClaudeDefaultModel(model: string): Promise<string> {

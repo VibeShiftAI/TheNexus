@@ -690,7 +690,7 @@ export default function ModelControlPage() {
                         </div>
                         <div className="flex items-center gap-2">
                             <select
-                                value={state.claudeDefault || "claude-opus-4-8"}
+                                value={state.claudeDefault || "claude-opus-5"}
                                 onChange={(event) => void updateClaudeDefault(event.target.value)}
                                 disabled={savingClaudeDefault || loading}
                                 className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-purple-500 disabled:opacity-50"

@@ -9,6 +9,10 @@ const { resolveModelAssignment, recordModelExecutionSnapshot } = require('../ser
 const { hasRealActivity } = require('../lib/task-activity');
 const { TaskBoardStatusSchema, normalizeTaskBoardStatus, AntigravityPayloadSchema } = require('@praxis/contract');
 const { checkPredecessorGate, triggerSuccessors } = require('../lib/task-sequence');
+const {
+    normalizeSourceClaim, guardSourceUpdate, guardPayloadUpdate, guardDispatchPayload,
+    tierOf, UNVERIFIED_OPERATOR_SOURCE,
+} = require('../lib/provenance');
 
 /**
  * Canonical-status gate (2026-07-05 unification). Legacy synonyms
@@ -85,11 +89,21 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     });
 
     // ─── Get single task by ID (Praxis compatibility) ───────────────────
+    // This is the exact seam Praxis's executor fetches before dispatch
+    // (backends.nexusTaskById → GET /api/tasks/:taskId), so it is the
+    // consumption point that has to deny privileged tools to untrusted
+    // derived content — see server/lib/provenance.js guardDispatchPayload.
     router.get('/:taskId', async (req, res) => {
         try {
             const task = await db.getTask(req.params.taskId);
             if (!task) return res.status(404).json({ error: 'Task not found' });
-            res.json({ ...task, title: task.name, createdAt: task.created_at, updatedAt: task.updated_at });
+            res.json({
+                ...task,
+                title: task.name,
+                createdAt: task.created_at,
+                updatedAt: task.updated_at,
+                ...(task.antigravity_payload ? { antigravity_payload: guardDispatchPayload(task) } : {}),
+            });
         } catch (err) {
             res.status(500).json({ error: 'Database error' });
         }
@@ -128,6 +142,14 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (successor_id && !(await db.getTask(successor_id))) {
                 return res.status(400).json({ error: `Successor task not found: ${successor_id}` });
             }
+            // Provenance boundary: a body-supplied `source` is a claim from a
+            // remote writer, capped at agent tier unless the request presents
+            // the operator marker. Prevents an agent-authored antigravity
+            // payload from entering the board as operator-authored work.
+            const claim = normalizeSourceClaim(source);
+            if (claim.downgradedFrom) {
+                console.warn(`[Provenance] Refused operator-authorship claim "${claim.downgradedFrom}" on task create; recorded as "${claim.source}"`);
+            }
             const result = await db.createTask({
                 project_id, name: taskName, status: canonicalStatus,
                 priority: priority === 'high' ? 2 : (typeof priority === 'number' ? priority : 1),
@@ -136,7 +158,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 ...(payload ? { antigravity_payload: payload } : {}),
                 ...(deps.length > 0 ? { dependencies: deps } : {}),
                 ...(successor_id ? { successor_id } : {}),
-                ...(source ? { source } : {}),
+                ...(claim.source ? { source: claim.source } : {}),
                 last_activity_at: new Date().toISOString()
             });
             res.status(201).json(result);
@@ -148,7 +170,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // ─── PATCH update task by ID ─────────────────────────────────────────
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title, default_executor, default_model, dispatch_instructions } = req.body;
+        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title, default_executor, default_model, dispatch_instructions, source } = req.body;
         try {
             const existing = await db.getTask(taskId);
             if (!existing) return res.status(404).json({ error: 'Task not found' });
@@ -213,6 +235,27 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (status_message !== undefined) {
                 updates.metadata = { ...(existing.metadata || {}), status_message };
             }
+            // Provenance never rises on update — a task filed by an agent cannot
+            // be relabelled as operator-authored by a later write — and
+            // installing a NEW executable payload is itself an unverifiable
+            // authority claim, so it caps the resulting tier independently of
+            // whether this write also touches `source` (server/lib/provenance.js).
+            let nextSource;
+            if (source !== undefined) {
+                const guarded = guardSourceUpdate(existing.source, source);
+                if (guarded.refused) {
+                    console.warn(`[Provenance] Refused provenance promotion "${existing.source}" -> "${source}" on task ${taskId}`);
+                } else {
+                    nextSource = guarded.source;
+                }
+            }
+            const hasNewPayload = antigravity_payload !== undefined && antigravity_payload !== null;
+            const payloadDowngrade = guardPayloadUpdate(existing.source, hasNewPayload);
+            if (payloadDowngrade !== undefined && (nextSource === undefined || tierOf(nextSource) > tierOf(payloadDowngrade))) {
+                console.warn(`[Provenance] Payload replaced on task ${taskId} — capping provenance "${nextSource || existing.source}" -> "${payloadDowngrade}"`);
+                nextSource = payloadDowngrade;
+            }
+            if (nextSource !== undefined) updates.source = nextSource;
             // last_activity_at moves only on REAL changes (never on the
             // same-value rewrites the daily sweeps produce) — Groundskeeper.
             if (hasRealActivity(existing, updates, req.headers)) {
@@ -247,7 +290,18 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const preparedTasks = tasks.map(task => {
                 const realId = crypto.randomUUID();
                 if (task.stable_id) stableIdToRealId.set(task.stable_id, realId);
-                return { ...task, id: realId, project_id, last_activity_at: new Date().toISOString() };
+                // Same provenance boundary as the single-create path — this is
+                // the endpoint praxis-mind (and therefore every MCP agent)
+                // writes through.
+                const claim = normalizeSourceClaim(task.source);
+                if (claim.downgradedFrom) {
+                    console.warn(`[Provenance] Refused operator-authorship claim "${claim.downgradedFrom}" on batch task "${task.name}"; recorded as "${claim.source}"`);
+                }
+                return {
+                    ...task, id: realId, project_id,
+                    ...(claim.source ? { source: claim.source } : {}),
+                    last_activity_at: new Date().toISOString(),
+                };
             });
             for (const task of preparedTasks) {
                 if (task.dependencies?.length > 0) {
@@ -301,7 +355,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
 
     // POST add task to project
     router.post('/:id/tasks', async (req, res) => {
-        const { title, description, model_assignment, dependencies, successor_id, antigravity_payload } = req.body;
+        const { title, description, model_assignment, dependencies, successor_id, antigravity_payload, source } = req.body;
         if (!title?.trim()) return res.status(400).json({ error: 'Task title is required' });
         let payload;
         if (antigravity_payload !== undefined && antigravity_payload !== null) {
@@ -333,9 +387,16 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
         try {
+            // This endpoint used to hardcode source: 'user' for every caller —
+            // an unconditional operator-authorship grant to whoever posted
+            // here, antigravity_payload included. Route it through the same
+            // claim cap as every other create path: nothing over HTTP can
+            // assert operator tier (see server/lib/provenance.js).
+            const claim = normalizeSourceClaim(source);
             const created = await db.createTask({
                 project_id: project.id, name: title.trim(), description: description?.trim() || '',
-                status: 'idea', priority: 0, initiative_validation: validation, source: 'user',
+                status: 'idea', priority: 0, initiative_validation: validation,
+                source: claim.source || UNVERIFIED_OPERATOR_SOURCE,
                 model_assignment: model_assignment || null,
                 ...(payload ? { antigravity_payload: payload } : {}),
                 ...(deps.length > 0 ? { dependencies: deps } : {}),

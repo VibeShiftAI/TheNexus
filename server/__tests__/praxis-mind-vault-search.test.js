@@ -57,7 +57,10 @@ describe('praxis-mind vault_search dependency validation', () => {
     const result = await handler({ query: 'stale tasks', mode: 'grep' });
 
     expect(result.isError).toBeUndefined();
-    expect(result.content[0].text).toBe('skills/maintenance/example.md:12:Recover stale tasks with a restart.');
+    // Results ride inside the provenance envelope (server/lib/provenance.js —
+    // mixed-provenance result sets are quoted advisory material), so assert the
+    // match is present rather than that it is the entire payload.
+    expect(result.content[0].text).toContain('skills/maintenance/example.md:12:Recover stale tasks with a restart.');
     expect(spawnSync).toHaveBeenNthCalledWith(1, 'rg', ['--version'], { encoding: 'utf8' });
     expect(spawnSync.mock.calls[1][0]).toBe('rg');
     expect(spawnSync.mock.calls[1][1]).toContain('--max-count');

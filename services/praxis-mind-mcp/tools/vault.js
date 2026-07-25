@@ -13,6 +13,7 @@ const { checkPrivilege } = require('../lib/auth');
 const { checkAndIncrement } = require('../lib/ratelimit');
 const ledger = require('../lib/ledger');
 const { executeTransaction, compareFields } = require('../lib/transactions');
+const { classifyVaultPath, formatRetrieved } = require('../lib/provenance');
 
 const WATCHER_ONLY = new Set(['MEMORY.md', 'AGENTS.md', 'shared-mind-context.md']);
 const ROBERT_ONLY = new Set(['SOUL.md', 'USER.md', 'CONTEXT.md']);
@@ -61,8 +62,17 @@ function register(server, ctx) {
       try {
         const abs = resolveVaultPath(rel);
         const content = fs.readFileSync(abs, 'utf8');
+        // Provenance boundary: vault files range from Robert-authored identity
+        // docs to skills synthesised from external articles. Label the tier and
+        // quote untrusted bodies so retrieved text cannot read as a directive.
+        const { tier, sourceUrl } = classifyVaultPath(rel, content);
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_read', success: true });
-        return { content: [{ type: 'text', text: content }] };
+        return {
+          content: [{
+            type: 'text',
+            text: formatRetrieved({ origin: `vault:${rel}`, tier, sourceUrl }, content),
+          }],
+        };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_read', success: false, error: e.message });
         return { content: [{ type: 'text', text: `Error reading ${rel}: ${e.message}` }], isError: true };
@@ -190,7 +200,17 @@ function register(server, ctx) {
         try {
           const res = await cortexVaultSearch({ query, k });
           ledger.record({ caller: ctx.caller.identity, tool: 'vault_search', success: true });
-          return { content: [{ type: 'text', text: formatHybridResults(res) }] };
+          // Result sets mix files of differing provenance, so the block floors
+          // to advisory. Read a specific path with vault_read for its own tier.
+          return {
+            content: [{
+              type: 'text',
+              text: formatRetrieved(
+                { origin: 'vault:search', tier: 'external', note: 'Mixed-provenance result set — vault_read a specific path for its own trust tier.' },
+                formatHybridResults(res),
+              ),
+            }],
+          };
         } catch (e) {
           grepNote = `[Cortex vault index unavailable (${e.message}) — fell back to grep scan]\n`;
         }
@@ -198,7 +218,15 @@ function register(server, ctx) {
       try {
         const lines = grepVault(query);
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_search', success: true });
-        return { content: [{ type: 'text', text: grepNote + (lines.length === 0 ? 'No matches.' : lines.join('\n')) }] };
+        return {
+          content: [{
+            type: 'text',
+            text: formatRetrieved(
+              { origin: 'vault:search', tier: 'external', note: 'Mixed-provenance result set — vault_read a specific path for its own trust tier.' },
+              grepNote + (lines.length === 0 ? 'No matches.' : lines.join('\n')),
+            ),
+          }],
+        };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_search', success: false, error: e.message });
         return { content: [{ type: 'text', text: `Error searching vault: ${e.message}` }], isError: true };

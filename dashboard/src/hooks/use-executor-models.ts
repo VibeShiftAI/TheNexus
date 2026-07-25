@@ -45,7 +45,7 @@ export function useExecutorModelOptions(): {
   optionsFor: (executor: ExecutorName) => ExecutorModelChoices;
 } {
   const [claudeModels, setClaudeModels] = useState<ExecutorModelOption[]>([]);
-  const [claudeDefault, setClaudeDefault] = useState<string>("claude-opus-4-8");
+  const [claudeDefault, setClaudeDefault] = useState<string>("claude-opus-5");
   const [codexModels, setCodexModels] = useState<ExecutorModelOption[]>([]);
   const [codexDefault, setCodexDefault] = useState<string>("");
   const [antigravityModels, setAntigravityModels] = useState<ExecutorModelOption[]>([]);

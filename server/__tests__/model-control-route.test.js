@@ -71,10 +71,10 @@ describe('model control route', () => {
                     chatBackend: 'claude-code',
                     chatConfig: {
                         backend: 'claude-code', claudeModel: '', codexModel: '', thinkingLevel: 'default',
-                        // Tiers for the effective model (the Opus 4.8 default).
+                        // Tiers for the effective model (the Opus 5 default).
                         thinkingTiers: ['default', 'low', 'medium', 'high', 'xhigh', 'max']
                     },
-                    claudeDefault: 'claude-opus-4-8',
+                    claudeDefault: 'claude-opus-5',
                     codexDefault: '',
                     antigravityDefault: '',
                     localOnly: { enabled: false, reason: null },

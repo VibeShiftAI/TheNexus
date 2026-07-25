@@ -49,7 +49,7 @@ function toModelOverride(resolved) {
  * The model Praxis's claude-code executor uses when a dispatch carries no
  * explicit override. Stored in model_control_settings; defaults to Opus 4.8.
  */
-const CLAUDE_DEFAULT_FALLBACK = 'claude-opus-4-8';
+const CLAUDE_DEFAULT_FALLBACK = 'claude-opus-5';
 async function getClaudeDefaultModel(db) {
     const setting = await db.getModelControlSetting('claude_default_model');
     const model = setting && typeof setting.model === 'string' ? setting.model.trim() : '';

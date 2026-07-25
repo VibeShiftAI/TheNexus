@@ -424,10 +424,10 @@ function runModelControlMigrations(sqlite) {
               ('agent.intermediate_eval', 'cli:claude-code/claude-haiku-4-5@low',   'Agent intermediate rubric self-check'),
               ('agent.skill_rank',        'cli:claude-code/claude-haiku-4-5@low',   'Skill ranking / selection'),
               ('memory.multimodal',       'cli:claude-code/claude-sonnet-5@low',    'Image description (vision; image paths ride the CLI seat)'),
-              ('research.deep',           'cli:claude-code/claude-opus-4-8@high',   'Deep-research worker (SOTA reasoning)'),
+              ('research.deep',           'cli:claude-code/claude-opus-5@high',     'Deep-research worker (SOTA reasoning)'),
               ('agent.self_consistency',  'alias:gemini_default', 'Multi-path reasoning sampler (stays on the Gemini API — parallel samples suit an API, not a CLI)'),
               ('agent.epistemic',         'alias:gemini_default', 'Trust-gap / epistemic evaluation (stays on the Gemini API — parallel samples suit an API, not a CLI)'),
-              ('brain.chat',              'cli:claude-code/claude-opus-4-8@high',   'External reasoning offload (praxis-mind brain_chat + Nexus ai-service relays)'),
+              ('brain.chat',              'cli:claude-code/claude-opus-5@high',     'External reasoning offload (praxis-mind brain_chat + Nexus ai-service relays)'),
               ('router.classify',         'cli:claude-code/claude-haiku-4-5@low',   'Turn classifier (fast; low = CLI effort floor, latency-guarded)'),
               ('context.plan',            'cli:claude-code/claude-haiku-4-5@low',   'Context planner (fast; low = CLI effort floor, latency-guarded)'),
               ('feedback.triage',            'alias:local_default',  'Feedback gateway: classify + route an end-user submission'),
@@ -454,8 +454,8 @@ function runModelControlMigrations(sqlite) {
                 'router.classify':            'cli:claude-code/claude-haiku-4-5@low',
                 'context.plan':               'cli:claude-code/claude-haiku-4-5@low',
                 'memory.multimodal':          'cli:claude-code/claude-sonnet-5@low',
-                'research.deep':              'cli:claude-code/claude-opus-4-8@high',
-                'brain.chat':                 'cli:claude-code/claude-opus-4-8@high',
+                'research.deep':              'cli:claude-code/claude-opus-5@high',
+                'brain.chat':                 'cli:claude-code/claude-opus-5@high',
                 'ingestion.summary':          'cli:claude-code/claude-sonnet-5@medium',
                 'feedback.council_synthesis': 'cli:claude-code/claude-sonnet-5@high',
                 'feedback.reply':             'cli:claude-code/claude-sonnet-5@low',
@@ -468,6 +468,24 @@ function runModelControlMigrations(sqlite) {
             }
             sqlite.prepare(
                 "INSERT OR IGNORE INTO model_control_settings (key, value) VALUES ('cli_lane_roles_v1', ?)"
+            ).run(JSON.stringify({ appliedAt: new Date().toISOString() }));
+        }
+
+        // 2026-07-25: Opus 5 (claude-opus-5) replaces Opus 4.8 as the default
+        // Claude model (Robert's directive). Same keyed one-time pattern as
+        // cli_lane_roles_v1, but value-guarded: only rows still carrying the
+        // old Opus 4.8 default are upgraded, so operator tuning survives.
+        const opus5Migrated = sqlite
+            .prepare("SELECT key FROM model_control_settings WHERE key = 'opus5_default_roles_v1'")
+            .get();
+        if (!opus5Migrated) {
+            const upgradeRole = sqlite.prepare(
+                "UPDATE model_roles SET assignment = ?, updated_at = datetime('now') WHERE role = ? AND assignment = ?"
+            );
+            upgradeRole.run('cli:claude-code/claude-opus-5@high', 'research.deep', 'cli:claude-code/claude-opus-4-8@high');
+            upgradeRole.run('cli:claude-code/claude-opus-5@high', 'brain.chat', 'cli:claude-code/claude-opus-4-8@high');
+            sqlite.prepare(
+                "INSERT OR IGNORE INTO model_control_settings (key, value) VALUES ('opus5_default_roles_v1', ?)"
             ).run(JSON.stringify({ appliedAt: new Date().toISOString() }));
         }
     } catch (err) {

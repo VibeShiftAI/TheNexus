@@ -9,6 +9,7 @@ const { checkAndIncrement } = require('../lib/ratelimit');
 const backends = require('../lib/backends');
 const ledger = require('../lib/ledger');
 const { executeTransaction, compareFields } = require('../lib/transactions');
+const { classifySource, formatRetrieved } = require('../lib/provenance');
 
 function withTransactionId(result, transactionId) {
   return result && typeof result === 'object' && !Array.isArray(result)
@@ -402,7 +403,18 @@ function register(server, ctx) {
       try {
         const data = await backends.nexusTaskById(task_id);
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_status', success: true, latency_ms: Date.now() - started });
-        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        // antigravity_payload is the machine-executable instruction layer. Its
+        // authority is whatever the task's recorded provenance says — an
+        // agent-filed payload does not become an operator directive by being read.
+        return {
+          content: [{
+            type: 'text',
+            text: formatRetrieved(
+              { origin: `nexus:task:${task_id}`, tier: classifySource(data?.source) },
+              JSON.stringify(data, null, 2),
+            ),
+          }],
+        };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_status', success: false, latency_ms: Date.now() - started, error: e.message });
         return { content: [{ type: 'text', text: `nexus_task_status failed: ${e.message}` }], isError: true };

@@ -52,11 +52,11 @@ models:
   claude-opus:
     provider: anthropic
     family: Claude
-    model_name: claude-opus-4-6
+    model_name: claude-opus-5
     context_window: 1000000
     capabilities: ["reasoning", "code", "extended_thinking"]
-    cost_per_1k_input: 0.015
-    cost_per_1k_output: 0.075
+    cost_per_1k_input: 0.005
+    cost_per_1k_output: 0.025
 
   gemini-pro:
     provider: google
