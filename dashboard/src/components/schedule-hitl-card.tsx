@@ -599,7 +599,9 @@ export function ScheduleHitlCard({
                               title={`${currentExec} model for this slot (billed to the ${note} subscription)`}
                               className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-purple-200 outline-none focus:border-purple-500 disabled:cursor-not-allowed"
                             >
-                              <option value="">default ({fallback || "CLI default"})</option>
+                              <option value="">
+                                Default — recommended: {fallback || "CLI default"}
+                              </option>
                               {options.map((m) => (
                                 <option key={m.id} value={m.id}>
                                   {m.label}
