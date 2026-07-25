@@ -70,14 +70,24 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
             pushedHitlIds.delete(pushedHitlIds.values().next().value);
         }
         pushedHitlIds.add(request.id);
+        // Forward the contract-defined deep-link payload Praxis attaches to the
+        // hitl.created event (@praxis/contract buildHitlDeepLink) verbatim, so
+        // the push route + source can never drift from what the mobile router
+        // allow-lists. Fall back to an equivalent payload for older Praxis
+        // builds that predate the deepLink field. `type` is retained for any
+        // backward-compatible consumer that still keys on it.
+        const deepLink = event.deepLink || {
+            source: 'praxis-hitl',
+            hitlId: request.id,
+            route: '/(tabs)/inbox',
+            ...(request.taskId ? { taskId: request.taskId } : {}),
+        };
         pushService.notify({
             title: 'Praxis needs input',
             body: request.question || request.reason || 'Human input required',
             data: {
                 type: 'hitl_request',
-                hitlId: request.id,
-                taskId: request.taskId,
-                route: '/(tabs)/praxis',
+                ...deepLink,
             },
             channelId: 'praxis-agent',
             categoryId: 'hitl-response',

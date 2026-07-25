@@ -37,10 +37,12 @@
  *      the write also touches `source`, closing the "swap the executable
  *      content, leave the trust label alone" bypass. (`guardPayloadUpdate`)
  *
- * A fourth rule guards the READ side, at the exact seam Praxis's dispatch
- * fetch uses (`GET /api/tasks/:taskId`, `backends.nexusTaskById` in
- * praxis-mind-mcp): an `external`-tier task's payload is never handed out as
- * an unqualified directive. `guardDispatchPayload` wraps `prompt` under the
+ * A fourth rule guards the READ side, at EVERY seam a payload can leave
+ * through — the single-task fetch Praxis's dispatch uses (`GET
+ * /api/tasks/:taskId`, `backends.nexusTaskById` in praxis-mind-mcp) AND the
+ * project task list (`GET /api/tasks?project_id=`): an `external`-tier task's
+ * payload is never handed out as an unqualified directive from any of them.
+ * `guardDispatchPayload` wraps `prompt` under the
  * same authority-ceiling framing Praxis's own skill-render fix uses (a
  * textual signal a tool-using executor model actually reads and respects —
  * this session is itself proof it works), and drops `commands` outright:
@@ -166,6 +168,23 @@ function guardDispatchPayload(task) {
   };
 }
 
+/**
+ * Gate every task payload in a board-state structure (array of projects, each
+ * with a `tasks` array). Returns a new structure with each external-tier task's
+ * antigravity_payload passed through guardDispatchPayload; non-payload tasks and
+ * higher-tier payloads are untouched. Used by every board-state read seam — the
+ * two HTTP routes and the `nexus_get_board_state` MCP tool.
+ */
+function guardBoardStatePayloads(boardState) {
+  if (!Array.isArray(boardState)) return boardState;
+  return boardState.map((project) => ({
+    ...project,
+    tasks: (project && Array.isArray(project.tasks) ? project.tasks : []).map((t) => (
+      t && t.antigravity_payload ? { ...t, antigravity_payload: guardDispatchPayload(t) } : t
+    )),
+  }));
+}
+
 module.exports = {
   TIER,
   UNVERIFIED_OPERATOR_SOURCE,
@@ -175,4 +194,5 @@ module.exports = {
   guardSourceUpdate,
   guardPayloadUpdate,
   guardDispatchPayload,
+  guardBoardStatePayloads,
 };

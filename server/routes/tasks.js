@@ -77,12 +77,20 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // Praxis calls GET /api/tasks?project_id=xxx — this was project-scoped
     // (GET /api/projects/:id/tasks) after the refactor but Praxis still
     // expects the flat endpoint.
+    //
+    // This is the SECOND read path that emits antigravity_payload, so it gets
+    // the same dispatch gate as GET /:taskId — the boundary has to hold on
+    // every seam a payload can leave through, not just the one the executor
+    // fetches today (server/lib/provenance.js guardDispatchPayload).
     router.get('/', async (req, res) => {
         const { project_id } = req.query;
         if (!project_id) return res.status(400).json({ error: 'project_id query parameter is required' });
         try {
             const tasks = await db.getTasks(project_id);
-            res.json({ tasks: tasks.map(t => ({ ...t, title: t.name, createdAt: t.created_at, updatedAt: t.updated_at })) });
+            res.json({ tasks: tasks.map(t => ({
+                ...t, title: t.name, createdAt: t.created_at, updatedAt: t.updated_at,
+                ...(t.antigravity_payload ? { antigravity_payload: guardDispatchPayload(t) } : {}),
+            })) });
         } catch (err) {
             res.status(500).json({ error: 'Database error' });
         }
@@ -342,12 +350,17 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // ─── Project-scoped task routes ──────────────────────────────────────
 
     // GET tasks for a project
+    // Third read path that emits antigravity_payload — same dispatch gate as
+    // the flat list and GET /:taskId (server/lib/provenance.js).
     router.get('/:id/tasks', async (req, res) => {
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
         try {
             const tasks = await db.getTasks(project.id);
-            res.json({ tasks: tasks.map(t => ({ ...t, title: t.name, createdAt: t.created_at, updatedAt: t.updated_at })) });
+            res.json({ tasks: tasks.map(t => ({
+                ...t, title: t.name, createdAt: t.created_at, updatedAt: t.updated_at,
+                ...(t.antigravity_payload ? { antigravity_payload: guardDispatchPayload(t) } : {}),
+            })) });
         } catch (err) {
             res.status(500).json({ error: 'Database error' });
         }

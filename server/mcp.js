@@ -10,6 +10,7 @@ const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio
 const { z } = require("zod");
 const fs = require('fs');
 const db = require('../db');
+const { guardDispatchPayload, guardBoardStatePayloads } = require('./lib/provenance');
 
 // Initialize MCP Server
 const server = new McpServer({
@@ -362,7 +363,9 @@ server.tool(
             return {
                 content: [{
                     type: "text",
-                    text: JSON.stringify(boardState, null, 2)
+                    // Read seam: external-tier payloads are gated (commands
+                    // withheld, prompt wrapped) — server/lib/provenance.js.
+                    text: JSON.stringify(guardBoardStatePayloads(boardState), null, 2)
                 }]
             };
         } catch (error) {
@@ -660,7 +663,13 @@ server.tool(
             return {
                 content: [{
                     type: "text",
-                    text: JSON.stringify(task, null, 2)
+                    // Read seam: gate an external-tier task's payload before it
+                    // reaches a reading session — server/lib/provenance.js.
+                    text: JSON.stringify(
+                        task.antigravity_payload
+                            ? { ...task, antigravity_payload: guardDispatchPayload(task) }
+                            : task,
+                        null, 2)
                 }]
             };
         } catch (error) {

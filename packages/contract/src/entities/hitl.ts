@@ -90,3 +90,56 @@ export const HITLRequestSchema = z.object({
   resolution: HITLResolutionSchema.nullable().optional(),
 });
 export type HITLRequest = z.infer<typeof HITLRequestSchema>;
+
+/**
+ * Discriminator every HITL push / deep-link payload carries so the mobile
+ * router can tell a Praxis approval apart from any other notification.
+ */
+export const HITL_DEEP_LINK_SOURCE = "praxis-hitl";
+
+/**
+ * Canonical in-app route a HITL approval deep-links to. The mobile inbox
+ * consumes `?hitlId=` on this route to expand/scroll/highlight the exact
+ * pending item. Kept here (not hard-coded per emitter) so the push producer
+ * and the mobile route allow-list can never disagree on where an approval
+ * tap should land.
+ */
+export const HITL_INBOX_ROUTE = "/(tabs)/inbox";
+
+/**
+ * Deep-link / push-notification payload for a single HITL approval — the one
+ * shape the push emitter (server), the notification-route resolver, and the
+ * mobile inbox all validate against. Before this existed each side hard-coded
+ * its own `{ type | source, route }` and they drifted (praxis vs inbox route,
+ * `type` vs `source`); this closes the approval-path deep-link gap by making
+ * the payload contract-defined and derivable from a HITLRequest.
+ */
+export const HITLDeepLinkSchema = z.object({
+  source: z.literal(HITL_DEEP_LINK_SOURCE),
+  hitlId: z.string(),
+  // Locked to the one canonical route — a plain z.string() would still accept
+  // the old drifted `/(tabs)/praxis` value the contract exists to eliminate.
+  route: z.literal(HITL_INBOX_ROUTE),
+  taskId: z.string().optional(),
+  reason: HITLReasonSchema.optional(),
+  priority: HITLPrioritySchema.optional(),
+});
+export type HITLDeepLink = z.infer<typeof HITLDeepLinkSchema>;
+
+/**
+ * Derive the canonical deep-link payload for a HITL request. Pure and total —
+ * a request always yields a valid, allow-listed deep link, so producers never
+ * have to assemble (and drift on) the payload by hand.
+ */
+export function buildHitlDeepLink(
+  request: Pick<HITLRequest, "id" | "taskId" | "reason" | "priority">,
+): HITLDeepLink {
+  return {
+    source: HITL_DEEP_LINK_SOURCE,
+    hitlId: request.id,
+    route: HITL_INBOX_ROUTE,
+    ...(request.taskId ? { taskId: request.taskId } : {}),
+    ...(request.reason ? { reason: request.reason } : {}),
+    ...(request.priority ? { priority: request.priority } : {}),
+  };
+}

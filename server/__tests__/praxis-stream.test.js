@@ -171,18 +171,7 @@ describe('praxis-stream route', () => {
     await expect(requestJson(`${nexusBaseUrl}/api/praxis/stream/snapshot`)).resolves.toEqual(expected);
   });
 
-  it('sends a mobile push notification when Praxis emits hitl.created', async () => {
-    const event = {
-      type: 'hitl.created',
-      eventId: 'evt-1',
-      at: '2026-04-17T22:31:00.000Z',
-      request: {
-        id: 'hitl-1',
-        taskId: 'task-1',
-        question: 'Should Praxis continue?',
-        reason: 'low_confidence',
-      },
-    };
+  async function driveHitlPush(event) {
     const praxis = express();
     praxis.get('/stream', (_req, res) => {
       res.setHeader('Content-Type', 'text/event-stream');
@@ -200,15 +189,68 @@ describe('praxis-stream route', () => {
     nexusHandle = await listen(nexus);
 
     await new Promise((resolve) => setTimeout(resolve, 100));
+    return notify;
+  }
+
+  it('forwards the contract-defined deepLink verbatim into the mobile push', async () => {
+    // Praxis now attaches a canonical deepLink (@praxis/contract buildHitlDeepLink)
+    // to hitl.created; the relay must forward it as-is, not re-derive its own.
+    const deepLink = {
+      source: 'praxis-hitl',
+      hitlId: 'hitl-1',
+      route: '/(tabs)/inbox',
+      taskId: 'task-1',
+      reason: 'low_confidence',
+      priority: 'high',
+    };
+    const event = {
+      type: 'hitl.created',
+      eventId: 'evt-1',
+      at: '2026-04-17T22:31:00.000Z',
+      request: {
+        id: 'hitl-1',
+        taskId: 'task-1',
+        question: 'Should Praxis continue?',
+        reason: 'low_confidence',
+      },
+      deepLink,
+    };
+
+    const notify = await driveHitlPush(event);
+
+    expect(notify).toHaveBeenCalledWith({
+      title: 'Praxis needs input',
+      body: 'Should Praxis continue?',
+      data: { type: 'hitl_request', ...deepLink },
+      channelId: 'praxis-agent',
+      categoryId: 'hitl-response',
+    });
+  });
+
+  it('falls back to a canonical inbox deep link for older Praxis without deepLink', async () => {
+    const event = {
+      type: 'hitl.created',
+      eventId: 'evt-2',
+      at: '2026-04-17T22:31:00.000Z',
+      request: {
+        id: 'hitl-1',
+        taskId: 'task-1',
+        question: 'Should Praxis continue?',
+        reason: 'low_confidence',
+      },
+    };
+
+    const notify = await driveHitlPush(event);
 
     expect(notify).toHaveBeenCalledWith({
       title: 'Praxis needs input',
       body: 'Should Praxis continue?',
       data: {
         type: 'hitl_request',
+        source: 'praxis-hitl',
         hitlId: 'hitl-1',
+        route: '/(tabs)/inbox',
         taskId: 'task-1',
-        route: '/(tabs)/praxis',
       },
       channelId: 'praxis-agent',
       categoryId: 'hitl-response',

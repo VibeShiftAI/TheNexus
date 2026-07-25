@@ -127,6 +127,7 @@ const createModelsRouter    = require('./routes/models');
 const createModelControlRouter = require('./routes/model-control');
 const createSettingsRouter  = require('./routes/settings');
 const createDashboardRouter = require('./routes/dashboard');
+const { guardDispatchPayload } = require('./lib/provenance');
 const createSystemRouter    = require('./routes/system');
 const createUsageRouter     = require('./routes/usage');
 const createProjectsRouter  = require('./routes/projects');
@@ -206,7 +207,11 @@ app.get('/api/board-state', authenticate, async (req, res) => {
                 ...t,
                 title: t.name,
                 createdAt: t.created_at,
-                updatedAt: t.updated_at
+                updatedAt: t.updated_at,
+                // Board state is a read seam that carries antigravity_payload —
+                // gate external-tier payloads like every other read path
+                // (server/lib/provenance.js guardDispatchPayload).
+                ...(t.antigravity_payload ? { antigravity_payload: guardDispatchPayload(t) } : {})
             }))
         }));
         res.json(compatResult);

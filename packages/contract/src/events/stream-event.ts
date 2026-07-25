@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { TaskSchema, TaskPatchSchema } from "../entities/task.js";
 import { PresenceStateSchema } from "../entities/presence.js";
-import { HITLRequestSchema, HITLResolutionSchema } from "../entities/hitl.js";
+import {
+  HITLRequestSchema,
+  HITLResolutionSchema,
+  HITLDeepLinkSchema,
+} from "../entities/hitl.js";
 import {
   ExecutorNameSchema,
   ExecutionResultSchema,
@@ -62,6 +66,13 @@ export const TaskBlockedEventSchema = baseEvent.extend({
 export const HitlCreatedEventSchema = baseEvent.extend({
   type: z.literal("hitl.created"),
   request: HITLRequestSchema,
+  /**
+   * Canonical deep-link descriptor so downstream push emitters propagate a
+   * contract-defined route to the mobile approval screen instead of each
+   * hard-coding its own (drift-prone) `{ source, route }`. Optional so
+   * pre-existing consumers that only read `request` stay compatible.
+   */
+  deepLink: HITLDeepLinkSchema.optional(),
 });
 
 export const HitlResolvedEventSchema = baseEvent.extend({

@@ -361,6 +361,7 @@ Add a pattern to `MODEL_FAMILIES` in `server/services/model-discovery.js` — th
 Detailed architectural docs live in:
 - **`.context/`** — API reference, workflow maps, pipeline architecture, node reference, tech stack
 - **`docs/`** — System architecture, data flow diagrams
+- **`docs/verification-protocol.md`** — How TheNexus work is briefed, verified, and reviewed (the protocol on file)
 - **The Codex** — Interactive visualizations at `/codex` in the dashboard
 
 ---
