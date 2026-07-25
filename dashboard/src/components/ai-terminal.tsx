@@ -43,6 +43,36 @@ function createClientMessageId(): string {
     return `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+// ── Voice-note identity + replay guard (2026-07-25) ──
+// Voice tracking used to be keyed by ARRAY INDEX, which broke two ways:
+// refresh reset the in-memory listened set and the initial scan re-eligible'd
+// history notes (the morning greeting replayed on every reload), and the
+// provider's chronological merges shift indices, so old notes fell into the
+// "new since last scan" window and replayed when unrelated messages arrived.
+// Fix: key by stable message identity, persist started-playback keys in
+// localStorage, and only auto-play FRESH notes — an old note surfacing
+// through a history load or merge is repetition, not news.
+function voiceKeyForMessage(msg: { id?: string; timestamp: Date; role: string }, vidx: number): string {
+    return msg.id
+        ? `id:${msg.id}#${vidx}`
+        : `ts:${msg.timestamp.toISOString()}|${msg.role}#${vidx}`;
+}
+
+const VOICE_PLAYED_STORE_KEY = 'nexus.voice.played';
+const VOICE_PLAYED_STORE_MAX = 300;
+/** Notes older than this never auto-play — badge only. */
+const VOICE_AUTOPLAY_FRESH_MS = 3 * 60_000;
+
+function loadPlayedVoiceStore(): Set<string> {
+    try {
+        const raw = window.localStorage.getItem(VOICE_PLAYED_STORE_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return new Set(Array.isArray(arr) ? arr.filter((k): k is string => typeof k === 'string') : []);
+    } catch {
+        return new Set(); // SSR / quota / corrupt store — session-only fallback
+    }
+}
+
 async function readPraxisEventStream(
     response: Response,
     onDelta: (delta: string) => void,
@@ -216,10 +246,29 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
     const voiceAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
     const nowPlayingVoiceRef = useRef<string | null>(null);
     const voiceQueueRef = useRef<string[]>([]);
-    const voiceScanCountRef = useRef<number | null>(null);
     // True from chirp-start until the voice element actually starts — guards
     // the queue against double-starts during the ~0.5s chirp window.
     const voiceStartPendingRef = useRef(false);
+    // Started-playback registry, persisted per browser so a page refresh
+    // never re-announces something this device already began playing.
+    // Lazy-loaded (localStorage is unavailable during SSR).
+    const playedVoiceRef = useRef<Set<string> | null>(null);
+    const getPlayedVoice = useCallback((): Set<string> => {
+        if (!playedVoiceRef.current) playedVoiceRef.current = loadPlayedVoiceStore();
+        return playedVoiceRef.current;
+    }, []);
+    const markVoicePlayed = useCallback((key: string) => {
+        const set = getPlayedVoice();
+        if (set.has(key)) return;
+        set.add(key);
+        try {
+            const arr = [...set].slice(-VOICE_PLAYED_STORE_MAX);
+            window.localStorage.setItem(VOICE_PLAYED_STORE_KEY, JSON.stringify(arr));
+            if (set.size > arr.length) playedVoiceRef.current = new Set(arr);
+        } catch {
+            /* quota — the in-memory set still guards this session */
+        }
+    }, [getPlayedVoice]);
 
     // TNG-style comm chirp: two quick rising tones synthesized with WebAudio
     // (no audio asset, no copyright), played a beat before each auto-played
@@ -270,6 +319,10 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         // out minutes later when this device becomes active again.
         isThisClientActive().then((active) => {
             if (!active) {
+                // Dropped notes are marked played so they can't re-queue and
+                // blurt out later when this device becomes active — the
+                // "New Voice Message" badge stays for manual play.
+                voiceQueueRef.current.forEach(markVoicePlayed);
                 voiceQueueRef.current = [];
                 voiceStartPendingRef.current = false;
                 nowPlayingVoiceRef.current = null;
@@ -302,24 +355,25 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 });
             });
         });
-    }, [playCommChirp]);
+    }, [playCommChirp, markVoicePlayed]);
 
     useEffect(() => {
-        // Enqueue voice notes from newly appended messages. On the initial
-        // history load only the final message is eligible (parity with the
-        // old newest-message autoplay); after that, every new arrival queues.
-        const scanned = voiceScanCountRef.current;
-        const startIdx = scanned === null ? Math.max(0, messages.length - 1) : scanned;
-        for (let i = startIdx; i < messages.length; i++) {
-            const voice = messages[i]?.voiceData;
-            if (!voice || voice.length === 0) continue;
-            const key = `${i}-0`;
+        // Enqueue voice notes by stable message identity. Eligibility, not
+        // position: a note auto-plays only if it is FRESH (arrived within the
+        // last few minutes) and this device hasn't started it before — so
+        // history loads, refreshes, and mid-list merges can surface old notes
+        // without re-announcing them.
+        const nowMs = Date.now();
+        for (const msg of messages) {
+            if (!msg.voiceData || msg.voiceData.length === 0) continue;
+            const key = voiceKeyForMessage(msg, 0);
+            if (getPlayedVoice().has(key)) continue;
             if (dismissedVoice.has(key) || listenedVoice.has(key)) continue;
+            if (nowMs - msg.timestamp.getTime() > VOICE_AUTOPLAY_FRESH_MS) continue;
             if (!voiceQueueRef.current.includes(key) && nowPlayingVoiceRef.current !== key) {
                 voiceQueueRef.current.push(key);
             }
         }
-        voiceScanCountRef.current = messages.length;
 
         const playingKey = nowPlayingVoiceRef.current;
         const playingEl = playingKey ? voiceAudioRefs.current.get(playingKey) : null;
@@ -1658,9 +1712,9 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                 )}
                                 {/* Render Voice Data */}
                                 {msg.voiceData && msg.voiceData.map((v, vidx) => {
-                                    const voiceKey = `${i}-${vidx}`;
+                                    const voiceKey = voiceKeyForMessage(msg, vidx);
                                     if (dismissedVoice.has(voiceKey)) return null;
-                                    const isListened = listenedVoice.has(voiceKey);
+                                    const isListened = listenedVoice.has(voiceKey) || getPlayedVoice().has(voiceKey);
                                     return (
                                         <div 
                                             key={vidx} 
@@ -1684,7 +1738,11 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                         <Save size={12} />
                                                     </button>
                                                     <button
-                                                        onClick={() => setDismissedVoice(prev => new Set([...prev, voiceKey]))}
+                                                        onClick={() => {
+                                                            // A dismissed note must never auto-replay after refresh.
+                                                            markVoicePlayed(voiceKey);
+                                                            setDismissedVoice(prev => new Set([...prev, voiceKey]));
+                                                        }}
                                                         className="p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-colors"
                                                         title="Dismiss"
                                                     >
@@ -1705,6 +1763,9 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                         if (k !== voiceKey && !el.paused) el.pause();
                                                     });
                                                     nowPlayingVoiceRef.current = voiceKey;
+                                                    // Started once on this device = never auto-replayed
+                                                    // (manual replays via the controls still work).
+                                                    markVoicePlayed(voiceKey);
                                                 }}
                                                 onEnded={() => {
                                                     setListenedVoice(prev => new Set([...prev, voiceKey]));
