@@ -415,6 +415,7 @@ function runModelControlMigrations(sqlite) {
               ('morning.commentary',      'alias:local_default',  'Morning planning commentary'),
               ('morning.goalgen',         'alias:local_default',  'Morning goal regression'),
               ('morning.self_assess',     'alias:local_default',  'Morning self-assessment'),
+              ('morning.archive_audit',   'alias:local_default',  'Morning archive audit (obsolete/done task recommendations)'),
               ('trading.council',         'alias:local_default',  'Trading council'),
               ('youtube.research',        'alias:local_default',  'YouTube story research'),
               ('agent.consolidate',       'alias:local_default',  'Tool-output fusion / compression'),
