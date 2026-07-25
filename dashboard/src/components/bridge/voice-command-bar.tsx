@@ -12,7 +12,8 @@
  * the existing ElevenLabs route (/api/praxis/speak).
  *
  * Also owns spoken red-alert announcements (task.failed / hitl.created) with
- * quiet hours 22:00–08:00 and a 2-minute rate limit.
+ * quiet hours 22:00–08:00 and a 2-minute rate limit — excluding the routine
+ * morning-review HITLs, which the morning greeting announces itself.
  *
  * Mic capture and audio playback live here in the cockpit; STT/TTS/intent
  * cognition stay in Praxis — so this survives the planned agent swap.
@@ -117,6 +118,24 @@ function chirp(freq = 880) {
 function alertChime() {
   chirp(660);
   setTimeout(() => chirp(494), 220);
+}
+
+/**
+ * HITL kinds the morning routine announces on its own. The greeting ("Good
+ * morning, Praxis") lands the [MORNING PLAN] trio — schedule proposal, skill
+ * candidates, board maintenance — and speaks its own good-morning voice note.
+ * Letting the red-alert path also bark "I need your attention on something"
+ * over that (2026-07-25: Robert heard the alert instead of / on top of the
+ * morning announcement) is noise, not news: these are expected, they carry
+ * their own cards, and the inbox badge is the durable signal. Unexpected
+ * HITLs — task questions, trade approvals, EOD commits — still speak.
+ */
+const ROUTINE_HITL_KINDS = new Set(["day-schedule", "skill-candidates", "board-maintenance"]);
+
+function isRoutineMorningHitl(e: StreamEvent): boolean {
+  if (e.type !== "hitl.created") return false;
+  const kind = e.request?.metadata?.kind;
+  return typeof kind === "string" && ROUTINE_HITL_KINDS.has(kind);
 }
 
 export function VoiceCommandBar() {
@@ -498,6 +517,7 @@ export function VoiceCommandBar() {
     const alertEvent = recentEvents.find(
       (e: StreamEvent) =>
         (e.type === "task.failed" || e.type === "hitl.created") &&
+        !isRoutineMorningHitl(e) &&
         e.eventId &&
         !announcedIdsRef.current.has(e.eventId) &&
         new Date(e.at).getTime() > mountedAtRef.current
