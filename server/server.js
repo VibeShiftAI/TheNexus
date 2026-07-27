@@ -178,6 +178,10 @@ app.use('/api/ingestion-control', createIngestionControlRouter());
 app.use('/api/studio',    createStudioRouter({ db, callAI }));
 const dispatchesRouter = createDispatchesRouter();
 app.use('/api/dispatches', dispatchesRouter);
+// Eligibility + containment: why waiting tasks aren't running, per-run
+// ceilings/cost/verdicts, and the kill relay. Mounted after dispatches so the
+// task_dispatches table exists by the time this router reads it.
+app.use('/api/dispatch-insight', require('./routes/dispatch-insight')());
 
 // Projects & tasks
 // Pulse first: the projects router's GET /:id would otherwise swallow /pulse.

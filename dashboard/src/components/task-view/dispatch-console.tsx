@@ -28,6 +28,9 @@ import {
   MessageSquareText,
   Rocket,
   Send,
+  ShieldAlert,
+  StopCircle,
+  Timer,
   XCircle,
 } from "lucide-react";
 import {
@@ -37,6 +40,15 @@ import {
   sendFollowUp,
   type TaskDispatch,
 } from "@/lib/dispatches";
+import {
+  formatCostUsd,
+  formatMs,
+  getTaskDispatchInsight,
+  killTaskRun,
+  type RunInsight,
+  type RunVerification,
+  type TaskDispatchInsight,
+} from "@/lib/dispatch-insight";
 import {
   DEFAULT_EXECUTOR,
   EXECUTOR_OPTIONS,
@@ -89,6 +101,116 @@ function OutcomeChip({ outcome }: { outcome: string }) {
     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${style}`}>
       {outcome === "running" && <Loader2 size={11} className="animate-spin" />}
       {outcome.replace(/_/g, " ")}
+    </span>
+  );
+}
+
+// Verification verdicts come off Praxis's run-events spine (verified /
+// uncertain / partial / unverified) — an unverified completion must never
+// read green, so only "verified" gets the emerald treatment.
+const VERDICT_STYLES: Record<string, string> = {
+  verified: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+  uncertain: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+  partial: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+  unverified: "border-rose-500/40 bg-rose-500/10 text-rose-300",
+};
+
+function VerdictChip({ verification }: { verification: RunVerification }) {
+  const style = VERDICT_STYLES[verification.verdict] || VERDICT_STYLES.unverified;
+  const qa = verification.qa?.outcome === "pass"
+    ? ` · QA pass${verification.qa.reviewer ? ` (${verification.qa.reviewer})` : ""}`
+    : verification.qa?.outcome && verification.qa.outcome !== "none"
+      ? ` · QA ${verification.qa.outcome}`
+      : "";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${style}`}
+      title={verification.basis.join("\n")}
+    >
+      {verification.verdict}
+      {qa}
+    </span>
+  );
+}
+
+/**
+ * Compact containment line for the whole console: the enforced wall-clock
+ * ceiling (flagged when it's the assumed default rather than a task
+ * override), the day-schedule estimate, and the accepted verdict of the
+ * latest verified run.
+ */
+function GovernanceStrip({ insight }: { insight: TaskDispatchInsight }) {
+  const ceilingLabel = insight.ceiling.source === "praxis_run_record"
+    ? `${formatMs(insight.ceiling.ms)} (live run record)`
+    : `${formatMs(insight.ceiling.ms)} (assumed default)`;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-400">
+      <span
+        className="inline-flex items-center gap-1.5"
+        title="The wall-clock ceiling governing the LIVE run (each row shows its own). 'Live run record' is the actual timeout Praxis's enforcer is using for the in-flight run; 'assumed default' is the 3h fallback — historical runs' true ceilings and any PRAXIS_EXECUTOR_TIMEOUT_MS env override on Praxis are invisible here."
+      >
+        <Timer size={12} className="text-slate-500" />
+        Ceiling <span className="font-semibold text-slate-200">{ceilingLabel}</span>
+      </span>
+      {insight.scheduleEstimateMinutes != null && (
+        <span title="The day schedule's forecast for this task — an estimate, not an enforced limit.">
+          Schedule estimate <span className="font-semibold text-slate-200">{insight.scheduleEstimateMinutes}m</span>
+        </span>
+      )}
+      {insight.latestVerification ? (
+        <span className="inline-flex items-center gap-1.5">
+          Accepted outcome <VerdictChip verification={insight.latestVerification} />
+        </span>
+      ) : (
+        <span
+          className="text-slate-500"
+          title={insight.spineAvailable
+            ? "No verification record on the run-events spine yet — completions without one are unverified, not quietly green."
+            : "Praxis's run-events spine is unreadable from here, so verdicts can't be shown."}
+        >
+          {insight.spineAvailable ? "No verification verdict yet" : "Verdicts unavailable (spine unreadable)"}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Confirm-then-kill control for a running dispatch row. */
+function KillButton({ taskId, onKilled }: { taskId: string; onKilled: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const kill = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(
+      "Kill this run?\n\nThe worker's own process group is signalled (SIGTERM, then SIGKILL if needed) using the pid "
+      + "from Praxis's run record, verified against the live process table first. The run is marked cancelled only "
+      + "after the process is confirmed dead; Praxis then records the run failed and frees the slot. If the run "
+      + "can't be safely targeted, nothing is touched and you'll see why.",
+    )) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await killTaskRun(taskId);
+      onKilled();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kill failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={kill}
+        title="Kill the worker's process group (pid from Praxis's run record, identity-verified) — marked cancelled only after the process is confirmed dead"
+        className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-300 transition-colors hover:bg-rose-500/20 disabled:opacity-50"
+      >
+        {busy ? <Loader2 size={11} className="animate-spin" /> : <StopCircle size={11} />}
+        Kill
+      </button>
+      {error && <span className="text-[10px] text-rose-300">{error}</span>}
     </span>
   );
 }
@@ -520,6 +642,7 @@ function DispatchRow({
   taskId,
   projectId,
   dispatch,
+  insight,
   defaultOpen,
   highlight = false,
   onRefresh,
@@ -527,6 +650,8 @@ function DispatchRow({
   taskId: string;
   projectId: string | null;
   dispatch: TaskDispatch;
+  /** Per-run ceiling/cost/verdict/guardrail insight, when loaded. */
+  insight?: RunInsight;
   defaultOpen: boolean;
   /** True when this row is the deep-link target (e.g. from the activity feed). */
   highlight?: boolean;
@@ -556,10 +681,19 @@ function DispatchRow({
             : "border-slate-800"
       } ${isFollowUp ? "ml-5" : ""}`}
     >
-      <button
-        type="button"
+      {/* div-with-button-role rather than <button>: the row hosts its own
+          interactive chips (Kill), and buttons can't nest. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full flex-wrap items-center gap-2 px-3 py-2.5 text-left"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }
+        }}
+        className="flex w-full cursor-pointer flex-wrap items-center gap-2 px-3 py-2.5 text-left"
         aria-expanded={open}
       >
         {open ? (
@@ -591,7 +725,33 @@ function DispatchRow({
             {dispatch.tokens.toLocaleString()} tok
           </span>
         )}
+        {insight?.cost && (
+          <span
+            className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[11px] tabular-nums text-emerald-200"
+            title="Estimated API-equivalent value of the run — a cache-aware blended notional rate over the total token count (subscription runs don't bill per token; the input/output/cache split isn't recorded per run)"
+          >
+            {formatCostUsd(insight.cost.usd)} est
+          </span>
+        )}
         <OutcomeChip outcome={dispatch.outcome} />
+        {insight?.overdue && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-300"
+            title={`Elapsed ${insight.elapsedMs != null ? formatMs(insight.elapsedMs) : "?"} exceeds this run's ${formatMs(insight.ceiling.ms)} ceiling — Praxis's timeout enforcer should be reaping it; if this persists, the run is a ghost.`}
+          >
+            <Timer size={11} /> over ceiling
+          </span>
+        )}
+        {insight?.verification && <VerdictChip verification={insight.verification} />}
+        {insight?.guardrails && insight.guardrails.length > 0 && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-300"
+            title={insight.guardrails.map((g) => `${g.label}: ${g.detail || ""}`).join("\n")}
+          >
+            <ShieldAlert size={11} /> {insight.guardrails.length}
+          </span>
+        )}
+        {insight?.canKill && <KillButton taskId={taskId} onKilled={onRefresh} />}
         <span className="ml-auto flex items-center gap-2 text-[11px] text-slate-500">
           {dispatch.session_id && (
             <span
@@ -604,7 +764,7 @@ function DispatchRow({
           <span>{formatWhen(dispatch.started_at)}</span>
           {duration && <span>· {duration}</span>}
         </span>
-      </button>
+      </div>
 
       {open && (
         <div className="space-y-3 border-t border-slate-800 px-3 py-3">
@@ -654,6 +814,55 @@ function DispatchRow({
             </p>
           )}
 
+          {insight && insight.guardrails.length > 0 && (
+            <div>
+              <h4 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Guardrail events
+              </h4>
+              <ul className="space-y-1">
+                {insight.guardrails.map((g, i) => (
+                  <li
+                    key={`${g.label}-${g.at}-${i}`}
+                    className="rounded border border-amber-500/30 bg-amber-500/5 p-2 text-xs text-amber-200"
+                  >
+                    <span className="font-semibold">{g.label}</span>
+                    <span className="text-amber-200/60"> · {g.source}{g.at ? ` · ${formatWhen(g.at)}` : ""}</span>
+                    {g.detail && <p className="mt-1 whitespace-pre-wrap text-amber-100/80">{g.detail}</p>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {insight?.verification && (
+            <div>
+              <h4 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Accepted outcome
+              </h4>
+              <div className="rounded border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-300">
+                <VerdictChip verification={insight.verification} />
+                {insight.verification.basis.length > 0 && (
+                  <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-slate-400">
+                    {insight.verification.basis.map((b, i) => (
+                      <li key={i}>{b}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+
+          {insight && (
+            <p className="text-[10px] text-slate-600">
+              {dispatch.outcome === "running" && insight.elapsedMs != null
+                ? `Elapsed ${formatMs(insight.elapsedMs)} of this run's ${formatMs(insight.ceiling.ms)} wall-clock ceiling`
+                : `Ceiling for this run: ${formatMs(insight.ceiling.ms)}`}
+              {insight.ceiling.source === "praxis_run_record"
+                ? " (from Praxis's live run record)."
+                : " (assumed default — this run's actual ceiling was never persisted)."}
+            </p>
+          )}
+
           {dispatch.log_path && (
             <p className="truncate text-[10px] text-slate-600" title={dispatch.log_path}>
               Full transcript: {dispatch.log_path}
@@ -691,6 +900,7 @@ export function TaskDispatchConsole({
   defaultInstructions?: string | null;
 }) {
   const [dispatches, setDispatches] = useState<TaskDispatch[]>([]);
+  const [insight, setInsight] = useState<TaskDispatchInsight | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -717,6 +927,13 @@ export function TaskDispatchConsole({
       setError(err instanceof Error ? err.message : "Failed to load dispatch history");
     } finally {
       setLoaded(true);
+    }
+    // Insight rides the same poll but degrades independently — history must
+    // never disappear because the eligibility/containment layer is down.
+    try {
+      setInsight(await getTaskDispatchInsight(taskId));
+    } catch {
+      setInsight(null);
     }
   }, [taskId]);
 
@@ -748,6 +965,8 @@ export function TaskDispatchConsole({
         </p>
       )}
 
+      {insight && dispatches.length > 0 && <GovernanceStrip insight={insight} />}
+
       {!loaded ? (
         <div className="flex items-center justify-center rounded-lg border border-slate-800 p-6 text-cyan-300">
           <Loader2 size={20} className="animate-spin" />
@@ -764,6 +983,7 @@ export function TaskDispatchConsole({
               taskId={taskId}
               projectId={projectId}
               dispatch={d}
+              insight={insight?.runs.find((r) => r.dispatchId === d.id)}
               // Open the deep-linked run if present, else the newest attempt.
               defaultOpen={highlightId ? d.id === highlightId : idx === 0}
               highlight={d.id === highlightId}

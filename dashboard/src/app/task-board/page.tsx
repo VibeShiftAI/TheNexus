@@ -21,6 +21,11 @@ import {
   Table2,
 } from "lucide-react";
 import { getBoardState, updateTask } from "@/lib/nexus";
+import {
+  getDispatchEligibility,
+  type DispatchEligibilityResponse,
+  type TaskEligibility,
+} from "@/lib/dispatch-insight";
 import { TaskEditModal, STATUS_OPTIONS } from "@/components/task-edit-modal";
 import {
   BOARD_LANES,
@@ -97,6 +102,10 @@ export default function TaskBoardPage() {
   );
   const [laneSort, setLaneSort] = useState<LaneSortMap>(() => defaultLaneSort());
   const [editingTask, setEditingTask] = useState<BoardTask | null>(null);
+  // Why waiting tasks aren't running (Praxis containment + board gates).
+  // Null until the first fetch lands or when the insight endpoint is down —
+  // the board renders without hints rather than blocking on it.
+  const [eligibility, setEligibility] = useState<DispatchEligibilityResponse | null>(null);
   // Lane requested via ?lane=<id> (e.g. the bridge's "needs your attention"
   // counter links here) — forced visible, then scrolled to and flashed once.
   const [focusLane, setFocusLane] = useState<BoardLaneId | null>(null);
@@ -194,6 +203,13 @@ export default function TaskBoardPage() {
       setLoading(false);
       setRefreshing(false);
     }
+    // Eligibility rides the same poll but fails independently — the board must
+    // never go blank because the insight layer (or Praxis) is down.
+    try {
+      setEligibility(await getDispatchEligibility());
+    } catch {
+      setEligibility(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -203,6 +219,11 @@ export default function TaskBoardPage() {
   }, [loadBoard]);
 
   const grouped = useMemo(() => groupBoardTasks(projects), [projects]);
+  const eligibilityById = useMemo(() => {
+    const map = new Map<string, TaskEligibility>();
+    for (const t of eligibility?.tasks || []) map.set(t.taskId, t);
+    return map;
+  }, [eligibility]);
   const visibleLanes = useMemo(() => {
     return BOARD_LANES
       .filter((lane) => visibleLaneIds.has(lane.id))
@@ -343,6 +364,8 @@ export default function TaskBoardPage() {
           </div>
         )}
 
+        {eligibility && <ContainmentStrip eligibility={eligibility} />}
+
         {loading ? (
           <div className="flex min-h-[360px] items-center justify-center text-cyan-300">
             <Loader2 className="animate-spin" size={32} />
@@ -358,6 +381,7 @@ export default function TaskBoardPage() {
                 onSortChange={(sortKey) => setLaneSortKey(lane.id, sortKey)}
                 onManage={setEditingTask}
                 onQuickStatus={handleQuickStatus}
+                eligibilityById={eligibilityById}
               />
             ))}
           </section>
@@ -504,6 +528,7 @@ function LaneColumn({
   onSortChange,
   onManage,
   onQuickStatus,
+  eligibilityById,
 }: {
   id?: string;
   lane: BoardLane;
@@ -511,6 +536,7 @@ function LaneColumn({
   onSortChange: (sortKey: BoardSortKey) => void;
   onManage: (task: BoardTask) => void;
   onQuickStatus: (task: BoardTask, nextStatus: string) => void;
+  eligibilityById: Map<string, TaskEligibility>;
 }) {
   return (
     <div id={id} className="flex min-h-[520px] w-72 shrink-0 flex-col rounded-lg border border-slate-800 bg-slate-950 xl:w-auto xl:flex-1">
@@ -537,6 +563,7 @@ function LaneColumn({
               task={task}
               onManage={onManage}
               onQuickStatus={onQuickStatus}
+              eligibility={eligibilityById.get(task.id)}
             />
           ))
         )}
@@ -576,14 +603,113 @@ function CopyableTaskId({ id }: { id: string }) {
   );
 }
 
+// Why-not-running hint styling per eligibility reason. "eligible" is the
+// absence of a reason: nothing gates the task, it simply hasn't been picked.
+const ELIGIBILITY_CHIP: Record<string, { label: string; cls: string }> = {
+  queued: { label: "queued", cls: "border-cyan-500/40 bg-cyan-500/10 text-cyan-300" },
+  predecessors_incomplete: { label: "waiting on predecessors", cls: "border-amber-500/40 bg-amber-500/10 text-amber-300" },
+  project_dormant: { label: "project dormant", cls: "border-slate-600 bg-slate-800/60 text-slate-400" },
+  executor_suspended: { label: "all workers suspended", cls: "border-rose-500/40 bg-rose-500/10 text-rose-300" },
+  cli_slot_busy: { label: "CLI slot busy", cls: "border-violet-500/40 bg-violet-500/10 text-violet-300" },
+  praxis_unreachable: { label: "eligibility unknown", cls: "border-slate-600 bg-slate-800/60 text-slate-400" },
+};
+
+function EligibilityChip({ eligibility }: { eligibility: TaskEligibility }) {
+  // `note` is non-blocking context (e.g. a suspended preferred worker that
+  // Praxis will reroute around) — it rides the tooltip, never the verdict.
+  const withNote = (text: string) => (eligibility.note ? `${text}\n${eligibility.note}` : text);
+  if (eligibility.eligible) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-2 py-1 text-emerald-300/80"
+        title={withNote("Nothing gates this task — it's waiting for the scheduler (or a manual dispatch) to pick it.")}
+      >
+        <CircleDot size={11} /> eligible
+      </span>
+    );
+  }
+  const reason = eligibility.reason;
+  if (!reason) return null;
+  const chip = ELIGIBILITY_CHIP[reason.code] ?? {
+    label: reason.code.replace(/_/g, " "),
+    cls: "border-slate-600 bg-slate-800/60 text-slate-400",
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 ${chip.cls}`}
+      title={withNote(reason.detail)}
+    >
+      {chip.label}
+    </span>
+  );
+}
+
+// Containment at a glance: who holds the machine-wide CLI slot, what's queued
+// behind it, which workers are suspended — or an honest "unknown" banner when
+// Praxis can't be reached (the board must never read green over a degraded
+// runtime).
+function ContainmentStrip({ eligibility }: { eligibility: DispatchEligibilityResponse }) {
+  const containment = eligibility.containment;
+  if (!eligibility.praxis.reachable || !containment) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
+        <AlertTriangle size={15} className="shrink-0" />
+        Praxis unreachable — dispatch containment state unknown; eligibility hints show board-level gates only.
+      </div>
+    );
+  }
+  const suspended = containment.executors.filter((e) => e.suspended);
+  const holder = containment.cliSlot.holder;
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-2.5 text-xs text-slate-400">
+      <span className="font-semibold uppercase tracking-wide text-slate-500">Dispatch containment</span>
+      <span title="Praxis allows at most ONE local CLI run machine-wide; everything else queues behind it.">
+        CLI slot:{" "}
+        {holder ? (
+          <Link href={`/task/${holder.taskId}`} className="font-semibold text-violet-300 hover:text-violet-200">
+            {holder.title || holder.taskId} ({holder.executor} · {holder.phase})
+          </Link>
+        ) : (
+          <span className="font-semibold text-emerald-300">free</span>
+        )}
+      </span>
+      <span>
+        Queue: <span className="font-semibold text-slate-200">{containment.queue.length}</span>
+      </span>
+      {suspended.map((e) => (
+        <span
+          key={e.name}
+          className="text-rose-300"
+          title={`${e.lastStrikeReason || "circuit open"}${e.suspendedUntil ? `\nSuspended until ${e.suspendedUntil}` : ""}`}
+        >
+          {e.name} suspended{e.suspendedUntil ? ` until ${formatBoardTime(e.suspendedUntil)}` : ""}
+        </span>
+      ))}
+      {containment.incidents.length > 0 && (
+        <span
+          className="text-amber-300/80"
+          title={containment.incidents
+            .map((i) => `${i.executor}: ${i.label}${i.at ? ` (${formatBoardTime(i.at)})` : ""}`)
+            .join("\n")}
+        >
+          {containment.incidents.length} recent guardrail incident{containment.incidents.length === 1 ? "" : "s"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function TaskCard({
   task,
   onManage,
   onQuickStatus,
+  eligibility,
 }: {
   task: BoardTask;
   onManage: (task: BoardTask) => void;
   onQuickStatus: (task: BoardTask, nextStatus: string) => void;
+  /** Why this waiting task isn't running (Ready/New lanes only). */
+  eligibility?: TaskEligibility;
 }) {
   const title = task.title || task.name || "Untitled task";
   const taskProjectId = task.projectId || task.project_id;
@@ -634,6 +760,7 @@ function TaskCard({
         <span className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-400">
           P{task.priority ?? 0}
         </span>
+        {eligibility && <EligibilityChip eligibility={eligibility} />}
         <CopyableTaskId id={task.id} />
         {hasTranscript && (
           <span className="inline-flex items-center gap-1 rounded-md border border-cyan-400/30 px-2 py-1 text-cyan-200">
