@@ -6,6 +6,7 @@
 
 const { GoogleGenAI } = require('@google/genai');
 const db = require('../../db');
+const { runAgyPrompt, extractJsonSlice } = require('./agy-client');
 
 // Configuration
 const ANALYST_MODEL = 'gemini-2.5-flash';
@@ -153,21 +154,41 @@ function hasDuplicateFix(plannedTasks = [], errorType, taskTitle) {
  * @returns {Promise<Object|null>} The generated fix task or null
  */
 async function analyzeFailureWithAI(failureContext) {
+    const prompt = buildAnalysisPrompt(failureContext);
+
+    // Primary path: the Antigravity CLI (agy) — subscription-authed Gemini,
+    // no per-token API spend. The prompt already demands a JSON-only reply.
+    const agy = await runAgyPrompt(prompt);
+    if (agy.ok) {
+        const slice = extractJsonSlice(agy.text);
+        if (slice) {
+            try {
+                const parsed = JSON.parse(slice);
+                console.log('[FailureAnalyst] agy analysis:', agy.text.slice(0, 500));
+                return parsed;
+            } catch (parseError) {
+                console.warn('[FailureAnalyst] agy reply carried unparseable JSON, falling back to the Gemini API');
+            }
+        } else {
+            console.warn('[FailureAnalyst] agy reply carried no JSON, falling back to the Gemini API');
+        }
+    } else {
+        console.warn(`[FailureAnalyst] agy unavailable (${agy.error}), falling back to the Gemini API`);
+    }
+
     const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
         console.error('[FailureAnalyst] No API key configured, skipping AI analysis');
         return null;
     }
 
-    const prompt = buildAnalysisPrompt(failureContext);
-
     try {
-        const genAI = new GoogleGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: ANALYST_MODEL });
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const responseText = response.text();
+        const genAI = new GoogleGenAI({ apiKey });
+        const result = await genAI.models.generateContent({
+            model: ANALYST_MODEL,
+            contents: prompt
+        });
+        const responseText = result.text;
 
         console.log('[FailureAnalyst] AI response:', responseText.slice(0, 500));
 

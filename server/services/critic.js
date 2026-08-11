@@ -8,6 +8,7 @@
 
 const path = require('path');
 const { trackUsage } = require('../utils/token-tracker');
+const { runAgyPrompt, extractJsonSlice } = require('../utils/agy-client');
 
 /**
  * Get critic configuration from environment/defaults
@@ -51,12 +52,6 @@ async function reviewCode(filepath, content, projectContext = '') {
         return { approved: true, issues: [], suggestions: [], skipped: true };
     }
 
-    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        console.error('[Critic] No API key configured - rejecting by default');
-        return { approved: false, issues: ['Critic API key not configured'], suggestions: [], error: 'api_key_missing' };
-    }
-
     console.log(`[Critic] Reviewing code for ${path.basename(filepath)}...`);
 
     try {
@@ -91,6 +86,40 @@ ${content.substring(0, 10000)} ${content.length > 10000 ? '\n[TRUNCATED - ' + co
 
 Review this code and respond with JSON only.
 `;
+
+        // Primary path: the Antigravity CLI (agy) — subscription-authed Gemini,
+        // no per-token API spend. Falls back to the direct Gemini API below
+        // only when agy can't answer (not installed, wedged, quota).
+        const agy = await runAgyPrompt(
+            `${systemPrompt}\n\n${reviewPrompt}\n\nRespond with ONLY the JSON object (no prose, no code fences).`,
+        );
+        if (agy.ok) {
+            const slice = extractJsonSlice(agy.text);
+            if (slice) {
+                try {
+                    const review = JSON.parse(slice);
+                    // Subscription CLI — no token counts exist; record the call at zero.
+                    trackUsage({ provider: 'antigravity', model: 'agy-default', inputTokens: 0, outputTokens: 0, task: 'critic' });
+                    console.log(`[Critic] Review complete via agy: ${review.approved ? 'APPROVED' : 'ISSUES FOUND'}`);
+                    if (review.issues?.length > 0) {
+                        console.log(`[Critic] Issues: ${review.issues.join(', ')}`);
+                    }
+                    return review;
+                } catch (parseError) {
+                    console.warn('[Critic] agy reply carried unparseable JSON - falling back to the Gemini API');
+                }
+            } else {
+                console.warn('[Critic] agy reply carried no JSON - falling back to the Gemini API');
+            }
+        } else {
+            console.warn(`[Critic] agy unavailable (${agy.error}) - falling back to the Gemini API`);
+        }
+
+        const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            console.error('[Critic] No API key configured - rejecting by default');
+            return { approved: false, issues: ['Critic API key not configured'], suggestions: [], error: 'api_key_missing' };
+        }
 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
 
