@@ -432,6 +432,7 @@ function runModelControlMigrations(sqlite) {
               ('router.classify',         'cli:claude-code/claude-haiku-4-5@low',   'Turn classifier (fast; low = CLI effort floor, latency-guarded)'),
               ('context.plan',            'cli:claude-code/claude-haiku-4-5@low',   'Context planner (fast; low = CLI effort floor, latency-guarded)'),
               ('feedback.triage',            'alias:local_default',  'Feedback gateway: classify + route an end-user submission'),
+              ('feedback.council_voice',     'cli:claude-code/claude-sonnet-5@low',  'Feedback gateway: council voice deliberation (vision; reads the marked-up screenshot off disk)'),
               ('feedback.council_synthesis', 'cli:claude-code/claude-sonnet-5@high', 'Feedback gateway: fuse council theses into an implementation plan'),
               ('feedback.reply',             'cli:claude-code/claude-sonnet-5@low',  'Feedback gateway: compose outbound email prose to submitters');
         `);
