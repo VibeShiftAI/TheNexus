@@ -274,6 +274,36 @@ Ranked by exploitability × blast radius. IDs referenced by §3.
 Each numbered item is a candidate Nexus task; each already carries its acceptance assertion above,
 so it is dispatchable without a second spec pass.
 
+### Status update — 2026-08-15 (Nexus task `e608e40f`, "Harden stateless MCP boundaries")
+
+The P0 slice of the roadmap shipped, with its acceptance assertions enforced by
+`server/__tests__/mcp-boundary-security.test.js` (scoped credentials, mutation
+rejection, request isolation — the July-revision + unauthorized-action-evaluation lenses):
+
+- **ID-1 (closes G3):** a `readonly` identity now exists in `~/.praxis-mind/keys.json`
+  (8 read privileges, no writes, no `brain.*`, `daily_cap_usd: 0`). Verified end-to-end
+  against the live stdio server: reads succeed, every write/billable tool refuses.
+  Not yet wired to any dispatch lane — QA/review dispatches still ride agent keys (follow-up).
+- **AZ-2 (closes G7):** board-write limits provisioned for all three agent identities
+  (`nexus.task_create`: 30/h, `nexus.task_update`: 60/h, `nexus.project_update`: 20/h).
+  The N+1 rejection path is regression-locked by the suite.
+- **ID-3 (partial):** `lib/auth.js` now refuses a group/world-accessible keys file as a
+  credential source (the live file had drifted to 0644; restored to 0600). Note the
+  deliberate failure mode: if permissions drift again, every praxis-mind caller resolves
+  unauthenticated until `chmod 600` — loud, safe, and logged with the exact fix.
+- **MG-1:** no session-id dependency and no ambient `process.env` reads in tool handlers,
+  both asserted by the suite. AZ-1's tool × privilege matrix is a ratchet: an unclassified
+  new tool fails the suite.
+- **Runtime evidence (reproducible):** `node scripts/mcp-boundary-probe.js` spawns the real
+  stdio server twice against a throwaway HOME, flipping only the keys-file mode between
+  phases; every invocation/rejection claim names its log or trace source — server stderr
+  captures, JSON-RPC transcripts, attributed cost-ledger rows, and a probe-HOME file listing
+  for absence claims (11 checks). All raw evidence persists to
+  `logs/mcp-boundary-probe/<run>/` (`latest` symlink; machine-readable `report.json`).
+
+Still open from the P0/P1 set: AZ-3 (daily cost cap enforcement), key expiry/rotation
+(ID-2), read audit (AU-2), remote attribution (AU-3), and the readonly dispatch-lane wiring.
+
 ---
 
 ## 7. How this document was verified
