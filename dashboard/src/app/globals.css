@@ -156,21 +156,35 @@ body {
   display: none;
 }
 
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+/* Custom Scrollbar — the Nexus scroller: small and dark. `height` covers
+   HORIZONTAL bars (e.g. the morning-plan table); the scrollbar-width/color
+   pair is the Firefox equivalent. `.scrollbar-thin` is an alias — several
+   components already reference it, and both names must render identically. */
+.custom-scrollbar,
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(51, 65, 85, 0.6) rgba(15, 23, 42, 0.5);
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
+.custom-scrollbar::-webkit-scrollbar,
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.scrollbar-thin::-webkit-scrollbar-track {
   background: rgba(15, 23, 42, 0.5);
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.scrollbar-thin::-webkit-scrollbar-thumb {
   background: rgba(51, 65, 85, 0.5);
   border-radius: 10px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: rgba(71, 85, 105, 0.8);
 }
 

@@ -2,11 +2,22 @@
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode, Dispatch, SetStateAction, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
+import { Pause, Play, Volume2, X } from "lucide-react";
 import { reportClientActivity } from "@/lib/active-client";
+import type { ChatAudioItem } from "@/lib/chat-audio";
 
 // ────────────────────────────────────────────────────────────
 // Shared types (also used by ai-terminal.tsx)
 // ────────────────────────────────────────────────────────────
+
+export interface MessageAttachment {
+    type: string;
+    url?: string;
+    name?: string;
+    mimeType?: string;
+    kind?: string;
+    durationMs?: number;
+}
 
 export interface Message {
     id?: string;
@@ -16,6 +27,7 @@ export interface Message {
     timestamp: Date;
     artifact?: CortexArtifact;
     voiceData?: { audio: string; mimeType: string }[];
+    attachments?: MessageAttachment[];
     metadata?: Record<string, any>;
 }
 
@@ -103,12 +115,31 @@ interface ChatMessageEvent {
         created_at?: string;
         metadata?: Record<string, any>;
         voiceData?: { audio: string; mimeType: string }[];
+        attachments?: MessageAttachment[];
     };
+}
+
+/** Top-level attachments first (the server hoists them), metadata fallback. */
+function mapAttachments(source: {
+    attachments?: unknown;
+    metadata?: Record<string, any>;
+}): MessageAttachment[] | undefined {
+    const fromTop = Array.isArray(source.attachments) ? source.attachments : undefined;
+    const fromMeta = Array.isArray(source.metadata?.attachments) ? source.metadata!.attachments : undefined;
+    const attachments = fromTop ?? fromMeta;
+    return attachments && attachments.length > 0 ? attachments : undefined;
 }
 
 // ────────────────────────────────────────────────────────────
 // Context shape
 // ────────────────────────────────────────────────────────────
+
+export interface ChatAudioNowPlaying {
+    item: ChatAudioItem;
+    playing: boolean;
+    currentTime: number;
+    duration: number;
+}
 
 interface CortexContextValue {
     messages: Message[];
@@ -127,6 +158,14 @@ interface CortexContextValue {
     hasMoreMessages: boolean;
     isLoadingMore: boolean;
     loadMoreMessages: () => Promise<void>;
+    // Global chat audio: the element lives HERE (root layout), so playback
+    // survives route changes — opening the fullscreen inbox used to unmount
+    // AITerminal's inline <audio> mid-briefing (Robert, 2026-08-16).
+    chatAudio: ChatAudioNowPlaying | null;
+    playChatAudio: (item: ChatAudioItem) => void;
+    toggleChatAudio: (item: ChatAudioItem) => void;
+    pauseChatAudio: () => void;
+    stopChatAudio: () => void;
 }
 
 const CortexContext = createContext<CortexContextValue | null>(null);
@@ -155,6 +194,7 @@ function mapStoredMessage(m: any): Message {
         content: m.content,
         timestamp: new Date(m.created_at),
         voiceData: Array.isArray(m.voiceData) ? m.voiceData : undefined,
+        attachments: mapAttachments(m ?? {}),
         metadata: m.metadata,
     };
 }
@@ -509,6 +549,7 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                 content: incoming.content,
                 timestamp: incoming.created_at ? new Date(incoming.created_at) : new Date(),
                 voiceData: Array.isArray(incoming.voiceData) ? incoming.voiceData : undefined,
+                attachments: mapAttachments(incoming),
                 metadata: incoming.metadata,
             };
 
@@ -567,6 +608,81 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         };
     }, [resyncActiveConversation]);
 
+    // ── Global chat audio engine ────────────────────────────────
+    // A single detached HTMLAudioElement owned by the provider (root layout):
+    // it is never part of any page's React subtree, so navigating between /
+    // and /inbox cannot interrupt playback.
+    const [chatAudio, setChatAudio] = useState<ChatAudioNowPlaying | null>(null);
+    const chatAudioElRef = useRef<HTMLAudioElement | null>(null);
+    const chatAudioItemRef = useRef<ChatAudioItem | null>(null);
+
+    const ensureChatAudioEl = useCallback((): HTMLAudioElement => {
+        if (!chatAudioElRef.current) {
+            const el = new Audio();
+            el.preload = "metadata";
+            el.addEventListener("loadedmetadata", () => {
+                setChatAudio(prev => prev ? { ...prev, duration: Number.isFinite(el.duration) ? el.duration : 0 } : prev);
+            });
+            el.addEventListener("timeupdate", () => {
+                setChatAudio(prev => prev ? {
+                    ...prev,
+                    currentTime: el.currentTime,
+                    duration: Number.isFinite(el.duration) ? el.duration : prev.duration,
+                } : prev);
+            });
+            el.addEventListener("play", () => {
+                setChatAudio(prev => (prev ? { ...prev, playing: true } : prev));
+            });
+            el.addEventListener("pause", () => {
+                setChatAudio(prev => (prev ? { ...prev, playing: false } : prev));
+            });
+            el.addEventListener("ended", () => {
+                setChatAudio(prev => (prev ? { ...prev, playing: false } : prev));
+            });
+            chatAudioElRef.current = el;
+        }
+        return chatAudioElRef.current;
+    }, []);
+
+    const playChatAudio = useCallback((item: ChatAudioItem) => {
+        const el = ensureChatAudioEl();
+        if (chatAudioItemRef.current?.key !== item.key) {
+            el.src = item.src;
+            chatAudioItemRef.current = item;
+            setChatAudio({ item, playing: false, currentTime: 0, duration: 0 });
+        }
+        void el.play().catch(() => { /* autoplay blocked — controls remain */ });
+    }, [ensureChatAudioEl]);
+
+    const toggleChatAudio = useCallback((item: ChatAudioItem) => {
+        const el = ensureChatAudioEl();
+        if (chatAudioItemRef.current?.key === item.key && !el.paused) {
+            el.pause();
+            return;
+        }
+        playChatAudio(item);
+    }, [ensureChatAudioEl, playChatAudio]);
+
+    const pauseChatAudio = useCallback(() => {
+        chatAudioElRef.current?.pause();
+    }, []);
+
+    const stopChatAudio = useCallback(() => {
+        const el = chatAudioElRef.current;
+        if (el) {
+            el.pause();
+            el.removeAttribute("src");
+            el.load();
+        }
+        chatAudioItemRef.current = null;
+        setChatAudio(null);
+    }, []);
+
+    const seekChatAudio = useCallback((seconds: number) => {
+        const el = chatAudioElRef.current;
+        if (el && Number.isFinite(seconds)) el.currentTime = Math.max(0, seconds);
+    }, []);
+
     return (
         <CortexContext.Provider value={{
             messages, setMessages,
@@ -580,8 +696,94 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             hasMoreMessages,
             isLoadingMore,
             loadMoreMessages,
+            chatAudio,
+            playChatAudio,
+            toggleChatAudio,
+            pauseChatAudio,
+            stopChatAudio,
         }}>
             {children}
+            <GlobalAudioMiniPlayer
+                nowPlaying={chatAudio}
+                onToggle={toggleChatAudio}
+                onStop={stopChatAudio}
+                onSeek={seekChatAudio}
+            />
         </CortexContext.Provider>
+    );
+}
+
+function formatAudioClock(seconds: number): string {
+    if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+    const whole = Math.floor(seconds);
+    const mins = Math.floor(whole / 60);
+    const secs = String(whole % 60).padStart(2, "0");
+    return `${mins}:${secs}`;
+}
+
+/**
+ * Slim always-on-top player shown while chat audio is loaded. Rendered by
+ * the provider (root layout), so it follows Robert onto /inbox and keeps the
+ * briefing controllable while he reads the full task list.
+ */
+function GlobalAudioMiniPlayer({
+    nowPlaying,
+    onToggle,
+    onStop,
+    onSeek,
+}: {
+    nowPlaying: ChatAudioNowPlaying | null;
+    onToggle: (item: ChatAudioItem) => void;
+    onStop: () => void;
+    onSeek: (seconds: number) => void;
+}) {
+    if (!nowPlaying) return null;
+    const { item, playing, currentTime, duration } = nowPlaying;
+    const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+    return (
+        <div className="fixed bottom-4 right-4 z-[90] flex items-center gap-3 rounded-lg border border-cyan-500/30 bg-slate-900/95 px-3 py-2 shadow-[0_0_18px_rgba(34,211,238,0.15)] backdrop-blur">
+            <button
+                onClick={() => onToggle(item)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-500/40 text-cyan-300 transition hover:bg-cyan-500/20"
+                title={playing ? "Pause" : "Play"}
+                aria-label={playing ? "Pause" : "Play"}
+            >
+                {playing ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
+            </button>
+            <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                    <Volume2 size={11} className={playing ? "text-cyan-400 animate-pulse" : "text-cyan-400/60"} />
+                    <span className="max-w-[190px] truncate text-[10px] font-bold uppercase tracking-wider text-cyan-300">
+                        {item.name}
+                    </span>
+                </div>
+                <div
+                    className="mt-1.5 h-1 w-[220px] cursor-pointer rounded-full bg-slate-700/70"
+                    onClick={(e) => {
+                        if (duration <= 0) return;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        onSeek(((e.clientX - rect.left) / rect.width) * duration);
+                    }}
+                    role="slider"
+                    aria-label="Seek"
+                    aria-valuemin={0}
+                    aria-valuemax={Math.round(duration)}
+                    aria-valuenow={Math.round(currentTime)}
+                >
+                    <div className="h-1 rounded-full bg-cyan-400/80" style={{ width: `${progress}%` }} />
+                </div>
+                <div className="mt-0.5 text-[9px] tabular-nums text-slate-400">
+                    {formatAudioClock(currentTime)} / {formatAudioClock(duration)}
+                </div>
+            </div>
+            <button
+                onClick={onStop}
+                className="rounded p-1 text-slate-500 transition hover:bg-red-500/20 hover:text-red-400"
+                title="Stop and dismiss"
+                aria-label="Stop and dismiss"
+            >
+                <X size={12} />
+            </button>
+        </div>
     );
 }

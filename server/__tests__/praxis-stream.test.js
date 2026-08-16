@@ -256,4 +256,45 @@ describe('praxis-stream route', () => {
       categoryId: 'hitl-response',
     });
   });
+
+  it('relays status-report MP3 artifacts byte-identically with audio/mpeg', async () => {
+    const praxis = express();
+    const mp3Bytes = Buffer.from([0x49, 0x44, 0x33, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xfb]);
+    const seen = [];
+    praxis.get('/reports/:file', (req, res) => {
+      seen.push(req.params.file);
+      if (req.params.file === 'status-report-20260811-1203.mp3') {
+        res.set('Content-Type', 'audio/mpeg');
+        return res.send(mp3Bytes);
+      }
+      res.status(404).json({ error: 'report not found' });
+    });
+
+    praxisHandle = await listen(praxis);
+    process.env.PRAXIS_URL = praxisHandle.baseUrl;
+
+    const createPraxisStreamRouter = require('../routes/praxis-stream');
+    const nexus = express();
+    nexus.use('/api/praxis', createPraxisStreamRouter());
+    nexusHandle = await listen(nexus);
+
+    const ok = await fetch(`${nexusHandle.baseUrl}/api/praxis/report/status-report-20260811-1203.mp3`);
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get('content-type')).toContain('audio/mpeg');
+    expect(Buffer.from(await ok.arrayBuffer())).toEqual(mp3Bytes);
+
+    const missing = await fetch(`${nexusHandle.baseUrl}/api/praxis/report/status-report-20260101-0000.mp3`);
+    expect(missing.status).toBe(404);
+
+    expect(seen).toEqual([
+      'status-report-20260811-1203.mp3',
+      'status-report-20260101-0000.mp3',
+    ]);
+
+    // Upstream unreachable → 502, not a hang or a decode attempt.
+    await close(praxisHandle);
+    praxisHandle = null;
+    const down = await fetch(`${nexusHandle.baseUrl}/api/praxis/report/status-report-20260811-1203.mp3`);
+    expect(down.status).toBe(502);
+  });
 });

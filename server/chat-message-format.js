@@ -47,24 +47,48 @@ function buildVoiceAttachments(voiceData) {
     }));
 }
 
+// Persisted attachment descriptors (URL-backed, e.g. the full morning
+// status-report MP3 relayed at /api/praxis/report/…). Only known keys
+// survive, and an HTTP/relative URL is NEVER converted into base64 — the
+// whole point of URL attachments is keeping audio bytes out of chat rows.
+const PRAXIS_ATTACHMENT_KEYS = ['type', 'url', 'name', 'mimeType', 'kind', 'durationMs'];
+
+function normalizePraxisAttachments(attachments) {
+    if (!Array.isArray(attachments)) return [];
+    return attachments
+        .filter((item) => item && typeof item === 'object' && !Array.isArray(item)
+            && typeof item.type === 'string' && item.type.trim()
+            && typeof item.url === 'string' && item.url.trim())
+        .map((item) => {
+            const normalized = {};
+            for (const key of PRAXIS_ATTACHMENT_KEYS) {
+                if (item[key] !== undefined) normalized[key] = item[key];
+            }
+            return normalized;
+        });
+}
+
 function buildPraxisAssistantMetadata(data = {}) {
     const normalizedVoiceData = normalizePraxisVoiceData(data.voiceData);
-    const voiceAttachments = buildVoiceAttachments(normalizedVoiceData);
+    const persistedAttachments = normalizePraxisAttachments(data.attachments);
+    const legacyVoiceAttachments = buildVoiceAttachments(normalizedVoiceData);
+    const attachments = persistedAttachments.length > 0 ? persistedAttachments : legacyVoiceAttachments;
 
     return {
         model: 'praxis-agent',
         provider: 'Praxis',
         hasVoice: normalizedVoiceData.length > 0,
         ...(normalizedVoiceData.length > 0 ? { voiceData: normalizedVoiceData } : {}),
-        ...(voiceAttachments.length > 0 ? { attachments: voiceAttachments } : {}),
+        ...(attachments.length > 0 ? { attachments } : {}),
     };
 }
 
 function formatStoredChatMessage(message) {
     const metadata = parseMetadata(message?.metadata);
     const voiceData = normalizePraxisVoiceData(metadata.voiceData);
-    const attachments = Array.isArray(metadata.attachments) && metadata.attachments.length > 0
-        ? metadata.attachments
+    const persistedAttachments = normalizePraxisAttachments(metadata.attachments);
+    const attachments = persistedAttachments.length > 0
+        ? persistedAttachments
         : buildVoiceAttachments(voiceData);
 
     return {
@@ -89,5 +113,6 @@ module.exports = {
     buildPraxisAssistantMetadata,
     buildVoiceAttachments,
     formatStoredChatMessage,
+    normalizePraxisAttachments,
     normalizePraxisVoiceData,
 };

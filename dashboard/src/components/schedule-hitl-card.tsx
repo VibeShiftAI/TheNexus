@@ -482,7 +482,7 @@ export function ScheduleHitlCard({
         </div>
       ) : null}
 
-      <div className="mb-3 overflow-x-auto rounded border border-slate-700/60">
+      <div className="custom-scrollbar mb-3 overflow-x-auto rounded border border-slate-700/60">
         <table className="w-full text-[length:var(--hitl-fs-xs,0.75rem)]">
           <thead className="bg-slate-900/60 text-slate-400">
             <tr>

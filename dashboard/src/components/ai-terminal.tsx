@@ -13,6 +13,7 @@ import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 import { useCortex } from "@/components/cortex-provider";
 import { dispatchMorningKickoff } from "@/components/bridge/bridge-fx";
 import { isThisClientActive } from "@/lib/active-client";
+import { fullReportAudioForMessage, VOICE_AUTOPLAY_FRESH_MS as REPORT_AUTOPLAY_FRESH_MS, type ChatAudioItem } from "@/lib/chat-audio";
 import type { Message, CortexArtifact, PlanDraftData, CompiledPlanData, ChatResponseData, LineCommentData, VoteSummaryData, StatusUpdateData, UnknownArtifactData } from "@/components/cortex-provider";
 
 // Types are now imported from cortex-provider.tsx
@@ -184,7 +185,7 @@ function MarkdownMessage({ content }: { content: string }) {
 
 export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function AITerminal({ isOpen = true, onClose, mode = 'modal', hideHeader = false }, ref) {
     const isInline = mode === 'inline';
-    const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages } = useCortex();
+    const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages, chatAudio, playChatAudio, toggleChatAudio, pauseChatAudio } = useCortex();
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [pendingArtifact, setPendingArtifact] = useState<CortexArtifact | null>(null);
@@ -304,10 +305,32 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         }
     }), []);
 
+    // Fresh full-report briefing waiting for its turn on the GLOBAL player
+    // (provider-owned, survives navigating to /inbox). It starts only when
+    // the inline voice queue is idle — one Praxis voice at a time.
+    const pendingReportRef = useRef<ChatAudioItem | null>(null);
+    const maybeStartPendingReport = useCallback(() => {
+        const item = pendingReportRef.current;
+        if (!item) return;
+        if (voiceStartPendingRef.current || nowPlayingVoiceRef.current || voiceQueueRef.current.length > 0) return;
+        pendingReportRef.current = null;
+        isThisClientActive().then((active) => {
+            // Same discipline as voice notes: inactive devices keep the manual
+            // player, and a started briefing never re-announces after refresh.
+            markVoicePlayed(item.key);
+            if (!active) return;
+            voiceAudioRefs.current.forEach((el) => {
+                if (!el.paused) el.pause();
+            });
+            playCommChirp().then(() => playChatAudio(item));
+        });
+    }, [markVoicePlayed, playCommChirp, playChatAudio]);
+
     const playNextQueuedVoice = useCallback(() => {
         if (voiceStartPendingRef.current) return;
         if (voiceQueueRef.current.length === 0) {
             nowPlayingVoiceRef.current = null;
+            maybeStartPendingReport();
             return;
         }
         voiceStartPendingRef.current = true;
@@ -355,7 +378,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 });
             });
         });
-    }, [playCommChirp, markVoicePlayed]);
+    }, [playCommChirp, markVoicePlayed, maybeStartPendingReport]);
 
     useEffect(() => {
         // Enqueue voice notes by stable message identity. Eligibility, not
@@ -365,6 +388,21 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         // without re-announcing them.
         const nowMs = Date.now();
         for (const msg of messages) {
+            // A full-report attachment is the message's SOLE report audio —
+            // it rides the global player, and any accidental legacy voice on
+            // the same message stays out of the inline queue.
+            const reportItem = fullReportAudioForMessage(msg);
+            if (reportItem) {
+                if (
+                    !getPlayedVoice().has(reportItem.key)
+                    && nowMs - msg.timestamp.getTime() <= REPORT_AUTOPLAY_FRESH_MS
+                    && chatAudio?.item.key !== reportItem.key
+                    && pendingReportRef.current?.key !== reportItem.key
+                ) {
+                    pendingReportRef.current = reportItem;
+                }
+                continue;
+            }
             if (!msg.voiceData || msg.voiceData.length === 0) continue;
             const key = voiceKeyForMessage(msg, 0);
             if (getPlayedVoice().has(key)) continue;
@@ -1710,8 +1748,60 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                         </div>
                                     </div>
                                 )}
-                                {/* Render Voice Data */}
-                                {msg.voiceData && msg.voiceData.map((v, vidx) => {
+                                {/* Full status-report briefing: plays on the GLOBAL player so
+                                    it keeps going when Robert opens the fullscreen inbox. */}
+                                {(() => {
+                                    const reportAudio = fullReportAudioForMessage(msg);
+                                    if (!reportAudio) return null;
+                                    const isCurrent = chatAudio?.item.key === reportAudio.key;
+                                    const isPlaying = isCurrent && chatAudio.playing;
+                                    const wasHeard = getPlayedVoice().has(reportAudio.key);
+                                    return (
+                                        <div className={`mt-3 w-fit rounded-lg border p-3 transition-all duration-500 ${
+                                            wasHeard && !isPlaying
+                                                ? 'border-cyan-500/10 bg-black/20'
+                                                : 'border-cyan-500/40 bg-cyan-950/30 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
+                                        }`}>
+                                            <div className="mb-2 flex items-center gap-2 px-1">
+                                                <Volume2 size={12} className={isPlaying ? 'animate-pulse text-cyan-400' : 'text-cyan-400/70'} />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">
+                                                    Morning Status Briefing
+                                                </span>
+                                                <a
+                                                    href={reportAudio.src}
+                                                    download={reportAudio.name}
+                                                    className="ml-auto rounded p-1 text-cyan-400/60 transition-colors hover:bg-cyan-500/20 hover:text-cyan-300"
+                                                    title="Save briefing MP3"
+                                                >
+                                                    <Save size={12} />
+                                                </a>
+                                            </div>
+                                            <div className="flex items-center gap-3 px-1">
+                                                <button
+                                                    onClick={() => {
+                                                        markVoicePlayed(reportAudio.key);
+                                                        voiceAudioRefs.current.forEach((el) => {
+                                                            if (!el.paused) el.pause();
+                                                        });
+                                                        toggleChatAudio(reportAudio);
+                                                    }}
+                                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-500/40 text-cyan-300 transition hover:bg-cyan-500/20"
+                                                    title={isPlaying ? 'Pause briefing' : 'Play briefing'}
+                                                >
+                                                    {isPlaying ? <Square size={11} /> : <ChevronRight size={16} />}
+                                                </button>
+                                                <span className="text-[10px] tabular-nums text-slate-400">
+                                                    {isCurrent
+                                                        ? `${Math.floor(chatAudio.currentTime / 60)}:${String(Math.floor(chatAudio.currentTime % 60)).padStart(2, '0')} elapsed — keeps playing across pages`
+                                                        : wasHeard ? 'Played on this device' : 'Full spoken briefing'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                                {/* Render Voice Data (suppressed when the full briefing
+                                    attachment is this message's report audio) */}
+                                {!fullReportAudioForMessage(msg) && msg.voiceData && msg.voiceData.map((v, vidx) => {
                                     const voiceKey = voiceKeyForMessage(msg, vidx);
                                     if (dismissedVoice.has(voiceKey)) return null;
                                     const isListened = listenedVoice.has(voiceKey) || getPlayedVoice().has(voiceKey);
@@ -1758,7 +1848,9 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                     else voiceAudioRefs.current.delete(voiceKey);
                                                 }}
                                                 onPlay={() => {
-                                                    // One voice at a time — a manual play preempts everything else.
+                                                    // One voice at a time — a manual play preempts everything else,
+                                                    // including the global briefing player.
+                                                    pauseChatAudio();
                                                     voiceAudioRefs.current.forEach((el, k) => {
                                                         if (k !== voiceKey && !el.paused) el.pause();
                                                     });
