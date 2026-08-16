@@ -16,6 +16,7 @@ import {
   RiskVerdictSchema,
   FillSchema,
 } from "../entities/trading.js";
+import { CouncilSnapshotSchema } from "../entities/council.js";
 
 const baseEvent = z.object({
   at: z.string().datetime(),
@@ -108,6 +109,18 @@ export const ExecutorProgressEventSchema = baseEvent.extend({
   progress: ExecutionProgressSchema,
 });
 
+/**
+ * Live council deliberation telemetry. Emitted on every persisted session
+ * mutation: convene, each thesis landing, the synthesis handoff, and the
+ * verdict. The snapshot is complete (not a delta) so consumers can render
+ * from any single event; UIs diff consecutive snapshots per sessionId when
+ * they want to animate "which seat just spoke".
+ */
+export const CouncilUpdateEventSchema = baseEvent.extend({
+  type: z.literal("council.update"),
+  council: CouncilSnapshotSchema,
+});
+
 export const TradeSignalEventSchema = baseEvent.extend({
   type: z.literal("trade.signal"),
   signal: TradeSignalSchema,
@@ -154,6 +167,7 @@ export const StreamEventSchema = z.discriminatedUnion("type", [
   ThinkingTraceEventSchema,
   ScheduleUpdatedEventSchema,
   ExecutorProgressEventSchema,
+  CouncilUpdateEventSchema,
   TradeSignalEventSchema,
   TradeFilledEventSchema,
   TradeBlockedEventSchema,

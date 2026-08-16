@@ -86,6 +86,7 @@ const EVENT_TYPES: StreamEvent["type"][] = [
   "thinking.trace",
   "schedule.updated",
   "executor.progress",
+  "council.update",
   "stream.reset",
 ];
 

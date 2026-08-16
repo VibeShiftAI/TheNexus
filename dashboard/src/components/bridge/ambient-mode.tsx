@@ -13,10 +13,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MonitorPlay } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useCoreState } from "@/hooks/use-core-state";
 import { useTokenUsage } from "@/hooks/use-token-usage";
 import { fmtTokens } from "@/lib/token-usage";
-import { CoreCanvas, CORE_STYLES } from "@/components/bridge/core-canvas";
-import type { PresenceActivity } from "@praxis/contract";
+import { CoreCanvas } from "@/components/bridge/core-canvas";
 
 const IDLE_KEY = "nexus.ambient.idleMinutes"; // "0" disables auto-activation
 const DEFAULT_IDLE_MINUTES = 10;
@@ -36,7 +36,8 @@ export function setAmbientIdleMinutes(minutes: number) {
 }
 
 export function AmbientMode() {
-  const { presence, recentEvents, connected } = usePraxisStream();
+  const { presence, recentEvents } = usePraxisStream();
+  const core = useCoreState();
   const { usage } = useTokenUsage();
   const [active, setActive] = useState(false);
   const [clock, setClock] = useState("");
@@ -44,8 +45,6 @@ export function AmbientMode() {
   const lastInputRef = useRef(Date.now());
   const mouseTravelRef = useRef(0);
 
-  const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";
-  const style = CORE_STYLES[activity];
   const latestLine = recentEvents.find((e) => e.type === "presence.changed" || e.type === "executor.progress" || e.type === "task.completed");
 
   // Clock tick while active
@@ -174,13 +173,22 @@ export function AmbientMode() {
           </div>
 
           <div className="my-8">
-            <CoreCanvas activity={activity} size={340} />
+            <CoreCanvas state={core} size={340} />
           </div>
 
-          <div className={`text-xl font-semibold ${style.textClass}`}>{style.label}</div>
+          <div className={`text-xl font-semibold ${core.textClass}`}>{core.label}</div>
           <div className="mt-1 max-w-lg truncate px-6 text-sm text-slate-500">
-            {presence?.summary ?? "—"}
+            {core.council ? core.council.topic : presence?.summary ?? "—"}
           </div>
+          {core.workers.filter((w) => w.state === "active").length > 0 && (
+            <div className="mt-1 text-xs text-slate-600">
+              {core.workers
+                .filter((w) => w.state === "active")
+                .map((w) => w.label)
+                .join(" · ")}{" "}
+              working
+            </div>
+          )}
 
           {stats.length > 0 && (
             <div className="mt-6 flex gap-8">
