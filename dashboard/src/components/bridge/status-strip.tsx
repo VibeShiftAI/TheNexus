@@ -16,7 +16,7 @@ import { useTokenUsage } from "@/hooks/use-token-usage";
 import { useComms } from "@/hooks/use-comms";
 import { CommsModal } from "@/components/bridge/comms-modal";
 import { fmtTokens } from "@/lib/token-usage";
-import { CORE_STYLES } from "@/components/bridge/core-canvas";
+import { coreStyle } from "@/components/bridge/core-canvas";
 import { isDayWellUnderway } from "@/lib/day-underway";
 import type { PresenceActivity } from "@praxis/contract";
 
@@ -55,6 +55,7 @@ export function StatusStrip() {
   const [commsOpen, setCommsOpen] = useState(false);
 
   const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";
+  const praxisStyle = coreStyle(activity);
   const busy = crew.filter((m) => m.state === "active").length;
   const pending = pendingRequests.length;
   const doneToday = presence?.completedTasksToday;
@@ -74,9 +75,9 @@ export function StatusStrip() {
     {
       id: "praxis",
       label: "PRAXIS",
-      value: CORE_STYLES[activity].label,
+      value: praxisStyle.label,
       icon: <Activity size={13} />,
-      tone: CORE_STYLES[activity].textClass,
+      tone: praxisStyle.textClass,
       target: "station-core",
       title: "Main viewer",
     },
