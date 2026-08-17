@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MonitorPlay } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useActiveWork } from "@/hooks/use-active-work";
 import { useCoreState } from "@/hooks/use-core-state";
 import { useTokenUsage } from "@/hooks/use-token-usage";
 import { fmtTokens } from "@/lib/token-usage";
@@ -38,6 +39,7 @@ export function setAmbientIdleMinutes(minutes: number) {
 export function AmbientMode() {
   const { presence, recentEvents } = usePraxisStream();
   const core = useCoreState();
+  const work = useActiveWork();
   const { usage } = useTokenUsage();
   const [active, setActive] = useState(false);
   const [clock, setClock] = useState("");
@@ -178,7 +180,7 @@ export function AmbientMode() {
 
           <div className={`text-xl font-semibold ${core.textClass}`}>{core.label}</div>
           <div className="mt-1 max-w-lg truncate px-6 text-sm text-slate-500">
-            {core.council ? core.council.topic : presence?.summary ?? "—"}
+            {core.council ? core.council.topic : work.taskLabel ?? presence?.summary ?? "—"}
           </div>
           {core.workers.filter((w) => w.state === "active").length > 0 && (
             <div className="mt-1 text-xs text-slate-600">

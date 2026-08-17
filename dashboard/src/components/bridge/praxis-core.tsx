@@ -12,6 +12,7 @@ import { useState, useRef } from "react";
 import { Radio, Maximize2, Minimize2, Plus, History } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
+import { useActiveWork } from "@/hooks/use-active-work";
 import { useCoreState } from "@/hooks/use-core-state";
 import { useTokenUsage } from "@/hooks/use-token-usage";
 import { fmtTokens } from "@/lib/token-usage";
@@ -44,6 +45,7 @@ export function PraxisCore() {
   const { presence, recentEvents, connected } = usePraxisStream();
   const { crew } = useCrewActivity();
   const core = useCoreState();
+  const work = useActiveWork();
   const { usage } = useTokenUsage();
   const [viewscreenMax, setViewscreenMax] = useState(false);
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
@@ -120,8 +122,17 @@ export function PraxisCore() {
           <CoreCanvas state={core} size={150} />
 
           <div className={`text-lg font-bold tracking-tight ${core.textClass}`}>{core.label}</div>
-          <div className="mt-0.5 line-clamp-2 text-center text-[11px] text-slate-400" title={presence?.summary}>
-            {presence?.summary ?? (connected ? "Connecting…" : "Signal lost — attempting to re-establish link")}
+          {/* Sub-line prefers the dispatch-correlated "what is actually
+              running" signal (same source as the NOW strip) over
+              presence.summary, which can describe a finished flow until the
+              producer hands presence off. */}
+          <div
+            className="mt-0.5 line-clamp-2 text-center text-[11px] text-slate-400"
+            title={work.taskLabel ?? presence?.summary}
+          >
+            {work.taskLabel ??
+              presence?.summary ??
+              (connected ? "Connecting…" : "Signal lost — attempting to re-establish link")}
           </div>
 
           {/* Live deliberation readout — the seats around the orb, named. */}
