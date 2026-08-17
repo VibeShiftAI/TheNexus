@@ -22,7 +22,7 @@
  * guards.
  */
 
-import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -32,10 +32,7 @@ import {
   ExternalLink,
   Flag,
   Loader2,
-  Minus,
-  Plus,
   Trash2,
-  Type,
   XCircle,
 } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
@@ -50,93 +47,10 @@ type ResolveFn = (
   input: { choice?: string; freeText?: string; payload?: Record<string, unknown> },
 ) => Promise<void>;
 
-// ── Morning Plan font-size controller ───────────────────────────────────
-// The schedule table is dense with 10–12px text. Robert reads it every
-// morning, so the card exposes a −/+ stepper that scales its body text and
-// remembers the choice per-browser. The scale is applied as CSS custom
-// properties on the card (see scaleStyle in ScheduleHitlCard); nested text
-// classes reference them via `var(--hitl-fs-*, <native>)`, so every size
-// stays proportional (an absolute length per level — no em-compounding) and
-// falls back to its original px on any inbox card that doesn't set the vars.
-const FONT_SCALE_KEY = "praxis.morningPlan.fontScale";
-const FONT_SCALE_MIN = 1;
-const FONT_SCALE_MAX = 1.8;
-const FONT_SCALE_STEP = 0.1;
-const FONT_SCALE_DEFAULT = 1.3; // ~+3.6px on the 12px base — already ≥2pt larger than before
-
-function clampFontScale(n: number): number {
-  if (!Number.isFinite(n)) return FONT_SCALE_DEFAULT;
-  const clamped = Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, n));
-  return Math.round(clamped * 100) / 100;
-}
-
-/** Card-local font scale, hydrated from and persisted to localStorage. */
-function useMorningPlanFontScale() {
-  const [scale, setScale] = useState(FONT_SCALE_DEFAULT);
-
-  // Hydrate after mount so SSR and the first client render agree (localStorage
-  // isn't available during SSR).
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(FONT_SCALE_KEY);
-      if (saved !== null) setScale(clampFontScale(Number(saved)));
-    } catch {
-      /* storage unavailable — keep the default */
-    }
-  }, []);
-
-  const adjust = (delta: number) =>
-    setScale((prev) => {
-      const next = clampFontScale(prev + delta);
-      try {
-        window.localStorage.setItem(FONT_SCALE_KEY, String(next));
-      } catch {
-        /* storage unavailable — the in-memory value still applies */
-      }
-      return next;
-    });
-
-  return { scale, adjust };
-}
-
-/** Compact −/+ stepper that drives useMorningPlanFontScale. */
-function FontScaleControl({
-  scale,
-  onAdjust,
-}: {
-  scale: number;
-  onAdjust: (delta: number) => void;
-}) {
-  return (
-    <div
-      className="flex items-center gap-0.5 rounded-full border border-slate-700 bg-slate-900/60 px-1 py-0.5"
-      title="Text size for the Morning Plan (saved for next time)"
-    >
-      <Type className="mx-0.5 h-3 w-3 text-slate-400" aria-hidden />
-      <button
-        type="button"
-        aria-label="Smaller Morning Plan text"
-        disabled={scale <= FONT_SCALE_MIN}
-        onClick={() => onAdjust(-FONT_SCALE_STEP)}
-        className="rounded p-0.5 text-slate-300 transition hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <Minus className="h-3 w-3" />
-      </button>
-      <span className="min-w-[2.75rem] text-center text-[0.6875rem] tabular-nums text-slate-300">
-        {Math.round(scale * 100)}%
-      </span>
-      <button
-        type="button"
-        aria-label="Larger Morning Plan text"
-        disabled={scale >= FONT_SCALE_MAX}
-        onClick={() => onAdjust(FONT_SCALE_STEP)}
-        className="rounded p-0.5 text-slate-300 transition hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <Plus className="h-3 w-3" />
-      </button>
-    </div>
-  );
-}
+// Font scaling: card text sizes reference `var(--hitl-fs-*, <native>)` CSS
+// custom properties. The inbox container sets them from the shared stepper
+// (see inbox-font-scale.tsx), so every card here scales together with the
+// rest of the inbox.
 
 interface ScheduleSlotMeta {
   slotNumber: number;
@@ -358,7 +272,6 @@ export function ScheduleHitlCard({
   // the task screen's dispatch console (use-executor-models).
   const { optionsFor: modelOptionsFor } = useExecutorModelOptions();
   const [error, setError] = useState<string | null>(null);
-  const { scale: fontScale, adjust: adjustFontScale } = useMorningPlanFontScale();
 
   if (!schedule) {
     // Defensive — caller should have checked isScheduleHitl, but fall back
@@ -447,26 +360,12 @@ export function ScheduleHitlCard({
     }
   }
 
-  // Font scale rides down as CSS vars — each an absolute length so nested
-  // text sizes keep their proportions (see useMorningPlanFontScale).
-  const scaleStyle = {
-    "--hitl-fs-xs": `calc(${fontScale} * 0.75rem)`,
-    "--hitl-fs-11": `calc(${fontScale} * 0.6875rem)`,
-    "--hitl-fs-10": `calc(${fontScale} * 0.625rem)`,
-  } as CSSProperties;
-
   return (
-    <article
-      className="rounded-lg border border-cyan-500/30 bg-slate-950/60 p-3"
-      style={scaleStyle}
-    >
+    <article className="rounded-lg border border-cyan-500/30 bg-slate-950/60 p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-medium text-cyan-300">
-            Morning Plan — {schedule.date}
-          </span>
-          <FontScaleControl scale={fontScale} onAdjust={adjustFontScale} />
-        </div>
+        <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-medium text-cyan-300">
+          Morning Plan — {schedule.date}
+        </span>
         <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
           {activeCount} dispatching{skipCount > 0 ? `, ${skipCount} skipped` : ""}
           {revokedCount > 0 ? `, ${revokedCount} revoked` : ""}

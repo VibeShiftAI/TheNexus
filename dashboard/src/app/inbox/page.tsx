@@ -43,6 +43,11 @@ import {
   isScheduleHitl,
   isSkillCandidatesHitl,
 } from "@/components/schedule-hitl-card";
+import {
+  FontScaleControl,
+  inboxFontScaleStyle,
+  useInboxFontScale,
+} from "@/components/inbox-font-scale";
 
 type FilterId = "all" | "questions" | "approvals" | "other";
 
@@ -81,6 +86,7 @@ export default function InboxPage() {
   const [filter, setFilter] = useState<FilterId>("all");
   const [history, setHistory] = useState<HITLRequest[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const { scale: fontScale, adjust: adjustFontScale } = useInboxFontScale();
 
   // Approving the day schedule drops Robert straight back on the bridge
   // (2026-07-17): the "Engage" confirmation voice plays in the dashboard
@@ -164,6 +170,7 @@ export default function InboxPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <FontScaleControl scale={fontScale} onAdjust={adjustFontScale} />
             <span
               className="flex items-center gap-1.5 rounded-full border border-slate-800 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-slate-400"
               title={connected ? "Live stream connected" : "Stream disconnected — polling only"}
@@ -203,9 +210,9 @@ export default function InboxPage() {
       </header>
 
       {/* ── Pending list ───────────────────────────────────────────────── */}
-      <main className="space-y-3 px-4 py-4">
+      <main className="space-y-3 px-4 py-4" style={inboxFontScaleStyle(fontScale)}>
         {error ? (
-          <p className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2 text-xs text-rose-300">
+          <p className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2 text-[length:var(--hitl-fs-xs,0.75rem)] text-rose-300">
             {error}
           </p>
         ) : null}
@@ -221,7 +228,7 @@ export default function InboxPage() {
             <p className="text-sm font-semibold uppercase tracking-widest text-emerald-300/90">
               All channels clear
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-500">
               {filter === "all" ? "No input requests pending." : "Nothing pending in this filter."}
             </p>
           </div>
@@ -338,15 +345,17 @@ function InboxQuestionCard({
       <div className="p-3.5 pl-4">
         {/* chips row */}
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${tone.chip}`}>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-medium ${tone.chip}`}
+          >
             {reasonLabel}
           </span>
           {meta.executor ? (
-            <span className="rounded-full bg-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-300">
+            <span className="rounded-full bg-slate-800 px-2 py-0.5 font-mono text-[length:var(--hitl-fs-10,0.625rem)] text-slate-300">
               {meta.executor}
             </span>
           ) : null}
-          <span className="ml-auto font-mono text-[10px] text-slate-500">
+          <span className="ml-auto font-mono text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
             {timeAgo(request.requestedAt)}
           </span>
         </div>
@@ -356,12 +365,12 @@ function InboxQuestionCard({
           <Link
             href={`/task/${encodeURIComponent(request.taskId)}`}
             title={`Open task ${request.taskId}`}
-            className="mb-2 flex items-center gap-1.5 text-xs text-cyan-300 transition hover:text-cyan-200"
+            className="mb-2 flex items-center gap-1.5 text-[length:var(--hitl-fs-xs,0.75rem)] text-cyan-300 transition hover:text-cyan-200"
           >
             <ChevronRight className="h-3 w-3 shrink-0" />
             <span className="truncate font-semibold">{meta.taskTitle ?? request.taskId}</span>
             {meta.projectName ? (
-              <span className="shrink-0 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
+              <span className="shrink-0 rounded-full bg-slate-800 px-1.5 py-0.5 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
                 {meta.projectName}
               </span>
             ) : null}
@@ -369,14 +378,16 @@ function InboxQuestionCard({
         ) : null}
 
         {/* the question */}
-        <p className="mb-3 text-sm leading-relaxed text-slate-100">{request.question}</p>
+        <p className="mb-3 text-[length:var(--hitl-fs-sm,0.875rem)] leading-relaxed text-slate-100">
+          {request.question}
+        </p>
 
         {/* agent context accordion */}
         {hasContext ? (
           <div className="mb-3">
             <button
               onClick={() => setShowContext((v) => !v)}
-              className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-slate-500 transition hover:text-slate-300"
+              className="flex items-center gap-1 text-[length:var(--hitl-fs-11,0.6875rem)] uppercase tracking-wider text-slate-500 transition hover:text-slate-300"
             >
               {showContext ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
               Agent context
@@ -384,12 +395,12 @@ function InboxQuestionCard({
             {showContext ? (
               <div className="mt-1.5 space-y-2 rounded-md border border-slate-800 bg-slate-950/70 p-2.5">
                 {resume.context && resume.context !== request.question ? (
-                  <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-300">
+                  <p className="whitespace-pre-wrap text-[length:var(--hitl-fs-xs,0.75rem)] leading-relaxed text-slate-300">
                     {resume.context}
                   </p>
                 ) : null}
                 {resume.tail ? (
-                  <pre className="max-h-52 overflow-auto rounded bg-slate-950 p-2 font-mono text-[10px] leading-relaxed text-slate-500">
+                  <pre className="max-h-52 overflow-auto rounded bg-slate-950 p-2 font-mono text-[length:var(--hitl-fs-10,0.625rem)] leading-relaxed text-slate-500">
                     {resume.tail}
                   </pre>
                 ) : null}
@@ -406,7 +417,7 @@ function InboxQuestionCard({
                 key={option}
                 disabled={resolving}
                 onClick={() => void submit(option)}
-                className="rounded-md border border-cyan-500/40 px-2.5 py-1 text-xs text-cyan-200 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md border border-cyan-500/40 px-2.5 py-1 text-[length:var(--hitl-fs-xs,0.75rem)] text-cyan-200 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {option}
               </button>
@@ -425,13 +436,13 @@ function InboxQuestionCard({
             }
           }}
           placeholder="Type your answer… (⌘⏎ to send)"
-          className="mb-2 min-h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
+          className="mb-2 min-h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-[length:var(--hitl-fs-sm,0.875rem)] text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
         />
         <div className="flex gap-2">
           <button
             disabled={resolving || reply.trim().length === 0}
             onClick={() => void submit()}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-cyan-500 px-3 py-2 text-[length:var(--hitl-fs-xs,0.75rem)] font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
           >
             {resolving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             {resolving ? "Sending…" : "Send Answer"}
@@ -441,7 +452,7 @@ function InboxQuestionCard({
               disabled={resolving}
               onClick={() => void park()}
               title="Close the question without answering — the task stays parked and nothing is re-dispatched"
-              className="flex items-center gap-1.5 rounded-md border border-slate-700 px-3 py-2 text-xs text-slate-400 transition hover:border-slate-500 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-md border border-slate-700 px-3 py-2 text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-400 transition hover:border-slate-500 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Archive className="h-3.5 w-3.5" />
               Park
@@ -462,11 +473,11 @@ function HistoryRow({ request }: { request: HITLRequest }) {
     <div className="flex items-start gap-2 rounded-md border border-slate-900 bg-slate-950/40 px-2.5 py-2">
       <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500/60" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-xs text-slate-400">
+        <p className="truncate text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-400">
           {meta.taskTitle ? <span className="text-slate-300">{meta.taskTitle} — </span> : null}
           {request.question}
         </p>
-        <p className="truncate font-mono text-[10px] text-slate-600">
+        <p className="truncate font-mono text-[length:var(--hitl-fs-10,0.625rem)] text-slate-600">
           ↳ {answer} · {request.resolution?.resolvedBy ?? "?"} ·{" "}
           {timeAgo(request.resolution?.resolvedAt)}
         </p>

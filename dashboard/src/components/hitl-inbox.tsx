@@ -22,9 +22,11 @@ import {
   isScheduleHitl,
   isSkillCandidatesHitl,
 } from "./schedule-hitl-card";
+import { FontScaleControl, inboxFontScaleStyle, useInboxFontScale } from "./inbox-font-scale";
 
 export function HitlInbox() {
   const { error, loading, pendingRequests, resolvingId, resolveRequest } = useHitlInbox();
+  const { scale: fontScale, adjust: adjustFontScale } = useInboxFontScale();
 
   if (loading) {
     return (
@@ -38,7 +40,10 @@ export function HitlInbox() {
   }
 
   return (
-    <section className="rounded-lg border border-slate-800 bg-slate-900/50 p-4">
+    <section
+      className="rounded-lg border border-slate-800 bg-slate-900/50 p-4"
+      style={inboxFontScaleStyle(fontScale)}
+    >
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {pendingRequests.length > 0 ? (
@@ -49,6 +54,7 @@ export function HitlInbox() {
           <h3 className="text-sm font-bold text-white">Praxis Inbox</h3>
         </div>
         <div className="flex items-center gap-2">
+          <FontScaleControl scale={fontScale} onAdjust={adjustFontScale} />
           <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
             {pendingRequests.length}
           </span>
@@ -63,10 +69,14 @@ export function HitlInbox() {
         </div>
       </div>
 
-      {error ? <p className="mb-3 text-xs text-rose-300">{error}</p> : null}
+      {error ? (
+        <p className="mb-3 text-[length:var(--hitl-fs-xs,0.75rem)] text-rose-300">{error}</p>
+      ) : null}
 
       {pendingRequests.length === 0 ? (
-        <p className="text-xs text-slate-400">No input needed right now.</p>
+        <p className="text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-400">
+          No input needed right now.
+        </p>
       ) : (
         <div className="space-y-3">
           {pendingRequests.map((request) =>
@@ -138,17 +148,19 @@ function HitlRequestCard({
     <article className="rounded-lg border border-slate-700 bg-slate-950/60 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300">
+          <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-medium text-amber-300">
             {reasonLabel}
           </span>
           {meta.executor ? (
-            <span className="rounded-full bg-slate-700/40 px-2 py-0.5 font-mono text-[10px] text-slate-300">
+            <span className="rounded-full bg-slate-700/40 px-2 py-0.5 font-mono text-[length:var(--hitl-fs-10,0.625rem)] text-slate-300">
               {meta.executor}
             </span>
           ) : null}
         </div>
         {request.confidenceScore !== undefined ? (
-          <span className="text-[11px] text-slate-400">{request.confidenceScore}% confidence</span>
+          <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
+            {request.confidenceScore}% confidence
+          </span>
         ) : null}
       </div>
 
@@ -156,21 +168,21 @@ function HitlRequestCard({
         <Link
           href={`/task/${encodeURIComponent(request.taskId)}`}
           title={`Open task ${request.taskId}`}
-          className="mb-2 flex items-center gap-1.5 text-xs text-cyan-300 transition hover:text-cyan-200"
+          className="mb-2 flex items-center gap-1.5 text-[length:var(--hitl-fs-xs,0.75rem)] text-cyan-300 transition hover:text-cyan-200"
         >
           <ChevronRight className="h-3 w-3 shrink-0" />
           <span className="truncate font-medium">
             {meta.taskTitle ?? request.taskId}
           </span>
           {meta.projectName ? (
-            <span className="shrink-0 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
+            <span className="shrink-0 rounded-full bg-slate-800 px-1.5 py-0.5 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
               {meta.projectName}
             </span>
           ) : null}
         </Link>
       ) : null}
 
-      <div className="mb-3 flex gap-2 text-sm text-slate-100">
+      <div className="mb-3 flex gap-2 text-[length:var(--hitl-fs-sm,0.875rem)] text-slate-100">
         <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
         <p>{request.question}</p>
       </div>
@@ -179,7 +191,7 @@ function HitlRequestCard({
         <div className="mb-3">
           <button
             onClick={() => setShowContext((v) => !v)}
-            className="flex items-center gap-1 text-[11px] text-slate-400 transition hover:text-slate-200"
+            className="flex items-center gap-1 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400 transition hover:text-slate-200"
           >
             {showContext ? (
               <ChevronDown className="h-3 w-3" />
@@ -191,10 +203,12 @@ function HitlRequestCard({
           {showContext ? (
             <div className="mt-1.5 space-y-2 rounded-md border border-slate-800 bg-slate-900/70 p-2">
               {resume.context && resume.context !== request.question ? (
-                <p className="whitespace-pre-wrap text-xs text-slate-300">{resume.context}</p>
+                <p className="whitespace-pre-wrap text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-300">
+                  {resume.context}
+                </p>
               ) : null}
               {resume.tail ? (
-                <pre className="max-h-40 overflow-auto rounded bg-slate-950 p-2 font-mono text-[10px] leading-relaxed text-slate-500">
+                <pre className="max-h-40 overflow-auto rounded bg-slate-950 p-2 font-mono text-[length:var(--hitl-fs-10,0.625rem)] leading-relaxed text-slate-500">
                   {resume.tail}
                 </pre>
               ) : null}
@@ -210,7 +224,7 @@ function HitlRequestCard({
               key={option}
               disabled={resolving}
               onClick={() => void submit(option)}
-              className="rounded-md border border-cyan-500/40 px-2.5 py-1 text-xs text-cyan-200 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-cyan-500/40 px-2.5 py-1 text-[length:var(--hitl-fs-xs,0.75rem)] text-cyan-200 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {option}
             </button>
@@ -222,13 +236,13 @@ function HitlRequestCard({
         value={reply}
         onChange={(event) => setReply(event.target.value)}
         placeholder="Add context for Praxis"
-        className="mb-2 min-h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-500"
+        className="mb-2 min-h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-[length:var(--hitl-fs-sm,0.875rem)] text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-500"
       />
 
       <button
         disabled={resolving || reply.trim().length === 0}
         onClick={() => void submit()}
-        className="w-full rounded-md bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+        className="w-full rounded-md bg-cyan-500 px-3 py-2 text-[length:var(--hitl-fs-xs,0.75rem)] font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
       >
         {resolving ? "Sending..." : "Send Reply"}
       </button>
