@@ -10,6 +10,14 @@ let _keys = null;
 function loadKeys() {
   if (_keys) return _keys;
   try {
+    // The keys file IS the identity boundary: a group/world-accessible copy is
+    // no longer a scoped credential, so refuse it rather than trust it.
+    const mode = fs.statSync(KEYS_FILE).mode & 0o777;
+    if (mode & 0o077) {
+      log(`FATAL: ${KEYS_FILE} is group/world-accessible (mode ${mode.toString(8)}) — refusing to load keys. Fix: chmod 600 ${KEYS_FILE}`);
+      _keys = {};
+      return _keys;
+    }
     const raw = fs.readFileSync(KEYS_FILE, 'utf8');
     _keys = JSON.parse(raw).keys || {};
   } catch (e) {

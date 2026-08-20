@@ -503,12 +503,13 @@ describe('praxis-mind MCP server — authorization is per-request, never ambient
   test('resolveCaller reads identity from the request environment, with no sticky caller', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-conformance-keys-'));
     const keysFile = path.join(dir, 'keys.json');
+    // 0600, or lib/auth's scoped-credential self-check refuses the file.
     fs.writeFileSync(keysFile, JSON.stringify({
       keys: {
         'key-a': { identity: 'agent-a', namespace: 'ns-a', privileges: ['identity.whoami'] },
         'key-b': { identity: 'agent-b', namespace: 'ns-b', privileges: [] },
       },
-    }));
+    }), { mode: 0o600 });
 
     try {
       jest.resetModules();
