@@ -17,7 +17,22 @@ const http = require('http');
 const { URL } = require('url');
 const { randomUUID } = require('crypto');
 
-const { PRAXIS_URL } = require('../shared/constants');
+const fs = require('fs');
+const { PRAXIS_URL, PRAXIS_BRIDGE_TOKEN_FILE } = require('../shared/constants');
+
+/**
+ * Praxis's full-scope bridge token, read fresh per call (it is minted on
+ * Praxis's first boot and can rotate; the file is tiny). Null when absent —
+ * the call then runs read-only and Praxis says why.
+ */
+function readBridgeToken() {
+    try {
+        const token = fs.readFileSync(PRAXIS_BRIDGE_TOKEN_FILE, 'utf8').trim();
+        return token || null;
+    } catch {
+        return null;
+    }
+}
 const UPSTREAM_PATH = '/stream';
 const SNAPSHOT_PATH = '/presence';
 const RING_BUFFER_SIZE = 500;
@@ -103,6 +118,13 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
             if (req.method !== 'GET' && req.method !== 'HEAD') {
                 options.headers['Content-Type'] = 'application/json';
                 options.body = JSON.stringify(req.body ?? {});
+            }
+            // Operator-originated tool calls (Council Chamber summon, problem
+            // intake) run at full bridge scope — the dashboard is Robert's own
+            // console, already behind the Nexus server's auth.
+            if (upstreamPath.startsWith('/agent-tool')) {
+                const token = readBridgeToken();
+                if (token) options.headers['X-Praxis-Bridge-Token'] = token;
             }
             const response = await fetch(`${PRAXIS_URL}${upstreamPath}`, options);
             const text = await response.text();
@@ -328,6 +350,23 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
             return res.status(400).json({ ok: false, error: 'topic is required' });
         }
         req.body = { name: 'spawn_council', args };
+        return proxyJson(req, res, '/agent-tool');
+    });
+    // Hand Praxis a PROBLEM from the Chamber: the problem council (three
+    // top-tier seats, two rounds, ranked ideas → charter → project set up)
+    // via Praxis's problem_intake tool. dry_run deliberates without creating.
+    router.post('/council/problem', (req, res) => {
+        const body = req.body || {};
+        const problem = typeof body.problem === 'string' ? body.problem.trim() : '';
+        if (!problem) {
+            return res.status(400).json({ ok: false, error: 'problem is required' });
+        }
+        const args = { problem, council: body.council !== false };
+        for (const field of ['name', 'type', 'context', 'preset']) {
+            if (typeof body[field] === 'string' && body[field].trim()) args[field] = body[field].trim();
+        }
+        if (body.dry_run === true) args.dry_run = true;
+        req.body = { name: 'problem_intake', args };
         return proxyJson(req, res, '/agent-tool');
     });
     // Arbiter preference (bridge Ops control) — which CLI seat writes the verdict.

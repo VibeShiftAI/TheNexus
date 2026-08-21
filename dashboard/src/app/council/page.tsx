@@ -22,8 +22,10 @@ import {
     ChevronDown,
     ChevronRight,
     Clock,
+    ExternalLink,
     Gavel,
     Landmark,
+    Lightbulb,
     Loader2,
     RefreshCw,
     ScrollText,
@@ -34,20 +36,29 @@ import {
 } from "lucide-react";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 import {
+    baseSeatName,
+    effectiveReferenceVoices,
     getCouncilSession,
     getCouncilSessions,
     isInterruptedSession,
     isLiveSession,
     isAggregatorVoice,
+    isProblemCouncil,
+    isRound2Voice,
+    problemCharter,
+    problemConsensus,
+    referenceVoices,
     seatDisplayName,
     sessionIdFromCouncilAck,
     sessionKind,
     summonCouncil,
+    summonProblemCouncil,
     detailDurationMs,
     tokenUsageForCouncilResponse,
     type CouncilSessionDetail,
     type CouncilSessionSummary,
     type CouncilVoice,
+    type ProblemCouncilConsensus,
 } from "@/lib/council";
 
 // ── Small helpers ─────────────────────────────────────────────────────────
@@ -97,7 +108,24 @@ const ACCENT_STYLES: Record<string, string> = {
     amber: "bg-amber-500/15 border-amber-500/40 text-amber-300",
     violet: "bg-violet-500/15 border-violet-500/40 text-violet-300",
     cyan: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300",
+    emerald: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300",
 };
+
+/** Phase label for the live banner — round-aware for the problem council. */
+function livePhaseLabel(session: { phase: string; metadata: Record<string, unknown> }): string {
+    if (isProblemCouncil(session.metadata)) {
+        if (session.phase === "synthesis" || session.phase === "refinement") return "Aggregator is drafting the charter";
+        if (session.phase === "deliberation") {
+            return session.metadata.round === 2
+                ? "Round 2 — the same sessions rank every idea"
+                : "Round 1 — seats critique the setup and propose ideas";
+        }
+        return "Convening the problem council";
+    }
+    if (session.phase === "deliberation") return "Seats are deliberating";
+    if (session.phase === "synthesis" || session.phase === "refinement") return "Aggregator is drafting the verdict";
+    return "Convening";
+}
 
 function KindBadge({ metadata }: { metadata: Record<string, unknown> }) {
     const kind = sessionKind(metadata);
@@ -137,7 +165,7 @@ function Chamber({
     phase: string;
     live: boolean;
 }) {
-    const refs = voices.filter((v) => !isAggregatorVoice(v));
+    const refs = effectiveReferenceVoices(voices);
     const aggregator = voices.find(isAggregatorVoice);
     const W = 560;
     const H = 330;
@@ -280,14 +308,9 @@ function LiveSessionPanel({ session, onOpen }: { session: CouncilSessionSummary;
         return () => clearInterval(t);
     }, []);
 
-    const refs = session.voices.filter((v) => !isAggregatorVoice(v));
+    const refs = effectiveReferenceVoices(session.voices);
     const reported = refs.filter((v) => v.status === "success" || v.status === "error" || v.status === "timeout").length;
-    const phaseLabel =
-        session.phase === "deliberation"
-            ? "Seats are deliberating"
-            : session.phase === "synthesis" || session.phase === "refinement"
-              ? "Aggregator is drafting the verdict"
-              : "Convening";
+    const phaseLabel = livePhaseLabel(session);
 
     return (
         <section className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-b from-slate-900 to-slate-950">
@@ -343,10 +366,13 @@ function LiveSessionPanel({ session, onOpen }: { session: CouncilSessionSummary;
 // ── Summon panel ─────────────────────────────────────────────────────────
 
 function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | null) => void }) {
+    const [mode, setMode] = useState<"deliberation" | "problem">("deliberation");
     const [topic, setTopic] = useState("");
     const [context, setContext] = useState("");
     const [domain, setDomain] = useState<"" | "engineering" | "research" | "strategy">("");
     const [focus, setFocus] = useState(false);
+    const [problemName, setProblemName] = useState("");
+    const [dryRun, setDryRun] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [ack, setAck] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -360,88 +386,156 @@ function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | n
         setAck(null);
         setError(null);
         try {
-            const response = await summonCouncil({
-                topic: topic.trim(),
-                ...(context.trim() ? { context: context.trim() } : {}),
-                deliverable: "analysis",
-                ...(domain ? { domain } : {}),
-                focus,
-            });
-            const message = response.result || "Council convened.";
+            const response =
+                mode === "problem"
+                    ? await summonProblemCouncil({
+                          problem: topic.trim(),
+                          ...(problemName.trim() ? { name: problemName.trim() } : {}),
+                          ...(context.trim() ? { context: context.trim() } : {}),
+                          ...(dryRun ? { dry_run: true } : {}),
+                      })
+                    : await summonCouncil({
+                          topic: topic.trim(),
+                          ...(context.trim() ? { context: context.trim() } : {}),
+                          deliverable: "analysis",
+                          ...(domain ? { domain } : {}),
+                          focus,
+                      });
+            const message = response.result || (mode === "problem" ? "Problem council convened." : "Council convened.");
             setAck(message);
             onSummoned(sessionIdFromCouncilAck(message));
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Council summon failed");
+            setError(err instanceof Error ? err.message : mode === "problem" ? "Problem intake failed" : "Council summon failed");
         } finally {
             setSubmitting(false);
         }
     }
 
+    const tab = (value: "deliberation" | "problem", label: string) => (
+        <button
+            type="button"
+            onClick={() => {
+                setMode(value);
+                setAck(null);
+                setError(null);
+            }}
+            className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                mode === value
+                    ? value === "problem"
+                        ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-200"
+                        : "border-amber-500/60 bg-amber-500/15 text-amber-200"
+                    : "border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+            }`}
+        >
+            {label}
+        </button>
+    );
+
     return (
         <section className="rounded-2xl border border-amber-500/25 bg-slate-900/50 overflow-hidden">
             <div className="border-b border-slate-800 px-5 py-4">
-                <div className="flex items-center gap-2">
-                    <Gavel size={15} className="text-amber-300" />
-                    <h2 className="text-xs font-bold uppercase tracking-widest text-amber-300">Summon the Cabinet</h2>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                        <Gavel size={15} className="text-amber-300" />
+                        <h2 className="text-xs font-bold uppercase tracking-widest text-amber-300">
+                            {mode === "problem" ? "Hand Praxis a problem" : "Summon the Cabinet"}
+                        </h2>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {tab("deliberation", "Deliberation")}
+                        {tab("problem", "Problem → project")}
+                    </div>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                    Runs the configured council seats and may use paid API or subscription capacity.
+                    {mode === "problem"
+                        ? "Three top-tier seats (Codex GPT-5.6 Sol, Antigravity Gemini 3.1 Pro, Claude Fable 5) critique the setup and propose ideas, the same sessions resume to rank every idea, the ranks are aggregated, and the aggregator drafts the charter that sets the project up. 10–25 minutes on subscription capacity."
+                        : "Runs the configured council seats and may use paid API or subscription capacity."}
                 </p>
             </div>
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
                 <textarea
                     value={topic}
                     onChange={(event) => setTopic(event.target.value)}
-                    rows={3}
-                    placeholder="Question for the Cortex Council"
+                    rows={mode === "problem" ? 5 : 3}
+                    placeholder={mode === "problem" ? "Describe the problem in your own words — what's wrong, what solved would look like, what you already know" : "Question for the Cortex Council"}
                     className="w-full resize-y rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-amber-500/70"
                 />
                 <textarea
                     value={context}
                     onChange={(event) => setContext(event.target.value)}
                     rows={2}
-                    placeholder="Optional context, constraints, or notes"
+                    placeholder={mode === "problem" ? "Optional research, notes, or constraints the seats should see verbatim" : "Optional context, constraints, or notes"}
                     className="w-full resize-y rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-200 outline-none transition-colors placeholder:text-slate-600 focus:border-slate-600"
                 />
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-wrap items-center gap-2">
-                        {(["", "engineering", "research", "strategy"] as const).map((value) => (
+                {mode === "problem" ? (
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <input
+                            value={problemName}
+                            onChange={(event) => setProblemName(event.target.value)}
+                            placeholder="Preferred project name (optional)"
+                            className="w-full md:max-w-xs rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-200 outline-none transition-colors placeholder:text-slate-600 focus:border-slate-600"
+                        />
+                        <div className="flex items-center gap-3">
+                            <label className="inline-flex items-center gap-2 text-xs text-slate-400" title="Deliberate and draft the charter, but create nothing">
+                                <input
+                                    type="checkbox"
+                                    checked={dryRun}
+                                    onChange={(event) => setDryRun(event.target.checked)}
+                                    className="h-4 w-4 rounded border-slate-700 bg-slate-950 accent-emerald-500"
+                                />
+                                Dry run (charter only)
+                            </label>
                             <button
-                                key={value || "general"}
-                                type="button"
-                                onClick={() => setDomain(value)}
-                                className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                    domain === value
-                                        ? "border-amber-500/60 bg-amber-500/15 text-amber-200"
-                                        : "border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                                }`}
+                                type="submit"
+                                disabled={!canSubmit}
+                                className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-emerald-100 transition-colors hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
                             >
-                                {value || "General"}
+                                {submitting ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
+                                Convene the problem council
                             </button>
-                        ))}
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <label className="inline-flex items-center gap-2 text-xs text-slate-400">
-                            <input
-                                type="checkbox"
-                                checked={focus}
-                                onChange={(event) => setFocus(event.target.checked)}
-                                className="h-4 w-4 rounded border-slate-700 bg-slate-950 accent-amber-500"
-                            />
-                            Focused bench
-                        </label>
-                        <button
-                            type="submit"
-                            disabled={!canSubmit}
-                            className="inline-flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-amber-100 transition-colors hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
-                        >
-                            {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                            Summon
-                        </button>
+                ) : (
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-wrap items-center gap-2">
+                            {(["", "engineering", "research", "strategy"] as const).map((value) => (
+                                <button
+                                    key={value || "general"}
+                                    type="button"
+                                    onClick={() => setDomain(value)}
+                                    className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                        domain === value
+                                            ? "border-amber-500/60 bg-amber-500/15 text-amber-200"
+                                            : "border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                                    }`}
+                                >
+                                    {value || "General"}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <label className="inline-flex items-center gap-2 text-xs text-slate-400">
+                                <input
+                                    type="checkbox"
+                                    checked={focus}
+                                    onChange={(event) => setFocus(event.target.checked)}
+                                    className="h-4 w-4 rounded border-slate-700 bg-slate-950 accent-amber-500"
+                                />
+                                Focused bench
+                            </label>
+                            <button
+                                type="submit"
+                                disabled={!canSubmit}
+                                className="inline-flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-amber-100 transition-colors hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
+                            >
+                                {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                Summon
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
                 {ack && (
-                    <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
+                    <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 whitespace-pre-wrap">
                         {ack}
                     </div>
                 )}
@@ -460,7 +554,7 @@ function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | n
 const MARKDOWN_CLASSES =
     "prose prose-invert prose-sm max-w-none prose-headings:text-white prose-headings:font-semibold prose-p:text-slate-300 prose-strong:text-slate-200 prose-li:text-slate-300 prose-a:text-cyan-400 prose-hr:border-slate-800 prose-code:text-cyan-300 prose-code:bg-slate-800/60 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800";
 
-function ThesisCard({ voice, detail }: { voice: CouncilVoice; detail: CouncilSessionDetail }) {
+function ThesisCard({ voice, detail, cliSession }: { voice: CouncilVoice; detail: CouncilSessionDetail; cliSession?: string | null }) {
     const [open, setOpen] = useState(false);
     const thesis = detail.theses.find((t) => t.voice === voice.name || t.model === voice.name);
     const v = seatVisual(voice);
@@ -485,10 +579,11 @@ function ThesisCard({ voice, detail }: { voice: CouncilVoice; detail: CouncilSes
                     <div className="min-w-0">
                         <div className="text-xs font-semibold text-slate-200">{seatDisplayName(voice.name)}</div>
                         <div className="text-[10px] text-slate-500 font-mono truncate">
-                            {providerLabel(voice.model)} · {voice.model.replace(/\s*\(aggregator\)\s*$/, "")}
+                            {providerLabel(voice.model)} · {baseSeatName(voice.model)}
                             {thesis ? ` · ${formatDuration(thesis.elapsedMs)}` : ""}
                             {` · ${tokenLabel(voice.status, tokens)}`}
                             {thesis && thesis.status !== "success" ? ` · ${thesis.status}` : ""}
+                            {cliSession ? ` · CLI session ${cliSession}` : ""}
                         </div>
                     </div>
                 </div>
@@ -510,6 +605,199 @@ function ThesisCard({ voice, detail }: { voice: CouncilVoice; detail: CouncilSes
                     )}
                 </div>
             )}
+        </div>
+    );
+}
+
+function RankingTable({ consensus }: { consensus: ProblemCouncilConsensus }) {
+    const seats = Array.from(new Set(consensus.ranking.flatMap((r) => Object.keys(r.positions))));
+    const ideaById = new Map(consensus.ideas.map((i) => [i.id, i]));
+    return (
+        <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+                <thead>
+                    <tr className="text-[10px] uppercase tracking-wider text-slate-500">
+                        <th className="px-2 py-1 text-left">#</th>
+                        <th className="px-2 py-1 text-left">Idea</th>
+                        <th className="px-2 py-1 text-left">From</th>
+                        <th className="px-2 py-1 text-right">Score</th>
+                        {seats.map((s) => (
+                            <th key={s} className="px-2 py-1 text-center" title={s}>
+                                {seatDisplayName(s).replace(/ · .*$/, "")}
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {consensus.ranking.map((r, i) => {
+                        const idea = ideaById.get(r.id);
+                        return (
+                            <tr key={r.id} className={`border-t border-slate-800/60 ${i === 0 ? "bg-emerald-500/5" : ""}`}>
+                                <td className="px-2 py-1.5 font-mono text-slate-500">{i + 1}</td>
+                                <td className="px-2 py-1.5 text-slate-200" title={idea ? `${idea.what}\n\n${idea.why}` : undefined}>
+                                    <span className="font-mono text-emerald-300">{r.id}</span> {r.title}
+                                    {r.dropped > 0 && <span className="ml-1 text-[10px] text-red-300">dropped ×{r.dropped}</span>}
+                                </td>
+                                <td className="px-2 py-1.5 text-slate-500">{r.seatLabel}</td>
+                                <td className="px-2 py-1.5 text-right font-mono text-slate-300">
+                                    {r.score}/{consensus.maxScore}
+                                </td>
+                                {seats.map((s) => {
+                                    const p = r.positions[s];
+                                    const reason = r.reasons[s];
+                                    return (
+                                        <td key={s} className="px-2 py-1.5 text-center font-mono text-slate-400" title={reason}>
+                                            {p ? `#${p}` : reason?.startsWith("DROP") ? "drop" : "—"}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+function ProblemCouncilDetail({ detail, live }: { detail: CouncilSessionDetail; live: boolean }) {
+    const meta = detail.metadata;
+    const consensus = problemConsensus(detail);
+    const charter = problemCharter(meta);
+    const projectId = typeof meta.projectId === "string" ? meta.projectId : null;
+    const projectName = typeof meta.project === "string" ? meta.project : charter?.name ?? null;
+    const round1 = referenceVoices(detail.voices);
+    const round2 = detail.voices.filter(isRound2Voice);
+    const aggregator = detail.voices.find(isAggregatorVoice);
+    const r1Sessions = (meta.round1Sessions ?? {}) as Record<string, string | null>;
+    const r2Sessions = (meta.round2Sessions ?? {}) as Record<string, string | null>;
+    const seatCards = (voices: CouncilVoice[], sessions: Record<string, string | null>) =>
+        voices.map((voice) => <ThesisCard key={voice.name} voice={voice} detail={detail} cliSession={sessions[baseSeatName(voice.name)] ?? null} />);
+
+    return (
+        <div className="space-y-4 px-5 py-4">
+            {/* The problem + the outcome */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">The problem (Robert&apos;s words)</h3>
+                    <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">{String(meta.problem ?? detail.topic)}</p>
+                    {typeof meta.context === "string" && meta.context && (
+                        <p className="mt-2 text-xs text-slate-500 whitespace-pre-wrap">{meta.context}</p>
+                    )}
+                </div>
+                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 mb-2">
+                        {meta.dryRun ? "Charter (dry run — nothing created)" : projectId ? "Project created" : live ? "Charter pending" : "Charter"}
+                    </h3>
+                    {charter ? (
+                        <div className="space-y-1.5 text-xs text-slate-300">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-white">{projectName ?? charter.name}</span>
+                                {projectId && (
+                                    <Link href={`/project/${projectId}`} className="inline-flex items-center gap-1 text-[11px] text-cyan-300 hover:text-cyan-200">
+                                        open project <ExternalLink size={11} />
+                                    </Link>
+                                )}
+                                {typeof meta.charterSource === "string" && meta.charterSource === "mechanical" && (
+                                    <span className="text-[10px] uppercase tracking-wider text-amber-300 border border-amber-500/40 rounded-full px-2 py-0.5">mechanical charter</span>
+                                )}
+                            </div>
+                            <p className="text-slate-400">{charter.description}</p>
+                            <p><span className="text-slate-500">End state:</span> {charter.end_state}</p>
+                            <p>
+                                <span className="text-slate-500">Triage:</span> {charter.classification ?? "—"} → <span className="font-mono">{charter.protocol ?? "—"}</span>
+                            </p>
+                            {charter.needs.length > 0 && (
+                                <p>
+                                    <span className="text-slate-500">Needs:</span> {charter.needs.map((n) => `${n.kind} — ${n.description}`).join("; ")}
+                                </p>
+                            )}
+                            {charter.tasks.length > 0 && (
+                                <ol className="list-decimal pl-4 space-y-0.5 text-slate-200">
+                                    {charter.tasks.map((t, i) => (
+                                        <li key={i}>
+                                            {t.title}
+                                            {Array.isArray(meta.taskIds) && typeof (meta.taskIds as unknown[])[i] === "string" && (
+                                                <Link href={`/task/${(meta.taskIds as string[])[i]}`} className="ml-1 font-mono text-[10px] text-cyan-400 hover:text-cyan-300">
+                                                    {(meta.taskIds as string[])[i].slice(0, 8)}
+                                                </Link>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ol>
+                            )}
+                            {typeof meta.intakeError === "string" && (
+                                <p className="text-red-300"><AlertTriangle size={12} className="inline mr-1" />{meta.intakeError}</p>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-xs text-slate-500 italic">
+                            {live ? "The aggregator hasn't drafted the charter yet." : typeof meta.error === "string" ? meta.error : "No charter was recorded."}
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            {/* Aggregate ranking */}
+            {consensus && (
+                <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+                    <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-300">
+                            Aggregate ranking — Borda across {consensus.ballots.length} ballot(s), {consensus.ideas.length} idea(s)
+                        </h3>
+                        <span className="text-[10px] text-slate-500">
+                            {Math.round(consensus.agreement * 100)}% of seats had #1 in their top 3
+                            {typeof meta.quorum === "string" && meta.quorum !== "full" ? ` · quorum ${meta.quorum}` : ""}
+                        </span>
+                    </div>
+                    <RankingTable consensus={consensus} />
+                    {consensus.merges.length > 0 && (
+                        <p className="mt-2 text-[11px] text-slate-500">Flagged duplicates: {consensus.merges.map(([a, b]) => `${a}≈${b}`).join(", ")}</p>
+                    )}
+                </div>
+            )}
+
+            {/* Verdict markdown + the debate by round */}
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+                <div className="xl:col-span-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Gavel size={14} className="text-amber-400" />
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-amber-300">Verdict</h3>
+                    </div>
+                    {detail.synthesis ? (
+                        <div className={`${MARKDOWN_CLASSES} max-h-[640px] overflow-y-auto pr-2`}>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(detail.synthesis)}</ReactMarkdown>
+                        </div>
+                    ) : (
+                        <p className="text-xs text-slate-500 italic">{live ? "Not yet — the council is still in session." : "No verdict was recorded for this session."}</p>
+                    )}
+                </div>
+                <div className="xl:col-span-2 space-y-4">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                            <Lightbulb size={14} className="text-slate-400" />
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-300">Round 1 — setup critique &amp; ideas</h3>
+                        </div>
+                        {seatCards(round1, r1Sessions)}
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                            <Users size={14} className="text-slate-400" />
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-300">Round 2 — rankings (same sessions, resumed)</h3>
+                        </div>
+                        {round2.length > 0 ? seatCards(round2, r2Sessions) : <p className="text-xs text-slate-500 italic">{live ? "Round 2 hasn't opened yet." : "Round 2 never ran."}</p>}
+                    </div>
+                    {aggregator && (
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Gavel size={14} className="text-slate-400" />
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-300">Aggregator — charter draft</h3>
+                            </div>
+                            <ThesisCard voice={aggregator} detail={detail} />
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
@@ -547,8 +835,14 @@ function SessionDetailPanel({
         return () => clearInterval(t);
     }, [live, load]);
 
-    const refs = detail?.voices.filter((v) => !isAggregatorVoice(v)) ?? [];
+    const refs = detail ? referenceVoices(detail.voices) : [];
     const interrupted = detail ? isInterruptedSession(detail) : false;
+    const problem = detail ? isProblemCouncil(detail.metadata) : false;
+    const reportedSeats = detail
+        ? problem
+            ? effectiveReferenceVoices(detail.voices).filter((v) => v.status === "success").length
+            : detail.stats.successCount
+        : 0;
 
     return (
         <section className="rounded-2xl border border-slate-700 bg-slate-900/60 overflow-hidden">
@@ -561,6 +855,9 @@ function SessionDetailPanel({
                                 {String(detail.metadata.domain)}
                             </span>
                         ) : null}
+                        {problem && detail?.metadata?.dryRun ? (
+                            <span className="text-[10px] uppercase tracking-wider text-slate-400 border border-slate-700 rounded-full px-2 py-0.5">dry run</span>
+                        ) : null}
                         {interrupted && (
                             <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-red-300 border border-red-500/40 bg-red-500/10 rounded-full px-2 py-0.5">
                                 <AlertTriangle size={10} /> interrupted
@@ -571,7 +868,7 @@ function SessionDetailPanel({
                     {detail && (
                         <p className="mt-1 text-[11px] text-slate-500 font-mono">
                             {formatWhen(detail.createdAt)} · {formatDuration(detailDurationMs(detail))} ·{" "}
-                            {detail.stats.successCount}/{refs.length} seats · session {detail.sessionId}
+                            {reportedSeats}/{refs.length} seats{problem ? " × 2 rounds" : ""} · session {detail.sessionId}
                         </p>
                     )}
                 </div>
@@ -587,7 +884,9 @@ function SessionDetailPanel({
                 </div>
             )}
 
-            {detail && (
+            {detail && problem && <ProblemCouncilDetail detail={detail} live={live} />}
+
+            {detail && !problem && (
                 <div className="grid grid-cols-1 xl:grid-cols-5 gap-0">
                     {/* Verdict */}
                     <div className="xl:col-span-3 px-5 py-4 border-b xl:border-b-0 xl:border-r border-slate-800/60">
@@ -647,7 +946,10 @@ function HistoryRow({
     selected: boolean;
     onSelect: () => void;
 }) {
-    const refs = session.voices.filter((v) => !isAggregatorVoice(v));
+    const refs = referenceVoices(session.voices);
+    const reported = isProblemCouncil(session.metadata)
+        ? effectiveReferenceVoices(session.voices).filter((v) => v.status === "success").length
+        : session.stats.successCount;
     const interrupted = isInterruptedSession(session);
     const live = isLiveSession(session);
     return (
@@ -665,7 +967,7 @@ function HistoryRow({
                         <Loader2 size={14} className="animate-spin text-amber-400 shrink-0" />
                     ) : interrupted ? (
                         <AlertTriangle size={14} className="text-red-400 shrink-0" />
-                    ) : session.stats.successCount > 0 ? (
+                    ) : reported > 0 ? (
                         <CheckCircle2 size={14} className="text-cyan-400 shrink-0" />
                     ) : (
                         <XCircle size={14} className="text-slate-600 shrink-0" />
@@ -677,7 +979,7 @@ function HistoryRow({
             <div className="mt-1.5 flex items-center gap-3 text-[10px] text-slate-500 font-mono pl-6">
                 <span>{formatWhen(session.createdAt)}</span>
                 <span>
-                    {session.stats.successCount}/{refs.length || session.stats.voiceCount} seats
+                    {reported}/{refs.length || session.stats.voiceCount} seats
                 </span>
                 <span>{formatDuration(session.durationMs)}</span>
                 <span className="uppercase tracking-wider">{live ? "in session" : interrupted ? "interrupted" : session.phase}</span>
@@ -723,6 +1025,22 @@ export default function CouncilPage() {
         setSelectedId(id);
         setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     }, []);
+
+    // Deep link: /council?session=<id> opens that transcript (chat cards, the
+    // Ops console and the bridge link here). Read once on mount; keep the URL
+    // in step so a transcript can be shared by copying the address.
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const fromUrl = new URLSearchParams(window.location.search).get("session");
+        if (fromUrl && /^[A-Za-z0-9_-]+$/.test(fromUrl)) openDetail(fromUrl);
+    }, [openDetail]);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const url = new URL(window.location.href);
+        if (selectedId) url.searchParams.set("session", selectedId);
+        else url.searchParams.delete("session");
+        window.history.replaceState(null, "", url.toString());
+    }, [selectedId]);
 
     const handleSummoned = useCallback(
         async (sessionId: string | null) => {
