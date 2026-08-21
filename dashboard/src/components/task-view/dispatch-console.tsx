@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronRight,
   CornerDownRight,
+  KeyRound,
   Loader2,
   MessageSquareText,
   Rocket,
@@ -55,6 +56,11 @@ import {
   useExecutorModelOptions,
   type ExecutorName,
 } from "@/hooks/use-executor-models";
+import type {
+  CredentialExecutorLane,
+  CredentialModelBlock,
+  CredentialProviderLane,
+} from "@/lib/model-control";
 import { updateTaskById } from "@/lib/nexus";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
@@ -232,6 +238,112 @@ function OutputMarkdown({ content }: { content: string }) {
   );
 }
 
+// ── Key-aware routing ─────────────────────────────────────────────────────
+// A route whose credential is provably spent (usage limit, no credit, rejected
+// key) is excluded HERE, in the picker, instead of being discovered as a 402
+// after the run has already taken the CLI slot. The same check runs server-side
+// on the dispatch relay, so this is a real gate rather than a decoration.
+
+interface RouteBlock {
+  code: string;
+  reason: string;
+  /** ISO time the provider says the window reopens, when it advertised one. */
+  until: string | null;
+}
+
+/** The block that applies to the current Worker + Model selection, if any. */
+function activeRouteBlock(
+  credential: CredentialExecutorLane | null,
+  modelBlock: CredentialModelBlock | null,
+): RouteBlock | null {
+  if (credential?.status === "blocked") {
+    return {
+      code: credential.code || "unavailable",
+      reason: credential.reason || `${credential.credential} is unavailable`,
+      until: credential.until,
+    };
+  }
+  if (modelBlock) return { code: modelBlock.code, reason: modelBlock.reason, until: modelBlock.until };
+  return null;
+}
+
+const ROUTE_BLOCK_LABELS: Record<string, string> = {
+  missing_key: "no provider key",
+  usage_limit: "usage limit",
+  no_credit: "no credit",
+  unauthorized: "credential rejected",
+};
+
+/** Provider identity for pinned registry models before the async roster loads. */
+const PINNED_MODEL_PROVIDERS: Partial<Record<ExecutorName, string>> = {
+  "claude-code": "anthropic",
+  codex: "openai",
+};
+
+/**
+ * Which provider API keys are present. These gate the per-token routes only —
+ * the three CLI workers spend a subscription, so a missing key here is not a
+ * reason they can't run, and the strip says so rather than implying an outage.
+ */
+function ProviderKeyStrip({ providers }: { providers: CredentialProviderLane[] }) {
+  if (!providers.length) return null;
+  return (
+    <div
+      className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500"
+      title="Provider API keys present in the Nexus API environment. Per-token routes need these; the CLI workers above authenticate with a subscription instead."
+    >
+      <span className="inline-flex items-center gap-1 text-slate-600">
+        <KeyRound size={10} /> Provider keys
+      </span>
+      {providers.map((p) => (
+        <span
+          key={p.provider}
+          title={p.reason || `${p.keyVar} present`}
+          className={p.status === "ok" ? "text-emerald-300/70" : "text-slate-600 line-through"}
+        >
+          {p.provider}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Short suffix for a dropdown label, e.g. "Opus 5 — usage limit". */
+function blockSuffix(block: { code: string } | null): string {
+  if (!block) return "";
+  return ` — ${ROUTE_BLOCK_LABELS[block.code] || "unavailable"}`;
+}
+
+/** Full-width explanation of why the selected route can't spend a credential. */
+function RouteBlockNotice({ block, onForce, busy }: { block: RouteBlock; onForce: () => void; busy: boolean }) {
+  return (
+    <div className="mt-3 flex items-start gap-2 rounded-md border border-rose-500/40 bg-rose-500/10 p-2.5 text-xs text-rose-200">
+      <KeyRound size={14} className="mt-0.5 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">Route excluded — {ROUTE_BLOCK_LABELS[block.code] || "credential unavailable"}</p>
+        <p className="mt-0.5 text-rose-200/80">{block.reason}</p>
+        {block.until && (
+          <p className="mt-0.5 text-rose-200/60">Expected back {formatWhen(block.until)}.</p>
+        )}
+        <p className="mt-0.5 text-rose-200/60">
+          {block.code === "missing_key"
+            ? "Read from the Nexus API environment — add that provider key or pick a subscription route."
+            : "Read from this worker's own dispatch history — pick another worker or model rather than spending a run to rediscover it."}
+        </p>
+      </div>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onForce}
+        title="Dispatch anyway — the credential may have recovered without a run to prove it"
+        className="shrink-0 rounded border border-rose-400/50 px-2 py-1 font-semibold text-rose-200 transition-colors hover:bg-rose-400/10 disabled:opacity-50"
+      >
+        Dispatch anyway
+      </button>
+    </div>
+  );
+}
+
 // ── Dispatch bar ──────────────────────────────────────────────────────────
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -272,7 +384,7 @@ function DispatchBar({
   defaultInstructions?: string | null;
   onDispatched: () => void;
 }) {
-  const { optionsFor } = useExecutorModelOptions();
+  const { optionsFor, credentialFor, providerKeys, refreshCredentials } = useExecutorModelOptions();
 
   // Initial values come straight from the task's saved dispatch defaults. The
   // task is already loaded before this bar mounts, so there's no empty flash.
@@ -296,12 +408,23 @@ function DispatchBar({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ tone: "ok" | "refused" | "error"; text: string } | null>(null);
 
-  const { options, fallback, note } = optionsFor(executor);
+  const { options, fallback, note, credential, fallbackBlocked } = optionsFor(executor);
   // Human-readable model for the collapsed summary — the pinned model's label,
   // or the executor default when nothing is pinned.
+  const selectedOption = model ? options.find((o) => o.id === model) : undefined;
+  const selectedProvider = model
+    ? selectedOption?.provider ?? PINNED_MODEL_PROVIDERS[executor]
+    : undefined;
   const modelLabel = model
-    ? options.find((o) => o.id === model)?.label ?? model
+    ? selectedOption?.label ?? model
     : `default (${fallback || "CLI default"})`;
+  // Key-aware routing verdict for exactly what is selected right now. An
+  // unpinned model rides the executor default, so that default's own cooldown
+  // is what applies.
+  const selectedModelBlock = model
+    ? selectedOption?.blocked ?? null
+    : fallbackBlocked;
+  const routeBlock = activeRouteBlock(credential, selectedModelBlock);
 
   // ── Auto-save of the saved dispatch defaults ────────────────────────────
   // Saving is action-driven — the onChange handlers call scheduleSave(), it is
@@ -386,6 +509,7 @@ function DispatchBar({
           taskId,
           executor,
           model: model || undefined,
+          provider: selectedProvider,
           instructions: instructions.trim() || undefined,
           force,
         });
@@ -401,9 +525,12 @@ function DispatchBar({
         setResult({ tone: "error", text: err instanceof Error ? err.message : "Dispatch failed" });
       } finally {
         setBusy(false);
+        // A dispatch is the one moment that can prove or disprove a credential
+        // — re-read the routing state instead of waiting out the poll.
+        refreshCredentials();
       }
     },
-    [taskId, executor, model, instructions, onDispatched],
+    [taskId, executor, model, selectedProvider, instructions, onDispatched, refreshCredentials],
   );
 
   return (
@@ -425,9 +552,15 @@ function DispatchBar({
                 }}
                 className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100 outline-none focus:border-cyan-500/60"
               >
-                {EXECUTOR_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
+                {EXECUTOR_OPTIONS.map((opt) => {
+                  const lane = credentialFor(opt);
+                  const laneBlocked = lane?.status === "blocked" ? { code: lane.code || "unavailable" } : null;
+                  return (
+                    <option key={opt} value={opt} title={lane?.reason || undefined}>
+                      {opt}{blockSuffix(laneBlocked)}
+                    </option>
+                  );
+                })}
               </select>
             </label>
 
@@ -443,9 +576,13 @@ function DispatchBar({
                 title={`${executor} model for this dispatch (billed to the ${note} subscription)`}
                 className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-purple-200 outline-none focus:border-purple-500/60"
               >
-                <option value="">default ({fallback || "CLI default"})</option>
+                <option value="" title={fallbackBlocked?.reason || undefined}>
+                  default ({fallback || "CLI default"}){blockSuffix(fallbackBlocked)}
+                </option>
                 {options.map((m) => (
-                  <option key={m.id} value={m.id}>{m.label}</option>
+                  <option key={m.id} value={m.id} title={m.blocked?.reason || undefined}>
+                    {m.label}{blockSuffix(m.blocked ?? null)}
+                  </option>
                 ))}
               </select>
             </label>
@@ -480,6 +617,13 @@ function DispatchBar({
             <span className="text-slate-700">·</span>
             <span className="text-slate-500">Model</span>
             <span className="font-semibold text-purple-200">{modelLabel}</span>
+            {/* Progressive disclosure must not hide a dead route: the collapsed
+                summary flags the block even though the pickers are stowed. */}
+            {routeBlock && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300">
+                <KeyRound size={10} /> {ROUTE_BLOCK_LABELS[routeBlock.code] || "unavailable"}
+              </span>
+            )}
             <ChevronRight size={13} className="text-slate-600 transition-transform group-hover:translate-x-0.5" />
             <span className="text-cyan-300/80">Change</span>
           </button>
@@ -498,8 +642,11 @@ function DispatchBar({
           <SaveStatus state={saveState} />
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || Boolean(routeBlock)}
             onClick={() => submit(false)}
+            title={routeBlock
+              ? `${routeBlock.reason} — pick another worker or model, or use "Dispatch anyway"`
+              : undefined}
             className="flex h-9 items-center gap-2 rounded-md bg-gradient-to-r from-cyan-600 to-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-cyan-900/30 transition-colors hover:from-cyan-500 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? <Loader2 size={15} className="animate-spin" /> : <Rocket size={15} />}
@@ -507,6 +654,10 @@ function DispatchBar({
           </button>
         </div>
       </div>
+
+      {routeBlock && <RouteBlockNotice block={routeBlock} busy={busy} onForce={() => submit(true)} />}
+
+      {showAdvanced && <ProviderKeyStrip providers={providerKeys} />}
 
       {showInstructions && (
         <textarea
