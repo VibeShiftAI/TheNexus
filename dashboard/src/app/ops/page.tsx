@@ -9,7 +9,14 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, Clock, AlertTriangle, MessageSquare, Terminal, Landmark } from "lucide-react";
-import { getCouncilSessions, isLiveSession, sessionKind, type CouncilSessionSummary } from "@/lib/council";
+import {
+  effectiveReferenceVoices,
+  getCouncilSessions,
+  isLiveSession,
+  isProblemCouncil,
+  sessionKind,
+  type CouncilSessionSummary,
+} from "@/lib/council";
 import {
   DispatchStation,
   fmtGb,
@@ -400,7 +407,13 @@ export default function OpsConsolePage() {
               {councilSessions.map((cs) => {
                 const kind = sessionKind(cs.metadata);
                 const live = isLiveSession(cs);
-                const refs = cs.voices.filter((v) => !/\(aggregator\)\s*$/.test(v.name) && !/\(round 2\)\s*$/.test(v.name));
+                // Reference seats only (no aggregator, no round-2 twins); for a
+                // problem council "reported" = seats whose latest round landed,
+                // not the raw thesis count (which spans both rounds + aggregator).
+                const refs = effectiveReferenceVoices(cs.voices);
+                const reported = isProblemCouncil(cs.metadata)
+                  ? refs.filter((v) => v.status === "success").length
+                  : cs.stats.successCount;
                 return (
                   <Link
                     key={cs.sessionId}
@@ -412,7 +425,7 @@ export default function OpsConsolePage() {
                       {kind.label}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-xs text-slate-300">{cs.topic}</span>
-                    <span className="shrink-0 text-[10px] text-slate-500">{cs.stats.successCount}/{refs.length || cs.stats.voiceCount} seats</span>
+                    <span className="shrink-0 text-[10px] text-slate-500">{reported}/{refs.length || cs.stats.voiceCount} seats</span>
                     <span className={`w-20 shrink-0 text-right text-[10px] uppercase tracking-wider ${live ? "text-amber-300" : "text-slate-500"}`}>
                       {live ? "in session" : cs.phase}
                     </span>
