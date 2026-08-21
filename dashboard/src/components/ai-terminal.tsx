@@ -6,10 +6,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { getAuthHeader } from "@/lib/auth";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
+import { isTaskHref, remarkTaskLinks, splitOnTaskIds, taskHref } from "@/lib/task-links";
 import { useCortex } from "@/components/cortex-provider";
 import { dispatchMorningKickoff } from "@/components/bridge/bridge-fx";
 import { isThisClientActive } from "@/lib/active-client";
@@ -137,6 +139,36 @@ const MESSAGE_PROSE = [
     "prose-blockquote:border-l-cyan-500/60 prose-blockquote:text-slate-300 prose-blockquote:not-italic",
 ].join(" ");
 
+/** Styling for a task-id mention, in markdown and in plain-text turns alike. */
+const TASK_LINK_CLASS =
+    "font-mono text-cyan-400 underline decoration-dotted underline-offset-2 hover:text-cyan-300";
+
+/** Renders plain (non-markdown) text with every task-id mention linked.
+ *  User turns and one-line system events stay literal — this only swaps the
+ *  ids themselves for links, so nothing else about the text changes. */
+function TaskLinkedText({ text }: { text: string }) {
+    const segments = splitOnTaskIds(text);
+    if (segments.length === 1) return <>{text}</>;
+    return (
+        <>
+            {segments.map((segment, i) =>
+                segment.type === "text" ? (
+                    <span key={i}>{segment.value}</span>
+                ) : (
+                    <Link
+                        key={i}
+                        href={taskHref(segment.id)}
+                        title={`Open task ${segment.id}`}
+                        className={TASK_LINK_CLASS}
+                    >
+                        {segment.id}
+                    </Link>
+                ),
+            )}
+        </>
+    );
+}
+
 /** Renders message content as normalized markdown at the shared prose scale.
  *  Used for every assistant reply and every multi-line system card so the whole
  *  transcript reads as one consistent, well-formatted surface. */
@@ -144,12 +176,21 @@ function MarkdownMessage({ content }: { content: string }) {
     return (
         <div className={MESSAGE_PROSE}>
             <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[remarkGfm, remarkTaskLinks]}
                 components={{
-                    // Links open in a new tab — never navigate the bridge away.
-                    a: ({ node: _node, ...props }) => (
-                        <a {...props} target="_blank" rel="noopener noreferrer" />
-                    ),
+                    // Task ids (rewritten to /task/<id> by remarkTaskLinks) open the
+                    // task screen in-app; everything else opens in a new tab so an
+                    // external link never navigates the bridge away.
+                    a: ({ node: _node, href, children, ...props }) =>
+                        isTaskHref(href) ? (
+                            <Link href={href} {...props} className={TASK_LINK_CLASS}>
+                                {children}
+                            </Link>
+                        ) : (
+                            <a href={href} {...props} target="_blank" rel="noopener noreferrer">
+                                {children}
+                            </a>
+                        ),
                     // Keep wide tables (e.g. the Day Schedule) from blowing out
                     // the narrow viewscreen — scroll them horizontally instead.
                     table: ({ node: _node, ...props }) => (
@@ -1442,7 +1483,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                         <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50" />
                                     </div>
                                 )}
-                                <span className="text-xs text-slate-400">{msg.content}</span>
+                                <span className="text-xs text-slate-400"><TaskLinkedText text={msg.content} /></span>
                             </div>
                         )
                     ) : (
@@ -1469,7 +1510,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                     turns stay literal (no markdown surprises on typed text). */}
                                 {msg.content && (msg.role === 'assistant'
                                     ? <MarkdownMessage content={msg.content} />
-                                    : <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>)}
+                                    : <p className="text-sm leading-relaxed whitespace-pre-wrap"><TaskLinkedText text={msg.content} /></p>)}
                                 {/* Render PLAN_DRAFT and PLAN_REVISED artifacts */}
                                 {(msg.artifact?.type?.trim().toUpperCase() === 'PLAN_DRAFT' || msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED') && (
                                     <div className={`mt-3 p-4 rounded-lg ${msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
