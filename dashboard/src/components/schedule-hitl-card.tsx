@@ -502,8 +502,7 @@ export function ScheduleHitlCard({
                         >
                           {EXECUTOR_OPTIONS.map((opt) => (
                             <option key={opt} value={opt}>
-                              {opt}
-                              {slot.routing?.executor === opt ? " ★ recommended" : ""}
+                              {slot.routing?.executor === opt ? `★ ${opt}` : opt}
                             </option>
                           ))}
                         </select>
@@ -517,8 +516,10 @@ export function ScheduleHitlCard({
                             slot.routing && slot.routing.executor === currentExec
                               ? slot.routing.model
                               : null;
+                          // Star FIRST: the select's closed state truncates long
+                          // labels, so the marker must survive the cut.
                           const recommendedLabel = (id: string, label: string) =>
-                            id === recommended ? `${label} ★ recommended` : label;
+                            id === recommended ? `★ ${label}` : label;
                           const rationale = slot.routing?.rationale?.length
                             ? `\nRecommended ${slot.routing.executor}/${slot.routing.model} @ ${slot.routing.thinkingLevel}: ${slot.routing.rationale.join(" | ")}`
                             : "";
