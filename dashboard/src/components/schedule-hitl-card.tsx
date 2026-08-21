@@ -52,6 +52,16 @@ type ResolveFn = (
 // (see inbox-font-scale.tsx), so every card here scales together with the
 // rest of the inbox.
 
+interface SlotRoutingMeta {
+  executor: ExecutorName;
+  model: string;
+  thinkingLevel: string;
+  complexity: number;
+  scorer: string;
+  rationale: string[];
+  recommendedAt: string;
+}
+
 interface ScheduleSlotMeta {
   slotNumber: number;
   nexusTaskId: string;
@@ -60,8 +70,18 @@ interface ScheduleSlotMeta {
   estimatedMinutes: number;
   startTime: string;
   executor: ExecutorName;
-  /** Praxis-proposed model override for the slot (api model id), if any. */
+  /**
+   * Model pinned for the slot (api model id), if any. Since 2026-08-21 this
+   * is the morning router's recommended model for unrouted slots (see
+   * `routing`), so the picker opens on the recommendation rather than on the
+   * operator default — a plain Approve runs exactly what the card shows.
+   */
   modelOverride?: string | null;
+  /** Who chose the executor / model — "router" = the morning recommendation. */
+  executorSource?: "planner" | "default" | "router" | "human" | null;
+  modelSource?: "router" | "planner" | "human" | null;
+  /** The morning router's recommendation (kept even when overridden). */
+  routing?: SlotRoutingMeta | null;
   /** One-sentence definition of done, proposed by Praxis. */
   objective?: string | null;
   /** Praxis-assigned 1–5 difficulty score. */
@@ -290,6 +310,9 @@ export function ScheduleHitlCard({
   const executorChanges = schedule.slots.filter(
     (s) => executors[s.nexusTaskId] !== s.executor,
   ).length;
+  const modelChanges = schedule.slots.filter(
+    (s) => (models[s.nexusTaskId] ?? "") !== (s.modelOverride ?? ""),
+  ).length;
   const activeCount = schedule.slots.length - skipCount - revokedCount;
   const noteCount = schedule.slots.filter(
     (s) => skips[s.nexusTaskId] === undefined && (notes[s.nexusTaskId] ?? "").trim() !== "",
@@ -370,6 +393,7 @@ export function ScheduleHitlCard({
           {activeCount} dispatching{skipCount > 0 ? `, ${skipCount} skipped` : ""}
           {revokedCount > 0 ? `, ${revokedCount} revoked` : ""}
           {executorChanges > 0 ? `, ${executorChanges} worker changes` : ""}
+          {modelChanges > 0 ? `, ${modelChanges} model changes` : ""}
           {noteCount > 0 ? `, ${noteCount} note${noteCount === 1 ? "" : "s"}` : ""}
         </span>
       </div>
@@ -479,12 +503,25 @@ export function ScheduleHitlCard({
                           {EXECUTOR_OPTIONS.map((opt) => (
                             <option key={opt} value={opt}>
                               {opt}
+                              {slot.routing?.executor === opt ? " ★ recommended" : ""}
                             </option>
                           ))}
                         </select>
                         {(() => {
                           const { options, fallback, note } = modelOptionsFor(currentExec);
                           const chosen = models[slot.nexusTaskId] ?? "";
+                          // The morning router's pick — pre-selected via
+                          // slot.modelOverride, and labelled here so it stays
+                          // identifiable after Robert changes the selection.
+                          const recommended =
+                            slot.routing && slot.routing.executor === currentExec
+                              ? slot.routing.model
+                              : null;
+                          const recommendedLabel = (id: string, label: string) =>
+                            id === recommended ? `${label} ★ recommended` : label;
+                          const rationale = slot.routing?.rationale?.length
+                            ? `\nRecommended ${slot.routing.executor}/${slot.routing.model} @ ${slot.routing.thinkingLevel}: ${slot.routing.rationale.join(" | ")}`
+                            : "";
                           return (
                             <select
                               disabled={isInactive || resolving}
@@ -495,22 +532,32 @@ export function ScheduleHitlCard({
                                   [slot.nexusTaskId]: e.target.value,
                                 }))
                               }
-                              title={`${currentExec} model for this slot (billed to the ${note} subscription)`}
+                              title={`${currentExec} model for this slot (billed to the ${note} subscription)${rationale}`}
                               className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-purple-200 outline-none focus:border-purple-500 disabled:cursor-not-allowed"
                             >
                               <option value="">
-                                Default — recommended: {fallback || "CLI default"}
+                                {recommended
+                                  ? "Router decides at dispatch"
+                                  : `CLI default${fallback ? ` (${fallback})` : ""}`}
                               </option>
                               {options.map((m) => (
                                 <option key={m.id} value={m.id}>
-                                  {m.label}
+                                  {recommendedLabel(m.id, m.label)}
                                 </option>
                               ))}
-                              {/* Keep a Praxis-proposed value selectable even if
-                                  it isn't in this executor's option list */}
+                              {/* Keep a Praxis-proposed / router-recommended
+                                  value selectable even if it isn't in this
+                                  executor's option list */}
                               {chosen && !options.some((m) => m.id === chosen) && (
-                                <option value={chosen}>{chosen}</option>
+                                <option value={chosen}>{recommendedLabel(chosen, chosen)}</option>
                               )}
+                              {recommended &&
+                                recommended !== chosen &&
+                                !options.some((m) => m.id === recommended) && (
+                                  <option value={recommended}>
+                                    {recommendedLabel(recommended, recommended)}
+                                  </option>
+                                )}
                             </select>
                           );
                         })()}
