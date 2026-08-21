@@ -72,6 +72,10 @@ function classifySource(source) {
     s.startsWith('coding-agents-') || s.startsWith('workflow:')
     || ['praxis', 'praxis-agent', 'praxis-chat', 'praxis-mind-mcp', 'interactive-session',
       'agent-created', 'auto-extracted', 'goal-regression', 'upgrade-slate', 'backfill',
+      // Praxis's own QA-lessons miner (2026-08-21): root-cause review tasks whose
+      // brief is code-authored (reviewer excerpts are quoted evidence). knowledge-
+      // routing stays external by design (council-LLM derived).
+      'qa-lessons',
       UNVERIFIED_OPERATOR_SOURCE].includes(s)
   ) return 'agent';
   return 'external';
