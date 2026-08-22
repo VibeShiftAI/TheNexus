@@ -128,12 +128,12 @@ function createContactsRouter({ db }) {
         }
     });
 
-    // POST /api/contacts/:id/projects — link to a project { project_id, role?, notes? }
+    // POST /api/contacts/:id/projects — link to a project { project_id, role?, notes?, decision_maker? }
     router.post('/:id/projects', async (req, res) => {
         try {
-            const { project_id, role, notes } = req.body || {};
+            const { project_id, role, notes, decision_maker } = req.body || {};
             if (!project_id) return res.status(400).json({ error: 'project_id required' });
-            const ok = await db.linkContactToProject(project_id, req.params.id, { role, notes });
+            const ok = await db.linkContactToProject(project_id, req.params.id, { role, notes, decision_maker: decision_maker === true });
             if (!ok) return res.status(500).json({ error: 'Failed to link contact' });
             res.json({ success: true });
         } catch (error) {
@@ -141,11 +141,17 @@ function createContactsRouter({ db }) {
         }
     });
 
-    // PATCH /api/contacts/:id/projects/:projectId — update role/notes on the link
+    // PATCH /api/contacts/:id/projects/:projectId — update role / notes /
+    // decision_maker (Primary Decision Maker flag) on the link. Partial: only
+    // the keys present in the body change.
     router.patch('/:id/projects/:projectId', async (req, res) => {
         try {
-            const { role, notes } = req.body || {};
-            const ok = await db.updateProjectContactLink(req.params.projectId, req.params.id, { role, notes });
+            const body = req.body || {};
+            const updates = {};
+            if (Object.prototype.hasOwnProperty.call(body, 'role')) updates.role = body.role;
+            if (Object.prototype.hasOwnProperty.call(body, 'notes')) updates.notes = body.notes;
+            if (Object.prototype.hasOwnProperty.call(body, 'decision_maker')) updates.decision_maker = body.decision_maker === true;
+            const ok = await db.updateProjectContactLink(req.params.projectId, req.params.id, updates);
             if (!ok) return res.status(404).json({ error: 'Link not found' });
             res.json({ success: true });
         } catch (error) {

@@ -196,6 +196,11 @@ app.get('/api/pins', projectsRouter.getPinsHandler);
 const tasksRouter = createTasksRouter({ db, PROJECT_ROOT, getProjectById, callAI, validateInitiativeRequest, pushService });
 app.use('/api/tasks', tasksRouter);      // top-level: POST /, PATCH /:taskId, POST /batch, PATCH /reorder
 app.use('/api/projects', tasksRouter);   // project-scoped: GET /:id/tasks, POST /:id/tasks/:taskId/..., etc.
+// Stakeholder governance (2026-08-22): PDMs, the request approval queue, and
+// the single decision endpoint every caller (dashboard, Praxis, mobile) uses.
+const stakeholderRouters = require('./routes/stakeholders')({ db });
+app.use('/api/projects', stakeholderRouters.projects); // GET /:id/stakeholders, GET /:id/requests
+app.use('/api/tasks', stakeholderRouters.tasks);       // POST /:taskId/stakeholder-decision
 app.use('/api/projects', createProjectWorkflowsRouter({ db, getProjectById, PROJECT_ROOT }));
 
 // ─── Board State (Praxis executive planning) ───────────────────────────

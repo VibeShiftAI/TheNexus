@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ProjectCommsSettingsSchema, ReportTemplateSchema } from "./stakeholders.js";
 
 /**
  * Project lifecycle status.
@@ -198,6 +199,11 @@ export const ProjectSchema = z.object({
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
   completedAt: z.string().datetime().optional(),
+
+  /** Stakeholder communication controls (status reports, recipients, cadence). */
+  commsSettings: ProjectCommsSettingsSchema.optional(),
+  /** The project's branded status-report template (created on first use). */
+  reportTemplate: ReportTemplateSchema.optional(),
 
   metadata: z.record(z.string(), z.unknown()).optional(),
 });

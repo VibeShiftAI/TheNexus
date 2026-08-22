@@ -54,6 +54,7 @@ try {
 
     runModelControlMigrations(db);
     runContactsMigrations(db);
+    runStakeholderMigrations(db);
 
     // Canonical-status sweep (2026-07-05 unification): idempotent, runs every
     // boot. Writers normalize at createTask/updateTask, but a process still on
@@ -270,7 +271,10 @@ const JSON_COLS = new Set([
     'suspended_context', 'resume_action',
     'tags',
     'needs', 'end_state_history', 'end_state_criteria',
-    'preferences', 'expertise', 'interests', 'claims', 'interaction_log'
+    'preferences', 'expertise', 'interests', 'claims', 'interaction_log',
+    // Stakeholder governance (2026-08-22): per-project comms controls, the
+    // branded report template, and calendar attendee lists.
+    'comms_settings', 'report_template', 'attendees'
 ]);
 
 function deserRow(row) {
@@ -280,7 +284,7 @@ function deserRow(row) {
             row[key] = deser(row[key]);
         }
         // SQLite booleans back to JS booleans
-        if (key === 'is_template' || key === 'is_active' || key === 'is_enabled' || key === 'resolved' || key === 'pinned' || key === 'local_only_active' || key === 'fallback_used') {
+        if (key === 'is_template' || key === 'is_active' || key === 'is_enabled' || key === 'resolved' || key === 'pinned' || key === 'local_only_active' || key === 'fallback_used' || key === 'decision_maker') {
             row[key] = row[key] === 1 || row[key] === true;
         }
     }
@@ -588,6 +592,45 @@ function runContactsMigrations(sqlite) {
         }
     } catch (err) {
         console.warn('[Database] contacts seat backfill skipped:', err.message);
+    }
+}
+
+/**
+ * Stakeholder governance (2026-08-22, Robert's directive): Primary Decision
+ * Makers on project links, per-project communication settings + branded
+ * status-report template, and review-meeting series on the calendar. Every
+ * statement is additive and idempotent; shapes live in @praxis/contract
+ * entities/stakeholders.ts.
+ */
+function runStakeholderMigrations(sqlite) {
+    const addColumn = (table, col, type) => {
+        try {
+            sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+            console.log(`[Database] Migration: added ${table}.${col}`);
+        } catch (err) {
+            if (!/duplicate column/i.test(err.message)) {
+                console.warn(`[Database] ${table}.${col} migration skipped:`, err.message);
+            }
+        }
+    };
+    if (tableExists(sqlite, 'project_contacts')) {
+        // 1 = this member is a Primary Decision Maker on the project.
+        addColumn('project_contacts', 'decision_maker', 'INTEGER DEFAULT 0');
+    }
+    if (tableExists(sqlite, 'projects')) {
+        addColumn('projects', 'comms_settings', "TEXT DEFAULT '{}'");
+        addColumn('projects', 'report_template', "TEXT DEFAULT '{}'");
+    }
+    if (tableExists(sqlite, 'calendar_events')) {
+        addColumn('calendar_events', 'series_id', 'TEXT');
+        addColumn('calendar_events', 'recurrence', 'TEXT');
+        addColumn('calendar_events', 'attendees', "TEXT DEFAULT '[]'");
+        try {
+            sqlite.exec('CREATE INDEX IF NOT EXISTS idx_calendar_events_series ON calendar_events(series_id)');
+            sqlite.exec('CREATE INDEX IF NOT EXISTS idx_calendar_events_project ON calendar_events(project_id)');
+        } catch (err) {
+            console.warn('[Database] calendar series index skipped:', err.message);
+        }
     }
 }
 
@@ -984,6 +1027,31 @@ async function getTasks(projectId) {
         return rows.map(parseTaskFields);
     } catch (err) {
         console.error('[Database] Error fetching tasks:', err.message);
+        return [];
+    }
+}
+
+/**
+ * Tasks on a project that carry a stakeholder approval gate
+ * (metadata.stakeholder_gate — @praxis/contract StakeholderGateSchema).
+ * The LIKE is a cheap pre-filter; the gate itself is read from the parsed
+ * metadata so a task mentioning the key elsewhere is not miscounted.
+ */
+async function listStakeholderRequests(projectId, { status } = {}) {
+    if (!db) return [];
+    try {
+        const rows = db.prepare(
+            `SELECT * FROM tasks WHERE project_id = ? AND metadata LIKE '%"stakeholder_gate"%'
+             ORDER BY created_at DESC`
+        ).all(projectId).map(parseTaskFields);
+        return rows.filter((t) => {
+            const gate = t?.metadata?.stakeholder_gate;
+            if (!gate || typeof gate !== 'object') return false;
+            if (!status || status === 'all') return true;
+            return gate.status === status;
+        });
+    } catch (err) {
+        console.error('[Database] Error listing stakeholder requests:', err.message);
         return [];
     }
 }
@@ -2242,7 +2310,7 @@ async function getContact(id) {
     if (!row) return null;
     const contact = deserRow(row);
     contact.projects = deserRows(db.prepare(
-        `SELECT pc.project_id, pc.role, pc.notes AS link_notes, pc.added_at, p.name AS project_name
+        `SELECT pc.project_id, pc.role, pc.notes AS link_notes, pc.decision_maker, pc.added_at, p.name AS project_name
          FROM project_contacts pc JOIN projects p ON p.id = pc.project_id
          WHERE pc.contact_id = ? ORDER BY pc.added_at DESC`
     ).all(id));
@@ -2375,14 +2443,18 @@ async function deleteContact(id) {
     }
 }
 
-/** Contacts attached to a project, joined with their per-project role. */
+/**
+ * Contacts attached to a project, joined with their per-project role and the
+ * Primary Decision Maker flag. PDMs sort first, then by link age.
+ */
 async function listProjectContacts(projectId) {
     if (!db) return [];
     try {
         return deserRows(db.prepare(
-            `SELECT c.*, pc.role, pc.notes AS link_notes, pc.added_at
+            `SELECT c.*, pc.role, pc.notes AS link_notes, pc.decision_maker, pc.added_at
              FROM project_contacts pc JOIN contacts c ON c.id = pc.contact_id
-             WHERE pc.project_id = ? ORDER BY pc.added_at ASC`
+             WHERE pc.project_id = ?
+             ORDER BY coalesce(pc.decision_maker, 0) DESC, pc.added_at ASC`
         ).all(projectId));
     } catch (err) {
         console.error('[Database] Error listing project contacts:', err.message);
@@ -2390,19 +2462,28 @@ async function listProjectContacts(projectId) {
     }
 }
 
-async function linkContactToProject(projectId, contactId, { role, notes } = {}) {
+/** The project's Primary Decision Makers (active members only). */
+async function listProjectDecisionMakers(projectId) {
+    const linked = await listProjectContacts(projectId);
+    return linked.filter((c) => c.decision_maker === true && (c.status ?? 'active') !== 'dormant');
+}
+
+async function linkContactToProject(projectId, contactId, { role, notes, decision_maker } = {}) {
     if (!db) return false;
     try {
         // Re-linking is an upsert that never downgrades operator data: an
         // existing role/notes wins over the incoming default (role edits go
-        // through updateProjectContactLink instead).
+        // through updateProjectContactLink instead), and a PDM flag is only
+        // ever raised here, never cleared by a re-observe.
         db.prepare(
-            `INSERT INTO project_contacts (project_id, contact_id, role, notes, added_at)
-             VALUES (?, ?, ?, ?, ?)
+            `INSERT INTO project_contacts (project_id, contact_id, role, notes, decision_maker, added_at)
+             VALUES (?, ?, ?, ?, ?, ?)
              ON CONFLICT(project_id, contact_id) DO UPDATE SET
                role = coalesce(project_contacts.role, excluded.role),
-               notes = coalesce(project_contacts.notes, excluded.notes)`
-        ).run(projectId, contactId, role || null, notes || null, new Date().toISOString());
+               notes = coalesce(project_contacts.notes, excluded.notes),
+               decision_maker = CASE WHEN excluded.decision_maker = 1 THEN 1
+                                     ELSE coalesce(project_contacts.decision_maker, 0) END`
+        ).run(projectId, contactId, role || null, notes || null, decision_maker ? 1 : 0, new Date().toISOString());
         return true;
     } catch (err) {
         console.error('[Database] Error linking contact:', err.message);
@@ -2410,12 +2491,27 @@ async function linkContactToProject(projectId, contactId, { role, notes } = {}) 
     }
 }
 
-async function updateProjectContactLink(projectId, contactId, { role, notes }) {
+/**
+ * Update a project link. Partial: only the keys present in `updates` change
+ * (so flipping the PDM flag from the project page never wipes role/notes).
+ */
+async function updateProjectContactLink(projectId, contactId, updates = {}) {
     if (!db) return false;
+    const sets = [];
+    const values = [];
+    if (Object.prototype.hasOwnProperty.call(updates, 'role')) { sets.push('role = ?'); values.push(updates.role ?? null); }
+    if (Object.prototype.hasOwnProperty.call(updates, 'notes')) { sets.push('notes = ?'); values.push(updates.notes ?? null); }
+    if (Object.prototype.hasOwnProperty.call(updates, 'decision_maker') && updates.decision_maker !== undefined) {
+        sets.push('decision_maker = ?');
+        values.push(updates.decision_maker ? 1 : 0);
+    }
+    if (sets.length === 0) {
+        return !!db.prepare('SELECT 1 FROM project_contacts WHERE project_id = ? AND contact_id = ?').get(projectId, contactId);
+    }
     try {
         const result = db.prepare(
-            `UPDATE project_contacts SET role = ?, notes = ? WHERE project_id = ? AND contact_id = ?`
-        ).run(role ?? null, notes ?? null, projectId, contactId);
+            `UPDATE project_contacts SET ${sets.join(', ')} WHERE project_id = ? AND contact_id = ?`
+        ).run(...values, projectId, contactId);
         return result.changes > 0;
     } catch (err) {
         console.error('[Database] Error updating contact link:', err.message);
@@ -2701,19 +2797,110 @@ async function clearChatMessages(conversationId) {
 // CALENDAR SYSTEM
 // ============================================================================
 
-async function getCalendarEvents(startTime, endTime) {
+async function getCalendarEvents(startTime, endTime, filters = {}) {
     if (!db) return [];
     try {
-        let sql = 'SELECT * FROM calendar_events ORDER BY start_time ASC';
-        let params = [];
+        const where = [];
+        const params = [];
         if (startTime && endTime) {
-            sql = 'SELECT * FROM calendar_events WHERE start_time >= ? AND start_time <= ? ORDER BY start_time ASC';
-            params = [startTime, endTime];
+            where.push('start_time >= ? AND start_time <= ?');
+            params.push(startTime, endTime);
         }
+        if (filters.projectId) { where.push('project_id = ?'); params.push(filters.projectId); }
+        if (filters.eventType) { where.push('event_type = ?'); params.push(filters.eventType); }
+        if (filters.seriesId) { where.push('series_id = ?'); params.push(filters.seriesId); }
+        const sql = `SELECT * FROM calendar_events${where.length ? ` WHERE ${where.join(' AND ')}` : ''} ORDER BY start_time ASC`;
         return deserRows(db.prepare(sql).all(...params));
     } catch (err) {
         console.error('[Database] Error fetching calendar events:', err.message);
         return [];
+    }
+}
+
+/**
+ * The i-th occurrence of a series (UTC-stable). Monthly series anchor on the
+ * START's day-of-month (Jan 31 → Feb 28 → Mar 31), never drifting to the
+ * shortest month seen so far.
+ */
+function seriesOccurrence(start, recurrence, index) {
+    const at = new Date(start.getTime());
+    if (recurrence === 'weekly') at.setUTCDate(at.getUTCDate() + 7 * index);
+    else if (recurrence === 'biweekly') at.setUTCDate(at.getUTCDate() + 14 * index);
+    else if (recurrence === 'monthly') {
+        const anchorDay = start.getUTCDate();
+        at.setUTCDate(1);
+        at.setUTCMonth(at.getUTCMonth() + index);
+        const lastDay = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth() + 1, 0)).getUTCDate();
+        at.setUTCDate(Math.min(anchorDay, lastDay));
+    }
+    return at;
+}
+
+/**
+ * Materialize a stakeholder review-meeting series (or a one-off meeting when
+ * `recurrence` is null) as ordinary calendar_events rows sharing a series_id.
+ * Praxis's calendar poller never dispatches `stakeholder_meeting` events; it
+ * reads them to time status reports around the meeting.
+ */
+async function createCalendarSeries({
+    title, description, start_time, end_time, duration_minutes, recurrence,
+    count, project_id, attendees, event_type, created_by,
+} = {}) {
+    if (!db) return null;
+    const start = new Date(start_time);
+    if (!title || Number.isNaN(start.getTime())) return null;
+    const durationMs = end_time && !Number.isNaN(new Date(end_time).getTime())
+        ? Math.max(5 * 60_000, new Date(end_time).getTime() - start.getTime())
+        : Math.max(5, Number(duration_minutes) || 60) * 60_000;
+    const rec = ['weekly', 'biweekly', 'monthly'].includes(recurrence) ? recurrence : null;
+    const occurrences = rec ? Math.min(52, Math.max(1, Number(count) || 12)) : 1;
+    const seriesId = uuid();
+    const events = [];
+    try {
+        const insertAll = db.transaction(() => {
+            for (let i = 0; i < occurrences; i++) {
+                const cursor = seriesOccurrence(start, rec, i);
+                const row = {
+                    id: uuid(),
+                    title,
+                    description: description || null,
+                    start_time: cursor.toISOString(),
+                    end_time: new Date(cursor.getTime() + durationMs).toISOString(),
+                    status: 'scheduled',
+                    event_type: event_type || 'stakeholder_meeting',
+                    project_id: project_id || null,
+                    task_id: null,
+                    model_assignment: null,
+                    result: created_by ? JSON.stringify({ created_by }) : null,
+                    series_id: seriesId,
+                    recurrence: rec,
+                    attendees: JSON.stringify(Array.isArray(attendees) ? attendees.filter((a) => typeof a === 'string') : []),
+                    created_at: now(),
+                    updated_at: now(),
+                };
+                const { sql, values } = buildInsert('calendar_events', row);
+                db.prepare(sql).run(...values);
+                events.push(deserRow(db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(row.id)));
+            }
+        });
+        insertAll();
+        return { series_id: seriesId, events };
+    } catch (err) {
+        console.error('[Database] Error creating calendar series:', err.message);
+        return null;
+    }
+}
+
+/** Delete the occurrences of a series starting at/after `fromIso` (default: now). */
+async function deleteCalendarSeries(seriesId, fromIso) {
+    if (!db) return 0;
+    try {
+        const from = fromIso && !Number.isNaN(new Date(fromIso).getTime()) ? new Date(fromIso).toISOString() : now();
+        const result = db.prepare('DELETE FROM calendar_events WHERE series_id = ? AND start_time >= ?').run(seriesId, from);
+        return result.changes;
+    } catch (err) {
+        console.error('[Database] Error deleting calendar series:', err.message);
+        return 0;
     }
 }
 
@@ -2767,6 +2954,8 @@ module.exports = {
     createCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,
+    createCalendarSeries,
+    deleteCalendarSeries,
     // Projects
     getProjects,
     getProject,
@@ -2867,10 +3056,13 @@ module.exports = {
     appendContactLog,
     deleteContact,
     listProjectContacts,
+    listProjectDecisionMakers,
     linkContactToProject,
     updateProjectContactLink,
     unlinkContactFromProject,
     observeContact,
+    // Stakeholder governance
+    listStakeholderRequests,
     // Chat Conversations & Messages (persistent Praxis chat history)
     getChatConversations,
     getActiveConversation,

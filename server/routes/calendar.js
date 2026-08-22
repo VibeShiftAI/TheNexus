@@ -5,9 +5,45 @@ module.exports = function createCalendarRouter({ db }) {
 
     router.get('/', async (req, res) => {
         try {
-            const { start, end } = req.query;
-            const events = await db.getCalendarEvents(start, end);
+            const { start, end, project_id, event_type, series_id } = req.query;
+            const events = await db.getCalendarEvents(start, end, {
+                projectId: project_id ? String(project_id) : undefined,
+                eventType: event_type ? String(event_type) : undefined,
+                seriesId: series_id ? String(series_id) : undefined,
+            });
             res.json(events);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Stakeholder review meetings — one-off or a materialized recurring
+    // series (weekly/biweekly/monthly, ≤52 occurrences) sharing a series_id.
+    // event_type defaults to 'stakeholder_meeting' (never dispatched by Praxis).
+    router.post('/series', async (req, res) => {
+        try {
+            const body = req.body || {};
+            if (!body.title || !body.start_time) {
+                return res.status(400).json({ error: 'title and start_time are required' });
+            }
+            if (body.recurrence && !['weekly', 'biweekly', 'monthly'].includes(body.recurrence)) {
+                return res.status(400).json({ error: 'recurrence must be weekly, biweekly, or monthly' });
+            }
+            const created = await db.createCalendarSeries({
+                ...body,
+                event_type: body.event_type || 'stakeholder_meeting',
+            });
+            if (!created) return res.status(400).json({ error: 'Failed to create meeting series (check start_time)' });
+            res.status(201).json(created);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    router.delete('/series/:seriesId', async (req, res) => {
+        try {
+            const deleted = await db.deleteCalendarSeries(req.params.seriesId, req.query.from ? String(req.query.from) : undefined);
+            res.json({ deleted });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }

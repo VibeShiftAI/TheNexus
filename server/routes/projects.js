@@ -485,6 +485,9 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             'name', 'description', 'type', 'vibe', 'stack', 'urls', 'path',
             'status', 'priority', 'end_state', 'tags',
             'upgrade_posture', 'needs', 'end_state_criteria',
+            // Stakeholder governance: communication controls + branded status
+            // report template (JSON objects, whole-object replace like needs).
+            'comms_settings', 'report_template',
             // end_state revision metadata — consumed by db.updateProject's
             // history appender, never stored as columns.
             'end_state_source', 'end_state_reason',
@@ -511,6 +514,17 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             const result = normalizeCriteria(filteredUpdates.end_state_criteria);
             if (result.error) return res.status(400).json({ error: result.error });
             filteredUpdates.end_state_criteria = result.criteria;
+        }
+        for (const key of ['comms_settings', 'report_template']) {
+            if (filteredUpdates[key] === undefined) continue;
+            const value = filteredUpdates[key];
+            if (value === null) { filteredUpdates[key] = {}; continue; }
+            if (typeof value !== 'object' || Array.isArray(value)) {
+                return res.status(400).json({ error: `${key} must be a JSON object` });
+            }
+            if (JSON.stringify(value).length > 64 * 1024) {
+                return res.status(400).json({ error: `${key} is too large (64 KB max)` });
+            }
         }
         try {
             const updated = await db.updateProject(id, filteredUpdates);

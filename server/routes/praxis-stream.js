@@ -495,6 +495,20 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     router.get('/report/:file', (req, res) =>
         proxyReportFile(res, `/reports/${encodeURIComponent(req.params.file)}`));
     router.get('/reports', (req, res) => proxyJson(req, res, '/reports'));
+    // Stakeholder status reports (Praxis src/stakeholders) — list / generate
+    // / detail / send, relayed for the project page's Communication panel.
+    // The query string rides along (proxyJson takes a fully-formed path).
+    router.get('/stakeholder-reports', (req, res) => {
+        const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+        return proxyJson(req, res, `/api/stakeholder-reports${qs}`);
+    });
+    router.post('/stakeholder-reports/generate', (req, res) => proxyJson(req, res, '/api/stakeholder-reports/generate'));
+    router.get('/stakeholder-reports/:id', (req, res) =>
+        proxyJson(req, res, `/api/stakeholder-reports/${encodeURIComponent(req.params.id)}`));
+    router.post('/stakeholder-reports/:id/send', (req, res) =>
+        proxyJson(req, res, `/api/stakeholder-reports/${encodeURIComponent(req.params.id)}/send`));
+    router.post('/stakeholder-reports/:id/cancel', (req, res) =>
+        proxyJson(req, res, `/api/stakeholder-reports/${encodeURIComponent(req.params.id)}/cancel`));
     // Manual trigger (mobile/remote surfaces without chat).
     router.post('/status-report', (req, res) => proxyJson(req, res, '/status-report'));
 

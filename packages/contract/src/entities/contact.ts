@@ -120,6 +120,12 @@ export const ProjectContactLinkSchema = z.object({
   /** Their role on THIS project, e.g. "Client", "Tester", "Domain expert". */
   role: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  /**
+   * Primary Decision Maker (PDM) flag — consulted on updates, status, and
+   * decisions; approves feedback requests before work starts; default
+   * recipient of the project's status reports (entities/stakeholders.ts).
+   */
+  decision_maker: z.boolean().optional().nullable(),
   added_at: z.string(),
 });
 export type ProjectContactLink = z.infer<typeof ProjectContactLinkSchema>;
@@ -128,6 +134,8 @@ export type ProjectContactLink = z.infer<typeof ProjectContactLinkSchema>;
 export const ProjectContactSchema = ContactSchema.extend({
   role: z.string().optional().nullable(),
   link_notes: z.string().optional().nullable(),
+  /** PDM flag from the link row (see ProjectContactLinkSchema). */
+  decision_maker: z.boolean().optional().nullable(),
   added_at: z.string().optional(),
 });
 export type ProjectContact = z.infer<typeof ProjectContactSchema>;
