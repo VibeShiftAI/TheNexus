@@ -12,20 +12,28 @@ import { useState, useRef } from "react";
 import { Radio, Maximize2, Minimize2, Plus, History } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
+import { useActiveWork } from "@/hooks/use-active-work";
+import { useCoreState } from "@/hooks/use-core-state";
 import { useTokenUsage } from "@/hooks/use-token-usage";
 import { fmtTokens } from "@/lib/token-usage";
-import { CoreCanvas, CORE_STYLES } from "@/components/bridge/core-canvas";
+import { CoreCanvas, EXECUTOR_COLORS } from "@/components/bridge/core-canvas";
 import { HudPanel, HudErrorBoundary } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
 import { AITerminal, type AITerminalHandle } from "@/components/ai-terminal";
 import { NowStrip } from "@/components/bridge/now-strip";
-import type { PresenceActivity } from "@praxis/contract";
 
-const CREW_DOT: Record<string, string> = {
-  active: "bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] motion-safe:animate-pulse",
-  done: "bg-emerald-400",
-  failed: "bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.8)]",
-  idle: "bg-slate-700",
+const COUNCIL_PHASE_LABEL: Record<string, string> = {
+  setup: "convening",
+  deliberation: "deliberating",
+  synthesis: "synthesizing",
+  refinement: "refining",
+  complete: "adjourned",
+};
+
+const COUNCIL_ACCENT: Record<string, string> = {
+  morning: "border-amber-400/30 bg-amber-400/5 text-amber-200",
+  status: "border-cyan-400/30 bg-cyan-400/5 text-cyan-200",
+  summoned: "border-violet-400/30 bg-violet-400/5 text-violet-200",
 };
 
 function fmtTime(iso?: string) {
@@ -36,12 +44,12 @@ function fmtTime(iso?: string) {
 export function PraxisCore() {
   const { presence, recentEvents, connected } = usePraxisStream();
   const { crew } = useCrewActivity();
+  const core = useCoreState();
+  const work = useActiveWork();
   const { usage } = useTokenUsage();
   const [viewscreenMax, setViewscreenMax] = useState(false);
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
   const terminalRef = useRef<AITerminalHandle>(null);
-  const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";
-  const style = CORE_STYLES[activity];
   const busyCrew = crew.filter((m) => m.state === "active").length;
 
   const lastTrace = recentEvents.find((e) => e.type === "thinking.trace");
@@ -111,12 +119,39 @@ export function PraxisCore() {
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Core column — presence, vitals, thought stream */}
         <div className="flex w-full shrink-0 flex-col items-center lg:w-[240px]">
-          <CoreCanvas activity={activity} size={150} />
+          <CoreCanvas state={core} size={150} />
 
-          <div className={`text-lg font-bold tracking-tight ${style.textClass}`}>{style.label}</div>
-          <div className="mt-0.5 line-clamp-2 text-center text-[11px] text-slate-400" title={presence?.summary}>
-            {presence?.summary ?? (connected ? "Connecting…" : "Signal lost — attempting to re-establish link")}
+          <div className={`text-lg font-bold tracking-tight ${core.textClass}`}>{core.label}</div>
+          {/* Sub-line prefers the dispatch-correlated "what is actually
+              running" signal (same source as the NOW strip) over
+              presence.summary, which can describe a finished flow until the
+              producer hands presence off. */}
+          <div
+            className="mt-0.5 line-clamp-2 text-center text-[11px] text-slate-400"
+            title={work.taskLabel ?? presence?.summary}
+          >
+            {work.taskLabel ??
+              presence?.summary ??
+              (connected ? "Connecting…" : "Signal lost — attempting to re-establish link")}
           </div>
+
+          {/* Live deliberation readout — the seats around the orb, named. */}
+          {core.council && (
+            <div
+              className={`mt-1.5 w-full rounded-md border px-2 py-1 text-[10px] ${COUNCIL_ACCENT[core.council.kind]}`}
+              title={core.council.topic}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold uppercase tracking-wide">
+                  {COUNCIL_PHASE_LABEL[core.council.phase] ?? core.council.phase}
+                </span>
+                <span className="tabular-nums opacity-80">
+                  {core.council.reported}/{core.council.expected} seats
+                </span>
+              </div>
+              <div className="mt-0.5 truncate opacity-70">{core.council.topic}</div>
+            </div>
+          )}
 
           {stats.length > 0 && (
             <div className="mt-2.5 grid w-full grid-cols-2 gap-1.5">
@@ -153,7 +188,24 @@ export function PraxisCore() {
                   }`}
                   title={`${m.label}${m.detail ? `: ${m.detail}` : ""} — click for telemetry`}
                 >
-                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${CREW_DOT[m.state]}`} />
+                  {/* Identity dot: same hue as this executor's comet around the
+                      orb, so the chip and the sprite read as one being. */}
+                  <span
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                      m.state === "active" ? "motion-safe:animate-pulse" : ""
+                    }`}
+                    style={{
+                      backgroundColor:
+                        m.state === "failed" ? "#f87171" : m.state === "done" ? "#34d399" : EXECUTOR_COLORS[m.id] ?? "#64748b",
+                      opacity: m.state === "idle" ? 0.35 : 1,
+                      boxShadow:
+                        m.state === "active"
+                          ? `0 0 6px ${EXECUTOR_COLORS[m.id] ?? "#64748b"}`
+                          : m.state === "failed"
+                          ? "0 0 6px rgba(248,113,113,0.8)"
+                          : undefined,
+                    }}
+                  />
                   <div className="min-w-0">
                     <div className={`truncate text-[10px] font-medium ${m.state === "idle" ? "text-slate-500" : "text-slate-200"}`}>
                       {m.label}
@@ -167,7 +219,7 @@ export function PraxisCore() {
             </div>
           </div>
 
-          {traceText && (activity === "thinking" || activity === "executing") && (
+          {traceText && (core.activity === "thinking" || core.activity === "executing") && (
             <div className="mt-2.5 max-h-16 w-full overflow-hidden rounded-md border border-slate-800/60 bg-slate-950/60 px-2.5 py-1.5">
               <div className="text-[10px] uppercase tracking-wide text-slate-600">thought stream</div>
               <p className="truncate font-mono text-[11px] leading-relaxed text-slate-500" title={traceText}>

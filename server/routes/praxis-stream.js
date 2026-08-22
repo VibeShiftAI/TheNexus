@@ -17,13 +17,70 @@ const http = require('http');
 const { URL } = require('url');
 const { randomUUID } = require('crypto');
 
-const { PRAXIS_URL } = require('../shared/constants');
+const fs = require('fs');
+const { PRAXIS_URL, PRAXIS_BRIDGE_TOKEN_FILE } = require('../shared/constants');
+
+/**
+ * Praxis's full-scope bridge token, read fresh per call (it is minted on
+ * Praxis's first boot and can rotate; the file is tiny). Null when absent —
+ * the call then runs read-only and Praxis says why.
+ */
+function readBridgeToken() {
+    try {
+        const token = fs.readFileSync(PRAXIS_BRIDGE_TOKEN_FILE, 'utf8').trim();
+        return token || null;
+    } catch {
+        return null;
+    }
+}
+const providerCredentials = require('../services/provider-credentials');
+
+/**
+ * Key-aware routing verdict for a dispatch, fail-open. The gate exists to save
+ * a wasted run; it must never become the reason a dispatch can't happen, so any
+ * fault in the credential reader allows the dispatch through.
+ */
+function checkDispatchRoute(route) {
+    try {
+        return providerCredentials.checkDispatchRoute(route);
+    } catch (err) {
+        console.warn('[Praxis Relay] key-aware routing check failed (allowing dispatch):', err.message);
+        return { allowed: true, code: null, reason: null, until: null };
+    }
+}
+
 const UPSTREAM_PATH = '/stream';
 const SNAPSHOT_PATH = '/presence';
 const RING_BUFFER_SIZE = 500;
 const HEARTBEAT_MS = 15000;
 
-function createPraxisStreamRouter({ io, pushService } = {}) {
+/**
+ * The model a dispatch will actually run on when the caller pins none — the
+ * operator-set per-executor default. Needed by the key-aware gate: Praxis's
+ * usage-limit cooldowns are frequently PER MODEL, and most dispatches ride the
+ * default, so without this the gate would only ever catch lane-wide blocks.
+ */
+const EXECUTOR_DEFAULT_MODEL_SETTING = {
+    'claude-code': 'claude_default_model',
+    codex: 'codex_default_model',
+    antigravity: 'antigravity_default_model',
+};
+
+async function effectiveModel({ db, executor, model }) {
+    if (model) return model;
+    const key = EXECUTOR_DEFAULT_MODEL_SETTING[executor];
+    if (!key || !db || typeof db.getModelControlSetting !== 'function') return null;
+    try {
+        const setting = await db.getModelControlSetting(key);
+        const value = setting && typeof setting.model === 'string' ? setting.model.trim() : '';
+        return value || null;
+    } catch (err) {
+        console.warn('[Praxis Relay] default-model lookup failed:', err.message);
+        return null;
+    }
+}
+
+function createPraxisStreamRouter({ io, pushService, db } = {}) {
     const router = express.Router();
 
     // Per-process state: one upstream connection, N downstream subscribers.
@@ -103,6 +160,13 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
             if (req.method !== 'GET' && req.method !== 'HEAD') {
                 options.headers['Content-Type'] = 'application/json';
                 options.body = JSON.stringify(req.body ?? {});
+            }
+            // Operator-originated tool calls (Council Chamber summon, problem
+            // intake) run at full bridge scope — the dashboard is Robert's own
+            // console, already behind the Nexus server's auth.
+            if (upstreamPath.startsWith('/agent-tool')) {
+                const token = readBridgeToken();
+                if (token) options.headers['X-Praxis-Bridge-Token'] = token;
             }
             const response = await fetch(`${PRAXIS_URL}${upstreamPath}`, options);
             const text = await response.text();
@@ -330,12 +394,31 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
         req.body = { name: 'spawn_council', args };
         return proxyJson(req, res, '/agent-tool');
     });
+    // Hand Praxis a PROBLEM from the Chamber: the problem council (three
+    // top-tier seats, two rounds, ranked ideas → charter → project set up)
+    // via Praxis's problem_intake tool. dry_run deliberates without creating.
+    router.post('/council/problem', (req, res) => {
+        const body = req.body || {};
+        const problem = typeof body.problem === 'string' ? body.problem.trim() : '';
+        if (!problem) {
+            return res.status(400).json({ ok: false, error: 'problem is required' });
+        }
+        const args = { problem, council: body.council !== false };
+        for (const field of ['name', 'type', 'context', 'preset']) {
+            if (typeof body[field] === 'string' && body[field].trim()) args[field] = body[field].trim();
+        }
+        if (body.dry_run === true) args.dry_run = true;
+        req.body = { name: 'problem_intake', args };
+        return proxyJson(req, res, '/agent-tool');
+    });
     // Arbiter preference (bridge Ops control) — which CLI seat writes the verdict.
     router.get('/council/arbiter', (req, res) => proxyJson(req, res, '/api/council/arbiter'));
     router.post('/council/arbiter', (req, res) => proxyJson(req, res, '/api/council/arbiter'));
 
     // ── Bridge / cockpit passthroughs (command-deck dashboard) ─────
     router.get('/stats', (req, res) => proxyJson(req, res, '/api/praxis/stats'));
+    // Voice line health (ElevenLabs quota etc.) — the bridge's muted-voice badge.
+    router.get('/voice-status', (req, res) => proxyJson(req, res, '/api/voice/status'));
     // External-comms feed (feedback gateway in/out) — forwards ?since/?limit.
     router.get('/comms', (req, res) => {
         const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
@@ -354,7 +437,37 @@ function createPraxisStreamRouter({ io, pushService } = {}) {
     router.post('/cron/:key/pause', (req, res) => proxyJson(req, res, `/api/cron/${encodeURIComponent(req.params.key)}/pause`));
     router.post('/cron/:key/resume', (req, res) => proxyJson(req, res, `/api/cron/${encodeURIComponent(req.params.key)}/resume`));
     // Manual task dispatch with executor/model selection (mobile/cockpit).
-    router.post('/dispatch/task', (req, res) => proxyJson(req, res, '/api/dispatch/task'));
+    // Key-aware routing gate: a route whose credential is provably spent is
+    // refused HERE, before the CLI slot is taken and the 402 is discovered.
+    // Same 409 refusal shape as a Praxis refusal, so every caller's existing
+    // "Force dispatch" override works unchanged.
+    router.post('/dispatch/task', async (req, res) => {
+        const body = req.body || {};
+        if (!body.force) {
+            const executor = typeof body.executor === 'string' ? body.executor.trim() : null;
+            const route = checkDispatchRoute({
+                executor,
+                // A caller naming a provider is asking for a per-token API route,
+                // which cannot run without that provider's key present.
+                provider: typeof body.provider === 'string' && body.provider.trim() ? body.provider.trim() : null,
+                model: await effectiveModel({
+                    db,
+                    executor,
+                    model: typeof body.model === 'string' && body.model.trim() ? body.model.trim() : null,
+                }),
+            });
+            if (!route.allowed) {
+                return res.status(409).json({
+                    ok: false,
+                    refused: true,
+                    reason: route.code,
+                    reply: `Dispatch blocked by key-aware routing: ${route.reason}. `
+                        + 'Pick another worker or model, or force to run anyway.',
+                });
+            }
+        }
+        return proxyJson(req, res, '/api/dispatch/task');
+    });
     // Follow-up prompt to a finished dispatch's saved CLI session (task screen).
     router.post('/dispatch/follow-up', (req, res) => proxyJson(req, res, '/api/dispatch/follow-up'));
     // Inbox "Clear list" — drops failed entries from the Antigravity queue.

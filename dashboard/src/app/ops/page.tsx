@@ -6,8 +6,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, Clock, AlertTriangle, MessageSquare, Terminal } from "lucide-react";
+import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, Clock, AlertTriangle, MessageSquare, Terminal, Landmark } from "lucide-react";
+import {
+  effectiveReferenceVoices,
+  getCouncilSessions,
+  isLiveSession,
+  isProblemCouncil,
+  sessionKind,
+  type CouncilSessionSummary,
+} from "@/lib/council";
 import {
   DispatchStation,
   fmtGb,
@@ -99,6 +108,8 @@ export default function OpsConsolePage() {
   const [state, setState] = useState<DispatchStateResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Council sessions (deliberations) — clickable into the Chamber transcript.
+  const [councilSessions, setCouncilSessions] = useState<CouncilSessionSummary[]>([]);
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -109,6 +120,13 @@ export default function OpsConsolePage() {
       setErr(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Dispatch telemetry unavailable");
+    }
+    // Best-effort: a dark council store never blanks the dispatch console.
+    try {
+      const council = await getCouncilSessions(8);
+      setCouncilSessions(council.sessions);
+    } catch {
+      /* keep the last list */
     }
     setRefreshing(false);
   }, []);
@@ -295,9 +313,11 @@ export default function OpsConsolePage() {
             ) : (
               <div className="max-h-60 space-y-1 overflow-y-auto pr-1">
                 {openSessions.map((s) => (
-                  <div
+                  <Link
                     key={s.sessionId}
-                    className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2"
+                    href={`/task/${s.taskId}`}
+                    title={`Open the task's dispatch console — every attempt's prompt, output and CLI session (session ${s.sessionId})`}
+                    className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2 transition-colors hover:border-cyan-500/40 hover:bg-slate-900/70"
                   >
                     <span className={`w-24 shrink-0 rounded border px-1.5 py-0.5 text-center text-[10px] uppercase ${executorChip(s.executor)}`}>
                       {s.executor}
@@ -324,7 +344,7 @@ export default function OpsConsolePage() {
                     >
                       open {ageSince(s.openedAt)}
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -367,6 +387,54 @@ export default function OpsConsolePage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Council sessions — deliberations (morning councils, summoned panels,
+            problem councils); each row opens the full transcript in the Chamber. */}
+        <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-bold tracking-tight text-white">
+            <Landmark size={14} className="text-amber-400" />
+            COUNCIL SESSIONS{" "}
+            <span className="text-xs font-normal text-slate-500">(click a session to read its transcript)</span>
+            <Link href="/council" className="ml-auto text-[11px] font-normal text-amber-300 hover:text-amber-200">
+              open the Chamber →
+            </Link>
+          </h3>
+          {councilSessions.length === 0 ? (
+            <div className="py-4 text-center text-xs text-slate-500">No council sessions recorded yet.</div>
+          ) : (
+            <div className="max-h-60 space-y-1 overflow-y-auto pr-1">
+              {councilSessions.map((cs) => {
+                const kind = sessionKind(cs.metadata);
+                const live = isLiveSession(cs);
+                // Reference seats only (no aggregator, no round-2 twins); for a
+                // problem council "reported" = seats whose latest round landed,
+                // not the raw thesis count (which spans both rounds + aggregator).
+                const refs = effectiveReferenceVoices(cs.voices);
+                const reported = isProblemCouncil(cs.metadata)
+                  ? refs.filter((v) => v.status === "success").length
+                  : cs.stats.successCount;
+                return (
+                  <Link
+                    key={cs.sessionId}
+                    href={`/council?session=${encodeURIComponent(cs.sessionId)}`}
+                    title={`Read the transcript — session ${cs.sessionId}`}
+                    className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2 transition-colors hover:border-amber-500/40 hover:bg-slate-900/70"
+                  >
+                    <span className="w-28 shrink-0 truncate rounded border border-slate-700 px-1.5 py-0.5 text-center text-[10px] uppercase text-slate-300" title={kind.label}>
+                      {kind.label}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs text-slate-300">{cs.topic}</span>
+                    <span className="shrink-0 text-[10px] text-slate-500">{reported}/{refs.length || cs.stats.voiceCount} seats</span>
+                    <span className={`w-20 shrink-0 text-right text-[10px] uppercase tracking-wider ${live ? "text-amber-300" : "text-slate-500"}`}>
+                      {live ? "in session" : cs.phase}
+                    </span>
+                    <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(new Date(cs.createdAt).toISOString())}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Scheduled jobs — every cron in the system, viewable at once, each

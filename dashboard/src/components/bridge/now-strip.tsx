@@ -14,7 +14,7 @@
 
 import { Cpu, Coins } from "lucide-react";
 import { useActiveWork } from "@/hooks/use-active-work";
-import { CORE_STYLES } from "@/components/bridge/core-canvas";
+import { coreStyle } from "@/components/bridge/core-canvas";
 
 // Compact token count: 12345 → "12.3k", 2_000_000 → "2M".
 function fmtTokens(n: number) {
@@ -25,7 +25,7 @@ function fmtTokens(n: number) {
 
 export function NowStrip({ bare = false }: { bare?: boolean } = {}) {
   const { running, activity, taskLabel, model, tokens, tokensEstimated, connected } = useActiveWork();
-  const style = CORE_STYLES[activity];
+  const style = coreStyle(activity);
   const stateLabel = running ? style.label : "Idle";
   const name = running
     ? taskLabel ?? style.label

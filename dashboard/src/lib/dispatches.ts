@@ -66,6 +66,8 @@ export interface DispatchTaskInput {
     taskId: string;
     executor?: string;
     model?: string;
+    /** Provider for an explicitly selected provider-backed model route. */
+    provider?: string;
     instructions?: string;
     force?: boolean;
 }
@@ -86,6 +88,7 @@ export async function dispatchTask(input: DispatchTaskInput): Promise<DispatchTa
             taskId: input.taskId,
             ...(input.executor ? { executor: input.executor } : {}),
             ...(input.model ? { model: input.model } : {}),
+            ...(input.provider ? { provider: input.provider } : {}),
             ...(input.instructions ? { instructions: input.instructions } : {}),
             ...(input.force ? { force: true } : {}),
         }),

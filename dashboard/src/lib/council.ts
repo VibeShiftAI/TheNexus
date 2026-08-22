@@ -98,6 +98,164 @@ export async function getCouncilSession(sessionId: string): Promise<CouncilSessi
     return res.json();
 }
 
+// ── Problem council (two rounds on the same CLI sessions) ────────────────
+
+/** Round-2 twin voices are named "<seat> (round 2)" (Praxis problem-council.ts). */
+export function isRound2Voice(voice: { name: string }): boolean {
+    return /\(round 2\)\s*$/.test(voice.name);
+}
+
+export function roundOfVoice(voice: { name: string }): 1 | 2 {
+    return isRound2Voice(voice) ? 2 : 1;
+}
+
+/** "cli:codex/gpt-5.6-sol (round 2)" / "… (aggregator)" → "cli:codex/gpt-5.6-sol". */
+export function baseSeatName(name: string): string {
+    return name.replace(/\s*\(round 2\)\s*$/, "").replace(/\s*\(aggregator\)\s*$/, "");
+}
+
+/** Reference seats as the chamber shows them: no aggregator, no round-2 twins. */
+export function referenceVoices(voices: CouncilVoice[]): CouncilVoice[] {
+    return voices.filter((v) => !isAggregatorVoice(v) && !isRound2Voice(v));
+}
+
+/**
+ * Reference seats with the LATEST round's status folded in — while round 2
+ * runs, a seat's round-2 twin is what is deliberating, and the chamber should
+ * light the seat from that. Non-problem sessions have no twins (identity).
+ */
+export function effectiveReferenceVoices(voices: CouncilVoice[]): CouncilVoice[] {
+    return referenceVoices(voices).map((v) => {
+        const twin = voices.find((t) => isRound2Voice(t) && baseSeatName(t.name) === v.name);
+        if (!twin || twin.status === "pending") return v;
+        return { ...v, status: twin.status, elapsedMs: twin.elapsedMs ?? v.elapsedMs };
+    });
+}
+
+export function isProblemCouncil(metadata: Record<string, unknown> | undefined): boolean {
+    return metadata?.kind === "problem-council";
+}
+
+export interface ProblemIdea {
+    id: string;
+    seat: string;
+    seatLabel: string;
+    title: string;
+    what: string;
+    why: string;
+}
+
+export interface ProblemRankingRow {
+    id: string;
+    title: string;
+    seat: string;
+    seatLabel: string;
+    score: number;
+    positions: Record<string, number | null>;
+    topThree: number;
+    dropped: number;
+    rankedBy: number;
+    reasons: Record<string, string>;
+}
+
+export interface ProblemBallot {
+    seat: string;
+    ranking: string[];
+    drops: Array<{ id: string; reason: string }>;
+    merges: Array<[string, string]>;
+    setupNote?: string;
+}
+
+export interface ProblemSetupView {
+    seat: string;
+    restatement?: string;
+    classification?: string;
+    classReason?: string;
+    solved?: string;
+    needs: Array<{ kind: string; description: string }>;
+}
+
+export interface ProblemCouncilConsensus {
+    ideas: ProblemIdea[];
+    ballots: ProblemBallot[];
+    ranking: ProblemRankingRow[];
+    agreement: number;
+    maxScore: number;
+    merges: Array<[string, string]>;
+    setups: ProblemSetupView[];
+    sourceIdeas: string[][];
+}
+
+/** The problem council's aggregate record (consensusTracking), or null when absent/malformed. */
+export function problemConsensus(detail: { consensusTracking: Record<string, unknown> }): ProblemCouncilConsensus | null {
+    const c = detail.consensusTracking;
+    if (!c || !Array.isArray(c.ranking) || !Array.isArray(c.ideas)) return null;
+    return {
+        ideas: c.ideas as ProblemIdea[],
+        ballots: Array.isArray(c.ballots) ? (c.ballots as ProblemBallot[]) : [],
+        ranking: c.ranking as ProblemRankingRow[],
+        agreement: typeof c.agreement === "number" ? c.agreement : 0,
+        maxScore: typeof c.maxScore === "number" ? c.maxScore : 0,
+        merges: Array.isArray(c.merges) ? (c.merges as Array<[string, string]>) : [],
+        setups: Array.isArray(c.setups) ? (c.setups as ProblemSetupView[]) : [],
+        sourceIdeas: Array.isArray(c.sourceIdeas) ? (c.sourceIdeas as string[][]) : [],
+    };
+}
+
+export interface ProblemCharter {
+    name: string;
+    description: string;
+    end_state: string;
+    needs: Array<{ kind: string; description: string }>;
+    tasks: Array<{ title: string; what?: string; why?: string; headsup?: string }>;
+    end_state_criteria?: Array<{ kind: string; description: string }>;
+    classification?: string;
+    protocol?: string;
+}
+
+export function problemCharter(metadata: Record<string, unknown>): ProblemCharter | null {
+    const c = metadata?.charter;
+    if (!c || typeof c !== "object") return null;
+    const obj = c as Record<string, unknown>;
+    if (typeof obj.name !== "string" || typeof obj.end_state !== "string") return null;
+    return {
+        name: obj.name,
+        description: typeof obj.description === "string" ? obj.description : "",
+        end_state: obj.end_state,
+        needs: Array.isArray(obj.needs) ? (obj.needs as ProblemCharter["needs"]) : [],
+        tasks: Array.isArray(obj.tasks) ? (obj.tasks as ProblemCharter["tasks"]) : [],
+        end_state_criteria: Array.isArray(obj.end_state_criteria) ? (obj.end_state_criteria as ProblemCharter["end_state_criteria"]) : [],
+        classification: typeof obj.classification === "string" ? obj.classification : undefined,
+        protocol: typeof obj.protocol === "string" ? obj.protocol : undefined,
+    };
+}
+
+export interface ProblemCouncilRequest {
+    problem: string;
+    name?: string;
+    type?: string;
+    context?: string;
+    preset?: string;
+    dry_run?: boolean;
+}
+
+/** Hand Praxis a problem from the Chamber → problem council → project (dry_run: charter only). */
+export async function summonProblemCouncil(input: ProblemCouncilRequest): Promise<CouncilSummonResponse> {
+    const res = await fetch("/api/praxis/council/problem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : `Problem intake failed (${res.status})`);
+    }
+    if (data?.ok === false) {
+        throw new Error(typeof data.error === "string" ? data.error : "Problem intake failed");
+    }
+    return data;
+}
+
 export type CouncilDeliverable = "analysis" | "project_plan" | "task_series";
 export type CouncilDomain = "engineering" | "research" | "strategy";
 
@@ -191,9 +349,9 @@ const SEAT_NAMES: Record<string, string> = {
     "cli:claude-code": "Claude Code",
 };
 
-/** "cli:claude-code" → "Claude Code"; "cli:claude-code (aggregator)" → "Claude Code". */
+/** "cli:claude-code" → "Claude Code"; "cli:claude-code (aggregator)" / "… (round 2)" → "Claude Code". */
 export function seatDisplayName(voiceNameOrModel: string): string {
-    const base = voiceNameOrModel.replace(/\s*\(aggregator\)\s*$/, "");
+    const base = baseSeatName(voiceNameOrModel);
     if (SEAT_NAMES[base]) return SEAT_NAMES[base];
     const cli = base.match(/^cli:([\w-]+)(?:\/(.+))?$/);
     if (cli) {
@@ -211,12 +369,14 @@ export function isAggregatorVoice(voice: CouncilVoice): boolean {
 
 export interface SessionKindInfo {
     label: string;
-    accent: "violet" | "amber" | "cyan";
+    accent: "violet" | "amber" | "cyan" | "emerald";
 }
 
 export function sessionKind(metadata: Record<string, unknown>): SessionKindInfo {
     const kind = metadata?.kind ?? (metadata?.deliverable ? "summoned" : undefined);
     if (kind === "knowledge-council") return { label: "Morning Council", accent: "amber" };
+    if (kind === "morning-council") return { label: "Day-Plan Vote", accent: "amber" };
     if (kind === "status-report") return { label: "Status Report", accent: "cyan" };
+    if (kind === "problem-council") return { label: "Problem Council", accent: "emerald" };
     return { label: "Summoned Council", accent: "violet" };
 }

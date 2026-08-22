@@ -22,8 +22,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, Square, Loader2, Volume2, X, Settings2, Ear, EarOff } from "lucide-react";
+import { Mic, Square, Loader2, Volume2, VolumeX, X, Settings2, Ear, EarOff } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useVoiceStatus } from "@/hooks/use-voice-status";
 import { setLocalOnlyMode } from "@/lib/model-control";
 import { getAmbientIdleMinutes, setAmbientIdleMinutes } from "@/components/bridge/ambient-mode";
 import type { StreamEvent } from "@praxis/contract";
@@ -141,6 +142,7 @@ function isRoutineMorningHitl(e: StreamEvent): boolean {
 export function VoiceCommandBar() {
   const router = useRouter();
   const { presence, recentEvents } = usePraxisStream();
+  const voiceStatus = useVoiceStatus();
   const presenceRef = useRef(presence);
   presenceRef.current = presence;
 
@@ -559,6 +561,16 @@ export function VoiceCommandBar() {
 
   return (
     <div className="relative flex items-center gap-1">
+      {voiceStatus && !voiceStatus.available && (
+        <span
+          className="flex items-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] font-semibold text-amber-300"
+          title={`Praxis voice is text-only — ${voiceStatus.reason}`}
+          aria-label="Praxis voice offline"
+        >
+          <VolumeX size={13} />
+          <span className="hidden md:inline">Voice muted</span>
+        </span>
+      )}
       <button
         onClick={onMicClick}
         disabled={busy}

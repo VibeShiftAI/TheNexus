@@ -405,6 +405,7 @@ function runModelControlMigrations(sqlite) {
               ('ingestion.extract',       'alias:local_default',  'Nightly Pass-1 entity/factoid extraction'),
               ('ingestion.refine',        'alias:local_default',  'Pass-2 refinement'),
               ('ingestion.journal',       'alias:local_default',  'Overnight journal reflection'),
+              ('ingestion.graphiti',      'cli:antigravity/gemini-3.7-flash@low', 'TheCortex Graphiti memory extraction via the Praxis /v1/llm gateway — Gemini 3.7 Flash on the antigravity CLI (Robert 2026-08-20: no per-token API fallback)'),
               ('ingestion.summary',       'cli:claude-code/claude-sonnet-5@medium', 'Nightly AI-intelligence briefing narrative'),
               ('report.upload',           'alias:local_default',  'Report-upload chunk summaries'),
               ('maintenance.synthesis',   'alias:local_default',  'Nightly synthesis'),

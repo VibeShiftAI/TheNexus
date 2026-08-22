@@ -36,6 +36,108 @@ export const FeedbackConsoleErrorSchema = z.object({
 });
 export type FeedbackConsoleError = z.infer<typeof FeedbackConsoleErrorSchema>;
 
+// ── Screenshot markup ───────────────────────────────────────────────────────
+
+/**
+ * Markup the submitter drew on the screenshot, as *data* rather than pixels.
+ *
+ * The widget composites the strokes into the JPEG for a human to look at, and
+ * in the same pass measures them: each mark becomes a normalized region, and —
+ * when the shot came from the live DOM — the elements under that region are
+ * hit-tested and named. That is what lets triage, the council, and an executor
+ * act on "he circled the score button" without anyone opening the image.
+ */
+
+/** Rectangle normalized 0–1 against the screenshot (origin top-left). */
+export const FeedbackMarkupBoxSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  w: z.number(),
+  h: z.number(),
+});
+export type FeedbackMarkupBox = z.infer<typeof FeedbackMarkupBoxSchema>;
+
+/** Point normalized 0–1 against the screenshot. */
+export const FeedbackMarkupPointSchema = z.object({ x: z.number(), y: z.number() });
+export type FeedbackMarkupPoint = z.infer<typeof FeedbackMarkupPointSchema>;
+
+/** What the stroke geometry looks like — classified client-side, freehand. */
+export const FeedbackMarkupShapeSchema = z.enum([
+  /** Closed loop: circled/boxed something. */
+  "enclosure",
+  /** Straight-ish stroke with a hooked head: points AT something. */
+  "arrow",
+  /** Horizontal stroke sitting under content. */
+  "underline",
+  /** Horizontal stroke across content. */
+  "strike",
+  /** Straight stroke, no clear direction semantics. */
+  "line",
+  /** Back-and-forth: crossed out / emphasized. */
+  "scribble",
+  /** Tap-sized mark: pointed at a spot. */
+  "dot",
+]);
+export type FeedbackMarkupShape = z.infer<typeof FeedbackMarkupShapeSchema>;
+
+/** One page element found under a mark. */
+export const FeedbackMarkupTargetSchema = z.object({
+  /** Readable ancestor path, e.g. "main > section.pricing > button#buy". */
+  selector: z.string(),
+  tag: z.string(),
+  /** Accessible name or trimmed visible text. */
+  text: z.string().optional(),
+  role: z.string().optional(),
+  href: z.string().optional(),
+  /** data-testid / data-test / data-qa, when the host app ships one. */
+  testId: z.string().optional(),
+  /** The element's own box, normalized against the screenshot. */
+  box: FeedbackMarkupBoxSchema.optional(),
+  /** Share of the marked region this element covers, 0–1. */
+  coverage: z.number().optional(),
+});
+export type FeedbackMarkupTarget = z.infer<typeof FeedbackMarkupTargetSchema>;
+
+/** One mark (or a cluster of strokes drawn over the same spot). */
+export const FeedbackMarkupRegionSchema = z.object({
+  /** Stable within a submission: "m1", "m2", … (referenced in prose). */
+  id: z.string(),
+  shapes: z.array(FeedbackMarkupShapeSchema).default([]),
+  /** Pen colors used, as CSS hex. */
+  colors: z.array(z.string()).default([]),
+  box: FeedbackMarkupBoxSchema,
+  /** Coarse position in words, e.g. "top-right", "center". */
+  where: z.string().optional(),
+  /** Share of the screenshot the region covers, 0–1. */
+  area: z.number().optional(),
+  strokeCount: z.number().default(1),
+  /** Arrows/lines: where the stroke started and (for arrows) what it points at. */
+  from: FeedbackMarkupPointSchema.optional(),
+  to: FeedbackMarkupPointSchema.optional(),
+  targets: z.array(FeedbackMarkupTargetSchema).default([]),
+  /** Text found under the mark (deduped across targets). */
+  text: z.string().optional(),
+});
+export type FeedbackMarkupRegion = z.infer<typeof FeedbackMarkupRegionSchema>;
+
+export const FeedbackMarkupSchema = z.object({
+  /** Bumped when the geometry contract changes. */
+  version: z.number().default(1),
+  /** Screenshot pixel size the boxes are normalized against. */
+  image: z.object({ w: z.number(), h: z.number() }).optional(),
+  /**
+   * "dom" — regions were hit-tested against the live page, so `targets` name
+   * real elements. "image" — geometry only (canvas/WebGL capture hook, or the
+   * page moved under the widget): boxes are still meaningful, targets are not.
+   */
+  source: z.enum(["dom", "image"]).default("image"),
+  strokeCount: z.number().default(0),
+  regions: z.array(FeedbackMarkupRegionSchema).default([]),
+  /** Detail was dropped to fit the relay's meta budget. */
+  truncated: z.boolean().optional(),
+});
+export type FeedbackMarkup = z.infer<typeof FeedbackMarkupSchema>;
+
 /**
  * Metadata JSON the widget submits alongside the screenshot/audio blobs.
  * Everything except `project` is best-effort — the pipeline must tolerate
@@ -65,6 +167,8 @@ export const FeedbackSubmissionMetaSchema = z
     appVersion: z.string().optional(),
     /** True when the screenshot includes user markup strokes. */
     annotated: z.boolean().optional(),
+    /** The markup itself, measured — see FeedbackMarkupSchema. */
+    markup: FeedbackMarkupSchema.optional(),
     /** Stamped by the relay on receipt (ISO). */
     receivedAt: z.string().optional(),
     /** CF-IPCountry, stamped by the relay. */
@@ -136,6 +240,12 @@ export const FeedbackRecordSchema = z.object({
   transcript: z.string().optional(),
   note: z.string().optional(),
   meta: FeedbackSubmissionMetaSchema.optional(),
+  /**
+   * Vision read of the annotated screenshot — what the marks point at, in
+   * prose. Written once on ingest so every downstream consumer (triage,
+   * council, executor payload) sees the same reading of the image.
+   */
+  markupDescription: z.string().optional(),
   triage: FeedbackTriageSchema.optional(),
   nexusTaskIds: z.array(z.string()).default([]),
   /** Local paths of persisted artifacts (screenshot, audio). */
