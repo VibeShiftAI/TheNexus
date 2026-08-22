@@ -160,7 +160,7 @@ app.use('/api/dashboard', createDashboardRouter({ db }));
 app.use('/api',        createSystemRouter({ db, systemMonitor, tokenTracker, isCriticEnabled, setCriticEnabled }));
 app.use('/api/ai/usage',  createUsageRouter({ db, tokenTracker }));
 app.use('/api/calendar',  createCalendarRouter({ db }));
-app.use('/api/praxis',    createPraxisStreamRouter({ io, pushService }));
+app.use('/api/praxis',    createPraxisStreamRouter({ io, pushService, db }));
 // Tunnel sends all /api/* here, but token-usage is computed by the Next.js
 // dashboard — forward so remote viewers get the same numbers as localhost.
 app.use('/api/token-usage', require('./routes/token-usage')());

@@ -73,6 +73,100 @@ export interface ModelControlOptionsResponse {
     agentBackend?: AgentBackendConfig;
     /** Backend fronting Praxis interactive chat (permanent CLI session or legacy loop). */
     chatBackend?: ChatBackend;
+    /** Key-aware routing: which dispatch routes have a live credential right now. */
+    credentials?: CredentialRoutingState | null;
+    /**
+     * Real Codex roster (from the codex CLI's own models_cache.json via the
+     * Nexus API) — slugs + display names + reasoning efforts. The family-level
+     * registry only carries one "GPT" row, which is why Codex dropdowns used to
+     * offer a single entry (2026-08-21).
+     */
+    codexModels?: CodexModelOption[];
+}
+
+/** One Codex model the dropdowns can offer and the codex CLI will accept as --model. */
+export interface CodexModelOption {
+    id: string;
+    label: string;
+    defaultEffort?: string | null;
+    efforts?: string[];
+    /** Provider flagged this slug for retirement; upgradeTo is its replacement. */
+    deprecated?: boolean;
+    upgradeTo?: string;
+}
+
+// ─── Key-aware routing ────────────────────────────────────────────────────
+// Which routes can actually spend a credential, so a dead key is excluded in
+// the picker rather than discovered as a 402 halfway through a run. Server
+// truth: server/services/provider-credentials.js.
+
+/**
+ * Why a route is excluded. `null` on a healthy route. `missing_key` is the
+ * certainty (no provider key present at all); the rest are inferred from
+ * observed dispatch failures.
+ */
+export type CredentialFailureCode = "missing_key" | "usage_limit" | "no_credit" | "unauthorized";
+
+export interface CredentialModelBlock {
+    model: string;
+    code: CredentialFailureCode | string;
+    reason: string;
+    /** ISO time the provider says the window reopens, when it advertised one. */
+    until: string | null;
+    observedAt: string | null;
+}
+
+export interface CredentialExecutorLane {
+    name: string;
+    provider: string;
+    /** What this executor actually spends ("Claude subscription"). */
+    credential: string;
+    /** How it authenticates — `api_key` lanes are excluded when the key is absent. */
+    kind: "subscription" | "api_key";
+    /** True only for `api_key` lanes; the subscription CLIs need no key. */
+    requiresApiKey: boolean;
+    /** The env var satisfying an api_key lane, when one is present. */
+    keyVar: string | null;
+    /** `unknown` = the evidence store is unreadable; treat as allowed, not verified. */
+    status: "ok" | "blocked" | "unknown";
+    code: CredentialFailureCode | string | null;
+    reason: string | null;
+    until: string | null;
+    observedAt: string | null;
+    /** Per-model cooldowns — the lane is live, these specific models are not. */
+    blockedModels: CredentialModelBlock[];
+}
+
+export interface CredentialProviderLane {
+    provider: string;
+    credential: string;
+    kind: "api_key";
+    envVars: string[];
+    keyVar: string | null;
+    status: "ok" | "missing_key";
+    reason: string | null;
+}
+
+export interface CredentialRoutingState {
+    checkedAt: string;
+    executors: CredentialExecutorLane[];
+    providers: CredentialProviderLane[];
+    evidence: {
+        source: string;
+        available: boolean;
+        windowHours: number;
+        rowsScanned: number;
+    };
+}
+
+export async function getCredentialRouting(): Promise<CredentialRoutingState> {
+    const response = await fetch(`/api/model-control/credentials`, {
+        credentials: "include",
+        headers: { ...getAuthHeader() as any },
+        cache: "no-store",
+    });
+    if (!response.ok) throw new Error(`Failed to load credential routing: ${response.status}`);
+    return response.json();
 }
 
 export type AgentBackend = "codex" | "claude-code" | "gemini";
@@ -196,6 +290,17 @@ export function filterClaudeModels(models: ModelControlModel[] | undefined): Mod
 /** OpenAI entries from the discovered roster, for Codex model dropdowns. */
 export function filterCodexModels(models: ModelControlModel[] | undefined): ModelControlModel[] {
     return (models || []).filter(m => (m.provider || "").toLowerCase() === "openai");
+}
+
+/** Codex models the dropdowns can offer — GET /api/model-control/codex-models. */
+export async function getCodexModels(): Promise<CodexModelOption[]> {
+    const response = await fetch(`/api/model-control/codex-models`, {
+        credentials: "include",
+        headers: { ...getAuthHeader() as any },
+    });
+    if (!response.ok) throw new Error(`Failed to load codex models: ${response.status}`);
+    const data = await response.json();
+    return Array.isArray(data?.models) ? data.models : [];
 }
 
 /**

@@ -77,13 +77,22 @@ describe('model control route', () => {
                     claudeDefault: 'claude-opus-5',
                     codexDefault: '',
                     antigravityDefault: '',
+                    codexModels: expect.any(Array),
                     localOnly: { enabled: false, reason: null },
                     policy: { enabled: false, reason: null },
                     projectPolicy: {
                         enabled: true,
                         requiredCapabilities: ['coding'],
                         fallbackChain: ['alias:local_default']
-                    }
+                    },
+                    // Key-aware routing rides the options payload. Its contents
+                    // are derived from live dispatch history (asserted in
+                    // provider-credential-routing.test.js); here we only pin
+                    // that every dispatch surface receives it.
+                    credentials: expect.objectContaining({
+                        executors: expect.any(Array),
+                        providers: expect.any(Array)
+                    })
                 }
             });
 

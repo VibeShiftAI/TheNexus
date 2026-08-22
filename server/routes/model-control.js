@@ -1,5 +1,8 @@
 const express = require('express');
 const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const {
     resolveModelAssignment,
     mergePolicies,
@@ -12,6 +15,7 @@ const {
     ALL_THINKING_TIERS,
     CONSERVATIVE_THINKING_TIERS
 } = require('../services/model-discovery');
+const { getRoutingState } = require('../services/provider-credentials');
 
 function normalizePolicyInput(body = {}) {
     const budget = body.budget && typeof body.budget === 'object' ? body.budget : {};
@@ -84,6 +88,61 @@ const AGY_MODELS_FALLBACK = [
     'GPT-OSS 120B (Medium)'
 ];
 let agyModelsCache = null; // { models, expiresAt }
+// ─── Codex model roster ───────────────────────────────────────────────
+// The model registry is FAMILY-level (one "GPT" row whose api_model_id is
+// whatever discovery saw last — 2026-08-21 it was gpt-5.6-luna), so a Codex
+// dropdown built from it offered a single "GPT-5.6" that silently meant Luna.
+// The codex CLI caches the real roster it was issued (slugs, display names,
+// reasoning efforts, deprecation upgrades) in ~/.codex/models_cache.json; that
+// file is the source of truth here. Hidden entries (gpt-reserve,
+// codex-auto-review) are not offered. Static fallback mirrors the 2026-08-21
+// roster so the dropdown never goes empty.
+const CODEX_MODELS_FALLBACK = [
+    { id: 'gpt-5.6-sol',   label: 'GPT-5.6 Sol',   defaultEffort: 'low',    efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
+    { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
+    { id: 'gpt-5.6-luna',  label: 'GPT-5.6 Luna',  defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh', 'max'] },
+    { id: 'gpt-5.5',       label: 'GPT-5.5',       defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh'] },
+];
+const CODEX_MODELS_CACHE_FILE = process.env.CODEX_MODELS_CACHE_FILE
+    || path.join(os.homedir(), '.codex', 'models_cache.json');
+let codexModelsCache = null;
+
+function readCodexModelsCacheFile(file = CODEX_MODELS_CACHE_FILE) {
+    const raw = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    const entries = Array.isArray(raw?.models) ? raw.models : [];
+    const models = entries
+        .filter((m) => m && typeof m.slug === 'string' && m.slug && (m.visibility ?? 'list') === 'list')
+        .sort((a, b) => (Number(a.priority) || 999) - (Number(b.priority) || 999))
+        .map((m) => ({
+            id: m.slug,
+            label: typeof m.display_name === 'string' && m.display_name
+                ? m.display_name.replace(/^GPT-(\d+(?:\.\d+)?)-/, 'GPT-$1 ')
+                : m.slug,
+            defaultEffort: typeof m.default_reasoning_level === 'string' ? m.default_reasoning_level : null,
+            efforts: Array.isArray(m.supported_reasoning_levels)
+                ? m.supported_reasoning_levels.map((e) => (typeof e === 'string' ? e : e?.effort)).filter(Boolean)
+                : [],
+            ...(m.upgrade && typeof m.upgrade === 'object' && m.upgrade.model
+                ? { deprecated: true, upgradeTo: m.upgrade.model }
+                : {}),
+        }));
+    return { models, fetchedAt: typeof raw?.fetched_at === 'string' ? raw.fetched_at : null };
+}
+
+function listCodexModels() {
+    if (codexModelsCache && codexModelsCache.expiresAt > Date.now()) return codexModelsCache.models;
+    let models = CODEX_MODELS_FALLBACK;
+    let source = 'fallback';
+    try {
+        const read = readCodexModelsCacheFile();
+        if (read.models.length) { models = read.models; source = `models_cache.json (${read.fetchedAt || 'undated'})`; }
+    } catch (error) {
+        console.warn('[Model Control] codex models_cache.json unavailable, using fallback list:', error.message);
+    }
+    codexModelsCache = { models, source, expiresAt: Date.now() + 10 * 60 * 1000 };
+    return models;
+}
+
 function listAntigravityModels() {
     if (agyModelsCache && agyModelsCache.expiresAt > Date.now()) {
         return Promise.resolve(agyModelsCache.models);
@@ -228,8 +287,31 @@ async function getFableAvailability(db) {
     return { out, until, reason };
 }
 
+/**
+ * Key-aware routing state, degraded rather than fatal: the model-control
+ * options payload is load-bearing for every dispatch surface, so a broken
+ * credential read must never 500 it.
+ */
+function safeRoutingState() {
+    try {
+        return getRoutingState();
+    } catch (error) {
+        console.warn('[Model Control] credential routing state unavailable:', error.message);
+        return null;
+    }
+}
+
 function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
     const router = express.Router();
+
+    // ─── Key-aware routing ────────────────────────────────────────────────
+    // Which dispatch routes have a live credential, and which are excluded
+    // before execution (dead key / spent quota) rather than at the 402.
+    router.get('/credentials', (_req, res) => {
+        const state = safeRoutingState();
+        if (!state) return res.status(503).json({ error: 'Credential routing state unavailable' });
+        res.json(state);
+    });
 
     router.get('/options', async (req, res) => {
         try {
@@ -249,12 +331,19 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                 claudeDefault: await getClaudeDefaultModel(db),
                 codexDefault: await getCliDefaultModel(db, 'codex_default_model'),
                 antigravityDefault: await getCliDefaultModel(db, 'antigravity_default_model'),
+                // Real Codex roster (slugs + display names + efforts) for the
+                // per-slot / task / chat model dropdowns — see listCodexModels.
+                codexModels: listCodexModels(),
                 agentBackend: await getAgentBackendConfig(db),
                 chatBackend: await getChatBackend(db),
                 chatConfig: await getChatConfig(db),
                 projectPolicy: projectId && typeof db.getProjectModelControlSetting === 'function'
                     ? await db.getProjectModelControlSetting(projectId, 'model_policy')
-                    : null
+                    : null,
+                // Key-aware routing: which executor lanes and API-key lanes can
+                // actually spend a credential right now. Rides this payload so
+                // every dispatch surface gets it in the call it already makes.
+                credentials: safeRoutingState()
             });
         } catch (error) {
             console.error('[Model Control] Failed to load options:', error);
@@ -321,6 +410,15 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
 
     // The model names the antigravity selector can offer (`agy models` output;
     // display names are the only values the agy CLI actually pins on).
+    router.get('/codex-models', (_req, res) => {
+        try {
+            res.json({ models: listCodexModels(), source: codexModelsCache?.source || 'fallback' });
+        } catch (error) {
+            console.error('[Model Control] Failed to list codex models:', error);
+            res.status(500).json({ error: 'Failed to list codex models: ' + error.message });
+        }
+    });
+
     router.get('/antigravity-models', async (_req, res) => {
         try {
             res.json({ models: await listAntigravityModels() });
@@ -714,3 +812,7 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
 }
 
 module.exports = createModelControlRouter;
+// Test/operator seams for the Codex roster (pure file readers, no router needed).
+module.exports.listCodexModels = listCodexModels;
+module.exports.readCodexModelsCacheFile = readCodexModelsCacheFile;
+module.exports.CODEX_MODELS_FALLBACK = CODEX_MODELS_FALLBACK;

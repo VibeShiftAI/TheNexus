@@ -97,7 +97,18 @@ export function useExecutorModelOptions(): {
           provider: m.provider?.toLowerCase(),
         });
         setClaudeModels(filterClaudeModels(state.models).map(toOption));
-        setCodexModels(filterCodexModels(state.models).map(toOption));
+        // Codex: the real roster (sol / terra / luna …) rides the options
+        // payload; the family registry's single "GPT" row is only a fallback.
+        const roster = Array.isArray(state.codexModels) ? state.codexModels : [];
+        setCodexModels(
+          roster.length > 0
+            ? roster.map((m) => ({
+                id: m.id,
+                label: m.deprecated && m.upgradeTo ? `${m.label} (deprecated → ${m.upgradeTo})` : m.label,
+                provider: "openai",
+              }))
+            : filterCodexModels(state.models).map(toOption),
+        );
         if (state.claudeDefault) setClaudeDefault(state.claudeDefault);
         if (state.codexDefault) setCodexDefault(state.codexDefault);
         if (state.antigravityDefault) setAntigravityDefault(state.antigravityDefault);
