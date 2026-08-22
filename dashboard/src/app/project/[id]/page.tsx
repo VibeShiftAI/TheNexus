@@ -13,6 +13,8 @@ import { ProjectContextManager } from "@/components/project-context-manager";
 import { ArtifactsList } from "@/components/artifacts-list";
 import { ProjectNotes } from "@/components/project-notes";
 import { ProjectStakeholders } from "@/components/project-stakeholders";
+import { ProjectRequests } from "@/components/project-requests";
+import { ProjectComms } from "@/components/project-comms";
 import { MissionBrief } from "@/components/project-brief/mission-brief";
 import { ActivityReport } from "@/components/project-brief/activity-report";
 import { HudPanel } from "@/components/bridge/hud";
@@ -41,6 +43,13 @@ export default function ProjectDetailPage() {
     const [readme, setReadme] = useState<{ exists: boolean; content: string | null }>({ exists: false, content: null });
     const [readmeExpanded, setReadmeExpanded] = useState(false);
     const [artifactsInReview, setArtifactsInReview] = useState<{ items: ReviewItem[], project: number, task: number }>({ items: [], project: 0, task: 0 });
+    // Bumped when the Members panel changes a link/PDM flag so the Communication
+    // station re-reads its recipients + effective state.
+    const [membersVersion, setMembersVersion] = useState(0);
+    const onMembersChanged = useCallback(() => setMembersVersion((v) => v + 1), []);
+    const reloadProject = useCallback(() => {
+        getProject(projectId).then(setProject).catch(console.error);
+    }, [projectId]);
 
     // Opening a task navigates to its own screen (/task/[id]) — the old
     // in-page TaskDetailModal overlay is retired.
@@ -334,13 +343,19 @@ export default function ProjectDetailPage() {
                             onTasksChange={loadTasks}
                             onTaskSelect={openTask}
                         />
-                        <ProjectStakeholders projectId={projectId} />
+                        <ProjectStakeholders projectId={projectId} onChanged={onMembersChanged} />
+                        <ProjectRequests projectId={projectId} onChanged={loadTasks} />
                         <ProjectNotes projectId={projectId} />
                     </div>
                 </div>
 
-                {/* Configuration + context — the editable underbelly of the brief */}
+                {/* Communication — status reports, review meetings, branded template for the decision makers */}
                 <div className="hud-boot hud-boot-3">
+                    <ProjectComms project={project} onUpdate={reloadProject} refreshKey={membersVersion} />
+                </div>
+
+                {/* Configuration + context — the editable underbelly of the brief */}
+                <div className="hud-boot hud-boot-4">
                     <HudPanel icon={<Settings2 size={16} />} title="Project Configuration" accent="purple">
                         <div className="overflow-hidden rounded-lg">
                             <div className="border-b border-slate-800 px-1 pb-3">
@@ -358,7 +373,7 @@ export default function ProjectDetailPage() {
 
                 {/* README Section */}
                 {readme.exists && readme.content && (
-                    <div className="hud-boot hud-boot-4 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+                    <div className="hud-boot hud-boot-5 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
                         <button
                             onClick={() => setReadmeExpanded(!readmeExpanded)}
                             className="w-full flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors"

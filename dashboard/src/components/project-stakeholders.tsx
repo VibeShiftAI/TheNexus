@@ -6,11 +6,16 @@
  * preferences, expertise, Praxis's interaction notes — travels with them.
  * Praxis's feedback pipeline auto-registers submitters here (source
  * "feedback"), so this panel fills itself as family testers use the widget.
+ *
+ * Stakeholder governance (2026-08-22): a member flagged **Primary Decision
+ * Maker** (crown toggle / editor checkbox → `decision_maker` on the project
+ * link) is consulted on status, updates and decisions — their presence turns
+ * on the request approval queue and the project's status reports.
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Mail, Plus, Trash2, UserRound, Users, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Crown, Mail, Plus, Trash2, UserRound, Users, X } from "lucide-react";
 import { memberAge } from "@praxis/contract";
 import { HudPanel } from "@/components/bridge/hud";
 import {
@@ -18,6 +23,7 @@ import {
   getProjectContacts,
   linkContactToProject,
   listContacts,
+  setProjectDecisionMaker,
   unlinkContactFromProject,
   updateContact,
   updateContactLink,
@@ -26,6 +32,9 @@ import {
 } from "@/lib/nexus";
 
 const ROLE_SUGGESTIONS = ["Client", "Tester", "Domain expert", "Collaborator"];
+
+const PDM_TITLE =
+  "Primary Decision Maker — consulted on status, updates and decisions; approves requests before work starts";
 
 function Tags({ values, tone }: { values?: string[] | null; tone: string }) {
   if (!values || values.length === 0) return null;
@@ -48,24 +57,45 @@ function parseCsv(raw: string): string[] {
   return raw.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-export function ProjectStakeholders({ projectId }: { projectId: string }) {
+export function ProjectStakeholders({
+  projectId,
+  onChanged,
+}: {
+  projectId: string;
+  /** Fires after any membership/PDM change (not on the initial load) so sibling panels can refresh. */
+  onChanged?: () => void;
+}) {
   const [contacts, setContacts] = useState<ProjectContact[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Latest-callback ref (written in an effect) so an inline onChanged from the
+  // parent never re-triggers the load effect below.
+  const onChangedRef = useRef(onChanged);
+  useEffect(() => {
+    onChangedRef.current = onChanged;
+  }, [onChanged]);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (notify = true) => {
     try {
       setContacts(await getProjectContacts(projectId));
       setError(null);
+      if (notify) onChangedRef.current?.();
     } catch {
       setError("Contacts API unavailable — is the Nexus server up to date?");
     }
   }, [projectId]);
 
   useEffect(() => {
-    void reload();
+    void reload(false);
   }, [reload]);
+
+  // Primary Decision Makers first; otherwise keep the server's order.
+  const sorted = useMemo(
+    () => [...contacts].sort((a, b) => Number(Boolean(b.decision_maker)) - Number(Boolean(a.decision_maker))),
+    [contacts],
+  );
+  const pdmCount = sorted.filter((c) => c.decision_maker).length;
 
   return (
     <HudPanel
@@ -73,13 +103,23 @@ export function ProjectStakeholders({ projectId }: { projectId: string }) {
       title="Members"
       accent="cyan"
       headerRight={
-        <button
-          onClick={() => setAdding((v) => !v)}
-          className="flex items-center gap-1 rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-bold text-cyan-300 transition-colors hover:bg-cyan-500/20"
-        >
-          {adding ? <X size={12} /> : <Plus size={12} />}
-          {adding ? "Close" : "Add"}
-        </button>
+        <>
+          {pdmCount > 0 && (
+            <span
+              title={PDM_TITLE}
+              className="flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300"
+            >
+              <Crown size={10} fill="currentColor" /> {pdmCount} PDM
+            </span>
+          )}
+          <button
+            onClick={() => setAdding((v) => !v)}
+            className="flex items-center gap-1 rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-bold text-cyan-300 transition-colors hover:bg-cyan-500/20"
+          >
+            {adding ? <X size={12} /> : <Plus size={12} />}
+            {adding ? "Close" : "Add"}
+          </button>
+        </>
       }
     >
       {error && <p className="mb-2 text-xs text-amber-400">{error}</p>}
@@ -99,11 +139,13 @@ export function ProjectStakeholders({ projectId }: { projectId: string }) {
         <p className="py-3 text-center text-sm text-slate-500">
           No members on this project yet. Add the humans it serves — they join the shared
           Members directory (stakeholders + council advisors), and feedback-widget
-          submitters register themselves automatically.
+          submitters register themselves automatically. Flag one as{" "}
+          <span className="text-amber-300">Primary Decision Maker</span> (crown) to turn on the
+          request approval queue and status reports for this project.
         </p>
       ) : (
         <div className="space-y-2">
-          {contacts.map((c) => (
+          {sorted.map((c) => (
             <StakeholderRow
               key={c.id}
               contact={c}
@@ -142,8 +184,31 @@ function StakeholderRow({
     tone: contact.preferences?.tone ?? "",
     availability: contact.preferences?.availability ?? "",
     requireApproval: Boolean(contact.preferences?.requireApproval),
+    decisionMaker: Boolean(contact.decision_maker),
   }));
   const [saving, setSaving] = useState(false);
+  const [pdmBusy, setPdmBusy] = useState(false);
+  const isPdm = Boolean(contact.decision_maker);
+
+  // The header crown can flip the flag while the editor is closed — keep the
+  // checkbox honest (state adjusted during render, keyed on the last seen flag).
+  const [seenPdm, setSeenPdm] = useState(isPdm);
+  if (seenPdm !== isPdm) {
+    setSeenPdm(isPdm);
+    setDraft((d) => ({ ...d, decisionMaker: isPdm }));
+  }
+
+  const togglePdm = async () => {
+    setPdmBusy(true);
+    try {
+      await setProjectDecisionMaker(contact.id, projectId, !isPdm);
+      onChanged();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update decision maker");
+    } finally {
+      setPdmBusy(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -161,8 +226,12 @@ function StakeholderRow({
           requireApproval: draft.requireApproval || undefined,
         },
       });
-      if ((contact.role ?? "") !== draft.role) {
-        await updateContactLink(contact.id, projectId, draft.role || null, contact.link_notes ?? null);
+      const linkChanged =
+        (contact.role ?? "") !== draft.role || Boolean(contact.decision_maker) !== draft.decisionMaker;
+      if (linkChanged) {
+        await updateContactLink(contact.id, projectId, draft.role || null, contact.link_notes ?? null, {
+          decision_maker: draft.decisionMaker,
+        });
       }
       onChanged();
       onToggle();
@@ -181,14 +250,23 @@ function StakeholderRow({
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/40">
-      <button onClick={onToggle} className="flex w-full items-center gap-2.5 px-3 py-2 text-left">
-        <UserRound size={15} className="shrink-0 text-cyan-400" />
+      <div className="flex items-center">
+      <button onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2 text-left">
+        <UserRound size={15} className={`shrink-0 ${isPdm ? "text-amber-300" : "text-cyan-400"}`} />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-baseline gap-x-2">
             <span className="text-[13px] font-bold text-slate-100">{contact.name}</span>
             {contact.role && (
               <span className="rounded bg-cyan-500/15 px-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
                 {contact.role}
+              </span>
+            )}
+            {isPdm && (
+              <span
+                title={PDM_TITLE}
+                className="rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300"
+              >
+                PDM
               </span>
             )}
             {contact.relationship && (
@@ -211,6 +289,20 @@ function StakeholderRow({
         </span>
         {expanded ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
       </button>
+      <button
+        onClick={togglePdm}
+        disabled={pdmBusy}
+        aria-pressed={isPdm}
+        title={PDM_TITLE}
+        className={`mr-2 shrink-0 rounded border p-1 transition-colors disabled:opacity-50 ${
+          isPdm
+            ? "border-amber-400/60 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"
+            : "border-slate-800 text-slate-600 hover:border-amber-500/40 hover:text-amber-300"
+        }`}
+      >
+        <Crown size={13} fill={isPdm ? "currentColor" : "none"} />
+      </button>
+      </div>
 
       {!expanded && (contact.expertise?.length || contact.interests?.length) ? (
         <div className="flex flex-wrap gap-1 px-3 pb-2 pl-10">
@@ -257,6 +349,19 @@ function StakeholderRow({
               <input value={draft.availability} onChange={(e) => setDraft({ ...draft, availability: e.target.value })} className="hud-input" placeholder="weekends only" />
             </Field>
           </div>
+          <label className="flex items-start gap-2 text-[11px] text-slate-400">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={draft.decisionMaker}
+              onChange={(e) => setDraft({ ...draft, decisionMaker: e.target.checked })}
+            />
+            <span>
+              <span className="font-semibold text-amber-300">Primary Decision Maker</span> — consulted on status,
+              updates and decisions; approves requests before work starts; receives the project&apos;s status
+              reports
+            </span>
+          </label>
           <label className="flex items-center gap-2 text-[11px] text-slate-400">
             <input
               type="checkbox"

@@ -130,6 +130,7 @@ body {
 .hud-boot-2 { animation-delay: 180ms; }
 .hud-boot-3 { animation-delay: 270ms; }
 .hud-boot-4 { animation-delay: 360ms; }
+.hud-boot-5 { animation-delay: 450ms; }
 @media (prefers-reduced-motion: reduce) {
   .hud-boot {
     animation: none;
