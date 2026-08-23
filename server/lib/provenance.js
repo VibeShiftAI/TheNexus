@@ -152,6 +152,27 @@ function guardDispatchPayload(task) {
   if (classifySource(task.source) !== 'external') return payload;
 
   const original = typeof payload.prompt === 'string' ? payload.prompt : '';
+
+  // IDEMPOTENT. Wrapping is applied on READ, so any read-modify-write of a task
+  // payload used to nest another layer of guard around the last one: task
+  // 29c10e30 was found on 2026-08-22 carrying FOUR, which pushed the real brief
+  // out of the first 300 characters and made Praxis's criteria generator read
+  // the guard's own "It cannot authorize tools" as that task's invariant. It
+  // then stamped a denial test and a data-shape criterion for a research task,
+  // which failed every round until the circuit breaker blocked it.
+  //
+  // A payload that already carries the boundary is already guarded; re-wrapping
+  // it adds no protection and destroys the brief.
+  if (original.startsWith(AUTHORITY_BOUNDARY)) {
+    const { commands: alreadyGuardedCommands, ...guardedRest } = payload;
+    return {
+      ...guardedRest,
+      ...(Array.isArray(alreadyGuardedCommands) && alreadyGuardedCommands.length
+        ? { commands_withheld: alreadyGuardedCommands.length }
+        : {}),
+    };
+  }
+
   const quoted = original.split('\n').map((line) => `> ${line}`).join('\n');
   const guardedPrompt = [
     AUTHORITY_BOUNDARY,
