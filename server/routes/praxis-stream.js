@@ -426,6 +426,15 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     });
     router.get('/skills', (req, res) => proxyJson(req, res, '/api/skills'));
     router.get('/dispatch-state', (req, res) => proxyJson(req, res, '/api/dispatch/state'));
+
+    // -- Model status board (Model Control Center) ------------------
+    // Which models dispatch can reach, why any are held, and the target that
+    // releases each. The clear is loopback-only on the Praxis side; this relay
+    // runs on the same box, so the proxied call satisfies that check while the
+    // browser never talks to Praxis directly.
+    router.get('/models/status', (req, res) => proxyJson(req, res, '/api/models/status'));
+    router.get('/usage/state', (req, res) => proxyJson(req, res, '/api/usage/state'));
+    router.post('/usage/clear-limit', (req, res) => proxyJson(req, res, '/api/usage/clear-limit'));
     router.post('/transcribe', (req, res) => proxyJson(req, res, '/api/transcribe'));
     router.post('/speak', (req, res) => proxyJson(req, res, '/api/speak'));
     // Non-streaming chat relay for the voice bar ({ message, stream: false }).

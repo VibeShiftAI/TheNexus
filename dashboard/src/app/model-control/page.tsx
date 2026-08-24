@@ -23,6 +23,7 @@ import {
 import { ModelAliasManager } from "@/components/model-alias-manager";
 import { ModelRoleManager } from "@/components/model-role-manager";
 import { UsageRoutingPanel } from "@/components/usage-routing-panel";
+import { ModelStatusPanel } from "@/components/model-status-panel";
 import {
     getModelControlState,
     getModelBudgetStatus,
@@ -486,6 +487,8 @@ export default function ModelControlPage() {
                         {error}
                     </div>
                 )}
+
+                <ModelStatusPanel />
 
                 <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard icon={<Brain size={18} />} label="Active models" value={String(stats.models)} />
