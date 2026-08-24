@@ -6,10 +6,12 @@
  *
  * Three layers, coarse to fine:
  *   1. A headline verdict (all clear / N models held).
- *   2. The Dispatch Ladder graphic — the router's capability ladder with each
- *      rung lit by whether EITHER family can still take that tier of work.
- *      This is the question a bare per-model list can't answer: Fable going
- *      out looks alarming until you see tiers 4-5 still lit on the Sol side.
+ *   2. The Dispatch Ladder graphic — what each tier will ACTUALLY run on,
+ *      read from the router rather than from its ladder table. That
+ *      distinction is the whole value: with Fable's credits out the table
+ *      still says claude-fable-5 at tiers 4-5, while dispatch really sends
+ *      tier 4 to Opus 5 at max and tier 5 to Sol. A rung drawn from the table
+ *      would confidently name a model that cannot run.
  *   3. Per-model rows with the reason in words, the clock the hold lifts on,
  *      and a Release button wired to Praxis's quota-restore.
  *
@@ -45,19 +47,19 @@ import {
 const POLL_MS = 30_000;
 
 /**
- * The Dispatch Ladder. Rows are the router's tiers (5 = architecture work at
- * the top, 1 = trivial at the floor); columns are the two provider families.
- * A rung's spine glows while at least one side can still take the work and
- * goes red when both are blocked — that red is the only thing on the page
- * that means "this class of work cannot go out right now".
+ * The Dispatch Ladder. One row per router tier (5 = architecture work at the
+ * top, 1 = trivial at the floor), each naming the model that tier will
+ * actually run on and at what thinking level, with the ladder's nominal pick
+ * beside it — struck through when pressure displaced it.
+ *
+ * Amber means substituted, red means the tier cannot dispatch at all. Red is
+ * the only thing on the page that means "this class of work cannot go out".
  */
 function DispatchLadder({ rungs }: { rungs: LadderRung[] }) {
     if (!rungs.length) return null;
-    const ROW_H = 34;
+    const ROW_H = 36;
     const H = rungs.length * ROW_H + 26;
-    const CLAUDE_X = 120;
-    const CODEX_X = 300;
-    const CELL_W = 150;
+    const NOMINAL_X = 250;
 
     return (
         <div className="overflow-x-auto">
@@ -66,72 +68,75 @@ function DispatchLadder({ rungs }: { rungs: LadderRung[] }) {
                 width="100%"
                 style={{ maxWidth: 470, minWidth: 380 }}
                 role="img"
-                aria-label="Dispatch ladder: router tiers by provider family, colored by availability"
+                aria-label="Dispatch ladder: what each router tier will actually run on right now"
             >
                 <text x={0} y={12} fill="#64748b" fontSize={9} letterSpacing={1.2}>
                     TIER
                 </text>
-                <text x={CLAUDE_X} y={12} fill="#64748b" fontSize={9} letterSpacing={1.2}>
-                    ANTHROPIC
+                <text x={52} y={12} fill="#64748b" fontSize={9} letterSpacing={1.2}>
+                    DISPATCHES TO
                 </text>
-                <text x={CODEX_X} y={12} fill="#64748b" fontSize={9} letterSpacing={1.2}>
-                    OPENAI
+                <text x={NOMINAL_X} y={12} fill="#64748b" fontSize={9} letterSpacing={1.2}>
+                    LADDER SAYS
                 </text>
 
                 {rungs.map((rung, i) => {
                     const y = 26 + i * ROW_H;
-                    const spine = rung.dispatchable ? "#22d3ee" : "#f87171";
+                    const ok = rung.dispatchable;
+                    const accent = !ok ? "#f87171" : rung.substituted ? "#fbbf24" : "#22d3ee";
+                    const anthropic = rung.executor === "claude-code";
                     return (
                         <g key={rung.tier}>
-                            {/* Rung spine: the "can this tier dispatch at all" signal. */}
-                            <rect x={0} y={y + 6} width={470} height={1} fill={rung.dispatchable ? "#1e293b" : "#7f1d1d"} />
-                            <circle cx={6} cy={y + 6} r={4} fill={spine} />
-                            <text x={18} y={y + 10} fill={rung.dispatchable ? "#cbd5e1" : "#fca5a5"} fontSize={12} fontWeight={600}>
+                            <rect x={0} y={y + 9} width={470} height={1} fill={ok ? "#1e293b" : "#7f1d1d"} />
+                            <circle cx={6} cy={y + 5} r={4} fill={accent} />
+                            <text x={18} y={y + 9} fill={ok ? "#cbd5e1" : "#fca5a5"} fontSize={12} fontWeight={600}>
                                 {rung.tier}
                             </text>
-                            {!rung.dispatchable && (
-                                <text x={32} y={y + 10} fill="#f87171" fontSize={9}>
-                                    blocked
+
+                            {ok ? (
+                                <>
+                                    <rect
+                                        x={52}
+                                        y={y - 4}
+                                        width={190}
+                                        height={20}
+                                        rx={3}
+                                        fill={anthropic ? "rgba(34,211,238,0.10)" : "rgba(167,139,250,0.10)"}
+                                        stroke={accent}
+                                        strokeOpacity={0.45}
+                                    />
+                                    <circle cx={62} cy={y + 6} r={3} fill={anthropic ? "#22d3ee" : "#a78bfa"} />
+                                    <text x={71} y={y + 10} fill="#e2e8f0" fontSize={10.5}>
+                                        {shortModel(rung.model)}
+                                    </text>
+                                    <text x={232} y={y + 10} fill="#64748b" fontSize={9} textAnchor="end">
+                                        {rung.thinkingLevel}
+                                    </text>
+                                </>
+                            ) : (
+                                <text x={52} y={y + 10} fill="#f87171" fontSize={10.5}>
+                                    cannot dispatch — both families blocked
                                 </text>
                             )}
-                            <LadderCell row={rung.claude} x={CLAUDE_X} y={y} w={CELL_W} />
-                            <LadderCell row={rung.codex} x={CODEX_X} y={y} w={CELL_W} />
+
+                            {/* What the ladder nominally says, when it is not what runs. */}
+                            {rung.substituted ? (
+                                <text x={NOMINAL_X} y={y + 10} fill="#64748b" fontSize={10}>
+                                    <tspan textDecoration="line-through">{shortModel(rung.nominal.claude)}</tspan>
+                                    <tspan fill="#fbbf24" dx={6}>
+                                        substituted
+                                    </tspan>
+                                </text>
+                            ) : (
+                                <text x={NOMINAL_X} y={y + 10} fill="#334155" fontSize={10}>
+                                    {shortModel(rung.nominal.claude)} / {shortModel(rung.nominal.codex)}
+                                </text>
+                            )}
                         </g>
                     );
                 })}
             </svg>
         </div>
-    );
-}
-
-function LadderCell({ row, x, y, w }: { row: ModelStatusRow | null; x: number; y: number; w: number }) {
-    if (!row) {
-        return (
-            <text x={x} y={y + 10} fill="#334155" fontSize={10}>
-                —
-            </text>
-        );
-    }
-    const style = STATE_STYLE[row.state];
-    const ready = row.state === "ready";
-    return (
-        <g>
-            <rect
-                x={x}
-                y={y - 3}
-                width={w}
-                height={19}
-                rx={3}
-                fill={ready ? "rgba(52,211,153,0.10)" : "rgba(248,113,113,0.10)"}
-                stroke={style.hex}
-                strokeOpacity={ready ? 0.35 : 0.55}
-                strokeWidth={1}
-            />
-            <circle cx={x + 10} cy={y + 6} r={3} fill={style.hex} />
-            <text x={x + 19} y={y + 10} fill={ready ? "#cbd5e1" : "#fca5a5"} fontSize={10.5}>
-                {shortModel(row.model)}
-            </text>
-        </g>
     );
 }
 
@@ -321,7 +326,7 @@ export function ModelStatusPanel() {
                         </div>
                         <DispatchLadder rungs={rungs} />
                         <div className="mt-3 space-y-1 text-[11px] text-slate-600">
-                            <div>A rung stays lit while either family can still take that tier of work.</div>
+                            <div>Each rung names what that tier dispatches to right now — amber where pressure displaced the ladder&apos;s pick.</div>
                             <div>
                                 Complexity scorer: {board.scorer.model}
                                 {board.scorer.mode === "heuristic" && " (LLM scoring off — keyword heuristic)"}

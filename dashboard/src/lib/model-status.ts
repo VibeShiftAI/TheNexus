@@ -44,6 +44,7 @@ export interface ModelStatusBoard {
     generatedAt: string;
     models: ModelStatusRow[];
     families: FamilyStatusRow[];
+    ladder: LadderRung[];
     scorer: { model: string; mode: "cli" | "heuristic"; reachable: boolean };
     anySuspended: boolean;
 }
@@ -83,30 +84,25 @@ export async function releaseModelHold(target: string): Promise<QuotaRestoreResu
     return res.json();
 }
 
-/** Ladder rungs rebuilt from the board, tier 5 (most capable) first. */
+/**
+ * What a tier will ACTUALLY dispatch to, straight from the router — never
+ * re-derived here. The ladder table still says claude-fable-5 at tiers 4-5
+ * while Fable's credits are out, so a graphic drawn from model rows alone
+ * would confidently show a model that cannot run.
+ */
 export interface LadderRung {
     tier: number;
-    claude: ModelStatusRow | null;
-    codex: ModelStatusRow | null;
-    /** At least one side can take work at this tier. */
+    executor: "claude-code" | "codex";
+    model: string;
+    thinkingLevel: string;
+    nominal: { claude: string; codex: string };
+    substituted: boolean;
     dispatchable: boolean;
 }
 
+/** Rungs most-capable-first, for top-down rendering. */
 export function ladderFromBoard(board: ModelStatusBoard): LadderRung[] {
-    const tiers = new Set<number>();
-    for (const row of board.models) for (const t of row.tiers) tiers.add(t);
-    return [...tiers]
-        .sort((a, b) => b - a)
-        .map((tier) => {
-            const claude = board.models.find((r) => r.family === "claude" && r.tiers.includes(tier)) ?? null;
-            const codex = board.models.find((r) => r.family === "codex" && r.tiers.includes(tier)) ?? null;
-            return {
-                tier,
-                claude,
-                codex,
-                dispatchable: claude?.state === "ready" || codex?.state === "ready",
-            };
-        });
+    return [...(board.ladder ?? [])].sort((a, b) => b.tier - a.tier);
 }
 
 export const STATE_LABEL: Record<ModelAvailability, string> = {
