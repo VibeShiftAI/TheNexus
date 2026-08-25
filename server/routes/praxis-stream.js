@@ -414,6 +414,12 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     // Arbiter preference (bridge Ops control) — which CLI seat writes the verdict.
     router.get('/council/arbiter', (req, res) => proxyJson(req, res, '/api/council/arbiter'));
     router.post('/council/arbiter', (req, res) => proxyJson(req, res, '/api/council/arbiter'));
+    // Bench composition — who sits on each council. Praxis validates every
+    // seat for reachability before writing, so a 400 here carries an operator-
+    // readable reason and should be surfaced verbatim rather than retried.
+    router.get('/council/benches', (req, res) => proxyJson(req, res, '/api/council/benches'));
+    router.post('/council/benches/:name', (req, res) =>
+        proxyJson(req, res, `/api/council/benches/${encodeURIComponent(req.params.name)}`));
 
     // ── Bridge / cockpit passthroughs (command-deck dashboard) ─────
     router.get('/stats', (req, res) => proxyJson(req, res, '/api/praxis/stats'));

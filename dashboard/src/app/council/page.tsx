@@ -35,6 +35,7 @@ import {
     XCircle,
 } from "lucide-react";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
+import { CouncilBenchControls } from "@/components/council-bench-controls";
 import {
     baseSeatName,
     effectiveReferenceVoices,
@@ -1106,6 +1107,8 @@ export default function CouncilPage() {
                 )}
 
                 <SummonCouncilPanel onSummoned={handleSummoned} />
+
+                <CouncilBenchControls />
 
                 {/* Live chamber, or the dark chamber idle state */}
                 {liveSession ? (

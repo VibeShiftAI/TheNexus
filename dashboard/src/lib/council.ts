@@ -380,3 +380,76 @@ export function sessionKind(metadata: Record<string, unknown>): SessionKindInfo 
     if (kind === "problem-council") return { label: "Problem Council", accent: "emerald" };
     return { label: "Summoned Council", accent: "violet" };
 }
+
+// ── Council benches (who sits on each council) ──────────────────────────
+// Backed by Praxis's router-config.json moa.presets, relayed through
+// /api/praxis/council/benches. Praxis validates every seat for REACHABILITY
+// before writing — a paid OpenRouter model, an unknown CLI backend, a
+// duplicated voice or an empty bench all come back as a 400 whose message is
+// written for a human and should be shown verbatim.
+
+export type BenchSeatKind = "cli" | "openrouter";
+
+export interface BenchSeat {
+    id: string;
+    kind: BenchSeatKind;
+    label: string;
+    model?: string;
+    contextWindow?: number;
+    /** Lineage undisclosed. A label, not a warning — cloaked models are seated. */
+    cloaked?: boolean;
+}
+
+export interface CouncilBench {
+    name: string;
+    isDefault: boolean;
+    references: BenchSeat[];
+    aggregator: BenchSeat;
+    referenceMaxTokens?: number;
+    aggregatorMaxTokens?: number;
+    timeoutSeconds?: number;
+}
+
+export interface CouncilBenchCatalog {
+    cli: BenchSeat[];
+    openrouter: BenchSeat[];
+}
+
+export interface CouncilBenchState {
+    benches: CouncilBench[];
+    catalog: CouncilBenchCatalog;
+    defaultPreset: string;
+}
+
+/** Human title for a bench id — "council-problem" reads as "Problem Solver". */
+export function benchTitle(name: string): string {
+    if (name === "council-default") return "Default Bench";
+    if (name === "council-problem") return "Problem Solver";
+    return name
+        .replace(/^council-/, "")
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+}
+
+export async function getCouncilBenches(): Promise<CouncilBenchState> {
+    const res = await fetch("/api/praxis/council/benches", { cache: "no-store" });
+    if (!res.ok) throw new Error(`Council benches request failed (${res.status})`);
+    return (await res.json()) as CouncilBenchState;
+}
+
+export async function saveCouncilBench(
+    name: string,
+    update: { references: string[]; aggregator: string },
+): Promise<CouncilBenchState> {
+    const res = await fetch(`/api/praxis/council/benches/${encodeURIComponent(name)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(update),
+    });
+    const body = (await res.json().catch(() => ({}))) as Partial<CouncilBenchState> & { error?: string };
+    // Praxis's validation message is written for the operator; surfacing a
+    // generic "save failed" instead would hide which seat was the problem.
+    if (!res.ok) throw new Error(body.error || `Bench update failed (${res.status})`);
+    return body as CouncilBenchState;
+}
