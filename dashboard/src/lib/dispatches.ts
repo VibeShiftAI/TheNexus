@@ -70,6 +70,20 @@ export interface DispatchTaskInput {
     provider?: string;
     instructions?: string;
     force?: boolean;
+    /**
+     * A HUMAN pressed the button.
+     *
+     * Praxis's autonomy pause gate is DEFAULT-DENY — a caller is treated as
+     * autonomous unless it says otherwise, so a dispatch path added later is
+     * paused-safe by omission. Operator-initiated dispatches pass, because
+     * pausing autonomy is not the same as taking the controls away.
+     *
+     * Deliberately NOT defaulted here. The claim "a person did this" has to be
+     * made at the call site where the person actually is (the Dispatch button),
+     * not buried in a shared helper where a future automated caller would
+     * inherit it silently.
+     */
+    operator?: boolean;
 }
 
 export interface DispatchTaskResult {
@@ -91,6 +105,7 @@ export async function dispatchTask(input: DispatchTaskInput): Promise<DispatchTa
             ...(input.provider ? { provider: input.provider } : {}),
             ...(input.instructions ? { instructions: input.instructions } : {}),
             ...(input.force ? { force: true } : {}),
+            ...(input.operator ? { operator: true } : {}),
         }),
     });
     const body = (await res.json().catch(() => ({}))) as { ok?: boolean; reply?: string; error?: string };

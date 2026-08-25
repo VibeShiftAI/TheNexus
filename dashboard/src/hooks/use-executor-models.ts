@@ -19,6 +19,7 @@ import {
   apiModelIdOf,
   filterClaudeModels,
   filterCodexModels,
+  filterOpenRouterModels,
   getAntigravityModels,
   getCredentialRouting,
   getModelControlState,
@@ -27,8 +28,18 @@ import {
   type CredentialProviderLane,
 } from "@/lib/model-control";
 
-export type ExecutorName = "antigravity" | "codex" | "claude-code";
-export const EXECUTOR_OPTIONS: ExecutorName[] = ["antigravity", "codex", "claude-code"];
+export type ExecutorName = "antigravity" | "codex" | "claude-code" | "openrouter";
+export const EXECUTOR_OPTIONS: ExecutorName[] = [
+  "antigravity",
+  "codex",
+  "claude-code",
+  // The FREE lane (2026-08-25). Last in the list deliberately: it is outside
+  // the default rotation, so it runs when an operator asks for it by name.
+  "openrouter",
+];
+
+/** The free roster head — what an unpinned openrouter dispatch runs on. */
+const OPENROUTER_DEFAULT_MODEL = "stealth/ox-alpha";
 
 /**
  * The managed default worker. Every dispatch surface starts here and only
@@ -54,8 +65,14 @@ export interface ExecutorModelChoices {
   options: ExecutorModelOption[];
   /** The operator-set default model id ("" = the CLI's own default). */
   fallback: string;
-  /** Which subscription the run bills to — shown in dropdown titles. */
+  /** Which credential the run spends — shown in dropdown titles. */
   note: string;
+  /**
+   * What choosing this executor costs, in words. The three CLIs bill a
+   * subscription; the OpenRouter lane bills nothing, and a picker that said
+   * "billed to the OpenRouter subscription" would be inventing one.
+   */
+  spendNote: string;
   /** Live credential state for this executor's lane; null while unknown. */
   credential: CredentialExecutorLane | null;
   /** Block on the executor's default model, when the default is itself spent. */
@@ -83,6 +100,7 @@ export function useExecutorModelOptions(): {
   const [codexDefault, setCodexDefault] = useState<string>("");
   const [antigravityModels, setAntigravityModels] = useState<ExecutorModelOption[]>([]);
   const [antigravityDefault, setAntigravityDefault] = useState<string>("");
+  const [openrouterModels, setOpenRouterModels] = useState<ExecutorModelOption[]>([]);
   const [lanes, setLanes] = useState<CredentialExecutorLane[]>([]);
   const [providerKeys, setProviderKeys] = useState<CredentialProviderLane[]>([]);
 
@@ -109,6 +127,7 @@ export function useExecutorModelOptions(): {
               }))
             : filterCodexModels(state.models).map(toOption),
         );
+        setOpenRouterModels(filterOpenRouterModels(state.models).map(toOption));
         if (state.claudeDefault) setClaudeDefault(state.claudeDefault);
         if (state.codexDefault) setCodexDefault(state.codexDefault);
         if (state.antigravityDefault) setAntigravityDefault(state.antigravityDefault);
@@ -152,12 +171,34 @@ export function useExecutorModelOptions(): {
     lanes.find((lane) => lane.name === executor) ?? null;
 
   const optionsFor = (executor: ExecutorName): ExecutorModelChoices => {
-    const { options, fallback, note } =
+    const { options, fallback, note, spendNote } =
       executor === "claude-code"
-        ? { options: claudeModels, fallback: claudeDefault, note: "Claude" }
+        ? {
+            options: claudeModels,
+            fallback: claudeDefault,
+            note: "Claude",
+            spendNote: "billed to the Claude subscription",
+          }
         : executor === "codex"
-          ? { options: codexModels, fallback: codexDefault, note: "ChatGPT" }
-          : { options: antigravityModels, fallback: antigravityDefault, note: "Google" };
+          ? {
+              options: codexModels,
+              fallback: codexDefault,
+              note: "ChatGPT",
+              spendNote: "billed to the ChatGPT subscription",
+            }
+          : executor === "openrouter"
+            ? {
+                options: openrouterModels,
+                fallback: OPENROUTER_DEFAULT_MODEL,
+                note: "OpenRouter",
+                spendNote: "free — no subscription spent",
+              }
+            : {
+                options: antigravityModels,
+                fallback: antigravityDefault,
+                note: "Google",
+                spendNote: "billed to the Google subscription",
+              };
 
     const credential = credentialFor(executor);
     // This is the executor's own key dependency. It stays null for the three
@@ -196,6 +237,7 @@ export function useExecutorModelOptions(): {
       options: options.map((option) => ({ ...option, blocked: blockFor(option) })),
       fallback,
       note,
+      spendNote,
       credential,
       fallbackBlocked: fallback
         ? blockFor({ id: fallback, label: fallback })

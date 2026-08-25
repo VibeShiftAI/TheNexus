@@ -292,6 +292,18 @@ export function filterCodexModels(models: ModelControlModel[] | undefined): Mode
     return (models || []).filter(m => (m.provider || "").toLowerCase() === "openai");
 }
 
+/**
+ * OpenRouter entries from the roster — the FREE lane's models.
+ *
+ * Unlike the three CLI executors these are not backed by a subscription, so a
+ * dropdown offering one is offering a $0 route. Praxis prices every slug
+ * against OpenRouter's catalog before it spawns, so a model that stopped being
+ * free is refused at dispatch rather than billed.
+ */
+export function filterOpenRouterModels(models: ModelControlModel[] | undefined): ModelControlModel[] {
+    return (models || []).filter(m => (m.provider || "").toLowerCase() === "openrouter");
+}
+
 /** Codex models the dropdowns can offer — GET /api/model-control/codex-models. */
 export async function getCodexModels(): Promise<CodexModelOption[]> {
     const response = await fetch(`/api/model-control/codex-models`, {

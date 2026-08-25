@@ -408,7 +408,7 @@ function DispatchBar({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ tone: "ok" | "refused" | "error"; text: string } | null>(null);
 
-  const { options, fallback, note, credential, fallbackBlocked } = optionsFor(executor);
+  const { options, fallback, spendNote, credential, fallbackBlocked } = optionsFor(executor);
   // Human-readable model for the collapsed summary — the pinned model's label,
   // or the executor default when nothing is pinned.
   const selectedOption = model ? options.find((o) => o.id === model) : undefined;
@@ -512,6 +512,14 @@ function DispatchBar({
           provider: selectedProvider,
           instructions: instructions.trim() || undefined,
           force,
+          // This button is only ever pressed by a person, so the dispatch is
+          // operator-initiated and clears Praxis's autonomy pause gate. Without
+          // it, hand-dispatching one task from the board was refused whenever
+          // no day schedule was installed — which made "autonomy paused" mean
+          // "the board is dead", the exact reading that gate was written to
+          // avoid ("pausing autonomy is not the same as taking the controls
+          // away", antigravity-tools.ts).
+          operator: true,
         });
         if (res.refused) {
           setResult({ tone: "refused", text: res.reply });
@@ -573,7 +581,7 @@ function DispatchBar({
                   setModel(e.target.value);
                   scheduleSave();
                 }}
-                title={`${executor} model for this dispatch (billed to the ${note} subscription)`}
+                title={`${executor} model for this dispatch (${spendNote})`}
                 className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-purple-200 outline-none focus:border-purple-500/60"
               >
                 <option value="" title={fallbackBlocked?.reason || undefined}>

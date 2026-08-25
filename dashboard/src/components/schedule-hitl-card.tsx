@@ -507,7 +507,7 @@ export function ScheduleHitlCard({
                           ))}
                         </select>
                         {(() => {
-                          const { options, fallback, note } = modelOptionsFor(currentExec);
+                          const { options, fallback, spendNote } = modelOptionsFor(currentExec);
                           const chosen = models[slot.nexusTaskId] ?? "";
                           // The morning router's pick — pre-selected via
                           // slot.modelOverride, and labelled here so it stays
@@ -533,7 +533,7 @@ export function ScheduleHitlCard({
                                   [slot.nexusTaskId]: e.target.value,
                                 }))
                               }
-                              title={`${currentExec} model for this slot (billed to the ${note} subscription)${rationale}`}
+                              title={`${currentExec} model for this slot (${spendNote})${rationale}`}
                               className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-purple-200 outline-none focus:border-purple-500 disabled:cursor-not-allowed"
                             >
                               <option value="">
