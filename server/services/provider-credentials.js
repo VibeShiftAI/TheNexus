@@ -28,6 +28,7 @@
  */
 const path = require('path');
 const Database = require('better-sqlite3');
+const { resolveSharedCredential } = require('./praxis-env');
 
 const DEFAULT_DB_PATH = process.env.NEXUS_DB_PATH || path.resolve(__dirname, '../../nexus.db');
 
@@ -56,12 +57,23 @@ const EXECUTOR_LANES = {
     gemini: { provider: 'google', label: 'Gemini API key', kind: 'api_key' },
 };
 
-/** API-key lanes — per-token routes that genuinely need an env key present. */
+/**
+ * API-key lanes — per-token routes that genuinely need an env key present.
+ *
+ * `shared: true` means the key is allowed to live in `Praxis/.env` rather than
+ * this process's environment. Robert keeps credentials in one place
+ * (feedback_reuse_praxis_creds), so requiring a second copy in TheNexus/.env
+ * would report a live lane as `missing_key` and ban it before dispatch.
+ */
 const API_KEY_LANES = {
     anthropic: { label: 'Anthropic API', envVars: ['ANTHROPIC_API_KEY'] },
     openai: { label: 'OpenAI API', envVars: ['OPENAI_API_KEY'] },
     google: { label: 'Google AI API', envVars: ['GOOGLE_API_KEY', 'GEMINI_API_KEY'] },
     xai: { label: 'xAI API', envVars: ['XAI_API_KEY'] },
+    // The FREE lane (2026-08-25): $0 models the subscription CLIs cannot offer.
+    // It is an api_key lane because the key genuinely gates it — unlike the
+    // three CLI executors, which are subscription-authed and have no key to test.
+    openrouter: { label: 'OpenRouter (free lane)', envVars: ['OPENROUTER_API_KEY'], shared: true },
 };
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -92,8 +104,30 @@ const FAILURE_CLASSES = [
         code: 'usage_limit',
         ttlMs: 5 * HOUR_MS,
         pattern: /\b429\b|rate[ _-]?limit(?:ed|s)?\b|usage limit|session limit|weekly limit|quota exceeded|usagelimitexceeded/i,
+        // …unless the 429 is OpenRouter's free-lane shared-pool cooldown. See
+        // SHARED_POOL_COOLDOWN_RE.
+        skipWhen: text => SHARED_POOL_COOLDOWN_RE.test(text),
     },
 ];
+
+/**
+ * OpenRouter's free endpoints ride shared upstream pools and answer a throttled
+ * call with HTTP 429 plus its own explanation:
+ *
+ *   { code: 429, metadata: { limit_source: "upstream_provider_shared_pool",
+ *                            retry_after_seconds: 5, provider_name: "Stealth" } }
+ *
+ * That is a SECONDS-scale cooldown, so it belongs with the exclusions named in
+ * this module's header (5xx, exit codes, timeouts) rather than with credential
+ * faults: blocking the lane for the usage_limit class's five hours would ban a
+ * healthy route over a five-second wait, and Praxis already rotates past it
+ * to another vendor's free model (src/llm/openrouter-free.ts).
+ *
+ * Only the 429 class is suppressed. A row that ALSO carries a real 402 or an
+ * auth failure still classifies — those classes are tested first.
+ */
+const SHARED_POOL_COOLDOWN_RE =
+    /upstream_provider_shared_pool|temporarily rate-limited upstream|retry_after_seconds/i;
 
 /** Outcomes that prove the lane routed successfully (credential was live). */
 const RECOVERY_OUTCOMES = new Set(['success', 'needs_input']);
@@ -136,8 +170,9 @@ function parseScopedModel(text) {
 /** Classify a dispatch's failure text as a credential fault, or null. */
 function classifyCredentialFailure(text) {
     if (!text || !text.trim()) return null;
-    for (const { code, ttlMs, pattern } of FAILURE_CLASSES) {
+    for (const { code, ttlMs, pattern, skipWhen } of FAILURE_CLASSES) {
         if (!pattern.test(text)) continue;
+        if (skipWhen && skipWhen(text)) continue;
         const detailLine = text.split('\n').map(l => l.trim()).find(l => l && pattern.test(l)) || null;
         return {
             code,
@@ -265,12 +300,17 @@ function providerLaneFor(providerLanes, provider) {
 }
 
 /** API-key lanes: present env key or not. Nothing to infer, nothing to guess. */
-function assessApiKeyLanes(env = process.env) {
+function assessApiKeyLanes(env = process.env, opts = {}) {
+    // Injectable so a test can assert the missing-key path without depending on
+    // whether a Praxis checkout happens to sit beside this one.
+    const resolveShared = opts.resolveShared || resolveSharedCredential;
     return Object.entries(API_KEY_LANES).map(([provider, lane]) => {
         const present = lane.envVars.filter(name => {
             const value = env[name];
-            return typeof value === 'string' && value.trim().length > 0;
+            if (typeof value === 'string' && value.trim().length > 0) return true;
+            return lane.shared ? !!resolveShared(name) : false;
         });
+        const where = lane.shared ? 'the API environment or Praxis/.env' : 'the API environment';
         return {
             provider,
             credential: lane.label,
@@ -278,7 +318,7 @@ function assessApiKeyLanes(env = process.env) {
             envVars: lane.envVars,
             keyVar: present[0] || null,
             status: present.length ? 'ok' : 'missing_key',
-            reason: present.length ? null : `No ${lane.envVars.join(' / ')} in the API environment`,
+            reason: present.length ? null : `No ${lane.envVars.join(' / ')} in ${where}`,
         };
     });
 }
@@ -463,6 +503,7 @@ function resetRoutingCache() {
 
 module.exports = {
     classifyCredentialFailure,
+    isSharedPoolCooldown: text => SHARED_POOL_COOLDOWN_RE.test(String(text || '')),
     assessExecutorLanes,
     assessApiKeyLanes,
     getRoutingState,

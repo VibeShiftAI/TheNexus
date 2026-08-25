@@ -65,7 +65,7 @@ import { getProjects, type Project } from "@/lib/nexus";
 const ROLE_ALIASES = ["local_default", "coder", "planner", "researcher", "reviewer", "summarizer"];
 const CAPABILITY_OPTIONS = ["chat", "coding", "reasoning", "vision", "local"];
 const DEFAULT_POLICY: ModelControlPolicy = { enabled: false, requiredCapabilities: [], fallbackChain: [], budget: {} };
-const PROVIDERS = ["anthropic", "openai", "google", "xai", "local"];
+const PROVIDERS = ["anthropic", "openai", "google", "xai", "openrouter", "local"];
 
 function formatDate(value?: string | null) {
     if (!value) return "unknown";
@@ -108,6 +108,8 @@ function providerTone(provider?: string | null) {
     if (normalized === "openai") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
     if (normalized === "google") return "border-blue-500/30 bg-blue-500/10 text-blue-200";
     if (normalized === "xai") return "border-pink-500/30 bg-pink-500/10 text-pink-200";
+    // Violet matches the openrouter series colour on the llm-activity chart.
+    if (normalized === "openrouter") return "border-violet-500/30 bg-violet-500/10 text-violet-200";
     return "border-slate-700 bg-slate-800/70 text-slate-300";
 }
 

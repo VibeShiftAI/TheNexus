@@ -1,5 +1,6 @@
 const { buildChatMessageEvent } = require('../chat-message-format');
 const { calculateCost } = require('../utils/token-tracker');
+const { resolveSharedCredential } = require('./praxis-env');
 
 function normalizeProvider(provider) {
     const value = String(provider || '').toLowerCase();
@@ -60,6 +61,17 @@ function providerHasCredentials(provider) {
             return true;
         case 'xai':
             return !!process.env.XAI_API_KEY;
+        case 'openrouter':
+            // The one provider here that IS genuinely key-gated. The three CLI
+            // executors above are subscription-authed, which is why gating them
+            // on an API key caused the 2026-07-10 regression; OpenRouter has no
+            // subscription behind it, so key absence really does mean the lane
+            // cannot route. The key may live in Praxis/.env rather than this
+            // process's environment (feedback_reuse_praxis_creds) — requiring a
+            // duplicate copy here would report a live lane as unavailable and
+            // silently fall back to local Gemma, which is the 2026-07-10 shape
+            // all over again by a different road.
+            return !!resolveSharedCredential('OPENROUTER_API_KEY');
         case 'local':
             return true;
         default:

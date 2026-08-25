@@ -397,6 +397,42 @@ function runModelControlMigrations(sqlite) {
             );
         `);
 
+        // Seed the OpenRouter FREE lane's models (2026-08-25). These are the
+        // $0 roster Praxis's src/llm/openrouter-free.ts guards — models no
+        // subscription CLI offers, reachable without reopening per-token spend.
+        //
+        // `default_parameters.max_tokens` is deliberately generous and is NOT a
+        // cap: every one of these is a REASONING model that emits its thinking
+        // into a separate field while OpenRouter bills it as completion tokens.
+        // Measured 2026-08-25 on stealth/ox-alpha — a one-sentence prompt at
+        // max_tokens 128 returned empty content with finish_reason "length",
+        // and answered normally at 256. The floor buys room to think AND
+        // answer; tune it here rather than in code.
+        //
+        // INSERT OR IGNORE, so re-seeding never clobbers operator tuning.
+        sqlite.exec(`
+            INSERT OR IGNORE INTO models
+              (id, name, provider, api_model_id, display_name, family, version_sort,
+               is_active, availability_status, sort_order, capabilities, default_parameters) VALUES
+              ('openrouter-ox-alpha', 'Ox Alpha', 'openrouter', 'stealth/ox-alpha',
+               'Ox Alpha (free)', 'Ox', '1.0', 1, 'available', 10,
+               '{"reasoning":true,"tools":true,"vision":true,"contextWindow":1048576}',
+               '{"max_tokens":4096}'),
+              ('openrouter-nemotron-ultra', 'Nemotron 3 Ultra', 'openrouter',
+               'nvidia/nemotron-3-ultra-550b-a55b:free', 'Nemotron 3 Ultra 550B (free)',
+               'Nemotron', '3.0', 1, 'available', 11,
+               '{"reasoning":true,"tools":true,"contextWindow":1000000}',
+               '{"max_tokens":4096}'),
+              ('openrouter-minimax-m3', 'MiniMax M3', 'openrouter', 'minimax/minimax-m3:free',
+               'MiniMax M3 (free)', 'MiniMax', '3.0', 1, 'available', 12,
+               '{"reasoning":true,"tools":true,"vision":true,"contextWindow":1048576}',
+               '{"max_tokens":4096}'),
+              ('openrouter-glm', 'GLM 5.2', 'openrouter', 'z-ai/glm-5.2:free',
+               'GLM 5.2 (free)', 'GLM', '5.2', 1, 'available', 13,
+               '{"reasoning":true,"tools":true,"contextWindow":256000}',
+               '{"max_tokens":4096}');
+        `);
+
         // Seed repointable online aliases (one place to change "which Gemini")
         // and the canonical call-site roles (local-first, with a small Gemini
         // allowlist). INSERT OR IGNORE never clobbers a value the user has tuned.

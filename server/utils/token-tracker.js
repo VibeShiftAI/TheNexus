@@ -26,6 +26,18 @@ const PRICING = {
     'claude-sonnet': { input: 3.00, output: 15.00 },
     'gemini-pro': { input: 1.25, output: 5.00 },
     'gemini-flash': { input: 0.075, output: 0.30 },
+    // OpenRouter FREE lane (2026-08-25). Explicit zeros, not an omission: a
+    // missing row falls through to `default` below and would bill a $0 call at
+    // $1/$4 per million, quietly inflating every cost ledger and budget gate
+    // that reads this table.
+    'stealth/ox-alpha': { input: 0, output: 0 },
+    'nvidia/nemotron-3-ultra-550b-a55b:free': { input: 0, output: 0 },
+    'minimax/minimax-m3:free': { input: 0, output: 0 },
+    'thinkingmachines/inkling:free': { input: 0, output: 0 },
+    'z-ai/glm-5.2:free': { input: 0, output: 0 },
+    'poolside/laguna-s-2.1:free': { input: 0, output: 0 },
+    'cohere/north-mini-code:free': { input: 0, output: 0 },
+    'openrouter/free': { input: 0, output: 0 },
     // Default fallback
     'default': { input: 1.00, output: 4.00 }
 };
