@@ -55,6 +55,10 @@ const EXECUTOR_LANES = {
     // genuinely authenticates with a provider key, so a missing key excludes it
     // before execution instead of at the provider's 401.
     gemini: { provider: 'google', label: 'Gemini API key', kind: 'api_key' },
+    // The OpenRouter FREE lane (2026-08-25). Also key-authed, and its key may
+    // live in Praxis/.env — API_KEY_LANES.openrouter is marked `shared`, so the
+    // lane reads live from there without a duplicate copy in this repo.
+    openrouter: { provider: 'openrouter', label: 'OpenRouter (free lane)', kind: 'api_key' },
 };
 
 /**
@@ -410,7 +414,15 @@ function getRoutingState({ dbPath = DEFAULT_DB_PATH, now = Date.now(), env = pro
     const executors = rows
         ? assessExecutorLanes(rows, now, providers)
         : assessExecutorLanes([], now, providers).map(lane => (
-            lane.status === 'blocked'
+            // An api_key lane's verdict comes from key PRESENCE, which needs no
+            // history — so it survives an unreadable board whatever it says,
+            // `ok` included. Until 2026-08-25 only `blocked` was preserved, and
+            // that passed for as long as the sole api_key executor (gemini) had
+            // no key present in any environment that exercised this path. The
+            // OpenRouter lane, whose key resolves from Praxis/.env, is the first
+            // one to read `ok` here and it was being degraded to `unknown`
+            // against this block's own stated rule.
+            lane.kind === 'api_key' || lane.status === 'blocked'
                 ? lane
                 : {
                     ...lane,

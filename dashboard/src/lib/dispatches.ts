@@ -14,7 +14,7 @@ export type DispatchOutcome =
     | 'needs_input'
     | 'cancelled';
 
-export type DispatchExecutor = 'antigravity' | 'codex' | 'claude-code';
+export type DispatchExecutor = 'antigravity' | 'codex' | 'claude-code' | 'openrouter';
 
 export interface TaskDispatch {
     id: string;
