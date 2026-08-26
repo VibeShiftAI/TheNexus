@@ -42,10 +42,45 @@ function ranOffSchedule(event: CalendarEvent): boolean {
   );
 }
 
-/** Position (0–100%) of a timestamp across the local calendar day. */
-function pctOfDay(ts: number) {
+/** Local midnight on the day containing `ts`. */
+function startOfDay(ts: number): number {
   const d = new Date(ts);
-  return ((d.getHours() * 60 + d.getMinutes()) / 1440) * 100;
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/** Local midnight *after* the day containing `ts`. */
+function endOfDay(ts: number): number {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+
+/**
+ * Position (0–100%) of a timestamp across the panel's span. The span is the
+ * calendar day in the ordinary case, but a plan whose slots run past midnight
+ * stretches it to cover the spill-over day too — otherwise a 1:33 AM slot
+ * belonging to *tomorrow* renders at 6% of the track, on top of today's small
+ * hours, and reads as work that already came and went.
+ */
+function pctOfSpan(ts: number, spanStart: number, spanEnd: number) {
+  const width = Math.max(spanEnd - spanStart, 1);
+  return ((ts - spanStart) / width) * 100;
+}
+
+/** "Mon, Aug 25" — labels the divider where one calendar day hands off to the next. */
+function dayLabel(ts: number) {
+  return new Date(ts).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+}
+
+/**
+ * Time, qualified by day once the panel spans more than one. A bare "01:33" is
+ * actively misleading when the item is tomorrow's.
+ */
+function formatWhen(isoString: string, spanStart: number) {
+  const ts = new Date(isoString).getTime();
+  return startOfDay(ts) === spanStart ? formatTime(isoString) : `${dayLabel(ts)} ${formatTime(isoString)}`;
 }
 
 /** Glowing status node on the timeline rail. */
@@ -84,26 +119,38 @@ function trackDot(status: CalendarEventStatus): string {
 function DayTrack({
   events,
   nowTs,
+  spanStart,
+  spanEnd,
   onJump,
 }: {
   events: CalendarEvent[];
   nowTs: number;
+  spanStart: number;
+  spanEnd: number;
   onJump: (id: string) => void;
 }) {
-  const nowPct = pctOfDay(nowTs);
+  const nowPct = pctOfSpan(nowTs, spanStart, spanEnd);
+  // A tick every 6 hours across the span. Midnight ticks are taller and carry
+  // the weekday instead of an hour, so a two-day span reads as two days rather
+  // than one 48-hour smear. Stepped with setHours (not fixed ms) so a DST day
+  // still lands its ticks on the clock hours it labels.
+  const ticks: { ts: number; midnight: boolean }[] = [];
+  for (let d = new Date(spanStart); d.getTime() <= spanEnd; d.setHours(d.getHours() + 6)) {
+    ticks.push({ ts: d.getTime(), midnight: d.getHours() === 0 });
+  }
   return (
     <div className="mb-2.5">
       <div className="relative h-5">
         <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-slate-800" />
         <span
           className="absolute left-0 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-purple-500/20 to-cyan-500/60"
-          style={{ width: `${nowPct}%` }}
+          style={{ width: `${Math.max(0, Math.min(100, nowPct))}%` }}
         />
-        {[0, 6, 12, 18, 24].map((h) => (
+        {ticks.map(({ ts, midnight }) => (
           <span
-            key={h}
-            className="absolute top-1/2 h-1.5 w-px -translate-y-1/2 bg-slate-700"
-            style={{ left: `${(h / 24) * 100}%` }}
+            key={ts}
+            className={`absolute top-1/2 w-px -translate-y-1/2 ${midnight ? "h-3.5 bg-slate-600" : "h-1.5 bg-slate-700"}`}
+            style={{ left: `${pctOfSpan(ts, spanStart, spanEnd)}%` }}
           />
         ))}
         {events.map((e) => (
@@ -111,8 +158,8 @@ function DayTrack({
             key={e.id}
             onClick={() => onJump(e.id)}
             className={`absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform hover:scale-150 ${trackDot(e.status)}`}
-            style={{ left: `${pctOfDay(new Date(effectiveTimeIso(e)).getTime())}%` }}
-            title={`${formatTime(effectiveTimeIso(e))} · ${e.title}${ranOffSchedule(e) ? ` (planned ${formatTime(e.start_time)})` : ""}`}
+            style={{ left: `${pctOfSpan(new Date(effectiveTimeIso(e)).getTime(), spanStart, spanEnd)}%` }}
+            title={`${formatWhen(effectiveTimeIso(e), spanStart)} · ${e.title}${ranOffSchedule(e) ? ` (planned ${formatWhen(e.start_time, spanStart)})` : ""}`}
             aria-label={`Jump to ${e.title}`}
           />
         ))}
@@ -122,11 +169,13 @@ function DayTrack({
         />
       </div>
       <div className="flex justify-between text-[8px] tabular-nums text-slate-600">
-        <span>00</span>
-        <span>06</span>
-        <span>12</span>
-        <span>18</span>
-        <span>24</span>
+        {ticks.map(({ ts, midnight }) => (
+          <span key={ts} className={midnight ? "text-slate-500" : undefined}>
+            {midnight
+              ? new Date(ts).toLocaleDateString([], { weekday: "short" })
+              : String(new Date(ts).getHours()).padStart(2, "0")}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -143,9 +192,19 @@ export function ScheduleTimeline() {
 
   const fetchTodayEvents = useCallback(async () => {
     try {
-      const today = new Date();
-      const start = new Date(new Date(today).setHours(0, 0, 0, 0)).toISOString();
-      const end = new Date(new Date(today).setHours(23, 59, 59, 999)).toISOString();
+      // The plan is not guaranteed to fit inside the calendar day. When the
+      // morning slate is approved late, slots roll past midnight — the
+      // 2026-08-24 plan put 7 of its 12 between 1:33 AM and 11:42 AM the
+      // following day. Clamping this fetch to 00:00–23:59 dropped those from
+      // the panel outright: the day read as "4 items" with nothing to indicate
+      // the other 7 existed. Pull the next day too and let the render group by
+      // date; on an ordinary day the extra window is simply empty.
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      const windowEnd = new Date(dayStart);
+      windowEnd.setDate(windowEnd.getDate() + 2);
+      const start = dayStart.toISOString();
+      const end = new Date(windowEnd.getTime() - 1).toISOString();
       const res = await fetch(calendarEventsUrl(start, end));
       if (res.ok) {
         const data = await res.json();
@@ -205,8 +264,22 @@ export function ScheduleTimeline() {
   );
 
   const doneCount = events.filter((e) => e.status === "completed").length;
-  const nowIndex = events.findIndex((e) => new Date(effectiveTimeIso(e)).getTime() > nowTs);
-  const nowAt = nowIndex === -1 ? events.length : nowIndex;
+
+  // Today, and the tail the plan pushed past midnight. Splitting on the day
+  // boundary (rather than filtering it away) is what lets the operator scroll
+  // into the rest of the slate instead of it silently not existing.
+  const spanStart = startOfDay(nowTs);
+  const nextMidnight = endOfDay(nowTs);
+  const startedToday = (e: CalendarEvent) => new Date(effectiveTimeIso(e)).getTime() < nextMidnight;
+  const todayEvents = events.filter(startedToday);
+  const spillEvents = events.filter((e) => !startedToday(e));
+  const lastTs = events.length
+    ? Math.max(...events.map((e) => new Date(effectiveTimeIso(e)).getTime()))
+    : spanStart;
+  const spanEnd = Math.max(nextMidnight, endOfDay(lastTs));
+
+  const nowIndex = todayEvents.findIndex((e) => new Date(effectiveTimeIso(e)).getTime() > nowTs);
+  const nowAt = nowIndex === -1 ? todayEvents.length : nowIndex;
   const nextUp = events.find((e) => e.status === "scheduled" && new Date(e.start_time).getTime() > nowTs);
 
   const nowDivider = (
@@ -332,6 +405,14 @@ export function ScheduleTimeline() {
           <span className="text-[10px] tabular-nums text-slate-500" title={`${doneCount} of ${events.length} items completed`}>
             {doneCount}/{events.length} done
           </span>
+          {spillEvents.length > 0 && (
+            <span
+              className="text-[10px] tabular-nums text-purple-300/90"
+              title={`${spillEvents.length} of this plan's items are scheduled after midnight — scroll the list to reach them`}
+            >
+              +{spillEvents.length} after midnight
+            </span>
+          )}
           <Link href="/calendar" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
             calendar <ArrowUpRight size={12} />
           </Link>
@@ -346,19 +427,31 @@ export function ScheduleTimeline() {
         </div>
       ) : (
         <>
-          <DayTrack events={events} nowTs={nowTs} onJump={jumpToEvent} />
+          <DayTrack events={events} nowTs={nowTs} spanStart={spanStart} spanEnd={spanEnd} onJump={jumpToEvent} />
 
           <div ref={listRef} className="custom-scrollbar relative max-h-[300px] space-y-1 overflow-y-auto pr-1">
             {/* Timeline rail behind the status nodes */}
             <span className="pointer-events-none absolute bottom-1 left-[4px] top-1 w-px bg-slate-800/70" />
-            {events.slice(0, nowAt).map(renderEvent)}
+            {todayEvents.slice(0, nowAt).map(renderEvent)}
             {nowDivider}
-            {events.slice(nowAt).map(renderEvent)}
+            {todayEvents.slice(nowAt).map(renderEvent)}
+            {spillEvents.length > 0 && (
+              <>
+                <div className="relative flex items-center gap-2 py-1 pl-5">
+                  <span className="absolute left-0 h-2 w-2 rounded-full border border-purple-400/70 bg-slate-950" />
+                  <span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-widest text-purple-300">
+                    {dayLabel(new Date(effectiveTimeIso(spillEvents[0])).getTime())} · past midnight
+                  </span>
+                  <span className="h-px flex-1 bg-gradient-to-r from-purple-500/50 to-transparent" />
+                </div>
+                {spillEvents.map(renderEvent)}
+              </>
+            )}
           </div>
 
           {nextUp && (
             <div className="mt-2 truncate border-t border-slate-800/60 pt-1.5 text-[10px] text-slate-500">
-              up next: <span className="text-purple-300">{nextUp.title}</span> · {formatTime(nextUp.start_time)}
+              up next: <span className="text-purple-300">{nextUp.title}</span> · {formatWhen(nextUp.start_time, spanStart)}
             </div>
           )}
         </>
