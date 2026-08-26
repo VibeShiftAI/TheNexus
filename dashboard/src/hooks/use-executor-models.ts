@@ -38,8 +38,16 @@ export const EXECUTOR_OPTIONS: ExecutorName[] = [
   "openrouter",
 ];
 
-/** The free roster head — what an unpinned openrouter dispatch runs on. */
-const OPENROUTER_DEFAULT_MODEL = "stealth/ox-alpha";
+/**
+ * The free roster head — what an unpinned openrouter dispatch runs on.
+ *
+ * Keep this in step with `OPENROUTER_FREE_ROSTER[0]` in Praxis
+ * (src/llm/openrouter-free.ts). It named `stealth/ox-alpha` until OpenRouter
+ * withdrew that model on 2026-08-26, at which point this picker was offering
+ * an executor/model pair that could not run — the same shape of stale
+ * duplication that dropped the `openrouter` override on task a0077b4c.
+ */
+const OPENROUTER_DEFAULT_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
 
 /**
  * The managed default worker. Every dispatch surface starts here and only
