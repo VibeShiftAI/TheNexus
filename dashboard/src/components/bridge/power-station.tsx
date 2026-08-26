@@ -175,8 +175,8 @@ export function PowerStation() {
       accent="amber"
       className="flex h-full flex-col"
       headerRight={
-        <Link href="/llm-activity" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
-          details <ArrowUpRight size={12} />
+        <Link href="/model-control" className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
+          controls <ArrowUpRight size={12} />
         </Link>
       }
     >
