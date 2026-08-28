@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --import ./test/register.mjs --test \"src/**/__tests__/*.test.mjs\" \"src/**/__tests__/*.test.ts\" \"test/*.test.mjs\""
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -40,8 +41,10 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.2.3",
+    "esbuild": "^0.28.2",
     "eslint": "^4.1.1",
     "eslint-config-next": "^0.2.4",
+    "jsdom": "^27.0.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
+import { memo, useState, useMemo, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Send, Bot, User, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw, Maximize2, Mic, Square, Plus, History, ChevronRight, Download, Image, Film, Music, FileArchive, Volume2, Save } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -59,6 +59,15 @@ function voiceKeyForMessage(msg: { id?: string; timestamp: Date; role: string },
     return msg.id
         ? `id:${msg.id}#${vidx}`
         : `ts:${msg.timestamp.toISOString()}|${msg.role}#${vidx}`;
+}
+
+/** Stable transcript row identity: server/optimistic ids when present;
+ *  id-less local rows (error banners, approval notes) fall back to
+ *  timestamp+role. Stable keys are what let pagination prepends and DOM
+ *  window shifts reuse the memoized markdown rows instead of re-parsing
+ *  every message below the splice point. */
+function messageKey(msg: Message): string {
+    return msg.id ?? `local-${msg.timestamp.getTime()}-${msg.role}`;
 }
 
 const VOICE_PLAYED_STORE_KEY = 'nexus.voice.played';
@@ -145,8 +154,10 @@ const TASK_LINK_CLASS =
 
 /** Renders plain (non-markdown) text with every task-id mention linked.
  *  User turns and one-line system events stay literal — this only swaps the
- *  ids themselves for links, so nothing else about the text changes. */
-function TaskLinkedText({ text }: { text: string }) {
+ *  ids themselves for links, so nothing else about the text changes.
+ *  Memoized: unchanged text must not re-scan for task ids when the
+ *  transcript re-renders around it (streaming, appends). */
+const TaskLinkedText = memo(function TaskLinkedText({ text }: { text: string }) {
     const segments = splitOnTaskIds(text);
     if (segments.length === 1) return <>{text}</>;
     return (
@@ -167,68 +178,191 @@ function TaskLinkedText({ text }: { text: string }) {
             )}
         </>
     );
-}
+});
+
+// ReactMarkdown config is static, so it lives at module level: the memoized
+// MarkdownMessage below only skips the parse when its props are identical,
+// and an inline plugins array / components map would be a fresh object every
+// render.
+const REMARK_PLUGINS = [remarkGfm, remarkTaskLinks];
+
+const MARKDOWN_COMPONENTS: Components = {
+    // Task ids (rewritten to /task/<id> by remarkTaskLinks) open the
+    // task screen in-app; everything else opens in a new tab so an
+    // external link never navigates the bridge away.
+    a: ({ node: _node, href, children, ...props }) =>
+        isTaskHref(href) ? (
+            <Link href={href} {...props} className={TASK_LINK_CLASS}>
+                {children}
+            </Link>
+        ) : (
+            <a href={href} {...props} target="_blank" rel="noopener noreferrer">
+                {children}
+            </a>
+        ),
+    // Keep wide tables (e.g. the Day Schedule) from blowing out
+    // the narrow viewscreen — scroll them horizontally instead.
+    table: ({ node: _node, ...props }) => (
+        <div className="overflow-x-auto">
+            <table {...props} />
+        </div>
+    ),
+    code({ node: _node, className, children, ...props }: any) {
+        const match = /language-(\w+)/.exec(className || "");
+        const raw = String(children);
+        // Fenced or multi-line → highlighted block; otherwise inline code.
+        return match || raw.includes("\n") ? (
+            <SyntaxHighlighter
+                style={oneDark as any}
+                language={match ? match[1] : "text"}
+                PreTag="div"
+                className="rounded-lg !bg-slate-950 !text-xs"
+                {...props}
+            >
+                {raw.replace(/\n$/, "")}
+            </SyntaxHighlighter>
+        ) : (
+            <code className={className} {...props}>{children}</code>
+        );
+    },
+};
 
 /** Renders message content as normalized markdown at the shared prose scale.
  *  Used for every assistant reply and every multi-line system card so the whole
- *  transcript reads as one consistent, well-formatted surface. */
-function MarkdownMessage({ content }: { content: string }) {
+ *  transcript reads as one consistent, well-formatted surface.
+ *  Memoized: the remark/Prism pipeline is the expensive part of the
+ *  transcript, and a message whose content hasn't changed must never pay
+ *  for it again just because the transcript re-rendered around it. */
+const MarkdownMessage = memo(function MarkdownMessage({ content }: { content: string }) {
     return (
         <div className={MESSAGE_PROSE}>
             <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkTaskLinks]}
-                components={{
-                    // Task ids (rewritten to /task/<id> by remarkTaskLinks) open the
-                    // task screen in-app; everything else opens in a new tab so an
-                    // external link never navigates the bridge away.
-                    a: ({ node: _node, href, children, ...props }) =>
-                        isTaskHref(href) ? (
-                            <Link href={href} {...props} className={TASK_LINK_CLASS}>
-                                {children}
-                            </Link>
-                        ) : (
-                            <a href={href} {...props} target="_blank" rel="noopener noreferrer">
-                                {children}
-                            </a>
-                        ),
-                    // Keep wide tables (e.g. the Day Schedule) from blowing out
-                    // the narrow viewscreen — scroll them horizontally instead.
-                    table: ({ node: _node, ...props }) => (
-                        <div className="overflow-x-auto">
-                            <table {...props} />
-                        </div>
-                    ),
-                    code({ node: _node, className, children, ...props }: any) {
-                        const match = /language-(\w+)/.exec(className || "");
-                        const raw = String(children);
-                        // Fenced or multi-line → highlighted block; otherwise inline code.
-                        return match || raw.includes("\n") ? (
-                            <SyntaxHighlighter
-                                style={oneDark as any}
-                                language={match ? match[1] : "text"}
-                                PreTag="div"
-                                className="rounded-lg !bg-slate-950 !text-xs"
-                                {...props}
-                            >
-                                {raw.replace(/\n$/, "")}
-                            </SyntaxHighlighter>
-                        ) : (
-                            <code className={className} {...props}>{children}</code>
-                        );
-                    },
-                }}
+                remarkPlugins={REMARK_PLUGINS}
+                components={MARKDOWN_COMPONENTS}
             >
                 {normalizeMarkdown(content)}
             </ReactMarkdown>
         </div>
     );
+});
+
+// ── Transcript DOM window (2026-08-28) ──
+// The provider's message array is unbounded (a day of socket appends on top
+// of the 30-message mount tail), but the DOM doesn't have to be: only the
+// newest RENDER_WINDOW messages stay mounted once the transcript is trimmed.
+// Scrolling to the top reveals REVEAL_PAGE already-loaded messages at a time
+// before any network pagination, the trim only ever happens while the view
+// is pinned to the bottom (never under a reader), and the slack batches
+// trims so streaming appends don't re-trim per message.
+const RENDER_WINDOW = 200;
+const RENDER_WINDOW_SLACK = 40;
+const REVEAL_PAGE = 100;
+
+interface ChatComposerProps {
+    isInline: boolean;
+    isOpen: boolean;
+    loading: boolean;
+    isRecording: boolean;
+    hasAudio: boolean;
+    attachedCount: number;
+    /** Synchronous dispatch decision: true = message accepted, clear the input. */
+    onSend: (text: string) => boolean;
+}
+
+/** The composer's keystroke state lives HERE, in a leaf component beside the
+ *  transcript — not in AITerminal above it. Typing therefore re-renders only
+ *  this input row; the message list cannot even read the draft text. (It used
+ *  to live in AITerminal, so every keystroke re-rendered and re-parsed every
+ *  message on screen — seconds of lag once a conversation built up history.) */
+function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio, attachedCount, onSend }: ChatComposerProps) {
+    const [input, setInput] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
+    const composerIcon = isInline ? 16 : 18;
+
+    // Focus input when terminal opens (modal only — inline shouldn't steal focus on page load)
+    useEffect(() => {
+        if (isOpen && !isInline && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [isOpen, isInline]);
+
+    // Any deck surface can drop text into the composer (e.g. the notes
+    // console's "chat about it"): dispatch `nexus:chat-seed` with
+    // { detail: { text } } — the composer fills the input and focuses so the
+    // operator can edit before sending.
+    useEffect(() => {
+        const onSeed = (e: Event) => {
+            const text = (e as CustomEvent<{ text?: string }>).detail?.text;
+            if (!text) return;
+            setInput(text);
+            inputRef.current?.focus();
+        };
+        window.addEventListener("nexus:chat-seed", onSeed);
+        return () => window.removeEventListener("nexus:chat-seed", onSeed);
+    }, []);
+
+    const submit = () => {
+        if (onSend(input)) setInput("");
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            submit();
+        }
+    };
+
+    return (<>
+        {!isRecording && (
+            <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={hasAudio ? "Add a message (optional)..." : (attachedCount > 0 ? "Add a message (optional)..." : "Message Praxis...")}
+                className={isInline
+                    ? "flex-1 min-w-0 rounded-md bg-slate-900/60 border border-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-cyan-500/60 focus:outline-none transition-colors"
+                    : "flex-1 rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"}
+                disabled={loading}
+            />
+        )}
+
+        <button
+            onClick={submit}
+            aria-label="Send message"
+            disabled={loading || (!input.trim() && attachedCount === 0 && !hasAudio) || isRecording}
+            className={isInline
+                ? "flex items-center justify-center px-3 rounded-md bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:from-cyan-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                : "px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium hover:from-cyan-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"}
+        >
+            {loading ? <Loader2 size={composerIcon} className="animate-spin" /> : <Send size={composerIcon} />}
+        </button>
+    </>);
 }
 
 export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function AITerminal({ isOpen = true, onClose, mode = 'modal', hideHeader = false }, ref) {
     const isInline = mode === 'inline';
     const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages, chatAudio, playChatAudio, toggleChatAudio, pauseChatAudio } = useCortex();
-    const [input, setInput] = useState("");
+    // NOTE: the composer's draft text deliberately does NOT live here — it is
+    // ChatComposer's own state, so keystrokes can't re-render the transcript.
     const [loading, setLoading] = useState(false);
+    // Transcript DOM window: number of messages hidden at the HEAD of the
+    // list. Anchoring the window by its head means appends never slide it
+    // under a reader — the window only trims (hiddenCount grows) while the
+    // view is pinned to the bottom, and scrolling up reveals from memory
+    // before paginating over the network.
+    const [hiddenCount, setHiddenCount] = useState(0);
+    // Stale-guard: after a conversation switch the count may briefly exceed
+    // the fresh (shorter) list until the reset effect below runs.
+    const hiddenMessageCount = hiddenCount < messages.length ? hiddenCount : 0;
+    const visibleMessages = useMemo(
+        () => hiddenMessageCount > 0 ? messages.slice(hiddenMessageCount) : messages,
+        [messages, hiddenMessageCount],
+    );
+    useEffect(() => {
+        setHiddenCount(0);
+    }, [conversationId]);
     const [pendingArtifact, setPendingArtifact] = useState<CortexArtifact | null>(null);
     const [attachedFiles, setAttachedFiles] = useState<File[]>([]); // File upload state
     const [attachedPreviews, setAttachedPreviews] = useState<{ name: string; size: number; type: string; previewUrl?: string }[]>([]); // Rich preview state
@@ -484,7 +618,6 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
     }, []);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null); // Hidden file input (all types)
     const mediaInputRef = useRef<HTMLInputElement>(null); // Hidden media input (camera/gallery)
     const params = useParams();
@@ -527,11 +660,24 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         return () => clearTimeout(settle);
     }, [isLoadingHistory, conversationId, isOpen, jumpToBottom]);
 
-    // Auto-scroll on new messages appended to bottom (not when prepending older ones)
+    // Trim the DOM window only while pinned to the newest message, and only
+    // once the overflow clears the slack — never mid-scrollback (a reader's
+    // messages must not vanish above them), never per-append.
+    useEffect(() => {
+        if (!isNearBottomRef.current) return;
+        if (messages.length - hiddenMessageCount > RENDER_WINDOW + RENDER_WINDOW_SLACK) {
+            setHiddenCount(messages.length - RENDER_WINDOW);
+        }
+    }, [messages, hiddenMessageCount]);
+
+    // Auto-scroll on new messages appended to bottom (not when prepending
+    // older ones). Tracks the VISIBLE window: pagination prepends and
+    // scroll-up reveals both grow its head and get the same scroll
+    // compensation.
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
-        const newCount = messages.length;
+        const newCount = visibleMessages.length;
         const prevCount = prevMessageCountRef.current;
         if (newCount > prevCount) {
             // Check if messages were prepended (older messages loaded) or appended (new messages)
@@ -545,50 +691,39 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 // Messages were appended while pinned — follow to bottom.
                 container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
             }
-        } else if (newCount === prevCount && isNearBottomRef.current) {
+        } else if (isNearBottomRef.current) {
             // Same count but content grew (streaming deltas into the last
             // message) — keep the growing reply in view, no smooth jitter.
+            // Also covers the window trim above: fewer rows while pinned
+            // still means "stay pinned to the newest".
             container.scrollTop = container.scrollHeight;
         }
         prevMessageCountRef.current = newCount;
         prevScrollHeightRef.current = container.scrollHeight;
-    }, [messages]);
+    }, [visibleMessages]);
 
-    // Scroll-to-top detection for loading older messages
+    // Scroll-to-top detection: first reveal already-loaded messages hidden
+    // by the DOM window, then fall through to network pagination.
     const handleMessagesScroll = useCallback(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
         // Track whether the user is at the newest message (stick-to-bottom).
         isNearBottomRef.current =
             container.scrollHeight - container.scrollTop - container.clientHeight < 120;
-        // When scrolled near the top (within 50px), load more
-        if (container.scrollTop < 50 && hasMoreMessages && !isLoadingMore) {
-            prevScrollHeightRef.current = container.scrollHeight;
-            loadMoreMessages();
+        // When scrolled near the top (within 50px), reveal or load more
+        if (container.scrollTop < 50) {
+            if (hiddenMessageCount > 0) {
+                prevScrollHeightRef.current = container.scrollHeight;
+                setHiddenCount(Math.max(0, hiddenMessageCount - REVEAL_PAGE));
+            } else if (hasMoreMessages && !isLoadingMore) {
+                prevScrollHeightRef.current = container.scrollHeight;
+                loadMoreMessages();
+            }
         }
-    }, [hasMoreMessages, isLoadingMore, loadMoreMessages]);
+    }, [hiddenMessageCount, hasMoreMessages, isLoadingMore, loadMoreMessages]);
 
-    // Focus input when terminal opens (modal only — inline shouldn't steal focus on page load)
-    useEffect(() => {
-        if (isOpen && !isInline && inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, [isOpen, isInline]);
-
-    // Any deck surface can drop text into the composer (e.g. the notes
-    // console's "chat about it"): dispatch `nexus:chat-seed` with
-    // { detail: { text } } — the terminal fills the input and focuses so the
-    // operator can edit before sending.
-    useEffect(() => {
-        const onSeed = (e: Event) => {
-            const text = (e as CustomEvent<{ text?: string }>).detail?.text;
-            if (!text) return;
-            setInput(text);
-            inputRef.current?.focus();
-        };
-        window.addEventListener("nexus:chat-seed", onSeed);
-        return () => window.removeEventListener("nexus:chat-seed", onSeed);
-    }, []);
+    // Focus-on-open and the `nexus:chat-seed` fill-the-input listener moved
+    // into ChatComposer with the rest of the keystroke state.
 
     // Socket.IO connection and artifact handling are now managed by CortexProvider
 
@@ -716,23 +851,27 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         }
     };
 
-    const handleSend = async () => {
-        if ((!input.trim() && attachedFiles.length === 0 && !audioBlob) || loading) return;
+    // Synchronous dispatch decision for the composer: returns true when the
+    // message was accepted (the composer then clears its input), false when
+    // nothing was consumed (empty draft, mid-request, /ingest with no
+    // payload). The slow work continues in runIngest/runSend below.
+    const handleSend = (rawText: string): boolean => {
+        const text = rawText.trim();
+        if ((!text && attachedFiles.length === 0 && !audioBlob) || loading) return false;
 
         // ---------------------------------------------------------------
         // SLASH COMMAND: /ingest <url_or_text>
         // Directly ingests a link or text without invoking Praxis
         // ---------------------------------------------------------------
-        const trimmed = input.trim();
-        if (trimmed.startsWith('/ingest ') || trimmed === '/ingest') {
-            const payload = trimmed.replace(/^\/ingest\s*/, '').trim();
+        if (text.startsWith('/ingest ') || text === '/ingest') {
+            const payload = text.replace(/^\/ingest\s*/, '').trim();
             if (!payload) {
                 setMessages(prev => [...prev, {
                     role: 'system',
                     content: '⚠️ Usage: /ingest <url> or /ingest <text to save>',
                     timestamp: new Date()
                 }]);
-                return;
+                return false;
             }
 
             // Show user message
@@ -742,48 +881,13 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 content: `📥 /ingest ${isUrl ? payload : payload.substring(0, 80) + (payload.length > 80 ? '...' : '')}`,
                 timestamp: new Date()
             }]);
-            setInput('');
             setLoading(true);
-
-            try {
-                const authHeader = await getAuthHeader();
-                const body = isUrl
-                    ? { url: payload, projectId: scopedProjectId }
-                    : { text: payload, projectId: scopedProjectId };
-
-                const response = await fetch('/api/ingest', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json', ...authHeader as any },
-                    body: JSON.stringify(body),
-                });
-
-                const data = await response.json();
-
-                if (!response.ok || !data.success) {
-                    throw new Error(data.error || 'Ingestion failed');
-                }
-
-                const cortexNote = data.cortex === 'dispatched' ? ' → Cortex 🧠' : '';
-                setMessages(prev => [...prev, {
-                    role: 'system',
-                    content: `✅ Ingested: "${data.title}" — ${data.contentLength?.toLocaleString()} chars ${data.contentType ? `(${data.contentType}) ` : ''}saved to notes${cortexNote}`,
-                    timestamp: new Date()
-                }]);
-            } catch (err: any) {
-                setMessages(prev => [...prev, {
-                    role: 'system',
-                    content: `❌ Ingestion failed: ${err.message}`,
-                    timestamp: new Date()
-                }]);
-            } finally {
-                setLoading(false);
-            }
-            return; // Don't continue to normal chat flow
+            void runIngest(payload, isUrl);
+            return true;
         }
 
         // Build user message content
-        let messageContent = input.trim();
+        let messageContent = text;
         if (attachedFiles.length > 0) {
             messageContent += messageContent ? '\n\n' : '';
             messageContent += `📎 ${attachedFiles.length} file(s) attached: ${attachedFiles.map(f => f.name).join(', ')}`;
@@ -802,7 +906,6 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         };
 
         setMessages(prev => [...prev, userMessage]);
-        setInput("");
         const filesToUpload = [...attachedFiles];
         setAttachedFiles([]);
         // Clean up preview URLs
@@ -811,7 +914,48 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         const currentAudioBlob = audioBlob;
         clearAudio(); // Reset recording UI
         setLoading(true);
+        void runSend(text, clientMessageId, filesToUpload, currentAudioBlob);
+        return true;
+    };
 
+    const runIngest = async (payload: string, isUrl: boolean) => {
+        try {
+            const authHeader = await getAuthHeader();
+            const body = isUrl
+                ? { url: payload, projectId: scopedProjectId }
+                : { text: payload, projectId: scopedProjectId };
+
+            const response = await fetch('/api/ingest', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', ...authHeader as any },
+                body: JSON.stringify(body),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Ingestion failed');
+            }
+
+            const cortexNote = data.cortex === 'dispatched' ? ' → Cortex 🧠' : '';
+            setMessages(prev => [...prev, {
+                role: 'system',
+                content: `✅ Ingested: "${data.title}" — ${data.contentLength?.toLocaleString()} chars ${data.contentType ? `(${data.contentType}) ` : ''}saved to notes${cortexNote}`,
+                timestamp: new Date()
+            }]);
+        } catch (err: any) {
+            setMessages(prev => [...prev, {
+                role: 'system',
+                content: `❌ Ingestion failed: ${err.message}`,
+                timestamp: new Date()
+            }]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const runSend = async (text: string, clientMessageId: string, filesToUpload: File[], currentAudioBlob: Blob | null) => {
         try {
             const authHeader = await getAuthHeader();
 
@@ -878,7 +1022,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             const canStreamPraxis = !base64Audio && uploadedAttachments.length === 0;
             const streamingAssistantId = canStreamPraxis ? createClientMessageId() : null;
             const requestBody = JSON.stringify({
-                message: input.trim() || (currentAudioBlob ? "Voice recording attached" : `Please analyze the attached file(s): ${filesToUpload.map(f => f.name).join(', ')}`),
+                message: text || (currentAudioBlob ? "Voice recording attached" : `Please analyze the attached file(s): ${filesToUpload.map(f => f.name).join(', ')}`),
                 mode: 'praxis',
                 history: messages.slice(-10), // Last 10 messages for context
                 projectId: scopedProjectId, // Send scope if available
@@ -1014,13 +1158,6 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             }]);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
         }
     };
 
@@ -1453,19 +1590,20 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     </div>
                 )}
 
-                {/* Scroll-up hint when more messages exist */}
-                {hasMoreMessages && !isLoadingMore && messages.length > 0 && (
+                {/* Scroll-up hint when more messages exist (on the server, or
+                    already loaded but trimmed out of the DOM window) */}
+                {(hasMoreMessages || hiddenMessageCount > 0) && !isLoadingMore && messages.length > 0 && (
                     <div className="flex items-center justify-center py-2">
                         <span className="text-[11px] text-slate-600">↑ Scroll up for older messages</span>
                     </div>
                 )}
 
-                {messages.map((msg, i) => (
+                {visibleMessages.map((msg, i) => (
                     msg.role === 'system' ? (
                         /* Multi-line / pre-formatted system events (e.g. [MORNING PLAN])
                            render as a card with markdown. Single-line events stay compact. */
                         (msg.content && msg.content.includes('\n')) ? (
-                            <div key={i} className="flex gap-3">
+                            <div key={messageKey(msg)} data-message-row="system" className="flex gap-3">
                                 <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-cyan-500/10 text-cyan-400">
                                     <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/70" />
                                 </div>
@@ -1475,8 +1613,8 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                             </div>
                         ) : (
                             /* System messages: compact activity log line */
-                            <div key={i} className="flex items-center gap-2 py-1 px-2">
-                                {loading && i === messages.length - 1 ? (
+                            <div key={messageKey(msg)} data-message-row="system" className="flex items-center gap-2 py-1 px-2">
+                                {loading && i === visibleMessages.length - 1 ? (
                                     <Loader2 size={12} className="text-cyan-500/60 animate-spin flex-shrink-0" />
                                 ) : (
                                     <div className="w-3 h-3 flex items-center justify-center flex-shrink-0">
@@ -1488,7 +1626,8 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                         )
                     ) : (
                         <div
-                            key={i}
+                            key={messageKey(msg)}
+                            data-message-row={msg.role}
                             className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                         >
                             <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${msg.role === 'user'
@@ -2084,30 +2223,17 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                         </button>
                     )}
 
-                    {!isRecording && (
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder={audioBlob ? "Add a message (optional)..." : (attachedFiles.length > 0 ? "Add a message (optional)..." : "Message Praxis...")}
-                            className={isInline
-                                ? "flex-1 min-w-0 rounded-md bg-slate-900/60 border border-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-cyan-500/60 focus:outline-none transition-colors"
-                                : "flex-1 rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"}
-                            disabled={loading}
-                        />
-                    )}
-                    
-                    <button
-                        onClick={handleSend}
-                        disabled={loading || (!input.trim() && attachedFiles.length === 0 && !audioBlob) || isRecording}
-                        className={isInline
-                            ? "flex items-center justify-center px-3 rounded-md bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:from-cyan-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            : "px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium hover:from-cyan-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"}
-                    >
-                        {loading ? <Loader2 size={composerIcon} className="animate-spin" /> : <Send size={composerIcon} />}
-                    </button>
+                    {/* Text input + send button — a separate component so its
+                        per-keystroke state can never re-render the transcript. */}
+                    <ChatComposer
+                        isInline={isInline}
+                        isOpen={isOpen}
+                        loading={loading}
+                        isRecording={isRecording}
+                        hasAudio={!!audioBlob}
+                        attachedCount={attachedFiles.length}
+                        onSend={handleSend}
+                    />
                 </div>
             </div>
         </>);

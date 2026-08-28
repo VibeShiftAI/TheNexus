@@ -21,6 +21,9 @@ dotenvConfig({ path: parentEnvPath });
 const praxisChatTimeoutMs = Number.parseInt(process.env.PRAXIS_CHAT_TIMEOUT_MS || "", 10) || 20 * 60 * 1000;
 
 const nextConfig: NextConfig = {
+  // Verification builds can point elsewhere (NEXT_DIST_DIR=.next-verify) so
+  // `next build` never clobbers the live dev server's .next on this machine.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   // Allow Cloudflare Tunnel domain to access Next.js dev server
   allowedDevOrigins: ['nexus.vibeshiftai.com'],
   // Transpile local shared package
