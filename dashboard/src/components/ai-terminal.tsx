@@ -384,19 +384,21 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         },
     }), [startNewConversation, loadConversations]);
     // Inline critique feedback state
-    const [critiqueFeedback, setCritiqueFeedback] = useState<{ messageIndex: number | null; text: string; loading: boolean }>({
-        messageIndex: null,
+    // Keyed by messageKey(msg), NOT by array index: reveals, prepends and
+    // window trims shift indices, and this state must stay glued to its row.
+    const [critiqueFeedback, setCritiqueFeedback] = useState<{ messageKey: string | null; text: string; loading: boolean }>({
+        messageKey: null,
         text: '',
         loading: false
     });
     // Approval loading state
-    const [approvalLoading, setApprovalLoading] = useState<number | null>(null);
+    const [approvalLoading, setApprovalLoading] = useState<string | null>(null);
     // Track which thread_ids are ready for human review (after voting completes)
     // readyForReview is now provided by CortexProvider via useCortex()
     // Track expanded artifact index for full content viewing (council reviews)
-    const [expandedArtifact, setExpandedArtifact] = useState<number | null>(null);
+    const [expandedArtifact, setExpandedArtifact] = useState<string | null>(null);
     // Fullscreen plan review modal state
-    const [reviewModalData, setReviewModalData] = useState<{ artifact: CortexArtifact; messageIndex: number } | null>(null);
+    const [reviewModalData, setReviewModalData] = useState<{ artifact: CortexArtifact; messageKey: string } | null>(null);
     
     // Voice recording state
     const [isRecording, setIsRecording] = useState(false);
@@ -1202,7 +1204,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             {/* Fullscreen Plan Review Modal */}
             {reviewModalData && (() => {
                 const planData = reviewModalData.artifact.data as PlanDraftData;
-                const modalMsgIndex = reviewModalData.messageIndex;
+                const modalMsgKey = reviewModalData.messageKey;
                 const isRevised = reviewModalData.artifact.type?.trim().toUpperCase() === 'PLAN_REVISED';
                 const threadId = (planData as any)?.thread_id;
                 const showActions = (planData as any)?.is_final || readyForReview.has(threadId);
@@ -1311,7 +1313,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                             {/* Modal Footer — Actions */}
                             {showActions && (
                                 <div className="flex-shrink-0 px-6 py-4 border-t border-slate-700 bg-slate-800/60">
-                                    {critiqueFeedback.messageIndex === modalMsgIndex ? (
+                                    {critiqueFeedback.messageKey === modalMsgKey ? (
                                         <div className="space-y-3">
                                             <label className="block text-sm font-medium text-red-300">Revision Feedback</label>
                                             <textarea
@@ -1324,7 +1326,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                             />
                                             <div className="flex gap-3 justify-end">
                                                 <button
-                                                    onClick={() => setCritiqueFeedback({ messageIndex: null, text: '', loading: false })}
+                                                    onClick={() => setCritiqueFeedback({ messageKey: null, text: '', loading: false })}
                                                     className="px-4 py-2 text-slate-400 hover:text-white text-sm transition-colors"
                                                     disabled={critiqueFeedback.loading}
                                                 >Cancel</button>
@@ -1347,7 +1349,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                                 content: `🔄 Requested revision: ${critiqueFeedback.text}`,
                                                                 timestamp: new Date()
                                                             }]);
-                                                            setCritiqueFeedback({ messageIndex: null, text: '', loading: false });
+                                                            setCritiqueFeedback({ messageKey: null, text: '', loading: false });
                                                             setReviewModalData(null);
                                                         } catch (e) {
                                                             console.error('Critique failed:', e);
@@ -1370,9 +1372,9 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                     ) : (
                                         <div className="flex gap-3">
                                             <button
-                                                onClick={() => setCritiqueFeedback({ messageIndex: modalMsgIndex, text: '', loading: false })}
+                                                onClick={() => setCritiqueFeedback({ messageKey: modalMsgKey, text: '', loading: false })}
                                                 className="flex-1 py-3 px-4 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 flex items-center justify-center gap-2 transition-colors font-medium"
-                                                disabled={approvalLoading === modalMsgIndex}
+                                                disabled={approvalLoading === modalMsgKey}
                                             >
                                                 <XCircle size={18} /> Request Revisions
                                             </button>
@@ -1386,7 +1388,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                         }]);
                                                         return;
                                                     }
-                                                    setApprovalLoading(modalMsgIndex);
+                                                    setApprovalLoading(modalMsgKey);
                                                     const formData = new FormData();
                                                     formData.append('thread_id', threadId);
                                                     formData.append('action', 'APPROVE');
@@ -1415,10 +1417,10 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                     }
                                                 }}
                                                 className="flex-1 py-3 px-4 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 flex items-center justify-center gap-2 transition-colors font-medium"
-                                                disabled={approvalLoading === modalMsgIndex}
+                                                disabled={approvalLoading === modalMsgKey}
                                             >
-                                                {approvalLoading === modalMsgIndex && <Loader2 size={14} className="animate-spin" />}
-                                                {approvalLoading === modalMsgIndex ? 'Approving...' : '✅ Approve Plan'}
+                                                {approvalLoading === modalMsgKey && <Loader2 size={14} className="animate-spin" />}
+                                                {approvalLoading === modalMsgKey ? 'Approving...' : '✅ Approve Plan'}
                                             </button>
                                         </div>
                                     )}
@@ -1598,12 +1600,13 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     </div>
                 )}
 
-                {visibleMessages.map((msg, i) => (
-                    msg.role === 'system' ? (
+                {visibleMessages.map((msg, i) => {
+                    const rowKey = messageKey(msg);
+                    return msg.role === 'system' ? (
                         /* Multi-line / pre-formatted system events (e.g. [MORNING PLAN])
                            render as a card with markdown. Single-line events stay compact. */
                         (msg.content && msg.content.includes('\n')) ? (
-                            <div key={messageKey(msg)} data-message-row="system" className="flex gap-3">
+                            <div key={rowKey} data-message-row="system" className="flex gap-3">
                                 <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-cyan-500/10 text-cyan-400">
                                     <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/70" />
                                 </div>
@@ -1613,7 +1616,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                             </div>
                         ) : (
                             /* System messages: compact activity log line */
-                            <div key={messageKey(msg)} data-message-row="system" className="flex items-center gap-2 py-1 px-2">
+                            <div key={rowKey} data-message-row="system" className="flex items-center gap-2 py-1 px-2">
                                 {loading && i === visibleMessages.length - 1 ? (
                                     <Loader2 size={12} className="text-cyan-500/60 animate-spin flex-shrink-0" />
                                 ) : (
@@ -1626,7 +1629,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                         )
                     ) : (
                         <div
-                            key={messageKey(msg)}
+                            key={rowKey}
                             data-message-row={msg.role}
                             className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                         >
@@ -1671,7 +1674,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                             {/* Open fullscreen review modal for markdown plans */}
                                             {(msg.artifact.data as PlanDraftData).markdown && (
                                                 <button
-                                                    onClick={() => setReviewModalData({ artifact: msg.artifact!, messageIndex: i })}
+                                                    onClick={() => setReviewModalData({ artifact: msg.artifact!, messageKey: rowKey })}
                                                     className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
                                                 >
                                                     <Maximize2 size={12} /> Open Full View
@@ -1680,10 +1683,10 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                             {/* Legacy nodes expand toggle */}
                                             {!(msg.artifact.data as PlanDraftData).markdown && ((msg.artifact.data as PlanDraftData).nodes?.length || 0) > 3 && (
                                                 <button
-                                                    onClick={() => setExpandedArtifact(expandedArtifact === i ? null : i)}
+                                                    onClick={() => setExpandedArtifact(expandedArtifact === rowKey ? null : rowKey)}
                                                     className="text-xs text-blue-400 hover:text-blue-300 underline"
                                                 >
-                                                    {expandedArtifact === i ? 'Collapse' : 'Expand Details'}
+                                                    {expandedArtifact === rowKey ? 'Collapse' : 'Expand Details'}
                                                 </button>
                                             )}
                                         </div>
@@ -1692,7 +1695,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                             <>
                                                 <div
                                                     className="mt-2 text-sm text-slate-400 cursor-pointer hover:text-blue-300 transition-colors flex items-center gap-2"
-                                                    onClick={() => setReviewModalData({ artifact: msg.artifact!, messageIndex: i })}
+                                                    onClick={() => setReviewModalData({ artifact: msg.artifact!, messageKey: rowKey })}
                                                 >
                                                     <span>Markdown Plan (v{(msg.artifact.data as PlanDraftData).version || 1})</span>
                                                     <span className="text-xs text-slate-500">— click to review</span>
@@ -1709,14 +1712,14 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                     Proposed Steps: {(msg.artifact.data as PlanDraftData).nodes?.length || 0}
                                                 </div>
                                                 <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                                                    {(expandedArtifact === i
+                                                    {(expandedArtifact === rowKey
                                                         ? (msg.artifact.data as PlanDraftData).nodes || []
                                                         : ((msg.artifact.data as PlanDraftData).nodes || []).slice(0, 3)
                                                     ).map((node, idx) => (
                                                         <li key={idx}>• [{node.type}] {node.description}</li>
                                                     ))}
-                                                    {expandedArtifact !== i && ((msg.artifact.data as PlanDraftData).nodes?.length || 0) > 3 && (
-                                                        <li className="text-slate-500 cursor-pointer hover:text-blue-400" onClick={() => setExpandedArtifact(i)}>...and {((msg.artifact.data as PlanDraftData).nodes?.length || 0) - 3} more</li>
+                                                    {expandedArtifact !== rowKey && ((msg.artifact.data as PlanDraftData).nodes?.length || 0) > 3 && (
+                                                        <li className="text-slate-500 cursor-pointer hover:text-blue-400" onClick={() => setExpandedArtifact(rowKey)}>...and {((msg.artifact.data as PlanDraftData).nodes?.length || 0) - 3} more</li>
                                                     )}
                                                 </ul>
                                             </>
@@ -1735,7 +1738,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                             }]);
                                                             return;
                                                         }
-                                                        setApprovalLoading(i);
+                                                        setApprovalLoading(rowKey);
                                                         const formData = new FormData();
                                                         formData.append('thread_id', threadId);
                                                         formData.append('action', 'APPROVE');
@@ -1765,20 +1768,20 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                         }
                                                     }}
                                                     className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                                    disabled={critiqueFeedback.messageIndex === i || approvalLoading === i}
+                                                    disabled={critiqueFeedback.messageKey === rowKey || approvalLoading === rowKey}
                                                 >
-                                                    {approvalLoading === i && <Loader2 size={14} className="animate-spin" />}
-                                                    {approvalLoading === i ? 'Approving...' : 'Approve'}
+                                                    {approvalLoading === rowKey && <Loader2 size={14} className="animate-spin" />}
+                                                    {approvalLoading === rowKey ? 'Approving...' : 'Approve'}
                                                 </button>
                                                 <button
-                                                    onClick={() => setCritiqueFeedback({ messageIndex: i, text: '', loading: false })}
+                                                    onClick={() => setCritiqueFeedback({ messageKey: rowKey, text: '', loading: false })}
                                                     className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors"
-                                                    disabled={critiqueFeedback.messageIndex === i || approvalLoading === i}
+                                                    disabled={critiqueFeedback.messageKey === rowKey || approvalLoading === rowKey}
                                                 >Critique</button>
                                             </div>
                                         )}
                                         {/* Inline Critique Feedback Form */}
-                                        {critiqueFeedback.messageIndex === i && (
+                                        {critiqueFeedback.messageKey === rowKey && (
                                             <div className="mt-3 border border-red-500/30 bg-red-900/20 rounded-lg p-3">
                                                 <label className="block text-xs text-red-300 mb-2 font-medium">Revision Feedback</label>
                                                 <textarea
@@ -1791,7 +1794,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                 />
                                                 <div className="mt-2 flex gap-2 justify-end">
                                                     <button
-                                                        onClick={() => setCritiqueFeedback({ messageIndex: null, text: '', loading: false })}
+                                                        onClick={() => setCritiqueFeedback({ messageKey: null, text: '', loading: false })}
                                                         className="px-3 py-1 text-slate-400 hover:text-white text-sm transition-colors"
                                                         disabled={critiqueFeedback.loading}
                                                     >Cancel</button>
@@ -1815,7 +1818,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                                     content: `🔄 Requested revision: ${critiqueFeedback.text}`,
                                                                     timestamp: new Date()
                                                                 }]);
-                                                                setCritiqueFeedback({ messageIndex: null, text: '', loading: false });
+                                                                setCritiqueFeedback({ messageKey: null, text: '', loading: false });
                                                             } catch (e) {
                                                                 console.error('Critique failed:', e);
                                                                 setMessages(prev => [...prev, {
@@ -1855,10 +1858,10 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                         <div className="flex justify-between items-center mb-2">
                                             <h4 className="font-semibold text-purple-300">Council Review</h4>
                                             <button
-                                                onClick={() => setExpandedArtifact(expandedArtifact === i ? null : i)}
+                                                onClick={() => setExpandedArtifact(expandedArtifact === rowKey ? null : rowKey)}
                                                 className="text-xs text-purple-400 hover:text-purple-300 underline"
                                             >
-                                                {expandedArtifact === i ? 'Collapse' : 'Expand Details'}
+                                                {expandedArtifact === rowKey ? 'Collapse' : 'Expand Details'}
                                             </button>
                                         </div>
                                         <div className="grid grid-cols-3 gap-2 text-xs">
@@ -1867,7 +1870,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                     vote.decision === 'reject' ? 'bg-red-800/50 border border-red-600/30' :
                                                         'bg-yellow-800/50 border border-yellow-600/30'
                                                     }`}
-                                                    onClick={() => setExpandedArtifact(expandedArtifact === i ? null : i)}
+                                                    onClick={() => setExpandedArtifact(expandedArtifact === rowKey ? null : rowKey)}
                                                 >
                                                     <div className="font-semibold text-white">{vote.voter}</div>
                                                     <div className={`text-lg ${vote.decision === 'approve' ? 'text-green-400' :
@@ -1876,13 +1879,13 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                         {vote.decision === 'approve' ? '✅' : vote.decision === 'reject' ? '❌' : '❓'}
                                                     </div>
                                                     <div className="text-slate-400 truncate" title={vote.reasoning}>
-                                                        {expandedArtifact === i ? vote.reasoning : vote.reasoning.substring(0, 40) + '...'}
+                                                        {expandedArtifact === rowKey ? vote.reasoning : vote.reasoning.substring(0, 40) + '...'}
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
                                         {/* Full reasoning panel when expanded */}
-                                        {expandedArtifact === i && (
+                                        {expandedArtifact === rowKey && (
                                             <div className="mt-3 pt-3 border-t border-purple-500/30 space-y-2">
                                                 <h5 className="text-sm font-semibold text-purple-300">Full Reasoning:</h5>
                                                 {(msg.artifact.data as VoteSummaryData).votes.map((vote, idx) => (
@@ -2057,8 +2060,8 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                 </span>
                             </div>
                         </div>
-                    )
-                ))}
+                    );
+                })}
 
                 {loading && (
                     <div className="flex gap-3">

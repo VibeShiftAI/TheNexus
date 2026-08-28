@@ -115,6 +115,7 @@ test("nexus:chat-seed fills and focuses the composer input", () => {
             );
         });
         assert.equal(input.value, "chat about this note", "seed text landed in the input");
+        assert.equal(globalThis.document.activeElement, input, "seed event focused the composer input");
     } finally {
         unmount();
     }

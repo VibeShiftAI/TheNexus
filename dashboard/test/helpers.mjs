@@ -11,7 +11,8 @@ import { cortexTestStore } from "./stubs/cortex-provider.mjs";
 
 const FIXTURE_PATH = new URL("./fixtures/bridge-conversation.json", import.meta.url);
 
-/** 305 real messages of the live bridge conversation (tables + fenced code). */
+/** 305 sanitized messages shaped like the live bridge conversation (role
+ *  mix, tables, fenced code, task-id mentions) — see fixtures/generate-fixture.mjs. */
 export function loadFixtureMessages() {
     const raw = JSON.parse(fs.readFileSync(FIXTURE_PATH, "utf8"));
     return raw.map((m) => ({
