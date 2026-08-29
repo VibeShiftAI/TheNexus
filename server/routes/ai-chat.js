@@ -185,6 +185,50 @@ function rememberChatRun(clientMessageId, runPromise) {
     );
 }
 
+// ── Durable dedupe fallback (2026-08-28 incident) ────────────────────────
+// The join-map above is process-local and TTL-bound, but the client's retry
+// clock is not: its backoff timers freeze while the app is backgrounded, so
+// a re-POST can arrive arbitrarily late (46 minutes in the incident) — past
+// the TTL, or after a server restart emptied the map — and would run the
+// agent a second time. The chat_messages table already holds the truth: if
+// the clientMessageId row exists AND an assistant reply follows it in that
+// conversation, the send was answered and the stored reply is the answer.
+// The lookup is id-scoped — clientMessageId IS the row's PRIMARY KEY — so it
+// stays exact however many messages have landed since and whichever
+// conversation is active now. It deliberately does NOT scan a window of recent
+// rows: the earlier window-scan version silently reopened this same duplicate-
+// run bug once 200 messages followed the send, which a busy conversation
+// reaches in ordinary use.
+async function findStoredReplyForClientMessage(db, clientMessageId) {
+    try {
+        const userMessage = await db.getChatMessageById(clientMessageId);
+        // Only a user row can be a re-POSTed send; anything else is not ours.
+        if (!userMessage || userMessage.role !== 'user') return null;
+        const reply = await db.getNextAssistantMessage(userMessage);
+        if (!reply) return null;
+
+        const { formatStoredChatMessage } = require('../chat-message-format');
+        const stored = formatStoredChatMessage(reply);
+        return {
+            response: stored.content || '',
+            model: 'praxis-agent',
+            provider: 'Praxis',
+            mode: 'praxis',
+            conversationId: userMessage.conversation_id || null,
+            assistantMessageId: reply.id || null,
+            isThinking: false,
+            tokenUsage: { total: 0 },
+            artifacts: [],
+            ...(stored.voiceData ? { voiceData: stored.voiceData } : {}),
+            replayedFromStore: true,
+        };
+    } catch (err) {
+        // Best-effort: a lookup failure must never break a fresh send.
+        console.error('[AI Chat] Durable dedupe lookup failed (non-fatal):', err.message);
+        return null;
+    }
+}
+
 function createAIChatRouter({ db, io }) {
     const router = express.Router();
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
@@ -209,10 +253,26 @@ function createAIChatRouter({ db, io }) {
             }
         }
 
+        // Map missed (TTL elapsed or server restarted): check the durable
+        // store before running the agent — an already-answered message
+        // returns its stored reply instead of executing a second run.
+        if (joinable) {
+            const storedReply = await findStoredReplyForClientMessage(db, clientMessageId);
+            if (storedReply) {
+                console.log(`[AI Chat] Late retry for already-answered message ${clientMessageId} — returning stored reply without relaying to Praxis`);
+                return res.json(storedReply);
+            }
+        }
+
+        // Attachments arrive in `attachments` (uploaded refs) and `files`
+        // (inline text) — counting only `files` reported "0 attached" for an
+        // image send and made the 2026-08-28 incident log misleading.
+        const inlineFileCount = Array.isArray(files) ? files.length : 0;
+        const uploadedAttachmentCount = Array.isArray(attachments) ? attachments.length : 0;
         console.log(`\n🤖 [AI Chat] Request Details:`);
         console.log(`   → Mode: ${mode || 'praxis'} (all modes relay to Praxis)`);
         console.log(`   → Message: "${message ? message.substring(0, 50) : 'None'}..."`);
-        console.log(`   → Files: ${files ? files.length : 0} attached`);
+        console.log(`   → Files: ${inlineFileCount + uploadedAttachmentCount} attached (${inlineFileCount} inline, ${uploadedAttachmentCount} uploaded)`);
 
         if (!message) return res.status(400).json({ error: 'Message is required' });
 

@@ -2766,6 +2766,63 @@ async function getChatMessages(conversationId, options = {}) {
 }
 
 /**
+ * Fetch a single chat message by its primary key.
+ *
+ * The chat route's durable dedupe needs to answer "was this exact message
+ * already answered?" for an id that may be arbitrarily old. Scanning a window
+ * of recent rows cannot answer that — the row drops out of the window once
+ * enough messages follow it — but `id` is the PRIMARY KEY, so this lookup is
+ * exact however long ago the message was sent and whichever conversation is
+ * active now. The implicit `rowid` is selected alongside as an insertion-order
+ * tie-break for getNextAssistantMessage below.
+ */
+async function getChatMessageById(messageId) {
+    if (!db || !messageId) return null;
+    try {
+        const row = db.prepare('SELECT rowid, * FROM chat_messages WHERE id = ?').get(messageId);
+        if (!row) return null;
+        row.metadata = deser(row.metadata);
+        return row;
+    } catch (err) {
+        console.error('[Database] Error fetching chat message by id:', err.message);
+        return null;
+    }
+}
+
+/**
+ * The first assistant message following `afterMessage` in its conversation,
+ * or null if that message was never answered.
+ *
+ * Ordered by created_at with rowid as the tie-break: created_at is only
+ * second-granular when SQLite's column DEFAULT supplies it, so a reply can
+ * share a timestamp with the user row it answers. Comparing rowid within an
+ * equal timestamp keeps insertion order authoritative in that case.
+ */
+async function getNextAssistantMessage(afterMessage) {
+    if (!db || !afterMessage?.conversation_id) return null;
+    try {
+        const row = db.prepare(
+            `SELECT rowid, * FROM chat_messages
+              WHERE conversation_id = ? AND role = 'assistant'
+                AND (created_at > ? OR (created_at = ? AND rowid > ?))
+              ORDER BY created_at ASC, rowid ASC
+              LIMIT 1`
+        ).get(
+            afterMessage.conversation_id,
+            afterMessage.created_at,
+            afterMessage.created_at,
+            afterMessage.rowid ?? 0
+        );
+        if (!row) return null;
+        row.metadata = deser(row.metadata);
+        return row;
+    } catch (err) {
+        console.error('[Database] Error fetching next assistant message:', err.message);
+        return null;
+    }
+}
+
+/**
  * Save a message to a conversation.
  * Auto-generates title from first user message.
  */
@@ -3107,6 +3164,8 @@ module.exports = {
     updateConversationTitle,
     deleteConversation,
     getChatMessages,
+    getChatMessageById,
+    getNextAssistantMessage,
     saveChatMessage,
     clearChatMessages,
     // Antigravity Event Stream
