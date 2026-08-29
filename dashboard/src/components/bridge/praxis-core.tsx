@@ -245,7 +245,7 @@ export function PraxisCore() {
           className={
             viewscreenMax
               ? "hud-scanlines fixed inset-4 z-[71] flex flex-col rounded-lg border border-slate-700 bg-slate-950/95 p-4 shadow-2xl"
-              : "flex h-[420px] min-w-0 flex-1 flex-col border-t border-slate-800/70 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0"
+              : "flex h-[calc(100vh-13rem)] min-h-[520px] min-w-0 flex-1 flex-col border-t border-slate-800/70 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0"
           }
         >
           <HudErrorBoundary label="viewscreen">

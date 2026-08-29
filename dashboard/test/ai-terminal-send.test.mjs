@@ -73,6 +73,7 @@ test("plain text send: optimistic append, POST body, reply, input cleared", asyn
         assert.equal(body.message, "hello praxis");
         assert.equal(body.mode, "praxis");
         assert.equal(input.value, "", "input cleared after accepted send");
+        assert.equal(globalThis.document.activeElement, input, "focus restored to composer after Send-button click");
         const stored = cortexTestStore.messages;
         assert.ok(stored.some((m) => m.role === "user" && m.content === "hello praxis"), "optimistic user message appended");
         assert.ok(stored.some((m) => m.id === "srv-reply-1" && m.content === "Acknowledged."), "assistant reply appended");

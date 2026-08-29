@@ -59,13 +59,13 @@ export function mountTerminal(messages, props = {}) {
 }
 
 export function findComposerInput(container) {
-    const input = container.querySelector('input[type="text"]');
+    const input = container.querySelector("textarea");
     if (!input) throw new Error("composer input not found");
     return input;
 }
 
 const valueSetter = Object.getOwnPropertyDescriptor(
-    globalThis.window.HTMLInputElement.prototype,
+    globalThis.window.HTMLTextAreaElement.prototype,
     "value",
 ).set;
 

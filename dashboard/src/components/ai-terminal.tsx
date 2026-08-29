@@ -217,6 +217,8 @@ const MARKDOWN_COMPONENTS: Components = {
                 language={match ? match[1] : "text"}
                 PreTag="div"
                 className="rounded-lg !bg-slate-950 !text-xs"
+                customStyle={{ whiteSpace: "pre-wrap", overflowWrap: "break-word", overflowX: "hidden" }}
+                codeTagProps={{ style: { whiteSpace: "pre-wrap", wordBreak: "break-word" } }}
                 {...props}
             >
                 {raw.replace(/\n$/, "")}
@@ -274,10 +276,26 @@ interface ChatComposerProps {
  *  this input row; the message list cannot even read the draft text. (It used
  *  to live in AITerminal, so every keystroke re-rendered and re-parsed every
  *  message on screen — seconds of lag once a conversation built up history.) */
+/** Auto-grow cap, in px, before the textarea scrolls internally instead of
+ *  growing further — matches the Claude-app composer behavior. */
+const COMPOSER_MAX_HEIGHT = 200;
+
 function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio, attachedCount, onSend }: ChatComposerProps) {
     const [input, setInput] = useState("");
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
     const composerIcon = isInline ? 16 : 18;
+
+    const resizeInput = useCallback(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = `${Math.min(el.scrollHeight, COMPOSER_MAX_HEIGHT)}px`;
+    }, []);
+
+    // Re-measure whenever the draft text changes (typing, seeding, or clearing after send).
+    useEffect(() => {
+        resizeInput();
+    }, [input, resizeInput]);
 
     // Focus input when terminal opens (modal only — inline shouldn't steal focus on page load)
     useEffect(() => {
@@ -302,28 +320,36 @@ function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio, attach
     }, []);
 
     const submit = () => {
-        if (onSend(input)) setInput("");
+        // Clicking the Send button moves focus to the button; restore it to
+        // the composer so typing can continue without a manual re-click,
+        // matching the old <input>'s Enter-to-send flow.
+        if (onSend(input)) {
+            setInput("");
+            inputRef.current?.focus();
+        }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             submit();
         }
+        // Shift+Enter falls through to the textarea's default behavior (newline).
     };
 
     return (<>
         {!isRecording && (
-            <input
+            <textarea
                 ref={inputRef}
-                type="text"
+                rows={1}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={hasAudio ? "Add a message (optional)..." : (attachedCount > 0 ? "Add a message (optional)..." : "Message Praxis...")}
                 className={isInline
-                    ? "flex-1 min-w-0 rounded-md bg-slate-900/60 border border-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-cyan-500/60 focus:outline-none transition-colors"
-                    : "flex-1 rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"}
+                    ? "flex-1 min-w-0 resize-none overflow-y-auto rounded-md bg-slate-900/60 border border-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-cyan-500/60 focus:outline-none transition-colors"
+                    : "flex-1 resize-none overflow-y-auto rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"}
+                style={{ maxHeight: COMPOSER_MAX_HEIGHT }}
                 disabled={loading}
             />
         )}
@@ -1186,7 +1212,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             />
 
             {/* Terminal Window */}
-            <div className="relative z-10 w-full max-w-3xl max-h-[80vh] rounded-xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden">
+            <div className="relative z-10 w-full max-w-3xl h-[80vh] max-h-[80vh] rounded-xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden">
                 {renderTerminalContent()}
             </div>
         </div>
@@ -1246,7 +1272,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
                             {/* Modal Body — Rendered Markdown */}
                             <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0">
-                                <div className="prose prose-invert prose-sm max-w-none
+                                <div className="prose prose-invert prose-sm max-w-none break-words
                                     prose-headings:text-slate-100 prose-headings:font-bold
                                     prose-h1:text-2xl prose-h1:border-b prose-h1:border-slate-600/50 prose-h1:pb-3 prose-h1:mb-6
                                     prose-h2:text-xl prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-slate-50
@@ -1552,7 +1578,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             {/* Messages - with drag-and-drop support */}
             <div
                 ref={messagesContainerRef}
-                className={`custom-scrollbar flex-1 overflow-y-auto p-4 space-y-4 relative ${isDragging ? 'bg-cyan-500/10' : ''}`}
+                className={`custom-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 relative ${isDragging ? 'bg-cyan-500/10' : ''}`}
                 onDragEnter={handleDragEnter}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -1641,7 +1667,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                 }`}>
                                 {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                             </div>
-                            <div className={`${msg.role === 'user' ? 'max-w-[80%]' : 'max-w-[92%]'} rounded-lg px-4 py-2 ${msg.role === 'user'
+                            <div className={`min-w-0 break-words ${msg.role === 'user' ? 'max-w-[80%]' : 'max-w-[92%]'} rounded-lg px-4 py-2 ${msg.role === 'user'
                                 ? 'bg-cyan-500/10 text-white'
                                 : msg.role === 'assistant'
                                     ? 'bg-slate-800 text-slate-200'
@@ -1652,7 +1678,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                     turns stay literal (no markdown surprises on typed text). */}
                                 {msg.content && (msg.role === 'assistant'
                                     ? <MarkdownMessage content={msg.content} />
-                                    : <p className="text-sm leading-relaxed whitespace-pre-wrap"><TaskLinkedText text={msg.content} /></p>)}
+                                    : <p className="text-sm leading-relaxed whitespace-pre-wrap break-words"><TaskLinkedText text={msg.content} /></p>)}
                                 {/* Render PLAN_DRAFT and PLAN_REVISED artifacts */}
                                 {(msg.artifact?.type?.trim().toUpperCase() === 'PLAN_DRAFT' || msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED') && (
                                     <div className={`mt-3 p-4 rounded-lg ${msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
@@ -1893,7 +1919,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                         vote.decision === 'reject' ? 'bg-red-900/30' : 'bg-yellow-900/30'
                                                         }`}>
                                                         <div className="font-semibold text-white mb-1">{vote.voter} ({vote.decision})</div>
-                                                        <div className="text-slate-300 whitespace-pre-wrap">{vote.reasoning}</div>
+                                                        <div className="text-slate-300 whitespace-pre-wrap break-words">{vote.reasoning}</div>
                                                     </div>
                                                 ))}
                                             </div>
