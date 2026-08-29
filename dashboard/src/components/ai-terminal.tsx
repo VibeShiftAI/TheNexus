@@ -330,7 +330,10 @@ function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio, attach
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        // isComposing is true while an IME (Japanese, Chinese, etc.) is
+        // resolving candidates — that Enter confirms the composition, it
+        // doesn't mean "send".
+        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
             submit();
         }
@@ -1300,6 +1303,8 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                                                         language={match[1]}
                                                         PreTag="div"
                                                         className="rounded-lg !bg-slate-950 !text-sm"
+                                                        customStyle={{ whiteSpace: "pre-wrap", overflowWrap: "break-word", overflowX: "hidden" }}
+                                                        codeTagProps={{ style: { whiteSpace: "pre-wrap", wordBreak: "break-word" } }}
                                                         {...props}
                                                     >
                                                         {String(children).replace(/\n$/, '')}
