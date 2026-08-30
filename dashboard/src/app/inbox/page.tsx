@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
+import { isPhoneOnlyChoice, PHONE_ONLY_HINT } from "@/lib/hitl-choices";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import {
   hitlTaskMeta,
@@ -411,18 +412,33 @@ function InboxQuestionCard({
 
         {/* option quick-chips */}
         {request.options && request.options.length > 0 ? (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {request.options.map((option) => (
-              <button
-                key={option}
-                disabled={resolving}
-                onClick={() => void submit(option)}
-                className="rounded-md border border-cyan-500/40 px-2.5 py-1 text-[length:var(--hitl-fs-xs,0.75rem)] text-cyan-200 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {request.options.map((option) => {
+                const phoneOnly = isPhoneOnlyChoice(option);
+                return (
+                  <button
+                    key={option}
+                    disabled={resolving}
+                    onClick={() => void submit(option)}
+                    title={phoneOnly ? PHONE_ONLY_HINT : undefined}
+                    className={
+                      phoneOnly
+                        ? "rounded-md border border-slate-600 px-2.5 py-1 text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-400 transition hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                        : "rounded-md border border-cyan-500/40 px-2.5 py-1 text-[length:var(--hitl-fs-xs,0.75rem)] text-cyan-200 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    }
+                  >
+                    {phoneOnly ? `${option} 📱` : option}
+                  </button>
+                );
+              })}
+            </div>
+            {request.options.some(isPhoneOnlyChoice) ? (
+              <p className="mb-3 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-500">
+                📱 {PHONE_ONLY_HINT}
+              </p>
+            ) : null}
+          </>
         ) : null}
 
         {/* reply */}

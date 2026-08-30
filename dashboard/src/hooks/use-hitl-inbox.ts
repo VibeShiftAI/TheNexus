@@ -17,6 +17,26 @@ type ResolveInput = {
   payload?: Record<string, unknown>;
 };
 
+/**
+ * Turn a refused resolve into something readable. The server explains itself
+ * in the body (`detail`) — most importantly for "accept as-is", which this
+ * surface cannot perform at all: that capability token is delivered only in
+ * the card's push notification, so accepting is a phone action by design.
+ * A bare "Resolve failed with 403" left Robert with nothing to act on
+ * (2026-08-30, four refused taps across two days).
+ */
+async function describeResolveFailure(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    const detail = typeof body?.detail === "string" ? body.detail : undefined;
+    if (detail) return detail;
+    if (typeof body?.error === "string") return body.error;
+  } catch {
+    /* non-JSON body — fall through to the status */
+  }
+  return `Resolve failed with ${response.status}`;
+}
+
 export function useHitlInbox() {
   const { recentEvents } = usePraxisStream();
   const [requests, setRequests] = useState<HITLRequest[]>([]);
@@ -74,7 +94,7 @@ export function useHitlInbox() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      if (!response.ok) throw new Error(`Resolve failed with ${response.status}`);
+      if (!response.ok) throw new Error(await describeResolveFailure(response));
       const data = await response.json();
       if (data.request) {
         setRequests((current) =>
