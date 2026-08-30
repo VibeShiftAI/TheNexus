@@ -23,7 +23,6 @@
  * Frontmatter auto-fill + Cortex mirror come in later waves.
  */
 
-const chokidar = require('chokidar');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -197,8 +196,18 @@ const SERIES_MIN_MEMBERS = 3;
 const SERIES_RECENT_KEPT = 0;
 
 /**
+ * Key a matched filename by stem, separator AND date shape. The shape is
+ * part of the key on purpose: a stem with both `_2026-09-01` and
+ * `_2026-09-01-08-30` siblings is two differently-named series, and
+ * merging them would advertise one pattern that only fits some members.
+ */
+function seriesKey(m) {
+  return `${m[1]}${m[2]}${m[4] ? 'T' : 'D'}`;
+}
+
+/**
  * Group a section's files into dated series. Returns a Map keyed by
- * "<stem><separator>" holding only groups large enough to collapse.
+ * seriesKey() holding only groups large enough to collapse.
  */
 function collectDatedSeries(files) {
   const groups = new Map();
@@ -207,14 +216,13 @@ function collectDatedSeries(files) {
     const m = DATED_SERIES_RE.exec(name);
     if (!m) continue;
     const [, stem, sep, date, time] = m;
-    const key = stem + sep;
+    const key = seriesKey(m);
     let g = groups.get(key);
     if (!g) {
-      g = { stem, sep, members: [], hasTime: false };
+      g = { stem, sep, members: [], hasTime: Boolean(time) };
       groups.set(key, g);
     }
     g.members.push({ file: f, name, date });
-    if (time) g.hasTime = true;
   }
   const series = new Map();
   for (const [key, g] of groups) {
@@ -236,7 +244,7 @@ function pushSectionEntries(lines, section, files) {
   for (const f of files) {
     const name = f.replace(/\.md$/, '');
     const m = DATED_SERIES_RE.exec(name);
-    const key = m ? m[1] + m[2] : null;
+    const key = m ? seriesKey(m) : null;
     const g = key ? series.get(key) : null;
     if (g) {
       if (emitted.has(key)) continue;
@@ -735,57 +743,75 @@ function onChange(event, filepath) {
   debounceTimer = setTimeout(() => regenerateAll(`debounced ${event}`), DEBOUNCE_MS);
 }
 
-if (process.argv.includes('--once')) {
-  regenerateAll('once');
-  process.exit(0);
-}
+// Pure helpers are exported for unit tests. Everything below this point is
+// daemon startup, guarded by require.main so `require()`ing this file (from a
+// test, or any tooling) never spawns a watcher or touches the vault.
+module.exports = {
+  DATED_SERIES_RE,
+  SERIES_MIN_MEMBERS,
+  SERIES_RECENT_KEPT,
+  seriesKey,
+  collectDatedSeries,
+  pushSectionEntries,
+};
 
-log(`Watching ${VAULT}`);
-log(`Node ${process.version} pid ${process.pid}`);
-
-const watcher = chokidar.watch(VAULT, {
-  ignored: [
-    /(^|[\/\\])\.git/,
-    /(^|[\/\\])\.obsidian/,
-    /(^|[\/\\])\.index/,
-    /(^|[\/\\])\._/,
-    /(^|[\/\\])_archive/,
-  ],
-  persistent: true,
-  ignoreInitial: true,
-  awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 },
-});
-
-watcher.on('add', (p) => onChange('add', p));
-watcher.on('change', (p) => onChange('change', p));
-watcher.on('unlink', (p) => onChange('unlink', p));
-watcher.on('error', (e) => log(`watcher error: ${e.message}`));
-watcher.on('ready', () => log('Watcher ready'));
-
-// Initial regen on startup so files reflect current vault state.
-regenerateAll('startup');
-
-// ── Git sync (hourly commit, 6-hourly push) ──
-const { runGitSync } = require('./git-sync');
-const GIT_SYNC_INTERVAL_MS = 60 * 60 * 1000;
-
-async function gitSyncTick() {
-  try {
-    await runGitSync(VAULT, log);
-  } catch (e) {
-    log(`[GitSync] ERROR: ${e.stack || e.message}`);
+if (require.main === module) {
+  if (process.argv.includes('--once')) {
+    regenerateAll('once');
+    process.exit(0);
   }
-}
 
-// First pass shortly after boot (matches the old job's RunAtLoad), then hourly.
-const gitSyncInitialTimer = setTimeout(gitSyncTick, 30_000);
-const gitSyncTimer = setInterval(gitSyncTick, GIT_SYNC_INTERVAL_MS);
+  // Required here, not at module scope: chokidar is ESM-only and is needed
+  // only by the daemon, so the pure helpers stay requirable from a CJS test.
+  const chokidar = require('chokidar');
 
-function shutdown(signal) {
-  log(`${signal} received, shutting down`);
-  clearTimeout(gitSyncInitialTimer);
-  clearInterval(gitSyncTimer);
-  watcher.close().then(() => process.exit(0));
+  log(`Watching ${VAULT}`);
+  log(`Node ${process.version} pid ${process.pid}`);
+
+  const watcher = chokidar.watch(VAULT, {
+    ignored: [
+      /(^|[\/\\])\.git/,
+      /(^|[\/\\])\.obsidian/,
+      /(^|[\/\\])\.index/,
+      /(^|[\/\\])\._/,
+      /(^|[\/\\])_archive/,
+    ],
+    persistent: true,
+    ignoreInitial: true,
+    awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 },
+  });
+
+  watcher.on('add', (p) => onChange('add', p));
+  watcher.on('change', (p) => onChange('change', p));
+  watcher.on('unlink', (p) => onChange('unlink', p));
+  watcher.on('error', (e) => log(`watcher error: ${e.message}`));
+  watcher.on('ready', () => log('Watcher ready'));
+
+  // Initial regen on startup so files reflect current vault state.
+  regenerateAll('startup');
+
+  // ── Git sync (hourly commit, 6-hourly push) ──
+  const { runGitSync } = require('./git-sync');
+  const GIT_SYNC_INTERVAL_MS = 60 * 60 * 1000;
+
+  async function gitSyncTick() {
+    try {
+      await runGitSync(VAULT, log);
+    } catch (e) {
+      log(`[GitSync] ERROR: ${e.stack || e.message}`);
+    }
+  }
+
+  // First pass shortly after boot (matches the old job's RunAtLoad), then hourly.
+  const gitSyncInitialTimer = setTimeout(gitSyncTick, 30_000);
+  const gitSyncTimer = setInterval(gitSyncTick, GIT_SYNC_INTERVAL_MS);
+
+  function shutdown(signal) {
+    log(`${signal} received, shutting down`);
+    clearTimeout(gitSyncInitialTimer);
+    clearInterval(gitSyncTimer);
+    watcher.close().then(() => process.exit(0));
+  }
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));

@@ -1,7 +1,10 @@
 module.exports = {
   testEnvironment: 'node',
-  roots: ['<rootDir>/server'],
-  testMatch: ['<rootDir>/server/**/__tests__/**/*.test.js'],
+  roots: ['<rootDir>/server', '<rootDir>/services'],
+  testMatch: [
+    '<rootDir>/server/**/__tests__/**/*.test.js',
+    '<rootDir>/services/**/__tests__/**/*.test.js',
+  ],
   modulePathIgnorePatterns: ['<rootDir>/.worktrees/'],
   testPathIgnorePatterns: [
     '/node_modules/',
