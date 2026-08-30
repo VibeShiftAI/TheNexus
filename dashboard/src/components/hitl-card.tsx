@@ -167,10 +167,27 @@ export function HitlRequestCard({
           </Link>
         ) : null}
 
-        {/* the question */}
-        <p className="mb-3 text-[length:var(--hitl-fs-sm,0.875rem)] leading-relaxed text-slate-100">
+        {/* the question — pre-wrap so multi-paragraph questions (red alerts,
+            EOD summaries) keep their structure instead of welding into one
+            line (2026-08-30: the inbox item is the informed-decision surface) */}
+        <p className="mb-3 whitespace-pre-wrap text-[length:var(--hitl-fs-sm,0.875rem)] leading-relaxed text-slate-100">
           {request.question}
         </p>
+
+        {/* full plan / detail block, when the producer shipped one on the item
+            (e.g. the EOD commit card's per-workspace survey). This is the rest
+            of the informed-decision picture, so it defaults hidden but is one
+            tap away. */}
+        {typeof request.metadata?.planCard === "string" && request.metadata.planCard ? (
+          <details className="mb-3 rounded-md border border-slate-800 bg-slate-950/70">
+            <summary className="cursor-pointer px-2.5 py-1.5 text-[length:var(--hitl-fs-11,0.6875rem)] uppercase tracking-wider text-slate-500 transition hover:text-slate-300">
+              Full plan
+            </summary>
+            <pre className="max-h-80 overflow-auto whitespace-pre-wrap px-2.5 pb-2.5 font-mono text-[length:var(--hitl-fs-11,0.6875rem)] leading-relaxed text-slate-300">
+              {request.metadata.planCard}
+            </pre>
+          </details>
+        ) : null}
 
         {/* agent context accordion */}
         {hasContext ? (

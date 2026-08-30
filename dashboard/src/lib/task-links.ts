@@ -33,6 +33,16 @@ export function isTaskHref(href: string | undefined): href is string {
     return typeof href === "string" && href.startsWith("/task/");
 }
 
+/**
+ * In-app routes that chat markdown may link to. Praxis notices link
+ * "/inbox#<hitlId>" (and "/task/<id>") so a system message can hand Robert
+ * straight to the card that decides the alert; these must navigate the app,
+ * not open a new tab (2026-08-30 chat-isolation rework).
+ */
+export function isInternalHref(href: string | undefined): href is string {
+    return typeof href === "string" && (href.startsWith("/task/") || href.startsWith("/inbox"));
+}
+
 export function isTaskId(value: string): boolean {
     return TASK_ID_EXACT.test(value.trim());
 }

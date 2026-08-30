@@ -11,7 +11,7 @@ import { useParams } from "next/navigation";
 
 import { getAuthHeader } from "@/lib/auth";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
-import { isTaskHref, remarkTaskLinks, splitOnTaskIds, taskHref } from "@/lib/task-links";
+import { isInternalHref, remarkTaskLinks, splitOnTaskIds, taskHref } from "@/lib/task-links";
 import { useCortex } from "@/components/cortex-provider";
 import { dispatchMorningKickoff } from "@/components/bridge/bridge-fx";
 import { isThisClientActive } from "@/lib/active-client";
@@ -187,11 +187,11 @@ const TaskLinkedText = memo(function TaskLinkedText({ text }: { text: string }) 
 const REMARK_PLUGINS = [remarkGfm, remarkTaskLinks];
 
 const MARKDOWN_COMPONENTS: Components = {
-    // Task ids (rewritten to /task/<id> by remarkTaskLinks) open the
-    // task screen in-app; everything else opens in a new tab so an
-    // external link never navigates the bridge away.
+    // Task ids (rewritten to /task/<id> by remarkTaskLinks) and inbox
+    // links from Praxis notices open in-app; everything else opens in a
+    // new tab so an external link never navigates the bridge away.
     a: ({ node: _node, href, children, ...props }) =>
-        isTaskHref(href) ? (
+        isInternalHref(href) ? (
             <Link href={href} {...props} className={TASK_LINK_CLASS}>
                 {children}
             </Link>

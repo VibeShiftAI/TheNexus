@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  isInternalHref,
   isTaskHref,
   isTaskId,
   remarkTaskLinks,
@@ -19,6 +20,14 @@ test("task ids route to the task screen", () => {
   assert.ok(!isTaskHref("https://example.com/task/x"));
   assert.ok(isTaskId(ID));
   assert.ok(!isTaskId("not-an-id"));
+});
+
+test("inbox links from Praxis notices are in-app routes", () => {
+  assert.ok(isInternalHref("/inbox"));
+  assert.ok(isInternalHref("/inbox#day-schedule-2026-08-30-abc"));
+  assert.ok(isInternalHref(taskHref(ID)));
+  assert.ok(!isInternalHref("https://example.com/inbox"));
+  assert.ok(!isInternalHref(undefined));
 });
 
 test("prose without an id is returned untouched", () => {

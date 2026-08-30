@@ -118,6 +118,30 @@ export default function InboxPage() {
     [filter, pendingRequests],
   );
 
+  // Deep link: chat notices link "/inbox#<hitlId>" straight at the card that
+  // decides the alert. Once the pending list is in, scroll the target into
+  // view and glow it briefly; reset the filter if it would hide the target.
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  useEffect(() => {
+    if (loading) return;
+    const hash = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    if (!hash) return;
+    const target = pendingRequests.find((r) => r.id === hash);
+    if (!target) return;
+    if (filter !== "all" && filterBucket(target) !== filter) {
+      setFilter("all");
+      return; // effect re-runs once the card is visible
+    }
+    const el = document.getElementById(`hitl-${hash}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightId(hash);
+    const timer = window.setTimeout(() => setHighlightId(null), 2600);
+    // One trip only — a later refresh must not re-yank the scroll position.
+    window.history.replaceState(null, "", window.location.pathname);
+    return () => window.clearTimeout(timer);
+  }, [loading, pendingRequests, filter]);
+
   return (
     <div
       className="min-h-screen bg-slate-950 text-slate-100"
@@ -222,11 +246,17 @@ export default function InboxPage() {
             {visible.map((request) => (
               <motion.div
                 key={request.id}
+                id={`hitl-${request.id}`}
                 layout
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97 }}
                 transition={{ duration: 0.18 }}
+                className={
+                  highlightId === request.id
+                    ? "rounded-lg ring-2 ring-cyan-400/80 transition-shadow duration-700"
+                    : "transition-shadow duration-700"
+                }
               >
                 <HitlCard
                   request={request}
