@@ -1215,7 +1215,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             />
 
             {/* Terminal Window */}
-            <div className="relative z-10 w-full max-w-3xl h-[80vh] max-h-[80vh] rounded-xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden">
+            <div className="relative z-10 w-full max-w-3xl max-h-[80vh] rounded-xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden">
                 {renderTerminalContent()}
             </div>
         </div>
