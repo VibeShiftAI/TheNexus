@@ -167,6 +167,9 @@ app.use('/api/token-usage', require('./routes/token-usage')());
 // Usage windows / reset timing / routing decisions — proxied from Praxis.
 app.use('/api/usage-monitor', require('./routes/usage-monitor')());
 app.use('/api/presence', require('./routes/presence')());
+// Operational event log behind the Recent Activity feed. Praxis relays every
+// operational event here; only the ones that need Robert also reach the chat.
+app.use('/api/ag', require('./routes/activity-events')({ db, io }));
 // Self-update feed for the Windows travel shell (served through the tunnel).
 app.use('/api/updates', require('./routes/updates')());
 // Travel-shell tab roster — the shell pulls this at launch; the dashboard

@@ -2887,6 +2887,73 @@ async function clearChatMessages(conversationId) {
 }
 
 // ============================================================================
+// ACTIVITY EVENT STREAM (ag_events)
+// ============================================================================
+// The durable operational-event log behind the dashboard's Recent Activity
+// feed. Praxis relays every operational event here; the chat only keeps the
+// ones that need Robert (see Praxis src/ops-events-routing.ts). The relay had
+// been writing into a 404 since the /api/ag route was dropped in June 2026 —
+// events stopped landing on 2026-06-28 and nothing noticed, because the
+// publisher is fire-and-forget. Keep this table's writer alive.
+
+/** Newest events first. `since` (ISO or SQLite datetime) filters to newer rows. */
+async function getAgEvents({ limit = 50, since = null, severity = null } = {}) {
+    if (!db) return [];
+    try {
+        const where = [];
+        const params = [];
+        if (since) { where.push('created_at > ?'); params.push(since); }
+        if (severity) { where.push('severity = ?'); params.push(severity); }
+        const sql = `SELECT * FROM ag_events${where.length ? ' WHERE ' + where.join(' AND ') : ''}`
+            + ' ORDER BY datetime(created_at) DESC, id DESC LIMIT ?';
+        params.push(Math.min(Number(limit) || 50, 500));
+        return db.prepare(sql).all(...params).map(row => {
+            row.metadata = deser(row.metadata);
+            return row;
+        });
+    } catch (err) {
+        console.error('[Database] Error reading ag_events:', err.message);
+        return [];
+    }
+}
+
+/** Rows kept in ag_events; older ones are trimmed after each insert. */
+const AG_EVENT_RETENTION = 5000;
+
+async function recordAgEvent(event = {}) {
+    if (!db) return null;
+    const title = typeof event.title === 'string' ? event.title.trim() : '';
+    const eventType = typeof event.event_type === 'string' ? event.event_type.trim() : '';
+    if (!title || !eventType) return null;
+    try {
+        const result = db.prepare(`
+            INSERT INTO ag_events (event_type, severity, title, message, task_id, source, metadata, requires_action)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            eventType,
+            event.severity || 'info',
+            title,
+            event.message || null,
+            event.task_id || null,
+            event.source || 'praxis',
+            JSON.stringify(event.metadata || {}),
+            event.requires_action ? 1 : 0,
+        );
+        // Bounded log: this is a feed, not an archive. Trim by id (monotonic)
+        // rather than created_at so rows sharing a timestamp cannot survive
+        // the cut arbitrarily.
+        db.prepare(`
+            DELETE FROM ag_events
+            WHERE id <= (SELECT MAX(id) FROM ag_events) - ?
+        `).run(AG_EVENT_RETENTION);
+        return { id: result.lastInsertRowid };
+    } catch (err) {
+        console.error('[Database] Error recording ag_event:', err.message);
+        return null;
+    }
+}
+
+// ============================================================================
 // CALENDAR SYSTEM
 // ============================================================================
 
@@ -3168,7 +3235,9 @@ module.exports = {
     getNextAssistantMessage,
     saveChatMessage,
     clearChatMessages,
-    // Antigravity Event Stream
+    // Activity Event Stream (ag_events)
+    getAgEvents,
+    recordAgEvent,
     // Push Notification Tokens
     registerPushToken,
     unregisterPushToken,

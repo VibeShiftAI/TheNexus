@@ -402,6 +402,36 @@ export interface Activity {
     taskId?: string | null;
 }
 
+/**
+ * A Praxis operational event, as recorded in the activity log (ag_events).
+ *
+ * These used to arrive as [PRAXIS EVENT] cards in the chat — 100–150 a day at
+ * peak, some of them hundreds of lines. Praxis now relays every one of them
+ * here and only puts the ones that need Robert into the chat, so this feed is
+ * the complete record and the chat is the exception list.
+ */
+export interface ActivityEvent {
+    id: number;
+    event_type: string;
+    severity: 'info' | 'warning' | 'critical';
+    title: string;
+    message: string | null;
+    task_id: string | null;
+    source: string;
+    metadata: Record<string, unknown> | string;
+    requires_action: number;
+    created_at: string;
+}
+
+export async function getActivityEvents(limit = 40): Promise<ActivityEvent[]> {
+    const baseUrl = API_URL.replace('/projects', '');
+    const res = await authFetch(`${baseUrl}/ag/events?limit=${limit}`);
+    if (!res.ok) {
+        throw new Error("Failed to fetch activity events");
+    }
+    return res.json();
+}
+
 export async function getActivity(): Promise<Activity[]> {
     const baseUrl = API_URL.replace('/projects', '');
     const res = await authFetch(`${baseUrl}/activity`);
