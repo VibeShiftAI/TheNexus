@@ -8,7 +8,8 @@ const { checkPrivilege } = require('../lib/auth');
 const { checkAndIncrement } = require('../lib/ratelimit');
 const backends = require('../lib/backends');
 const ledger = require('../lib/ledger');
-const { executeTransaction, compareFields } = require('../lib/transactions');
+const { executeTransaction, executeOptimisticTransaction, compareFields } = require('../lib/transactions');
+const lockHealth = require('../lib/lock-health');
 const { classifySource, formatRetrieved } = require('../lib/provenance');
 
 function withTransactionId(result, transactionId) {
@@ -322,13 +323,15 @@ function register(server, ctx) {
 
   server.tool(
     'nexus_task_update',
-    'Update an existing Nexus task by id. Supply only the fields you want to change. USE FOR: changing status (e.g. retiring/cancelling a task), repointing dependencies, adjusting priority, editing the human description, or backfilling/replacing the machine antigravity_payload (the "instructions" layer). Does NOT create tasks — use nexus_task_create for that.',
+    'Update an existing Nexus task by id. Supply only the fields you want to change. USE FOR: changing status (e.g. retiring/cancelling a task), repointing dependencies, adjusting priority, editing the human description, or backfilling/replacing the machine antigravity_payload (the "instructions" layer). Does NOT create tasks — use nexus_task_create for that. Concurrency: the write runs under a bounded optimistic-lock retry, so an unrelated writer bumping the row between your read and your write no longer fails the call; expected_status is still a hard guard that is never retried past. The response carries lock_health, a contention gauge for this tool.',
     {
       task_id: z.string().describe('Task UUID (from nexus_tasks_read / nexus_task_status).'),
       expected_status: z.string().optional()
-        .describe('Optimistic concurrency guard: reject unless the current task status exactly matches.'),
+        .describe('Optimistic concurrency guard: reject unless the current task status exactly matches. Never auto-refreshed — a mismatch always fails, because it means the premise of your update is gone.'),
       expected_updated_at: z.string().optional()
-        .describe('Optimistic concurrency guard: reject unless the current task updated_at exactly matches.'),
+        .describe('Optimistic concurrency freshness guard: the update is rejected if the row moved, then re-anchored to the current row and retried (bounded). Set on_conflict="fail" for the strict compare-and-set behaviour.'),
+      on_conflict: z.enum(['retry', 'fail']).optional()
+        .describe('retry (default): re-anchor a timestamp-only conflict and retry, and treat "another writer already applied this exact patch" as success. fail: reject on any guard mismatch, no retry.'),
       status: z.string().optional().describe('New status, e.g. "todo", "in-progress", "completed", "blocked", "cancelled".'),
       priority: z.number().int().min(0).max(2).optional().describe('0=low, 1=normal, 2=high.'),
       description: z.string().optional().describe('Replacement description / context.'),
@@ -347,7 +350,7 @@ function register(server, ctx) {
         .optional()
         .describe('Replacement machine-execution payload (the "instructions" layer). Replaces the existing payload entirely; pass null to clear it.'),
     },
-    async ({ task_id, status, priority, description, dependencies, successor_id, antigravity_payload, expected_status, expected_updated_at }) => {
+    async ({ task_id, status, priority, description, dependencies, successor_id, antigravity_payload, expected_status, expected_updated_at, on_conflict }) => {
       const auth = checkPrivilege(ctx.caller, 'nexus.task_update');
       if (auth) return auth;
       const rl = checkAndIncrement(ctx.caller.identity, 'nexus_task_update', ctx.caller.rate_limits_per_hour?.['nexus.task_update']);
@@ -369,25 +372,66 @@ function register(server, ctx) {
         const expected = {};
         if (expected_status !== undefined) expected.status = expected_status;
         if (expected_updated_at !== undefined) expected.updated_at = expected_updated_at;
-        const tx = await executeTransaction({
+        const spec = {
           tool: 'nexus_task_update',
           caller: ctx.caller,
           target: { task_id },
           intent: { patch, expected },
           captureBefore: () => backends.nexusTaskById(task_id),
-          validatePreconditions: ({ before }) => compareFields(before, expected),
+          validatePreconditions: ({ before, intent }) => compareFields(before, intent.expected),
           apply: () => backends.nexusTaskUpdate(task_id, patch),
           readAfter: () => backends.nexusTaskById(task_id),
           verify: ({ after }) => {
             const mismatches = compareFields(after, patch);
             return { ok: mismatches.length === 0, mismatches };
           },
+        };
+        const tx = on_conflict === 'fail'
+          ? await executeTransaction(spec)
+          : await executeOptimisticTransaction(spec, {
+            // Only the row timestamp is re-anchored; expected_status stays hard.
+            refreshableFields: ['updated_at'],
+            // A concurrent writer that already produced exactly this patch has
+            // done our work — converge instead of failing the lifecycle flow.
+            isSatisfied: (current) => compareFields(current, patch).length === 0,
+          });
+        lockHealth.record({
+          tool: 'nexus_task_update',
+          caller: ctx.caller.identity,
+          target: task_id,
+          outcome: tx.lock?.outcome || 'committed',
+          lock: tx.lock,
         });
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_update', success: true, latency_ms: Date.now() - started });
-        return { content: [{ type: 'text', text: JSON.stringify(withTransactionId(tx.result, tx.transactionId), null, 2) }] };
+        const envelope = withTransactionId(tx.result, tx.transactionId);
+        if (tx.lock) envelope.optimistic_lock = tx.lock;
+        if (tx.verdict === 'converged_noop') envelope.verdict = tx.verdict;
+        const health = lockHealth.gauge('nexus_task_update');
+        if (health) envelope.lock_health = health;
+        return { content: [{ type: 'text', text: JSON.stringify(envelope, null, 2) }] };
       } catch (e) {
+        // executeTransaction (the strict on_conflict:"fail" path) has no lock
+        // trace of its own — build one from the TransactionError's mismatches
+        // so a strict-mode stale conflict is counted as contended+unresolved,
+        // not silently folded into an uncontended failure.
+        const lock = e.lock || (e.verdict === 'stale_precondition'
+          ? {
+            attempts: 1,
+            outcome: 'conflict_unresolved',
+            conflicts: [{ attempt: 1, fields: (e.mismatches || []).map((m) => m.field) }],
+            blocking_fields: (e.mismatches || []).map((m) => m.field),
+          }
+          : null);
+        lockHealth.record({
+          tool: 'nexus_task_update',
+          caller: ctx.caller.identity,
+          target: task_id,
+          outcome: lock?.outcome || 'error',
+          lock,
+        });
         ledger.record({ caller: ctx.caller.identity, tool: 'nexus_task_update', success: false, latency_ms: Date.now() - started, error: e.message });
-        return { content: [{ type: 'text', text: transactionFailure('nexus_task_update', e) }], isError: true };
+        const gaugeLine = lockHealth.formatGauge(lockHealth.gauge('nexus_task_update'));
+        return { content: [{ type: 'text', text: `${transactionFailure('nexus_task_update', e)}\nLock health — ${gaugeLine}` }], isError: true };
       }
     },
   );

@@ -37,7 +37,10 @@ module.exports = {
 
   // State files (shared across ephemeral MCP spawns — must be WAL/atomic)
   KEYS_FILE: path.join(os.homedir(), '.praxis-mind', 'keys.json'),
-  LEDGER_DB: path.join(os.homedir(), '.praxis-mind', 'cost_ledger.sqlite'),
+  // Overridable so tests (and a throwaway probe) never write into the real
+  // ledger — same escape hatch TRANSITION_LOG already has.
+  LEDGER_DB: process.env.PRAXIS_MIND_LEDGER_DB
+    || path.join(os.homedir(), '.praxis-mind', 'cost_ledger.sqlite'),
   TRANSITION_LOG: process.env.PRAXIS_MIND_TRANSITION_LOG
     || path.join(os.homedir(), '.praxis-mind', 'transition-log.jsonl'),
 

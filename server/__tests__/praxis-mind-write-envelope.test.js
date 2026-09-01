@@ -40,6 +40,13 @@ describe('praxis-mind write tool transaction integration', () => {
     logPath = path.join(tempDir, 'transitions.jsonl');
     process.env.PRAXIS_MIND_TRANSITION_LOG = logPath;
     jest.doMock('../../services/praxis-mind-mcp/lib/ledger', () => ({ record: jest.fn() }));
+    // Telemetry sidecar — it owns its own sqlite handle, which these tests
+    // neither provide nor assert on.
+    jest.doMock('../../services/praxis-mind-mcp/lib/lock-health', () => ({
+      record: jest.fn(),
+      gauge: jest.fn(() => null),
+      formatGauge: jest.fn(() => 'gauge disabled in test'),
+    }));
   });
 
   afterEach(() => {
@@ -113,6 +120,9 @@ describe('praxis-mind write tool transaction integration', () => {
     }));
     jest.doMock('../../services/praxis-mind-mcp/lib/transactions', () => ({
       executeTransaction,
+      // nexus_task_update wraps the envelope in the optimistic-lock retry loop;
+      // uncontended, that is still exactly one executeTransaction call.
+      executeOptimisticTransaction: (spec) => executeTransaction(spec),
       compareFields: jest.fn(() => []),
     }));
     jest.doMock('../../services/praxis-mind-mcp/lib/backends', () => ({}));

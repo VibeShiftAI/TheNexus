@@ -5,10 +5,12 @@
   "private": true,
   "main": "stdio.js",
   "bin": {
-    "praxis-mind-transitions": "bin/transition-log.js"
+    "praxis-mind-transitions": "bin/transition-log.js",
+    "praxis-mind-lock-health": "bin/lock-health.js"
   },
   "scripts": {
     "start": "node stdio.js",
-    "transitions": "node bin/transition-log.js"
+    "transitions": "node bin/transition-log.js",
+    "lock-health": "node bin/lock-health.js"
   }
 }
