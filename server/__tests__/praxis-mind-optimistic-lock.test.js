@@ -462,4 +462,25 @@ describe('lock health gauge', () => {
       expect(JSON.parse(out).window_hours).toBe(12);
     }
   });
+
+  test('a valueless --hours errors instead of quietly falling back to the default', () => {
+    // Improvement follow-up (2026-09-01): `--hours` with nothing after it, or
+    // followed by the next flag, used to slide into the 24h default — the same
+    // quiet substitution the digit check exists to stop. Only the flag's
+    // ABSENCE may select the default.
+    const { main } = require('../../services/praxis-mind-mcp/bin/lock-health');
+    const swallow = { stdout: { write: () => {} } };
+
+    expect(() => main(['--json', '--hours'], swallow))
+      .toThrow('--hours must be a positive integer');
+    expect(() => main(['--hours'], swallow))
+      .toThrow('--hours must be a positive integer');
+    expect(() => main(['--json', '--hours', '--tool', 'nexus_task_update'], swallow))
+      .toThrow('--hours must be a positive integer');
+
+    // Omitting the flag entirely still means "24 hours".
+    let out = '';
+    expect(main(['--json'], { stdout: { write: (s) => { out += s; } } })).toBe(0);
+    expect(JSON.parse(out).window_hours).toBe(24);
+  });
 });

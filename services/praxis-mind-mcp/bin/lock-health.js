@@ -32,7 +32,11 @@ function main(args = process.argv.slice(2), io = process) {
   const rawHours = option(args, '--hours');
   // parseInt stops at the first non-digit, so "1.5", "6hours" and "24abc" would
   // all be silently accepted as 1/6/24. Require the whole argument to be digits.
-  const hours = rawHours === undefined ? 24 : (/^\d+$/.test(rawHours.trim()) ? Number(rawHours) : NaN);
+  // A bare trailing `--hours` is a typo, not a request for the default: only the
+  // flag's absence selects 24.
+  const hours = !args.includes('--hours')
+    ? 24
+    : (typeof rawHours === 'string' && /^\d+$/.test(rawHours.trim()) ? Number(rawHours) : NaN);
   if (!Number.isInteger(hours) || hours < 1) throw new Error('--hours must be a positive integer');
 
   const summary = gauge(tool, hours);
