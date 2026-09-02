@@ -8,6 +8,15 @@ const API_BASE = "/api/ingestion-control";
 
 export type SourceType = "youtube" | "rss" | "academic" | "web_search" | "google_docs";
 
+/** Why a source exists — set by the seeders (project-tagger gaps, council hunts, open needs). */
+export interface IngestionOrigin {
+    kind: "gap" | "hunt" | "manual" | "need";
+    project_id?: string;
+    tag?: string;
+    gap_uuid?: string;
+    need_id?: string;
+}
+
 export interface IngestionSource {
     name: string;
     type: SourceType;
@@ -15,6 +24,10 @@ export interface IngestionSource {
     enabled: boolean;
     added_at: string;
     max_items?: number;
+    origin?: IngestionOrigin;
+    /** Set when the nightly lifecycle retired the term (no-yield, rotated-out, gap-filled, project-parked…). */
+    retired_at?: string;
+    retire_reason?: string;
 }
 
 export interface RunSourceBreakdown {
@@ -181,6 +194,9 @@ export interface IngestionRecommendation {
     status: "suggested" | "accepted" | "dismissed";
     created_at: string;
     resolved_at?: string;
+    /** Present on automatic resolutions (expired, rotated-in); absent on human decisions. */
+    resolved_reason?: string;
+    origin?: IngestionOrigin;
 }
 
 export interface RecommendationStore {

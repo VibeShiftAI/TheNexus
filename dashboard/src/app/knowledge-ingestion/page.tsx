@@ -77,6 +77,32 @@ function formatDate(value?: string | null): string {
     return date.toLocaleString();
 }
 
+const ORIGIN_CLASS: Record<string, string> = {
+    hunt: "bg-violet-500/20 text-violet-200",
+    gap: "bg-emerald-500/20 text-emerald-200",
+    need: "bg-amber-500/20 text-amber-200",
+    manual: "bg-slate-700 text-slate-300",
+};
+
+function originTitle(s: { origin?: { kind: string; tag?: string; need_id?: string } }): string {
+    const o = s.origin;
+    if (!o) return "";
+    if (o.kind === "hunt") return "Council HUNT row — rotates out after 14 days without a kept item";
+    if (o.kind === "gap") return `Project knowledge gap${o.tag ? ` (${o.tag})` : ""} — retires when the gap fills`;
+    if (o.kind === "need") return `Open project need${o.need_id ? ` ${o.need_id}` : ""} — retires when the need closes`;
+    return "Added by hand";
+}
+
+function ageLabel(iso?: string | null): string {
+    if (!iso) return "";
+    const ms = Date.now() - Date.parse(iso);
+    if (!Number.isFinite(ms) || ms < 0) return "";
+    const days = Math.floor(ms / 86_400_000);
+    if (days < 1) return "today";
+    if (days < 30) return `${days}d`;
+    return `${Math.floor(days / 30)}mo`;
+}
+
 function confidenceDots(confidence: number): string {
     return "●".repeat(Math.max(1, Math.min(5, confidence))) + "○".repeat(5 - Math.max(1, Math.min(5, confidence)));
 }
@@ -304,12 +330,23 @@ export default function KnowledgeIngestionPage() {
         () => (overview?.sources ?? []).filter((s) => s.type === "web_search" && s.url !== "tavily"),
         [overview],
     );
+    // Retired terms (no-yield, rotated-out, gap-filled, project-parked) used to
+    // render as struck-through chips in the same row as the live ones — 119 of
+    // them by 2026-09-02, burying the 74 that actually run. Split them out.
+    const liveTerms = useMemo(() => termSources.filter((s) => !s.retired_at), [termSources]);
+    const retiredTerms = useMemo(
+        () => termSources.filter((s) => Boolean(s.retired_at)).sort((a, b) => (b.retired_at ?? "").localeCompare(a.retired_at ?? "")),
+        [termSources],
+    );
     const contentSources = useMemo(
         () => (overview?.sources ?? []).filter((s) => s.type !== "web_search" || s.url === "tavily"),
         [overview],
     );
     const suggested = useMemo(
-        () => (recommendations?.items ?? []).filter((r) => r.status === "suggested"),
+        () =>
+            (recommendations?.items ?? [])
+                .filter((r) => r.status === "suggested")
+                .sort((a, b) => b.created_at.localeCompare(a.created_at)),
         [recommendations],
     );
 
@@ -364,7 +401,8 @@ export default function KnowledgeIngestionPage() {
                             {(overview?.default_search_queries.length ?? 0) + termSources.filter((s) => s.enabled).length}
                         </div>
                         <p className="text-sm text-slate-500">
-                            {overview?.default_search_queries.length ?? 0} built-in + {termSources.filter((s) => s.enabled).length} custom
+                            {overview?.default_search_queries.length ?? 0} built-in + {liveTerms.filter((s) => s.enabled).length} custom
+                            {retiredTerms.length > 0 ? ` · ${retiredTerms.length} retired` : ""}
                         </p>
                     </div>
                     <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
@@ -422,7 +460,7 @@ export default function KnowledgeIngestionPage() {
                                     <span className="rounded bg-slate-700 px-1 text-[10px] uppercase text-slate-400">built-in</span>
                                 </button>
                             ))}
-                            {termSources.map((s) => (
+                            {liveTerms.map((s) => (
                                 <span
                                     key={s.name}
                                     className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs ${
@@ -434,6 +472,17 @@ export default function KnowledgeIngestionPage() {
                                     <button onClick={() => explore(s.url)} className="hover:underline" title="Explore knowledge for this term">
                                         {s.url}
                                     </button>
+                                    {s.origin?.kind && (
+                                        <span
+                                            className={`rounded px-1 text-[10px] uppercase ${ORIGIN_CLASS[s.origin.kind] ?? "bg-slate-800 text-slate-400"}`}
+                                            title={originTitle(s)}
+                                        >
+                                            {s.origin.kind}
+                                        </span>
+                                    )}
+                                    <span className="text-[10px] text-slate-500" title={`Added ${formatDate(s.added_at)}`}>
+                                        {ageLabel(s.added_at)}
+                                    </span>
                                     <button
                                         onClick={() => runMutation(`toggle-${s.name}`, () => toggleIngestionSource(s.name))}
                                         disabled={busy !== null}
@@ -453,6 +502,33 @@ export default function KnowledgeIngestionPage() {
                                 </span>
                             ))}
                         </div>
+                        {retiredTerms.length > 0 && (
+                            <details className="mt-3 rounded-md border border-slate-800 bg-slate-950/40">
+                                <summary className="cursor-pointer px-3 py-2 text-xs text-slate-400 hover:text-slate-200">
+                                    Retired terms ({retiredTerms.length}) — rotated out by the nightly lifecycle; a re-proposal revives one
+                                </summary>
+                                <ul className="max-h-72 space-y-1 overflow-y-auto px-3 pb-3 text-xs">
+                                    {retiredTerms.map((s) => (
+                                        <li key={s.name} className="flex flex-wrap items-center gap-2 text-slate-500">
+                                            <button onClick={() => explore(s.url)} className="text-left hover:text-slate-300 hover:underline">
+                                                {s.url}
+                                            </button>
+                                            {s.origin?.kind && <span className="rounded bg-slate-800 px-1 text-[10px] uppercase">{s.origin.kind}</span>}
+                                            <span className="rounded border border-slate-800 px-1 text-[10px]">{s.retire_reason ?? "retired"}</span>
+                                            <span className="text-[10px]">{formatDate(s.retired_at)}</span>
+                                            <button
+                                                onClick={() => runMutation(`remove-${s.name}`, () => removeIngestionSource(s.name))}
+                                                disabled={busy !== null}
+                                                className="ml-auto text-slate-600 hover:text-red-300"
+                                                title="Delete permanently"
+                                            >
+                                                <Trash2 size={11} />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </details>
+                        )}
                         {showAddForm === "term" && (
                             <div className="flex flex-wrap items-center gap-2 rounded-md border border-slate-800 bg-slate-900/60 p-3">
                                 <input
@@ -597,8 +673,14 @@ export default function KnowledgeIngestionPage() {
                         <div className="flex items-center gap-2">
                             <Lightbulb size={18} className="text-yellow-300" />
                             <h2 className="font-semibold text-white">Recommended Terms &amp; Sources</h2>
+                            {suggested.length > 0 && (
+                                <span className="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-200">
+                                    {suggested.length} pending
+                                </span>
+                            )}
                             <span className="text-xs text-slate-500">
                                 {recommendations?.generated_at ? `generated ${formatDate(recommendations.generated_at)}` : "not generated yet"}
+                                {" · newest first · the nightly rotation accepts a project's newest gap terms itself and expires the rest after 45 days"}
                             </span>
                         </div>
                         <button
@@ -637,6 +719,14 @@ export default function KnowledgeIngestionPage() {
                                                 {rec.kind === "term" ? "search term" : rec.source_type}
                                             </span>
                                             <span className="font-medium text-white">{rec.name}</span>
+                                            {rec.origin?.kind && (
+                                                <span className={`rounded px-1 text-[10px] uppercase ${ORIGIN_CLASS[rec.origin.kind] ?? "bg-slate-800 text-slate-400"}`}>
+                                                    {rec.origin.kind}
+                                                </span>
+                                            )}
+                                            <span className="text-[10px] text-slate-500" title={formatDate(rec.created_at)}>
+                                                {ageLabel(rec.created_at)}
+                                            </span>
                                             <span className="ml-auto text-xs text-yellow-300/80" title={`Confidence ${rec.confidence}/5`}>
                                                 {confidenceDots(rec.confidence)}
                                             </span>
