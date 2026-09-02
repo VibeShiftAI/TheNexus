@@ -98,8 +98,11 @@ const DORMANT_PROJECT_STATUSES = new Set(['paused', 'parked']);
 // PRICE_PER_MTOK (subscription families don't bill per token — this is the
 // API-equivalent value of the work). Dispatch rows carry one total token
 // count with no input/output split, so the estimate blends the two rates.
+// `cacheRead` overrides the 10%-of-input cache-read default below for a model
+// that prices cache reads differently (Fable 5.1 reads cache at $0.25/MTok —
+// 2.5% of input, not 10% — mirrored from Praxis/src/usage/usage-monitor.ts).
 const PRICE_PER_MTOK = {
-    'claude-fable-5': { in: 10, out: 50 },
+    'claude-fable-5-1': { in: 10, out: 50, cacheRead: 0.25 },
     'claude-opus-5': { in: 5, out: 25 },
     'claude-opus-4-8': { in: 5, out: 25 },
     'claude-sonnet-5': { in: 3, out: 15 },
@@ -111,11 +114,12 @@ const PRICE_PER_MTOK = {
 };
 // A dispatch row carries ONE total token count, and for claude-code that
 // total sums every usage category — including cache reads, which dominate
-// agentic runs and are priced at 10% of input (cache writes at 125%). The
-// blend assumes a typical CLI-run mix and applies Praxis's category pricing:
+// agentic runs and are priced at 10% of input by default (cache writes at
+// 125%). The blend assumes a typical CLI-run mix and applies Praxis's
+// category pricing:
 //   cache-read 85% · fresh input 2% · cache-write 8% · output 5%
-// → effective $/MTok = in × (0.85×0.1 + 0.02 + 0.08×1.25) + out × 0.05
-//                    = in × 0.205 + out × 0.05
+// → effective $/MTok = in × (0.85×cacheReadRate + 0.02 + 0.08×1.25) + out × 0.05
+//   where cacheReadRate = price.cacheRead / price.in when set, else 0.1
 const BLEND = { cacheReadShare: 0.85, inputShare: 0.02, cacheWriteShare: 0.08, outputShare: 0.05 };
 
 function priceFor(model) {
@@ -126,16 +130,21 @@ function priceFor(model) {
     }
     if (m.includes('opus')) return PRICE_PER_MTOK['claude-opus-5'];
     if (m.includes('sonnet')) return PRICE_PER_MTOK['claude-sonnet-5'];
-    if (m.includes('fable') || m.includes('mythos')) return PRICE_PER_MTOK['claude-fable-5'];
+    if (m.includes('fable') || m.includes('mythos')) return PRICE_PER_MTOK['claude-fable-5-1'];
     if (m.includes('haiku')) return PRICE_PER_MTOK['claude-haiku-4-5'];
     return null;
+}
+
+/** Cache-read $/MTok fraction of input — the model's own rate, else the 10% default. */
+function cacheReadShareOfInput(price) {
+    return typeof price.cacheRead === 'number' ? price.cacheRead / price.in : 0.1;
 }
 
 function estimateRunCostUsd(tokens, model) {
     if (typeof tokens !== 'number' || tokens <= 0) return null;
     const price = priceFor(model);
     if (!price) return null;
-    const blended = price.in * (BLEND.cacheReadShare * 0.1 + BLEND.inputShare + BLEND.cacheWriteShare * 1.25)
+    const blended = price.in * (BLEND.cacheReadShare * cacheReadShareOfInput(price) + BLEND.inputShare + BLEND.cacheWriteShare * 1.25)
         + price.out * BLEND.outputShare;
     return Math.round((tokens / 1e6) * blended * 1000) / 1000;
 }

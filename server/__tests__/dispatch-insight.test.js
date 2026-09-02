@@ -392,6 +392,27 @@ describe('dispatch-insight route', () => {
         expect(body.runs[0].overdue).toBe(false);
     });
 
+    test('cost estimate prices Fable 5.1 cache reads at $0.25/MTok and leaves other models unchanged', async () => {
+        await boot();
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                id: 'disp-fable', task_id: 'task-queued', executor: 'claude-code',
+                model: 'claude-fable-5-1', started_at: new Date(Date.now() - HOUR).toISOString(),
+            }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/disp-fable`, {
+            method: 'PATCH',
+            body: JSON.stringify({ outcome: 'success', tokens: 1_000_000, completed_at: new Date().toISOString() }),
+        });
+        const { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-queued`);
+        const byId = Object.fromEntries(body.runs.map((r) => [r.dispatchId, r]));
+        // 1M tokens of Fable 5.1 at its own $0.25/MTok cache-read rate:
+        // 0.25×0.85 + 10×0.02 + 10×1.25×0.08 + 50×0.05 = $3.913 (not the
+        // generic-10% $4.550 the old claude-fable-5 row produced).
+        expect(byId['disp-fable'].cost).toEqual({ usd: 3.913, estimated: true });
+    });
+
     // A real disposable process group, faithful to a detached run's shape: a
     // /bin/sh wrapper leading its own group, running a MULTI-line script
     // (like buildWrapperScript's "cmd; echo $? > done") so the shell cannot
