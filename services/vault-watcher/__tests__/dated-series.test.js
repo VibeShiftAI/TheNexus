@@ -8,17 +8,26 @@
 
 const {
   collectDatedSeries,
-  pushSectionEntries,
+  buildNoteLines,
   seriesKey,
   DATED_SERIES_RE,
   SERIES_MIN_MEMBERS,
 } = require('../index.js');
 
-/** Render a section the way regenerateMemoryIndex() does. */
+/**
+ * Render a section the way regenerateMemoryIndex() does at the top rung of
+ * the budget ladder (`series` — nothing degraded). This replaced
+ * pushSectionEntries() on 2026-09-02: the index is now ordered by value and
+ * dated entries come out newest-first rather than alphabetically, so the
+ * order-sensitive expectations below moved with it.
+ */
 function render(files) {
-  const lines = [];
-  pushSectionEntries(lines, 'memories', [...files].sort());
-  return lines;
+  const entries = [...files].sort().map((file) => ({
+    file,
+    name: file.replace(/\.md$/, ''),
+    supersedes: 0,
+  }));
+  return buildNoteLines('memories', entries, 'series');
 }
 
 /** The single collapsed-summary line for a stem, or undefined. */
@@ -94,7 +103,7 @@ describe('collectDatedSeries', () => {
   });
 });
 
-describe('pushSectionEntries', () => {
+describe('series rendering (buildNoteLines, `series` rung)', () => {
   it('renders count, date range and reconstructable pattern for a series', () => {
     const lines = render([
       'note_retro_2026-09-01.md', 'note_retro_2026-09-08.md', 'note_retro_2026-09-15.md',
@@ -132,11 +141,11 @@ describe('pushSectionEntries', () => {
     expect(lines[0]).not.toContain('2026-09-01 to 2026-09-01');
   });
 
-  it('links sub-threshold dated files individually', () => {
+  it('links sub-threshold dated files individually, newest first', () => {
     const lines = render(['note_pairwise_2026-09-01.md', 'note_pairwise_2026-09-02.md']);
     expect(lines).toEqual([
-      '- [`note_pairwise_2026-09-01`](memories/note_pairwise_2026-09-01.md)',
       '- [`note_pairwise_2026-09-02`](memories/note_pairwise_2026-09-02.md)',
+      '- [`note_pairwise_2026-09-01`](memories/note_pairwise_2026-09-01.md)',
     ]);
   });
 
@@ -155,14 +164,16 @@ describe('pushSectionEntries', () => {
     expect(lines[0]).toBe('- [`reference tracked repos`](memories/reference%20tracked%20repos.md)');
   });
 
-  it('emits one summary per series and preserves alphabetical placement', () => {
+  it('emits one summary per series, ahead of the undated entries', () => {
     const lines = render([
       'aaa_first.md',
       'note_retro_2026-09-01.md', 'note_retro_2026-09-08.md', 'note_retro_2026-09-15.md',
       'zzz_last.md',
     ]);
-    expect(lines[0]).toBe('- [`aaa_first`](memories/aaa_first.md)');
-    expect(lines[1]).toContain('3 dated entries');
+    expect(lines[0]).toContain('3 dated entries');
+    // Undated entries have no place on a newest-first axis, so they trail
+    // the dated ones in stable alphabetical order.
+    expect(lines[1]).toBe('- [`aaa_first`](memories/aaa_first.md)');
     expect(lines[2]).toBe('- [`zzz_last`](memories/zzz_last.md)');
   });
 });
