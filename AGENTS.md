@@ -1,0 +1,65 @@
+# TheNexus map
+
+## Role
+
+TheNexus is the cockpit, not the orchestration runtime: it exposes the SQLite
+task board and Praxis activity through an Express API and Next.js dashboard.
+The adjacent Praxis runtime owns scheduling, dispatch, and production process
+supervision; keep new orchestration there unless the change is specifically a
+cockpit surface.
+
+## Load-bearing map
+
+- `server/server.js` — Express + Socket.IO entry point; mounts API routes and
+  starts on `PORT` or `4000`.
+- `server/routes/tasks.js`, `server/routes/projects.js`, and
+  `server/routes/dispatches.js` — task-board, project, and dispatch APIs.
+  `server/routes/praxis-stream.js` and the small proxy routes are the cockpit's
+  seams to Praxis.
+- `db/index.js` — SQLite facade (not a raw `better-sqlite3` connection), using
+  `NEXUS_DB_PATH` or `nexus.db` and WAL mode. Route code needing raw SQL should
+  follow `server/routes/fleet.js` and open its own connection.
+- `dashboard/src/app/` — App Router pages; `dashboard/src/components/` is the
+  UI; `dashboard/src/lib/` and `dashboard/src/hooks/` hold client data logic.
+  `dashboard/next.config.ts` proxies `/api/*` to `NEXT_PUBLIC_API_URL` or
+  `http://localhost:4000`.
+- `services/praxis-mind-mcp/stdio.js` — stdio MCP entry point spawned per MCP
+  client. Tools are grouped in `tools/{identity,vault,memory,brain,nexus}.js`;
+  `lib/config.js` holds its backend and local-state configuration.
+- `services/vault-watcher/index.js` — launchd-run daemon for
+  `/Volumes/Projects/shared-mind`: regenerates vault projections/indexes and
+  performs hourly git-sync checks. `node services/vault-watcher/index.js --once`
+  regenerates once without watching.
+- `packages/contract/` is the dashboard's local `@praxis/contract` copy. The
+  root server resolves its contract from sibling `../nexus-shared`; contract
+  changes require both consumers to be kept in sync.
+
+## Runtime and commands
+
+- API: from repo root, `npm start` (`node server/server.js`) serves :4000.
+  `npm run dev` uses nodemon for local API iteration.
+- Dashboard development: `cd dashboard && npm run dev` runs `next dev` on
+  :3000 with development hot reload.
+- Dashboard production: `cd dashboard && npm run build && npm run start` runs
+  compiled output on :3000. `next start` does **not** compile source: after a
+  dashboard source change, rebuild and restart the supervised dashboard process
+  before expecting production :3000 to show it. For an isolated build that does
+  not replace the default `.next`, use
+  `cd dashboard && NEXT_DIST_DIR=.next-verify npm run build`.
+- Server tests: `npm test`; scope a server area with `npx jest server/<area>`.
+- Dashboard tests: `cd dashboard && npm test`.
+- MCP smoke start: `cd services/praxis-mind-mcp && npm start`; it speaks
+  JSON-RPC on stdout, so diagnostics must stay on stderr.
+
+## Conventions and gotchas
+
+- Treat API route modules as factories with injected dependencies; keep
+  `server/server.js` as the mounting/startup layer.
+- Do not call `db.exec` or `db.prepare` on the facade imported from `db/`.
+- The dashboard is a consumer, not an alternate API: preserve its `/api/*`
+  proxy seam rather than hard-coding a second backend path.
+- Keep security-sensitive MCP changes covered by the existing server tests,
+  especially `server/__tests__/mcp-boundary-security.test.js` and
+  `server/__tests__/mcp-stateless-conformance.test.js`.
+- Follow `docs/verification-protocol.md` for task evidence and quality gates;
+  point to deeper documentation instead of copying it into this preload map.
