@@ -405,12 +405,27 @@ describe('dispatch-insight route', () => {
             method: 'PATCH',
             body: JSON.stringify({ outcome: 'success', tokens: 1_000_000, completed_at: new Date().toISOString() }),
         });
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                id: 'disp-opus-control', task_id: 'task-queued', executor: 'claude-code',
+                model: 'claude-opus-5', started_at: new Date(Date.now() - HOUR).toISOString(),
+            }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/disp-opus-control`, {
+            method: 'PATCH',
+            body: JSON.stringify({ outcome: 'success', tokens: 1_000_000, completed_at: new Date().toISOString() }),
+        });
         const { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-queued`);
         const byId = Object.fromEntries(body.runs.map((r) => [r.dispatchId, r]));
         // 1M tokens of Fable 5.1 at its own $0.25/MTok cache-read rate:
         // 0.25×0.85 + 10×0.02 + 10×1.25×0.08 + 50×0.05 = $3.913 (not the
         // generic-10% $4.550 the old claude-fable-5 row produced).
         expect(byId['disp-fable'].cost).toEqual({ usd: 3.913, estimated: true });
+        // Control: a non-Fable model's blended rate is untouched by the
+        // cache-read override — same 1M tokens, same 10% default, same
+        // $2.275 as the pre-existing opus-5 assertion above.
+        expect(byId['disp-opus-control'].cost).toEqual({ usd: 2.275, estimated: true });
     });
 
     // A real disposable process group, faithful to a detached run's shape: a
