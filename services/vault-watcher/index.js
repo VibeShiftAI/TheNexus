@@ -177,7 +177,13 @@ function collectSkills() {
           state: parsed.state === 'archived' ? 'archived' : 'active',
         };
       }
-      if (sub.startsWith('_')) candidates.push(entry);
+      // Only `_candidates/` holds skills awaiting approval. Other underscore
+      // dirs are NOT skills: `_knowledge/` is the skill wiki's per-skill
+      // knowledge pages (one per active skill), and listing them here used to
+      // label 100+ pages "pending approval — not installed" and push ~19 KB
+      // of them into SKILLS.md and AGENTS.md on every regen.
+      if (sub === '_candidates') candidates.push(entry);
+      else if (sub.startsWith('_')) continue;
       else if (entry.state !== 'archived') active.push(entry);
     }
   }
@@ -334,9 +340,11 @@ function regenerateMemoryIndex() {
       return parseSkillFrontmatter(readFileSafe(path.join(dir, f))).state === 'archived';
     };
     let skillCount = listMarkdown(skillsRoot).filter((f) => !isArchived(skillsRoot, f)).length;
+    // Category dirs only: `_candidates/` (staging) and `_knowledge/` (wiki
+    // pages) are neither active skills nor categories.
     const subdirs = fs
       .readdirSync(skillsRoot, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
+      .filter((d) => d.isDirectory() && !d.name.startsWith('_'))
       .map((d) => d.name)
       .sort();
     for (const sub of subdirs) {
@@ -755,6 +763,7 @@ function onChange(event, filepath) {
 // daemon startup, guarded by require.main so `require()`ing this file (from a
 // test, or any tooling) never spawns a watcher or touches the vault.
 module.exports = {
+  collectSkills,
   DATED_SERIES_RE,
   SERIES_MIN_MEMBERS,
   SERIES_RECENT_KEPT,
