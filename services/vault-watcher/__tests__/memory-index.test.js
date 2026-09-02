@@ -282,6 +282,56 @@ describe('note degradation ladder', () => {
   });
 });
 
+// ── series sub-bullets stay attached to their parent ────────────────────
+
+/**
+ * `SERIES_RECENT_KEPT` ships as 0, so the `  - newest:` sub-bullet branch in
+ * buildNoteLines() is unreachable in production and cannot be driven from a
+ * normal test. Load a copy of the module with the constant flipped to 1 so
+ * the branch is exercised for real.
+ */
+function loadWithRecentKept(n) {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+  const patched = source.replace('const SERIES_RECENT_KEPT = 0;', `const SERIES_RECENT_KEPT = ${n};`);
+  expect(patched).not.toBe(source); // the constant was renamed — fix this test
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'vw-kept-')), 'index.js');
+  fs.writeFileSync(file, patched, 'utf8');
+  return require(file);
+}
+
+describe('series sub-bullets', () => {
+  // Regression: sub-bullets used to be pushed as independent sort items
+  // carrying their parent's date. They begin with spaces, which collate
+  // ahead of the `- ` starting their own parent, so two series sharing a
+  // newest date sorted every child above every summary — orphaning them.
+  const files = [
+    'note_alpha_2026-09-01.md', 'note_alpha_2026-09-02.md', 'note_alpha_2026-09-03.md',
+    'note_beta_2026-08-30.md', 'note_beta_2026-08-31.md', 'note_beta_2026-09-03.md',
+  ];
+  const entries = files
+    .slice()
+    .sort()
+    .map((file) => ({ file, name: file.replace(/\.md$/, ''), supersedes: 0 }));
+
+  it('keeps each `newest:` child directly under its own series summary on a date tie', () => {
+    const mod = loadWithRecentKept(1);
+    const lines = mod.buildNoteLines('memories', entries, 'series');
+
+    // Guard: if the branch did not run there is nothing to assert about.
+    const children = lines.filter((l) => l.startsWith('  - newest:'));
+    expect(children).toHaveLength(2);
+
+    for (let i = 0; i < lines.length; i += 1) {
+      if (!lines[i].startsWith('  - newest:')) continue;
+      const stem = lines[i].match(/note_(\w+?)_\d{4}-/)[1];
+      expect(lines[i - 1]).toContain(`\`note_${stem}_*\``);
+    }
+    // Both series' newest member is 2026-09-03 — the tie the bug needed.
+    expect(lines[0]).toContain('`note_alpha_*`');
+    expect(lines[2]).toContain('`note_beta_*`');
+  });
+});
+
 // ── superseded files are excluded, end to end ───────────────────────────
 
 describe('supersession excludes files from MEMORY.md', () => {

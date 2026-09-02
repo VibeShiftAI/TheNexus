@@ -417,12 +417,21 @@ function noteBucket(date, stage) {
   return `${year}-${month}`;
 }
 
-/** Newest date first; ties (and undated entries) fall back to line order. */
+/**
+ * Newest date first; ties fall back to line order.
+ *
+ * Each item carries its whole BLOCK of lines — a series summary plus any
+ * `  - newest:` sub-bullets — and the block is the unit that sorts. Sorting
+ * individual lines would orphan those children: they begin with spaces,
+ * which collate ahead of the `- ` that starts their own parent, so any two
+ * series sharing a newest date would interleave children under the wrong
+ * summary. Adjacency is by construction here, not by comparator luck.
+ */
 function sortNewestFirst(items) {
   return items
     .slice()
-    .sort((a, b) => (a.date === b.date ? a.line.localeCompare(b.line) : b.date.localeCompare(a.date)))
-    .map((i) => i.line);
+    .sort((a, b) => (a.date === b.date ? a.lines[0].localeCompare(b.lines[0]) : b.date.localeCompare(a.date)))
+    .flatMap((i) => i.lines);
 }
 
 /**
@@ -457,19 +466,19 @@ function buildNoteLines(section, entries, stage, promoteNewest = 0) {
     for (const e of dated) {
       const g = series.get(e.key);
       if (!g) {
-        items.push({ date: e.date, line: entryLine(section, e.file, e.supersedes) });
+        items.push({ date: e.date, lines: [entryLine(section, e.file, e.supersedes)] });
         continue;
       }
       if (emitted.has(e.key)) continue;
       emitted.add(e.key);
-      const date = g.members[g.members.length - 1].date;
-      items.push({ date, line: seriesSummaryLine(section, g) });
+      const block = [seriesSummaryLine(section, g)];
       // Guard the slice: slice(-0) is slice(0), which would list the whole
       // series and re-inflate the very index this collapsing exists to shrink.
       const keep = Math.min(Math.max(SERIES_RECENT_KEPT, 0), g.members.length);
       for (const recent of keep ? g.members.slice(-keep) : []) {
-        items.push({ date, line: `  - newest: [\`${recent.name}\`](${section}/${encodeFilename(recent.file)})` });
+        block.push(`  - newest: [\`${recent.name}\`](${section}/${encodeFilename(recent.file)})`);
       }
+      items.push({ date: g.members[g.members.length - 1].date, lines: block });
     }
     return sortNewestFirst(items).concat(undatedLines);
   }
