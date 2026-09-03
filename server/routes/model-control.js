@@ -304,6 +304,26 @@ function safeRoutingState() {
 function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
     const router = express.Router();
 
+    // ─── STATE.md trigger ─────────────────────────────────────────────────
+    // Every setting below is a fact in the vault's living STATE.md (Praxis
+    // src/memory/state-doc.ts, task e524649b). Praxis regenerates it on a
+    // 10-minute heartbeat; a model-control change should not wait that long
+    // to be true in AGENTS.md, so each successful PUT pings the refresh
+    // endpoint. Fire-and-forget: Praxis being down must never fail a PUT.
+    const notifyPraxisStateDoc = (reason) => {
+        try {
+            const { PRAXIS_URL } = require('../shared/constants');
+            fetch(`${PRAXIS_URL}/api/state-doc/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: `model-control: ${reason}` }),
+                signal: AbortSignal.timeout(15000),
+            }).catch(() => { /* Praxis down or restarting — the heartbeat catches up */ });
+        } catch {
+            /* never let telemetry break a settings write */
+        }
+    };
+
     // ─── Key-aware routing ────────────────────────────────────────────────
     // Which dispatch routes have a live credential, and which are excluded
     // before execution (dead key / spent quota) rather than at the 402.
@@ -368,6 +388,7 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
             const model = typeof req.body.model === 'string' ? req.body.model.trim() : '';
             if (!model) return res.status(400).json({ error: 'model is required' });
             await db.setModelControlSetting('claude_default_model', { model });
+            notifyPraxisStateDoc('claude-default');
             res.json({ model });
         } catch (error) {
             console.error('[Model Control] Failed to update claude default:', error);
@@ -400,6 +421,7 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                 }
                 const model = req.body.model.trim();
                 await db.setModelControlSetting(key, { model });
+                notifyPraxisStateDoc(route);
                 res.json({ model });
             } catch (error) {
                 console.error(`[Model Control] Failed to update ${route}:`, error);
@@ -448,6 +470,7 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                 return res.status(400).json({ error: `backend must be one of: ${CHAT_BACKENDS.join(', ')}` });
             }
             await db.setModelControlSetting('chat_backend', { backend });
+            notifyPraxisStateDoc('chat-backend');
             res.json({ backend });
         } catch (error) {
             console.error('[Model Control] Failed to update chat backend:', error);
@@ -489,6 +512,7 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
             if ('thinkingLevel' in body) await db.setModelControlSetting('chat_thinking_level', { level: body.thinkingLevel });
             if ('claudeModel' in body) await db.setModelControlSetting('chat_claude_model', { model: body.claudeModel.trim() });
             if ('codexModel' in body) await db.setModelControlSetting('chat_codex_model', { model: body.codexModel.trim() });
+            notifyPraxisStateDoc('chat-config');
             res.json(await getChatConfig(db));
         } catch (error) {
             console.error('[Model Control] Failed to update chat config:', error);
@@ -521,6 +545,7 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                 : AGENT_BACKEND_DEFAULT.fallbacks.filter(f => f !== backend);
             const value = { backend, fallbacks };
             await db.setModelControlSetting('agent_backend', value);
+            notifyPraxisStateDoc('agent-backend');
             res.json(value);
         } catch (error) {
             console.error('[Model Control] Failed to update agent backend:', error);
@@ -554,6 +579,7 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
             }
             const reason = typeof body.reason === 'string' ? body.reason.slice(0, 300) : null;
             await db.setModelControlSetting('fable_availability', { out, until, reason });
+            notifyPraxisStateDoc('fable-availability');
             res.json(await getFableAvailability(db));
         } catch (error) {
             console.error('[Model Control] Failed to update fable availability:', error);

@@ -14,6 +14,7 @@ const { checkAndIncrement } = require('../lib/ratelimit');
 const ledger = require('../lib/ledger');
 const { executeTransaction, compareFields } = require('../lib/transactions');
 const { classifyVaultPath, formatRetrieved } = require('../lib/provenance');
+const { planSupersession, applySupersession } = require('../lib/supersession');
 
 const WATCHER_ONLY = new Set(['MEMORY.md', 'AGENTS.md', 'shared-mind-context.md']);
 const ROBERT_ONLY = new Set(['SOUL.md', 'USER.md', 'CONTEXT.md']);
@@ -91,8 +92,10 @@ function register(server, ctx) {
         .describe('Optimistic concurrency guard: reject unless file existence matches.'),
       expected_content: z.string().optional()
         .describe('Optimistic concurrency guard: reject unless the current full file content exactly matches.'),
+      supersedes: z.array(z.string()).optional()
+        .describe('Memory names (file stems, no .md) in the SAME directory that this file REPLACES. Each is stamped `status: superseded` + `superseded_by: <this file>` and this file gains `supersedes: [...]`, so MEMORY.md, hybrid search and chat recall drop the retired facts. Use this instead of overwriting a reference_*/feedback_* memory with contradicting content — the vault retires facts, it does not argue with itself.'),
     },
-    async ({ path: rel, content, mode, expected_exists, expected_content }) => {
+    async ({ path: rel, content, mode, expected_exists, expected_content, supersedes }) => {
       const auth = checkPrivilege(ctx.caller, 'vault.write');
       if (auth) return auth;
       const rl = checkAndIncrement(ctx.caller.identity, 'vault_write', ctx.caller.rate_limits_per_hour?.['vault.write']);
@@ -104,16 +107,28 @@ function register(server, ctx) {
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_write', success: false, error: allow.reason });
         return { content: [{ type: 'text', text: `vault_write rejected: ${allow.reason}` }], isError: true };
       }
+      if (supersedes && supersedes.length && mode === 'append') {
+        const reason = 'supersedes requires mode "replace" — a replacement is a whole file, not an appended paragraph';
+        ledger.record({ caller: ctx.caller.identity, tool: 'vault_write', success: false, error: reason });
+        return { content: [{ type: 'text', text: `vault_write rejected: ${reason}` }], isError: true };
+      }
       try {
         const abs = resolveVaultPath(rel);
+        // Supersession (Praxis task e524649b, PART 3): the replacement carries
+        // `supersedes:` and every named old file is retired in the SAME apply,
+        // so the vault never holds a retired fact with no successor. The plan
+        // is built before the transaction so a bad name fails before any write.
+        const plan = planSupersession(VAULT, rel, content, supersedes || []);
+        const finalContent = plan.content;
         const expected = {};
         if (expected_exists !== undefined) expected.exists = expected_exists;
         if (expected_content !== undefined) expected.content = expected_content;
+        let stamped = [];
         const tx = await executeTransaction({
           tool: 'vault_write',
           caller: ctx.caller,
           target: { path: rel },
-          intent: { mode, content, expected },
+          intent: { mode, content: finalContent, expected, supersedes: plan.targets.map((t) => t.name) },
           captureBefore: async () => {
             const exists = fs.existsSync(abs);
             return { exists, content: exists ? fs.readFileSync(abs, 'utf8') : null };
@@ -121,22 +136,24 @@ function register(server, ctx) {
           validatePreconditions: ({ before }) => compareFields(before, expected),
           apply: async () => {
             fs.mkdirSync(path.dirname(abs), { recursive: true });
-            if (mode === 'append') fs.appendFileSync(abs, content);
-            else fs.writeFileSync(abs, content);
-            return { bytes_written: Buffer.byteLength(content), path: rel, mode };
+            if (mode === 'append') fs.appendFileSync(abs, finalContent);
+            else fs.writeFileSync(abs, finalContent);
+            stamped = applySupersession(plan);
+            return { bytes_written: Buffer.byteLength(finalContent), path: rel, mode, superseded: stamped };
           },
           readAfter: async () => {
             const exists = fs.existsSync(abs);
             return { exists, content: exists ? fs.readFileSync(abs, 'utf8') : null };
           },
           verify: ({ before, after }) => {
-            const expectedAfter = mode === 'append' ? `${before.content || ''}${content}` : content;
+            const expectedAfter = mode === 'append' ? `${before.content || ''}${finalContent}` : finalContent;
             const mismatches = compareFields(after, { exists: true, content: expectedAfter });
             return { ok: mismatches.length === 0, mismatches };
           },
         });
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_write', success: true });
-        return { content: [{ type: 'text', text: `Wrote ${Buffer.byteLength(content)} bytes to ${rel} (transaction ${tx.transactionId})` }] };
+        const supersededNote = stamped.length ? `; superseded ${stamped.join(', ')}` : '';
+        return { content: [{ type: 'text', text: `Wrote ${Buffer.byteLength(finalContent)} bytes to ${rel} (transaction ${tx.transactionId})${supersededNote}` }] };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_write', success: false, error: e.message });
         const suffix = e.transactionId ? ` (transaction ${e.transactionId})` : '';
