@@ -113,8 +113,12 @@ describe('tasks model control integration', () => {
                 name: 'Suspended',
                 status: 'suspended',
                 model_assignment: 'model:anthropic-claude-sonnet',
-                suspended_context: { workspace: '/Volumes/Projects/ProjectOne' },
-                resume_action: { type: 'redispatch' }
+                metadata: {
+                    suspension: {
+                        context: { workspace: '/Volumes/Projects/ProjectOne' },
+                        resume_action: { type: 'redispatch' }
+                    }
+                }
             }))
         });
         global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ success: true }) }));
@@ -129,5 +133,136 @@ describe('tasks model control integration', () => {
         expect(response.status).toBe(200);
         const payload = JSON.parse(global.fetch.mock.calls[0][1].body);
         expect(payload.modelOverride).toEqual(expect.objectContaining({ provider: 'anthropic', apiModelId: 'claude-sonnet-4-6' }));
+    });
+
+    test('suspend PATCH persists metadata.suspension alongside status_message', async () => {
+        const db = createDb();
+        handle = await mount(db);
+
+        const response = await requestJson(`${handle.baseUrl}/api/tasks/task-1`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: 'suspended',
+                status_message: 'Waiting on Robert',
+                suspended_at: '2026-09-03T10:00:00.000Z',
+                suspended_reason: 'Need API design clarification',
+                suspended_context: { question: 'REST or GraphQL?', partialResult: 'scaffolded routes', workspace: '/Volumes/Projects/ProjectOne' },
+                resume_action: { type: 'redispatch' }
+            })
+        });
+
+        expect(response.status).toBe(200);
+        const updates = db.updateTask.mock.calls[0][1];
+        expect(updates.status).toBe('suspended');
+        expect(updates).not.toHaveProperty('suspended_at');
+        expect(updates).not.toHaveProperty('suspended_reason');
+        expect(updates).not.toHaveProperty('suspended_context');
+        expect(updates).not.toHaveProperty('resume_action');
+        expect(updates.metadata).toEqual({
+            status_message: 'Waiting on Robert',
+            suspension: {
+                suspended_at: '2026-09-03T10:00:00.000Z',
+                reason: 'Need API design clarification',
+                context: { question: 'REST or GraphQL?', partialResult: 'scaffolded routes', workspace: '/Volumes/Projects/ProjectOne' },
+                resume_action: { type: 'redispatch' }
+            }
+        });
+    });
+
+    test('leaving suspended via PATCH keeps metadata.suspension as history', async () => {
+        const db = createDb({
+            getTask: jest.fn(async () => ({
+                id: 'task-1', project_id: 'project-1', name: 'Parked', status: 'suspended',
+                metadata: { suspension: { suspended_at: 't0', reason: 'why' } }
+            }))
+        });
+        handle = await mount(db);
+
+        await requestJson(`${handle.baseUrl}/api/tasks/task-1`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'in_progress', status_message: 'back on it' })
+        });
+        const updates = db.updateTask.mock.calls[0][1];
+        expect(updates.metadata).toEqual({ suspension: { suspended_at: 't0', reason: 'why' }, status_message: 'back on it' });
+
+        // Explicit nulls clear the block.
+        await requestJson(`${handle.baseUrl}/api/tasks/task-1`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ suspended_at: null, suspended_reason: null, suspended_context: null, resume_action: null })
+        });
+        expect(db.updateTask.mock.calls[1][1].metadata).toEqual({});
+    });
+
+    test('resume rebuilds instructions from metadata.suspension and stamps resumed_at', async () => {
+        const db = createDb({
+            getTask: jest.fn(async () => ({
+                id: 'task-1', project_id: 'project-1', name: 'Parked', status: 'suspended',
+                model_assignment: 'model:anthropic-claude-sonnet',
+                metadata: {
+                    status_message: 'note',
+                    suspension: {
+                        suspended_at: 't0',
+                        reason: 'Need API design clarification',
+                        context: { question: 'REST or GraphQL?', partialResult: 'scaffolded routes', workspace: '/Volumes/Projects/ProjectOne' },
+                        resume_action: { type: 'redispatch' }
+                    }
+                }
+            }))
+        });
+        global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ success: true }) }));
+        handle = await mount(db);
+
+        const response = await requestJson(`${handle.baseUrl}/api/tasks/project-1/tasks/task-1/resume`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ humanInput: 'GraphQL' })
+        });
+        expect(response.status).toBe(200);
+
+        const updates = db.updateTask.mock.calls[0][1];
+        expect(updates.status).toBe('in_progress');
+        expect(updates).not.toHaveProperty('suspended_context');
+        expect(updates.metadata.status_message).toBe('note');
+        expect(updates.metadata.suspension).toEqual(expect.objectContaining({
+            suspended_at: 't0',
+            reason: 'Need API design clarification',
+            resumed_at: expect.any(String)
+        }));
+
+        const payload = JSON.parse(global.fetch.mock.calls[0][1].body);
+        expect(payload.workspace).toBe('/Volumes/Projects/ProjectOne');
+        expect(payload.instructions).toContain('Previous context: scaffolded routes');
+        expect(payload.instructions).toContain('Question asked: REST or GraphQL?');
+        expect(payload.instructions).toContain('Human answer: GraphQL');
+    });
+
+    test('cancel from suspension sets cancelled status and stamps cancelled_at', async () => {
+        const db = createDb({
+            getTask: jest.fn(async () => ({
+                id: 'task-1', project_id: 'project-1', name: 'Parked', status: 'suspended',
+                metadata: { suspension: { suspended_at: 't0', reason: 'why', context: 'plain string context' } }
+            }))
+        });
+        global.fetch = jest.fn();
+        handle = await mount(db);
+
+        const response = await requestJson(`${handle.baseUrl}/api/tasks/project-1/tasks/task-1/resume`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'cancel' })
+        });
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ success: true, action: 'cancelled' });
+        expect(global.fetch).not.toHaveBeenCalled();
+
+        const updates = db.updateTask.mock.calls[0][1];
+        expect(updates.status).toBe('cancelled');
+        expect(Object.keys(updates).sort()).toEqual(['metadata', 'status', 'updated_at']);
+        expect(updates.metadata.suspension).toEqual({
+            suspended_at: 't0', reason: 'why', context: 'plain string context', cancelled_at: expect.any(String)
+        });
     });
 });

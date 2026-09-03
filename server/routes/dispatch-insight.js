@@ -39,11 +39,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFile } = require('child_process');
-const Database = require('better-sqlite3');
-const { isTaskDone } = require('@praxis/contract');
-const { PRAXIS_URL } = require('../shared/constants');
+const { isTaskDone, TaskBoardStatusSchema, LEGACY_TASK_STATUS_MAP } = require('@praxis/contract');
+const { praxisFetch } = require('../services/praxis-client');
+const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 
-const DEFAULT_DB_PATH = process.env.NEXUS_DB_PATH || path.resolve(__dirname, '../../nexus.db');
+const DEFAULT_DB_PATH = resolveNexusDbPath();
 // Praxis's durable run-lifecycle spine (run_events: dispatched/phase/finished/
 // verification). Filename is historical — it holds no cost column.
 const DEFAULT_SPINE_PATH = process.env.PRAXIS_EXECUTION_LOG_DB
@@ -85,12 +85,28 @@ const CLI_EXECUTORS = new Set(['claude-code', 'codex', 'antigravity']);
 // Lane mirror of dashboard/src/lib/task-board.ts — a task is "waiting" when it
 // classifies into the New or Ready lane. Keep the sets in sync with that file.
 const NEW_STATUSES = new Set(['idea', 'planning']);
+// The Ready lane is `todo` (waiting, but not New). Everything else in the
+// canonical enum (@praxis/contract TaskBoardStatusSchema) is non-waiting.
+const WAITING_STATUSES = new Set([...NEW_STATUSES, 'todo']);
+// Ad-hoc stages the task-board lane classifier still recognises but the
+// contract enum does not. Live-DB audit 2026-09-03 (`select status,count(*)
+// from tasks group by status`): completed 731 · archived 325 · idea 165 ·
+// cancelled 31 · todo 11 — none of these appear in data, and the API rejects
+// them on write. Kept explicitly (not silently dropped) so a row that somehow
+// carries one is still classified non-waiting, matching task-board.ts.
+// ('suspended' left this list 2026-09-03 — it is canonical now and derives
+// from TaskBoardStatusSchema below.)
+const AD_HOC_NON_WAITING_STATUSES = [
+    'building', 'implementing', 'researching', 'awaiting_approval', 'rejected',
+];
 const NON_WAITING_STATUSES = new Set([
-    'building', 'in_progress', 'review', 'implementing', 'researching', 'scheduled', 'dispatched', 'ready_for_review',
-    'blocked', 'suspended', 'failed', 'awaiting_approval', 'rejected', 'needs_input',
-    'done', 'complete', 'completed',
-    'cancelled', 'canceled',
-    'archived',
+    ...TaskBoardStatusSchema.options.filter((s) => !WAITING_STATUSES.has(s)),
+    // Legacy synonyms (done/complete/canceled/…) that the write-layer
+    // normalizes; a pre-unification row is still classified correctly.
+    ...Object.entries(LEGACY_TASK_STATUS_MAP)
+        .filter(([, canonical]) => !WAITING_STATUSES.has(canonical))
+        .map(([legacy]) => legacy),
+    ...AD_HOC_NON_WAITING_STATUSES,
 ]);
 const DORMANT_PROJECT_STATUSES = new Set(['paused', 'parked']);
 
@@ -224,7 +240,7 @@ function createDispatchInsightRouter({
     dbPath = DEFAULT_DB_PATH,
     spineDbPath = DEFAULT_SPINE_PATH,
     detachedRunsDir = DEFAULT_DETACHED_RUNS_DIR,
-    praxisUrl = PRAXIS_URL,
+    praxisUrl = null, // null → praxis-client resolves PRAXIS_URL per call
     fetchImpl = fetch,
     killWait = { graceMs: KILL_GRACE_MS, pollMs: KILL_POLL_MS },
 } = {}) {
@@ -232,8 +248,7 @@ function createDispatchInsightRouter({
 
     let db;
     try {
-        db = new Database(dbPath);
-        db.pragma('journal_mode = WAL');
+        db = openRaw(dbPath);
     } catch (err) {
         console.error(`[DispatchInsight] DB unavailable (${err.message}) — insight disabled`);
         router.use((_req, res) => res.status(503).json({ error: 'dispatch insight storage unavailable' }));
@@ -248,7 +263,7 @@ function createDispatchInsightRouter({
         if (spineDb) return spineDb;
         try {
             if (!fs.existsSync(spineDbPath)) return null;
-            spineDb = new Database(spineDbPath, { readonly: true });
+            spineDb = openRaw(spineDbPath, { readonly: true });
             return spineDb;
         } catch (err) {
             console.warn(`[DispatchInsight] spine open failed (${err.message})`);
@@ -308,8 +323,8 @@ function createDispatchInsightRouter({
         const now = Date.now();
         if (!fresh && stateCache.promise && now - stateCache.at < STATE_CACHE_MS) return stateCache.promise;
         const promise = (async () => {
-            const res = await fetchImpl(`${praxisUrl}/api/dispatch/state`, {
-                signal: AbortSignal.timeout(PRAXIS_TIMEOUT_MS),
+            const res = await praxisFetch('/api/dispatch/state', {
+                timeoutMs: PRAXIS_TIMEOUT_MS, baseUrl: praxisUrl, fetchImpl,
             });
             if (!res.ok) throw new Error(`Praxis dispatch-state HTTP ${res.status}`);
             return res.json();
@@ -509,6 +524,163 @@ function createDispatchInsightRouter({
             containment,
             tasks,
         });
+    });
+
+    // ─── May the fleet start work at all (autonomy) ──────────────────────
+    //
+    // Praxis gates autonomous dispatch on TWO conditions and exposes only the
+    // first over HTTP (autonomy-pause.ts):
+    //
+    //   1. The EXPLICIT flag Robert writes with "pause everything" — a file on
+    //      disk so it survives the launchd restart that killing the process
+    //      guarantees. GET /api/autonomy returns it as {paused, flag, inFlight}.
+    //   2. NO LIVE DAY SCHEDULE — the implicit "the day is not running" state.
+    //      Praxis probes it with getDaySchedule(); there is no GET endpoint for
+    //      it, but the read-only agent-tool `get_day_schedule` calls that exact
+    //      function and answers with a fixed sentence when it returns null. So
+    //      the probe below is Praxis's own probe, read through the bridge.
+    //
+    // The two are NOT the same state and must not render as one: an explicit
+    // pause also withholds corrections for work Robert started by hand, while
+    // no-schedule does not. A probe that cannot run reports null — "unknown",
+    // never "running" (the cockpit does not read green over a runtime it
+    // cannot see).
+    const NO_SCHEDULE_SENTINEL = 'No active day schedule';
+
+    async function probeDaySchedule() {
+        try {
+            const res = await praxisFetch('/agent-tool', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: { name: 'get_day_schedule', args: {} },
+                timeoutMs: PRAXIS_TIMEOUT_MS, baseUrl: praxisUrl, fetchImpl,
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const text = typeof data?.result === 'string' ? data.result : '';
+            if (!text) return { live: null, detail: 'Praxis returned no schedule answer' };
+            if (text.startsWith(NO_SCHEDULE_SENTINEL)) {
+                return { live: false, detail: text.trim() };
+            }
+            // First line of the table header, e.g. "📅 **Day Schedule** (12 tasks):".
+            return { live: true, detail: text.split('\n', 1)[0].trim() };
+        } catch (err) {
+            return { live: null, detail: `day-schedule probe failed: ${err.message}` };
+        }
+    }
+
+    router.get('/autonomy', async (_req, res) => {
+        let flagState = null;
+        let praxisError = null;
+        try {
+            const upstream = await praxisFetch('/api/autonomy', {
+                timeoutMs: PRAXIS_TIMEOUT_MS, baseUrl: praxisUrl, fetchImpl,
+            });
+            if (!upstream.ok) throw new Error(`Praxis autonomy HTTP ${upstream.status}`);
+            flagState = await upstream.json();
+        } catch (err) {
+            praxisError = err.message;
+        }
+
+        // Only probe the schedule when the explicit flag is clear — an
+        // explicit pause outranks it, and the probe costs a bridge round-trip.
+        const schedule = flagState && flagState.paused !== true
+            ? await probeDaySchedule()
+            : { live: null, detail: null };
+
+        res.json({
+            at: new Date().toISOString(),
+            praxis: { reachable: Boolean(flagState), error: praxisError },
+            paused: flagState?.paused === true,
+            flag: flagState?.flag ?? null,
+            inFlight: Array.isArray(flagState?.inFlight) ? flagState.inFlight : [],
+            scheduleLive: schedule.live,
+            scheduleDetail: schedule.detail,
+        });
+    });
+
+    // ─── Tasks whose QA correction is being held ─────────────────────────
+    //
+    // When a review fails while autonomy is paused, Praxis does NOT re-dispatch:
+    // the task parks at `todo` with its findings kept and no strike spent, and
+    // the only trace is a `qa_correction_withheld_paused` operational event
+    // (qa-dispatch.ts). On the board that task looks exactly like an ordinary
+    // todo — which is how three of Robert's tasks sat parked on 2026-09-02 with
+    // no way to learn why except to ask Praxis in chat.
+    //
+    // A hold is CURRENT only while that event is the task's LATEST event: a
+    // later dispatch, verdict or completion means the hold was released, so the
+    // per-task newest-event check below is the honest "still held" test rather
+    // than "was ever held".
+    const HOLD_EVENT_TYPE = 'qa_correction_withheld_paused';
+
+    /**
+     * Split "…autonomy is paused (REASON) so the task was NOT re-dispatched.
+     * …\n\nFINDINGS" into its reason and its findings. Both are best-effort:
+     * an unparsed message still yields a hold, it just renders without the
+     * decomposed parts rather than dropping the task off the surface.
+     */
+    function parseHoldMessage(message) {
+        const text = String(message || '');
+        // The reason is parenthesised after "autonomy is paused". It contains
+        // its own parentheses ("…(morning routine) or dispatch…"), so match to
+        // the last ")" before the fixed tail rather than the first.
+        const open = text.indexOf('autonomy is paused (');
+        let reason = null;
+        if (open !== -1) {
+            const from = open + 'autonomy is paused ('.length;
+            const close = text.indexOf(') so the task was', from);
+            if (close !== -1) reason = text.slice(from, close).trim();
+        }
+        // Findings begin at the blank line after the summary paragraph.
+        const split = text.indexOf('\n\n');
+        const findings = split === -1 ? null : text.slice(split + 2).trim() || null;
+        return { reason, findings };
+    }
+
+    router.get('/qa-holds', (_req, res) => {
+        let rows;
+        try {
+            // Newest event per task, then keep only the tasks whose newest one
+            // is the hold. Correlated subquery over ag_events(task_id) — the
+            // table is small and this runs on a 20s dashboard poll.
+            rows = db.prepare(`
+                SELECT e.id, e.task_id, e.message, e.metadata, e.created_at,
+                       t.name AS task_name, t.status AS task_status, t.project_id
+                FROM ag_events e
+                LEFT JOIN tasks t ON t.id = e.task_id
+                WHERE e.event_type = ?
+                  AND e.task_id IS NOT NULL
+                  AND e.id = (
+                      SELECT id FROM ag_events x
+                      WHERE x.task_id = e.task_id
+                      ORDER BY x.created_at DESC, x.id DESC
+                      LIMIT 1
+                  )
+                ORDER BY e.created_at DESC, e.id DESC
+            `).all(HOLD_EVENT_TYPE);
+        } catch (err) {
+            console.error('[DispatchInsight] qa-holds read failed:', err.message);
+            return res.status(500).json({ error: 'Failed to read QA holds: ' + err.message });
+        }
+
+        const holds = rows.map((row) => {
+            const { reason, findings } = parseHoldMessage(row.message);
+            const metadata = parseJson(row.metadata, {}) || {};
+            return {
+                taskId: row.task_id,
+                title: row.task_name ?? null,
+                status: row.task_status ?? null,
+                projectId: row.project_id ?? null,
+                reason,
+                heldAt: row.created_at ?? null,
+                findings,
+                eventId: row.id,
+                operatorInitiated: metadata.operatorInitiated === true,
+            };
+        });
+
+        res.json({ at: new Date().toISOString(), holds });
     });
 
     // ─── Per-run insight for the dispatch console ────────────────────────

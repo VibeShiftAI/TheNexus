@@ -13,12 +13,11 @@
  * `/presence` so clients can bootstrap state before subscribing.
  */
 const express = require('express');
-const http = require('http');
-const { URL } = require('url');
 const { randomUUID } = require('crypto');
 
 const fs = require('fs');
-const { PRAXIS_URL, PRAXIS_BRIDGE_TOKEN_FILE } = require('../shared/constants');
+const { PRAXIS_BRIDGE_TOKEN_FILE } = require('../shared/constants');
+const { praxisFetch, praxisProxyJson, praxisStream } = require('../services/praxis-client');
 
 /**
  * Praxis's full-scope bridge token, read fresh per call (it is minted on
@@ -154,28 +153,22 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
         });
     }
 
-    async function proxyJson(req, res, upstreamPath) {
-        try {
-            const options = { method: req.method, headers: { Accept: 'application/json' } };
-            if (req.method !== 'GET' && req.method !== 'HEAD') {
-                options.headers['Content-Type'] = 'application/json';
-                options.body = JSON.stringify(req.body ?? {});
-            }
-            // Operator-originated tool calls (Council Chamber summon, problem
-            // intake) run at full bridge scope — the dashboard is Robert's own
-            // console, already behind the Nexus server's auth.
-            if (upstreamPath.startsWith('/agent-tool')) {
-                const token = readBridgeToken();
-                if (token) options.headers['X-Praxis-Bridge-Token'] = token;
-            }
-            const response = await fetch(`${PRAXIS_URL}${upstreamPath}`, options);
-            const text = await response.text();
-            res.status(response.status);
-            res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
-            res.send(text);
-        } catch (err) {
-            res.status(502).json({ error: err.message || 'Praxis unreachable' });
+    function proxyJson(req, res, upstreamPath) {
+        const options = { method: req.method, headers: { Accept: 'application/json' } };
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+            options.headers['Content-Type'] = 'application/json';
+            options.body = JSON.stringify(req.body ?? {});
         }
+        // Operator-originated tool calls (Council Chamber summon, problem
+        // intake) run at full bridge scope — the dashboard is Robert's own
+        // console, already behind the Nexus server's auth.
+        if (upstreamPath.startsWith('/agent-tool')) {
+            const token = readBridgeToken();
+            if (token) options.headers['X-Praxis-Bridge-Token'] = token;
+        }
+        // No client-side timeout (as before): council summons and dispatches
+        // are long, and the browser owns the wait.
+        return praxisProxyJson(res, upstreamPath, options);
     }
 
     function councilSummonArgs(body = {}) {
@@ -197,20 +190,15 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
 
     function connectUpstream() {
         if (upstreamReq) return;
-        const url = new URL(UPSTREAM_PATH, PRAXIS_URL);
-        const options = {
-            hostname: url.hostname,
-            port: url.port,
-            path: url.pathname + url.search,
-            method: 'GET',
-            headers: {
-                Accept: 'text/event-stream',
-                'Cache-Control': 'no-cache',
-            },
+        const headers = {
+            Accept: 'text/event-stream',
+            'Cache-Control': 'no-cache',
         };
-        if (lastEventId) options.headers['Last-Event-ID'] = lastEventId;
+        if (lastEventId) headers['Last-Event-ID'] = lastEventId;
 
-        upstreamReq = http.request(options, (res) => {
+        // Raw node http stream via the shared client — no buffering, no
+        // timeout; the response is consumed frame by frame below.
+        upstreamReq = praxisStream(UPSTREAM_PATH, { method: 'GET', headers }, (res) => {
             if (res.statusCode !== 200) {
                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
                 res.resume();
@@ -267,7 +255,6 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
             upstreamReq = null;
             scheduleReconnect();
         });
-        upstreamReq.end();
     }
 
     function scheduleReconnect() {
@@ -353,7 +340,7 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     // ── Snapshot bootstrap ───────────────────────────────────────
     async function handleSnapshot(_req, res) {
         try {
-            const response = await fetch(`${PRAXIS_URL}${SNAPSHOT_PATH}`);
+            const response = await praxisFetch(SNAPSHOT_PATH);
             if (!response.ok) {
                 return res.status(502).json({ error: `Praxis returned ${response.status}` });
             }
@@ -497,7 +484,7 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     // serves the report through this relay.
     async function proxyReportFile(res, praxisPath) {
         try {
-            const response = await fetch(`${PRAXIS_URL}${praxisPath}`, { redirect: 'follow' });
+            const response = await praxisFetch(praxisPath, { redirect: 'follow' });
             res.status(response.status);
             const type = response.headers.get('content-type');
             if (type) res.set('Content-Type', type);

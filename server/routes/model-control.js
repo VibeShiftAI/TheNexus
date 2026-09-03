@@ -373,12 +373,11 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
     // endpoint. Fire-and-forget: Praxis being down must never fail a PUT.
     const notifyPraxisStateDoc = (reason) => {
         try {
-            const { PRAXIS_URL } = require('../shared/constants');
-            fetch(`${PRAXIS_URL}/api/state-doc/refresh`, {
+            const { praxisFetch } = require('../services/praxis-client');
+            praxisFetch('/api/state-doc/refresh', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reason: `model-control: ${reason}` }),
-                signal: AbortSignal.timeout(15000),
+                body: { reason: `model-control: ${reason}` },
+                timeoutMs: 15000,
             }).catch(() => { /* Praxis down or restarting — the heartbeat catches up */ });
         } catch {
             /* never let telemetry break a settings write */

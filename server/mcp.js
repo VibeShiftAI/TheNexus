@@ -10,7 +10,13 @@ const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio
 const { z } = require("zod");
 const fs = require('fs');
 const db = require('../db');
-const { guardDispatchPayload, guardBoardStatePayloads } = require('./lib/provenance');
+const { guardDispatchPayload } = require('./lib/provenance');
+const { TaskBoardStatusSchema } = require('@praxis/contract');
+// Board tools share praxis-mind's governed implementation (P1-15): one
+// privilege gate, one hourly rate limit, one transaction envelope over the
+// Nexus HTTP API, one cost ledger — see services/praxis-mind-mcp/lib/board-ops.js.
+const boardOps = require('../services/praxis-mind-mcp/lib/board-ops');
+const { resolveCaller } = require('../services/praxis-mind-mcp/lib/auth');
 
 // Initialize MCP Server
 const server = new McpServer({
@@ -20,6 +26,15 @@ const server = new McpServer({
 
 // Default project root (same as server.js)
 const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(process.env.USERPROFILE || process.env.HOME, 'Projects');
+
+// Caller identity for the board tools: PRAXIS_MIND_KEY (passed by the MCP
+// client config) resolved against ~/.praxis-mind/keys.json, exactly as
+// praxis-mind's stdio.js does. Unauthenticated spawns get every board tool
+// refused before any backend call (threat model MG-5 / ID-1 / AZ-1 / AU-1).
+const boardCtx = { caller: resolveCaller() };
+if (!boardCtx.caller) {
+    console.error('[MCP] No valid PRAXIS_MIND_KEY — nexus_* board tools will refuse until one is configured.');
+}
 
 // --- RESOURCES ---
 
@@ -325,13 +340,15 @@ server.tool(
 // ============================================================================
 // EXECUTIVE PLANNING TOOLS (Phase 1: Dual-Payload Task Management)
 // ============================================================================
+// Tool names, schemas and response shapes are the contract clients see; the
+// handlers delegate to board-ops, which owns authorization, throttling, the
+// transaction envelope (transition log) and the cost ledger for BOTH surfaces.
 
 // Canonical task statuses (@praxis/contract TaskBoardStatusSchema, 2026-07-05).
 // The API normalizes legacy synonyms and rejects anything else.
-const STANDARD_TASK_STATUSES = [
-    'idea', 'planning', 'todo', 'scheduled', 'dispatched', 'in_progress', 'needs_input',
-    'blocked', 'ready_for_review', 'review', 'completed', 'failed', 'cancelled', 'archived'
-];
+const STANDARD_TASK_STATUSES = TaskBoardStatusSchema.options;
+
+const jsonResult = (value) => ({ content: [{ type: "text", text: JSON.stringify(value, null, 2) }] });
 
 /**
  * nexus_get_board_state — Read project/task state with dependency resolution.
@@ -345,35 +362,22 @@ server.tool(
         )
     },
     async ({ project_id }) => {
-        try {
-            const boardState = await db.getBoardState(project_id || undefined);
-
-            if (boardState.length === 0) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: project_id
-                            ? `No project found with ID '${project_id}'.`
-                            : "No active projects found."
-                    }],
-                    isError: false
-                };
-            }
-
+        // Read seam: GET /api/board-state gates external-tier payloads
+        // (commands withheld, prompt wrapped) — server/lib/provenance.js.
+        const r = await boardOps.boardState(boardCtx, { tool: "nexus_get_board_state", project_id });
+        if (!r.ok) return r.result;
+        if (r.value.length === 0) {
             return {
                 content: [{
                     type: "text",
-                    // Read seam: external-tier payloads are gated (commands
-                    // withheld, prompt wrapped) — server/lib/provenance.js.
-                    text: JSON.stringify(guardBoardStatePayloads(boardState), null, 2)
-                }]
-            };
-        } catch (error) {
-            return {
-                content: [{ type: "text", text: `Failed to get board state: ${error.message}` }],
-                isError: true
+                    text: project_id
+                        ? `No project found with ID '${project_id}'.`
+                        : "No active projects found."
+                }],
+                isError: false
             };
         }
+        return jsonResult(r.value);
     }
 );
 
@@ -413,74 +417,25 @@ server.tool(
         })).describe("Array of tasks to create (max 50 per batch).")
     },
     async ({ project_id, tasks }) => {
-        try {
-            // Validate project exists
-            const project = await db.getProject(project_id);
-            if (!project) {
-                return {
-                    content: [{ type: "text", text: `Project '${project_id}' not found.` }],
-                    isError: true
-                };
-            }
-
-            // Cap batch size
-            if (tasks.length > 50) {
-                return {
-                    content: [{ type: "text", text: `Batch too large (${tasks.length}). Max 50 tasks per batch.` }],
-                    isError: true
-                };
-            }
-
-            // Resolve stable_id references to real UUIDs
-            const { v4: uuidv4 } = require('uuid');
-            const stableIdToRealId = new Map();
-
-            // Pre-assign real IDs for tasks with stable_id
-            const preparedTasks = tasks.map(task => {
-                const realId = uuidv4();
-                if (task.stable_id) {
-                    stableIdToRealId.set(task.stable_id, realId);
-                }
-                return { ...task, id: realId, project_id };
-            });
-
-            // Resolve dependency references
-            for (const task of preparedTasks) {
-                if (task.dependencies && task.dependencies.length > 0) {
-                    task.dependencies = task.dependencies.map(depId =>
-                        stableIdToRealId.get(depId) || depId  // Resolve or keep as-is (existing task ID)
-                    );
-                }
-                // Remove stable_id before DB insert (not a real column)
-                delete task.stable_id;
-            }
-
-            // Batch insert
-            const created = await db.batchCreateTasks(preparedTasks);
-
-            return {
-                content: [{
-                    type: "text",
-                    text: JSON.stringify({
-                        success: true,
-                        project: project.name,
-                        created_count: created.length,
-                        tasks: created.map(t => ({
-                            id: t.id,
-                            name: t.name,
-                            status: t.status,
-                            has_payload: !!t.antigravity_payload,
-                            dependencies: t.dependencies || []
-                        }))
-                    }, null, 2)
-                }]
-            };
-        } catch (error) {
-            return {
-                content: [{ type: "text", text: `Failed to batch-create tasks: ${error.message}` }],
-                isError: true
-            };
-        }
+        // POST /api/tasks/batch validates the project, resolves stable_id
+        // placeholders and inserts atomically; board-ops verifies the
+        // read-back and records one transition-log entry for the batch.
+        const r = await boardOps.createTasks(boardCtx, { tool: "nexus_batch_create_tasks", project_id, tasks, batch: true });
+        if (!r.ok) return r.result;
+        const created = r.value.result || {};
+        return jsonResult({
+            success: true,
+            project: created.project,
+            created_count: created.created_count ?? (created.tasks || []).length,
+            tasks: (created.tasks || []).map(t => ({
+                id: t.id,
+                name: t.name,
+                status: t.status,
+                has_payload: !!t.has_payload,
+                dependencies: t.dependencies || []
+            })),
+            transaction_id: r.value.transactionId
+        });
     }
 );
 
@@ -504,71 +459,43 @@ server.tool(
         end_state: z.string().optional().describe("Desired end-state for goal-regression planning.")
     },
     async ({ project_id, status, priority, description, end_state }) => {
-        try {
-            // Validate project exists
-            const existing = await db.getProject(project_id);
-            if (!existing) {
-                return {
-                    content: [{ type: "text", text: `Project '${project_id}' not found.` }],
-                    isError: true
-                };
-            }
-
-            // Validate status if provided
-            if (status && !VALID_PROJECT_STATUSES.includes(status)) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: `Invalid status '${status}'. Valid: ${VALID_PROJECT_STATUSES.join(', ')}`
-                    }],
-                    isError: true
-                };
-            }
-
-            // Build updates object
-            const updates = {};
-            if (status) updates.status = status;
-            if (priority !== undefined) updates.priority = priority;
-            if (description) updates.description = description;
-            if (end_state) updates.end_state = end_state;
-
-            if (Object.keys(updates).length === 0) {
-                return {
-                    content: [{ type: "text", text: "No updates provided. Specify at least one of: status, priority, description, end_state." }],
-                    isError: true
-                };
-            }
-
-            const updated = await db.updateProject(project_id, updates);
-            if (!updated) {
-                return {
-                    content: [{ type: "text", text: `Failed to update project '${project_id}'.` }],
-                    isError: true
-                };
-            }
-
+        // Input validation (what a zod enum does on the praxis-mind surface).
+        if (status && !VALID_PROJECT_STATUSES.includes(status)) {
             return {
                 content: [{
                     type: "text",
-                    text: JSON.stringify({
-                        success: true,
-                        project: {
-                            id: updated.id,
-                            name: updated.name,
-                            status: updated.status,
-                            priority: updated.priority,
-                            end_state: updated.end_state,
-                            updated_at: updated.updated_at
-                        }
-                    }, null, 2)
-                }]
-            };
-        } catch (error) {
-            return {
-                content: [{ type: "text", text: `Failed to update project: ${error.message}` }],
+                    text: `Invalid status '${status}'. Valid: ${VALID_PROJECT_STATUSES.join(', ')}`
+                }],
                 isError: true
             };
         }
+        const r = await boardOps.updateProject(boardCtx, {
+            tool: "nexus_update_project",
+            project_id,
+            patch: {
+                status: status || undefined,
+                priority,
+                description: description || undefined,
+                end_state: end_state || undefined
+            },
+            expected: {},
+            fields: ['status', 'priority', 'description', 'end_state']
+        });
+        if (!r.ok) return r.result;
+        const after = r.value.after || {};
+        const project = r.value.result.project || {};
+        return jsonResult({
+            success: true,
+            project: {
+                id: project.id ?? after.id,
+                name: project.name ?? after.name,
+                status: project.status ?? after.status,
+                priority: project.priority ?? after.priority,
+                end_state: project.end_state ?? after.end_state,
+                updated_at: after.updated_at
+            },
+            transaction_id: r.value.transactionId
+        });
     }
 );
 
@@ -588,52 +515,32 @@ server.tool(
         )
     },
     async ({ task_id, status, note }) => {
-        try {
-            // Log a warning for non-standard statuses, but allow them
-            if (!STANDARD_TASK_STATUSES.includes(status)) {
-                console.log(`[MCP] nexus_update_task_status: Using custom ad-hoc status '${status}' for task ${task_id}`);
-            }
-
-            // Check task exists
-            const existing = await db.getTask(task_id);
-            if (!existing) {
-                return {
-                    content: [{ type: "text", text: `Task '${task_id}' not found.` }],
-                    isError: true
-                };
-            }
-
-            const updates = { status };
-
-            // Append note to description if provided
-            if (note) {
-                const timestamp = new Date().toISOString();
-                const existingDesc = existing.description || '';
-                updates.description = existingDesc +
-                    `\n\n---\n**[${timestamp}]** Status → ${status}: ${note}`;
-            }
-
-            const updated = await db.updateTask(task_id, updates);
-
-            return {
-                content: [{
-                    type: "text",
-                    text: JSON.stringify({
-                        success: true,
-                        task_id: updated.id,
-                        name: updated.name,
-                        previous_status: existing.status,
-                        new_status: updated.status,
-                        project_id: updated.project_id
-                    }, null, 2)
-                }]
-            };
-        } catch (error) {
-            return {
-                content: [{ type: "text", text: `Failed to update task status: ${error.message}` }],
-                isError: true
-            };
+        // Log a warning for non-standard statuses, but allow them
+        if (!STANDARD_TASK_STATUSES.includes(status)) {
+            console.error(`[MCP] nexus_update_task_status: Using custom ad-hoc status '${status}' for task ${task_id}`);
         }
+        const r = await boardOps.updateTask(boardCtx, {
+            tool: "nexus_update_task_status",
+            task_id,
+            patch: { status },
+            appendNote: note || undefined,
+            expected: {},
+            fields: ['status']
+        });
+        if (!r.ok) return r.result;
+        const { tx, envelope } = r.value;
+        const before = tx.before || {};
+        const after = tx.after || {};
+        return jsonResult({
+            success: true,
+            task_id: after.id ?? task_id,
+            name: after.name,
+            previous_status: before.status,
+            new_status: after.status,
+            project_id: after.project_id,
+            transaction_id: envelope.transaction_id,
+            ...(envelope.verdict ? { verdict: envelope.verdict } : {})
+        });
     }
 );
 
@@ -651,33 +558,24 @@ server.tool(
         task_id: z.string().describe("The task ID (UUID) to retrieve.")
     },
     async ({ task_id }) => {
-        try {
-            const task = await db.getTask(task_id);
-            if (!task) {
-                return {
-                    content: [{ type: "text", text: `Task '${task_id}' not found.` }],
-                    isError: true
-                };
+        const r = await boardOps.getTask(boardCtx, { tool: "nexus_get_task", task_id });
+        if (!r.ok) {
+            if (r.error && (r.error.status === 404 || /not found/i.test(r.error.message))) {
+                return { content: [{ type: "text", text: `Task '${task_id}' not found.` }], isError: true };
             }
-
-            return {
-                content: [{
-                    type: "text",
-                    // Read seam: gate an external-tier task's payload before it
-                    // reaches a reading session — server/lib/provenance.js.
-                    text: JSON.stringify(
-                        task.antigravity_payload
-                            ? { ...task, antigravity_payload: guardDispatchPayload(task) }
-                            : task,
-                        null, 2)
-                }]
-            };
-        } catch (error) {
-            return {
-                content: [{ type: "text", text: `Failed to get task: ${error.message}` }],
-                isError: true
-            };
+            return r.result;
         }
+        const task = r.value;
+        if (!task) {
+            return { content: [{ type: "text", text: `Task '${task_id}' not found.` }], isError: true };
+        }
+        // Read seam: gate an external-tier task's payload before it
+        // reaches a reading session — server/lib/provenance.js.
+        return jsonResult(
+            task.antigravity_payload
+                ? { ...task, antigravity_payload: guardDispatchPayload(task) }
+                : task
+        );
     }
 );
 

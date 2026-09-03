@@ -9,6 +9,12 @@
  *   - server/mcp.js                     — the "Local Nexus" stdio MCP server
  *   - services/praxis-mind-mcp/tools/*  — the praxis-mind MCP server
  *
+ * Since P1-15 the five server/mcp.js board tools delegate to the governed
+ * implementation praxis-mind uses (services/praxis-mind-mcp/lib/board-ops.js),
+ * which reaches the board through the Nexus HTTP API. The store below is
+ * therefore reached through a backends adapter for those tools and directly
+ * (as `db`) for the rest; the invariants are unchanged.
+ *
  * The invariants, each with a test below:
  *
  *   C1 REGISTRATION   Every tool has a unique, protocol-legal name, an object
@@ -131,8 +137,115 @@ function makeStore(seed = {}) {
 // mcp.js is a script (it self-invokes main()), so the SDK transport is stubbed
 // out and registration is captured as it happens during require().
 
-function loadNexusMcp(store) {
+const SVC = '../../services/praxis-mind-mcp';
+
+// The caller server/mcp.js resolves at spawn (PRAXIS_MIND_KEY -> keys.json).
+// Board-writer privileges, no rate limits: the conformance invariants are
+// about request scoping, not authorization (mcp-boundary-security covers that).
+const WRITER = {
+  identity: 'conformance',
+  namespace: 'coding-agents-conformance',
+  privileges: [
+    'nexus.projects_list', 'nexus.tasks_read', 'nexus.task_status',
+    'nexus.task_create', 'nexus.task_update', 'nexus.project_update',
+  ],
+};
+
+// What the Nexus HTTP API would do against this store — the same seam
+// praxis-mind's tools are tested through (lib/backends), so a fresh module
+// instance pointed at another store sees exactly that store.
+function storeBackends(store) {
+  const notFound = (what) => {
+    const err = new Error(`HTTP 404: {"error":"${what} not found"}`);
+    err.status = 404;
+    return err;
+  };
+  const taskById = async (id) => {
+    const task = await store.getTask(id);
+    if (!task) throw notFound('Task');
+    return task;
+  };
+  return {
+    nexusProjects: () => store.getProjects(),
+    nexusBoardState: (projectId) => store.getBoardState(projectId),
+    nexusProjectById: async (id) => {
+      const project = await store.getProject(id);
+      if (!project) throw notFound('Project');
+      return project;
+    },
+    nexusProjectUpdate: async (id, patch) => {
+      const clean = { ...patch };
+      delete clean.end_state_source;
+      delete clean.end_state_reason;
+      const current = await store.getProject(id);
+      if (!current) throw notFound('Project');
+      const next = { ...current, ...clean, updated_at: 'updated' };
+      store.__projects.set(id, next);
+      return { ...next };
+    },
+    nexusTasksByProject: async (projectId) => ({
+      tasks: [...store.__tasks.values()].filter((t) => t.project_id === projectId).map((t) => ({ ...t })),
+    }),
+    nexusTaskById: taskById,
+    nexusTaskUpdate: async (id, patch) => {
+      await taskById(id);
+      const task = await store.updateTask(id, patch);
+      return { success: true, task };
+    },
+    // POST /api/tasks/batch, as server/routes/tasks.js implements it: the
+    // project must exist, stable_id placeholders resolve to real ids, the
+    // insert is one call, the response lists the created rows.
+    nexusTasksBatchCreate: async ({ project_id, tasks }) => {
+      const project = await store.getProject(project_id);
+      if (!project) throw notFound('Project');
+      const stableIdToRealId = new Map();
+      const prepared = tasks.map((task, i) => {
+        const id = `created-${store.__tasks.size + i + 1}`;
+        if (task.stable_id) stableIdToRealId.set(task.stable_id, id);
+        const copy = { ...task, id, project_id };
+        delete copy.stable_id;
+        return copy;
+      });
+      for (const task of prepared) {
+        if (task.dependencies?.length) {
+          task.dependencies = task.dependencies.map((d) => stableIdToRealId.get(d) || d);
+        }
+      }
+      const created = await store.batchCreateTasks(prepared);
+      return {
+        success: true,
+        project: project.name,
+        created_count: created.length,
+        tasks: created.map((t) => ({
+          id: t.id, name: t.name, status: t.status, has_payload: !!t.antigravity_payload, dependencies: t.dependencies || [],
+        })),
+      };
+    },
+  };
+}
+
+// Scratch dir: the transition log the governed writes append to, and the
+// 0600 keys file server/mcp.js resolves PRAXIS_MIND_KEY against at spawn.
+const CONFORMANCE_KEY = 'conformance-key';
+let conformanceTmp;
+beforeAll(() => {
+  conformanceTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-conformance-'));
+  fs.writeFileSync(
+    path.join(conformanceTmp, 'keys.json'),
+    JSON.stringify({ keys: { [CONFORMANCE_KEY]: WRITER } }),
+    { mode: 0o600 },
+  );
+});
+afterAll(() => {
+  fs.rmSync(conformanceTmp, { recursive: true, force: true });
+});
+
+function loadNexusMcp(store, { key = CONFORMANCE_KEY, transitionLog } = {}) {
   jest.resetModules();
+  // Identity the way a real spawn gets it: the client's env, resolved through
+  // the real lib/auth against the scratch keys file (never a mocked auth —
+  // doMock registrations outlive resetModules and would leak into C9).
+  process.env.PRAXIS_MIND_KEY = key;
   const registry = makeRegistry();
   jest.doMock('dotenv', () => ({ config: () => ({ parsed: {} }) }));
   jest.doMock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
@@ -146,6 +259,20 @@ function loadNexusMcp(store) {
     },
   }));
   jest.doMock('../../db', () => store);
+  // Governed board path: the same store, reached the way the HTTP API would.
+  jest.doMock(`${SVC}/lib/backends`, () => storeBackends(store));
+  jest.doMock(`${SVC}/lib/log`, () => ({ log: () => {} }));
+  jest.doMock(`${SVC}/lib/config`, () => ({
+    TRANSITION_LOG: transitionLog || path.join(conformanceTmp, 'transitions.jsonl'),
+    LEDGER_DB: ':memory:',
+    KEYS_FILE: path.join(conformanceTmp, 'keys.json'),
+    VAULT: conformanceTmp,
+  }));
+  jest.doMock(`${SVC}/lib/ledger`, () => ({ record: jest.fn(), costSince: () => 0, recent: () => [] }));
+  jest.doMock(`${SVC}/lib/ratelimit`, () => ({ checkAndIncrement: () => ({ allowed: true, count: 0, limit: Infinity }) }));
+  jest.doMock(`${SVC}/lib/lock-health`, () => ({
+    record: jest.fn(), gauge: () => null, formatGauge: () => '(lock gauge disabled in test)',
+  }));
   require('../mcp');
   return registry;
 }
@@ -178,6 +305,7 @@ describe('Local Nexus MCP server (server/mcp.js) — stateless request boundary'
 
   afterEach(() => {
     errSpy.mockRestore();
+    delete process.env.PRAXIS_MIND_KEY;
     jest.resetModules();
   });
 

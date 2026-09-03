@@ -10,7 +10,7 @@
  * gone; Praxis is the single orchestrator and does its own model routing.
  */
 const express = require('express');
-const { PRAXIS_URL } = require('../shared/constants');
+const { praxisFetch } = require('../services/praxis-client');
 
 const DEFAULT_PRAXIS_CHAT_TIMEOUT_MS = 20 * 60 * 1000;
 
@@ -311,9 +311,9 @@ function createAIChatRouter({ db, io }) {
                 ...(canStream ? { stream: true } : {})
             };
             const fetchPraxis = async () => {
-                const praxisResponse = await fetch(`${PRAXIS_URL}/api/chat`, {
+                const praxisResponse = await praxisFetch('/api/chat', {
                     method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}) },
-                    body: JSON.stringify(praxisPayload), signal: AbortSignal.timeout(getPraxisChatTimeoutMs()), // local agent loops can be long
+                    body: JSON.stringify(praxisPayload), timeoutMs: getPraxisChatTimeoutMs(), // local agent loops can be long
                     dispatcher: getPraxisChatDispatcher(),
                 });
                 if (!praxisResponse.ok) {

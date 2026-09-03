@@ -30,9 +30,14 @@ cockpit surface.
   `/Volumes/Projects/shared-mind`: regenerates vault projections/indexes and
   performs hourly git-sync checks. `node services/vault-watcher/index.js --once`
   regenerates once without watching.
-- `packages/contract/` is the dashboard's local `@praxis/contract` copy. The
-  root server resolves its contract from sibling `../nexus-shared`; contract
-  changes require both consumers to be kept in sync.
+- `@praxis/contract` is the sibling repo `../nexus-shared` (one copy). Both the
+  root server (`file:../nexus-shared`) and the dashboard (`file:../../nexus-shared`)
+  resolve it from there; after a contract change run `npm run build` in
+  `nexus-shared` so consumers see the new `dist/`. The dashboard installs it
+  as a real copy, not a symlink (`dashboard/.npmrc` sets `install-links=true`
+  because turbopack refuses to resolve a symlink whose target is outside the
+  repo), and npm does not refresh that copy on a plain install: after the
+  rebuild also run `rm -rf node_modules/@praxis && npm install` in `dashboard/`.
 
 ## Runtime and commands
 

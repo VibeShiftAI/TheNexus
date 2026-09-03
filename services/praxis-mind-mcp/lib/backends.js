@@ -151,6 +151,23 @@ async function nexusTaskCreate({ project_id, name, description = '', status = 'i
   });
 }
 
+async function nexusTasksBatchCreate({ project_id, tasks }) {
+  // POST /api/tasks/batch with N tasks — the same endpoint nexusTaskCreate
+  // uses for one. stable_id placeholders in dependencies / successor_id are
+  // resolved to real ids server-side; the response lists every created task.
+  return httpJSON(`${cfg.NEXUS}/api/tasks/batch`, {
+    method: 'POST',
+    body: { project_id, tasks },
+  });
+}
+
+async function nexusBoardState(projectId) {
+  // GET /api/board-state[?project_id=] — projects with their tasks; the route
+  // gates external-tier dispatch payloads on the way out.
+  const query = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+  return httpJSON(`${cfg.NEXUS}/api/board-state${query}`);
+}
+
 async function nexusTaskUpdate(taskId, patch) {
   // PATCH /api/tasks/:taskId — partial update. Only the keys present in `patch`
   // are changed (status, priority, description, dependencies).
@@ -202,6 +219,8 @@ module.exports = {
   nexusTasksByProject,
   nexusTaskById,
   nexusTaskCreate,
+  nexusTasksBatchCreate,
+  nexusBoardState,
   nexusTaskUpdate,
   nexusProjectUpdate,
   nexusProjectAddNeed,

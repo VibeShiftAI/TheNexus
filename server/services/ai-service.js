@@ -20,7 +20,7 @@ const AGENT_CONFIG_PATH = path.join(PROJECT_ROOT, 'TheNexus', 'agent-config.json
 const tokenTracker = require('../utils/token-tracker');
 const db = require('../../db');
 
-const PRAXIS_URL = process.env.PRAXIS_URL || 'http://127.0.0.1:54322';
+const { praxisFetch } = require('./praxis-client');
 // Local-model turns can take minutes; match the generous chat relay timeout.
 const PRAXIS_BRAIN_TIMEOUT_MS = Number(process.env.PRAXIS_BRAIN_TIMEOUT_MS || 600000);
 
@@ -122,13 +122,13 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
         { role: 'user', content: message }
     ];
 
-    const response = await fetch(`${PRAXIS_URL}/v1/brain/chat`, {
+    const response = await praxisFetch('/v1/brain/chat', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-MCP-Caller': 'nexus.ai-service'
         },
-        body: JSON.stringify({
+        body: {
             provider,
             model: modelId,
             // Role-tagged relay (task 0a62d8a6): when set, Praxis routes by
@@ -138,8 +138,8 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
             system: systemPrompt || undefined,
             messages,
             max_tokens: options.maxTokens || 8192
-        }),
-        signal: AbortSignal.timeout(PRAXIS_BRAIN_TIMEOUT_MS)
+        },
+        timeoutMs: PRAXIS_BRAIN_TIMEOUT_MS
     });
 
     if (!response.ok) {

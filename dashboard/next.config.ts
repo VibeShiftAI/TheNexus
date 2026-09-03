@@ -28,6 +28,14 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['nexus.vibeshiftai.com'],
   // Transpile local shared package
   transpilePackages: ['@praxis/contract'],
+  // `@praxis/contract` is the sibling checkout ../../nexus-shared. Turbopack
+  // resolves symlinks to their real path and refuses modules outside the
+  // project root (this repo, inferred from the root package-lock.json), so the
+  // dashboard installs the package as a real copy via `install-links=true` in
+  // ./.npmrc (every page 500'd on 2026-09-03 while it was a symlink). Do NOT
+  // "fix" this by setting `turbopack.root` instead: on Next 16.1.6 an explicit
+  // root made every postcss run lose its `from` path, so Tailwind resolved
+  // from the wrong directory and the dev server never finished compiling.
   experimental: {
     proxyTimeout: praxisChatTimeoutMs + 60 * 1000,
   },

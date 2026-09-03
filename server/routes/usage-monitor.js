@@ -14,42 +14,21 @@
  *                                     runs the Fable scorer, allow ~2 min.
  */
 const express = require('express');
-const { PRAXIS_URL } = require('../shared/constants');
+const { praxisProxyJson } = require('../services/praxis-client');
 
 function createUsageMonitorRouter() {
     const router = express.Router();
 
-    router.get('/state', async (_req, res) => {
-        try {
-            const response = await fetch(`${PRAXIS_URL}/api/usage/state`, {
-                headers: { Accept: 'application/json' },
-                signal: AbortSignal.timeout(15_000),
-            });
-            const text = await response.text();
-            res.status(response.status);
-            res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
-            res.send(text);
-        } catch (err) {
-            res.status(502).json({ error: err.message || 'Praxis unreachable' });
-        }
-    });
+    router.get('/state', (_req, res) =>
+        praxisProxyJson(res, '/api/usage/state', { timeoutMs: 15_000 }));
 
-    router.post('/recommend', async (req, res) => {
-        try {
-            const response = await fetch(`${PRAXIS_URL}/api/routing/recommend`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(req.body ?? {}),
-                signal: AbortSignal.timeout(150_000),
-            });
-            const text = await response.text();
-            res.status(response.status);
-            res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
-            res.send(text);
-        } catch (err) {
-            res.status(502).json({ error: err.message || 'Praxis unreachable' });
-        }
-    });
+    // The Fable scorer can run ~2 min — keep the generous budget.
+    router.post('/recommend', (req, res) =>
+        praxisProxyJson(res, '/api/routing/recommend', {
+            method: 'POST',
+            body: req.body ?? {},
+            timeoutMs: 150_000,
+        }));
 
     return router;
 }

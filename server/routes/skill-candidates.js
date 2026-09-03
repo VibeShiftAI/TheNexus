@@ -1,25 +1,8 @@
 const express = require('express');
 
-const { PRAXIS_URL } = require('../shared/constants');
-
-async function proxyPraxisJson(res, upstreamPath, options = {}) {
-    try {
-        const response = await fetch(`${PRAXIS_URL}${upstreamPath}`, {
-            method: options.method || 'GET',
-            headers: {
-                Accept: 'application/json',
-                ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-            },
-            body: options.body ? JSON.stringify(options.body) : undefined,
-        });
-        const text = await response.text();
-        res.status(response.status);
-        res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
-        res.send(text);
-    } catch (err) {
-        res.status(502).json({ error: err.message || 'Praxis unreachable' });
-    }
-}
+// Status/content-type/body forwarded verbatim, 502 on transport failure —
+// the shared Praxis client owns the URL and the error shape (P1-14).
+const { praxisProxyJson: proxyPraxisJson } = require('../services/praxis-client');
 
 /**
  * Individual approve/archive for nightly skill-harvest candidates.

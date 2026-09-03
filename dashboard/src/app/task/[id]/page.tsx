@@ -39,6 +39,7 @@ import { copyClaudeDispatch } from "@/lib/claude-dispatch";
 import { STATUS_OPTIONS } from "@/components/task-edit-modal";
 import { TaskDispatchConsole } from "@/components/task-view/dispatch-console";
 import { QaReviewPanel } from "@/components/task-view/qa-review-panel";
+import { QaHoldPanel } from "@/components/task-view/qa-hold-panel";
 import { TaskSequencePanel } from "@/components/task-view/task-sequence";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
@@ -177,7 +178,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   );
   const suspendedReason =
     status === "suspended"
-      ? task?.suspended_reason ||
+      ? (typeof task?.metadata?.suspension?.reason === "string" ? task.metadata.suspension.reason : null) ||
         (typeof task?.metadata?.status_message === "string" ? task.metadata.status_message : null)
       : null;
 
@@ -324,6 +325,11 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 </div>
               </div>
             )}
+
+            {/* Why a task that reads `todo` is not moving: its QA correction
+                was withheld. Sits with the suspended callout above, not down
+                with the run history — it is a state of the task, not a log. */}
+            <QaHoldPanel taskId={task.id} />
 
             <div className={hasSideContent ? "grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
               {/* Main column */}

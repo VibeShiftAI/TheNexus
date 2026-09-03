@@ -9,6 +9,7 @@ const { resolveModelAssignment, recordModelExecutionSnapshot } = require('../ser
 const { hasRealActivity } = require('../lib/task-activity');
 const { TaskBoardStatusSchema, normalizeTaskBoardStatus, AntigravityPayloadSchema } = require('@praxis/contract');
 const { checkPredecessorGate, triggerSuccessors } = require('../lib/task-sequence');
+const { praxisFetch } = require('../services/praxis-client');
 const {
     normalizeSourceClaim, guardSourceUpdate, guardPayloadUpdate, guardDispatchPayload,
     tierOf, UNVERIFIED_OPERATOR_SOURCE,
@@ -176,9 +177,34 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     });
 
     // ─── PATCH update task by ID ─────────────────────────────────────────
+    /**
+     * Compute the next metadata.suspension block for a PATCH.
+     * Returns undefined (leave as-is), null (explicitly cleared), or the
+     * merged block. Any of the four suspended_* fields, or a transition INTO
+     * "suspended", produces a block; leaving "suspended" keeps history.
+     */
+    function buildSuspensionPatch(existing, { suspended_at, suspended_reason, suspended_context, resume_action, status }) {
+        const fields = { suspended_at, suspended_reason, suspended_context, resume_action };
+        const provided = Object.keys(fields).filter(k => fields[k] !== undefined);
+        const enteringSuspended = status === 'suspended' && existing.status !== 'suspended';
+        if (provided.length === 0 && !enteringSuspended) return undefined;
+        if (provided.length > 0 && provided.every(k => fields[k] === null)) return null;
+        const prior = (existing.metadata && existing.metadata.suspension) || {};
+        // A fresh suspension (entering the status) starts a new block rather
+        // than inheriting a stale resumed_at/cancelled_at from the last one.
+        const base = enteringSuspended ? {} : { ...prior };
+        const next = { ...base };
+        if (suspended_at !== undefined) next.suspended_at = suspended_at;
+        else if (enteringSuspended) next.suspended_at = new Date().toISOString();
+        if (suspended_reason !== undefined) next.reason = suspended_reason;
+        if (suspended_context !== undefined) next.context = suspended_context;
+        if (resume_action !== undefined) next.resume_action = resume_action;
+        return next;
+    }
+
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title, default_executor, default_model, dispatch_instructions, source } = req.body;
+        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title, default_executor, default_model, dispatch_instructions, source, suspended_at, suspended_reason, suspended_context, resume_action } = req.body;
         try {
             const existing = await db.getTask(taskId);
             if (!existing) return res.status(404).json({ error: 'Task not found' });
@@ -240,8 +266,21 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                     updates.successor_id = successor_id;
                 }
             }
-            if (status_message !== undefined) {
-                updates.metadata = { ...(existing.metadata || {}), status_message };
+            // Suspension state lives under metadata.suspension (the tasks
+            // table has no suspended_* columns — see P0-11). Praxis PATCHes
+            // {status:"suspended", suspended_at, suspended_reason,
+            // suspended_context, resume_action}; the resume route and the
+            // dashboard read it back from metadata.suspension. Leaving
+            // "suspended" via PATCH keeps the block as history unless the
+            // caller explicitly nulls the fields.
+            const suspensionPatch = buildSuspensionPatch(existing, { suspended_at, suspended_reason, suspended_context, resume_action, status: updates.status });
+            if (status_message !== undefined || suspensionPatch !== undefined) {
+                updates.metadata = { ...(existing.metadata || {}) };
+                if (status_message !== undefined) updates.metadata.status_message = status_message;
+                if (suspensionPatch !== undefined) {
+                    if (suspensionPatch === null) delete updates.metadata.suspension;
+                    else updates.metadata.suspension = suspensionPatch;
+                }
             }
             // Provenance never rises on update — a task filed by an agent cannot
             // be relabelled as operator-authored by a later write — and
@@ -590,52 +629,61 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 return res.status(400).json({ error: `Task is not suspended (current status: ${task.status})` });
             }
 
+            // Suspension state is stored under metadata.suspension (no
+            // suspended_* columns exist on the tasks table — P0-11). The
+            // block is kept as history; resume/cancel only stamp it.
+            const metadata = { ...(task.metadata || {}) };
+            const suspension = { ...(metadata.suspension || {}) };
+            const nowIso = new Date().toISOString();
+
             if (action === 'cancel') {
+                metadata.suspension = { ...suspension, cancelled_at: nowIso };
                 await db.updateTask(taskId, {
                     status: 'cancelled',
-                    suspended_at: null,
-                    suspended_reason: null,
-                    suspended_context: null,
-                    resume_action: null,
-                    updated_at: new Date().toISOString(),
+                    metadata,
+                    updated_at: nowIso,
                 });
                 return res.json({ success: true, action: 'cancelled' });
             }
 
-            // Build resume instructions from human input + original context
-            const context = task.suspended_context || {};
-            const resumeAction = task.resume_action || {};
+            // Build resume instructions from human input + original context.
+            // Praxis may send the context as an object ({question,
+            // partialResult, workspace, ...}) or as a plain string.
+            const rawContext = suspension.context;
+            const context = rawContext && typeof rawContext === 'object' ? rawContext : {};
+            const contextText = typeof rawContext === 'string' ? rawContext : null;
+            const rawResume = suspension.resume_action;
+            const resumeAction = rawResume && typeof rawResume === 'object' ? rawResume : {};
             const resumeInstructions =
                 `[RESUMED FROM SUSPENSION]\n` +
-                `Previous context: ${context.partialResult || 'none'}\n` +
-                `Question asked: ${context.question || 'none'}\n` +
+                `Previous context: ${context.partialResult || contextText || 'none'}\n` +
+                `Question asked: ${context.question || suspension.reason || 'none'}\n` +
                 `Human answer: ${humanInput || '(no input provided)'}\n\n` +
                 `Continue the task with this guidance.`;
 
-            // Clear suspension metadata and set back to in_progress
+            // Stamp the suspension as resumed and set back to in_progress
+            metadata.suspension = { ...suspension, resumed_at: nowIso };
             await db.updateTask(taskId, {
                 status: 'in_progress',
-                suspended_at: null,
-                suspended_reason: null,
-                suspended_context: null,
-                resume_action: null,
-                updated_at: new Date().toISOString(),
+                metadata,
+                updated_at: nowIso,
             });
 
             // Re-dispatch to Praxis if the resume action says to
             if (resumeAction.type === 'redispatch' || !resumeAction.type) {
                 try {
                     const modelControl = await resolveTaskModel(task, task.project_id || req.params.id);
-                    await fetch('http://127.0.0.1:54322/resume-task', {
+                    // No client-side timeout here, as before: the resume
+                    // hand-off is awaited only for its ack.
+                    await praxisFetch('/resume-task', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
+                        body: {
                             nexusTaskId: taskId,
                             workspace: resumeAction.workspace || context.workspace,
                             instructions: resumeInstructions,
                             resolvedModel: modelControl.resolvedModel,
                             modelOverride: resumeAction.modelOverride || modelControl.modelOverride,
-                        }),
+                        },
                     });
                 } catch (fetchErr) {
                     console.warn('[Tasks] Resume dispatch to Praxis failed:', fetchErr.message);

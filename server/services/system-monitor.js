@@ -154,27 +154,20 @@ async function getSystemStatus(forceRefresh = false) {
                   'other'
         }));
         
-        // Fetch Praxis statistics using http module
+        // Fetch Praxis statistics through the shared client. Semantics kept
+        // from the old hand-rolled http.get: non-200 → null (silent), bad
+        // JSON → null, 3s budget → null (silent), transport error → null with
+        // a deduplicated warning.
         let praxisStats = null;
         try {
-            const http = require('http');
-            praxisStats = await new Promise((resolve) => {
-                const req = http.get('http://127.0.0.1:54322/api/praxis/stats', (res) => {
-                    if (res.statusCode !== 200) {
-                        resolve(null);
-                        return;
-                    }
-                    let data = '';
-                    res.on('data', (chunk) => { data += chunk; });
-                    res.on('end', () => {
-                        try {
-                            resolve(JSON.parse(data));
-                        } catch (e) {
-                            resolve(null);
-                        }
-                    });
-                });
-                req.on('error', (err) => {
+            const { praxisFetch } = require('./praxis-client');
+            try {
+                const response = await praxisFetch('/api/praxis/stats', { timeoutMs: 3000 });
+                if (response.status === 200) {
+                    praxisStats = await response.json().catch(() => null);
+                }
+            } catch (err) {
+                if (err?.code !== 'PRAXIS_TIMEOUT') {
                     // Deduplicate: only log once per distinct error per minute
                     const now = Date.now();
                     if (err.message !== lastPraxisError || (now - lastPraxisErrorTime) > PRAXIS_ERROR_DEDUP_MS) {
@@ -182,13 +175,9 @@ async function getSystemStatus(forceRefresh = false) {
                         lastPraxisError = err.message;
                         lastPraxisErrorTime = now;
                     }
-                    resolve(null);
-                });
-                req.setTimeout(3000, () => {
-                    req.destroy();
-                    resolve(null);
-                });
-            });
+                }
+                praxisStats = null;
+            }
         } catch (err) {
             console.error('[SystemMonitor] Exception fetching Praxis stats:', err.stack);
         }

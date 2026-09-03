@@ -82,6 +82,23 @@ function buildCompensation(record) {
       break;
     }
     case 'nexus_task_create': {
+      // A multi-task create (server/mcp.js nexus_batch_create_tasks through
+      // lib/board-ops) commits one record whose after-image is the array of
+      // created rows: compensation is one DELETE per created task.
+      if (Array.isArray(record.after) || Array.isArray(record.target?.task_ids)) {
+        const projectId = record.target?.project_id || '';
+        const ids = Array.isArray(record.target?.task_ids)
+          ? record.target.task_ids
+          : record.after.map((t) => t && t.id).filter(Boolean);
+        compensation = {
+          kind: 'api_requests',
+          requests: ids.map((id) => ({
+            method: 'DELETE',
+            path: `/api/tasks/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(id)}`,
+          })),
+        };
+        break;
+      }
       const taskId = record.after?.id || record.target?.task_id;
       compensation = {
         kind: 'api_request',
