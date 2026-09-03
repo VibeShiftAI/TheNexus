@@ -37,6 +37,7 @@ import {
     setClaudeDefaultModel,
     setCodexDefaultModel,
     setAntigravityDefaultModel,
+    setThinkingLevel,
     filterClaudeModels,
     filterCodexModels,
     getAntigravityModels,
@@ -163,6 +164,20 @@ function ExecutionRow({ snapshot }: { snapshot: ModelExecutionSnapshot }) {
     );
 }
 
+/**
+ * Thinking levels a model's CLI will actually accept. Mirrors the server's
+ * per-slug rules (server/services/model-discovery.js OPENAI_MODEL_EFFORT_TIERS
+ * and `claude --effort`); the PUT re-validates, this only shapes the dropdown.
+ * "ultra" is deliberately not offered — it is an agentic mode, not an effort.
+ */
+function thinkingLevelOptions(modelId: string): string[] {
+    const slug = (modelId || "").trim().toLowerCase();
+    if (slug.startsWith("gpt-5.6")) return ["low", "medium", "high", "xhigh", "max"];
+    if (slug.startsWith("gpt-")) return ["low", "medium", "high", "xhigh"];
+    if (slug.includes("claude")) return ["low", "medium", "high", "xhigh", "max"];
+    return ["low", "medium", "high"];
+}
+
 export default function ModelControlPage() {
     const [state, setState] = useState<ModelControlOptionsResponse>({});
     const [projects, setProjects] = useState<Project[]>([]);
@@ -177,6 +192,7 @@ export default function ModelControlPage() {
     const [localReason, setLocalReason] = useState("manual_override");
     const [loading, setLoading] = useState(true);
     const [savingLocal, setSavingLocal] = useState(false);
+    const [savingThinkingModel, setSavingThinkingModel] = useState<string | null>(null);
     const [savingClaudeDefault, setSavingClaudeDefault] = useState(false);
     const [savingCodexDefault, setSavingCodexDefault] = useState(false);
     const [savingAntigravityDefault, setSavingAntigravityDefault] = useState(false);
@@ -296,6 +312,24 @@ export default function ModelControlPage() {
             setError(err instanceof Error ? err.message : "Failed to update chat backend");
         } finally {
             setSavingChatBackend(false);
+        }
+    };
+
+    /**
+     * Per-model default thinking level. Praxis applies this to any dispatch
+     * (task, QA, correction, chat) whose resolved model matches and that
+     * carries no explicit level of its own.
+     */
+    const updateThinkingLevel = async (model: string, level: string) => {
+        setSavingThinkingModel(model);
+        setError(null);
+        try {
+            const levels = await setThinkingLevel(model, level);
+            setState(prev => ({ ...prev, thinkingLevels: levels }));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update thinking level");
+        } finally {
+            setSavingThinkingModel(null);
         }
     };
 
@@ -788,6 +822,55 @@ export default function ModelControlPage() {
                             </select>
                             {savingAntigravityDefault && <Loader2 size={15} className="animate-spin text-slate-400" />}
                         </div>
+                    </div>
+                </section>
+
+                {/* Per-model thinking level — the default reasoning effort
+                    Praxis applies to a dispatch whose RESOLVED model is this
+                    one and that carries no explicit level of its own
+                    (claude --effort / codex model_reasoning_effort). */}
+                <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="mb-3 flex items-center gap-3">
+                        <Bot size={22} className="text-amber-300" />
+                        <div>
+                            <div className="text-base font-semibold text-white">Per-Model Thinking Level</div>
+                            <div className="text-sm text-slate-500">
+                                Default reasoning effort per model, applied by every Praxis executor flow (task dispatch, QA, corrections, chat)
+                                when the dispatch has no explicit level. Antigravity has no thinking-level knob — its effort is baked into the
+                                model display name (&ldquo;Gemini 3.1 Pro (High)&rdquo;), so it is not listed here.
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                        {[...filterClaudeModels(state.models), ...filterCodexModels(state.models)].map(model => {
+                            const id = apiModelIdOf(model);
+                            const current = state.thinkingLevels?.[id] || "";
+                            return (
+                                <div key={`thinking-${model.id}`} className="flex items-center justify-between gap-2 rounded border border-slate-800 bg-slate-900/40 px-3 py-2">
+                                    <span className="truncate text-sm text-slate-300" title={id}>
+                                        {model.display_name || model.name || id}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            value={current}
+                                            onChange={(event) => void updateThinkingLevel(id, event.target.value)}
+                                            disabled={savingThinkingModel === id || loading}
+                                            className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
+                                        >
+                                            <option value="">CLI default</option>
+                                            {thinkingLevelOptions(id).map(level => (
+                                                <option key={level} value={level}>{level}</option>
+                                            ))}
+                                            {/* Keep a stored value selectable even if the roster shifted */}
+                                            {current && !thinkingLevelOptions(id).includes(current) && (
+                                                <option value={current}>{current}</option>
+                                            )}
+                                        </select>
+                                        {savingThinkingModel === id && <Loader2 size={15} className="animate-spin text-slate-400" />}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 

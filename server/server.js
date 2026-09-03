@@ -177,6 +177,9 @@ app.use('/api/updates', require('./routes/updates')());
 app.use('/api/tabs', require('./routes/tabs')());
 app.use('/api/local-queue', createLocalQueueRouter());
 app.use('/api/skill-candidates', require('./routes/skill-candidates')());
+// Read-only skill-wiki browser over the shared-mind vault (manifests,
+// telemetry, knowledge pages, backlink graph). No write path by design.
+app.use('/api/skill-wiki', require('./routes/skill-wiki')());
 app.use('/api/ingestion-control', createIngestionControlRouter());
 app.use('/api/studio',    createStudioRouter({ db, callAI }));
 const dispatchesRouter = createDispatchesRouter();

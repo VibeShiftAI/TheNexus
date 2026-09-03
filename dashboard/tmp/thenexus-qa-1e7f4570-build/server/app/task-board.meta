@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/task-board/layout,_N_T_/task-board/page,_N_T_/task-board"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/task-board/__PAGE__",
+    "/task-board",
+    "/_index",
+    "/_head"
+  ]
+}

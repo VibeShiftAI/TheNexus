@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/studio/layout,_N_T_/studio/simulator/layout,_N_T_/studio/simulator/page,_N_T_/studio/simulator"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/studio/simulator/__PAGE__",
+    "/studio/simulator",
+    "/studio",
+    "/_index",
+    "/_head"
+  ]
+}

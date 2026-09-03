@@ -1,20 +1,20 @@
 /**
- * Academy console — browsable skill tree for the shared-mind skill bank.
+ * Academy console — the skill-wiki index for the shared-mind skill bank.
  * Grouped by category, searchable, sorted by recall count; each row expands
- * to the skill's summary, tags, and usage telemetry.
+ * to the skill's summary, tags, provenance, and usage telemetry, and links
+ * through to the skill's wiki page (/academy/skill/<name>) — manifest,
+ * evidence, knowledge page, and backlink-graph neighbours.
+ *
+ * Backed by /api/skill-wiki (vault-direct, read-only) rather than the Praxis
+ * proxy, so the library stays browsable even when Praxis is offline.
  */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, GraduationCap, Search, ChevronDown, ChevronRight, Pin } from "lucide-react";
-import type { SkillSummary } from "@/components/bridge/academy-station";
-
-interface SkillsResponse {
-  total: number;
-  byCategory: Record<string, number>;
-  skills: SkillSummary[];
-}
+import Link from "next/link";
+import { ArrowLeft, BookOpen, GraduationCap, Search, ChevronDown, ChevronRight, Pin } from "lucide-react";
+import { getSkillIndex, skillHref, type SkillIndexEntry, type SkillIndexResponse } from "@/lib/skill-wiki";
 
 const CATEGORY_ACCENT: Record<string, string> = {
   operations: "text-cyan-400 border-cyan-500/30",
@@ -23,7 +23,7 @@ const CATEGORY_ACCENT: Record<string, string> = {
   troubleshooting: "text-rose-400 border-rose-500/30",
 };
 
-function relTime(iso?: string) {
+function relTime(iso?: string | null) {
   if (!iso) return "—";
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
   if (days < 1) return "today";
@@ -33,15 +33,14 @@ function relTime(iso?: string) {
 
 export default function AcademyPage() {
   const router = useRouter();
-  const [data, setData] = useState<SkillsResponse | null>(null);
+  const [data, setData] = useState<SkillIndexResponse | null>(null);
   const [err, setErr] = useState(false);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    fetch("/api/praxis/skills", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+    getSkillIndex()
       .then((d) => active && setData(d))
       .catch(() => active && setErr(true));
     return () => {
@@ -58,7 +57,7 @@ export default function AcademyPage() {
         s.summary?.toLowerCase().includes(q) ||
         s.tags?.some((t) => t.toLowerCase().includes(q))
     );
-    const byCat = new Map<string, SkillSummary[]>();
+    const byCat = new Map<string, SkillIndexEntry[]>();
     for (const s of filtered) {
       const cat = s.category || "uncategorized";
       if (!byCat.has(cat)) byCat.set(cat, []);
@@ -86,7 +85,7 @@ export default function AcademyPage() {
             <div className="flex items-center gap-2">
               <GraduationCap size={16} className="text-pink-400" />
               <h1 className="text-xl font-bold tracking-tight text-white">
-                ACADEMY — SKILL BANK
+                ACADEMY — SKILL WIKI
                 {data && <span className="ml-2 text-sm font-normal text-slate-500">{data.total} skills</span>}
               </h1>
             </div>
@@ -106,10 +105,10 @@ export default function AcademyPage() {
       <div className="container mx-auto space-y-6 p-6">
         {err ? (
           <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-300">
-            Skill bank unavailable — is Praxis online?
+            Skill wiki unavailable — is the vault mounted?
           </div>
         ) : !data ? (
-          <div className="py-16 text-center text-sm text-slate-500">Opening skill bank…</div>
+          <div className="py-16 text-center text-sm text-slate-500">Opening skill wiki…</div>
         ) : (
           grouped.map(([category, skills]) => (
             <section key={category}>
@@ -131,31 +130,61 @@ export default function AcademyPage() {
                         isOpen ? "border-slate-600" : "border-slate-800 hover:border-slate-700"
                       }`}
                     >
-                      <button
-                        onClick={() => setExpanded(isOpen ? null : s.id)}
-                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
-                      >
-                        {isOpen ? (
-                          <ChevronDown size={13} className="shrink-0 text-slate-500" />
-                        ) : (
-                          <ChevronRight size={13} className="shrink-0 text-slate-600" />
+                      <div className="flex w-full items-center gap-2 px-3 py-2.5">
+                        <button
+                          onClick={() => setExpanded(isOpen ? null : s.id)}
+                          className="shrink-0"
+                          aria-label={isOpen ? `Collapse ${s.name}` : `Expand ${s.name}`}
+                        >
+                          {isOpen ? (
+                            <ChevronDown size={13} className="text-slate-500" />
+                          ) : (
+                            <ChevronRight size={13} className="text-slate-600" />
+                          )}
+                        </button>
+                        <Link
+                          href={skillHref(s.name)}
+                          className="min-w-0 flex-1 truncate font-mono text-xs text-slate-200 hover:text-cyan-300"
+                          title={`Open wiki page for ${s.name}`}
+                        >
+                          {s.name}
+                        </Link>
+                        {s.provenance && (
+                          <span
+                            className={`shrink-0 rounded border px-1 py-0.5 text-[9px] uppercase ${
+                              s.provenance === "user-created"
+                                ? "border-emerald-500/40 text-emerald-300"
+                                : "border-slate-700 text-slate-500"
+                            }`}
+                            title={`provenance: ${s.provenance}`}
+                          >
+                            {s.provenance === "user-created" ? "operator" : s.provenance}
+                          </span>
                         )}
-                        <span className="min-w-0 flex-1 truncate font-mono text-xs text-slate-200">{s.name}</span>
                         {s.state && s.state !== "active" && (
                           <span className="shrink-0 rounded border border-slate-700 px-1 py-0.5 text-[9px] uppercase text-slate-500">
                             {s.state}
                           </span>
                         )}
-                        {(s as SkillSummary & { pinned?: boolean }).pinned && (
-                          <Pin size={11} className="shrink-0 text-amber-400" />
+                        {s.pinned && <Pin size={11} className="shrink-0 text-amber-400" />}
+                        {s.hasKnowledge && (
+                          <BookOpen size={11} className="shrink-0 text-violet-400" aria-label="has knowledge page" />
+                        )}
+                        {(s.successCount ?? 0) + (s.failureCount ?? 0) > 0 && (
+                          <span className="shrink-0 text-[10px] tabular-nums" title="recorded outcomes">
+                            <span className="text-emerald-300">{s.successCount}✓</span>
+                            <span className="text-rose-300">{s.failureCount}✗</span>
+                          </span>
                         )}
                         <span className="shrink-0 text-[10px] tabular-nums text-slate-500" title="recall count">
-                          ↺ {s.recallCount ?? 0}
+                          ↺ {s.hasTelemetry ? s.recallCount ?? 0 : "—"}
                         </span>
-                      </button>
+                      </div>
                       {isOpen && (
                         <div className="border-t border-slate-800/60 px-3 py-2.5">
-                          <p className="text-xs leading-relaxed text-slate-400">{s.summary}</p>
+                          <p className="text-xs leading-relaxed text-slate-400">
+                            {s.summary || <span className="italic text-slate-600">No summary in the manifest.</span>}
+                          </p>
                           {s.tags && s.tags.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-1">
                               {s.tags.map((t) => (
@@ -168,10 +197,14 @@ export default function AcademyPage() {
                               ))}
                             </div>
                           )}
-                          <div className="mt-2 flex gap-4 text-[10px] text-slate-600">
-                            <span>confidence {(s.confidence ?? 0).toFixed(2)}</span>
-                            <span>created {relTime(s.created)}</span>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-600">
+                            <span>evidence {s.evidenceCount > 0 ? s.evidenceCount : "none"}</span>
+                            <span>confidence {s.confidence != null ? s.confidence.toFixed(2) : "—"}</span>
                             <span>updated {relTime(s.updated)}</span>
+                            <span>last used {relTime(s.lastUsedAt)}</span>
+                            <Link href={skillHref(s.name)} className="text-cyan-400 hover:underline">
+                              Open wiki page →
+                            </Link>
                           </div>
                         </div>
                       )}

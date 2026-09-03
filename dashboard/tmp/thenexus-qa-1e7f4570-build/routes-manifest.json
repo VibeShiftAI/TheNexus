@@ -1,0 +1,233 @@
+{
+  "version": 3,
+  "pages404": true,
+  "appType": "app",
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [
+      {
+        "source": "/api/:path*",
+        "destination": "http://localhost:4000/api/:path*",
+        "regex": "^/api(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$"
+      }
+    ],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/academy/skill/[name]",
+      "regex": "^/academy/skill/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPname": "nxtPname"
+      },
+      "namedRegex": "^/academy/skill/(?<nxtPname>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/project/[id]",
+      "regex": "^/project/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/project/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/studio/idea/[id]",
+      "regex": "^/studio/idea/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/studio/idea/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/task/[id]",
+      "regex": "^/task/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/task/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/academy",
+      "regex": "^/academy(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/academy(?:/)?$"
+    },
+    {
+      "page": "/agents",
+      "regex": "^/agents(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/agents(?:/)?$"
+    },
+    {
+      "page": "/api/token-usage",
+      "regex": "^/api/token\\-usage(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/token\\-usage(?:/)?$"
+    },
+    {
+      "page": "/calendar",
+      "regex": "^/calendar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/calendar(?:/)?$"
+    },
+    {
+      "page": "/codex",
+      "regex": "^/codex(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/codex(?:/)?$"
+    },
+    {
+      "page": "/core-lab",
+      "regex": "^/core\\-lab(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/core\\-lab(?:/)?$"
+    },
+    {
+      "page": "/council",
+      "regex": "^/council(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/council(?:/)?$"
+    },
+    {
+      "page": "/icon.png",
+      "regex": "^/icon\\.png(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/icon\\.png(?:/)?$"
+    },
+    {
+      "page": "/inbox",
+      "regex": "^/inbox(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/inbox(?:/)?$"
+    },
+    {
+      "page": "/intake-reports",
+      "regex": "^/intake\\-reports(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/intake\\-reports(?:/)?$"
+    },
+    {
+      "page": "/knowledge-ingestion",
+      "regex": "^/knowledge\\-ingestion(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/knowledge\\-ingestion(?:/)?$"
+    },
+    {
+      "page": "/llm-activity",
+      "regex": "^/llm\\-activity(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/llm\\-activity(?:/)?$"
+    },
+    {
+      "page": "/local-queue",
+      "regex": "^/local\\-queue(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/local\\-queue(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/model-control",
+      "regex": "^/model\\-control(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/model\\-control(?:/)?$"
+    },
+    {
+      "page": "/ops",
+      "regex": "^/ops(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ops(?:/)?$"
+    },
+    {
+      "page": "/studio",
+      "regex": "^/studio(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/studio(?:/)?$"
+    },
+    {
+      "page": "/studio/catalog",
+      "regex": "^/studio/catalog(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/studio/catalog(?:/)?$"
+    },
+    {
+      "page": "/studio/simulator",
+      "regex": "^/studio/simulator(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/studio/simulator(?:/)?$"
+    },
+    {
+      "page": "/system-monitor",
+      "regex": "^/system\\-monitor(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/system\\-monitor(?:/)?$"
+    },
+    {
+      "page": "/task-board",
+      "regex": "^/task\\-board(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/task\\-board(?:/)?$"
+    },
+    {
+      "page": "/workflow-builder",
+      "regex": "^/workflow\\-builder(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/workflow\\-builder(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

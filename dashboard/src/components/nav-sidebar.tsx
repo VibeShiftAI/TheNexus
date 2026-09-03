@@ -73,7 +73,7 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
   const navItems = [
     { href: "/task-board", label: "Task Board", icon: KanbanSquare, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/ops", label: "Ops — Dispatch Console", icon: Send, color: "text-cyan-400 hover:text-cyan-300" },
-    { href: "/academy", label: "Academy — Skill Bank", icon: GraduationCap, color: "text-pink-400 hover:text-pink-300" },
+    { href: "/academy", label: "Academy — Skill Wiki", icon: GraduationCap, color: "text-pink-400 hover:text-pink-300" },
     { href: "/council", label: "Council Chamber", icon: Landmark, color: "text-amber-400 hover:text-amber-300" },
     { href: "/model-control", label: "Model Control", icon: Route, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/system-monitor", label: "System Monitor", icon: Gauge, color: "text-amber-400 hover:text-amber-300" },

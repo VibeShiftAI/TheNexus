@@ -69,6 +69,12 @@ export interface ModelControlOptionsResponse {
     codexDefault?: string;
     /** Default model for Praxis antigravity dispatches — an `agy models` display name ("" = agy CLI default). */
     antigravityDefault?: string;
+    /**
+     * Per-model default thinking level ({ apiModelId: level }). Applied by
+     * Praxis when a dispatch carries no explicit thinking level. Antigravity
+     * models are absent by design — agy has no reasoning-effort knob.
+     */
+    thinkingLevels?: Record<string, string>;
     /** Backend chain for Praxis's autonomous system-agent runs. */
     agentBackend?: AgentBackendConfig;
     /** Backend fronting Praxis interactive chat (permanent CLI session or legacy loop). */
@@ -355,6 +361,22 @@ export async function setClaudeDefaultModel(model: string): Promise<string> {
     if (!response.ok) throw new Error(`Failed to update claude default: ${response.status}`);
     const data = await response.json();
     return data.model;
+}
+
+/**
+ * Per-model default thinking levels. `level` of "" or "default" clears a
+ * model's entry (back to whatever the CLI does on its own).
+ */
+export async function setThinkingLevel(model: string, level: string): Promise<Record<string, string>> {
+    const response = await fetch(`/api/model-control/thinking-levels`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() as any },
+        body: JSON.stringify({ model, level }),
+    });
+    if (!response.ok) throw new Error(`Failed to update thinking level: ${response.status}`);
+    const data = await response.json();
+    return (data.levels ?? {}) as Record<string, string>;
 }
 
 /** Set the codex-dispatch default model ("" = codex CLI default). */

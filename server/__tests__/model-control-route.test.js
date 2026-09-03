@@ -67,6 +67,7 @@ describe('model control route', () => {
                     models: [{ id: 'local-llama', provider: 'local', api_model_id: 'llama3.2', apiModelId: 'llama3.2' }],
                     aliases: [{ alias: 'local_default', target: 'model:local-llama' }],
                     projectAliases: [{ alias: 'coder', target: 'model:local-llama' }],
+                    thinkingLevels: { 'claude-fable-5-1': 'low', 'claude-opus-5': 'xhigh' },
                     agentBackend: { backend: 'codex', fallbacks: ['claude-code', 'gemini'] },
                     chatBackend: 'claude-code',
                     chatConfig: {
@@ -201,6 +202,79 @@ describe('model control route', () => {
             body: JSON.stringify({ model: 42 })
         });
         expect(bad.status).toBe(400);
+    });
+
+    test('reads and updates per-model thinking levels', async () => {
+        const settings = {};
+        const db = {
+            getModelControlSetting: jest.fn(async (key) => settings[key] ?? null),
+            setModelControlSetting: jest.fn(async (key, value) => { settings[key] = value; return value; }),
+        };
+        const createModelControlRouter = require('../routes/model-control');
+        const app = express();
+        app.use(express.json());
+        app.use('/api/model-control', createModelControlRouter({ db }));
+        handle = await listen(app);
+
+        // Seeded: Robert's two explicit picks are live before anything is stored.
+        await expect(requestJson(`${handle.baseUrl}/api/model-control/thinking-levels`))
+            .resolves.toEqual({
+                status: 200,
+                body: { levels: { 'claude-fable-5-1': 'low', 'claude-opus-5': 'xhigh' } }
+            });
+
+        // Single-model PUT.
+        const set = await requestJson(`${handle.baseUrl}/api/model-control/thinking-levels`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'gpt-5.6-sol', level: 'high' })
+        });
+        expect(set.status).toBe(200);
+        expect(set.body.levels['gpt-5.6-sol']).toBe('high');
+        expect(set.body.levels['claude-opus-5']).toBe('xhigh');
+
+        // An explicit empty level CLEARS a seeded default.
+        const cleared = await requestJson(`${handle.baseUrl}/api/model-control/thinking-levels`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'claude-fable-5-1', level: '' })
+        });
+        expect(cleared.status).toBe(200);
+        expect(cleared.body.levels['claude-fable-5-1']).toBeUndefined();
+
+        // Whole-map PUT.
+        const bulk = await requestJson(`${handle.baseUrl}/api/model-control/thinking-levels`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ levels: { 'claude-opus-5': 'max', 'claude-fable-5-1': 'low' } })
+        });
+        expect(bulk.status).toBe(200);
+        expect(bulk.body.levels).toEqual({
+            'claude-opus-5': 'max',
+            'claude-fable-5-1': 'low',
+            'gpt-5.6-sol': 'high',
+        });
+
+        // Validation: unknown level, and a level this model's backend rejects
+        // (gpt-5.5 stops at xhigh — "max" would 400 the turn).
+        const badLevel = await requestJson(`${handle.baseUrl}/api/model-control/thinking-levels`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'claude-opus-5', level: 'colossal' })
+        });
+        expect(badLevel.status).toBe(400);
+        const tooHigh = await requestJson(`${handle.baseUrl}/api/model-control/thinking-levels`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'gpt-5.5', level: 'max' })
+        });
+        expect(tooHigh.status).toBe(400);
+        const noModel = await requestJson(`${handle.baseUrl}/api/model-control/thinking-levels`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ level: 'high' })
+        });
+        expect(noModel.status).toBe(400);
     });
 
     test('reads and updates the Praxis chat backend', async () => {

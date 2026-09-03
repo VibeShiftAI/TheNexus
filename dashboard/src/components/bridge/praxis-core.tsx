@@ -21,6 +21,7 @@ import { HudPanel, HudErrorBoundary } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
 import { AITerminal, type AITerminalHandle } from "@/components/ai-terminal";
 import { NowStrip } from "@/components/bridge/now-strip";
+import { ChatModelControl } from "@/components/bridge/chat-model-control";
 
 const COUNCIL_PHASE_LABEL: Record<string, string> = {
   setup: "convening",
@@ -65,8 +66,12 @@ export function PraxisCore() {
   ).filter((s): s is { label: string; value: number | string } => s.value !== undefined && s.value !== null);
 
   // Chat controls hoisted out of the terminal so the whole header is one row.
+  // ChatModelControl leads: which model is answering as Praxis is a readout
+  // first and a control second, and it shares the settings modal's chat-config
+  // state rather than owning a switch of its own.
   const chatControls = (
     <>
+      <ChatModelControl />
       <button
         onClick={() => terminalRef.current?.newConversation()}
         className="rounded-md border border-slate-800 bg-slate-900/60 p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-emerald-300"

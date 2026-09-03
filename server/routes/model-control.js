@@ -250,6 +250,67 @@ async function getChatConfig(db) {
 }
 
 /**
+ * ─── Per-model default thinking level ─────────────────────────────────────
+ * Robert's standing "how hard should THIS model think" control. Stored as one
+ * `thinking_levels` setting holding a { <api model id>: <level> } map, so a
+ * roster change never leaves orphan setting keys behind.
+ *
+ * Who accepts what:
+ *   - claude-code CLI `--effort`      → low | medium | high | xhigh | max
+ *   - codex `model_reasoning_effort`  → minimal | low | medium | high | xhigh | max
+ *     (per-slug; see OPENAI_MODEL_EFFORT_TIERS in model-discovery.js —
+ *     gpt-5.5/5.4 stop at xhigh, the 5.6 family adds ultra which Praxis
+ *     deliberately does not forward)
+ *   - antigravity (agy) has NO reasoning-effort knob: its thinking level is
+ *     baked into the model DISPLAY name ("Gemini 3.1 Pro (High)"), so no entry
+ *     is offered for it.
+ *
+ * Validation is against the union (ALL_THINKING_TIERS) plus, when the slug is
+ * recognised, the narrower per-model set — same clamp-don't-400 posture as the
+ * chat thinking level.
+ */
+const THINKING_LEVEL_SEEDS = {
+    // Robert 2026-09-03: Fable is the cheap fast lane; Opus is the one he wants
+    // thinking as hard as the CLI allows ("very high" → xhigh, the highest
+    // level `claude --effort` documents below `max`... `max` exists too, but he
+    // asked for very high, so xhigh).
+    'claude-fable-5-1': 'low',
+    'claude-opus-5': 'xhigh',
+};
+
+function normalizeThinkingLevel(model, level) {
+    const value = String(level ?? '').trim();
+    if (!value || value === 'default') return { ok: true, value: '' };
+    if (!ALL_THINKING_TIERS.includes(value)) {
+        return { ok: false, error: `unsupported thinking level "${value}" (allowed: ${ALL_THINKING_TIERS.join(', ')})` };
+    }
+    const perModel = thinkingTiersForModelId(model);
+    if (perModel && !perModel.includes(value)) {
+        return { ok: false, error: `model ${model} does not accept thinking level "${value}" (accepts: ${perModel.join(', ')})` };
+    }
+    return { ok: true, value };
+}
+
+/** Stored map merged over the seeds; empty values mean "no per-model default". */
+async function getThinkingLevels(db) {
+    const setting = await db.getModelControlSetting('thinking_levels');
+    const stored = setting && typeof setting === 'object' && setting.levels && typeof setting.levels === 'object'
+        ? setting.levels
+        : {};
+    const merged = { ...THINKING_LEVEL_SEEDS };
+    for (const [model, level] of Object.entries(stored)) {
+        const key = String(model || '').trim();
+        if (!key) continue;
+        const value = String(level ?? '').trim();
+        // An explicitly stored empty value OVERRIDES a seed — that is how
+        // Robert clears a seeded default back to "whatever the CLI does".
+        if (!value || value === 'default') delete merged[key];
+        else if (ALL_THINKING_TIERS.includes(value)) merged[key] = value;
+    }
+    return merged;
+}
+
+/**
  * Backend chain for Praxis's autonomous system-agent runs. Codex-first
  * (ChatGPT subscription), Claude Code next, Gemini API as the last resort.
  */
@@ -351,6 +412,9 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                 claudeDefault: await getClaudeDefaultModel(db),
                 codexDefault: await getCliDefaultModel(db, 'codex_default_model'),
                 antigravityDefault: await getCliDefaultModel(db, 'antigravity_default_model'),
+                // Per-model default thinking levels ({ model: level }) — see
+                // getThinkingLevels. Antigravity is deliberately absent.
+                thinkingLevels: await getThinkingLevels(db),
                 // Real Codex roster (slugs + display names + efforts) for the
                 // per-slot / task / chat model dropdowns — see listCodexModels.
                 codexModels: listCodexModels(),
@@ -429,6 +493,53 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
             }
         });
     }
+
+    // ─── Per-model default thinking levels ───────────────────────────────
+    // Read by Praxis at dispatch time (executors/thinking-levels.ts, cached
+    // 60s) and by the dashboard's Model Control panel. PUT accepts either a
+    // whole `levels` map or a single `{ model, level }`; an empty/"default"
+    // level clears that model's entry.
+    router.get('/thinking-levels', async (_req, res) => {
+        try {
+            res.json({ levels: await getThinkingLevels(db) });
+        } catch (error) {
+            console.error('[Model Control] Failed to read thinking levels:', error);
+            res.status(500).json({ error: 'Failed to read thinking levels: ' + error.message });
+        }
+    });
+
+    router.put('/thinking-levels', async (req, res) => {
+        try {
+            const body = req.body || {};
+            let incoming;
+            if (body.levels && typeof body.levels === 'object' && !Array.isArray(body.levels)) {
+                incoming = body.levels;
+            } else if (typeof body.model === 'string' && body.model.trim()) {
+                incoming = { [body.model.trim()]: body.level };
+            } else {
+                return res.status(400).json({ error: 'levels object or { model, level } is required' });
+            }
+
+            const current = await db.getModelControlSetting('thinking_levels');
+            const stored = current && typeof current === 'object' && current.levels && typeof current.levels === 'object'
+                ? { ...current.levels }
+                : {};
+            for (const [rawModel, rawLevel] of Object.entries(incoming)) {
+                const model = String(rawModel || '').trim();
+                if (!model) return res.status(400).json({ error: 'model keys must be non-empty strings' });
+                const normalized = normalizeThinkingLevel(model, rawLevel);
+                if (!normalized.ok) return res.status(400).json({ error: normalized.error });
+                // Store the cleared value explicitly so it can beat a seed.
+                stored[model] = normalized.value;
+            }
+            await db.setModelControlSetting('thinking_levels', { levels: stored });
+            notifyPraxisStateDoc('thinking-levels');
+            res.json({ levels: await getThinkingLevels(db) });
+        } catch (error) {
+            console.error('[Model Control] Failed to update thinking levels:', error);
+            res.status(500).json({ error: 'Failed to update thinking levels: ' + error.message });
+        }
+    });
 
     // The model names the antigravity selector can offer (`agy models` output;
     // display names are the only values the agy CLI actually pins on).
