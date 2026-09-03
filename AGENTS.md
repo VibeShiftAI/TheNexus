@@ -50,7 +50,8 @@ cockpit surface.
   dashboard source change, rebuild and restart the supervised dashboard process
   before expecting production :3000 to show it. For an isolated build that does
   not replace the default `.next`, use
-  `cd dashboard && NEXT_DIST_DIR=.next-verify npm run build`.
+  `cd dashboard && NEXT_DIST_DIR=.next-verify npm run build` (Next also appends
+  `.next-verify/types/**/*.ts` to `dashboard/tsconfig.json`; discard that rewrite).
 - Server tests: `npm test`; scope a server area with `npx jest server/<area>`.
 - Dashboard tests: `cd dashboard && npm test`.
 - MCP smoke start: `cd services/praxis-mind-mcp && npm start`; it speaks
