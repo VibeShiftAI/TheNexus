@@ -10,7 +10,7 @@
 
 import { useState, useRef } from "react";
 import { Radio, Maximize2, Minimize2, Plus, History } from "lucide-react";
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useLiveBoardState } from "@/components/live-board-state";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
 import { useActiveWork } from "@/hooks/use-active-work";
 import { useCoreState } from "@/hooks/use-core-state";
@@ -43,7 +43,7 @@ function fmtTime(iso?: string) {
 }
 
 export function PraxisCore() {
-  const { presence, recentEvents, connected } = usePraxisStream();
+  const { presence, recentEvents, connected } = useLiveBoardState();
   const { crew } = useCrewActivity();
   const core = useCoreState();
   const work = useActiveWork();

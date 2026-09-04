@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useLiveBoardState } from "@/components/live-board-state";
 import { hitlTaskMeta } from "@/lib/hitl-meta";
 import { HitlCard, timeAgo } from "@/components/hitl-card";
 import {
@@ -66,7 +66,7 @@ function filterBucket(request: HITLRequest): FilterId {
 
 export default function InboxPage() {
   const { error, loading, pendingRequests, refresh, resolvingId, resolveRequest } = useHitlInbox();
-  const { connected } = usePraxisStream();
+  const { connected } = useLiveBoardState();
   const router = useRouter();
   const [filter, setFilter] = useState<FilterId>("all");
   const [history, setHistory] = useState<HITLRequest[]>([]);

@@ -357,4 +357,343 @@ describe('praxis-stream route', () => {
     controller.abort();
     try { upstreamRes.end(); } catch { /* already gone */ }
   });
+
+  // P3-30 phase 2, step 3 — Praxis pushes events in instead of Nexus pulling
+  // them off SSE. The route's whole job is to be the SAME broadcast() the
+  // relay uses: if it grew its own fan-out, HITL pushes would keep firing on
+  // the SSE copy and stop the day the SSE route is deleted, with the UI
+  // looking perfectly correct throughout.
+  describe('POST /api/praxis/events ingest', () => {
+    async function startIngest({ serviceKey } = {}) {
+      const praxis = express();
+      // No /stream handler: the upstream relay just fails to connect and
+      // retries, which is exactly the "Praxis pushes, Nexus doesn't pull"
+      // end state and proves the POST path stands alone.
+      praxisHandle = await listen(praxis);
+      process.env.PRAXIS_URL = praxisHandle.baseUrl;
+      if (serviceKey) process.env.NEXUS_SERVICE_KEY = serviceKey;
+      else delete process.env.NEXUS_SERVICE_KEY;
+
+      const emitted = [];
+      const io = { emit: (name, payload) => emitted.push([name, payload]), on: () => {} };
+      const notify = jest.fn().mockResolvedValue({ sent: 1, errors: 0 });
+
+      const createPraxisStreamRouter = require('../routes/praxis-stream');
+      const nexus = express();
+      nexus.use('/api/praxis', createPraxisStreamRouter({ io, pushService: { notify } }));
+      nexusHandle = await listen(nexus);
+
+      const post = (body, headers = {}) =>
+        fetch(`${nexusHandle.baseUrl}/api/praxis/events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify(body),
+        });
+
+      return { post, emitted, notify };
+    }
+
+    afterEach(() => { delete process.env.NEXUS_SERVICE_KEY; });
+
+    // Phase-2 review follow-up: the ingest boundary is the socket peer, not req.ip.
+    // server.js sets `trust proxy`, so req.ip would honour a forged X-Forwarded-For.
+    it('ignores X-Forwarded-For and judges loopback by the socket peer', async () => {
+      const createPraxisStreamRouter = require('../routes/praxis-stream');
+      const io = { emit: () => {}, on: () => {} };
+      const notify = jest.fn().mockResolvedValue({ sent: 0, errors: 0 });
+      const nexus = express();
+      nexus.set('trust proxy', 1);
+      let fakePeer = null;
+      nexus.use((req, _res, next) => {
+        if (fakePeer) Object.defineProperty(req, 'socket', { value: { remoteAddress: fakePeer }, configurable: true });
+        next();
+      });
+      nexus.use('/api/praxis', createPraxisStreamRouter({ io, pushService: { notify } }));
+      const handle = await listen(nexus);
+      try {
+        const post = () => fetch(`${handle.baseUrl}/api/praxis/events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '127.0.0.1' },
+          body: JSON.stringify({ type: 'heartbeat', eventId: `xff-${Date.now()}`, at: new Date().toISOString() }),
+        });
+        // genuine loopback peer + forged header: accepted (header irrelevant)
+        expect((await post()).status).toBe(200);
+        // LAN peer + forged loopback header: rejected
+        fakePeer = '192.168.1.55';
+        expect((await post()).status).toBe(403);
+      } finally {
+        fakePeer = null;
+        await new Promise((resolve) => handle.server.close(resolve));
+      }
+    });
+
+
+    it('feeds a posted event through the same broadcast: SSE, socket, ring and HITL push', async () => {
+      const ingest = await startIngest();
+
+      const controller = new AbortController();
+      const sse = await fetch(`${nexusHandle.baseUrl}/api/praxis/stream`, { signal: controller.signal });
+      const reader = sse.body.getReader();
+      const decoder = new TextDecoder();
+
+      const event = {
+        type: 'hitl.created',
+        eventId: 'evt-post-1',
+        at: '2026-09-04T09:00:00.000Z',
+        request: { id: 'hitl-post-1', taskId: 'task-7', question: 'Ship it?' },
+      };
+      const res = await ingest.post(event);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true, accepted: 1, duplicates: 0 });
+
+      // Downstream SSE subscribers.
+      let seen = '';
+      for (let i = 0; i < 50 && !seen.includes('evt-post-1'); i += 1) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        seen += decoder.decode(value, { stream: true });
+      }
+      expect(seen).toContain('event: hitl.created');
+
+      // Socket.IO fan-out.
+      expect(ingest.emitted).toContainEqual(['praxis:event', event]);
+
+      // And the HITL push — the choke point the design calls out by name.
+      await new Promise((r) => setTimeout(r, 20));
+      expect(ingest.notify).toHaveBeenCalledTimes(1);
+      expect(ingest.notify.mock.calls[0][0].data).toMatchObject({ hitlId: 'hitl-post-1' });
+
+      controller.abort();
+    });
+
+    it('dedupes by eventId so dual-publish costs nothing (and never double-pushes)', async () => {
+      const ingest = await startIngest();
+      const event = {
+        type: 'hitl.created',
+        eventId: 'evt-dupe-1',
+        request: { id: 'hitl-dupe-1', question: 'Again?' },
+      };
+
+      expect(await (await ingest.post(event)).json()).toEqual({ ok: true, accepted: 1, duplicates: 0 });
+      // The SSE relay's copy of the same event, arriving second.
+      expect(await (await ingest.post(event)).json()).toEqual({ ok: true, accepted: 0, duplicates: 1 });
+
+      expect(ingest.emitted.filter(([, p]) => p.eventId === 'evt-dupe-1')).toHaveLength(1);
+      expect(ingest.notify).toHaveBeenCalledTimes(1);
+    });
+
+    it('accepts a batch and rejects a malformed event without half-publishing', async () => {
+      const ingest = await startIngest();
+      const res = await ingest.post({
+        events: [
+          { type: 'task.started', eventId: 'b-1' },
+          { type: 'task.completed', eventId: 'b-2' },
+        ],
+      });
+      expect(await res.json()).toEqual({ ok: true, accepted: 2, duplicates: 0 });
+      expect(ingest.emitted.map(([, p]) => p.eventId)).toEqual(['b-1', 'b-2']);
+
+      const bad = await ingest.post({ eventId: 'b-3' });
+      expect(bad.status).toBe(400);
+      expect(ingest.emitted.some(([, p]) => p.eventId === 'b-3')).toBe(false);
+    });
+
+    it('requires the service key when one is configured', async () => {
+      const ingest = await startIngest({ serviceKey: 'sekrit' });
+      const event = { type: 'task.started', eventId: 'evt-auth-1' };
+
+      expect((await ingest.post(event)).status).toBe(401);
+      expect((await ingest.post(event, { 'X-Nexus-Service-Key': 'wrong' })).status).toBe(401);
+      expect(ingest.emitted).toHaveLength(0);
+
+      const ok = await ingest.post(event, { 'X-Nexus-Service-Key': 'sekrit' });
+      expect(ok.status).toBe(200);
+      expect(ingest.emitted).toContainEqual(['praxis:event', event]);
+    });
+
+    it('makes posted events replayable on the socket resume handshake', async () => {
+      const praxis = express();
+      praxisHandle = await listen(praxis);
+      process.env.PRAXIS_URL = praxisHandle.baseUrl;
+
+      let onConnection = null;
+      const io = { emit: () => {}, on: (n, fn) => { if (n === 'connection') onConnection = fn; } };
+      const createPraxisStreamRouter = require('../routes/praxis-stream');
+      const nexus = express();
+      nexus.use('/api/praxis', createPraxisStreamRouter({ io }));
+      nexusHandle = await listen(nexus);
+
+      const post = (body) =>
+        fetch(`${nexusHandle.baseUrl}/api/praxis/events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      await post({ type: 'task.started', eventId: 'r-1' });
+      await post({ type: 'task.completed', eventId: 'r-2' });
+
+      const emitted = [];
+      const handlers = {};
+      onConnection({ on: (n, fn) => { handlers[n] = fn; }, emit: (n, p) => emitted.push([n, p]) });
+      handlers['praxis:resume']({ since: 'r-1' });
+
+      expect(emitted).toEqual([['praxis:event', { type: 'task.completed', eventId: 'r-2' }]]);
+    });
+  });
+
+  // P3-30 phase 2, step 1 — the reconnect handshake.
+  //
+  // Socket.IO has no `Last-Event-ID`, so a tab that reconnects after a gap
+  // would silently miss every frame in it. The relay answers `praxis:resume
+  // { since }` from its ring buffer: replay when it holds the cursor,
+  // `praxis:resync` when it does not. These three tests pin the whole
+  // contract, because a wrong answer here is invisible in the UI — the board
+  // just quietly stops matching reality.
+  describe('praxis:resume replay handshake', () => {
+    /**
+     * A relay wired to a fake Socket.IO server, plus a live upstream SSE
+     * response to push frames into. Returns the captured `connection` handler
+     * so a test can attach a fake socket and speak the handshake directly.
+     */
+    async function startRelayWithFakeIo() {
+      const praxis = express();
+      let upstreamRes = null;
+      praxis.get('/stream', (_req, res) => {
+        res.status(200);
+        res.set('Content-Type', 'text/event-stream');
+        res.set('Cache-Control', 'no-cache');
+        res.flushHeaders();
+        upstreamRes = res;
+      });
+
+      praxisHandle = await listen(praxis);
+      process.env.PRAXIS_URL = praxisHandle.baseUrl;
+
+      const broadcasted = [];
+      let onConnection = null;
+      const io = {
+        emit: (name, payload) => broadcasted.push([name, payload]),
+        on: (name, fn) => { if (name === 'connection') onConnection = fn; },
+      };
+
+      const createPraxisStreamRouter = require('../routes/praxis-stream');
+      const nexus = express();
+      nexus.use('/api/praxis', createPraxisStreamRouter({ io }));
+      nexusHandle = await listen(nexus);
+
+      for (let i = 0; i < 100 && !upstreamRes; i += 1) {
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      expect(upstreamRes).toBeTruthy();
+      expect(typeof onConnection).toBe('function');
+
+      /** Push frames upstream and wait for the LAST one to reach the fan-out. */
+      const sendMany = async (frames) => {
+        for (const frame of frames) {
+          upstreamRes.write(`id: ${frame.eventId}\n`);
+          upstreamRes.write(`event: ${frame.type}\n`);
+          upstreamRes.write(`data: ${JSON.stringify(frame)}\n\n`);
+        }
+        const last = frames[frames.length - 1];
+        for (let i = 0; i < 600; i += 1) {
+          const tail = broadcasted[broadcasted.length - 1];
+          if (tail && tail[1] && tail[1].eventId === last.eventId) return;
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        throw new Error(`frame ${last.eventId} never reached the socket fan-out`);
+      };
+      const send = (frame) => sendMany([frame]);
+
+      /** A fake connected client; `resume(since)` speaks the handshake. */
+      const connect = () => {
+        const emitted = [];
+        const handlers = {};
+        const socket = {
+          emitted,
+          on: (name, fn) => { handlers[name] = fn; },
+          emit: (name, payload) => emitted.push([name, payload]),
+        };
+        onConnection(socket);
+        expect(typeof handlers['praxis:resume']).toBe('function');
+        return {
+          socket,
+          emitted,
+          resume: (since) => handlers['praxis:resume']({ since }),
+        };
+      };
+
+      return { send, sendMany, connect, broadcasted, close: () => { try { upstreamRes.end(); } catch { /* gone */ } } };
+    }
+
+    it('replays only the frames after `since` when the cursor is still in the ring', async () => {
+      const relay = await startRelayWithFakeIo();
+      await relay.send({ type: 'task.created', eventId: 'evt-1', taskId: 't1' });
+      await relay.send({ type: 'task.started', eventId: 'evt-2', taskId: 't1' });
+      await relay.send({ type: 'task.completed', eventId: 'evt-3', taskId: 't1' });
+
+      const client = relay.connect();
+      client.resume('evt-1');
+
+      // Everything strictly after evt-1, in stream order, on this socket only.
+      expect(client.emitted.map(([name, p]) => [name, p.eventId])).toEqual([
+        ['praxis:event', 'evt-2'],
+        ['praxis:event', 'evt-3'],
+      ]);
+      relay.close();
+    });
+
+    it('sends praxis:resync instead of a partial replay when the client is past the ring', async () => {
+      const relay = await startRelayWithFakeIo();
+      // RING_BUFFER_SIZE is 500; 520 frames evicts the earliest 20. Written in
+      // one burst (the relay parses whole frames out of the chunk stream), then
+      // we wait once for the last id to land.
+      const ids = [];
+      for (let i = 0; i < 520; i += 1) ids.push(`evt-${i}`);
+      await relay.sendMany(ids.map((eventId) => ({ type: 'heartbeat', eventId })));
+
+      const client = relay.connect();
+      client.resume('evt-0'); // evicted — the relay cannot prove what we missed
+
+      expect(client.emitted).toHaveLength(1);
+      const [name, payload] = client.emitted[0];
+      expect(name).toBe('praxis:resync');
+      expect(payload.reason).toBe('ring-miss');
+      // A still-held cursor near the end replays normally, proving the buffer
+      // is a window and not simply broken.
+      const fresh = relay.connect();
+      fresh.resume('evt-517');
+      expect(fresh.emitted.map(([n, p]) => [n, p.eventId])).toEqual([
+        ['praxis:event', 'evt-518'],
+        ['praxis:event', 'evt-519'],
+      ]);
+      relay.close();
+    }, 30000);
+
+    it('replays frames verbatim so the client dedupe set can drop the overlap', async () => {
+      const relay = await startRelayWithFakeIo();
+      const frames = [
+        { type: 'task.created', eventId: 'evt-a', taskId: 't1' },
+        { type: 'task.completed', eventId: 'evt-b', taskId: 't1' },
+      ];
+      for (const f of frames) await relay.send(f);
+
+      const client = relay.connect();
+      // Two resumes from the SAME cursor (a flapping connection) must produce
+      // byte-identical frames both times: the provider dedupes by eventId, so
+      // an overlapping replay costs nothing — but only if the ids are stable
+      // and the payload is the original object, not a re-wrapped copy.
+      client.resume('evt-a');
+      client.resume('evt-a');
+      expect(client.emitted).toEqual([
+        ['praxis:event', frames[1]],
+        ['praxis:event', frames[1]],
+      ]);
+
+      // No `since` at all (first connect) replays nothing.
+      const fresh = relay.connect();
+      fresh.resume(undefined);
+      expect(fresh.emitted).toEqual([]);
+      relay.close();
+    });
+  });
 });

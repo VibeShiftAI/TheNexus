@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, Siren, Rss, ChevronUp, ScrollText } from "lucide-react";
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useLiveBoardState } from "@/components/live-board-state";
 import { HudModal } from "@/components/bridge/hud";
 import type { StreamEvent } from "@praxis/contract";
 
@@ -80,7 +80,7 @@ function eventTone(e: StreamEvent): string {
 }
 
 export function EventTicker() {
-  const { recentEvents, connected } = usePraxisStream();
+  const { recentEvents, connected } = useLiveBoardState();
   const [logOpen, setLogOpen] = useState(false);
   // Re-render every 30s so time-windowed alerts (task.failed) expire visually.
   const [, setClockTick] = useState(0);

@@ -15,6 +15,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
 import type { DispatchStateResponse } from "@/components/bridge/dispatch-station";
 
 const POLL_MS = 20_000;
@@ -73,5 +74,13 @@ function subscribe(fn: (s: DispatchStateSnapshot) => void): () => void {
 export function useDispatchState(): DispatchStateSnapshot & { refresh: () => Promise<void> } {
   const [s, setS] = useState<DispatchStateSnapshot>(snapshot);
   useEffect(() => subscribe(setS), []);
+  // P3-30 phase 2: executor lanes move on `executor.progress` and the task
+  // lifecycle, so refresh on those frames rather than only every POLL_MS. The
+  // module timer stays as the fallback (CLI slot health and queue depth change
+  // for reasons that produce no Praxis frame), so no extra poll is added here.
+  useLiveRefetch(["dispatch", "task"], refreshDispatchState, {
+    immediate: false,
+    fallbackPollMs: 0,
+  });
   return { ...s, refresh: refreshDispatchState };
 }

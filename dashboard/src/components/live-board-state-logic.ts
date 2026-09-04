@@ -13,9 +13,26 @@ export const MAX_RECENT_EVENTS = 50;
 /** How many event ids to remember for cross-transport dedupe. */
 export const MAX_SEEN_IDS = 400;
 
-export type LiveDomain = "board" | "task" | "schedule" | "system" | "activity";
+export type LiveDomain =
+    | "board"
+    | "task"
+    | "schedule"
+    | "system"
+    | "activity"
+    /** HITL inbox: pending count, badge, the inbox list itself. */
+    | "hitl"
+    /** Dispatch surfaces: executor lanes, CLI slots, the queue. */
+    | "dispatch";
 
-export const LIVE_DOMAINS: LiveDomain[] = ["board", "task", "schedule", "system", "activity"];
+export const LIVE_DOMAINS: LiveDomain[] = [
+    "board",
+    "task",
+    "schedule",
+    "system",
+    "activity",
+    "hitl",
+    "dispatch",
+];
 
 export type LiveRevisions = Record<LiveDomain, number>;
 
@@ -25,6 +42,8 @@ export const ZERO_REVISIONS: LiveRevisions = Object.freeze({
     schedule: 0,
     system: 0,
     activity: 0,
+    hitl: 0,
+    dispatch: 0,
 }) as LiveRevisions;
 
 /**
@@ -41,14 +60,20 @@ export function domainsForEvent(type: string): LiveDomain[] {
         case "task.started":
         case "task.completed":
         case "task.failed":
-            return ["board", "task", "schedule", "activity"];
+            // A dispatch lane opens and closes on these too — the executor
+            // strip and the CLI-slot panels read the same lifecycle.
+            return ["board", "task", "schedule", "dispatch", "activity"];
         case "schedule.updated":
             return ["schedule", "board", "activity"];
         case "presence.changed":
-        case "executor.progress":
             return ["system", "activity"];
+        case "executor.progress":
+            return ["system", "dispatch", "activity"];
         case "hitl.created":
         case "hitl.resolved":
+            // The inbox badge is a correctness surface: a resolved request that
+            // keeps showing as pending is worse than a stale feed.
+            return ["hitl", "activity"];
         case "council.update":
         case "thinking.trace":
             return ["activity"];

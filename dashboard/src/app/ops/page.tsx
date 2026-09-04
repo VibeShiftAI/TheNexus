@@ -25,6 +25,7 @@ import {
   type ExecutorRun,
   type CronJob,
 } from "@/components/bridge/dispatch-station";
+import { useLiveRefetch } from "@/components/live-board-state";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
 
 function relTime(iso?: string) {
@@ -131,11 +132,12 @@ export default function OpsConsolePage() {
     setRefreshing(false);
   }, []);
 
-  useEffect(() => {
-    load();
-    const t = setInterval(load, 10_000);
-    return () => clearInterval(t);
-  }, [load]);
+  // P3-30 phase 2: the Ops console reacts to live frames instead of a fixed
+  // 10s loop against the rate-limited API. `dispatch` + `system` + `activity`
+  // cover the executor lanes, the council list and the queue; the fallback
+  // poll is kept (and kept short-ish) because several panels here — CLI slot
+  // health, local-queue counts — move for reasons no Praxis frame reports.
+  useLiveRefetch(["dispatch", "system", "activity"], load, { fallbackPollMs: 30_000 });
 
   const toggleLocalQueue = async () => {
     const action = localPaused ? "resume" : "pause";

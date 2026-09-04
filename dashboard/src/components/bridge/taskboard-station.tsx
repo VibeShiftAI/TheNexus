@@ -13,7 +13,7 @@ import { ClipboardList, ArrowUpRight, AlertTriangle, Play, CircleDashed, Radio }
 import { HudPanel } from "@/components/bridge/hud";
 import { groupBoardTasks, type BoardTask } from "@/lib/task-board";
 import { useBoardState } from "@/hooks/use-board-state";
-import { useStreamRefetch } from "@/hooks/use-stream-refetch";
+import { useLiveRefetch } from "@/components/live-board-state";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
 import { isDayWellUnderway } from "@/lib/day-underway";
 
@@ -113,10 +113,12 @@ export function TaskBoardStation() {
   // stations subscribe); stream events nudge it between polls.
   const { projects, loading, refresh } = useBoardState();
 
-  useStreamRefetch(
-    ["task.created", "task.updated", "task.started", "task.completed", "task.failed", "task.blocked"],
-    refresh,
-  );
+  // P3-30 phase 2: domains, not an event-type list. The board and task
+  // domains cover every task lifecycle frame the old list enumerated, and a
+  // new Praxis event type that touches the board is picked up by
+  // domainsForEvent() instead of needing this call site edited. `immediate`
+  // is off because useBoardState already fetches on mount.
+  useLiveRefetch(["board", "task"], refresh, { immediate: false });
 
   const grouped = groupBoardTasks(projects ?? []);
   const attention = grouped.needs_attention.tasks;

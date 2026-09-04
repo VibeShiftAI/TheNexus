@@ -51,6 +51,13 @@ function checkDispatchRoute(route) {
 const UPSTREAM_PATH = '/stream';
 const SNAPSHOT_PATH = '/presence';
 const RING_BUFFER_SIZE = 500;
+/**
+ * How many event ids the relay remembers for dual-publish dedupe. Comfortably
+ * larger than RING_BUFFER_SIZE: an id must never be forgotten here while the
+ * event it names is still replayable from the ring, or a resume would deliver
+ * a frame the relay would then happily re-broadcast as new.
+ */
+const SEEN_EVENT_IDS_MAX = 2000;
 const HEARTBEAT_MS = 15000;
 
 /**
@@ -91,13 +98,104 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     let backoffMs = 1000;
     let upstreamAlive = false;
     const pushedHitlIds = new Set();
+    const seenEventIds = new Set();
+
+    /**
+     * Cross-path dedupe for {@link broadcast}. Bounded the same way the HITL
+     * push set is: insertion-ordered Set, oldest evicted first. Sized well
+     * above the ring buffer so an event can never be forgotten here while it
+     * is still replayable from the ring. An event WITHOUT an id cannot be
+     * deduped and is always accepted — a double delivery costs a spare
+     * refetch; a dropped one costs a stale board.
+     */
+    function markEventSeen(eventId) {
+        if (!eventId || typeof eventId !== 'string') return true;
+        if (seenEventIds.has(eventId)) return false;
+        if (seenEventIds.size >= SEEN_EVENT_IDS_MAX) {
+            seenEventIds.delete(seenEventIds.values().next().value);
+        }
+        seenEventIds.add(eventId);
+        return true;
+    }
 
     function pushEventToRing(event) {
         ring.push(event);
         if (ring.length > RING_BUFFER_SIZE) ring.shift();
     }
 
+    /**
+     * Socket.IO reconnect replay (P3-30 phase 2, the one-way-door prerequisite).
+     *
+     * SSE gets `Last-Event-ID` replay for free; Socket.IO does not, so a tab
+     * that was asleep for 20 seconds silently misses every frame in that gap
+     * and sits on stale data until the 60s fallback poll. The dashboard's
+     * LiveBoardStateProvider therefore emits `praxis:resume { since }` on every
+     * (re)connect, carrying the last eventId it applied, and this answers:
+     *
+     *   - `since` is still in the ring  → replay every frame AFTER it as
+     *     ordinary `praxis:event`s. The client's own eventId dedupe makes an
+     *     overlapping replay harmless, so we never have to be exact.
+     *   - `since` is unknown (client was away longer than the ring holds, or
+     *     the relay restarted and lost the ring) → we cannot fill the gap, so
+     *     send `praxis:resync`. The provider treats that as "invalidate
+     *     everything" and refetches all domains, the same contract as the SSE
+     *     path's `stream.reset` frame.
+     *   - no `since` (first connect) → nothing to replay; the client's mount
+     *     fetch is its snapshot.
+     *
+     * Replay is per-socket (`socket.emit`), never `io.emit` — one reconnecting
+     * tab must not re-bump every other tab's revisions.
+     */
+    function handleResume(socket, payload) {
+        const since = payload && typeof payload.since === 'string' ? payload.since : null;
+        if (!since) return;
+        const idx = ring.findIndex((e) => e && e.eventId === since);
+        if (idx < 0) {
+            socket.emit('praxis:resync', {
+                reason: 'ring-miss',
+                at: new Date().toISOString(),
+                eventId: randomUUID(),
+            });
+            return;
+        }
+        for (const event of ring.slice(idx + 1)) {
+            socket.emit('praxis:event', event);
+        }
+    }
+
+    if (io && typeof io.on === 'function') {
+        io.on('connection', (socket) => {
+            if (!socket || typeof socket.on !== 'function') return;
+            socket.on('praxis:resume', (payload) => {
+                try {
+                    handleResume(socket, payload);
+                } catch (err) {
+                    console.warn(`[PraxisStream] resume replay failed: ${err.message}`);
+                }
+            });
+        });
+    }
+
+    /**
+     * Fan one event out everywhere: the ring buffer (replay source), every
+     * downstream SSE subscriber, every Socket.IO client, and the HITL push.
+     *
+     * THE single choke point. Every path that introduces an event — the
+     * upstream SSE relay and, since P3-30 phase 2, the direct POST ingest —
+     * must come through here, or HITL push notifications stop firing while
+     * the UI still looks perfectly correct.
+     *
+     * Returns false when the event was a duplicate and nothing was fanned out.
+     */
     function broadcast(event) {
+        // Dual-publish dedupe. Praxis now pushes events to POST /events AND
+        // still serves them on its SSE stream, which this relay still consumes
+        // — deliberately, for one soak — so most events arrive twice. Whichever
+        // copy lands first wins; the second is dropped here rather than being
+        // ringed twice, delivered twice, and (worst) pushed to Robert's phone
+        // twice. Ids are UUIDs stamped once by Praxis's event bus, so the two
+        // copies of one event are genuinely identical.
+        if (!markEventSeen(event && event.eventId)) return false;
         pushEventToRing(event);
         for (const res of subscribers) {
             try {
@@ -113,6 +211,7 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
             try { io.emit('praxis:event', event); } catch (_err) { /* best-effort */ }
         }
         notifyHitlCreated(event);
+        return true;
     }
 
     function notifyHitlCreated(event) {
@@ -335,6 +434,64 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
         req.on('close', cleanup);
         req.on('aborted', cleanup);
         res.on('close', cleanup);
+    });
+
+    // ── Direct event ingest (P3-30 phase 2, step 3) ──────────────
+    //
+    // Praxis POSTs each operational event here as it is published, instead of
+    // this relay having to pull it off Praxis's SSE stream. Both paths run in
+    // parallel for now — the SSE upstream above is still connected — and
+    // broadcast()'s eventId dedupe makes the duplicate free. Deleting the SSE
+    // route is a separate follow-up after a soak.
+    //
+    // This is an inbound WRITE endpoint that fans out to every connected
+    // browser and can fire a push to Robert's phone, so it is treated as
+    // security-sensitive: loopback callers only, and a shared-secret header.
+    // It goes through the SAME broadcast() as the relay, which is what keeps
+    // HITL pushes, the ring buffer, SSE and Socket.IO all consistent.
+    function isLoopback(req) {
+        // Deliberately NOT req.ip: server.js sets `trust proxy`, so req.ip honours
+        // X-Forwarded-For from any direct peer and a LAN host could claim 127.0.0.1.
+        // The socket's own peer address is the only thing a caller cannot forge.
+        const ip = (req.socket?.remoteAddress || '').replace(/^::ffff:/, '');
+        return ip === '127.0.0.1' || ip === '::1';
+    }
+
+    function ingestAuthorized(req) {
+        const expected = process.env.NEXUS_SERVICE_KEY;
+        // No key configured → loopback alone is the boundary (same posture as
+        // the other same-box Praxis seams). A configured key is enforced.
+        if (!expected) return true;
+        const provided = req.header('X-Nexus-Service-Key');
+        if (typeof provided !== 'string') return false;
+        const a = Buffer.from(provided), b = Buffer.from(expected);
+        return a.length === b.length && require('crypto').timingSafeEqual(a, b);
+    }
+
+    router.post('/events', express.json({ limit: '256kb' }), (req, res) => {
+        if (!isLoopback(req)) {
+            return res.status(403).json({ ok: false, error: 'loopback only' });
+        }
+        if (!ingestAuthorized(req)) {
+            return res.status(401).json({ ok: false, error: 'bad service key' });
+        }
+        const body = req.body || {};
+        // One event, or a batch (Praxis flushes its outbound buffer after a
+        // Nexus restart, and one round trip beats N).
+        const events = Array.isArray(body.events) ? body.events : [body];
+        let accepted = 0;
+        let duplicates = 0;
+        for (const event of events) {
+            if (!event || typeof event !== 'object' || typeof event.type !== 'string') {
+                return res.status(400).json({ ok: false, error: 'event.type is required' });
+            }
+            if (broadcast(event)) accepted += 1;
+            else duplicates += 1;
+        }
+        // `lastEventId` is the SSE upstream's cursor and is deliberately NOT
+        // moved here: it is what a reconnect to Praxis resumes from, and a
+        // POSTed event proves nothing about what that stream has delivered.
+        res.json({ ok: true, accepted, duplicates });
     });
 
     // ── Snapshot bootstrap ───────────────────────────────────────

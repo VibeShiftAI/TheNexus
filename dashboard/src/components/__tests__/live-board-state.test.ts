@@ -51,7 +51,7 @@ test("a duplicate eventId across transports bumps once, whichever transport is f
     const socketFirst = makeApplier();
     assert.equal(socketFirst.apply(frame("task.completed", "e1"), true), true);
     assert.equal(socketFirst.apply(frame("task.completed", "e1"), false), false, "SSE copy dropped");
-    assert.deepEqual(socketFirst.state.revisions, { board: 1, task: 1, schedule: 1, system: 0, activity: 1 });
+    assert.deepEqual(socketFirst.state.revisions, { board: 1, task: 1, schedule: 1, system: 0, activity: 1, hitl: 0, dispatch: 1 });
     assert.equal(socketFirst.state.recentEvents.length, 1);
 
     const sseFirst = makeApplier();
@@ -98,7 +98,7 @@ test("per-domain revisions are monotonic and only the invalidated domains move",
         prev = { ...next };
     }
     // stream.reset bumped everything; the totals reflect every frame above.
-    assert.deepEqual(live.state.revisions, { board: 4, task: 3, schedule: 3, system: 2, activity: 7 });
+    assert.deepEqual(live.state.revisions, { board: 4, task: 3, schedule: 3, system: 2, activity: 7, hitl: 1, dispatch: 2 });
 });
 
 test("heartbeats bump nothing and stay out of the ring; the ring is capped", () => {

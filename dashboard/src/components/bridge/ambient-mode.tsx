@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MonitorPlay } from "lucide-react";
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useLiveBoardState } from "@/components/live-board-state";
 import { useActiveWork } from "@/hooks/use-active-work";
 import { useCoreState } from "@/hooks/use-core-state";
 import { useTokenUsage } from "@/hooks/use-token-usage";
@@ -37,7 +37,7 @@ export function setAmbientIdleMinutes(minutes: number) {
 }
 
 export function AmbientMode() {
-  const { presence, recentEvents } = usePraxisStream();
+  const { presence, recentEvents } = useLiveBoardState();
   const core = useCoreState();
   const work = useActiveWork();
   const { usage } = useTokenUsage();

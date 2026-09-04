@@ -104,6 +104,12 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
     // below so both transports run through the same dedupe set.
     const applyFrameRef = useRef<((e: StreamEvent, viaSocket: boolean) => void) | null>(null);
 
+    // Last eventId applied on EITHER transport — the resume cursor sent back to
+    // the relay on every (re)connect so it can replay the gap from its ring
+    // buffer. Kept in a ref, not state: it changes on every frame and nothing
+    // renders from it.
+    const lastEventId = useRef<string | null>(null);
+
     // The SSE half — already open for the root-layout event ticker, so
     // consuming it here costs no extra connection.
     const sse = usePraxisStream();
@@ -115,7 +121,11 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
         const { socket, release } = handle;
 
         const applyFrame = (event: StreamEvent, viaSocket: boolean) => {
-            if (!markSeen((event as { eventId?: string }).eventId)) return;
+            const id = (event as { eventId?: string }).eventId;
+            if (!markSeen(id)) return;
+            // Advance the resume cursor only for frames we actually applied, so
+            // a replay we deduped away can never move it past a gap.
+            if (id) lastEventId.current = id;
             setSocketState((prev) => reduceFrame(prev, event, viaSocket));
         };
 
@@ -123,12 +133,36 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
             if (!event || typeof event !== "object" || typeof event.type !== "string") return;
             applyFrame(event, true);
         };
-        const onConnect = () =>
+        const onConnect = () => {
             setSocketState((prev) => ({ ...prev, socketConnected: true }));
+            // Ask the relay to replay whatever we missed while disconnected.
+            // On a first connect there is no cursor and the relay replays
+            // nothing — each surface's mount fetch is its own snapshot.
+            socket.emit("praxis:resume", { since: lastEventId.current });
+        };
         const onDisconnect = () =>
             setSocketState((prev) => ({ ...prev, socketConnected: false }));
+        // The relay could not fill our gap (we were away longer than its ring
+        // buffer holds, or it restarted). We do not know what we missed, so
+        // force every domain to refetch — same contract as an SSE stream.reset.
+        const onResync = (payload: { eventId?: string; at?: string } | undefined) => {
+            lastEventId.current = null;
+            markSeen(payload?.eventId);
+            setSocketState((prev) =>
+                reduceFrame(
+                    prev,
+                    {
+                        type: "stream.reset",
+                        at: payload?.at ?? new Date().toISOString(),
+                        eventId: payload?.eventId,
+                    } as unknown as StreamEvent,
+                    true,
+                ),
+            );
+        };
 
         socket.on("praxis:event", onEvent);
+        socket.on("praxis:resync", onResync);
         socket.on("connect", onConnect);
         socket.on("disconnect", onDisconnect);
         if (socket.connected) onConnect();
@@ -139,6 +173,7 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
 
         return () => {
             socket.off("praxis:event", onEvent);
+            socket.off("praxis:resync", onResync);
             socket.off("connect", onConnect);
             socket.off("disconnect", onDisconnect);
             applyFrameRef.current = null;

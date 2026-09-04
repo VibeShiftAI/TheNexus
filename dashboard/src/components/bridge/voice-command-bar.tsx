@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, Square, Loader2, Volume2, VolumeX, X, Settings2, Ear, EarOff } from "lucide-react";
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useLiveBoardState } from "@/components/live-board-state";
 import { useVoiceStatus } from "@/hooks/use-voice-status";
 import { setLocalOnlyMode } from "@/lib/model-control";
 import { getAmbientIdleMinutes, setAmbientIdleMinutes } from "@/components/bridge/ambient-mode";
@@ -141,7 +141,7 @@ function isRoutineMorningHitl(e: StreamEvent): boolean {
 
 export function VoiceCommandBar() {
   const router = useRouter();
-  const { presence, recentEvents } = usePraxisStream();
+  const { presence, recentEvents } = useLiveBoardState();
   const voiceStatus = useVoiceStatus();
   const presenceRef = useRef(presence);
   presenceRef.current = presence;

@@ -10,6 +10,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
 import { getBoardState } from "@/lib/nexus";
 import type { BoardProject } from "@/lib/task-board";
 
@@ -55,5 +56,10 @@ function subscribe(fn: (p: BoardProject[]) => void): () => void {
 export function useBoardState() {
   const [state, setState] = useState<BoardProject[] | null>(projects);
   useEffect(() => subscribe(setState), []);
+  // P3-30 phase 2: a board frame refreshes the shared store immediately
+  // instead of the deck waiting out the interval. The module-level 60s timer
+  // above IS the fallback poll, so this subscription adds none of its own —
+  // and refresh() coalesces, so N subscribers still make one request.
+  useLiveRefetch(["board", "task"], refresh, { immediate: false, fallbackPollMs: 0 });
   return { projects: state, loading: state === null, refresh };
 }

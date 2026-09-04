@@ -6,7 +6,7 @@
 "use client";
 
 import { Cpu } from "lucide-react";
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useLiveBoardState } from "@/components/live-board-state";
 import { useTokenUsage } from "@/hooks/use-token-usage";
 import { fmtTokens } from "@/lib/token-usage";
 import { getPresenceVisualState } from "@/components/presence-indicator";
@@ -17,7 +17,7 @@ function fmtTime(iso?: string) {
 }
 
 export function PraxisStatusPanel() {
-  const { presence, connected } = usePraxisStream();
+  const { presence, connected } = useLiveBoardState();
   const { usage } = useTokenUsage();
   const activity = presence?.activity ?? "offline";
   const style = getPresenceVisualState(activity, connected);

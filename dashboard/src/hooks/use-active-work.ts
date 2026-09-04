@@ -11,16 +11,18 @@
  * running row whose token count is only written at completion), it surfaces as
  * null and the strip shows "unavailable" rather than a borrowed number.
  *
- * Presence (shared SSE stream) and crew activity (already-open connections)
+ * Presence (the shared live-board context) and crew activity (already-open connections)
  * still contribute the running/idle heartbeat and activity tone, and provide a
  * task label when Praxis itself — rather than a dispatched executor — is the
  * one working. The only new traffic is a small `/dispatches/active` poll,
- * paused when the tab is hidden, with memoized output to avoid flicker.
+ * paused when the tab is hidden, with memoized output to avoid flicker. The
+ * poll is event-driven now (useLiveRefetch) with the interval kept as the
+ * fallback, so a live transport makes it prompt and a dead one makes it slow.
  */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { usePraxisStream } from "./use-praxis-stream";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLiveBoardState, useLiveRefetch } from "@/components/live-board-state";
 import { useCrewActivity } from "./use-crew-activity";
 import type { PresenceActivity } from "@praxis/contract";
 
@@ -66,35 +68,40 @@ export interface ActiveWork {
 }
 
 export function useActiveWork(): ActiveWork {
-  const { presence, connected } = usePraxisStream();
+  // P3-30 phase 2: presence and connectedness come from the ONE shared live
+  // subscription rather than this hook's own EventSource.
+  const { presence, connected } = useLiveBoardState();
   const { crew } = useCrewActivity();
   const [active, setActive] = useState<ActiveDispatch[] | null>(null);
 
+  const load = useCallback(async () => {
+    if (typeof document !== "undefined" && document.hidden) return;
+    try {
+      const res = await fetch("/api/dispatches/active?limit=5", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as ActiveResponse;
+      setActive(data.active ?? []);
+    } catch {
+      /* strip degrades to presence + crew only */
+    }
+  }, []);
+
+  // Event-driven: a dispatch row appears/disappears on the task lifecycle, so
+  // the strip now updates on the frame instead of up to POLL_MS late. The
+  // fallback poll stays — /api/dispatches/active also moves for reasons that
+  // produce no Praxis frame (token totals written mid-run), and a dead
+  // transport must degrade to slow rather than to frozen.
+  useLiveRefetch(["task", "dispatch"], load, { fallbackPollMs: POLL_MS });
+
+  // Refetch when the tab comes back: the poll above skips hidden tabs, so the
+  // first thing a returning viewer sees would otherwise be up to POLL_MS stale.
   useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      try {
-        const res = await fetch("/api/dispatches/active?limit=5", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = (await res.json()) as ActiveResponse;
-        if (alive) setActive(data.active ?? []);
-      } catch {
-        /* strip degrades to presence + crew only */
-      }
-    };
-    load();
-    const poll = setInterval(load, POLL_MS);
     const onVisible = () => {
       if (typeof document !== "undefined" && !document.hidden) load();
     };
     document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      alive = false;
-      clearInterval(poll);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, []);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [load]);
 
   return useMemo(() => {
     const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";

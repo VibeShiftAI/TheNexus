@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { HITLRequest, HITLResolution } from "@praxis/contract";
-import { usePraxisStream } from "./use-praxis-stream";
+import { useLiveBoardState, useLiveRefetch } from "@/components/live-board-state";
 
 type ResolveInput = {
   choice?: string;
@@ -38,7 +38,7 @@ async function describeResolveFailure(response: Response): Promise<string> {
 }
 
 export function useHitlInbox() {
-  const { recentEvents } = usePraxisStream();
+  const { recentEvents } = useLiveBoardState();
   const [requests, setRequests] = useState<HITLRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
@@ -63,9 +63,12 @@ export function useHitlInbox() {
     }
   }, []);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  // The optimistic list below is applied straight from the frame, which is
+  // what makes the inbox feel instant; this refetch is the correctness half.
+  // The badge is one of the few surfaces where being wrong is worse than being
+  // slow — a resolved request still showing as pending sends Robert to an
+  // empty card — so the `hitl` domain drives it and the 60s fallback stays.
+  useLiveRefetch(["hitl"], () => void refresh(), {});
 
   useEffect(() => {
     if (recentEvents.length === 0) return;

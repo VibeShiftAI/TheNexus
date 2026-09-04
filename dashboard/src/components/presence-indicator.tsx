@@ -1,10 +1,10 @@
 /**
  * PresenceIndicator — compact live view of "what is Praxis doing right now."
- * Driven by the Phase 3 SSE stream via usePraxisStream().
+ * Driven by the Phase 3 SSE stream via useLiveBoardState().
  */
 "use client";
 
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useLiveBoardState } from "@/components/live-board-state";
 import type { PresenceActivity } from "@praxis/contract";
 
 type PresenceVisualState = {
@@ -96,7 +96,7 @@ export function getPresenceVisualState(activity: PresenceActivity, connected: bo
 }
 
 export function PresenceIndicator({ className = "" }: { className?: string }) {
-  const { presence, connected } = usePraxisStream();
+  const { presence, connected } = useLiveBoardState();
   const activity = presence?.activity ?? "offline";
   const style = getPresenceVisualState(activity, connected);
   const summary = presence?.summary ?? (connected ? "Connecting…" : "Disconnected");

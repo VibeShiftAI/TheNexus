@@ -1,6 +1,7 @@
 /**
  * useCrewActivity — who's working right now, across the whole crew:
- * the three CLI executors (live SSE lane events, with the run-registry
+ * the three CLI executors (live lane events off the shared live-board
+ * context, with the run-registry
  * snapshot as fallback for runs that started before this page loaded),
  * the local LLM worker (queue counts), and anything the registry knows.
  *
@@ -11,7 +12,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePraxisStream } from "./use-praxis-stream";
+import { useLiveBoardState } from "@/components/live-board-state";
 import { useDispatchState } from "./use-dispatch-state";
 import type { ExecutorName } from "@praxis/contract";
 import type { ExecutorRun } from "@/components/bridge/dispatch-station";
@@ -42,7 +43,10 @@ export function useCrewActivity(): {
   sseRuns: ExecutorRun[];
   dispatchedToday?: { total: number; failed: number };
 } {
-  const { recentEvents } = usePraxisStream();
+  // P3-30 phase 2: the shared live context, not a hook-local EventSource.
+  // Same frames (the provider folds socket + SSE and dedupes by eventId), one
+  // connection for the whole deck.
+  const { recentEvents } = useLiveBoardState();
   // Deck-wide shared dispatch-state poller — one fetch loop no matter how
   // many components call this hook (crew strip, task board, Ops console).
   const { state: dispatchState } = useDispatchState();
