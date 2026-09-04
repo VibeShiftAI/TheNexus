@@ -63,7 +63,8 @@ an `EventSource`.
 ### Still on plain `setInterval`, no stream at all
 
 These are a second, larger tranche — they poll the Nexus API for state that has
-no Praxis stream frame behind it. They should move to `useLiveRefetch` with the
+no Praxis stream frame behind it. **Shipped as ticket D-1; see
+§ "Second tranche" below for what each one actually became.** They should move to `useLiveRefetch` with the
 right domain **and keep their fallback poll**, since for several of them the
 fallback poll is the only correctness guarantee:
 
@@ -110,6 +111,94 @@ because the counters are independent.
   page) currently refetch immediately after their own POST. Event-driven
   refetch is *additional*, never a replacement — the local refetch must stay or
   the UI lags one round-trip behind the user's own action.
+
+---
+
+## Second tranche — the remaining `setInterval` pollers (ticket D-1, SHIPPED)
+
+Step 1's second tranche is done. Every network poller in the dashboard now runs
+through `useLiveRefetch`, so there is exactly **one** polling mechanism on the
+deck and `grep -rn "setInterval" src` returns only clock ticks, the shared
+module-level stores, and `useLiveRefetch`'s own fallback timer.
+
+The finding that shaped the tranche: **of the eighteen surfaces, only the
+council chamber had a Praxis event behind its data.** Everything else polls
+Nexus- or host-side state that `publishOperationalEvent()` never sees. Those
+did not get a fake domain; they were routed through `useLiveRefetch` with **no
+domains and `fallbackPollMs` = their old interval**, which changes no timing
+but puts every poller in one place — and makes the "what event would Praxis
+need to publish" column below the actual backlog for making them live.
+
+### Migrated to an event + fallback
+
+| Surface | Old interval | Event type | Domain | New fallback |
+| --- | --- | --- | --- | --- |
+| `app/council/page.tsx` (archive list) | 5s live / 30s idle | `council.update` | `council` (new) | 5s live / 30s idle |
+| `app/council/page.tsx` (transcript) | 5s while live | `council.update` | `council` (new) | 5s live / none once complete |
+
+`council.update` carries a **complete snapshot** on every persisted council
+mutation — convene, each thesis landing, the synthesis handoff, the verdict —
+so a seat reporting repaints the chamber at once instead of up to 5s later. The
+poll stays underneath at the old cadence: the transcript is a surface an
+operator watches live, and a session ageing out of the 3h live window changes
+the archive with no frame behind it.
+
+### Poll-only, routed through `useLiveRefetch([], …)`
+
+No stream event describes this data today. The last column is what Praxis would
+have to publish for the surface to become event-driven.
+
+| Surface | Old interval | New fallback | Event Praxis would need |
+| --- | --- | --- | --- |
+| `app/llm-activity/page.tsx` | 5s | 5s | `llm.call` (caller, provider, model, tokens, latency) |
+| `components/llm-activity-widget.tsx` | 10s | 10s | `llm.call` |
+| `components/bridge/power-station.tsx` | 15s | 15s | `llm.call` |
+| `app/local-queue/page.tsx` | 5s | 5s | `localllm.job` (queued/started/finished + job id) |
+| `components/local-queue-list.tsx` | 5s | 5s | `localllm.job` |
+| `app/system-monitor/page.tsx` | 5s | 5s | none — host CPU/disk/port sampling is Nexus-side, not a Praxis concern; the poll IS the source |
+| `app/knowledge-ingestion/page.tsx` | 30s | 30s | `ingestion.run` (run started/finished, per-source counts) |
+| `components/bridge/knowledge-station.tsx` (stats) | 60s | 60s | `ingestion.run` |
+| `components/bridge/knowledge-station.tsx` (topic map) | 5m | 5m | `ingestion.run` (map recompute is expensive — a coalesced "map rebuilt" frame) |
+| `components/bridge/academy-station.tsx` | 60s | 60s | `skill.acquired` (name, category) — the station already animates on a total delta it has to detect by polling |
+| `components/model-status-panel.tsx` | 30s | 30s | `usage.hold` (model/family held or released, reason, until) |
+| `components/usage-routing-panel.tsx` | 60s | 60s | `usage.hold` + a routing-decision frame |
+| `hooks/use-token-usage.ts` | 60s | 60s | none — spend is accumulated by the Nexus counter; the poll IS the source |
+| `hooks/use-executor-models.ts` | 60s | 60s | `credential.changed` (executor lane, provider key valid/expired) |
+| `hooks/use-comms.ts` | 60s | 60s | `comms.received` (channel, sender, at) |
+| `hooks/use-voice-status.ts` | 5m | 5m | `voice.status` (green/yellow/red + reason) — this hook exists *because* the ElevenLabs quota running dry was silent for ~36h |
+
+`usage.hold`, `llm.call` and `voice.status` are the three worth having: each is
+a correctness surface where the operator is being told "dispatch is fine" by a
+number that can be up to a full interval stale.
+
+### Deliberately NOT migrated
+
+| Surface | Interval | Why it stays |
+| --- | --- | --- |
+| `app/core-lab/page.tsx` | 7s touring / 30s | Tour cursor + a `now` tick over **synthetic** scenarios. Touches no network. |
+| `app/council/page.tsx` `LiveSessionPanel` | 1s | Clock tick (elapsed-time label). |
+| `components/schedule-timeline.tsx`, `bridge/event-ticker.tsx`, `bridge/dispatch-station.tsx` (:351), `hooks/use-core-state.ts`, `hooks/use-crew-activity.ts`, `components/usage-routing-panel.tsx` | 1s–30s | Clock ticks — `setNow(Date.now())` / re-render cursors, no fetch. |
+| `app/task-board/page.tsx`, `app/task/[id]/page.tsx`, `bridge/ambient-mode.tsx`, `bridge/dispatch-station.tsx` (:324) | 5s–30s | Out of D-1's scope — first-tranche surfaces owned by other sessions. Still on plain intervals; fold in when that work lands. |
+| `components/task-manager.tsx` | 10s ×2 | Not a steady-state poller: a **bounded completion poll** started by an auto-research run and cleared the moment the run leaves `researching` (with a 5-minute cap). `useLiveRefetch` has no start-on-action / stop-on-condition semantics, and wrapping it would turn a self-terminating loop into a permanent subscription. Revisit if a `research.completed` frame ever exists. |
+| `components/bridge/voice-command-bar.tsx`, `hooks/use-voice-recorder.ts` | sub-second | Audio silence detection and a recording timer. |
+| `hooks/use-board-state.ts`, `use-dispatch-state.ts`, `use-autonomy.ts`, `use-qa-holds.ts` | 20s–60s | Module-level shared stores, already migrated in the first tranche: the store's own timer IS the fallback, so their `useLiveRefetch` passes `fallbackPollMs: 0`. |
+
+### The contract test the risk section asked for
+
+`src/components/__tests__/live-board-state-contract.test.ts`. The `switch` with
+a `default` in `domainsForEvent()` was replaced by an exported
+`EVENT_DOMAINS: Record<StreamEventType, LiveDomain[]>`, so a new Praxis event
+type is a **type error** at build time. The test re-checks the same thing at
+runtime against `StreamEventSchema`'s zod union — the shape actually on the
+wire — because the vendored `@praxis/contract` types can be stale while the
+stream is not. It also asserts the reverse (no entry the contract dropped),
+that every mapped domain is a real `LiveDomain`, and that a genuinely unknown
+type still falls back to `["activity"]` so a newer Praxis cannot freeze feeds.
+
+Writing it surfaced three event types that had been silently landing in the old
+`default` branch: `trade.signal`, `trade.filled`, `trade.blocked`. They are now
+explicit (`["activity"]` — this deck has no trading surface), which is the same
+behaviour, but stated rather than inherited.
 
 ---
 

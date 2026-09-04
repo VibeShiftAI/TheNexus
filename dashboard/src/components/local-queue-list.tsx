@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
 import { getLocalLlmQueue, type LocalLlmJob } from "@/lib/nexus";
 import { ListRestart, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from "lucide-react";
 
@@ -9,31 +10,19 @@ export function LocalQueueList() {
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-
-    const fetchQueue = async () => {
-      try {
-        const queueState = await getLocalLlmQueue();
-        if (active) {
-          setJobs(queueState?.jobs || []);
-        }
-      } catch (e) {
-        console.error("Failed to fetch LLM queue:", e);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchQueue();
-    const interval = setInterval(fetchQueue, 5000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
+  const fetchQueue = useCallback(async () => {
+    try {
+      const queueState = await getLocalLlmQueue();
+      setJobs(queueState?.jobs || []);
+    } catch (e) {
+      console.error("Failed to fetch LLM queue:", e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // D-1: the local-LLM queue has no stream frame — poll only, shared mechanism.
+  useLiveRefetch([], () => void fetchQueue(), { fallbackPollMs: 5_000 });
 
   const toggleExpand = (id: string) => {
     setExpandedJobId(prev => (prev === id ? null : id));

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
+
 import Link from "next/link";
 import { Brain, ArrowUpRight, Activity } from "lucide-react";
 
@@ -49,11 +51,8 @@ export function LLMActivityWidget() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-    const t = setInterval(load, 10000);
-    return () => clearInterval(t);
-  }, [load]);
+  // D-1: LLM-log rollups have no stream frame — poll only, shared mechanism.
+  useLiveRefetch([], load, { fallbackPollMs: 10_000 });
 
   const agg = data?.aggregates;
   const callers = (agg?.by_caller ?? []).slice(0, 5);

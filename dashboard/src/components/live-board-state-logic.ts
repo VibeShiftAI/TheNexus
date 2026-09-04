@@ -5,7 +5,7 @@
  * No React, no sockets — so it is unit-testable without mounting the provider
  * (components/__tests__/live-board-state.test.ts).
  */
-import type { PresenceState, StreamEvent } from "@praxis/contract";
+import type { PresenceState, StreamEvent, StreamEventType } from "@praxis/contract";
 
 /** How many recent frames the context retains for feed-style consumers. */
 export const MAX_RECENT_EVENTS = 50;
@@ -22,7 +22,9 @@ export type LiveDomain =
     /** HITL inbox: pending count, badge, the inbox list itself. */
     | "hitl"
     /** Dispatch surfaces: executor lanes, CLI slots, the queue. */
-    | "dispatch";
+    | "dispatch"
+    /** Council chamber: the live session banner, the archive, a transcript. */
+    | "council";
 
 export const LIVE_DOMAINS: LiveDomain[] = [
     "board",
@@ -32,6 +34,7 @@ export const LIVE_DOMAINS: LiveDomain[] = [
     "activity",
     "hitl",
     "dispatch",
+    "council",
 ];
 
 export type LiveRevisions = Record<LiveDomain, number>;
@@ -44,47 +47,57 @@ export const ZERO_REVISIONS: LiveRevisions = Object.freeze({
     activity: 0,
     hitl: 0,
     dispatch: 0,
+    council: 0,
 }) as LiveRevisions;
 
 /**
- * Which domains a stream frame invalidates. A frame can touch several: a
- * `task.completed` moves the board, the task itself, and the day's schedule.
- * Unknown/future event types still bump `activity` so feeds stay live.
+ * Which domains each stream event type invalidates — EXHAUSTIVE over
+ * `StreamEvent["type"]`. A frame can touch several: a `task.completed` moves
+ * the board, the task itself, and the day's schedule.
+ *
+ * This is a `Record` keyed by the contract union rather than a `switch` with a
+ * `default` on purpose. The Phase 2 design named the failure mode: Praxis adds
+ * an event type, nobody updates the map, it falls into `default → ["activity"]`
+ * and a board surface silently stops refreshing except on its fallback poll.
+ * As a Record the omission is a TYPE error at build time, and
+ * `__tests__/live-board-state-contract.test.ts` re-checks it at runtime against
+ * the zod union so a stale vendored contract cannot hide it either.
+ */
+export const EVENT_DOMAINS: Record<StreamEventType, LiveDomain[]> = {
+    "task.created": ["board", "task", "activity"],
+    "task.updated": ["board", "task", "activity"],
+    "task.blocked": ["board", "task", "activity"],
+    // A dispatch lane opens and closes on these too — the executor strip and
+    // the CLI-slot panels read the same lifecycle.
+    "task.started": ["board", "task", "schedule", "dispatch", "activity"],
+    "task.completed": ["board", "task", "schedule", "dispatch", "activity"],
+    "task.failed": ["board", "task", "schedule", "dispatch", "activity"],
+    "schedule.updated": ["schedule", "board", "activity"],
+    "presence.changed": ["system", "activity"],
+    "executor.progress": ["system", "dispatch", "activity"],
+    // The inbox badge is a correctness surface: a resolved request that keeps
+    // showing as pending is worse than a stale feed.
+    "hitl.created": ["hitl", "activity"],
+    "hitl.resolved": ["hitl", "activity"],
+    // Emitted on every persisted council mutation (convene, each thesis, the
+    // synthesis handoff, the verdict) — the chamber's live surface.
+    "council.update": ["council", "activity"],
+    "thinking.trace": ["activity"],
+    // No trading surface on this deck; the frames still belong in the feed.
+    "trade.signal": ["activity"],
+    "trade.filled": ["activity"],
+    "trade.blocked": ["activity"],
+    // We cannot know what we missed — invalidate everything.
+    "stream.reset": LIVE_DOMAINS,
+    heartbeat: [],
+};
+
+/**
+ * Domains invalidated by one frame. Types outside the contract (an older or
+ * newer Praxis than this build) still bump `activity` so feeds stay live.
  */
 export function domainsForEvent(type: string): LiveDomain[] {
-    switch (type) {
-        case "task.created":
-        case "task.updated":
-        case "task.blocked":
-            return ["board", "task", "activity"];
-        case "task.started":
-        case "task.completed":
-        case "task.failed":
-            // A dispatch lane opens and closes on these too — the executor
-            // strip and the CLI-slot panels read the same lifecycle.
-            return ["board", "task", "schedule", "dispatch", "activity"];
-        case "schedule.updated":
-            return ["schedule", "board", "activity"];
-        case "presence.changed":
-            return ["system", "activity"];
-        case "executor.progress":
-            return ["system", "dispatch", "activity"];
-        case "hitl.created":
-        case "hitl.resolved":
-            // The inbox badge is a correctness surface: a resolved request that
-            // keeps showing as pending is worse than a stale feed.
-            return ["hitl", "activity"];
-        case "council.update":
-        case "thinking.trace":
-            return ["activity"];
-        case "stream.reset":
-            // We cannot know what we missed — invalidate everything.
-            return LIVE_DOMAINS;
-        case "heartbeat":
-            return [];
-        default:
-            return ["activity"];
-    }
+    return EVENT_DOMAINS[type as StreamEventType] ?? ["activity"];
 }
 
 /**

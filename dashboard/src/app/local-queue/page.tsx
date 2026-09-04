@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
+
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Clock, ListRestart, RefreshCw } from "lucide-react";
 import {
@@ -63,11 +65,9 @@ export default function LocalQueuePage() {
         }
     }, []);
 
-    useEffect(() => {
-        loadQueue();
-        const interval = setInterval(loadQueue, 5000);
-        return () => clearInterval(interval);
-    }, [loadQueue]);
+    // D-1: the local-LLM queue is Nexus-side state with no stream frame behind
+    // it — poll only, routed through the shared mechanism.
+    useLiveRefetch([], loadQueue, { fallbackPollMs: 5_000 });
 
     const jobs = useMemo(() => sortedJobs(queue?.jobs ?? []), [queue]);
     const activeJobs = jobs.filter((job) => job.status === "running" || job.status === "queued").length;

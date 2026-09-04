@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
 import { Activity, Gauge, Loader2, RefreshCw, Route } from "lucide-react";
 import {
     getUsageMonitorState,
@@ -140,15 +141,16 @@ export function UsageRoutingPanel() {
         }
     }, []);
 
+    // D-1: provider quota/routing state has no stream frame — poll only,
+    // through the shared mechanism.
+    useLiveRefetch([], () => void refresh(), { fallbackPollMs: 60_000 });
+
+    // Clock tick only (relative "resets in" labels) — touches no network, so
+    // it is not a poller and stays as it is.
     useEffect(() => {
-        void refresh();
-        const poll = setInterval(() => void refresh(), 60_000);
         const tick = setInterval(() => setNow(Date.now()), 30_000);
-        return () => {
-            clearInterval(poll);
-            clearInterval(tick);
-        };
-    }, [refresh]);
+        return () => clearInterval(tick);
+    }, []);
 
     return (
         <section className="mb-6 rounded-lg border border-slate-800 bg-slate-950/50 p-4">

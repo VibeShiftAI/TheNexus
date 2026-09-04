@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getCommsFeed, type CommsFeed } from "@/lib/nexus";
+import { useLiveRefetch } from "@/components/live-board-state";
 
 const LAST_SEEN_KEY = "nexus.comms.lastSeen";
 const POLL_MS = 60_000;
@@ -27,26 +28,23 @@ export function useComms() {
 
   useEffect(() => {
     setLastSeen(getLastSeen());
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const data = await getCommsFeed(getLastSeen() ?? undefined);
-        if (!cancelled) {
-          setFeed(data);
-          setAvailable(true);
-        }
-      } catch {
-        // Praxis down or feature not deployed — chip shows a quiet dash.
-        if (!cancelled) setAvailable(false);
-      }
-    };
-    void load();
-    const timer = window.setInterval(load, POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
   }, []);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await getCommsFeed(getLastSeen() ?? undefined);
+      setFeed(data);
+      setAvailable(true);
+    } catch {
+      // Praxis down or feature not deployed — chip shows a quiet dash.
+      setAvailable(false);
+    }
+  }, []);
+
+  // D-1: inbound external comms arrive at Praxis out of band and produce no
+  // stream frame, so this stays a poll — routed through the shared mechanism
+  // so every poller on the deck lives in one place.
+  useLiveRefetch([], () => void load(), { fallbackPollMs: POLL_MS });
 
   const markSeen = useCallback(() => {
     const now = new Date().toISOString();

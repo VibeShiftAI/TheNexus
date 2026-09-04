@@ -20,7 +20,8 @@
  * tops the plan back up there has to be one button that lifts all of them.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
 import {
     AlertTriangle,
     CheckCircle2,
@@ -228,11 +229,9 @@ export function ModelStatusPanel() {
         }
     }, []);
 
-    useEffect(() => {
-        load();
-        const t = setInterval(load, POLL_MS);
-        return () => clearInterval(t);
-    }, [load]);
+    // D-1: usage holds are set by the Praxis usage monitor, which publishes no
+    // stream frame — poll only, through the shared mechanism.
+    useLiveRefetch([], load, { fallbackPollMs: POLL_MS });
 
     const handleRelease = useCallback(
         async (target: string, label: string) => {

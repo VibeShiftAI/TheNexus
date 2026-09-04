@@ -4,33 +4,28 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { getTokenUsage, type TokenUsage } from "@/lib/token-usage";
+import { useLiveRefetch } from "@/components/live-board-state";
 
 export function useTokenUsage(pollMs = 60_000) {
   const [usage, setUsage] = useState<TokenUsage | null>(null);
   const [err, setErr] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const data = await getTokenUsage();
-        if (active) {
-          setUsage(data);
-          setErr(false);
-        }
-      } catch {
-        if (active) setErr(true);
-      }
-    };
-    load();
-    const t = setInterval(load, pollMs);
-    return () => {
-      active = false;
-      clearInterval(t);
-    };
-  }, [pollMs]);
+  const load = useCallback(async () => {
+    try {
+      setUsage(await getTokenUsage());
+      setErr(false);
+    } catch {
+      setErr(true);
+    }
+  }, []);
+
+  // D-1: token spend is accumulated by the Nexus counter, not announced by
+  // Praxis — no stream frame exists, so this stays a poll through the shared
+  // mechanism. This is one of the surfaces the Phase 2 design flagged as
+  // "poll is the only source": drop it and the number freezes.
+  useLiveRefetch([], () => void load(), { fallbackPollMs: pollMs });
 
   return { usage, err };
 }

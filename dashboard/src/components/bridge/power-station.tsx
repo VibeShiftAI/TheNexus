@@ -9,6 +9,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
+
 import Link from "next/link";
 import { Zap, ArrowUpRight, WifiOff, Cloud } from "lucide-react";
 import { HudPanel, HudModal, HudStat } from "@/components/bridge/hud";
@@ -135,11 +137,8 @@ export function PowerStation() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-    const t = setInterval(load, 15_000);
-    return () => clearInterval(t);
-  }, [load]);
+  // D-1: same LLM-log source as the widget — no frame, poll only.
+  useLiveRefetch([], load, { fallbackPollMs: 15_000 });
 
   useEffect(() => {
     getLocalOnlyMode()

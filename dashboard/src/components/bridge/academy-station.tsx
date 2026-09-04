@@ -5,7 +5,8 @@
  */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
 import Link from "next/link";
 import { GraduationCap, ArrowUpRight, Sparkles } from "lucide-react";
 import { HudPanel, HudModal } from "@/components/bridge/hud";
@@ -43,33 +44,27 @@ export function AcademyStation() {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const prevTotal = useRef<number | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/praxis/skills", { cache: "no-store" });
-        if (!res.ok) throw new Error();
-        const next = (await res.json()) as SkillsResponse;
-        if (!active) return;
-        if (prevTotal.current != null && next.total > prevTotal.current) {
-          const newest = [...next.skills].sort((a, b) => (b.created || "").localeCompare(a.created || ""))[0];
-          setJustAcquired(newest?.name ?? "new skill");
-          setTimeout(() => setJustAcquired(null), 12_000);
-        }
-        prevTotal.current = next.total;
-        setData(next);
-        setErr(false);
-      } catch {
-        if (active) setErr(true);
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/praxis/skills", { cache: "no-store" });
+      if (!res.ok) throw new Error();
+      const next = (await res.json()) as SkillsResponse;
+      if (prevTotal.current != null && next.total > prevTotal.current) {
+        const newest = [...next.skills].sort((a, b) => (b.created || "").localeCompare(a.created || ""))[0];
+        setJustAcquired(newest?.name ?? "new skill");
+        setTimeout(() => setJustAcquired(null), 12_000);
       }
-    };
-    load();
-    const t = setInterval(load, 60_000);
-    return () => {
-      active = false;
-      clearInterval(t);
-    };
+      prevTotal.current = next.total;
+      setData(next);
+      setErr(false);
+    } catch {
+      setErr(true);
+    }
   }, []);
+
+  // D-1: skill acquisition is a Praxis filesystem change with no stream frame
+  // behind it — poll only, through the shared mechanism.
+  useLiveRefetch([], () => void load(), { fallbackPollMs: 60_000 });
 
   const newest = data ? [...data.skills].sort((a, b) => (b.created || "").localeCompare(a.created || "")).slice(0, 3) : [];
   const categories = Object.entries(data?.byCategory ?? {}).sort((a, b) => b[1] - a[1]);

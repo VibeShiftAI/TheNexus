@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -829,12 +830,17 @@ function SessionDetailPanel({
         load();
     }, [load]);
 
-    // Live transcript: refresh while the session is in flight.
-    useEffect(() => {
-        if (!live) return;
-        const t = setInterval(load, 5000);
-        return () => clearInterval(t);
-    }, [live, load]);
+    // D-1: `council.update` carries a complete snapshot on every persisted
+    // council mutation, so a landing thesis repaints the transcript at once
+    // rather than up to 5s later. The 5s poll stays underneath while the
+    // session is live — the transcript is the surface an operator watches, so
+    // a dead transport must degrade, not freeze. Completed sessions are
+    // immutable and poll not at all. `immediate: false`: the mount effect
+    // above already loads, and it must re-run on a sessionId change.
+    useLiveRefetch(["council"], load, {
+        immediate: false,
+        fallbackPollMs: live ? 5_000 : 0,
+    });
 
     const refs = detail ? referenceVoices(detail.voices) : [];
     const interrupted = detail ? isInterruptedSession(detail) : false;
@@ -1010,17 +1016,15 @@ export default function CouncilPage() {
         }
     }, []);
 
-    useEffect(() => {
-        load();
-    }, [load]);
-
     const liveSession = useMemo(() => sessions.find(isLiveSession) ?? null, [sessions]);
 
-    // Poll fast while a council sits, lazily otherwise.
-    useEffect(() => {
-        const t = setInterval(load, liveSession ? 5000 : 30000);
-        return () => clearInterval(t);
-    }, [load, liveSession]);
+    // D-1: the archive moves on `council.update` (convene → theses → verdict).
+    // The old cadence is kept as the fallback poll — fast while a council sits,
+    // lazy otherwise — because a session ageing past the 3h live window changes
+    // this list with no frame behind it.
+    useLiveRefetch(["council"], load, {
+        fallbackPollMs: liveSession ? 5_000 : 30_000,
+    });
 
     const openDetail = useCallback((id: string) => {
         setSelectedId(id);

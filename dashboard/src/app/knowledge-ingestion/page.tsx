@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
+
 import Link from "next/link";
 import {
     ArrowLeft,
@@ -160,11 +162,9 @@ export default function KnowledgeIngestionPage() {
         }
     }, []);
 
-    useEffect(() => {
-        loadAll();
-        const interval = setInterval(loadAll, 30000);
-        return () => clearInterval(interval);
-    }, [loadAll]);
+    // D-1: ingestion runs, recommendations and communities are Praxis-side and
+    // emit no stream frame — poll only, through the shared mechanism.
+    useLiveRefetch([], loadAll, { fallbackPollMs: 30_000 });
 
     const flash = (message: string) => {
         setNotice(message);

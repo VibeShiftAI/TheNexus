@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { getAuthHeader } from "@/lib/auth";
+import { useLiveRefetch } from "@/components/live-board-state";
 
 /** Praxis /api/voice/status (proxied at /api/praxis/voice-status). */
 export interface VoiceStatus {
@@ -20,25 +21,21 @@ export interface VoiceStatus {
  */
 export function useVoiceStatus(pollMs = 5 * 60_000) {
   const [status, setStatus] = useState<VoiceStatus | null>(null);
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const headers = (await getAuthHeader()) as Record<string, string>;
-        const res = await fetch("/api/praxis/voice-status", { credentials: "include", headers });
-        if (!res.ok) return;
-        const data = (await res.json()) as VoiceStatus;
-        if (active && data && typeof data.available === "boolean") setStatus(data);
-      } catch {
-        /* best-effort — no badge when unknown */
-      }
-    };
-    load();
-    const t = setInterval(load, pollMs);
-    return () => {
-      active = false;
-      clearInterval(t);
-    };
-  }, [pollMs]);
+  const load = useCallback(async () => {
+    try {
+      const headers = (await getAuthHeader()) as Record<string, string>;
+      const res = await fetch("/api/praxis/voice-status", { credentials: "include", headers });
+      if (!res.ok) return;
+      const data = (await res.json()) as VoiceStatus;
+      if (data && typeof data.available === "boolean") setStatus(data);
+    } catch {
+      /* best-effort — no badge when unknown */
+    }
+  }, []);
+
+  // D-1: the TTS quota running dry is exactly the kind of thing Praxis does
+  // not announce — that is why this hook exists. No stream frame, so the poll
+  // IS the correctness guarantee; it just runs through the shared mechanism.
+  useLiveRefetch([], () => void load(), { fallbackPollMs: pollMs });
   return status;
 }

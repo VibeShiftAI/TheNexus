@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
+
 import {
   Activity,
   RefreshCw,
@@ -111,11 +113,10 @@ export default function LLMActivityPage() {
     }
   }, [hours]);
 
-  useEffect(() => {
-    load();
-    const t = setInterval(load, 5000);
-    return () => clearInterval(t);
-  }, [load]);
+  // D-1: no Praxis stream frame describes an LLM call, so this stays a poll —
+  // but through the shared mechanism, so every poller on the deck is visible
+  // in one place. See docs/live-transport-phase2.md § second tranche.
+  useLiveRefetch([], load, { fallbackPollMs: 5_000 });
 
   const agg = data?.aggregates;
   const callerData = (agg?.by_caller ?? []).map((c) => ({ ...c, name: c.caller }));

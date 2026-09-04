@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
 import {
   apiModelIdOf,
   filterClaudeModels,
@@ -170,10 +171,15 @@ export function useExecutorModelOptions(): {
       });
   }, []);
 
-  useEffect(() => {
-    const timer = setInterval(refreshCredentials, CREDENTIAL_POLL_MS);
-    return () => clearInterval(timer);
-  }, [refreshCredentials]);
+  // D-1: credential/quota state per executor lane is polled from Praxis — no
+  // stream frame describes a key going stale or a plan topping back up. Kept
+  // as a poll through the shared mechanism. `immediate: false` preserves the
+  // old behaviour: the gate renders from the lanes the caller already has and
+  // the first refresh lands one interval in.
+  useLiveRefetch([], refreshCredentials, {
+    immediate: false,
+    fallbackPollMs: CREDENTIAL_POLL_MS,
+  });
 
   const credentialFor = (executor: ExecutorName): CredentialExecutorLane | null =>
     lanes.find((lane) => lane.name === executor) ?? null;

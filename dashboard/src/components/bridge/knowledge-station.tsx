@@ -9,7 +9,8 @@
  */
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLiveRefetch } from "@/components/live-board-state";
 import Link from "next/link";
 import { BrainCircuit, ArrowUpRight } from "lucide-react";
 import {
@@ -369,42 +370,32 @@ export function KnowledgeStation() {
   const [mapErr, setMapErr] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    const loadStats = async () => {
-      try {
-        const res = await fetch("/api/praxis/stats", { cache: "no-store" });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        if (active) {
-          setStats(data);
-          setErr(false);
-        }
-      } catch {
-        if (active) setErr(true);
-      }
-    };
-    const loadMap = async () => {
-      try {
-        const map = await getTopicMap();
-        if (active) {
-          setTopicMap(map);
-          setMapErr(false);
-        }
-      } catch {
-        if (active) setMapErr(true);
-      }
-    };
-    loadStats();
-    loadMap();
-    const t1 = setInterval(loadStats, 60_000);
-    const t2 = setInterval(loadMap, 5 * 60_000);
-    return () => {
-      active = false;
-      clearInterval(t1);
-      clearInterval(t2);
-    };
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/praxis/stats", { cache: "no-store" });
+      if (!res.ok) throw new Error();
+      setStats(await res.json());
+      setErr(false);
+    } catch {
+      setErr(true);
+    }
   }, []);
+
+  const loadMap = useCallback(async () => {
+    try {
+      setTopicMap(await getTopicMap());
+      setMapErr(false);
+    } catch {
+      setMapErr(true);
+    }
+  }, []);
+
+  // D-1: vault counts and the topic map change when the ingestion pipeline
+  // runs, which publishes no stream frame — poll only, through the shared
+  // mechanism. Two cadences, so two subscriptions: the map is expensive to
+  // recompute and moves far more slowly than the counts.
+  useLiveRefetch([], () => void loadStats(), { fallbackPollMs: 60_000 });
+  useLiveRefetch([], () => void loadMap(), { fallbackPollMs: 5 * 60_000 });
 
   const hasMap = (topicMap?.nodes.length ?? 0) >= 2;
 

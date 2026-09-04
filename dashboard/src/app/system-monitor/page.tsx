@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLiveRefetch } from "@/components/live-board-state";
 import {
     Activity,
     Cpu,
@@ -102,23 +103,34 @@ export default function SystemMonitorPage() {
         }
     }, []);
 
-    // Initial fetch and polling
+    // Once errored the background refresh stands down until the operator hits
+    // Retry — same behaviour as the old interval, but read from a ref so the
+    // refetch identity does not change on every error flip.
+    const erroredRef = useRef(false);
+    erroredRef.current = error !== null;
+
+    const backgroundRefresh = useCallback(() => {
+        if (erroredRef.current) return;
+        // Background update without setting loading state.
+        Promise.all([getSystemStatus(), getUsageStats({ days: 30 })])
+            .then(([status, stats]) => {
+                setSystemStatus(status);
+                setUsageStats(stats);
+            })
+            .catch(console.error);
+    }, []);
+
+    // Initial fetch (with the loading state), then D-1's shared mechanism.
     useEffect(() => {
         fetchData();
-        const interval = setInterval(() => {
-            if (!error) {
-                // Background update without setting loading state
-                Promise.all([
-                    getSystemStatus(),
-                    getUsageStats({ days: 30 })
-                ]).then(([status, stats]) => {
-                    setSystemStatus(status);
-                    setUsageStats(stats);
-                }).catch(console.error);
-            }
-        }, 5000); // Poll every 5 seconds
-        return () => clearInterval(interval);
-    }, [fetchData, error]);
+    }, [fetchData]);
+
+    // D-1: host stats — CPU, disk, listening ports, provider usage rollups —
+    // are sampled by Nexus and have no Praxis stream frame behind them, so
+    // this is a poll. It runs through useLiveRefetch anyway so the deck has
+    // exactly one polling mechanism. `immediate: false` because the mount
+    // fetch above is the one that shows a spinner.
+    useLiveRefetch([], backgroundRefresh, { immediate: false, fallbackPollMs: 5_000 });
 
     const handleRetry = () => {
         setRetryCount(prev => prev + 1);
