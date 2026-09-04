@@ -29,7 +29,7 @@ The Nexus bridges your local filesystem with an intelligent web dashboard, turni
 - **Task Manager** — Full lifecycle: Idea → Research → Plan → Build → Audit → Complete
 - **SOTA Model Discovery** — Automatic detection of the latest AI models at startup
 - **The Codex** — Interactive architecture visualizations and documentation hub
-- **MCP Server** — Model Context Protocol integration for AI agent interoperability
+- **MCP Server** — praxis-mind (`services/praxis-mind-mcp/`), the Model Context Protocol surface AI agents use to read and govern the board
 
 ---
 
@@ -95,7 +95,6 @@ TheNexus/                           # Flat monorepo
 ├── server/                         # Node.js Express backend
 │   ├── server.js                   # Main API server
 │   ├── scanner.js                  # Project discovery engine
-│   ├── mcp.js                      # MCP Server (stdio)
 │   ├── agent/                      # Multi-provider AI agent
 │   ├── routes/                     # Modular route handlers
 │   ├── services/                   # Business logic services

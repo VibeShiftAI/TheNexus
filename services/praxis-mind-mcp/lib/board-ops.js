@@ -3,7 +3,7 @@
  * both MCP surfaces share (ticket P1-15):
  *
  *   services/praxis-mind-mcp/tools/nexus.js   praxis-mind (stdio, live clients)
- *   server/mcp.js                              "Local Nexus" (stdio, latent)
+ *   server/mcp.js                              "Local Nexus" (retired 2026-09-04, M-1)
  *
  * Before this module each surface carried its own implementation: praxis-mind
  * went through the Nexus HTTP API behind a privilege gate, an hourly rate

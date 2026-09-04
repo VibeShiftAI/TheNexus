@@ -7,7 +7,8 @@
  * only. The governed implementation (privilege gate, hourly rate limit,
  * transaction envelope over the Nexus HTTP API, cost ledger, optimistic-lock
  * retry + lock-health gauge) lives in ../lib/board-ops.js and is shared with
- * server/mcp.js, so there is exactly one write path onto the board (P1-15).
+ * the (since retired, M-1) server/mcp.js, so there is exactly one write path
+ * onto the board (P1-15).
  */
 const { z } = require('zod');
 const boardOps = require('../lib/board-ops');

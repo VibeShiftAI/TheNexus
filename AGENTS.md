@@ -66,6 +66,6 @@ cockpit surface.
   proxy seam rather than hard-coding a second backend path.
 - Keep security-sensitive MCP changes covered by the existing server tests,
   especially `server/__tests__/mcp-boundary-security.test.js` and
-  `server/__tests__/mcp-stateless-conformance.test.js`.
+  `server/__tests__/praxis-mind-stateless-conformance.test.js`.
 - Follow `docs/verification-protocol.md` for task evidence and quality gates;
   point to deeper documentation instead of copying it into this preload map.

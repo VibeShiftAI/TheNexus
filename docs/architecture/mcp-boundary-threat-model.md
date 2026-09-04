@@ -77,19 +77,19 @@ praxis-mind MCP surface every session rides" refers to.
   -> `full` minus a self-management denylist. Loopback enforced (`isLoopbackRequest`). This is the
   read-only subset a dispatched executor (like this task run) is served.
 
-### Latent surface — `server/mcp.js` ("Local Nexus" stdio MCP)
-11 tools over stdio, with **no configured client anywhere** (checked 2026-09-03: not in
-`~/.claude.json`, `~/.codex/config.toml`, Claude Desktop, `~/.antigravity`, any `.mcp.json`, or
-Praxis `mcp-servers.json`); `npm run mcp` now points at the real path (`server/mcp.js`). Still
-*latent* — no live caller — but since H-1 (2026-09-03) it is no longer ungated: every tool resolves
-the caller from `PRAXIS_MIND_KEY` at spawn (same `lib/auth` as praxis-mind) and refuses an
-unauthenticated or under-privileged caller before any side effect. The five board tools go
-through the governed `board-ops` module (P1-15); the six non-board tools are gated on
-`nexus.scaffold` (scaffold_new_vibe), `nexus.git_write` (init_git, add_remote, commit_and_push),
-`nexus.git_read` (git_get_diff) and `nexus.system_read` (nexus_get_system_resources). No
-registered key grants those four privileges yet, so wiring the server up is a deliberate two-step
-(configure a client AND grant the privileges), not a one-line accident. Evidence:
-`server/__tests__/mcp-tool-gating.test.js`, `server/__tests__/mcp-board-governance.test.js`.
+### Retired surface — `server/mcp.js` ("Local Nexus" stdio MCP)
+**Retired 2026-09-04 (ticket M-1).** The 11-tool stdio server never had a configured client
+(re-checked 2026-09-04: not in `~/.claude.json`, `~/.codex/config.toml`, Claude Desktop,
+`~/.antigravity`, any `.mcp.json`, or Praxis `mcp-servers.json`; not mounted by
+`server/server.js`). Rather than keep a gated-but-dead surface, the file, its `npm run mcp`
+script, and the three tests that only exercised it (`mcp-stateless-conformance`,
+`mcp-board-governance`, `mcp-tool-gating`) were moved to `/Volumes/Projects/Backup/TheNexus-server-mcp-2026-09-04/`. The four privileges it alone
+consumed (`nexus.scaffold`, `nexus.git_write`, `nexus.git_read`, `nexus.system_read`) were
+dropped from `lib/auth.js` `PRIVILEGES`; no key ever held them. The governed board
+implementation it delegated to (`lib/board-ops.js`, P1-15) stays — praxis-mind is its only
+caller now. Coverage that those suites carried for the live surface was ported to
+`server/__tests__/praxis-mind-board-governance.test.js` and
+`server/__tests__/praxis-mind-stateless-conformance.test.js`.
 
 ---
 
@@ -126,7 +126,7 @@ the Praxis LLM cascade (spend); the audit/transition logs and cost ledger; the s
 | T5 | **DoS / resource exhaustion**: runaway loop or cost blowout | A | rate limits on brain/memory/vault-write; `daily_cap_usd` field | Board-write tools have **no effective rate limit** (no `rate_limits_per_hour` entry -> `checkAndIncrement` no-ops); `daily_cap_usd` is **computed but never enforced** (**G7, G8**) |
 | T6 | **Info disclosure / spoofing at the edge**: remote board access with a stub app-auth | B | Cloudflare Access + loopback intent | Entire remote authz is one edge control with no app-layer defense in depth; a tunnel/Access misconfig exposes an admin-everything API (**G9**) |
 | T7 | **Harvest-now-decrypt-later**: classical TLS on the tunnel; long-lived secrets in transit/at rest | B/A | TLS 1.3 at edge | No PQC/hybrid KEX posture; long-lived static secrets maximize the value of a later decrypt (**G10**) |
-| T8 | **Latent surface**: `server/mcp.js` scaffolds projects and mutates the board | C(latent) | not wired up; since H-1 every tool is identity+privilege gated via `lib/auth` | Residual: the `projects://list` resource is still ungated (read-only, DB project rows) (**G11**, mitigated) |
+| T8 | **Latent surface**: `server/mcp.js` scaffolds projects and mutates the board | C(retired) | **Retired 2026-09-04 (M-1)** — file removed from the tree, archived at `/Volumes/Projects/Backup/TheNexus-server-mcp-2026-09-04/` | None; the surface no longer exists (**G11** closed) |
 
 ---
 
@@ -243,6 +243,9 @@ Each requirement has an ID, the finding(s) it answers, and a **verifiable accept
   rotation (ID-2) is shipped as the near-term deliverable. Findings: PQC, MCP-2026.
 - **MG-5 (P1) — Gate the latent surface.** `server/mcp.js` must not be wired to any client until it
   meets ID-1/AZ-1/AU-1, or it must be explicitly retired.
+  *Status 2026-09-04 (M-1):* **closed by retirement.** `server/mcp.js` and its tests moved to
+  `/Volumes/Projects/Backup/TheNexus-server-mcp-2026-09-04/`; `npm run mcp` removed; the four latent-only privileges dropped from `PRIVILEGES`. The
+  H-1 note below is kept as history.
   *Accept:* a note marks it latent; if activated, its diff carries identity + privilege + audit
   tests. Findings: enterprise-authz, audit.
   *Status 2026-09-03 (H-1):* **met for the tool surface.** Board tools: identity + privilege +
@@ -269,7 +272,7 @@ Ranked by exploitability × blast radius. IDs referenced by §3.
 | **G6** Surface B mutations bypass the transition-log envelope and attribute to `local_user` | `server/routes/*` | Med | AU-3 |
 | **G4** provenance labels reads but does not gate high-impact writes; no dangerous-action confirm | `lib/provenance.js`, write tools | Med | AZ-4, AZ-5 |
 | **G5** reads are unaudited beyond the cost ledger | `tools/*` | Med | AU-2 |
-| **G11** `server/mcp.js` latent board+filesystem MCP — tools gated since H-1; `projects://list` resource and non-board audit still open | `server/mcp.js` | Low (latent, gated) | MG-5 |
+| **G11** `server/mcp.js` latent board+filesystem MCP — **retired 2026-09-04 (M-1)**, archived at `/Volumes/Projects/Backup/TheNexus-server-mcp-2026-09-04/` | — | Closed | MG-5 |
 | **G10** no PQC/hybrid posture; long-lived secrets amplify harvest-now-decrypt-later | tunnel + secrets | Low-now | MG-4 |
 
 ---

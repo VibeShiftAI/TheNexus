@@ -225,6 +225,7 @@ Starts Cloudflare Tunnel, Node.js API (:4000), and Next.js Dashboard (:3000).
 ```
 
 ### MCP Server (Standalone)
-```bash
-node server/mcp.js
-```
+The only MCP surface is praxis-mind (`services/praxis-mind-mcp/stdio.js`), spawned by
+its clients over stdio with `PRAXIS_MIND_KEY` set. The former `server/mcp.js`
+("Local Nexus") stdio server was retired on 2026-09-04 (M-1) — it never had a client;
+the file is archived at `/Volumes/Projects/Backup/TheNexus-server-mcp-2026-09-04/`.

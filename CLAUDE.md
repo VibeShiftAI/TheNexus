@@ -53,7 +53,7 @@ cockpit surface.
   `cd dashboard && NEXT_DIST_DIR=.next-verify npm run build` (Next also appends
   `.next-verify/types/**/*.ts` to `dashboard/tsconfig.json`; discard that rewrite).
 - Fleet-shared secrets: `server/utils/fleet-env.js` (called first in
-  `server/server.js` and `server/mcp.js`) loads `/Volumes/Projects/.fleet-env`
+  `server/server.js`) loads `/Volumes/Projects/.fleet-env`
   (outside every repo; template `/Volumes/Projects/.fleet-env.example`) before
   the repo `.env`. `GOOGLE_API_KEY` and `CORTEX_GATEWAY_KEY` live there once,
   shared with Praxis and TheCortex. Precedence: process env > fleet file >
@@ -71,7 +71,9 @@ cockpit surface.
 - The dashboard is a consumer, not an alternate API: preserve its `/api/*`
   proxy seam rather than hard-coding a second backend path.
 - Keep security-sensitive MCP changes covered by the existing server tests,
-  especially `server/__tests__/mcp-boundary-security.test.js` and
-  `server/__tests__/mcp-stateless-conformance.test.js`.
+  especially `server/__tests__/mcp-boundary-security.test.js`,
+  `server/__tests__/praxis-mind-stateless-conformance.test.js` and
+  `server/__tests__/praxis-mind-board-governance.test.js`. The only MCP server
+  in this repo is praxis-mind; `server/mcp.js` was retired 2026-09-04 (M-1).
 - Follow `docs/verification-protocol.md` for task evidence and quality gates;
   point to deeper documentation instead of copying it into this preload map.

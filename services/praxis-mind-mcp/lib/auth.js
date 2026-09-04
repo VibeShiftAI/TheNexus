@@ -17,14 +17,11 @@ const PRIVILEGES = Object.freeze([
   'memory.search', 'memory.recent', 'memory.cite', 'memory.write',
   'brain.chat', 'brain.deliberate',
   'identity.whoami',
-  // governed board ops (lib/board-ops.js), shared with server/mcp.js
+  // governed board ops (lib/board-ops.js)
   'nexus.projects_list', 'nexus.tasks_read', 'nexus.task_status',
   'nexus.task_create', 'nexus.task_update', 'nexus.project_update',
-  // server/mcp.js ("Local Nexus") non-board tools — H-1 / MG-5
-  'nexus.scaffold',     // scaffold_new_vibe
-  'nexus.git_write',    // init_git, add_remote, commit_and_push
-  'nexus.git_read',     // git_get_diff
-  'nexus.system_read',  // nexus_get_system_resources
+  // nexus.scaffold / nexus.git_write / nexus.git_read / nexus.system_read were
+  // retired with server/mcp.js (M-1, 2026-09-04); no key ever held them.
 ]);
 
 let _keys = null;
