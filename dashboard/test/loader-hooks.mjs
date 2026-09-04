@@ -8,6 +8,7 @@
 //   - @/lib/normalizeMarkdown      → real impl + render/parse counter
 //   - @/lib/task-links             → real impl + splitOnTaskIds counter
 //   - next/link, next/navigation   → minimal standalone stand-ins
+//   - socket.io-client             → inspectable fake `io()` (no network)
 // The counting stubs delegate to the real implementations — they exist so
 // tests can assert HOW OFTEN the markdown pipeline runs, which is the whole
 // point of the ai-terminal render-isolation suite.
@@ -25,6 +26,8 @@ const STUBS = new Map([
     ["@/lib/task-links", new URL("task-links.mjs", STUB_ROOT).href],
     ["next/link", new URL("next-link.mjs", STUB_ROOT).href],
     ["next/navigation", new URL("next-navigation.mjs", STUB_ROOT).href],
+    // No network in tests: an inspectable fake socket (see stubs/socket-io-client.mjs).
+    ["socket.io-client", new URL("socket-io-client.mjs", STUB_ROOT).href],
 ]);
 
 const EXTENSIONS = ["", ".ts", ".tsx", ".mts", ".mjs", ".js", "/index.ts", "/index.tsx"];

@@ -40,21 +40,22 @@ import {
 import type { PresenceState, StreamEvent } from "@praxis/contract";
 import { acquireLiveSocket } from "@/lib/live-socket";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import {
+    LIVE_DOMAINS,
+    ZERO_REVISIONS,
+    applyFrame as reduceFrame,
+    createFrameDeduper,
+    domainsForEvent,
+    type LiveDomain,
+    type LiveFrameState,
+    type LiveRevisions,
+} from "./live-board-state-logic";
+
+export { LIVE_DOMAINS, domainsForEvent };
+export type { LiveDomain, LiveRevisions };
 
 /** Slow drift-correction poll kept behind every live subscription. */
 export const LIVE_FALLBACK_POLL_MS = 60_000;
-
-/** How many recent frames the context retains for feed-style consumers. */
-const MAX_RECENT_EVENTS = 50;
-
-/** How many event ids to remember for cross-transport dedupe. */
-const MAX_SEEN_IDS = 400;
-
-export type LiveDomain = "board" | "task" | "schedule" | "system" | "activity";
-
-export const LIVE_DOMAINS: LiveDomain[] = ["board", "task", "schedule", "system", "activity"];
-
-export type LiveRevisions = Record<LiveDomain, number>;
 
 export type LiveTransport = "socket" | "sse" | "offline";
 
@@ -73,14 +74,6 @@ export interface LiveBoardStateValue {
     lastSocketEventAt: number;
 }
 
-const ZERO_REVISIONS: LiveRevisions = Object.freeze({
-    board: 0,
-    task: 0,
-    schedule: 0,
-    system: 0,
-    activity: 0,
-}) as LiveRevisions;
-
 const EMPTY_VALUE: LiveBoardStateValue = Object.freeze({
     revisions: ZERO_REVISIONS,
     presence: null,
@@ -90,51 +83,12 @@ const EMPTY_VALUE: LiveBoardStateValue = Object.freeze({
     lastSocketEventAt: 0,
 });
 
-/**
- * Which domains a stream frame invalidates. A frame can touch several: a
- * `task.completed` moves the board, the task itself, and the day's schedule.
- * Unknown//future event types still bump `activity` so feeds stay live.
- */
-export function domainsForEvent(type: string): LiveDomain[] {
-    switch (type) {
-        case "task.created":
-        case "task.updated":
-        case "task.blocked":
-            return ["board", "task", "activity"];
-        case "task.started":
-        case "task.completed":
-        case "task.failed":
-            return ["board", "task", "schedule", "activity"];
-        case "schedule.updated":
-            return ["schedule", "board", "activity"];
-        case "presence.changed":
-        case "executor.progress":
-            return ["system", "activity"];
-        case "hitl.created":
-        case "hitl.resolved":
-        case "council.update":
-        case "thinking.trace":
-            return ["activity"];
-        case "stream.reset":
-            // We cannot know what we missed — invalidate everything.
-            return LIVE_DOMAINS;
-        case "heartbeat":
-            return [];
-        default:
-            return ["activity"];
-    }
-}
-
 const LiveBoardStateContext = createContext<LiveBoardStateValue | null>(null);
 
 export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
-    const [socketState, setSocketState] = useState<{
-        revisions: LiveRevisions;
-        presence: PresenceState | null;
-        recentEvents: StreamEvent[];
-        socketConnected: boolean;
-        lastSocketEventAt: number;
-    }>({
+    const [socketState, setSocketState] = useState<
+        LiveFrameState & { socketConnected: boolean }
+    >({
         revisions: ZERO_REVISIONS,
         presence: null,
         recentEvents: [],
@@ -144,20 +98,7 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
 
     // Ids seen on EITHER transport, so the SSE copy of a frame the socket
     // already delivered (or vice versa) does not double-bump a revision.
-    const seenIds = useRef<Set<string>>(new Set());
-    const seenOrder = useRef<string[]>([]);
-
-    const markSeen = (id: string | undefined | null): boolean => {
-        if (!id) return true; // no id: can't dedupe, always accept
-        if (seenIds.current.has(id)) return false;
-        seenIds.current.add(id);
-        seenOrder.current.push(id);
-        if (seenOrder.current.length > MAX_SEEN_IDS) {
-            const evicted = seenOrder.current.shift();
-            if (evicted) seenIds.current.delete(evicted);
-        }
-        return true;
-    };
+    const markSeen = useRef(createFrameDeduper()).current;
 
     // Shared applier, set by the socket effect and reused by the SSE drain
     // below so both transports run through the same dedupe set.
@@ -175,27 +116,7 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
 
         const applyFrame = (event: StreamEvent, viaSocket: boolean) => {
             if (!markSeen((event as { eventId?: string }).eventId)) return;
-            setSocketState((prev) => {
-                const domains = domainsForEvent(event.type);
-                const revisions = domains.length
-                    ? { ...prev.revisions }
-                    : prev.revisions;
-                for (const d of domains) revisions[d] = revisions[d] + 1;
-                const recentEvents =
-                    event.type === "heartbeat"
-                        ? prev.recentEvents
-                        : [event, ...prev.recentEvents].slice(0, MAX_RECENT_EVENTS);
-                return {
-                    ...prev,
-                    revisions,
-                    recentEvents,
-                    presence:
-                        event.type === "presence.changed"
-                            ? (event as { presence: PresenceState }).presence
-                            : prev.presence,
-                    lastSocketEventAt: viaSocket ? Date.now() : prev.lastSocketEventAt,
-                };
-            });
+            setSocketState((prev) => reduceFrame(prev, event, viaSocket));
         };
 
         const onEvent = (event: StreamEvent) => {

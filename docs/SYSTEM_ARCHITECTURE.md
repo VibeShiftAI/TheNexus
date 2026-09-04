@@ -98,8 +98,6 @@ TheNexus/                       # Flat monorepo
 │   ├── schemas/                # Pydantic state models
 │   ├── blackboard/             # Research blackboard
 │   └── llm_factory.py          # Multi-provider LLM routing
-├── _retired/nexus-builder/     # Former Python orchestration service
-├── sandbox/                    # Secure code execution sandbox
 ├── config/                     # Merged configuration
 │   ├── model_registry.yaml     # LLM model configs
 │   ├── prompts.yaml            # System prompts
@@ -107,6 +105,8 @@ TheNexus/                       # Flat monorepo
 ├── db/                         # SQLite schema & database
 └── docker/                     # Dockerfiles & compose files
 ```
+
+Archived on 2026-09-03 (no longer in the tree): `_retired/nexus-builder/`, `sandbox/`, `tests/cortex/`, `antigravity-extension/` — moved to `/Volumes/Projects/Backup/TheNexus-dead-weight-2026-09-03`.
 
 ---
 

@@ -24,7 +24,7 @@ The Nexus bridges your local filesystem with an intelligent web dashboard, turni
 - **No-Code Design** — The system writes, reviews, and audits code for you
 - **26+ Specialized Agents** — Researchers, architects, builders, auditors, critics, and more
 - **AI Terminal** — Multi-provider chat interface (Gemini, Claude, OpenAI, Grok)
-- **Historical AI Mesh archive** — former fleet orchestration is retained under `_retired/`
+- **Historical AI Mesh archive** — former fleet orchestration was archived out of the tree on 2026-09-03 (see `/Volumes/Projects/Backup/TheNexus-dead-weight-2026-09-03`)
 - **The Pipeline** — 8-node orchestrator that turns ideas into organized projects with tasks
 - **Task Manager** — Full lifecycle: Idea → Research → Plan → Build → Audit → Complete
 - **SOTA Model Discovery** — Automatic detection of the latest AI models at startup
@@ -108,9 +108,7 @@ TheNexus/                           # Flat monorepo
 │       ├── app/                    # App Router pages
 │       ├── components/             # UI components
 │       └── lib/nexus.ts            # Centralized API client
-├── _retired/nexus-builder/         # Retired Python orchestration service
 ├── cortex/                         # Python AI Brain (Pipeline orchestrator)
-├── sandbox/                        # Secure code execution sandbox
 ├── config/                         # Centralized configuration
 │   ├── model_registry.yaml         # LLM model configs
 │   └── prompts.yaml                # System prompts
@@ -120,6 +118,8 @@ TheNexus/                           # Flat monorepo
 └── Start The Nexus.example.command # macOS startup template (double-click)
 └── start-local.example.sh          # Linux startup template
 ```
+
+Archived on 2026-09-03 (no longer in the tree): `_retired/nexus-builder/`, `sandbox/`, `tests/cortex/`, `antigravity-extension/` — moved to `/Volumes/Projects/Backup/TheNexus-dead-weight-2026-09-03`.
 
 ---
 
@@ -229,7 +229,7 @@ On startup, the Model Discovery Service (`server/services/model-discovery.js`) q
 
 ## Retired Workflow Orchestration
 
-The former Python workflow orchestration service was decommissioned on 2026-07-02 and moved to `_retired/nexus-builder/`. See `docs/decommission/langgraph-2026-07-02.md` for the decision record. It is preserved for recovery only and is not part of the live startup path.
+The former Python workflow orchestration service was decommissioned on 2026-07-02 and moved to `_retired/nexus-builder/`, which was itself archived out of the repository on 2026-09-03 to `/Volumes/Projects/Backup/TheNexus-dead-weight-2026-09-03`. See `docs/decommission/langgraph-2026-07-02.md` for the decision record. It is preserved for recovery only and is not part of the live startup path.
 
 ---
 

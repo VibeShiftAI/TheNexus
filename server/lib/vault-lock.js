@@ -26,6 +26,15 @@ const path = require('path');
 
 const LOCK_CLASSES = ['authored', 'skills', 'projections', 'git'];
 const DEFAULT_STALE_MS = 30_000;
+/**
+ * Hard cap on a lock's age. Past `stale` a lock is only reclaimed when its
+ * recorded holder pid is provably dead; past the hard cap it is reclaimed
+ * regardless (the holder is wedged, or its pid is unknowable — another host,
+ * or an owner.json that never got written). A LIVE holder between 30s and
+ * 10min keeps its lock: reclaiming under a slow-but-alive writer is exactly
+ * the torn-write the lock exists to prevent (P1-17 review).
+ */
+const DEFAULT_HARD_CAP_MS = 600_000;
 const DEFAULT_RETRIES = 10;
 const DEFAULT_MIN_TIMEOUT_MS = 50;
 /** The watcher logs any lock older than this (design §5 risks). */
@@ -56,7 +65,9 @@ function readOwner(dir) {
   }
 }
 
-function lockAgeMs(dir) {
+/** Age from the recorded acquiredAt when present, else the directory mtime. */
+function lockAgeMs(dir, owner) {
+  if (owner && Number.isFinite(owner.acquiredAt)) return Date.now() - owner.acquiredAt;
   try {
     return Date.now() - fs.statSync(dir).mtimeMs;
   } catch {
@@ -64,14 +75,30 @@ function lockAgeMs(dir) {
   }
 }
 
+/**
+ * True unless the recorded holder is provably dead: same host, a pid, and
+ * `kill(pid, 0)` says ESRCH. Unknowable (other host, no owner.json) → alive,
+ * so only the hard cap can reclaim it.
+ */
 function processAlive(owner) {
   if (!owner || owner.host !== os.hostname() || !owner.pid) return true; // unknowable → assume alive
   try {
     process.kill(owner.pid, 0);
     return true;
   } catch (e) {
-    return e.code === 'EPERM';
+    return e.code !== 'ESRCH';
   }
+}
+
+/**
+ * The reclaim rule: a dead holder's lock is reclaimable at any age (nothing
+ * can release it); a live or unknowable holder's lock only past the hard cap.
+ * `stale` is where a live holder starts being reported (onStale/inspect), NOT
+ * where it gets reclaimed.
+ */
+function reclaimable({ age, owner, hardCap }) {
+  if (!processAlive(owner)) return true;
+  return age > hardCap;
 }
 
 function removeLock(dir) {
@@ -113,6 +140,7 @@ function acquireLock(vault, className, opts = {}) {
     };
   }
   const stale = opts.stale ?? DEFAULT_STALE_MS;
+  const hardCap = Math.max(opts.hardCap ?? DEFAULT_HARD_CAP_MS, stale);
   const retries = opts.retries ?? DEFAULT_RETRIES;
   const minTimeout = opts.minTimeout ?? DEFAULT_MIN_TIMEOUT_MS;
   const onStale = opts.onStale;
@@ -127,7 +155,13 @@ function acquireLock(vault, className, opts = {}) {
       fs.mkdirSync(dir);
       fs.writeFileSync(
         path.join(dir, 'owner.json'),
-        JSON.stringify({ pid: process.pid, host: os.hostname(), at: new Date().toISOString(), by: opts.by || 'unknown' }),
+        JSON.stringify({
+          pid: process.pid,
+          host: os.hostname(),
+          acquiredAt: Date.now(),
+          at: new Date().toISOString(),
+          by: opts.by || 'unknown',
+        }),
       );
       held.set(dir, 1);
       let released = false;
@@ -143,11 +177,17 @@ function acquireLock(vault, className, opts = {}) {
       };
     } catch (e) {
       if (e.code !== 'EEXIST') throw e;
-      const age = lockAgeMs(dir);
       const owner = readOwner(dir);
-      if ((age > stale || !processAlive(owner)) && reclaims < 3) {
+      const age = lockAgeMs(dir, owner);
+      const alive = processAlive(owner);
+      const willReclaim = reclaimable({ age, owner, hardCap }) && reclaims < 3;
+      // Report a reclaim, and (once per acquire) a live holder past `stale`
+      // that we are deliberately NOT reclaiming.
+      if (onStale && (willReclaim || (age > stale && attempt === 0))) {
+        onStale({ className, age, owner, alive, reclaimed: willReclaim });
+      }
+      if (willReclaim) {
         reclaims += 1;
-        if (onStale) onStale({ className, age, owner });
         removeLock(dir);
         attempt -= 1;
         continue;
@@ -211,13 +251,15 @@ function inspectLocks(vault) {
   return LOCK_CLASSES.map((className) => {
     const dir = lockPath(vault, className);
     if (!fs.existsSync(dir)) return { class: className, held: false };
-    return { class: className, held: true, ageMs: lockAgeMs(dir), owner: readOwner(dir) };
+    const owner = readOwner(dir);
+    return { class: className, held: true, ageMs: lockAgeMs(dir, owner), owner, alive: processAlive(owner) };
   });
 }
 
 module.exports = {
   LOCK_CLASSES,
   DEFAULT_STALE_MS,
+  DEFAULT_HARD_CAP_MS,
   LOCK_WARN_AGE_MS,
   locksDir,
   lockPath,

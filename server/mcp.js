@@ -17,7 +17,7 @@ const { TaskBoardStatusSchema } = require('@praxis/contract');
 // privilege gate, one hourly rate limit, one transaction envelope over the
 // Nexus HTTP API, one cost ledger — see services/praxis-mind-mcp/lib/board-ops.js.
 const boardOps = require('../services/praxis-mind-mcp/lib/board-ops');
-const { resolveCaller } = require('../services/praxis-mind-mcp/lib/auth');
+const { resolveCaller, checkPrivilege } = require('../services/praxis-mind-mcp/lib/auth');
 
 // Initialize MCP Server
 const server = new McpServer({
@@ -34,8 +34,17 @@ const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(process.env.USERPR
 // refused before any backend call (threat model MG-5 / ID-1 / AZ-1 / AU-1).
 const boardCtx = { caller: resolveCaller() };
 if (!boardCtx.caller) {
-    console.error('[MCP] No valid PRAXIS_MIND_KEY — nexus_* board tools will refuse until one is configured.');
+    console.error('[MCP] No valid PRAXIS_MIND_KEY — every tool will refuse until one is configured.');
 }
+
+// Non-board tools (H-1 / threat model MG-5 + G11): the same caller and the
+// same privilege check gate the scaffold, git and telemetry tools. Names and
+// schemas are unchanged for clients; only the first line of each handler is.
+//   scaffold_new_vibe            nexus.scaffold     creates a directory + DB row
+//   init_git/add_remote/commit_and_push   nexus.git_write   mutates a workspace
+//   git_get_diff                 nexus.git_read     discloses uncommitted code
+//   nexus_get_system_resources   nexus.system_read  discloses usage/quota data
+const denied = (privilege) => checkPrivilege(boardCtx.caller, privilege);
 
 // --- RESOURCES ---
 
@@ -65,6 +74,8 @@ server.tool(
         type: z.enum(["web-app", "game", "tool"]).describe("The type of project to create")
     },
     async ({ name, type }) => {
+        const refusal = denied('nexus.scaffold');
+        if (refusal) return refusal;
         // 1. Validate inputs
         if (!name || !name.match(/^[a-zA-Z0-9-_]+$/)) {
             return {
@@ -129,6 +140,8 @@ server.tool(
         project_name: z.string().describe("The name or ID of the existing project to initialize git in")
     },
     async ({ project_name }) => {
+        const refusal = denied('nexus.git_write');
+        if (refusal) return refusal;
         const project = await db.getProject(project_name);
 
         if (!project) {
@@ -174,6 +187,8 @@ server.tool(
         remote_url: z.string().describe("The git remote URL (e.g., git@github.com:user/repo.git)")
     },
     async ({ project_name, remote_url }) => {
+        const refusal = denied('nexus.git_write');
+        if (refusal) return refusal;
         // Validate URL format
         const validUrlPattern = /^(https?:\/\/|git@|ssh:\/\/)/;
         if (!validUrlPattern.test(remote_url)) {
@@ -245,6 +260,8 @@ server.tool(
         force: z.boolean().describe("Force commit even if walkthroughs are missing (for infrastructure commits)").default(false)
     },
     async ({ project_name, message, force }) => {
+        const refusal = denied('nexus.git_write');
+        if (refusal) return refusal;
         const project = await db.getProject(project_name);
 
         if (!project) {
@@ -593,6 +610,8 @@ server.tool(
         )
     },
     async ({ project_path }) => {
+        const refusal = denied('nexus.git_read');
+        if (refusal) return refusal;
         const { execSync } = require('child_process');
         const MAX_CHARS = 10000;
 
@@ -692,6 +711,8 @@ server.tool(
     "Get token budget, quota resets, and available models for resource-aware scheduling.",
     {},
     async () => {
+        const refusal = denied('nexus.system_read');
+        if (refusal) return refusal;
         try {
             // 1. Today's token burn — aggregate across all models and sources
             const today = new Date().toISOString().split('T')[0];

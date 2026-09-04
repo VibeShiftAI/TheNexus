@@ -3,10 +3,8 @@
 .env.local
 db/.env.supabase
 
-# Media adapter secrets (YouTube OAuth refresh token, etc.) and artifacts
+# Media adapter secrets (YouTube OAuth refresh token, etc.)
 .secrets/
-nexus-builder/data/media/
-nexus-builder/data/media_cost_ledger.db*
 
 # Cloudflare Tunnel credentials
 cert.pem

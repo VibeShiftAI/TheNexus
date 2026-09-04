@@ -128,6 +128,55 @@ describe('vault-write: the fleet write protocol', () => {
     expect(reclaimed).toBeTruthy();
     reclaimed();
   });
+
+  test('a LIVE holder past the 30s stale threshold is NOT reclaimed; a dead pid IS; the hard cap always is', () => {
+    const plant = (vault, className, owner) => {
+      const dir = vaultLock.lockPath(vault, className);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'owner.json'), JSON.stringify({ host: os.hostname(), ...owner }));
+      return dir;
+    };
+    const vault = tmpVault();
+    const stale = [];
+    const onStale = (info) => stale.push(info);
+
+    // Live holder (this very process), 90s old — past stale, under the cap.
+    const liveDir = plant(vault, 'authored', { pid: process.pid, acquiredAt: Date.now() - 90_000 });
+    expect(vaultLock.acquireLock(vault, 'authored', { retries: 0, onStale })).toBeNull();
+    expect(fs.existsSync(liveDir)).toBe(true);
+    expect(stale).toEqual([expect.objectContaining({ className: 'authored', alive: true, reclaimed: false })]);
+    expect(vaultLock.inspectLocks(vault).find((l) => l.class === 'authored')).toMatchObject({ held: true, alive: true });
+    // The lock must not have been touched even after the retry budget elapses.
+    expect(vaultLock.acquireLock(vault, 'authored', { retries: 2, minTimeout: 1 })).toBeNull();
+    expect(fs.existsSync(liveDir)).toBe(true);
+
+    // Dead holder (pid 2^22 is unallocatable), same age — reclaimed.
+    plant(vault, 'skills', { pid: 4194304, acquiredAt: Date.now() - 90_000 });
+    stale.length = 0;
+    const reclaimed = vaultLock.acquireLock(vault, 'skills', { retries: 0, onStale });
+    expect(reclaimed).toBeTruthy();
+    expect(stale).toEqual([expect.objectContaining({ className: 'skills', alive: false, reclaimed: true })]);
+    reclaimed();
+
+    // Live holder past the hard cap — reclaimed regardless (wedged writer).
+    plant(vault, 'projections', { pid: process.pid, acquiredAt: Date.now() - vaultLock.DEFAULT_HARD_CAP_MS - 1000 });
+    const capped = vaultLock.acquireLock(vault, 'projections', { retries: 0 });
+    expect(capped).toBeTruthy();
+    capped();
+
+    // An owner we cannot judge (other host) is treated as alive: waits, not reclaimed.
+    const foreign = vaultLock.lockPath(vault, 'git');
+    fs.mkdirSync(foreign, { recursive: true });
+    fs.writeFileSync(path.join(foreign, 'owner.json'), JSON.stringify({ pid: 4194304, host: 'elsewhere', acquiredAt: Date.now() - 90_000 }));
+    expect(vaultLock.acquireLock(vault, 'git', { retries: 0 })).toBeNull();
+    expect(fs.existsSync(foreign)).toBe(true);
+
+    // What a fresh acquire records: pid + acquiredAt, so the next process can judge us.
+    const release = vaultLock.acquireLock(vault, 'projections');
+    const owner = JSON.parse(fs.readFileSync(path.join(vaultLock.lockPath(vault, 'projections'), 'owner.json'), 'utf8'));
+    expect(owner).toMatchObject({ pid: process.pid, host: os.hostname(), acquiredAt: expect.any(Number) });
+    release();
+  });
 });
 
 describe('vault-write: races the design found', () => {

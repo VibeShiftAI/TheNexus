@@ -148,6 +148,9 @@ const WRITER = {
   privileges: [
     'nexus.projects_list', 'nexus.tasks_read', 'nexus.task_status',
     'nexus.task_create', 'nexus.task_update', 'nexus.project_update',
+    // H-1: the non-board tools are gated too; C3 interleaves
+    // nexus_get_system_resources, which needs this to run its body.
+    'nexus.system_read',
   ],
 };
 

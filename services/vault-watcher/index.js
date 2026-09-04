@@ -65,7 +65,9 @@ function regenerateAll(reason = 'initial') {
   try {
     return withLocks(VAULT, ['projections'], () => regenerateAllLocked(reason), {
       by: `vault-watcher:${reason}`,
-      onStale: ({ className, age }) => log(`WARN reclaimed stale ${className} lock (${Math.round(age / 1000)}s old)`),
+      onStale: ({ className, age, owner, reclaimed }) => log(reclaimed
+        ? `WARN reclaimed stale ${className} lock (${Math.round(age / 1000)}s old, holder pid ${owner?.pid ?? '?'} dead or past hard cap)`
+        : `WARN ${className} lock held ${Math.round(age / 1000)}s by live pid ${owner?.pid ?? '?'} — not reclaiming`),
     });
   } catch (e) {
     log(`ERROR regenerating: ${e.stack || e.message}`);

@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "nodemon --config nodemon.json",
-    "mcp": "nodemon --watch src/mcp.js src/mcp.js",
+    "mcp": "node server/mcp.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:scheduler": "jest src/scheduler"

@@ -6,6 +6,27 @@ const fs = require('fs');
 const { KEYS_FILE } = require('./config');
 const { log } = require('./log');
 
+/**
+ * The privilege vocabulary keys in ~/.praxis-mind/keys.json may grant. Not
+ * enforced as a schema (a key can carry a subset), but the single place the
+ * names are listed: every checkPrivilege() call site uses one of these.
+ */
+const PRIVILEGES = Object.freeze([
+  // praxis-mind (services/praxis-mind-mcp/tools/*)
+  'vault.read', 'vault.write', 'vault.list', 'vault.search',
+  'memory.search', 'memory.recent', 'memory.cite', 'memory.write',
+  'brain.chat', 'brain.deliberate',
+  'identity.whoami',
+  // governed board ops (lib/board-ops.js), shared with server/mcp.js
+  'nexus.projects_list', 'nexus.tasks_read', 'nexus.task_status',
+  'nexus.task_create', 'nexus.task_update', 'nexus.project_update',
+  // server/mcp.js ("Local Nexus") non-board tools — H-1 / MG-5
+  'nexus.scaffold',     // scaffold_new_vibe
+  'nexus.git_write',    // init_git, add_remote, commit_and_push
+  'nexus.git_read',     // git_get_diff
+  'nexus.system_read',  // nexus_get_system_resources
+]);
+
 let _keys = null;
 function loadKeys() {
   if (_keys) return _keys;
@@ -68,4 +89,4 @@ function checkPrivilege(caller, action) {
   return null; // no error — caller is authorized
 }
 
-module.exports = { resolveCaller, checkPrivilege };
+module.exports = { resolveCaller, checkPrivilege, PRIVILEGES };
