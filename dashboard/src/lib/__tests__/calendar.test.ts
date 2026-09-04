@@ -25,6 +25,8 @@ test("emptyCalendarEventForm starts as a scheduled blank event", () => {
     description: "",
     result: "",
     status: "scheduled",
+    // Added in 86b290d (2026-05-21, "route scheduled model assignments").
+    model_assignment: "",
   });
 });
 
