@@ -4,7 +4,9 @@
  * 2026-07-06 consolidation: TheNexus no longer owns provider SDKs or API
  * keys for chat completions. callAI() keeps its signature and result
  * contract ({ text, usage } / plain text) but every call rides Praxis's
- * POST /v1/brain/chat with an explicit provider/model pin — Praxis
+ * POST /v1/llm/chat/completions (the OpenAI-wire raw-completion gateway;
+ * ported off /v1/brain/chat by ticket C-1, 2026-09-04) with an explicit
+ * provider/model pin or a model-control role — Praxis
  * normalizes response_format per provider, enforces budget/semaphore,
  * logs usage to the shared llm_calls ledger, and cascades on provider
  * failure. runDeepResearch keeps its own Gemini client: it drives the
@@ -109,8 +111,11 @@ async function getAIModelConfig(taskType) {
 }
 
 /**
- * Relay one completion through Praxis /v1/brain/chat (pinned provider/model).
- * Returns the { text, usage } contract the retired provider handlers used.
+ * Relay one completion through Praxis's raw-completion gateway
+ * POST /v1/llm/chat/completions. The body is the gateway's brain-form
+ * superset: `role` (wins when set) or `provider` + bare `model` pin, plus
+ * `system`, `messages`, `max_tokens`. Returns the { text, usage } contract
+ * the retired provider handlers used.
  */
 async function callPraxisBrain(message, provider, modelId, systemPrompt, history, options = {}) {
     const messages = [
@@ -122,7 +127,7 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
         { role: 'user', content: message }
     ];
 
-    const response = await praxisFetch('/v1/brain/chat', {
+    const response = await praxisFetch('/v1/llm/chat/completions', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -144,7 +149,7 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
 
     if (!response.ok) {
         const errText = await response.text().catch(() => '');
-        throw new Error(`Praxis brain relay failed (${response.status}): ${errText.slice(0, 300)}`);
+        throw new Error(`Praxis llm gateway relay failed (${response.status}): ${errText.slice(0, 300)}`);
     }
 
     const data = await response.json();

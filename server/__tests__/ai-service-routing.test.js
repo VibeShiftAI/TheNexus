@@ -28,7 +28,7 @@ describe('AI service Praxis relay', () => {
         global.fetch = originalFetch;
     });
 
-    test('relays direct config through Praxis /v1/brain/chat with a model pin', async () => {
+    test('relays direct config through Praxis /v1/llm/chat/completions with a model pin', async () => {
         global.fetch.mockResolvedValueOnce(jsonResponse(brainCompletion({ content: 'from claude' })));
         const { callAI } = require('../services/ai-service');
 
@@ -40,7 +40,8 @@ describe('AI service Praxis relay', () => {
             { returnFullResult: true }
         );
 
-        expect(global.fetch.mock.calls[0][0]).toBe('http://praxis.test/v1/brain/chat');
+        expect(global.fetch.mock.calls[0][0]).toBe('http://praxis.test/v1/llm/chat/completions');
+        expect(global.fetch.mock.calls[0][1].headers['X-MCP-Caller']).toBe('nexus.ai-service');
         const body = JSON.parse(global.fetch.mock.calls[0][1].body);
         expect(body.provider).toBe('anthropic');
         expect(body.model).toBe('claude-sonnet-4-6');

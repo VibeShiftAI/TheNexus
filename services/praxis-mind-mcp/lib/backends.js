@@ -92,16 +92,19 @@ async function cortexEpisodeById(episodeUuid) {
 // ─────────────────── Praxis ───────────────────
 
 async function praxisChat({ messages, system = null, max_tokens = 2048, depth = 1, caller = 'unknown' }) {
-  // /v1/brain/chat is the external-caller endpoint added in Wave 5.
-  // Praxis strips tools server-side and forces tier=reasoning — three layers
-  // of loop prevention (client-side, server-side, depth header).
-  // X-MCP-Caller attributes the downstream LLM call in the usage log.
+  // POST /v1/llm/chat/completions is Praxis's raw-completion gateway (ported
+  // off the deprecated /v1/brain/chat alias by ticket C-1, 2026-09-04; same
+  // OpenAI ChatCompletion response). No `model` → Praxis's default gateway
+  // role (brain.chat, the subscription CLI lane). Praxis strips tools
+  // server-side and forces tier=reasoning — three layers of loop prevention
+  // (client-side, server-side, depth header). X-MCP-Caller attributes the
+  // downstream LLM call in the usage ledger as gateway.<caller>.
   const body = {
     messages,
     system: system || undefined,
     max_tokens,
   };
-  return httpJSON(`${cfg.PRAXIS}/v1/brain/chat`, {
+  return httpJSON(`${cfg.PRAXIS}/v1/llm/chat/completions`, {
     method: 'POST',
     headers: { 'X-Brain-Depth': String(depth), 'X-MCP-Caller': caller },
     body,
