@@ -297,4 +297,64 @@ describe('praxis-stream route', () => {
     const down = await fetch(`${nexusHandle.baseUrl}/api/praxis/report/status-report-20260811-1203.mp3`);
     expect(down.status).toBe(502);
   });
+  // P3-30: the relay is the seam where Praxis's SSE becomes the dashboard's
+  // live transport. Every upstream frame must reach BOTH the downstream SSE
+  // subscribers and the Socket.IO fan-out (`praxis:event`), because the
+  // dashboard's shared LiveBoardState context subscribes over the socket while
+  // the SSE half is still carrying the older hooks.
+  it('fans every upstream frame out to Socket.IO as well as downstream SSE', async () => {
+    const praxis = express();
+    let upstreamRes = null;
+    praxis.get('/stream', (_req, res) => {
+      res.status(200);
+      res.set('Content-Type', 'text/event-stream');
+      res.set('Cache-Control', 'no-cache');
+      res.flushHeaders();
+      upstreamRes = res;
+    });
+
+    praxisHandle = await listen(praxis);
+    process.env.PRAXIS_URL = praxisHandle.baseUrl;
+
+    const emitted = [];
+    const io = { emit: (name, payload) => emitted.push([name, payload]) };
+
+    const createPraxisStreamRouter = require('../routes/praxis-stream');
+    const nexus = express();
+    nexus.use('/api/praxis', createPraxisStreamRouter({ io }));
+    nexusHandle = await listen(nexus);
+
+    // Wait for the relay's upstream connection to land.
+    for (let i = 0; i < 100 && !upstreamRes; i += 1) {
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    expect(upstreamRes).toBeTruthy();
+
+    // A downstream SSE subscriber, so we can prove BOTH paths carry the frame.
+    const controller = new AbortController();
+    const sse = await fetch(`${nexusHandle.baseUrl}/api/praxis/stream`, { signal: controller.signal });
+    expect(sse.status).toBe(200);
+    const reader = sse.body.getReader();
+    const decoder = new TextDecoder();
+
+    const frame = { type: 'task.completed', eventId: 'evt-fanout-1', taskId: 'task-9' };
+    upstreamRes.write(`id: ${frame.eventId}\n`);
+    upstreamRes.write(`event: ${frame.type}\n`);
+    upstreamRes.write(`data: ${JSON.stringify(frame)}\n\n`);
+
+    let seenDownstream = '';
+    for (let i = 0; i < 50 && !seenDownstream.includes(frame.eventId); i += 1) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      seenDownstream += decoder.decode(value, { stream: true });
+    }
+    expect(seenDownstream).toContain(`event: ${frame.type}`);
+    expect(seenDownstream).toContain(frame.eventId);
+
+    // Same frame, same object shape, on the socket.
+    expect(emitted).toContainEqual(['praxis:event', frame]);
+
+    controller.abort();
+    try { upstreamRes.end(); } catch { /* already gone */ }
+  });
 });

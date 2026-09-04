@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getActivity, getActivityEvents, Activity, ActivityEvent } from "@/lib/nexus";
+import { useLiveRefetch } from "@/components/live-board-state";
 import { GitCommit, Clock, Cpu, Coins, ChevronRight, FileX2, User, Radio, AlertTriangle, Siren, ChevronDown } from "lucide-react";
 
 // Compact token count: 12345 → "12.3k", 2_000_000 → "2M".
@@ -287,21 +288,24 @@ export function ActivityFeed() {
         router.push(`/task/${activity.taskId}${hash}`);
     };
 
+    const cancelled = useRef(false);
     useEffect(() => {
-        let cancelled = false;
-        const load = () => {
-            // Independent halves: a git error must not blank the event feed
-            // (and vice versa), so each settles on its own.
-            getActivity().then(rows => { if (!cancelled) setActivities(rows); }).catch(console.error);
-            getActivityEvents().then(rows => { if (!cancelled) setEvents(rows); }).catch(console.error)
-                .finally(() => { if (!cancelled) setLoading(false); });
-        };
-        load();
-        // Events land continuously while the day runs; commits do not. A slow
-        // poll keeps the feed current without a socket subscription here.
-        const timer = setInterval(load, 60_000);
-        return () => { cancelled = true; clearInterval(timer); };
+        cancelled.current = false;
+        return () => { cancelled.current = true; };
     }, []);
+
+    const load = useCallback(() => {
+        // Independent halves: a git error must not blank the event feed
+        // (and vice versa), so each settles on its own.
+        getActivity().then(rows => { if (!cancelled.current) setActivities(rows); }).catch(console.error);
+        getActivityEvents().then(rows => { if (!cancelled.current) setEvents(rows); }).catch(console.error)
+            .finally(() => { if (!cancelled.current) setLoading(false); });
+    }, []);
+
+    // Events land continuously while the day runs; commits do not. The shared
+    // live subscription refetches the moment anything happens, and the 60s
+    // fallback poll keeps commits (which produce no stream frame) current.
+    useLiveRefetch(["activity"], load);
 
     const rows = useMemo(() => mergeActivityRows(activities, events, filter), [activities, events, filter]);
 

@@ -26,11 +26,10 @@
  * Honesty rules: unreadable evidence is reported as `unknown`, never as ok and
  * never as blocked — a broken reader must not become an invisible dispatch ban.
  */
-const path = require('path');
-const Database = require('better-sqlite3');
+const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 const { resolveSharedCredential } = require('./praxis-env');
 
-const DEFAULT_DB_PATH = process.env.NEXUS_DB_PATH || path.resolve(__dirname, '../../nexus.db');
+const DEFAULT_DB_PATH = resolveNexusDbPath();
 
 /**
  * Executor → the credential it actually spends, and HOW it authenticates.
@@ -360,12 +359,13 @@ function openDb(dbPath) {
         return null;
     }
     try {
-        // Same connection pattern as dispatches.js — the injected db facade has
-        // no raw SQL. `fileMustExist` so a wrong path degrades to "unknown"
-        // instead of quietly creating an empty board DB. Not opened readonly:
-        // a read-only handle can't set journal_mode, and this file is WAL.
-        handle = new Database(dbPath, { fileMustExist: true });
-        handle.pragma('journal_mode = WAL');
+        // Raw connection via db/raw.js — the injected db facade has no raw
+        // SQL. `fileMustExist` so a wrong path degrades to "unknown" instead
+        // of quietly creating an empty board DB. Not opened readonly: a
+        // read-only handle can't set journal_mode, and this file is WAL.
+        // `cache: false` — this module owns the handle lifecycle (close on
+        // path change, per-path open backoff, resetRoutingCache test seam).
+        handle = openRaw(dbPath, { fileMustExist: true, cache: false });
         handlePath = dbPath;
         openFailure = null;
     } catch (err) {

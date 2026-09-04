@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const Database = require('better-sqlite3');
+const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 const createStudioIngestion = require('../services/studio-ingestion');
 const createAstroNightly = require('../services/astro-nightly');
 const { startNightlyScheduler } = createAstroNightly;
@@ -32,9 +32,8 @@ const EDITABLE_CHANNEL_FIELDS = [
 
 function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
   const router = express.Router();
-  const DB_PATH = process.env.NEXUS_DB_PATH || path.resolve(__dirname, '../../nexus.db');
-  const sql = new Database(DB_PATH);
-  sql.pragma('journal_mode = WAL');
+  // Resolved per router instance (tests point NEXUS_DB_PATH at temp files).
+  const sql = openRaw(resolveNexusDbPath());
   setupSchema(sql);
   seedChannels(sql);
   seedSpecDefinitions(sql);

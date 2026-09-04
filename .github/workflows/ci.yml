@@ -42,12 +42,27 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
     
+    # @praxis/contract is the sibling repo nexus-shared (one copy, shared by the
+    # root server and the dashboard via file:../nexus-shared / file:../../nexus-shared).
+    # nexus-shared is a PRIVATE repo, so a plain clone fails. Requires the repo
+    # secret NEXUS_SHARED_READ_TOKEN: a fine-grained PAT with Contents: read on
+    # VibeShiftAI/nexus-shared. actions/checkout cannot write outside the
+    # workspace, so check out into a subdir and symlink it to ../nexus-shared.
+    - name: Check out @praxis/contract (nexus-shared)
+      uses: actions/checkout@v4
+      with:
+        repository: VibeShiftAI/nexus-shared
+        token: ${{ secrets.NEXUS_SHARED_READ_TOKEN }}
+        path: .nexus-shared-src
+
+    - name: Link nexus-shared as a sibling and build @praxis/contract
+      run: |
+        ln -sfn "$GITHUB_WORKSPACE/.nexus-shared-src" ../nexus-shared
+        cd ../nexus-shared && npm install && npm run build
+
     - name: Install root dependencies
       run: npm ci
     
-    - name: Build @praxis/contract
-      working-directory: packages/contract
-      run: npm install && npm run build
     
     - name: Install dashboard dependencies
       working-directory: dashboard

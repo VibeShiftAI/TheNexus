@@ -291,12 +291,21 @@ describe('note degradation ladder', () => {
  * the branch is exercised for real.
  */
 function loadWithRecentKept(n) {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+  // The constant lives in lib/dated-series.js; the copy carries index.js plus
+  // the whole lib/ directory so the copied index.js resolves its own requires.
+  const root = path.join(__dirname, '..');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vw-kept-'));
+  fs.copyFileSync(path.join(root, 'index.js'), path.join(tmp, 'index.js'));
+  fs.mkdirSync(path.join(tmp, 'lib'));
+  for (const name of fs.readdirSync(path.join(root, 'lib'))) {
+    fs.copyFileSync(path.join(root, 'lib', name), path.join(tmp, 'lib', name));
+  }
+  const target = path.join(tmp, 'lib', 'dated-series.js');
+  const source = fs.readFileSync(target, 'utf8');
   const patched = source.replace('const SERIES_RECENT_KEPT = 0;', `const SERIES_RECENT_KEPT = ${n};`);
   expect(patched).not.toBe(source); // the constant was renamed — fix this test
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'vw-kept-')), 'index.js');
-  fs.writeFileSync(file, patched, 'utf8');
-  return require(file);
+  fs.writeFileSync(target, patched, 'utf8');
+  return require(path.join(tmp, 'index.js'));
 }
 
 describe('series sub-bullets', () => {

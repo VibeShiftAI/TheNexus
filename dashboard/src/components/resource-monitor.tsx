@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     Activity,
     Cpu,
@@ -17,6 +17,7 @@ import {
     XCircle
 } from 'lucide-react';
 import { getSystemStatus, getUsageStats, SystemStatus, UsageStats } from '../lib/nexus';
+import { useLiveRefetch } from '@/components/live-board-state';
 
 interface ResourceMonitorProps {
     className?: string;
@@ -52,17 +53,11 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
         }
     }, []);
 
-    // Initial fetch and polling
-    useEffect(() => {
-        fetchData();
-        // Only poll if we have a successful connection
-        const interval = setInterval(() => {
-            if (!error) {
-                fetchData();
-            }
-        }, 5000); // Poll every 5 seconds
-        return () => clearInterval(interval);
-    }, [fetchData, error]);
+    // Live-driven refresh on the shared subscription: system frames
+    // (presence.changed / executor.progress) push a refetch, and the 60s
+    // fallback poll covers a dropped transport. This replaced a 5s poll
+    // against the rate-limited :4000 API.
+    useLiveRefetch(["system"], fetchData);
 
     const handleRetry = useCallback(() => {
         setRetryCount(prev => prev + 1);

@@ -13,16 +13,17 @@
  *   crew  — dispatch rollups (running lanes, last run, token burn)
  *
  * Mount BEFORE the main projects router: its GET /:id would swallow /pulse.
- * The injected db facade has no raw prepare/exec, so this module opens its
- * own WAL-mode connection (same pattern as routes/dispatches.js).
+ * The injected db facade has no raw prepare/exec, so this module takes a
+ * readonly raw connection from db/raw.js (same pattern as routes/dispatches.js).
  */
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
 const simpleGit = require('simple-git');
+const { openRaw, resolveNexusDbPath } = require('../../db/raw');
+const { TASK_START_STATUSES } = require('@praxis/contract');
 
-const DEFAULT_DB_PATH = process.env.NEXUS_DB_PATH || path.resolve(__dirname, '../../nexus.db');
+const DEFAULT_DB_PATH = resolveNexusDbPath();
 
 const DAY_MS = 24 * 3600_000;
 // Dispatch rows can be orphaned in "running" forever (117 observed) — only
@@ -31,9 +32,12 @@ const RUNNING_WINDOW_MS = 4 * 3600_000;
 const BATCH_CACHE_TTL_MS = 45_000;
 const GIT_POOL_SIZE = 6;
 
-const ACTIVE_STATUSES = new Set(['in_progress', 'dispatched']);
+// "Active" == the contract's started states (@praxis/contract TASK_START_STATUSES).
+// The other groups are pulse-local partitions of TaskBoardStatusSchema with no
+// matching contract constant.
+const ACTIVE_STATUSES = new Set(TASK_START_STATUSES);
 const QUEUED_STATUSES = new Set(['idea', 'planning', 'todo', 'scheduled']);
-const ATTENTION_STATUSES = new Set(['needs_input', 'blocked', 'failed']);
+const ATTENTION_STATUSES = new Set(['needs_input', 'blocked', 'failed', 'suspended']);
 const REVIEW_STATUSES = new Set(['ready_for_review', 'review']);
 
 /** sqlite writes "YYYY-MM-DD HH:MM:SS" (UTC), app code writes ISO — accept both. */
@@ -124,8 +128,8 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
 
     let dbc;
     try {
-        dbc = new Database(dbPath, { readonly: true });
-        // WAL is set by the writers; a readonly handle just follows along.
+        // Readonly: WAL is set by the writers; this handle just follows along.
+        dbc = openRaw(dbPath, { readonly: true });
     } catch (err) {
         console.error(`[Pulse] DB unavailable (${err.message}) — project pulse disabled`);
         router.use((_req, res) => res.status(503).json({ error: 'pulse storage unavailable' }));

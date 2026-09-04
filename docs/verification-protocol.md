@@ -71,10 +71,10 @@ A real leg-A verify for TheNexus work exercises one of these, scoped to the chan
 - **Dashboard:** `npm run build` in `dashboard/` (the compile is the floor), plus driving the
   affected page/component against a running server when behavior changed.
 - **API:** hit the affected route on the live cockpit (`:4000`) and show the response.
-- **Contract changes:** the wire contract exists in TWO copies — the server's
-  (`@praxis/contract` → `file:../nexus-shared`) and the dashboard's
-  (`file:../packages/contract`). A contract change is not verified until **both** copies are
-  edited and rebuilt and both consumers compile against them.
+- **Contract changes:** the wire contract lives in ONE place, the sibling repo `../nexus-shared`
+  (server: `file:../nexus-shared`; dashboard: `file:../../nexus-shared`). A contract change is
+  not verified until `npm run build` has run in `nexus-shared` and both consumers (server and
+  dashboard) compile against the rebuilt `dist/`.
 
 A typecheck or lint alone is not a verify; docs-only changes say so instead of inventing a
 command.

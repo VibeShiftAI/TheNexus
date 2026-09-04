@@ -164,6 +164,7 @@ async function notifyTaskUpdate(task, oldStatus) {
         'failed': '❌',
         'blocked': '🚫',
         'awaiting_approval': '⏳',
+        'suspended': '⏸️',
         'cancelled': '🗑️',
     };
 

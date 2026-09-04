@@ -7,7 +7,7 @@ const root = process.cwd();
 
 test("Praxis journal exposes stock analysis and YouTube script tabs", () => {
   const component = fs.readFileSync(path.join(root, "src/components/daily-journal.tsx"), "utf-8");
-  const contract = fs.readFileSync(path.join(root, "../packages/contract/src/notes.ts"), "utf-8");
+  const contract = fs.readFileSync(path.join(root, "../../nexus-shared/src/notes.ts"), "utf-8");
 
   assert.match(component, /key: "stock-analysis"/);
   assert.match(component, /label: "Stock Analysis"/);

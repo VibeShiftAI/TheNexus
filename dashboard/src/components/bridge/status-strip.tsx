@@ -15,6 +15,7 @@ import { useHitlInbox } from "@/hooks/use-hitl-inbox";
 import { useTokenUsage } from "@/hooks/use-token-usage";
 import { useComms } from "@/hooks/use-comms";
 import { CommsModal } from "@/components/bridge/comms-modal";
+import { useAutonomyChip } from "@/components/bridge/autonomy-indicator";
 import { fmtTokens } from "@/lib/token-usage";
 import { coreStyle } from "@/components/bridge/core-canvas";
 import { isDayWellUnderway } from "@/lib/day-underway";
@@ -44,6 +45,13 @@ interface Chip {
   title: string;
   /** Chips without a station open their own drill-down instead of warping. */
   onClick?: () => void;
+  /**
+   * Hover text used verbatim instead of the "Warp to …"/title default — for a
+   * chip whose value is a verdict that needs its full reason on hover.
+   */
+  hoverTitle?: string;
+  /** Accessible label when the visible value alone doesn't carry the meaning. */
+  ariaLabel?: string;
 }
 
 export function StatusStrip() {
@@ -52,6 +60,9 @@ export function StatusStrip() {
   const { pendingRequests } = useHitlInbox();
   const { usage } = useTokenUsage();
   const { feed, newCount, available: commsAvailable, lastSeen, markSeen } = useComms();
+  // May the fleet start work at all — running / explicit pause (who, since) /
+  // no live day schedule. The full reason rides the chip's title and label.
+  const autonomy = useAutonomyChip();
   const [commsOpen, setCommsOpen] = useState(false);
 
   const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";
@@ -80,6 +91,17 @@ export function StatusStrip() {
       tone: praxisStyle.textClass,
       target: "station-core",
       title: "Main viewer",
+    },
+    {
+      id: "autonomy",
+      label: "AUTONOMY",
+      value: autonomy.value,
+      icon: <autonomy.Icon size={13} />,
+      tone: autonomy.view.tone,
+      target: "station-dispatch",
+      title: "Ops — dispatch lanes",
+      hoverTitle: autonomy.view.reason,
+      ariaLabel: `Autonomy: ${autonomy.view.reason}`,
     },
     {
       id: "crew",
@@ -133,13 +155,14 @@ export function StatusStrip() {
   ];
 
   return (
-    <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+    <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-7">
       {chips.map((c) => (
         <button
           key={c.id}
           onClick={() => (c.onClick ? c.onClick() : c.target && flashPanel(c.target))}
           className="hud-scanlines group relative flex items-center gap-2.5 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-left transition-colors hover:border-cyan-500/40 hover:bg-slate-900"
-          title={c.onClick ? c.title : `Warp to ${c.title}`}
+          title={c.hoverTitle ?? (c.onClick ? c.title : `Warp to ${c.title}`)}
+          aria-label={c.ariaLabel}
         >
           <span className={`shrink-0 ${c.tone}`}>{c.icon}</span>
           <span className="min-w-0">

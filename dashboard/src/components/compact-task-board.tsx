@@ -1,9 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { getBoardState } from "@/lib/nexus";
 import { groupBoardTasks, type BoardTask, type BoardLaneId, type BoardProject } from "@/lib/task-board";
-import { useStreamRefetch } from "@/hooks/use-stream-refetch";
+import { useLiveRefetch } from "@/components/live-board-state";
 import { FolderGit2, ChevronDown, ChevronUp, Clock, AlertTriangle, Play, ExternalLink, Copy, Check } from "lucide-react";
 
 interface CompactTaskBoardProps {
@@ -58,18 +58,10 @@ export function CompactTaskBoard({ onSelectTask }: CompactTaskBoardProps) {
     }
   }, []);
 
-  useEffect(() => {
-    fetchBoard();
-    // Event-driven via the stream below; this is just a slow drift-correction poll.
-    const interval = setInterval(fetchBoard, 60_000);
-    return () => clearInterval(interval);
-  }, [fetchBoard]);
-
-  // Refetch the moment task lifecycle events land on the Praxis stream.
-  useStreamRefetch(
-    ["task.created", "task.updated", "task.started", "task.completed", "task.failed", "task.blocked"],
-    fetchBoard,
-  );
+  // One shared live subscription (LiveBoardStateProvider) drives the refetch:
+  // fetch on mount, again whenever a board/task frame lands, and a slow 60s
+  // fallback poll so a dropped transport degrades instead of freezing.
+  useLiveRefetch(["board", "task"], fetchBoard);
 
   const grouped = groupBoardTasks(projects);
 

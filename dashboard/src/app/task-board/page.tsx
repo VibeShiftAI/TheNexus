@@ -15,12 +15,15 @@ import {
   Layers,
   Loader2,
   MessageSquareText,
+  PauseCircle,
   Pencil,
   RefreshCw,
   Search,
   Table2,
 } from "lucide-react";
-import { getBoardState, updateTask } from "@/lib/nexus";
+import { getBoardState, updateTask, type QaHold } from "@/lib/nexus";
+import { useQaHolds } from "@/hooks/use-qa-holds";
+import { qaHoldBadge } from "@/lib/qa-hold-badge";
 import {
   getDispatchEligibility,
   type DispatchEligibilityResponse,
@@ -218,6 +221,9 @@ export default function TaskBoardPage() {
     return () => window.clearInterval(timer);
   }, [loadBoard]);
 
+  // Tasks whose QA correction was withheld while autonomy was paused. They
+  // sit at `todo` looking like ordinary work, so the board badges them apart.
+  const { byTaskId: holdsByTaskId } = useQaHolds();
   const grouped = useMemo(() => groupBoardTasks(projects), [projects]);
   const eligibilityById = useMemo(() => {
     const map = new Map<string, TaskEligibility>();
@@ -382,6 +388,7 @@ export default function TaskBoardPage() {
                 onManage={setEditingTask}
                 onQuickStatus={handleQuickStatus}
                 eligibilityById={eligibilityById}
+                holdsByTaskId={holdsByTaskId}
               />
             ))}
           </section>
@@ -529,6 +536,7 @@ function LaneColumn({
   onManage,
   onQuickStatus,
   eligibilityById,
+  holdsByTaskId,
 }: {
   id?: string;
   lane: BoardLane;
@@ -537,6 +545,8 @@ function LaneColumn({
   onManage: (task: BoardTask) => void;
   onQuickStatus: (task: BoardTask, nextStatus: string) => void;
   eligibilityById: Map<string, TaskEligibility>;
+  /** Tasks parked with a withheld QA correction, by task id. */
+  holdsByTaskId: Map<string, QaHold>;
 }) {
   return (
     <div id={id} className="flex min-h-[520px] w-72 shrink-0 flex-col rounded-lg border border-slate-800 bg-slate-950 xl:w-auto xl:flex-1">
@@ -564,6 +574,7 @@ function LaneColumn({
               onManage={onManage}
               onQuickStatus={onQuickStatus}
               eligibility={eligibilityById.get(task.id)}
+              hold={holdsByTaskId.get(task.id)}
             />
           ))
         )}
@@ -699,17 +710,52 @@ function ContainmentStrip({ eligibility }: { eligibility: DispatchEligibilityRes
   );
 }
 
+/**
+ * A task whose QA correction was withheld. Deliberately louder and wider than
+ * an eligibility chip: this is not "waiting its turn", it is "the review ran,
+ * it failed, and the fix was never sent" — the state three of Robert's tasks
+ * sat in on 2026-09-02 with chat as the only way to find out. The link goes to
+ * the findings the run left behind.
+ */
+function QaHoldBadge({ hold }: { hold: QaHold }) {
+  const badge = qaHoldBadge(hold);
+  return (
+    <Link
+      href={badge.findingsHref}
+      className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-2 py-1.5 text-[11px] leading-4 text-amber-200 transition-colors hover:border-amber-400/60 hover:bg-amber-500/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+      title={badge.title}
+      aria-label={badge.title}
+    >
+      <PauseCircle size={13} className="mt-px shrink-0 text-amber-400" />
+      <span className="min-w-0">
+        <span className="block font-semibold">QA failed — correction held</span>
+        <span className="block truncate text-amber-200/70">
+          {badge.shortReason}
+        </span>
+        <span className="mt-0.5 block text-[10px] text-amber-300/60">
+          {badge.hasFindings ? "View findings" : "No findings recorded"}
+          {hold.heldAt ? ` · held ${hold.heldAt}` : ""}
+          {" · no strike spent"}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 function TaskCard({
   task,
   onManage,
   onQuickStatus,
   eligibility,
+  hold,
 }: {
   task: BoardTask;
   onManage: (task: BoardTask) => void;
   onQuickStatus: (task: BoardTask, nextStatus: string) => void;
   /** Why this waiting task isn't running (Ready/New lanes only). */
   eligibility?: TaskEligibility;
+  /** Set when this task's QA correction is being held — not an ordinary todo. */
+  hold?: QaHold;
 }) {
   const title = task.title || task.name || "Untitled task";
   const taskProjectId = task.projectId || task.project_id;
@@ -760,7 +806,7 @@ function TaskCard({
         <span className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-slate-400">
           P{task.priority ?? 0}
         </span>
-        {eligibility && <EligibilityChip eligibility={eligibility} />}
+        {eligibility && !hold && <EligibilityChip eligibility={eligibility} />}
         <CopyableTaskId id={task.id} />
         {hasTranscript && (
           <span className="inline-flex items-center gap-1 rounded-md border border-cyan-400/30 px-2 py-1 text-cyan-200">
@@ -769,6 +815,8 @@ function TaskCard({
           </span>
         )}
       </div>
+
+      {hold && <QaHoldBadge hold={hold} />}
 
       {description ? (
         <p className="mt-3 line-clamp-4 text-xs leading-5 text-slate-400">

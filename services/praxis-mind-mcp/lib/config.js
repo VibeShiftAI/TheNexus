@@ -4,6 +4,9 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+// Relative to this file (NOT cwd): the MCP server is spawned per client with
+// an arbitrary cwd, so the require must resolve from services/praxis-mind-mcp/.
+const { vaultRoot } = require('../../../server/lib/vault-paths');
 
 // Load ~/.praxis-mind/.env into process.env BEFORE reading values below.
 // Tiny inline parser (we don't want a dotenv dep for an ephemeral MCP server).
@@ -33,7 +36,9 @@ module.exports = {
   NEXUS: process.env.NEXUS_URL || 'http://localhost:4000',
 
   // Vault root (also the Praxis-priority canonical content store)
-  VAULT: '/Volumes/Projects/shared-mind',
+  // Resolved AFTER the ~/.praxis-mind/.env load above, so NEXUS_VAULT_ROOT /
+  // PRAXIS_VAULT_ROOT set there are honoured.
+  VAULT: vaultRoot(),
 
   // State files (shared across ephemeral MCP spawns — must be WAL/atomic)
   KEYS_FILE: path.join(os.homedir(), '.praxis-mind', 'keys.json'),

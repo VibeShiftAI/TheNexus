@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/check-contract-freshness.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/check-contract-freshness.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -11,7 +13,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
-    "@praxis/contract": "file:../packages/contract",
+    "@praxis/contract": "file:../../nexus-shared",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/three": "^0.184.1",
     "@xyflow/react": "^12.10.0",

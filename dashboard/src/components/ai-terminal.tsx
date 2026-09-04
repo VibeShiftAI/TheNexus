@@ -1,24 +1,41 @@
 "use client"
 
-import { memo, useState, useMemo, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
-import { Send, Bot, User, Loader2, X, MessageSquare, Lock, Trash2, Paperclip, FileText, XCircle, RotateCcw, Maximize2, Mic, Square, Plus, History, ChevronRight, Download, Image, Film, Music, FileArchive, Volume2, Save } from "lucide-react";
-import ReactMarkdown, { type Components } from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import Link from "next/link";
+/**
+ * AITerminal — the Praxis viewscreen: composition + chat transport.
+ *
+ * P2-27 (2026-09-03) decomposed the old ~2,275-line component. What stayed
+ * here is the transport lane (SSE stream reader, /ingest, /api/ai/chat send
+ * with file + audio upload) and the layout that wires the pieces together.
+ * What moved out, and where:
+ *   - markdown / highlighting / task-link decoration → components/chat/markdown-message
+ *   - one transcript row (bubbles, artifacts, players) → components/chat/message-row
+ *   - the fullscreen plan review                      → components/chat/plan-review-modal
+ *   - the conversation-history panel                  → components/chat/conversation-list
+ *   - attachment chips                                → components/chat/attachment-chips
+ *   - the draft textarea + send button                → components/chat/composer
+ *   - voice queue / autoplay timing                   → hooks/use-chat-audio
+ *   - attachment selection / preview / removal        → hooks/use-file-attachments
+ *   - scrollback, DOM window, history panel state     → hooks/use-chat-history
+ * See docs/ai-terminal-map.md for the full inventory.
+ */
+
+import { useState, forwardRef, useImperativeHandle } from "react";
+import { Bot, Loader2, MessageSquare, Paperclip, Download } from "lucide-react";
 import { useParams } from "next/navigation";
 
 import { getAuthHeader } from "@/lib/auth";
-import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
-import { isInternalHref, remarkTaskLinks, splitOnTaskIds, taskHref } from "@/lib/task-links";
 import { useCortex } from "@/components/cortex-provider";
 import { dispatchMorningKickoff } from "@/components/bridge/bridge-fx";
-import { isThisClientActive } from "@/lib/active-client";
-import { fullReportAudioForMessage, VOICE_AUTOPLAY_FRESH_MS as REPORT_AUTOPLAY_FRESH_MS, type ChatAudioItem } from "@/lib/chat-audio";
-import type { Message, CortexArtifact, PlanDraftData, CompiledPlanData, ChatResponseData, LineCommentData, VoteSummaryData, StatusUpdateData, UnknownArtifactData } from "@/components/cortex-provider";
-
-// Types are now imported from cortex-provider.tsx
+import { useChatAudio } from "@/hooks/use-chat-audio";
+import { useChatHistory, messageKey } from "@/hooks/use-chat-history";
+import { useFileAttachments } from "@/hooks/use-file-attachments";
+import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
+import { ComposerRow } from "@/components/chat/composer";
+import { ConversationList } from "@/components/chat/conversation-list";
+import { TerminalHeader } from "@/components/chat/terminal-header";
+import { MessageRow } from "@/components/chat/message-row";
+import { PlanReviewModal, type CritiqueFeedbackState } from "@/components/chat/plan-review-modal";
+import type { Message, CortexArtifact } from "@/components/cortex-provider";
 
 interface AITerminalProps {
     isOpen?: boolean;
@@ -44,45 +61,6 @@ function createClientMessageId(): string {
         return crypto.randomUUID();
     }
     return `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-// ── Voice-note identity + replay guard (2026-07-25) ──
-// Voice tracking used to be keyed by ARRAY INDEX, which broke two ways:
-// refresh reset the in-memory listened set and the initial scan re-eligible'd
-// history notes (the morning greeting replayed on every reload), and the
-// provider's chronological merges shift indices, so old notes fell into the
-// "new since last scan" window and replayed when unrelated messages arrived.
-// Fix: key by stable message identity, persist started-playback keys in
-// localStorage, and only auto-play FRESH notes — an old note surfacing
-// through a history load or merge is repetition, not news.
-function voiceKeyForMessage(msg: { id?: string; timestamp: Date; role: string }, vidx: number): string {
-    return msg.id
-        ? `id:${msg.id}#${vidx}`
-        : `ts:${msg.timestamp.toISOString()}|${msg.role}#${vidx}`;
-}
-
-/** Stable transcript row identity: server/optimistic ids when present;
- *  id-less local rows (error banners, approval notes) fall back to
- *  timestamp+role. Stable keys are what let pagination prepends and DOM
- *  window shifts reuse the memoized markdown rows instead of re-parsing
- *  every message below the splice point. */
-function messageKey(msg: Message): string {
-    return msg.id ?? `local-${msg.timestamp.getTime()}-${msg.role}`;
-}
-
-const VOICE_PLAYED_STORE_KEY = 'nexus.voice.played';
-const VOICE_PLAYED_STORE_MAX = 300;
-/** Notes older than this never auto-play — badge only. */
-const VOICE_AUTOPLAY_FRESH_MS = 3 * 60_000;
-
-function loadPlayedVoiceStore(): Set<string> {
-    try {
-        const raw = window.localStorage.getItem(VOICE_PLAYED_STORE_KEY);
-        const arr = raw ? JSON.parse(raw) : [];
-        return new Set(Array.isArray(arr) ? arr.filter((k): k is string => typeof k === 'string') : []);
-    } catch {
-        return new Set(); // SSR / quota / corrupt store — session-only fallback
-    }
 }
 
 async function readPraxisEventStream(
@@ -126,761 +104,92 @@ async function readPraxisEventStream(
     return finalEvent;
 }
 
-// One shared prose scale for every conversational message — Praxis replies,
-// [MORNING ROUTINE] / [PRAXIS EVENT] system cards, plans, etc. Keeping the
-// sizing in a single constant is what makes the stream uniform: before this,
-// assistant turns rendered as a raw `whitespace-pre-wrap` block (no markdown)
-// while system cards rendered markdown, so headings/lists/paragraphs came out
-// at different sizes. prose-sm pins the body to 0.875rem and the overrides tame
-// heading/list/code sizing so nothing balloons to browser-default proportions.
-const MESSAGE_PROSE = [
-    "prose prose-invert prose-sm max-w-none break-words",
-    "prose-p:my-1.5 prose-p:leading-relaxed prose-p:text-slate-200",
-    "prose-headings:text-cyan-300 prose-headings:font-semibold prose-headings:mb-1",
-    "prose-h1:text-base prose-h1:mt-1 prose-h2:text-sm prose-h2:mt-2 prose-h3:text-sm prose-h3:mt-2 prose-h4:text-sm prose-h4:mt-2",
-    "prose-strong:text-cyan-300 prose-strong:font-semibold",
-    "prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-li:text-slate-200 prose-li:leading-relaxed",
-    "prose-code:text-cyan-200 prose-code:bg-slate-900/60 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[0.8em] prose-code:font-mono prose-code:before:content-none prose-code:after:content-none",
-    "prose-pre:my-2 prose-pre:rounded-lg prose-pre:bg-slate-950",
-    "prose-a:text-cyan-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-cyan-300",
-    "prose-table:text-xs prose-th:text-cyan-300 prose-th:bg-slate-900/40 prose-th:px-2 prose-th:py-1 prose-td:text-slate-200 prose-td:px-2 prose-td:py-1 prose-td:border-slate-700/50",
-    "prose-hr:border-slate-700/50 prose-hr:my-3",
-    "prose-blockquote:border-l-cyan-500/60 prose-blockquote:text-slate-300 prose-blockquote:not-italic",
-].join(" ");
-
-/** Styling for a task-id mention, in markdown and in plain-text turns alike. */
-const TASK_LINK_CLASS =
-    "font-mono text-cyan-400 underline decoration-dotted underline-offset-2 hover:text-cyan-300";
-
-/** Renders plain (non-markdown) text with every task-id mention linked.
- *  User turns and one-line system events stay literal — this only swaps the
- *  ids themselves for links, so nothing else about the text changes.
- *  Memoized: unchanged text must not re-scan for task ids when the
- *  transcript re-renders around it (streaming, appends). */
-const TaskLinkedText = memo(function TaskLinkedText({ text }: { text: string }) {
-    const segments = splitOnTaskIds(text);
-    if (segments.length === 1) return <>{text}</>;
-    return (
-        <>
-            {segments.map((segment, i) =>
-                segment.type === "text" ? (
-                    <span key={i}>{segment.value}</span>
-                ) : (
-                    <Link
-                        key={i}
-                        href={taskHref(segment.id)}
-                        title={`Open task ${segment.id}`}
-                        className={TASK_LINK_CLASS}
-                    >
-                        {segment.id}
-                    </Link>
-                ),
-            )}
-        </>
-    );
-});
-
-// ReactMarkdown config is static, so it lives at module level: the memoized
-// MarkdownMessage below only skips the parse when its props are identical,
-// and an inline plugins array / components map would be a fresh object every
-// render.
-const REMARK_PLUGINS = [remarkGfm, remarkTaskLinks];
-
-const MARKDOWN_COMPONENTS: Components = {
-    // Task ids (rewritten to /task/<id> by remarkTaskLinks) and inbox
-    // links from Praxis notices open in-app; everything else opens in a
-    // new tab so an external link never navigates the bridge away.
-    a: ({ node: _node, href, children, ...props }) =>
-        isInternalHref(href) ? (
-            <Link href={href} {...props} className={TASK_LINK_CLASS}>
-                {children}
-            </Link>
-        ) : (
-            <a href={href} {...props} target="_blank" rel="noopener noreferrer">
-                {children}
-            </a>
-        ),
-    // Keep wide tables (e.g. the Day Schedule) from blowing out
-    // the narrow viewscreen — scroll them horizontally instead.
-    table: ({ node: _node, ...props }) => (
-        <div className="overflow-x-auto">
-            <table {...props} />
-        </div>
-    ),
-    code({ node: _node, className, children, ...props }: any) {
-        const match = /language-(\w+)/.exec(className || "");
-        const raw = String(children);
-        // Fenced or multi-line → highlighted block; otherwise inline code.
-        return match || raw.includes("\n") ? (
-            <SyntaxHighlighter
-                style={oneDark as any}
-                language={match ? match[1] : "text"}
-                PreTag="div"
-                className="rounded-lg !bg-slate-950 !text-xs"
-                customStyle={{ whiteSpace: "pre-wrap", overflowWrap: "break-word", overflowX: "hidden" }}
-                codeTagProps={{ style: { whiteSpace: "pre-wrap", wordBreak: "break-word" } }}
-                {...props}
-            >
-                {raw.replace(/\n$/, "")}
-            </SyntaxHighlighter>
-        ) : (
-            <code className={className} {...props}>{children}</code>
-        );
-    },
-};
-
-/** Renders message content as normalized markdown at the shared prose scale.
- *  Used for every assistant reply and every multi-line system card so the whole
- *  transcript reads as one consistent, well-formatted surface.
- *  Memoized: the remark/Prism pipeline is the expensive part of the
- *  transcript, and a message whose content hasn't changed must never pay
- *  for it again just because the transcript re-rendered around it. */
-const MarkdownMessage = memo(function MarkdownMessage({ content }: { content: string }) {
-    return (
-        <div className={MESSAGE_PROSE}>
-            <ReactMarkdown
-                remarkPlugins={REMARK_PLUGINS}
-                components={MARKDOWN_COMPONENTS}
-            >
-                {normalizeMarkdown(content)}
-            </ReactMarkdown>
-        </div>
-    );
-});
-
-// ── Transcript DOM window (2026-08-28) ──
-// The provider's message array is unbounded (a day of socket appends on top
-// of the 30-message mount tail), but the DOM doesn't have to be: only the
-// newest RENDER_WINDOW messages stay mounted once the transcript is trimmed.
-// Scrolling to the top reveals REVEAL_PAGE already-loaded messages at a time
-// before any network pagination, the trim only ever happens while the view
-// is pinned to the bottom (never under a reader), and the slack batches
-// trims so streaming appends don't re-trim per message.
-const RENDER_WINDOW = 200;
-const RENDER_WINDOW_SLACK = 40;
-const REVEAL_PAGE = 100;
-
-interface ChatComposerProps {
-    isInline: boolean;
-    isOpen: boolean;
-    loading: boolean;
-    isRecording: boolean;
-    hasAudio: boolean;
-    attachedCount: number;
-    /** Synchronous dispatch decision: true = message accepted, clear the input. */
-    onSend: (text: string) => boolean;
-}
-
-/** The composer's keystroke state lives HERE, in a leaf component beside the
- *  transcript — not in AITerminal above it. Typing therefore re-renders only
- *  this input row; the message list cannot even read the draft text. (It used
- *  to live in AITerminal, so every keystroke re-rendered and re-parsed every
- *  message on screen — seconds of lag once a conversation built up history.) */
-/** Auto-grow cap, in px, before the textarea scrolls internally instead of
- *  growing further — matches the Claude-app composer behavior. */
-const COMPOSER_MAX_HEIGHT = 200;
-
-function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio, attachedCount, onSend }: ChatComposerProps) {
-    const [input, setInput] = useState("");
-    const inputRef = useRef<HTMLTextAreaElement>(null);
-    const composerIcon = isInline ? 16 : 18;
-
-    const resizeInput = useCallback(() => {
-        const el = inputRef.current;
-        if (!el) return;
-        el.style.height = "auto";
-        el.style.height = `${Math.min(el.scrollHeight, COMPOSER_MAX_HEIGHT)}px`;
-    }, []);
-
-    // Re-measure whenever the draft text changes (typing, seeding, or clearing after send).
-    useEffect(() => {
-        resizeInput();
-    }, [input, resizeInput]);
-
-    // Focus input when terminal opens (modal only — inline shouldn't steal focus on page load)
-    useEffect(() => {
-        if (isOpen && !isInline && inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, [isOpen, isInline]);
-
-    // Any deck surface can drop text into the composer (e.g. the notes
-    // console's "chat about it"): dispatch `nexus:chat-seed` with
-    // { detail: { text } } — the composer fills the input and focuses so the
-    // operator can edit before sending.
-    useEffect(() => {
-        const onSeed = (e: Event) => {
-            const text = (e as CustomEvent<{ text?: string }>).detail?.text;
-            if (!text) return;
-            setInput(text);
-            inputRef.current?.focus();
-        };
-        window.addEventListener("nexus:chat-seed", onSeed);
-        return () => window.removeEventListener("nexus:chat-seed", onSeed);
-    }, []);
-
-    const submit = () => {
-        // Clicking the Send button moves focus to the button; restore it to
-        // the composer so typing can continue without a manual re-click,
-        // matching the old <input>'s Enter-to-send flow.
-        if (onSend(input)) {
-            setInput("");
-            inputRef.current?.focus();
-        }
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        // isComposing is true while an IME (Japanese, Chinese, etc.) is
-        // resolving candidates — that Enter confirms the composition, it
-        // doesn't mean "send".
-        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            submit();
-        }
-        // Shift+Enter falls through to the textarea's default behavior (newline).
-    };
-
-    return (<>
-        {!isRecording && (
-            <textarea
-                ref={inputRef}
-                rows={1}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={hasAudio ? "Add a message (optional)..." : (attachedCount > 0 ? "Add a message (optional)..." : "Message Praxis...")}
-                className={isInline
-                    ? "flex-1 min-w-0 resize-none overflow-y-auto rounded-md bg-slate-900/60 border border-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-cyan-500/60 focus:outline-none transition-colors"
-                    : "flex-1 resize-none overflow-y-auto rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"}
-                style={{ maxHeight: COMPOSER_MAX_HEIGHT }}
-                disabled={loading}
-            />
-        )}
-
-        <button
-            onClick={submit}
-            aria-label="Send message"
-            disabled={loading || (!input.trim() && attachedCount === 0 && !hasAudio) || isRecording}
-            className={isInline
-                ? "flex items-center justify-center px-3 rounded-md bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:from-cyan-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                : "px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium hover:from-cyan-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"}
-        >
-            {loading ? <Loader2 size={composerIcon} className="animate-spin" /> : <Send size={composerIcon} />}
-        </button>
-    </>);
-}
-
 export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function AITerminal({ isOpen = true, onClose, mode = 'modal', hideHeader = false }, ref) {
     const isInline = mode === 'inline';
-    const { messages, setMessages, readyForReview, setReadyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages, chatAudio, playChatAudio, toggleChatAudio, pauseChatAudio } = useCortex();
+    const { messages, setMessages, readyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages, chatAudio, playChatAudio, toggleChatAudio, pauseChatAudio } = useCortex();
     // NOTE: the composer's draft text deliberately does NOT live here — it is
     // ChatComposer's own state, so keystrokes can't re-render the transcript.
     const [loading, setLoading] = useState(false);
-    // Transcript DOM window: number of messages hidden at the HEAD of the
-    // list. Anchoring the window by its head means appends never slide it
-    // under a reader — the window only trims (hiddenCount grows) while the
-    // view is pinned to the bottom, and scrolling up reveals from memory
-    // before paginating over the network.
-    const [hiddenCount, setHiddenCount] = useState(0);
-    // Stale-guard: after a conversation switch the count may briefly exceed
-    // the fresh (shorter) list until the reset effect below runs.
-    const hiddenMessageCount = hiddenCount < messages.length ? hiddenCount : 0;
-    const visibleMessages = useMemo(
-        () => hiddenMessageCount > 0 ? messages.slice(hiddenMessageCount) : messages,
-        [messages, hiddenMessageCount],
-    );
-    useEffect(() => {
-        setHiddenCount(0);
-    }, [conversationId]);
-    const [pendingArtifact, setPendingArtifact] = useState<CortexArtifact | null>(null);
-    const [attachedFiles, setAttachedFiles] = useState<File[]>([]); // File upload state
-    const [attachedPreviews, setAttachedPreviews] = useState<{ name: string; size: number; type: string; previewUrl?: string }[]>([]); // Rich preview state
-    const [isDragging, setIsDragging] = useState(false); // Drag-and-drop state
-    const [showConversations, setShowConversations] = useState(false); // Conversation history panel
-    const dragCounter = useRef(0); // Counter to properly track drag enter/leave across child elements
+
+    // Scrollback + DOM render window + the history panel toggle.
+    const {
+        messagesContainerRef,
+        visibleMessages,
+        hiddenMessageCount,
+        handleMessagesScroll,
+        showConversations,
+        setShowConversations,
+        toggleConversations,
+    } = useChatHistory({
+        messages,
+        conversationId,
+        isOpen,
+        isLoadingHistory,
+        hasMoreMessages,
+        isLoadingMore,
+        loadMoreMessages,
+        loadConversations,
+    });
+
+    // Attachments (picker, drag-and-drop, previews) and the voice memo.
+    const {
+        attachedFiles,
+        attachedPreviews,
+        isDragging,
+        fileInputRef,
+        mediaInputRef,
+        handleFileDrop,
+        handleDragEnter,
+        handleDragOver,
+        handleDragLeave,
+        handleDrop,
+        removeFile,
+        clearAttachments,
+    } = useFileAttachments();
+    const { isRecording, recordingTime, audioBlob, audioPreviewUrl, startRecording, stopRecording, clearAudio } = useVoiceRecorder(setMessages);
+
+    // Voice-note autoplay queue + the global briefing player handoff.
+    const {
+        voiceAudioRefs,
+        nowPlayingVoiceRef,
+        dismissedVoice,
+        setDismissedVoice,
+        listenedVoice,
+        setListenedVoice,
+        getPlayedVoice,
+        markVoicePlayed,
+        playNextQueuedVoice,
+        saveVoiceMemo,
+    } = useChatAudio({ messages, chatAudio, playChatAudio, pauseChatAudio });
 
     // Expose chat controls so a host that hides the terminal header (e.g. the
     // consolidated PraxisCore station bar) can still drive new-conversation /
     // history from its own toolbar.
     useImperativeHandle(ref, () => ({
         newConversation: () => { void startNewConversation(); },
-        toggleHistory: () => {
-            setShowConversations((prev) => {
-                const next = !prev;
-                if (next) loadConversations();
-                return next;
-            });
-        },
-    }), [startNewConversation, loadConversations]);
+        toggleHistory: toggleConversations,
+    }), [startNewConversation, toggleConversations]);
     // Inline critique feedback state
     // Keyed by messageKey(msg), NOT by array index: reveals, prepends and
     // window trims shift indices, and this state must stay glued to its row.
-    const [critiqueFeedback, setCritiqueFeedback] = useState<{ messageKey: string | null; text: string; loading: boolean }>({
+    const [critiqueFeedback, setCritiqueFeedback] = useState<CritiqueFeedbackState>({
         messageKey: null,
         text: '',
         loading: false
     });
     // Approval loading state
     const [approvalLoading, setApprovalLoading] = useState<string | null>(null);
-    // Track which thread_ids are ready for human review (after voting completes)
-    // readyForReview is now provided by CortexProvider via useCortex()
+    // readyForReview (which thread_ids are ready for human review after voting) comes from useCortex()
     // Track expanded artifact index for full content viewing (council reviews)
     const [expandedArtifact, setExpandedArtifact] = useState<string | null>(null);
     // Fullscreen plan review modal state
     const [reviewModalData, setReviewModalData] = useState<{ artifact: CortexArtifact; messageKey: string } | null>(null);
-    
-    // Voice recording state
-    const [isRecording, setIsRecording] = useState(false);
-    const [recordingTime, setRecordingTime] = useState(0);
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const audioChunksRef = useRef<Blob[]>([]);
-    const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-    const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
 
-    // Voice message dismiss/listened tracking
-    // Keys are "msgIdx-voiceIdx", values track state
-    const [dismissedVoice, setDismissedVoice] = useState<Set<string>>(new Set());
-    const [listenedVoice, setListenedVoice] = useState<Set<string>>(new Set());
-
-    // ── Sequential voice playback (2026-07-17) ──
-    // Exactly ONE Praxis voice note plays at a time. New arrivals QUEUE behind
-    // whatever is playing instead of talking over it (the morning status-report
-    // announcement lands while Praxis is still walking through the schedule),
-    // and manual playback pauses everything else. Previously each newest
-    // message autoPlayed independently and never paused the prior one — two
-    // greetings in quick succession produced two simultaneous voices.
-    const voiceAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
-    const nowPlayingVoiceRef = useRef<string | null>(null);
-    const voiceQueueRef = useRef<string[]>([]);
-    // True from chirp-start until the voice element actually starts — guards
-    // the queue against double-starts during the ~0.5s chirp window.
-    const voiceStartPendingRef = useRef(false);
-    // Started-playback registry, persisted per browser so a page refresh
-    // never re-announces something this device already began playing.
-    // Lazy-loaded (localStorage is unavailable during SSR).
-    const playedVoiceRef = useRef<Set<string> | null>(null);
-    const getPlayedVoice = useCallback((): Set<string> => {
-        if (!playedVoiceRef.current) playedVoiceRef.current = loadPlayedVoiceStore();
-        return playedVoiceRef.current;
-    }, []);
-    const markVoicePlayed = useCallback((key: string) => {
-        const set = getPlayedVoice();
-        if (set.has(key)) return;
-        set.add(key);
-        try {
-            const arr = [...set].slice(-VOICE_PLAYED_STORE_MAX);
-            window.localStorage.setItem(VOICE_PLAYED_STORE_KEY, JSON.stringify(arr));
-            if (set.size > arr.length) playedVoiceRef.current = new Set(arr);
-        } catch {
-            /* quota — the in-memory set still guards this session */
-        }
-    }, [getPlayedVoice]);
-
-    // TNG-style comm chirp: two quick rising tones synthesized with WebAudio
-    // (no audio asset, no copyright), played a beat before each auto-played
-    // Praxis voice note. Resolves after the chirp (or immediately on any
-    // failure/blocked-autoplay) so the voice always follows.
-    const playCommChirp = useCallback((): Promise<void> => new Promise((resolve) => {
-        try {
-            type WindowWithWebkitAudio = Window & { webkitAudioContext?: typeof AudioContext };
-            const Ctx = window.AudioContext || (window as WindowWithWebkitAudio).webkitAudioContext;
-            if (!Ctx) return resolve();
-            const ctx = new Ctx();
-            const tone = (start: number, dur: number, f0: number, f1: number) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = "sine";
-                osc.frequency.setValueAtTime(f0, ctx.currentTime + start);
-                osc.frequency.exponentialRampToValueAtTime(f1, ctx.currentTime + start + dur);
-                gain.gain.setValueAtTime(0.0001, ctx.currentTime + start);
-                gain.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + start + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
-                osc.connect(gain).connect(ctx.destination);
-                osc.start(ctx.currentTime + start);
-                osc.stop(ctx.currentTime + start + dur + 0.05);
-            };
-            tone(0, 0.16, 620, 1320);
-            tone(0.2, 0.22, 980, 1980);
-            window.setTimeout(() => {
-                ctx.close().catch(() => {});
-                resolve();
-            }, 560);
-        } catch {
-            resolve();
-        }
-    }), []);
-
-    // Fresh full-report briefing waiting for its turn on the GLOBAL player
-    // (provider-owned, survives navigating to /inbox). It starts only when
-    // the inline voice queue is idle — one Praxis voice at a time.
-    const pendingReportRef = useRef<ChatAudioItem | null>(null);
-    const maybeStartPendingReport = useCallback(() => {
-        const item = pendingReportRef.current;
-        if (!item) return;
-        if (voiceStartPendingRef.current || nowPlayingVoiceRef.current || voiceQueueRef.current.length > 0) return;
-        pendingReportRef.current = null;
-        isThisClientActive().then((active) => {
-            // Same discipline as voice notes: inactive devices keep the manual
-            // player, and a started briefing never re-announces after refresh.
-            markVoicePlayed(item.key);
-            if (!active) return;
-            voiceAudioRefs.current.forEach((el) => {
-                if (!el.paused) el.pause();
-            });
-            playCommChirp().then(() => playChatAudio(item));
-        });
-    }, [markVoicePlayed, playCommChirp, playChatAudio]);
-
-    const playNextQueuedVoice = useCallback(() => {
-        if (voiceStartPendingRef.current) return;
-        if (voiceQueueRef.current.length === 0) {
-            nowPlayingVoiceRef.current = null;
-            maybeStartPendingReport();
-            return;
-        }
-        voiceStartPendingRef.current = true;
-        // Last-active-location gate: announcements auto-play only on the
-        // device Robert most recently touched (2026-07-17 — the Studio's
-        // desktop app AND a web tab both spoke while he worked on the
-        // laptop). Inactive clients keep the "New Voice Message" badge for
-        // manual play; the queue is dropped so a stale note never blurts
-        // out minutes later when this device becomes active again.
-        isThisClientActive().then((active) => {
-            if (!active) {
-                // Dropped notes are marked played so they can't re-queue and
-                // blurt out later when this device becomes active — the
-                // "New Voice Message" badge stays for manual play.
-                voiceQueueRef.current.forEach(markVoicePlayed);
-                voiceQueueRef.current = [];
-                voiceStartPendingRef.current = false;
-                nowPlayingVoiceRef.current = null;
-                return;
-            }
-            let key: string | null = null;
-            let el: HTMLAudioElement | null = null;
-            while (voiceQueueRef.current.length > 0) {
-                const candidateKey = voiceQueueRef.current.shift()!;
-                const candidate = voiceAudioRefs.current.get(candidateKey);
-                if (candidate && !candidate.ended) {
-                    key = candidateKey;
-                    el = candidate;
-                    break;
-                }
-            }
-            if (!key || !el) {
-                voiceStartPendingRef.current = false;
-                nowPlayingVoiceRef.current = null;
-                return;
-            }
-            const playKey = key;
-            const playEl = el;
-            nowPlayingVoiceRef.current = playKey;
-            playCommChirp().then(() => {
-                voiceStartPendingRef.current = false;
-                playEl.play().catch(() => {
-                    // Autoplay blocked (no user gesture yet) — drop, don't loop.
-                    if (nowPlayingVoiceRef.current === playKey) nowPlayingVoiceRef.current = null;
-                });
-            });
-        });
-    }, [playCommChirp, markVoicePlayed, maybeStartPendingReport]);
-
-    useEffect(() => {
-        // Enqueue voice notes by stable message identity. Eligibility, not
-        // position: a note auto-plays only if it is FRESH (arrived within the
-        // last few minutes) and this device hasn't started it before — so
-        // history loads, refreshes, and mid-list merges can surface old notes
-        // without re-announcing them.
-        const nowMs = Date.now();
-        for (const msg of messages) {
-            // A full-report attachment is the message's SOLE report audio —
-            // it rides the global player, and any accidental legacy voice on
-            // the same message stays out of the inline queue.
-            const reportItem = fullReportAudioForMessage(msg);
-            if (reportItem) {
-                if (
-                    !getPlayedVoice().has(reportItem.key)
-                    && nowMs - msg.timestamp.getTime() <= REPORT_AUTOPLAY_FRESH_MS
-                    && chatAudio?.item.key !== reportItem.key
-                    && pendingReportRef.current?.key !== reportItem.key
-                ) {
-                    pendingReportRef.current = reportItem;
-                }
-                continue;
-            }
-            if (!msg.voiceData || msg.voiceData.length === 0) continue;
-            const key = voiceKeyForMessage(msg, 0);
-            if (getPlayedVoice().has(key)) continue;
-            if (dismissedVoice.has(key) || listenedVoice.has(key)) continue;
-            if (nowMs - msg.timestamp.getTime() > VOICE_AUTOPLAY_FRESH_MS) continue;
-            if (!voiceQueueRef.current.includes(key) && nowPlayingVoiceRef.current !== key) {
-                voiceQueueRef.current.push(key);
-            }
-        }
-
-        const playingKey = nowPlayingVoiceRef.current;
-        const playingEl = playingKey ? voiceAudioRefs.current.get(playingKey) : null;
-        if (!voiceStartPendingRef.current && (!playingEl || playingEl.paused || playingEl.ended)) {
-            playNextQueuedVoice();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [messages]);
-
-    // Save voice memo to disk (browser download)
-    const saveVoiceMemo = useCallback((audio: string, mimeType: string, msgIndex: number, voiceIndex: number) => {
-        const ext = mimeType.includes('mpeg') ? 'mp3' : mimeType.includes('ogg') ? 'ogg' : mimeType.includes('wav') ? 'wav' : 'mp3';
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        const filename = `praxis-voice-${timestamp}.${ext}`;
-        const byteChars = atob(audio);
-        const byteNumbers = new Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) {
-            byteNumbers[i] = byteChars.charCodeAt(i);
-        }
-        const blob = new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, []);
-
-    const messagesContainerRef = useRef<HTMLDivElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null); // Hidden file input (all types)
-    const mediaInputRef = useRef<HTMLInputElement>(null); // Hidden media input (camera/gallery)
     const params = useParams();
     const scopedProjectId = typeof params?.id === 'string' ? params.id : null;
 
-    // Message persistence and rehydration are now handled by CortexProvider
-
-    // Praxis is now the default mode everywhere (no remote-only override needed)
-
-    // Track previous message count to detect newly prepended messages
-    const prevMessageCountRef = useRef(messages.length);
-    const prevScrollHeightRef = useRef(0);
-    // Stick-to-bottom: true while the user is at (or near) the newest message.
-    // Appends and streaming growth keep the view pinned only in that state —
-    // reading older history is never yanked back down.
-    const isNearBottomRef = useRef(true);
-
-    const jumpToBottom = useCallback(() => {
-        const container = messagesContainerRef.current;
-        if (!container) return;
-        container.scrollTop = container.scrollHeight;
-        // Markdown/images settle after first paint — re-pin once layout grows.
-        requestAnimationFrame(() => {
-            if (messagesContainerRef.current) {
-                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-            }
-        });
-        isNearBottomRef.current = true;
-    }, []);
-
-    // Open at the LATEST message: pin to the bottom when history finishes
-    // loading and whenever the conversation changes or the terminal opens.
-    // (The old count-diff effect initialized its ref to the mounted length,
-    // so a terminal mounting with history already loaded never scrolled —
-    // it sat at the top and the newest status was off-screen.)
-    useEffect(() => {
-        if (isLoadingHistory) return;
-        jumpToBottom();
-        const settle = setTimeout(jumpToBottom, 150);
-        return () => clearTimeout(settle);
-    }, [isLoadingHistory, conversationId, isOpen, jumpToBottom]);
-
-    // Trim the DOM window only while pinned to the newest message, and only
-    // once the overflow clears the slack — never mid-scrollback (a reader's
-    // messages must not vanish above them), never per-append.
-    useEffect(() => {
-        if (!isNearBottomRef.current) return;
-        if (messages.length - hiddenMessageCount > RENDER_WINDOW + RENDER_WINDOW_SLACK) {
-            setHiddenCount(messages.length - RENDER_WINDOW);
-        }
-    }, [messages, hiddenMessageCount]);
-
-    // Auto-scroll on new messages appended to bottom (not when prepending
-    // older ones). Tracks the VISIBLE window: pagination prepends and
-    // scroll-up reveals both grow its head and get the same scroll
-    // compensation.
-    useEffect(() => {
-        const container = messagesContainerRef.current;
-        if (!container) return;
-        const newCount = visibleMessages.length;
-        const prevCount = prevMessageCountRef.current;
-        if (newCount > prevCount) {
-            // Check if messages were prepended (older messages loaded) or appended (new messages)
-            const wereMessagesPrepended = prevCount > 0 && prevScrollHeightRef.current > 0;
-            if (wereMessagesPrepended && container.scrollTop < 100) {
-                // Messages were prepended — preserve scroll position
-                const newScrollHeight = container.scrollHeight;
-                const scrollDelta = newScrollHeight - prevScrollHeightRef.current;
-                container.scrollTop = scrollDelta;
-            } else if (isNearBottomRef.current) {
-                // Messages were appended while pinned — follow to bottom.
-                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-            }
-        } else if (isNearBottomRef.current) {
-            // Same count but content grew (streaming deltas into the last
-            // message) — keep the growing reply in view, no smooth jitter.
-            // Also covers the window trim above: fewer rows while pinned
-            // still means "stay pinned to the newest".
-            container.scrollTop = container.scrollHeight;
-        }
-        prevMessageCountRef.current = newCount;
-        prevScrollHeightRef.current = container.scrollHeight;
-    }, [visibleMessages]);
-
-    // Scroll-to-top detection: first reveal already-loaded messages hidden
-    // by the DOM window, then fall through to network pagination.
-    const handleMessagesScroll = useCallback(() => {
-        const container = messagesContainerRef.current;
-        if (!container) return;
-        // Track whether the user is at the newest message (stick-to-bottom).
-        isNearBottomRef.current =
-            container.scrollHeight - container.scrollTop - container.clientHeight < 120;
-        // When scrolled near the top (within 50px), reveal or load more
-        if (container.scrollTop < 50) {
-            if (hiddenMessageCount > 0) {
-                prevScrollHeightRef.current = container.scrollHeight;
-                setHiddenCount(Math.max(0, hiddenMessageCount - REVEAL_PAGE));
-            } else if (hasMoreMessages && !isLoadingMore) {
-                prevScrollHeightRef.current = container.scrollHeight;
-                loadMoreMessages();
-            }
-        }
-    }, [hiddenMessageCount, hasMoreMessages, isLoadingMore, loadMoreMessages]);
-
-    // Focus-on-open and the `nexus:chat-seed` fill-the-input listener moved
-    // into ChatComposer with the rest of the keystroke state.
-
-    // Socket.IO connection and artifact handling are now managed by CortexProvider
-
-    // File handling functions
-    const handleFileDrop = useCallback((files: FileList | File[]) => {
-        const fileArray = Array.from(files);
-        // Accept all file types up to 25 MB each
-        const MAX_SIZE = 25 * 1024 * 1024;
-        const validFiles = fileArray.filter(f => f.size <= MAX_SIZE);
-
-        if (validFiles.length > 0) {
-            setAttachedFiles(prev => [...prev, ...validFiles].slice(0, 5)); // Max 5 files
-
-            // Generate preview metadata for chips
-            const previews = validFiles.map(f => {
-                const preview: { name: string; size: number; type: string; previewUrl?: string } = {
-                    name: f.name,
-                    size: f.size,
-                    type: f.type,
-                };
-                // Generate image thumbnails
-                if (f.type.startsWith('image/')) {
-                    preview.previewUrl = URL.createObjectURL(f);
-                }
-                return preview;
-            });
-            setAttachedPreviews(prev => [...prev, ...previews].slice(0, 5));
-            console.log('[Praxis Terminal] Files attached:', validFiles.map(f => `${f.name} (${(f.size / 1024).toFixed(0)} KB)`));
-        }
-    }, []);
-
-    const handleDragEnter = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dragCounter.current++;
-        if (e.dataTransfer.types.includes('Files')) {
-            setIsDragging(true);
-        }
-    }, []);
-
-    const handleDragOver = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-    }, []);
-
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dragCounter.current--;
-        if (dragCounter.current === 0) {
-            setIsDragging(false);
-        }
-    }, []);
-
-    const handleDrop = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dragCounter.current = 0;
-        setIsDragging(false);
-
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            handleFileDrop(e.dataTransfer.files);
-        }
-    }, [handleFileDrop]);
-
-    const removeFile = useCallback((index: number) => {
-        setAttachedFiles(prev => prev.filter((_, i) => i !== index));
-        setAttachedPreviews(prev => {
-            const removed = prev[index];
-            if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
-            return prev.filter((_, i) => i !== index);
-        });
-    }, []);
-
-    // Audio recording functions
-    const startRecording = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream);
-            mediaRecorderRef.current = mediaRecorder;
-            audioChunksRef.current = [];
-
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) audioChunksRef.current.push(e.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                setAudioBlob(blob);
-                setAudioPreviewUrl(URL.createObjectURL(blob));
-                stream.getTracks().forEach(track => track.stop());
-            };
-
-            mediaRecorder.start();
-            setIsRecording(true);
-            setRecordingTime(0);
-            recordingTimerRef.current = setInterval(() => {
-                setRecordingTime(prev => prev + 1);
-            }, 1000);
-        } catch (err) {
-            console.error("Error accessing microphone:", err);
-            setMessages(prev => [...prev, {
-                role: 'system',
-                content: 'Error: Could not access microphone. Please check permissions.',
-                timestamp: new Date()
-            }]);
-        }
-    };
-
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop();
-            setIsRecording(false);
-            if (recordingTimerRef.current) {
-                clearInterval(recordingTimerRef.current);
-            }
-        }
-    };
-
-    const clearAudio = () => {
-        setAudioBlob(null);
-        if (audioPreviewUrl) {
-            URL.revokeObjectURL(audioPreviewUrl);
-            setAudioPreviewUrl(null);
-        }
-    };
+    // Message persistence, the Socket.IO connection and artifact handling are
+    // all owned by CortexProvider; praxis is the only mode.
 
     // Synchronous dispatch decision for the composer: returns true when the
     // message was accepted (the composer then clears its input), false when
@@ -938,10 +247,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
         setMessages(prev => [...prev, userMessage]);
         const filesToUpload = [...attachedFiles];
-        setAttachedFiles([]);
-        // Clean up preview URLs
-        attachedPreviews.forEach(p => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
-        setAttachedPreviews([]);
+        clearAttachments(); // detaches the files and revokes their preview URLs
         const currentAudioBlob = audioBlob;
         clearAudio(); // Reset recording UI
         setLoading(true);
@@ -1223,363 +529,48 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
     // --- Extracted inner content shared by both modes ---
     function renderTerminalContent() {
-        // Composer control sizing — compact & sleek to match the Bridge panel
-        // when embedded inline; roomier in the floating/modal chat overlay.
-        const composerIcon = isInline ? 16 : 18;
-        const composerBtn = isInline
-            ? "flex items-center justify-center p-1.5 rounded-md border border-slate-800 bg-slate-900/60 text-slate-400 hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            : "px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
         return (<>
             {/* Fullscreen Plan Review Modal */}
-            {reviewModalData && (() => {
-                const planData = reviewModalData.artifact.data as PlanDraftData;
-                const modalMsgKey = reviewModalData.messageKey;
-                const isRevised = reviewModalData.artifact.type?.trim().toUpperCase() === 'PLAN_REVISED';
-                const threadId = (planData as any)?.thread_id;
-                const showActions = (planData as any)?.is_final || readyForReview.has(threadId);
-                return (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-                        {/* Backdrop */}
-                        <div
-                            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-                            onClick={() => setReviewModalData(null)}
-                        />
-                        {/* Modal */}
-                        <div className="relative z-10 w-[92vw] max-w-5xl h-[90vh] rounded-2xl border border-slate-600 bg-slate-900 shadow-2xl flex flex-col overflow-hidden">
-                            {/* Modal Header */}
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700 bg-slate-800/60 flex-shrink-0">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className={`p-2 rounded-lg ${isRevised ? 'bg-emerald-500/20' : 'bg-blue-500/20'}`}>
-                                        <FileText size={20} className={isRevised ? 'text-emerald-400' : 'text-blue-400'} />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <h2 className="text-lg font-bold text-white truncate">
-                                            {isRevised ? '✅ Final for Review' : 'Draft Plan'} — {planData.title}
-                                        </h2>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isRevised
-                                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                                : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                                }`}>v{planData.version || 1}</span>
-                                            <span className="text-xs text-slate-500">Markdown Plan</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setReviewModalData(null)}
-                                    className="p-2 hover:bg-slate-700 rounded-lg transition-colors flex-shrink-0"
-                                >
-                                    <X size={20} className="text-slate-400" />
-                                </button>
-                            </div>
-
-                            {/* Modal Body — Rendered Markdown */}
-                            <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0">
-                                <div className="prose prose-invert prose-sm max-w-none break-words
-                                    prose-headings:text-slate-100 prose-headings:font-bold
-                                    prose-h1:text-2xl prose-h1:border-b prose-h1:border-slate-600/50 prose-h1:pb-3 prose-h1:mb-6
-                                    prose-h2:text-xl prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-slate-50
-                                    prose-h3:text-lg prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-cyan-300
-                                    prose-h4:text-base prose-h4:mt-6 prose-h4:mb-2 prose-h4:text-slate-200
-                                    prose-p:text-slate-300 prose-p:leading-relaxed prose-p:my-3
-                                    prose-li:text-slate-300 prose-li:my-1 prose-li:leading-relaxed
-                                    prose-ul:my-3 prose-ol:my-3
-                                    prose-strong:text-white prose-strong:font-semibold
-                                    prose-em:text-slate-200
-                                    prose-code:text-cyan-300 prose-code:bg-slate-800/80 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono
-                                    prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline
-                                    prose-hr:border-slate-700/50 prose-hr:my-8
-                                    prose-blockquote:border-l-cyan-500/70 prose-blockquote:bg-slate-800/30 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:italic prose-blockquote:text-slate-400
-                                    prose-table:text-sm prose-th:text-slate-200 prose-th:bg-slate-800/50 prose-th:px-4 prose-th:py-2 prose-td:text-slate-300 prose-td:px-4 prose-td:py-2 prose-td:border-slate-700/50
-                                ">
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            code({ node, inline, className, children, ...props }: any) {
-                                                const match = /language-(\w+)/.exec(className || '');
-                                                return !inline && match ? (
-                                                    <SyntaxHighlighter
-                                                        style={oneDark as any}
-                                                        language={match[1]}
-                                                        PreTag="div"
-                                                        className="rounded-lg !bg-slate-950 !text-sm"
-                                                        customStyle={{ whiteSpace: "pre-wrap", overflowWrap: "break-word", overflowX: "hidden" }}
-                                                        codeTagProps={{ style: { whiteSpace: "pre-wrap", wordBreak: "break-word" } }}
-                                                        {...props}
-                                                    >
-                                                        {String(children).replace(/\n$/, '')}
-                                                    </SyntaxHighlighter>
-                                                ) : (
-                                                    <code className={className} {...props}>{children}</code>
-                                                );
-                                            },
-                                        }}
-                                    >
-                                        {normalizeMarkdown(planData.markdown) || ''}
-                                    </ReactMarkdown>
-                                </div>
-
-                                {/* Rationale — shown at bottom after reading the plan */}
-                                {planData.rationale && (
-                                    <div className="mt-8 px-5 py-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="w-1 h-5 rounded-full bg-amber-400/60" />
-                                            <span className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Council Rationale</span>
-                                        </div>
-                                        <div className="prose prose-invert prose-sm max-w-none
-                                            prose-p:text-amber-200/90 prose-p:leading-relaxed prose-p:my-2
-                                            prose-strong:text-amber-300 prose-strong:font-semibold
-                                            prose-li:text-amber-200/90 prose-li:my-1
-                                            prose-ol:my-2 prose-ul:my-2
-                                            prose-code:text-amber-300 prose-code:bg-amber-900/30 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
-                                        ">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {planData.rationale}
-                                            </ReactMarkdown>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Modal Footer — Actions */}
-                            {showActions && (
-                                <div className="flex-shrink-0 px-6 py-4 border-t border-slate-700 bg-slate-800/60">
-                                    {critiqueFeedback.messageKey === modalMsgKey ? (
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-medium text-red-300">Revision Feedback</label>
-                                            <textarea
-                                                value={critiqueFeedback.text}
-                                                onChange={(e) => setCritiqueFeedback(prev => ({ ...prev, text: e.target.value }))}
-                                                placeholder="Describe the changes you'd like to see..."
-                                                className="w-full h-28 bg-slate-950 border border-slate-600 rounded-lg px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-red-500 focus:outline-none resize-none"
-                                                autoFocus
-                                                disabled={critiqueFeedback.loading}
-                                            />
-                                            <div className="flex gap-3 justify-end">
-                                                <button
-                                                    onClick={() => setCritiqueFeedback({ messageKey: null, text: '', loading: false })}
-                                                    className="px-4 py-2 text-slate-400 hover:text-white text-sm transition-colors"
-                                                    disabled={critiqueFeedback.loading}
-                                                >Cancel</button>
-                                                <button
-                                                    onClick={async () => {
-                                                        if (!critiqueFeedback.text.trim()) return;
-                                                        setCritiqueFeedback(prev => ({ ...prev, loading: true }));
-                                                        const formData = new FormData();
-                                                        formData.append('thread_id', threadId || 'unknown');
-                                                        formData.append('action', 'REJECT');
-                                                        formData.append('comment', critiqueFeedback.text);
-                                                        try {
-                                                            const response = await fetch(`/api/terminal/interact`, {
-                                                                method: 'POST',
-                                                                body: formData
-                                                            });
-                                                            if (!response.ok) throw new Error('Failed to submit feedback');
-                                                            setMessages(prev => [...prev, {
-                                                                role: 'user',
-                                                                content: `🔄 Requested revision: ${critiqueFeedback.text}`,
-                                                                timestamp: new Date()
-                                                            }]);
-                                                            setCritiqueFeedback({ messageKey: null, text: '', loading: false });
-                                                            setReviewModalData(null);
-                                                        } catch (e) {
-                                                            console.error('Critique failed:', e);
-                                                            setMessages(prev => [...prev, {
-                                                                role: 'system',
-                                                                content: '❌ Failed to submit feedback. Please try again.',
-                                                                timestamp: new Date()
-                                                            }]);
-                                                            setCritiqueFeedback(prev => ({ ...prev, loading: false }));
-                                                        }
-                                                    }}
-                                                    disabled={critiqueFeedback.loading || !critiqueFeedback.text.trim()}
-                                                    className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                                >
-                                                    {critiqueFeedback.loading && <Loader2 size={14} className="animate-spin" />}
-                                                    {critiqueFeedback.loading ? 'Submitting...' : 'Submit Feedback'}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex gap-3">
-                                            <button
-                                                onClick={() => setCritiqueFeedback({ messageKey: modalMsgKey, text: '', loading: false })}
-                                                className="flex-1 py-3 px-4 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 flex items-center justify-center gap-2 transition-colors font-medium"
-                                                disabled={approvalLoading === modalMsgKey}
-                                            >
-                                                <XCircle size={18} /> Request Revisions
-                                            </button>
-                                            <button
-                                                onClick={async () => {
-                                                    if (!threadId || threadId === 'unknown') {
-                                                        setMessages(prev => [...prev, {
-                                                            role: 'system',
-                                                            content: '❌ Cannot approve: No valid thread ID found. Please try again.',
-                                                            timestamp: new Date()
-                                                        }]);
-                                                        return;
-                                                    }
-                                                    setApprovalLoading(modalMsgKey);
-                                                    const formData = new FormData();
-                                                    formData.append('thread_id', threadId);
-                                                    formData.append('action', 'APPROVE');
-                                                    formData.append('comment', 'Plan approved by user');
-                                                    try {
-                                                        const response = await fetch(`/api/terminal/interact`, {
-                                                            method: 'POST',
-                                                            body: formData
-                                                        });
-                                                        if (!response.ok) throw new Error(`Server returned ${response.status}`);
-                                                        setMessages(prev => [...prev, {
-                                                            role: 'user',
-                                                            content: '✅ Plan Approved - Execution starting...',
-                                                            timestamp: new Date()
-                                                        }]);
-                                                        setReviewModalData(null);
-                                                    } catch (e) {
-                                                        console.error('Approve failed:', e);
-                                                        setMessages(prev => [...prev, {
-                                                            role: 'system',
-                                                            content: `❌ Approval failed: ${e instanceof Error ? e.message : 'Unknown error'}. Please try again.`,
-                                                            timestamp: new Date()
-                                                        }]);
-                                                    } finally {
-                                                        setApprovalLoading(null);
-                                                    }
-                                                }}
-                                                className="flex-1 py-3 px-4 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 flex items-center justify-center gap-2 transition-colors font-medium"
-                                                disabled={approvalLoading === modalMsgKey}
-                                            >
-                                                {approvalLoading === modalMsgKey && <Loader2 size={14} className="animate-spin" />}
-                                                {approvalLoading === modalMsgKey ? 'Approving...' : '✅ Approve Plan'}
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            })()}
-
+            {reviewModalData && (
+                <PlanReviewModal
+                    data={reviewModalData}
+                    readyForReview={readyForReview}
+                    critiqueFeedback={critiqueFeedback}
+                    setCritiqueFeedback={setCritiqueFeedback}
+                    approvalLoading={approvalLoading}
+                    setApprovalLoading={setApprovalLoading}
+                    setMessages={setMessages}
+                    onClose={() => setReviewModalData(null)}
+                />
+            )}
             {/* Header — modal keeps the full title bar. In the bridge viewscreen
                 the host hides it (hideHeader) and hoists the controls into the
                 PraxisCore station header, so the chat reads as one surface. */}
             {!hideHeader && (
-            <div className={`flex items-center justify-between ${
-                isInline
-                    ? 'px-1 pb-1.5 border-b border-slate-800/60'
-                    : 'px-4 py-3 border-b border-slate-700 bg-slate-800/50'
-            }`}>
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                        {isInline ? (
-                            <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                                viewscreen · direct line
-                            </span>
-                        ) : (
-                            <>
-                                <Bot size={20} className="text-cyan-400" />
-                                <span className="font-bold text-white">Praxis Terminal</span>
-                            </>
-                        )}
-                        {scopedProjectId && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                <Lock size={10} />
-                                <span className="text-[10px] uppercase font-bold tracking-wider">Scoped: {scopedProjectId}</span>
-                            </div>
-                        )}
-                    </div>
-                    {!isInline && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">
-                            Praxis
-                        </span>
-                    )}
-                </div>
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={async () => {
-                            await startNewConversation();
-                            console.log('[Praxis Terminal] New conversation started');
-                        }}
-                        className="p-1.5 rounded text-slate-400 hover:text-emerald-400 hover:bg-slate-700 transition-colors"
-                        title="New Conversation"
-                    >
-                        <Plus size={isInline ? 15 : 18} />
-                    </button>
-                    <button
-                        onClick={() => {
-                            setShowConversations(!showConversations);
-                            if (!showConversations) loadConversations();
-                        }}
-                        className={`p-1.5 rounded transition-colors ${showConversations ? 'text-cyan-400 bg-slate-700' : 'text-slate-400 hover:text-cyan-400 hover:bg-slate-700'}`}
-                        title="Conversation History"
-                    >
-                        <History size={isInline ? 15 : 18} />
-                    </button>
-                    {!isInline && onClose && (
-                        <button
-                            onClick={onClose}
-                            className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                        >
-                            <X size={18} />
-                        </button>
-                    )}
-                </div>
-            </div>
+                <TerminalHeader
+                    isInline={isInline}
+                    scopedProjectId={scopedProjectId}
+                    showConversations={showConversations}
+                    onToggleConversations={toggleConversations}
+                    onNewConversation={async () => {
+                        await startNewConversation();
+                        console.log('[Praxis Terminal] New conversation started');
+                    }}
+                    onClose={onClose}
+                />
             )}
 
             {/* Conversation History Panel */}
             {showConversations && (
-                <div className={`border-b max-h-64 overflow-y-auto ${
-                    isInline ? 'border-slate-800/60 bg-slate-950/40' : 'border-slate-700 bg-slate-800/50'
-                }`}>
-                    <div className="px-3 py-2 text-xs text-slate-400 font-medium border-b border-slate-700/50 sticky top-0 bg-slate-800/90 backdrop-blur-sm">
-                        Conversations
-                    </div>
-                    {conversations.length === 0 ? (
-                        <div className="px-4 py-6 text-center text-sm text-slate-500">No conversations yet</div>
-                    ) : (
-                        conversations.map(conv => (
-                            <div
-                                key={conv.id}
-                                className={`group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors border-l-2 ${
-                                    conv.id === conversationId
-                                        ? 'bg-cyan-500/10 border-cyan-500 text-white'
-                                        : 'border-transparent hover:bg-slate-700/50 text-slate-300 hover:text-white'
-                                }`}
-                                onClick={() => {
-                                    switchConversation(conv.id);
-                                    setShowConversations(false);
-                                }}
-                            >
-                                <ChevronRight size={14} className={`flex-shrink-0 transition-transform ${
-                                    conv.id === conversationId ? 'text-cyan-400 rotate-90' : 'text-slate-500'
-                                }`} />
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-sm truncate">{conv.title}</div>
-                                    <div className="text-[10px] text-slate-500">
-                                        {conv.message_count || 0} messages · {new Date(conv.updated_at).toLocaleDateString()}
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (confirm('Delete this conversation?')) {
-                                            deleteConversation(conv.id);
-                                        }
-                                    }}
-                                    className="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                                    title="Delete conversation"
-                                >
-                                    <Trash2 size={12} />
-                                </button>
-                            </div>
-                        ))
-                    )}
-                </div>
+                <ConversationList
+                    isInline={isInline}
+                    conversations={conversations}
+                    conversationId={conversationId}
+                    switchConversation={switchConversation}
+                    deleteConversation={deleteConversation}
+                    onPicked={() => setShowConversations(false)}
+                />
             )}
-
             {/* Messages - with drag-and-drop support */}
             <div
                 ref={messagesContainerRef}
@@ -1631,468 +622,38 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     </div>
                 )}
 
-                {visibleMessages.map((msg, i) => {
-                    const rowKey = messageKey(msg);
-                    return msg.role === 'system' ? (
-                        /* Multi-line / pre-formatted system events (e.g. [MORNING PLAN])
-                           render as a card with markdown. Single-line events stay compact. */
-                        (msg.content && msg.content.includes('\n')) ? (
-                            <div key={rowKey} data-message-row="system" className="flex gap-3">
-                                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-cyan-500/10 text-cyan-400">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/70" />
-                                </div>
-                                <div className="min-w-0 flex-1 rounded-lg px-4 py-3 bg-slate-800/60 border border-cyan-500/20 text-slate-200">
-                                    <MarkdownMessage content={msg.content} />
-                                </div>
-                            </div>
-                        ) : (
-                            /* System messages: compact activity log line */
-                            <div key={rowKey} data-message-row="system" className="flex items-center gap-2 py-1 px-2">
-                                {loading && i === visibleMessages.length - 1 ? (
-                                    <Loader2 size={12} className="text-cyan-500/60 animate-spin flex-shrink-0" />
-                                ) : (
-                                    <div className="w-3 h-3 flex items-center justify-center flex-shrink-0">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50" />
-                                    </div>
-                                )}
-                                <span className="text-xs text-slate-400"><TaskLinkedText text={msg.content} /></span>
-                            </div>
-                        )
-                    ) : (
-                        <div
-                            key={rowKey}
-                            data-message-row={msg.role}
-                            className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-                        >
-                            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${msg.role === 'user'
-                                ? 'bg-cyan-500/20 text-cyan-400'
-                                : msg.role === 'assistant'
-                                    ? 'bg-purple-500/20 text-purple-400'
-                                    : 'bg-red-500/20 text-red-400'
-                                }`}>
-                                {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-                            </div>
-                            <div className={`min-w-0 break-words ${msg.role === 'user' ? 'max-w-[80%]' : 'max-w-[92%]'} rounded-lg px-4 py-2 ${msg.role === 'user'
-                                ? 'bg-cyan-500/10 text-white'
-                                : msg.role === 'assistant'
-                                    ? 'bg-slate-800 text-slate-200'
-                                    : 'bg-red-500/10 text-red-400'
-                                }`}>
-                                {/* Assistant turns render as markdown at the shared prose
-                                    scale so Praxis's replies match the system cards; user
-                                    turns stay literal (no markdown surprises on typed text). */}
-                                {msg.content && (msg.role === 'assistant'
-                                    ? <MarkdownMessage content={msg.content} />
-                                    : <p className="text-sm leading-relaxed whitespace-pre-wrap break-words"><TaskLinkedText text={msg.content} /></p>)}
-                                {/* Render PLAN_DRAFT and PLAN_REVISED artifacts */}
-                                {(msg.artifact?.type?.trim().toUpperCase() === 'PLAN_DRAFT' || msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED') && (
-                                    <div className={`mt-3 p-4 rounded-lg ${msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
-                                        ? 'border border-emerald-500/50 bg-emerald-900/20'
-                                        : 'border border-blue-500/50 bg-blue-900/20'
-                                        }`}>
-                                        <div className="flex justify-between items-center">
-                                            <h3 className={`font-bold ${msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
-                                                ? 'text-emerald-300'
-                                                : 'text-blue-300'
-                                                }`}>
-                                                {msg.artifact?.type?.trim().toUpperCase() === 'PLAN_REVISED'
-                                                    ? `✅ Final for Review — Plan v${(msg.artifact.data as PlanDraftData).version || 1}`
-                                                    : (msg.artifact.data as PlanDraftData).is_final
-                                                        ? `Final Review: Plan v${(msg.artifact.data as PlanDraftData).version || (msg.artifact.data as PlanDraftData).revision || 1}`
-                                                        : `Draft Plan v${(msg.artifact.data as PlanDraftData).version || (msg.artifact.data as PlanDraftData).revision || 1}`
-                                                }: {(msg.artifact.data as PlanDraftData).title}
-                                            </h3>
-                                            {/* Open fullscreen review modal for markdown plans */}
-                                            {(msg.artifact.data as PlanDraftData).markdown && (
-                                                <button
-                                                    onClick={() => setReviewModalData({ artifact: msg.artifact!, messageKey: rowKey })}
-                                                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                                                >
-                                                    <Maximize2 size={12} /> Open Full View
-                                                </button>
-                                            )}
-                                            {/* Legacy nodes expand toggle */}
-                                            {!(msg.artifact.data as PlanDraftData).markdown && ((msg.artifact.data as PlanDraftData).nodes?.length || 0) > 3 && (
-                                                <button
-                                                    onClick={() => setExpandedArtifact(expandedArtifact === rowKey ? null : rowKey)}
-                                                    className="text-xs text-blue-400 hover:text-blue-300 underline"
-                                                >
-                                                    {expandedArtifact === rowKey ? 'Collapse' : 'Expand Details'}
-                                                </button>
-                                            )}
-                                        </div>
-                                        {/* Markdown plans: show summary + open modal button */}
-                                        {(msg.artifact.data as PlanDraftData).markdown ? (
-                                            <>
-                                                <div
-                                                    className="mt-2 text-sm text-slate-400 cursor-pointer hover:text-blue-300 transition-colors flex items-center gap-2"
-                                                    onClick={() => setReviewModalData({ artifact: msg.artifact!, messageKey: rowKey })}
-                                                >
-                                                    <span>Markdown Plan (v{(msg.artifact.data as PlanDraftData).version || 1})</span>
-                                                    <span className="text-xs text-slate-500">— click to review</span>
-                                                </div>
-                                                {(msg.artifact.data as PlanDraftData).rationale && (
-                                                    <div className="mt-2 text-xs text-amber-400 bg-amber-900/20 p-2 rounded">
-                                                        <span className="font-semibold">Rationale:</span> {(msg.artifact.data as PlanDraftData).rationale}
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div className="mt-2 text-sm text-gray-300">
-                                                    Proposed Steps: {(msg.artifact.data as PlanDraftData).nodes?.length || 0}
-                                                </div>
-                                                <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                                                    {(expandedArtifact === rowKey
-                                                        ? (msg.artifact.data as PlanDraftData).nodes || []
-                                                        : ((msg.artifact.data as PlanDraftData).nodes || []).slice(0, 3)
-                                                    ).map((node, idx) => (
-                                                        <li key={idx}>• [{node.type}] {node.description}</li>
-                                                    ))}
-                                                    {expandedArtifact !== rowKey && ((msg.artifact.data as PlanDraftData).nodes?.length || 0) > 3 && (
-                                                        <li className="text-slate-500 cursor-pointer hover:text-blue-400" onClick={() => setExpandedArtifact(rowKey)}>...and {((msg.artifact.data as PlanDraftData).nodes?.length || 0) - 3} more</li>
-                                                    )}
-                                                </ul>
-                                            </>
-                                        )}
-                                        {/* Only show Approve/Critique buttons when plan is marked as final for review */}
-                                        {((msg.artifact?.data as PlanDraftData)?.is_final || readyForReview.has((msg.artifact?.data as any)?.thread_id)) && (
-                                            <div className="mt-3 flex gap-2">
-                                                <button
-                                                    onClick={async () => {
-                                                        const threadId = (msg.artifact?.data as any)?.thread_id;
-                                                        if (!threadId || threadId === 'unknown') {
-                                                            setMessages(prev => [...prev, {
-                                                                role: 'system',
-                                                                content: '❌ Cannot approve: No valid thread ID found. Please try again.',
-                                                                timestamp: new Date()
-                                                            }]);
-                                                            return;
-                                                        }
-                                                        setApprovalLoading(rowKey);
-                                                        const formData = new FormData();
-                                                        formData.append('thread_id', threadId);
-                                                        formData.append('action', 'APPROVE');
-                                                        formData.append('comment', 'Plan approved by user');
-                                                        try {
-                                                            const response = await fetch(`/api/terminal/interact`, {
-                                                                method: 'POST',
-                                                                body: formData
-                                                            });
-                                                            if (!response.ok) {
-                                                                throw new Error(`Server returned ${response.status}`);
-                                                            }
-                                                            setMessages(prev => [...prev, {
-                                                                role: 'user',
-                                                                content: '✅ Plan Approved - Execution starting...',
-                                                                timestamp: new Date()
-                                                            }]);
-                                                        } catch (e) {
-                                                            console.error('Approve failed:', e);
-                                                            setMessages(prev => [...prev, {
-                                                                role: 'system',
-                                                                content: `❌ Approval failed: ${e instanceof Error ? e.message : 'Unknown error'}. Please try again.`,
-                                                                timestamp: new Date()
-                                                            }]);
-                                                        } finally {
-                                                            setApprovalLoading(null);
-                                                        }
-                                                    }}
-                                                    className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                                    disabled={critiqueFeedback.messageKey === rowKey || approvalLoading === rowKey}
-                                                >
-                                                    {approvalLoading === rowKey && <Loader2 size={14} className="animate-spin" />}
-                                                    {approvalLoading === rowKey ? 'Approving...' : 'Approve'}
-                                                </button>
-                                                <button
-                                                    onClick={() => setCritiqueFeedback({ messageKey: rowKey, text: '', loading: false })}
-                                                    className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors"
-                                                    disabled={critiqueFeedback.messageKey === rowKey || approvalLoading === rowKey}
-                                                >Critique</button>
-                                            </div>
-                                        )}
-                                        {/* Inline Critique Feedback Form */}
-                                        {critiqueFeedback.messageKey === rowKey && (
-                                            <div className="mt-3 border border-red-500/30 bg-red-900/20 rounded-lg p-3">
-                                                <label className="block text-xs text-red-300 mb-2 font-medium">Revision Feedback</label>
-                                                <textarea
-                                                    value={critiqueFeedback.text}
-                                                    onChange={(e) => setCritiqueFeedback(prev => ({ ...prev, text: e.target.value }))}
-                                                    placeholder="Describe the changes you'd like to see..."
-                                                    className="w-full h-24 bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-red-500 focus:outline-none resize-none"
-                                                    autoFocus
-                                                    disabled={critiqueFeedback.loading}
-                                                />
-                                                <div className="mt-2 flex gap-2 justify-end">
-                                                    <button
-                                                        onClick={() => setCritiqueFeedback({ messageKey: null, text: '', loading: false })}
-                                                        className="px-3 py-1 text-slate-400 hover:text-white text-sm transition-colors"
-                                                        disabled={critiqueFeedback.loading}
-                                                    >Cancel</button>
-                                                    <button
-                                                        onClick={async () => {
-                                                            if (!critiqueFeedback.text.trim()) return;
-                                                            setCritiqueFeedback(prev => ({ ...prev, loading: true }));
-                                                            const threadId = (msg.artifact?.data as any)?.thread_id || 'unknown';
-                                                            const formData = new FormData();
-                                                            formData.append('thread_id', threadId);
-                                                            formData.append('action', 'REJECT');
-                                                            formData.append('comment', critiqueFeedback.text);
-                                                            try {
-                                                                const response = await fetch(`/api/terminal/interact`, {
-                                                                    method: 'POST',
-                                                                    body: formData
-                                                                });
-                                                                if (!response.ok) throw new Error('Failed to submit feedback');
-                                                                setMessages(prev => [...prev, {
-                                                                    role: 'user',
-                                                                    content: `🔄 Requested revision: ${critiqueFeedback.text}`,
-                                                                    timestamp: new Date()
-                                                                }]);
-                                                                setCritiqueFeedback({ messageKey: null, text: '', loading: false });
-                                                            } catch (e) {
-                                                                console.error('Critique failed:', e);
-                                                                setMessages(prev => [...prev, {
-                                                                    role: 'system',
-                                                                    content: '❌ Failed to submit feedback. Please try again.',
-                                                                    timestamp: new Date()
-                                                                }]);
-                                                                setCritiqueFeedback(prev => ({ ...prev, loading: false }));
-                                                            }
-                                                        }}
-                                                        disabled={critiqueFeedback.loading || !critiqueFeedback.text.trim()}
-                                                        className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                                    >
-                                                        {critiqueFeedback.loading && <Loader2 size={14} className="animate-spin" />}
-                                                        {critiqueFeedback.loading ? 'Submitting...' : 'Submit Feedback'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {/* Render COMPILED_PLAN artifacts */}
-                                {msg.artifact?.type?.trim().toUpperCase() === 'COMPILED_PLAN' && (
-                                    <div className="mt-3 border border-emerald-500/50 bg-emerald-900/20 p-4 rounded-lg">
-                                        <h4 className="font-semibold text-emerald-300">🔧 Compiled Plan: {(msg.artifact.data as CompiledPlanData).title}</h4>
-                                        <p className="mt-1 text-sm text-slate-300">{(msg.artifact.data as CompiledPlanData).goal}</p>
-                                        <ul className="mt-2 text-xs text-slate-400 space-y-1">
-                                            {(msg.artifact.data as CompiledPlanData).nodes?.map((node, idx) => (
-                                                <li key={idx}>• [{node.type}] {node.description}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                                {/* Render COUNCIL_REVIEW artifacts - VoteGrid */}
-                                {(msg.artifact?.type?.trim().toUpperCase() === 'COUNCIL_REVIEW' || msg.artifact?.type?.trim().toUpperCase() === 'VOTE_SUMMARY') && (
-                                    <div className="mt-3 border border-purple-500/50 bg-purple-900/20 rounded-lg p-4">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h4 className="font-semibold text-purple-300">Council Review</h4>
-                                            <button
-                                                onClick={() => setExpandedArtifact(expandedArtifact === rowKey ? null : rowKey)}
-                                                className="text-xs text-purple-400 hover:text-purple-300 underline"
-                                            >
-                                                {expandedArtifact === rowKey ? 'Collapse' : 'Expand Details'}
-                                            </button>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2 text-xs">
-                                            {(msg.artifact.data as VoteSummaryData).votes.map((vote, idx) => (
-                                                <div key={idx} className={`p-2 rounded text-center cursor-pointer hover:opacity-80 ${vote.decision === 'approve' ? 'bg-green-800/50 border border-green-600/30' :
-                                                    vote.decision === 'reject' ? 'bg-red-800/50 border border-red-600/30' :
-                                                        'bg-yellow-800/50 border border-yellow-600/30'
-                                                    }`}
-                                                    onClick={() => setExpandedArtifact(expandedArtifact === rowKey ? null : rowKey)}
-                                                >
-                                                    <div className="font-semibold text-white">{vote.voter}</div>
-                                                    <div className={`text-lg ${vote.decision === 'approve' ? 'text-green-400' :
-                                                        vote.decision === 'reject' ? 'text-red-400' : 'text-yellow-400'
-                                                        }`}>
-                                                        {vote.decision === 'approve' ? '✅' : vote.decision === 'reject' ? '❌' : '❓'}
-                                                    </div>
-                                                    <div className="text-slate-400 truncate" title={vote.reasoning}>
-                                                        {expandedArtifact === rowKey ? vote.reasoning : vote.reasoning.substring(0, 40) + '...'}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {/* Full reasoning panel when expanded */}
-                                        {expandedArtifact === rowKey && (
-                                            <div className="mt-3 pt-3 border-t border-purple-500/30 space-y-2">
-                                                <h5 className="text-sm font-semibold text-purple-300">Full Reasoning:</h5>
-                                                {(msg.artifact.data as VoteSummaryData).votes.map((vote, idx) => (
-                                                    <div key={idx} className={`p-2 rounded text-xs ${vote.decision === 'approve' ? 'bg-green-900/30' :
-                                                        vote.decision === 'reject' ? 'bg-red-900/30' : 'bg-yellow-900/30'
-                                                        }`}>
-                                                        <div className="font-semibold text-white mb-1">{vote.voter} ({vote.decision})</div>
-                                                        <div className="text-slate-300 whitespace-pre-wrap break-words">{vote.reasoning}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {/* Phase 8: Render UNKNOWN_ARTIFACT with attention flag */}
-                                {msg.artifact?.type === 'UNKNOWN_ARTIFACT' && (
-                                    <div className="mt-3 border border-orange-500/50 bg-orange-900/20 rounded-lg p-4">
-                                        <div className="flex items-center gap-2 text-orange-400">
-                                            <span className="text-lg">⚠️</span>
-                                            <span className="font-bold">Requires Attention</span>
-                                        </div>
-                                        <p className="mt-2 text-sm text-slate-300">
-                                            Unknown event from node: <code className="bg-slate-800 px-1 rounded">{(msg.artifact.data as UnknownArtifactData).node_name}</code>
-                                        </p>
-                                        <pre className="mt-2 text-xs text-slate-400 bg-slate-800 p-2 rounded overflow-x-auto">
-                                            {(msg.artifact.data as UnknownArtifactData).data.substring(0, 200)}...
-                                        </pre>
-                                    </div>
-                                )}
-                                {/* DEFAULT: Catch-all for any unrecognized artifact type (e.g., UNKNOWN_SIGNAL) */}
-                                {msg.artifact && !['PLAN_DRAFT', 'PLAN_REVISED', 'COUNCIL_REVIEW', 'VOTE_SUMMARY', 'COMPILED_PLAN', 'CHAT_RESPONSE', 'UNKNOWN_ARTIFACT', 'STATUS_UPDATE', 'READY_FOR_REVIEW'].includes(msg.artifact.type) && (
-                                    <div className="mt-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-900/20 text-yellow-200 font-mono text-sm">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-xl">⚠️</span>
-                                            <span className="font-bold">UNKNOWN SIGNAL</span>
-                                            <span className="text-xs text-yellow-400/70 ml-auto">{msg.artifact.type}</span>
-                                        </div>
-                                        <pre className="text-xs text-yellow-200/70 overflow-auto max-h-40 bg-black/40 p-2 rounded">
-                                            {JSON.stringify(msg.artifact.data, null, 2)}
-                                        </pre>
-                                        <div className="mt-2 text-[10px] uppercase tracking-widest text-yellow-600">
-                                            Flagged for Human Review
-                                        </div>
-                                    </div>
-                                )}
-                                {/* Full status-report briefing: plays on the GLOBAL player so
-                                    it keeps going when Robert opens the fullscreen inbox. */}
-                                {(() => {
-                                    const reportAudio = fullReportAudioForMessage(msg);
-                                    if (!reportAudio) return null;
-                                    const isCurrent = chatAudio?.item.key === reportAudio.key;
-                                    const isPlaying = isCurrent && chatAudio.playing;
-                                    const wasHeard = getPlayedVoice().has(reportAudio.key);
-                                    return (
-                                        <div className={`mt-3 w-fit rounded-lg border p-3 transition-all duration-500 ${
-                                            wasHeard && !isPlaying
-                                                ? 'border-cyan-500/10 bg-black/20'
-                                                : 'border-cyan-500/40 bg-cyan-950/30 shadow-[0_0_12px_rgba(34,211,238,0.15)]'
-                                        }`}>
-                                            <div className="mb-2 flex items-center gap-2 px-1">
-                                                <Volume2 size={12} className={isPlaying ? 'animate-pulse text-cyan-400' : 'text-cyan-400/70'} />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">
-                                                    Morning Status Briefing
-                                                </span>
-                                                <a
-                                                    href={reportAudio.src}
-                                                    download={reportAudio.name}
-                                                    className="ml-auto rounded p-1 text-cyan-400/60 transition-colors hover:bg-cyan-500/20 hover:text-cyan-300"
-                                                    title="Save briefing MP3"
-                                                >
-                                                    <Save size={12} />
-                                                </a>
-                                            </div>
-                                            <div className="flex items-center gap-3 px-1">
-                                                <button
-                                                    onClick={() => {
-                                                        markVoicePlayed(reportAudio.key);
-                                                        voiceAudioRefs.current.forEach((el) => {
-                                                            if (!el.paused) el.pause();
-                                                        });
-                                                        toggleChatAudio(reportAudio);
-                                                    }}
-                                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-500/40 text-cyan-300 transition hover:bg-cyan-500/20"
-                                                    title={isPlaying ? 'Pause briefing' : 'Play briefing'}
-                                                >
-                                                    {isPlaying ? <Square size={11} /> : <ChevronRight size={16} />}
-                                                </button>
-                                                <span className="text-[10px] tabular-nums text-slate-400">
-                                                    {isCurrent
-                                                        ? `${Math.floor(chatAudio.currentTime / 60)}:${String(Math.floor(chatAudio.currentTime % 60)).padStart(2, '0')} elapsed — keeps playing across pages`
-                                                        : wasHeard ? 'Played on this device' : 'Full spoken briefing'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-                                {/* Render Voice Data (suppressed when the full briefing
-                                    attachment is this message's report audio) */}
-                                {!fullReportAudioForMessage(msg) && msg.voiceData && msg.voiceData.map((v, vidx) => {
-                                    const voiceKey = voiceKeyForMessage(msg, vidx);
-                                    if (dismissedVoice.has(voiceKey)) return null;
-                                    const isListened = listenedVoice.has(voiceKey) || getPlayedVoice().has(voiceKey);
-                                    return (
-                                        <div 
-                                            key={vidx} 
-                                            className={`mt-3 p-3 rounded-lg w-fit transition-all duration-500 ${
-                                                isListened 
-                                                    ? 'bg-black/20 border border-purple-500/10' 
-                                                    : 'bg-purple-950/30 border border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.15)]'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-2 mb-2 px-1">
-                                                <Volume2 size={12} className={`${isListened ? 'text-purple-400/50' : 'text-purple-400 animate-pulse'}`} />
-                                                <span className={`text-[10px] uppercase tracking-wider font-bold ${isListened ? 'text-purple-400/50' : 'text-purple-400'}`}>
-                                                    {isListened ? 'Voice Message' : '🔔 New Voice Message'}
-                                                </span>
-                                                <div className="flex items-center gap-1 ml-auto">
-                                                    <button
-                                                        onClick={() => saveVoiceMemo(v.audio, v.mimeType, i, vidx)}
-                                                        className="p-1 rounded hover:bg-purple-500/20 text-purple-400/60 hover:text-purple-300 transition-colors"
-                                                        title="Save voice memo"
-                                                    >
-                                                        <Save size={12} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            // A dismissed note must never auto-replay after refresh.
-                                                            markVoicePlayed(voiceKey);
-                                                            setDismissedVoice(prev => new Set([...prev, voiceKey]));
-                                                        }}
-                                                        className="p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-colors"
-                                                        title="Dismiss"
-                                                    >
-                                                        <X size={12} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <audio
-                                                src={`data:${v.mimeType};base64,${v.audio}`}
-                                                controls
-                                                ref={(el) => {
-                                                    if (el) voiceAudioRefs.current.set(voiceKey, el);
-                                                    else voiceAudioRefs.current.delete(voiceKey);
-                                                }}
-                                                onPlay={() => {
-                                                    // One voice at a time — a manual play preempts everything else,
-                                                    // including the global briefing player.
-                                                    pauseChatAudio();
-                                                    voiceAudioRefs.current.forEach((el, k) => {
-                                                        if (k !== voiceKey && !el.paused) el.pause();
-                                                    });
-                                                    nowPlayingVoiceRef.current = voiceKey;
-                                                    // Started once on this device = never auto-replayed
-                                                    // (manual replays via the controls still work).
-                                                    markVoicePlayed(voiceKey);
-                                                }}
-                                                onEnded={() => {
-                                                    setListenedVoice(prev => new Set([...prev, voiceKey]));
-                                                    if (nowPlayingVoiceRef.current === voiceKey) {
-                                                        nowPlayingVoiceRef.current = null;
-                                                    }
-                                                    playNextQueuedVoice();
-                                                }}
-                                                className="h-8 max-w-[260px] [&::-webkit-media-controls-enclosure]:bg-transparent"
-                                            />
-                                        </div>
-                                    );
-                                })}
-
-                                <span className="text-[10px] text-slate-500 mt-1 block">
-                                    {msg.timestamp.toLocaleTimeString()}
-                                </span>
-                            </div>
-                        </div>
-                    );
-                })}
+                {visibleMessages.map((msg, i) => (
+                    <MessageRow
+                        key={messageKey(msg)}
+                        msg={msg}
+                        rowKey={messageKey(msg)}
+                        i={i}
+                        isLast={i === visibleMessages.length - 1}
+                        loading={loading}
+                        readyForReview={readyForReview}
+                        expandedArtifact={expandedArtifact}
+                        setExpandedArtifact={setExpandedArtifact}
+                        setReviewModalData={setReviewModalData}
+                        critiqueFeedback={critiqueFeedback}
+                        setCritiqueFeedback={setCritiqueFeedback}
+                        approvalLoading={approvalLoading}
+                        setApprovalLoading={setApprovalLoading}
+                        setMessages={setMessages}
+                        chatAudio={chatAudio}
+                        toggleChatAudio={toggleChatAudio}
+                        pauseChatAudio={pauseChatAudio}
+                        voiceAudioRefs={voiceAudioRefs}
+                        nowPlayingVoiceRef={nowPlayingVoiceRef}
+                        dismissedVoice={dismissedVoice}
+                        setDismissedVoice={setDismissedVoice}
+                        listenedVoice={listenedVoice}
+                        setListenedVoice={setListenedVoice}
+                        getPlayedVoice={getPlayedVoice}
+                        markVoicePlayed={markVoicePlayed}
+                        playNextQueuedVoice={playNextQueuedVoice}
+                        saveVoiceMemo={saveVoiceMemo}
+                    />
+                ))}
 
                 {loading && (
                     <div className="flex gap-3">
@@ -2109,167 +670,29 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     </div>
                 )}
 
-
             </div>
 
             {/* Input */}
-            <div className={isInline ? 'px-1 pt-3 pb-0.5 border-t border-slate-800/60' : 'p-4 border-t border-slate-700 bg-slate-800/50'}>
-                {/* Hidden file input — any file type */}
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="*/*"
-                    className="hidden"
-                    onChange={(e) => {
-                        if (e.target.files) handleFileDrop(e.target.files);
-                        e.target.value = '';
-                    }}
-                />
-                {/* Hidden media input — camera/gallery (images + video) */}
-                <input
-                    ref={mediaInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*,video/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) => {
-                        if (e.target.files) handleFileDrop(e.target.files);
-                        e.target.value = '';
-                    }}
-                />
-
-                {/* Attachment preview chips */}
-                {attachedPreviews.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-3">
-                        {attachedPreviews.map((file, idx) => {
-                            const isImage = file.type.startsWith('image/');
-                            const isVideo = file.type.startsWith('video/');
-                            const isAudio = file.type.startsWith('audio/');
-                            const sizeStr = file.size < 1024 ? `${file.size} B`
-                                : file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(0)} KB`
-                                : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-
-                            return (
-                                <div
-                                    key={idx}
-                                    className={`group relative flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg border text-sm transition-all ${
-                                        isImage ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
-                                        : isVideo ? 'bg-pink-500/10 border-pink-500/30 text-pink-300'
-                                        : isAudio ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                                        : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
-                                    }`}
-                                >
-                                    {/* Image thumbnail */}
-                                    {isImage && file.previewUrl ? (
-                                        <img
-                                            src={file.previewUrl}
-                                            alt={file.name}
-                                            className="w-8 h-8 rounded object-cover border border-white/10"
-                                        />
-                                    ) : (
-                                        <div className="w-8 h-8 rounded bg-black/20 flex items-center justify-center">
-                                            {isVideo ? <Film size={14} />
-                                            : isAudio ? <Music size={14} />
-                                            : file.type.includes('zip') || file.type.includes('archive') ? <FileArchive size={14} />
-                                            : <FileText size={14} />}
-                                        </div>
-                                    )}
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="max-w-[140px] truncate text-xs font-medium">{file.name}</span>
-                                        <span className="text-[10px] opacity-60">{sizeStr}</span>
-                                    </div>
-                                    <button
-                                        onClick={() => removeFile(idx)}
-                                        className="ml-1 opacity-50 hover:opacity-100 hover:text-red-400 transition-all"
-                                    >
-                                        <XCircle size={14} />
-                                    </button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {/* Audio Preview Chip */}
-                {audioPreviewUrl && (
-                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 mb-3 w-fit text-sm">
-                        <Mic size={14} className="text-red-400 font-bold" />
-                        <span className="text-red-300 font-mono">{recordingTime}s</span>
-                        <audio src={audioPreviewUrl} controls className="h-6 w-48 [&::-webkit-media-controls-enclosure]:bg-transparent [&::-webkit-media-controls-panel]:bg-transparent" />
-                        <button onClick={clearAudio} className="text-slate-400 hover:text-red-400 transition-colors ml-2">
-                            <XCircle size={16} />
-                        </button>
-                    </div>
-                )}
-
-                <div className={isInline ? "flex items-stretch gap-1.5" : "flex gap-2"}>
-                    {/* Voice Record button */}
-                    {!isRecording && !audioBlob && (
-                        <button
-                            onClick={startRecording}
-                            disabled={loading || isDragging}
-                            className={`${composerBtn} ${isInline ? "hover:text-red-300" : "hover:text-red-400"}`}
-                            title="Record voice memo"
-                        >
-                            <Mic size={composerIcon} />
-                        </button>
-                    )}
-
-                    {isRecording && (
-                        <div className={`flex items-center gap-3 rounded-md bg-red-500/10 border border-red-500/20 animate-pulse ${isInline ? "px-3 py-1.5" : "px-4 py-2 rounded-lg"}`}>
-                            <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-                            <span className="text-red-400 font-mono text-sm font-medium">
-                                {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                            </span>
-                            <button
-                                onClick={stopRecording}
-                                className="ml-2 text-slate-300 hover:text-red-400 transition-colors"
-                                title="Stop recording"
-                            >
-                                <Square size={16} className="fill-current" />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Camera/Gallery picker — hide when recording */}
-                    {!isRecording && (
-                        <button
-                            onClick={() => mediaInputRef.current?.click()}
-                            disabled={loading}
-                            className={`${composerBtn} ${isInline ? "hover:text-violet-300" : "hover:text-violet-400"}`}
-                            title="Photo / Gallery"
-                        >
-                            <Image size={composerIcon} />
-                        </button>
-                    )}
-
-                    {/* General file picker — hide when recording */}
-                    {!isRecording && (
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={loading}
-                            className={`${composerBtn} ${isInline ? "hover:text-cyan-300" : "hover:text-cyan-400"}`}
-                            title="Attach file"
-                        >
-                            <Paperclip size={composerIcon} />
-                        </button>
-                    )}
-
-                    {/* Text input + send button — a separate component so its
-                        per-keystroke state can never re-render the transcript. */}
-                    <ChatComposer
-                        isInline={isInline}
-                        isOpen={isOpen}
-                        loading={loading}
-                        isRecording={isRecording}
-                        hasAudio={!!audioBlob}
-                        attachedCount={attachedFiles.length}
-                        onSend={handleSend}
-                    />
-                </div>
-            </div>
+            <ComposerRow
+                isInline={isInline}
+                isOpen={isOpen}
+                loading={loading}
+                isDragging={isDragging}
+                attachedFiles={attachedFiles}
+                attachedPreviews={attachedPreviews}
+                fileInputRef={fileInputRef}
+                mediaInputRef={mediaInputRef}
+                handleFileDrop={handleFileDrop}
+                removeFile={removeFile}
+                isRecording={isRecording}
+                recordingTime={recordingTime}
+                audioBlob={audioBlob}
+                audioPreviewUrl={audioPreviewUrl}
+                startRecording={startRecording}
+                stopRecording={stopRecording}
+                clearAudio={clearAudio}
+                onSend={handleSend}
+            />
         </>);
     }
 });

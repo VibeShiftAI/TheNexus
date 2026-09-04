@@ -23,6 +23,14 @@ import { CrewFlow, type CrewLaneView } from "@/components/bridge/crew-flow";
 import { getBoardLaneId } from "@/lib/task-board";
 import { isDayWellUnderway } from "@/lib/day-underway";
 import { useDispatchState } from "@/hooks/use-dispatch-state";
+import { CliLanePanel } from "@/components/bridge/cli-lane-panel";
+import { deriveCliLane } from "@/lib/cli-lane";
+import type {
+  AttemptStallState,
+  CliConcurrencyState,
+  CliQueueEntry,
+  FleetPosture,
+} from "@/lib/nexus";
 import {
   getCouncilSessions,
   getCouncilArbiter,
@@ -135,6 +143,18 @@ export interface DispatchStateResponse {
     history?: DispatchHistoryRow[];
     /** Executor dispatches since local midnight, from the persistent llm_calls log. */
     dispatchedToday?: { total: number; failed: number };
+    /**
+     * Tasks waiting for the machine-wide CLI slot, in the order Praxis will
+     * pull them — index 0 is next out, which is where queue POSITION comes
+     * from (Praxis publishes no explicit position field).
+     */
+    cliQueue?: CliQueueEntry[];
+    /** The machine-wide CLI concurrency gate and its reason string. */
+    cliConcurrency?: CliConcurrencyState;
+    /** Fleet routing posture — which workers are routable right now. */
+    posture?: FleetPosture;
+    /** Runs that overran their attempt grace window. */
+    attemptStalls?: AttemptStallState;
   };
   /** Permanent chat CLI sessions, keyed by backend (e.g. "claude-code"). */
   chatSessions?: Record<string, ChatSessionState>;
@@ -377,6 +397,11 @@ export function DispatchStation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lanes, state, now]);
 
+  // Who holds each CLI slot, who is queued behind them with position and
+  // waiting-since, and the concurrency gate's own reason. `now` is passed so
+  // the wait clocks re-derive on the same tick as the rest of the panel.
+  const cliLane = useMemo(() => deriveCliLane(state, now), [state, now]);
+
   // Headline for the status line when no council sits: the freshest active run.
   const activeRun = useMemo(() => {
     const active = (state?.executors?.runs ?? []).filter((r) => r.status === "active");
@@ -488,6 +513,7 @@ export function DispatchStation() {
           {/* Bottom instruments pin to the panel floor so the station fills
               its row evenly beside the knowledge constellation. */}
           <div className="mt-auto space-y-2.5 pt-2">
+            <CliLanePanel view={cliLane} />
             {memory?.availBytes != null && memory.totalBytes != null && (
               <div
                 className="flex items-center gap-2 border-t border-slate-800/60 pt-2 text-[10px]"

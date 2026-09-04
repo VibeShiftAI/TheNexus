@@ -1,7 +1,8 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode, Dispatch, SetStateAction, useCallback } from "react";
-import { io, Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
+import { acquireLiveSocket } from "@/lib/live-socket";
 import { Pause, Play, Volume2, X } from "lucide-react";
 import { reportClientActivity } from "@/lib/active-client";
 import type { ChatAudioItem } from "@/lib/chat-audio";
@@ -449,32 +450,32 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         if (initialised.current) return;
         initialised.current = true;
 
-        // Connect to the Socket.IO backend.
-        // - Local: direct to localhost:4000 (the Node.js backend)
-        // - Remote: same origin — Cloudflare Tunnel has a path-based ingress
-        //   rule that routes /socket.io/* directly to port 4000
-        const isLocal = typeof window !== 'undefined' &&
-            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-        const socketUrl = isLocal ? 'http://localhost:4000' : undefined; // undefined = same origin
-        const socket: Socket = io(socketUrl as string, {
-            path: '/socket.io/',
-            reconnectionAttempts: Infinity,   // Backend restarts are normal (self_upgrade, launchd)
-            reconnectionDelay: 3000,
-            reconnectionDelayMax: 15000,      // Back off to 15s max between retries
-        });
+        // ONE Socket.IO connection per tab, shared with LiveBoardStateProvider
+        // and any other live surface. lib/live-socket owns what used to live
+        // inline here: the local-vs-same-origin url choice (Cloudflare Tunnel
+        // has a path ingress rule routing /socket.io/* straight to :4000) and
+        // the reconnect policy. Because the socket is SHARED, every listener
+        // registered below must be removed by reference on cleanup — a bare
+        // socket.off('connect') would also deafen the other holders.
+        const handle = acquireLiveSocket();
+        if (!handle) {
+            initialised.current = false;
+            return;
+        }
+        const socket: Socket = handle.socket;
         socketRef.current = socket;
 
         let hadConnected = false;
-        socket.on('connect', () => {
+        const onConnect = () => {
             console.log('[CortexProvider] WebSocket connected:', socket.id);
             // A REconnect means we were deaf for a while (backend restart,
             // network blip) — catch up on whatever was said in the gap.
             if (hadConnected) void resyncActiveConversation('reconnect');
             hadConnected = true;
-        });
+        };
+        socket.on('connect', onConnect);
 
-        socket.on('cortex-artifact', (artifact: CortexArtifact) => {
+        const onCortexArtifact = (artifact: CortexArtifact) => {
             console.log('[CortexProvider] Artifact:', artifact.type);
 
             const type = artifact.type?.trim().toUpperCase();
@@ -518,10 +519,11 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                 timestamp: new Date(),
                 artifact: artifact
             }]);
-        });
+        };
+        socket.on('cortex-artifact', onCortexArtifact);
 
         // ── Praxis Chat Stream ──
-        socket.on('chat-message', (event: ChatMessageEvent) => {
+        const onChatMessage = (event: ChatMessageEvent) => {
             if (event?.mode && event.mode !== 'praxis') return;
             const incoming = event?.message;
             if (!incoming?.role || !incoming.content) return;
@@ -559,18 +561,21 @@ export function CortexProvider({ children }: { children: ReactNode }) {
                 }
                 return [...prev, nextMessage];
             });
-        });
+        };
+        socket.on('chat-message', onChatMessage);
 
-        socket.on('disconnect', () => {
+        const onSocketDisconnect = () => {
             console.warn('[CortexProvider] WebSocket disconnected');
-        });
+        };
+        socket.on('disconnect', onSocketDisconnect);
 
-        socket.on('connect_error', (error: Error) => {
+        const onConnectError = (error: Error) => {
             // Downgraded from console.error — backend restarts are routine
             // (self_upgrade, launchd respawn, model changes). The socket
             // will auto-reconnect with exponential backoff.
             console.warn('[CortexProvider] WebSocket connection failed:', error.message);
-        });
+        };
+        socket.on('connect_error', onConnectError);
 
         // Sleeping tabs miss socket traffic even without a formal disconnect
         // (throttled timers, suspended laptops) — resync whenever the tab
@@ -602,7 +607,12 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             window.removeEventListener('focus', onFocus);
             window.removeEventListener('pointerdown', onUserInput);
             window.removeEventListener('keydown', onUserInput);
-            socket.disconnect();
+            socket.off('connect', onConnect);
+            socket.off('cortex-artifact', onCortexArtifact);
+            socket.off('chat-message', onChatMessage);
+            socket.off('disconnect', onSocketDisconnect);
+            socket.off('connect_error', onConnectError);
+            handle.release();
             socketRef.current = null;
             initialised.current = false;
         };

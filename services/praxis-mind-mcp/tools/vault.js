@@ -1,5 +1,6 @@
 /**
- * vault.* tools — filesystem operations against /Volumes/Projects/shared-mind/.
+ * vault.* tools — filesystem operations against the shared-mind vault root
+ * (config.VAULT, resolved by server/lib/vault-paths.js).
  * All paths are jailed to the vault root; traversal blocked.
  * Path-based authority enforcement on writes per design Δ4.
  */

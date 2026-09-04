@@ -107,7 +107,7 @@ contains three things:
     (`LocalLlmDetail`), `dispatch-station.tsx`, `ops/page.tsx:165-167`,
     `use-crew-activity.ts:135-140`.
   - Client wrappers + types: `dashboard/src/lib/nexus.ts:1164-1263`.
-- **Config** — `packages/contract/src/endpoints.ts:25` (`localLlm: http://127.0.0.1:1234`,
+- **Config** — `../nexus-shared/src/endpoints.ts:25` (`localLlm: http://127.0.0.1:1234`,
   LM Studio OpenAI-compatible), env `LOCAL_LLM_URL` / `PRAXIS_URL`.
 
 **The worker** (per `dashboard/src/app/codex/page.tsx:172-187`): LM Studio running
@@ -229,7 +229,7 @@ the queue's `:1234` contract). Until then, it solves a problem this system does 
 - Empty-content failure mode: `/Volumes/Projects/shared-mind/incidents/2026-06-08 - Morning Routine Stall and Local Empty-Content.md`
 - Queue proxy / panel / config: `server/routes/local-queue.js`, `dashboard/src/app/local-queue/page.tsx`,
   `dashboard/src/components/local-queue-list.tsx`, `dashboard/src/app/codex/page.tsx:172-187`,
-  `dashboard/src/lib/nexus.ts:1164-1263`, `packages/contract/src/endpoints.ts:25`,
+  `dashboard/src/lib/nexus.ts:1164-1263`, `../nexus-shared/src/endpoints.ts:25`,
   `server/services/ai-service.js:87-148`
 - L10 is not a persisted need: `nexus.db` → `projects.needs` = `[]` for project
   c0117b65-9ad7-4afa-90e6-c675b483ccc3 (queried directly); L10 is an Improvement Ledger

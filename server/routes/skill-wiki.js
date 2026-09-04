@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { vaultRoot } = require('../lib/vault-paths');
 
 /**
  * Skill Wiki — read-only viewport onto the shared-mind skill library
@@ -14,7 +15,9 @@ const path = require('path');
  * fields null/empty — absence renders as absence, never as invented data.
  */
 
-const DEFAULT_VAULT_PATH = process.env.NEXUS_VAULT_PATH || '/Volumes/Projects/shared-mind';
+// NEXUS_VAULT_PATH is this route's historical override and still wins;
+// otherwise the fleet-wide root from server/lib/vault-paths.js.
+const DEFAULT_VAULT_PATH = process.env.NEXUS_VAULT_PATH || vaultRoot();
 
 /** Skill names are kebab/word tokens; anything else (slashes, dots) is refused. */
 const SKILL_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;

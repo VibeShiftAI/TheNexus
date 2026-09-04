@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CortexProvider } from "@/components/cortex-provider";
 import { EventTicker } from "@/components/bridge/event-ticker";
+import { LiveBoardStateProvider } from "@/components/live-board-state";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,6 +40,7 @@ export default function RootLayout({
       >
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '2.25rem' }}>
           <CortexProvider>
+            <LiveBoardStateProvider>
             <main style={{ flex: 1 }}>
               {children}
             </main>
@@ -53,6 +55,7 @@ export default function RootLayout({
             </footer>
             {/* Live Praxis event strip — pinned to the bottom on every page */}
             <EventTicker />
+            </LiveBoardStateProvider>
           </CortexProvider>
         </div>
       </body>

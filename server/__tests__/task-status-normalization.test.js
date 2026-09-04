@@ -34,6 +34,23 @@ describe('canonical task-status normalization', () => {
         expect(normalizeTaskBoardStatus(undefined)).toBeNull();
     });
 
+    // P0-10 (2026-09-03): HITL suspension was 400ing at the API because the
+    // enum lacked the status the resume route already required.
+    test('suspended is canonical (HITL hold, resumed via POST /:id/resume)', () => {
+        expect(TaskBoardStatusSchema.options).toContain('suspended');
+        expect(normalizeTaskBoardStatus('suspended')).toBe('suspended');
+        expect(normalizeTaskBoardStatus(' Suspended ')).toBe('suspended');
+    });
+
+    test('queued (dispatch-gate vocabulary) normalizes to todo, not scheduled', () => {
+        expect(normalizeTaskBoardStatus('queued')).toBe('todo');
+        expect(LEGACY_TASK_STATUS_MAP.queued).toBe('todo');
+    });
+
+    test('awaiting_approval is still not a board status (no writer exists)', () => {
+        expect(normalizeTaskBoardStatus('awaiting_approval')).toBeNull();
+    });
+
     test('every legacy mapping lands on a canonical value', () => {
         const valid = new Set(TaskBoardStatusSchema.options);
         for (const canonical of Object.values(LEGACY_TASK_STATUS_MAP)) {

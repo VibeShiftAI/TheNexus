@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { calendarEventsUrl, calendarEventTone, type CalendarEvent, type CalendarEventStatus } from "@/lib/calendar";
-import { useStreamRefetch } from "@/hooks/use-stream-refetch";
+import { useLiveRefetch } from "@/components/live-board-state";
 import { HudPanel } from "@/components/bridge/hud";
 import { CalendarDays, ChevronDown, ChevronUp, ScrollText, ArrowRight, ArrowUpRight, Clock } from "lucide-react";
 
@@ -220,15 +220,9 @@ export function ScheduleTimeline() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchTodayEvents();
-    // Event-driven via the stream below; slow poll only corrects drift.
-    const interval = setInterval(fetchTodayEvents, 60_000);
-    return () => clearInterval(interval);
-  }, [fetchTodayEvents]);
-
-  // Live refresh when the day plan or task state changes.
-  useStreamRefetch(["schedule.updated", "task.completed", "task.started"], fetchTodayEvents);
+  // Live refresh when the day plan or task state changes, on the shared
+  // subscription, with a slow drift-correction poll behind it.
+  useLiveRefetch(["schedule"], fetchTodayEvents);
 
   // Keep the NOW cursor and past/upcoming split current.
   useEffect(() => {

@@ -15,14 +15,13 @@
  *   GET    /api/dispatches?task_id=x   → history for the task screen, newest first
  *
  * The injected db facade (db/index.js) has no raw prepare/exec, so this module
- * opens its own WAL-mode connection to the same SQLite file.
+ * takes a raw WAL-mode connection to the same SQLite file from db/raw.js.
  */
 const express = require('express');
-const path = require('path');
 const crypto = require('crypto');
-const Database = require('better-sqlite3');
+const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 
-const DEFAULT_DB_PATH = process.env.NEXUS_DB_PATH || path.resolve(__dirname, '../../nexus.db');
+const DEFAULT_DB_PATH = resolveNexusDbPath();
 
 const OUTCOMES = new Set(['running', 'success', 'failure', 'timeout', 'needs_input', 'cancelled']);
 const KINDS = new Set(['dispatch', 'follow_up']);
@@ -53,8 +52,7 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
 
     let db;
     try {
-        db = new Database(dbPath);
-        db.pragma('journal_mode = WAL');
+        db = openRaw(dbPath);
         db.exec(`
             CREATE TABLE IF NOT EXISTS task_dispatches (
                 id TEXT PRIMARY KEY,
