@@ -57,8 +57,13 @@ describe('AGENTS.md projection', () => {
     const agents = fs.readFileSync(path.join(dir, 'AGENTS.md'), 'utf8');
 
     expect(out.includesState).toBe(true);
-    expect(agents).toBe(out.text);
-    expect(agents.split('\n')[0]).toContain('SOUL + USER + STATE + CONTEXT + retrieval protocol + SKILLS');
+    // P1-17: writeIfChanged stamps the GENERATED header as line 1, so the file
+    // is the projection text with that one line prepended. `out.text` is the
+    // projection itself — the header belongs to the write protocol, not the
+    // projection builder.
+    expect(agents.split('\n')[0]).toMatch(/^<!-- GENERATED: vault-watcher;/);
+    expect(agents.split('\n').slice(1).join('\n')).toBe(out.text);
+    expect(agents.split('\n')[1]).toContain('SOUL + USER + STATE + CONTEXT + retrieval protocol + SKILLS');
     expect(agents).toContain('# Praxis live state (STATE.md)');
     expect(agents).toContain('| Praxis | 765 | 327 | 418 |');
     expect(agents).toContain('# Environment & Context');
@@ -79,7 +84,8 @@ describe('AGENTS.md projection', () => {
     const agents = fs.readFileSync(path.join(dir, 'AGENTS.md'), 'utf8');
 
     expect(out.includesState).toBe(false);
-    expect(agents.split('\n')[0]).toContain('SOUL + USER + CONTEXT + retrieval protocol + SKILLS');
+    expect(agents.split('\n')[0]).toMatch(/^<!-- GENERATED: vault-watcher;/);
+    expect(agents.split('\n')[1]).toContain('SOUL + USER + CONTEXT + retrieval protocol + SKILLS');
     expect(agents).not.toContain('Praxis live state');
     expect(agents).toContain('# Environment & Context');
   });

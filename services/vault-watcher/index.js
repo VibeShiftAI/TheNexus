@@ -49,11 +49,31 @@ const { regenerateAntigravityContext } = require('./lib/antigravity-context');
 const { syncClaudeSkills } = require('./lib/claude-skills-sync');
 const { LINK_SECTIONS, collectDocs, regenerateLinkGraph } = require('./lib/link-graph');
 const { INDEX_ROOT_DOCS, collectRootDocs, buildSearchIndexPayload, regenerateSearchIndex } = require('./lib/search-index');
+const { withLocks, inspectLocks, LOCK_WARN_AGE_MS } = require('./lib/write-protocol');
 
 const DEBOUNCE_MS = 500;
 let debounceTimer = null;
 
+/**
+ * P1-17: the watcher OWNS the projections, so one regeneration pass is one
+ * critical section under the `projections` lock. Nothing else in the fleet
+ * writes MEMORY/SKILLS/AGENTS/LINKS/shared-mind-context — the lock is what
+ * stops a second watcher instance (a stray `--once` during a debounced pass)
+ * from interleaving two passes over the same five files.
+ */
 function regenerateAll(reason = 'initial') {
+  try {
+    return withLocks(VAULT, ['projections'], () => regenerateAllLocked(reason), {
+      by: `vault-watcher:${reason}`,
+      onStale: ({ className, age }) => log(`WARN reclaimed stale ${className} lock (${Math.round(age / 1000)}s old)`),
+    });
+  } catch (e) {
+    log(`ERROR regenerating: ${e.stack || e.message}`);
+    return undefined;
+  }
+}
+
+function regenerateAllLocked(reason) {
   try {
     const memory = regenerateMemoryIndex();
     const { active } = regenerateSkillsIndexFile();
@@ -71,8 +91,17 @@ function regenerateAll(reason = 'initial') {
   }
 }
 
+/**
+ * In-flight temp files from the atomic write protocol (`.<base>.<pid>.<ts>.tmp`)
+ * and the older `.tmp-<pid>` form. They exist for microseconds and are renamed
+ * over their target, which fires its own event — regenerating on the temp file
+ * itself is pure waste (an add+unlink pair used to cost two debounced passes).
+ */
+const TEMP_FILE_RE = /(^|[\/\\])\.?[^\/\\]*\.(?:\d+\.\d+\.tmp|tmp)$|\.tmp-\d+$/;
+
 function shouldIgnore(filepath) {
   const rel = path.relative(VAULT, filepath);
+  if (TEMP_FILE_RE.test(rel)) return true;
   if (rel.startsWith('.git')) return true;
   if (rel.startsWith('.obsidian')) return true;
   if (rel.startsWith('.index')) return true;
@@ -118,6 +147,9 @@ module.exports = {
   regenerateMemoryIndex,
   // Hybrid-search chunk index
   buildSearchIndexPayload,
+  // P1-17 single-writer protocol
+  TEMP_FILE_RE,
+  shouldIgnore,
 };
 
 if (require.main === module) {
@@ -140,6 +172,7 @@ if (require.main === module) {
       /(^|[\/\\])\.index/,
       /(^|[\/\\])\._/,
       /(^|[\/\\])_archive/,
+      TEMP_FILE_RE,
     ],
     persistent: true,
     ignoreInitial: true,
@@ -161,6 +194,13 @@ if (require.main === module) {
 
   async function gitSyncTick() {
     try {
+      // P1-17 §5: a lock left by a crashed process reclaims itself at 30s, but
+      // say so out loud if one is still held after 60s.
+      for (const l of inspectLocks(VAULT)) {
+        if (l.held && l.ageMs > LOCK_WARN_AGE_MS) {
+          log(`WARN vault lock "${l.class}" held ${Math.round(l.ageMs / 1000)}s by ${JSON.stringify(l.owner)}`);
+        }
+      }
       await runGitSync(VAULT, log);
     } catch (e) {
       log(`[GitSync] ERROR: ${e.stack || e.message}`);

@@ -16,8 +16,12 @@ const ledger = require('../lib/ledger');
 const { executeTransaction, compareFields } = require('../lib/transactions');
 const { classifyVaultPath, formatRetrieved } = require('../lib/provenance');
 const { planSupersession, applySupersession } = require('../lib/supersession');
+const { writeVaultFile } = require('../lib/vault-write');
 
-const WATCHER_ONLY = new Set(['MEMORY.md', 'AGENTS.md', 'shared-mind-context.md']);
+// Kept in sync with the ownership matrix in server/lib/vault-write.js
+// (P1-17 §3). vault-write.js refuses these again at write time; this list is
+// the early, readable rejection so the agent gets a reason, not a stack.
+const WATCHER_ONLY = new Set(['MEMORY.md', 'AGENTS.md', 'SKILLS.md', 'LINKS.md', 'shared-mind-context.md', 'STATE.md']);
 const ROBERT_ONLY = new Set(['SOUL.md', 'USER.md', 'CONTEXT.md']);
 const STATIC_ROOT = new Set(['CLAUDE.md', 'README.md']);
 const RIPGREP_MISSING_MESSAGE = 'ripgrep not installed: vault_search grep mode requires the `rg` binary. Install ripgrep and ensure `rg` is on PATH.';
@@ -136,9 +140,13 @@ function register(server, ctx) {
           },
           validatePreconditions: ({ before }) => compareFields(before, expected),
           apply: async () => {
-            fs.mkdirSync(path.dirname(abs), { recursive: true });
-            if (mode === 'append') fs.appendFileSync(abs, finalContent);
-            else fs.writeFileSync(abs, finalContent);
+            // P1-17: authored-mode write through the fleet helper — atomic
+            // temp+rename under the `authored` (or `skills`) lock, and a hard
+            // refusal if the target carries the watcher's GENERATED header.
+            // The supersession stamps run inside the same lock (re-entrant),
+            // so a replacement and the retirement of what it replaces are one
+            // critical section, exactly as the transaction envelope promises.
+            writeVaultFile(abs, finalContent, { mode, vault: VAULT, by: `mcp:${ctx.caller.identity}` });
             stamped = applySupersession(plan);
             return { bytes_written: Buffer.byteLength(finalContent), path: rel, mode, superseded: stamped };
           },

@@ -16,6 +16,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { updateVaultFile } = require('./vault-write');
 
 const FENCE_RE = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 
@@ -139,16 +140,25 @@ function planSupersession(vaultRoot, rel, content, supersedes) {
     if (!fs.existsSync(file)) throw new Error(`supersedes names "${name}" but ${path.relative(vaultRoot, file)} does not exist`);
     targets.push({ name, file });
   }
-  return { content: names.length ? withSupersedes(content, names) : content, targets, self };
+  return { content: names.length ? withSupersedes(content, names) : content, targets, self, vaultRoot };
 }
 
-/** Stamp every planned old file. Returns the names stamped. */
+/**
+ * Stamp every planned old file. Returns the names stamped.
+ *
+ * P1-17: the read and the write are ONE critical section under the `authored`
+ * lock (updateVaultFile), because the weekly Praxis standing-fact sweep runs
+ * the same read-modify-write against the same reference_ / feedback_ memories.
+ * Before this, the two could interleave and one side's stamp vanished.
+ */
 function applySupersession(plan, at = new Date().toISOString()) {
   const stamped = [];
   for (const t of plan.targets) {
-    const raw = fs.readFileSync(t.file, 'utf8');
-    const next = stampSuperseded(raw, plan.self, at);
-    if (next !== raw) fs.writeFileSync(t.file, next, 'utf8');
+    updateVaultFile(
+      t.file,
+      (raw) => (raw === null ? null : stampSuperseded(raw, plan.self, at)),
+      { vault: plan.vaultRoot, by: 'mcp:applySupersession' },
+    );
     stamped.push(t.name);
   }
   return stamped;

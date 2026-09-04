@@ -1,6 +1,16 @@
 const path = require('path');
 const { VAULT } = require('./config');
 const { writeIfChanged, readFileSafe } = require('./fs-utils');
+const { generatedOwnerOf } = require('./write-protocol');
+
+// AGENTS.md inlines SKILLS.md verbatim. Since P1-17 that file carries the
+// GENERATED header on line 1; repeating it mid-document would be noise (and a
+// second, misleading "do not edit" marker inside a section that is inlined,
+// not generated in place). Strip it on the way in — AGENTS.md carries its own.
+function withoutGeneratedHeader(text) {
+  if (!generatedOwnerOf(text)) return text;
+  return text.slice(text.indexOf('\n') + 1).replace(/^\n+/, '');
+}
 
 /**
  * AGENTS.md — SOUL + USER + STATE + CONTEXT + retrieval protocol + SKILLS.
@@ -54,7 +64,7 @@ function regenerateAgentsProjection(vaultDir = VAULT) {
     '',
     '---',
     '',
-    readFileSafe(path.join(vaultDir, 'SKILLS.md')),
+    withoutGeneratedHeader(readFileSafe(path.join(vaultDir, 'SKILLS.md'))),
   ];
   const text = parts.join('\n');
   writeIfChanged(path.join(vaultDir, 'AGENTS.md'), text);
