@@ -4,6 +4,7 @@
  * Slim orchestrator: imports, middleware, route mounting, startup.
  * All domain logic lives in ./routes/ and ./services/.
  */
+require('./utils/fleet-env').loadFleetEnv(); // shared keys first (P3-33); repo .env fills the rest
 require('dotenv').config();
 const express = require('express');
 const http = require('http');

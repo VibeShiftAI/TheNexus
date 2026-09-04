@@ -3,6 +3,7 @@
 process.env.DOTENV_CONFIG_QUIET = 'true';
 const path = require('path');
 // Use explicit path to .env so it loads correctly regardless of working directory
+require('./utils/fleet-env').loadFleetEnv(); // shared keys first (P3-33); repo .env fills the rest
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
 const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");

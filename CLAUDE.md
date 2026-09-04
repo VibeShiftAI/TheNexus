@@ -52,6 +52,12 @@ cockpit surface.
   not replace the default `.next`, use
   `cd dashboard && NEXT_DIST_DIR=.next-verify npm run build` (Next also appends
   `.next-verify/types/**/*.ts` to `dashboard/tsconfig.json`; discard that rewrite).
+- Fleet-shared secrets: `server/utils/fleet-env.js` (called first in
+  `server/server.js` and `server/mcp.js`) loads `/Volumes/Projects/.fleet-env`
+  (outside every repo; template `/Volumes/Projects/.fleet-env.example`) before
+  the repo `.env`. `GOOGLE_API_KEY` and `CORTEX_GATEWAY_KEY` live there once,
+  shared with Praxis and TheCortex. Precedence: process env > fleet file >
+  repo `.env`. Override the path with `FLEET_ENV_PATH`.
 - Server tests: `npm test`; scope a server area with `npx jest server/<area>`.
 - Dashboard tests: `cd dashboard && npm test`.
 - MCP smoke start: `cd services/praxis-mind-mcp && npm start`; it speaks
