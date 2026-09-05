@@ -102,7 +102,7 @@ describe('tasks model control integration', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model_assignment: 'model:anthropic-claude-sonnet' })
         });
-        expect(db.updateTask).toHaveBeenCalledWith('task-1', expect.objectContaining({ model_assignment: 'model:anthropic-claude-sonnet' }));
+        expect(db.updateTask).toHaveBeenCalledWith('task-1', expect.objectContaining({ model_assignment: 'model:anthropic-claude-sonnet' }), undefined);
     });
 
     test('resume redispatch includes resolved model override', async () => {

@@ -205,6 +205,10 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
         const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title, default_executor, default_model, dispatch_instructions, source, suspended_at, suspended_reason, suspended_context, resume_action } = req.body;
+        const expectedVersion = req.body.expected_version;
+        if (expectedVersion !== undefined && (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0)) {
+            return res.status(400).json({ error: 'expected_version must be a non-negative safe integer' });
+        }
         try {
             const existing = await db.getTask(taskId);
             if (!existing) return res.status(404).json({ error: 'Task not found' });
@@ -309,10 +313,14 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 updates.last_activity_at = updates.updated_at;
             }
             console.log(`[Task Sync] Updating task ${taskId}: ${Object.keys(updates).filter(k => k !== 'updated_at').join(', ')}`);
-            const updated = await db.updateTask(taskId, updates);
+            const updated = await db.updateTask(taskId, updates, expectedVersion ?? existing.version);
+            if (!updated) return res.status(500).json({ error: 'Database error' });
             maybeTriggerSuccessors(existing, updated);
             res.json({ success: true, task: updated });
         } catch (err) {
+            if (err.code === 'task_version_conflict') {
+                return res.status(409).json({ error: err.message, code: err.code });
+            }
             console.error('[Task Sync] Error updating task:', err);
             res.status(500).json({ error: 'Database error' });
         }

@@ -172,6 +172,9 @@ async function nexusBoardState(projectId) {
 }
 
 async function nexusTaskUpdate(taskId, patch) {
+  if (!Number.isSafeInteger(patch.expected_version) || patch.expected_version < 0) {
+    throw new Error('Task version is missing or invalid; refresh from a Nexus server that supports versioned writes');
+  }
   // PATCH /api/tasks/:taskId — partial update. Only the keys present in `patch`
   // are changed (status, priority, description, dependencies).
   return httpJSON(`${cfg.NEXUS}/api/tasks/${encodeURIComponent(taskId)}`, {

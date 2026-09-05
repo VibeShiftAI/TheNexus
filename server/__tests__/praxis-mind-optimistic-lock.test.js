@@ -37,6 +37,61 @@ describe('optimistic-lock retry', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  test('a writer between capture and PATCH cannot overwrite cancellation', async () => {
+    let row = { id: 'task-1', status: 'todo', version: 4, description: 'base' };
+    const backends = {
+      nexusTaskById: jest.fn(async () => ({ ...row })),
+      nexusTaskUpdate: jest.fn(async (_id, patch) => {
+        row = { ...row, status: 'cancelled', description: 'base\nconcurrent note', version: 5 };
+        if (patch.expected_version !== row.version) {
+          const err = new Error('Task changed since it was read');
+          err.status = 409;
+          err.body = { code: 'task_version_conflict' };
+          throw err;
+        }
+        row = { ...row, ...patch };
+        return { success: true };
+      }),
+    };
+    jest.doMock('../../services/praxis-mind-mcp/lib/backends', () => backends);
+    const { register } = require('../../services/praxis-mind-mcp/tools/nexus');
+    const { handlers, server } = serverHarness();
+    register(server, { caller });
+    const result = await handlers.nexus_task_update({ task_id: 'task-1', status: 'completed', expected_status: 'todo' });
+    expect(backends.nexusTaskUpdate.mock.calls[0][1].expected_version).toBe(4);
+    expect(result.isError).toBe(true);
+    expect(row.status).toBe('cancelled');
+    expect(row.description).toBe('base\nconcurrent note');
+  });
+
+  test('a CAS conflict re-reads description before retrying an appended note', async () => {
+    let row = { id: 'task-1', status: 'todo', version: 1, description: 'base' };
+    let writes = 0;
+    const backends = {
+      nexusTaskById: jest.fn(async () => ({ ...row })),
+      nexusTaskUpdate: jest.fn(async (_id, patch) => {
+        if (++writes === 1) row = { ...row, version: 2, description: 'base\nother writer' };
+        if (patch.expected_version !== row.version) {
+          const err = new Error('Conflict');
+          err.status = 409;
+          err.body = { code: 'task_version_conflict' };
+          throw err;
+        }
+        const { expected_version, ...fields } = patch;
+        row = { ...row, ...fields, version: row.version + 1 };
+        return { success: true, task: row };
+      }),
+    };
+    jest.doMock('../../services/praxis-mind-mcp/lib/backends', () => backends);
+    const { updateTask } = require('../../services/praxis-mind-mcp/lib/board-ops');
+    const result = await updateTask({ caller }, { task_id: 'task-1', patch: { status: 'todo' }, appendNote: 'my note', expected: { status: 'todo' } });
+    expect(result.value.tx.lock.outcome).toBe('committed_after_retry');
+    expect(row.description).toMatch(/base\nother writer/);
+    expect(row.description).toContain('my note');
+    expect(row.version).toBe(3);
+    expect(writes).toBe(2);
+  });
+
   /** A row an unrelated writer bumps on every single read. */
   function driftingRow() {
     let reads = 0;

@@ -52,6 +52,15 @@ try {
         db.exec(fs.readFileSync(schemaPath, 'utf8'));
     }
 
+    // Persist the revision invariant in SQLite so archive/reorder, migrations,
+    // and other raw SQL writers participate in optimistic locking too.
+    if (!db.prepare('PRAGMA table_info(tasks)').all().some(c => c.name === 'version')) {
+        db.exec('ALTER TABLE tasks ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+    }
+    db.exec(`CREATE TRIGGER IF NOT EXISTS tasks_bump_version
+        AFTER UPDATE ON tasks WHEN NEW.version = OLD.version
+        BEGIN UPDATE tasks SET version = OLD.version + 1 WHERE id = NEW.id; END`);
+
     runModelControlMigrations(db);
     runContactsMigrations(db);
     runStakeholderMigrations(db);
@@ -1118,14 +1127,25 @@ async function createTask(task) {
     }
 }
 
-async function updateTask(taskId, updates) {
+async function updateTask(taskId, updates, expectedVersion) {
     if (!db) return null;
     try {
         const normalized = normalizeTaskStatusField({ ...updates }, 'updateTask');
+        delete normalized.version; // revisions are owned by the database trigger
         const { sql, values } = buildUpdate('tasks', normalized, 'id', taskId);
-        db.prepare(sql).run(...values);
-        return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId));
+        return db.transaction(() => {
+            const result = expectedVersion === undefined
+                ? db.prepare(sql).run(...values)
+                : db.prepare(`${sql} AND version = ?`).run(...values, expectedVersion);
+            if (expectedVersion !== undefined && result.changes === 0) {
+                const error = new Error('Task changed since it was read');
+                error.code = 'task_version_conflict';
+                throw error;
+            }
+            return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId));
+        })();
     } catch (err) {
+        if (err.code === 'task_version_conflict') throw err;
         console.error('[Database] Error updating task:', err.message);
         return null;
     }
@@ -1221,6 +1241,16 @@ async function getBoardState(projectId) {
         const taskStatusMap = new Map();
         for (const task of allTasks) {
             taskStatusMap.set(task.id, task.status);
+        }
+
+        // Display filtering must not change dependency truth. Resolve only the
+        // missing referenced IDs, in bounded batches (including archived projects).
+        const missingIds = [...new Set(allTasks.flatMap(task => task.dependencies || []))]
+            .filter(id => !taskStatusMap.has(id));
+        for (let offset = 0; offset < missingIds.length; offset += 500) {
+            const ids = missingIds.slice(offset, offset + 500);
+            const rows = db.prepare(`SELECT id, status FROM tasks WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids);
+            for (const row of rows) taskStatusMap.set(row.id, row.status);
         }
 
         // Annotate each task with is_unblocked

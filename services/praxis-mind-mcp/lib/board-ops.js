@@ -481,7 +481,7 @@ async function updateTask(ctx, {
       intent: { patch, ...(appendNote ? { note: appendNote } : {}), expected },
       captureBefore: () => backends.nexusTaskById(task_id),
       validatePreconditions: ({ before, intent }) => compareFields(before, intent.expected),
-      apply: ({ before }) => backends.nexusTaskUpdate(task_id, resolvePatch(before)),
+      apply: ({ before }) => backends.nexusTaskUpdate(task_id, { ...resolvePatch(before), expected_version: before.version }),
       readAfter: () => backends.nexusTaskById(task_id),
       verify: ({ before, after }) => {
         const mismatches = compareFields(after, resolvePatch(before));
@@ -494,7 +494,7 @@ async function updateTask(ctx, {
         ? await executeTransaction(spec)
         : await executeOptimisticTransaction(spec, {
           // Only the row timestamp is re-anchored; expected_status stays hard.
-          refreshableFields: ['updated_at'],
+          refreshableFields: ['updated_at', 'version'],
           // A concurrent writer that already produced exactly this patch has
           // done our work — converge instead of failing the lifecycle flow.
           // (A note append never converges: its target text is never present.)

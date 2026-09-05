@@ -116,6 +116,17 @@ async function executeTransaction({
     } catch (_) {
       after = null;
     }
+    // The API's conditional UPDATE is the authoritative precondition check.
+    // Translate its conflict into the same retry/semantic-guard path as a
+    // conflict observed during capture; never treat a rejected write as applied.
+    if (error.status === 409 && error.body?.code === 'task_version_conflict') {
+      const mismatches = compareFields(after, { ...intent.expected, version: before?.version });
+      if (!mismatches.length) mismatches.push({ field: 'version', expected: before?.version, actual: after?.version });
+      finish('stale_precondition', { precondition_mismatches: mismatches });
+      throw new TransactionError(mismatchMessage('Stale expected state', mismatches), {
+        transactionId, verdict: 'stale_precondition', cause: error, mismatches, current: after,
+      });
+    }
     finish('apply_failed', { error: error.message });
     throw new TransactionError(`Write apply failed: ${error.message}`, {
       transactionId, verdict: 'apply_failed', cause: error,

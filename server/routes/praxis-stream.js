@@ -94,6 +94,7 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     const ring = [];
     let lastEventId = null;
     let upstreamReq = null;
+    let upstreamStopped = false;
     let reconnectTimer = null;
     let backoffMs = 1000;
     let upstreamAlive = false;
@@ -288,7 +289,7 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     }
 
     function connectUpstream() {
-        if (upstreamReq) return;
+        if (upstreamStopped || upstreamReq) return;
         const headers = {
             Accept: 'text/event-stream',
             'Cache-Control': 'no-cache',
@@ -297,11 +298,29 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
 
         // Raw node http stream via the shared client — no buffering, no
         // timeout; the response is consumed frame by frame below.
+        let finished = false;
+        let response;
+        const reconnect = () => {
+            if (finished) return;
+            finished = true;
+            upstreamAlive = false;
+            const request = upstreamReq;
+            upstreamReq = null;
+            response?.destroy();
+            request?.destroy();
+            scheduleReconnect();
+        };
         upstreamReq = praxisStream(UPSTREAM_PATH, { method: 'GET', headers }, (res) => {
+            if (finished || upstreamStopped) { res.destroy(); return; }
+            response = res;
+            res.on('end', reconnect);
+            res.on('aborted', reconnect);
+            res.on('close', reconnect);
+            res.on('error', reconnect);
             if (res.statusCode !== 200) {
                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
                 res.resume();
-                scheduleReconnect();
+                reconnect();
                 return;
             }
             upstreamAlive = true;
@@ -329,35 +348,13 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
                 }
             });
 
-            res.on('end', () => {
-                console.warn('[PraxisStream] upstream closed');
-                upstreamAlive = false;
-                upstreamReq = null;
-                scheduleReconnect();
-            });
-            res.on('error', (err) => {
-                if (err?.message === 'aborted') {
-                    upstreamAlive = false;
-                    upstreamReq = null;
-                    return;
-                }
-                console.warn(`[PraxisStream] upstream error: ${err.message}`);
-                upstreamAlive = false;
-                upstreamReq = null;
-                scheduleReconnect();
-            });
         });
 
-        upstreamReq.on('error', (err) => {
-            console.warn(`[PraxisStream] upstream connect error: ${err.message}`);
-            upstreamAlive = false;
-            upstreamReq = null;
-            scheduleReconnect();
-        });
+        upstreamReq.on('error', reconnect);
     }
 
     function scheduleReconnect() {
-        if (reconnectTimer) return;
+        if (upstreamStopped || reconnectTimer) return;
         const delay = Math.min(backoffMs, 30_000);
         reconnectTimer = setTimeout(() => {
             reconnectTimer = null;
@@ -383,6 +380,16 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
         if (dataLines.length > 0) out.data = dataLines.join('\n');
         return out.id || out.event || out.data ? out : null;
     }
+
+    // Explicit teardown for server shutdown and isolated route consumers.
+    router.closeUpstream = () => {
+        upstreamStopped = true;
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+        upstreamReq?.destroy();
+        upstreamReq = null;
+        upstreamAlive = false;
+    };
 
     // Kick off on first router mount.
     connectUpstream();

@@ -15,7 +15,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Send, ArrowUpRight, CalendarClock, AlertTriangle, Landmark } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
-import { useStreamRefetch } from "@/hooks/use-stream-refetch";
 import { useBoardState } from "@/hooks/use-board-state";
 import { HudPanel } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
@@ -234,11 +233,7 @@ export function DispatchStation() {
   // awaiting input). Raw dispatch failures that were retried and succeeded
   // don't land here, so this is the honest "act on this" number. The board
   // snapshot is the deck-wide shared poller; stream events nudge it.
-  const { projects: boardProjects, refresh: refreshBoard } = useBoardState();
-  useStreamRefetch(
-    ["task.created", "task.updated", "task.started", "task.completed", "task.failed", "task.blocked"],
-    refreshBoard,
-  );
+  const { projects: boardProjects } = useBoardState();
   const attention = useMemo(() => {
     if (!boardProjects) return null;
     let count = 0;

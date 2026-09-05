@@ -29,10 +29,13 @@ function requestJson(url, options = {}) {
 }
 
 describe('praxis-stream route', () => {
+  const routers = [];
+  const track = router => { routers.push(router); return router; };
   let praxisHandle;
   let nexusHandle;
 
   afterEach(async () => {
+    for (const router of routers.splice(0)) router.closeUpstream();
     if (nexusHandle) await close(nexusHandle);
     if (praxisHandle) await close(praxisHandle);
     nexusHandle = null;
@@ -69,7 +72,7 @@ describe('praxis-stream route', () => {
     const createPraxisStreamRouter = require('../routes/praxis-stream');
     const nexus = express();
     nexus.use(express.json());
-    nexus.use('/api/praxis', createPraxisStreamRouter());
+    nexus.use('/api/praxis', track(createPraxisStreamRouter()));
     nexusHandle = await listen(nexus);
     const nexusBaseUrl = nexusHandle.baseUrl;
 
@@ -112,7 +115,7 @@ describe('praxis-stream route', () => {
     const createPraxisStreamRouter = require('../routes/praxis-stream');
     const nexus = express();
     nexus.use(express.json());
-    nexus.use('/api/praxis', createPraxisStreamRouter());
+    nexus.use('/api/praxis', track(createPraxisStreamRouter()));
     nexusHandle = await listen(nexus);
 
     await expect(requestJson(`${nexusHandle.baseUrl}/api/praxis/council/summon`, {
@@ -155,7 +158,7 @@ describe('praxis-stream route', () => {
 
     const createPraxisStreamRouter = require('../routes/praxis-stream');
     const nexus = express();
-    nexus.use('/api/praxis', createPraxisStreamRouter());
+    nexus.use('/api/praxis', track(createPraxisStreamRouter()));
     nexusHandle = await listen(nexus);
     const nexusBaseUrl = nexusHandle.baseUrl;
 
@@ -185,7 +188,7 @@ describe('praxis-stream route', () => {
     const notify = jest.fn().mockResolvedValue({ sent: 1, errors: 0 });
     const createPraxisStreamRouter = require('../routes/praxis-stream');
     const nexus = express();
-    nexus.use('/api/praxis', createPraxisStreamRouter({ pushService: { notify } }));
+    nexus.use('/api/praxis', track(createPraxisStreamRouter({ pushService: { notify } })));
     nexusHandle = await listen(nexus);
 
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -275,7 +278,7 @@ describe('praxis-stream route', () => {
 
     const createPraxisStreamRouter = require('../routes/praxis-stream');
     const nexus = express();
-    nexus.use('/api/praxis', createPraxisStreamRouter());
+    nexus.use('/api/praxis', track(createPraxisStreamRouter()));
     nexusHandle = await listen(nexus);
 
     const ok = await fetch(`${nexusHandle.baseUrl}/api/praxis/report/status-report-20260811-1203.mp3`);
@@ -321,7 +324,7 @@ describe('praxis-stream route', () => {
 
     const createPraxisStreamRouter = require('../routes/praxis-stream');
     const nexus = express();
-    nexus.use('/api/praxis', createPraxisStreamRouter({ io }));
+    nexus.use('/api/praxis', track(createPraxisStreamRouter({ io })));
     nexusHandle = await listen(nexus);
 
     // Wait for the relay's upstream connection to land.
@@ -380,7 +383,7 @@ describe('praxis-stream route', () => {
 
       const createPraxisStreamRouter = require('../routes/praxis-stream');
       const nexus = express();
-      nexus.use('/api/praxis', createPraxisStreamRouter({ io, pushService: { notify } }));
+      nexus.use('/api/praxis', track(createPraxisStreamRouter({ io, pushService: { notify } })));
       nexusHandle = await listen(nexus);
 
       const post = (body, headers = {}) =>
@@ -408,7 +411,7 @@ describe('praxis-stream route', () => {
         if (fakePeer) Object.defineProperty(req, 'socket', { value: { remoteAddress: fakePeer }, configurable: true });
         next();
       });
-      nexus.use('/api/praxis', createPraxisStreamRouter({ io, pushService: { notify } }));
+      nexus.use('/api/praxis', track(createPraxisStreamRouter({ io, pushService: { notify } })));
       const handle = await listen(nexus);
       try {
         const post = () => fetch(`${handle.baseUrl}/api/praxis/events`, {
@@ -520,7 +523,7 @@ describe('praxis-stream route', () => {
       const io = { emit: () => {}, on: (n, fn) => { if (n === 'connection') onConnection = fn; } };
       const createPraxisStreamRouter = require('../routes/praxis-stream');
       const nexus = express();
-      nexus.use('/api/praxis', createPraxisStreamRouter({ io }));
+      nexus.use('/api/praxis', track(createPraxisStreamRouter({ io })));
       nexusHandle = await listen(nexus);
 
       const post = (body) =>
@@ -578,7 +581,7 @@ describe('praxis-stream route', () => {
 
       const createPraxisStreamRouter = require('../routes/praxis-stream');
       const nexus = express();
-      nexus.use('/api/praxis', createPraxisStreamRouter({ io }));
+      nexus.use('/api/praxis', track(createPraxisStreamRouter({ io })));
       nexusHandle = await listen(nexus);
 
       for (let i = 0; i < 100 && !upstreamRes; i += 1) {
