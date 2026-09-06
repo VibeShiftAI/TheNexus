@@ -59,20 +59,33 @@ const BASIC_EFFORT_TIERS = ['low', 'medium', 'high'];
  * which is what the backend actually validates against.
  *
  * Version-range guessing was wrong here in both directions and is deliberately
- * not used: gpt-5.5/5.4 stop at xhigh (offering them "max" gets the turn
- * rejected), 5.6-sol/terra go one PAST max to "ultra", and "minimal"/"none" —
- * though valid in the API's global enum — are offered by no current model.
+ * not used: gpt-5.5/5.4-mini stop at xhigh (offering them "max" gets the turn
+ * rejected), 5.6-sol/terra and 6-astra go one PAST max to "ultra", and
+ * "minimal"/"none" — though valid in the API's global enum — are offered by no
+ * current model.
  *
  * To refresh: read supported_reasoning_levels out of models_cache.json.
+ * Last refreshed 2026-09-06 (codex 0.153.4, cache fetched
+ * 2026-09-06T23:19:19Z): gpt-6-astra arrived at priority 1 with the full six
+ * tiers, and gpt-5.4 left the roster entirely — its row is gone, so a stale
+ * "gpt-5.4" pin now gets the conservative set rather than a tier set nobody
+ * can vouch for any more. Hidden entries (visibility=hide: gpt-reserve,
+ * codex-auto-review) are never offered in the roster dropdown but keep exact
+ * rows here so a slug typed by hand still gets the tiers its backend really
+ * validates against.
  */
 const OPENAI_MODEL_EFFORT_TIERS = {
+    'gpt-6-astra': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+    'gpt-reserve': ['low', 'medium', 'high', 'xhigh', 'max'],
     'gpt-5.6-sol': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
     'gpt-5.6-terra': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
     'gpt-5.6-luna': ['low', 'medium', 'high', 'xhigh', 'max'],
     'gpt-5.5': ['low', 'medium', 'high', 'xhigh'],
-    'gpt-5.4': ['low', 'medium', 'high', 'xhigh'],
     'gpt-5.4-mini': ['low', 'medium', 'high', 'xhigh'],
-    'codex-auto-review': ['low', 'medium', 'high', 'xhigh'],
+    // supported_in_api=false in the cache: the ChatGPT-account codex lists it,
+    // but an API-keyed run cannot reach it. The tiers are still its own.
+    'gpt-5.3-codex-spark': ['low', 'medium', 'high', 'xhigh'],
+    'codex-auto-review': ['low', 'medium', 'high', 'xhigh', 'max'],
 };
 
 /**

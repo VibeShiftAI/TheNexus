@@ -45,7 +45,9 @@ export const CHAT_MODEL_SUGGESTIONS: Record<ChatCliBackend, string[]> = {
         "claude-sonnet-5",
         "claude-haiku-4-5-20251001",
     ],
-    codex: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"],
+    // Roster order as of 2026-09-06 (~/.codex/models_cache.json): gpt-6-astra
+    // leads at priority 1; gpt-5.4 has left the roster.
+    codex: ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"],
 };
 
 export const CHAT_MODEL_PLACEHOLDER: Record<ChatCliBackend, string> = {

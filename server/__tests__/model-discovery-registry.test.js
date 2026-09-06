@@ -102,7 +102,7 @@ describe('model discovery registry upsert', () => {
     });
 
     test('maps free-text model slugs to the right tier set', () => {
-        const { thinkingTiersForModelId } = require('../services/model-discovery');
+        const { thinkingTiersForModelId, ALL_THINKING_TIERS } = require('../services/model-discovery');
 
         const CLAUDE_EXTENDED = ['default', 'low', 'medium', 'high', 'xhigh', 'max'];
         const CONSERVATIVE = ['default', 'low', 'medium', 'high'];
@@ -124,8 +124,25 @@ describe('model discovery registry upsert', () => {
             .toEqual(['default', 'low', 'medium', 'high', 'xhigh', 'max']);
         expect(thinkingTiersForModelId('gpt-5.5')).toEqual(['default', 'low', 'medium', 'high', 'xhigh']);
         expect(thinkingTiersForModelId('gpt-5.4-mini')).toEqual(['default', 'low', 'medium', 'high', 'xhigh']);
+        // 2026-09-06 roster: gpt-6-astra leads the codex roster and reports
+        // every tier through "ultra". Without its exact row the /^gpt-/
+        // guard below handed it the conservative three, so the strict codex
+        // backend was offered a NARROWER set than the model really supports.
+        expect(thinkingTiersForModelId('gpt-6-astra'))
+            .toEqual(['default', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
+        // gpt-5.4 left the roster the same day: a stale pin gets the
+        // conservative set, never a tier set nobody can vouch for any more.
+        expect(thinkingTiersForModelId('gpt-5.4')).toEqual(CONSERVATIVE);
+        // Hidden / api-less roster entries keep exact rows for hand-typed slugs.
+        expect(thinkingTiersForModelId('codex-auto-review'))
+            .toEqual(['default', 'low', 'medium', 'high', 'xhigh', 'max']);
+        expect(thinkingTiersForModelId('gpt-5.3-codex-spark'))
+            .toEqual(['default', 'low', 'medium', 'high', 'xhigh']);
+        // The validation whitelist derives from the maps: adding astra needed
+        // no manual edit, and "ultra" was already in it.
+        expect(ALL_THINKING_TIERS).toEqual(['default', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
         // No current model offers "minimal", despite the API enum allowing it.
-        for (const slug of ['gpt-5.6-sol', 'gpt-5.5', 'gpt-5.4']) {
+        for (const slug of ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.5', 'gpt-5.4']) {
             expect(thinkingTiersForModelId(slug)).not.toContain('minimal');
         }
         // An unrecognised gpt-* must not inherit a sibling's tiers.

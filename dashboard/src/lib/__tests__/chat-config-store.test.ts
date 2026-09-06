@@ -57,6 +57,8 @@ test("the shared suggestion list carries the dash-form Fable 5.1 slug", () => {
     assert.ok(claude.includes("claude-fable-5"), "claude-fable-5 stays until it is shown to be dead");
     assert.ok(claude.includes("claude-opus-5"));
     assert.ok(CHAT_MODEL_SUGGESTIONS.codex.includes("gpt-5.6-sol"));
+    // 2026-09-06 roster: astra is the codex roster leader, so it is offered first.
+    assert.equal(CHAT_MODEL_SUGGESTIONS.codex[0], "gpt-6-astra");
 });
 
 test("indicator labels are short and readable, per backend", () => {

@@ -95,13 +95,21 @@ let agyModelsCache = null; // { models, expiresAt }
 // The codex CLI caches the real roster it was issued (slugs, display names,
 // reasoning efforts, deprecation upgrades) in ~/.codex/models_cache.json; that
 // file is the source of truth here. Hidden entries (gpt-reserve,
-// codex-auto-review) are not offered. Static fallback mirrors the 2026-08-21
-// roster so the dropdown never goes empty.
+// codex-auto-review) are not offered. Static fallback mirrors the 2026-09-06
+// roster (codex 0.153.4, cache fetched 2026-09-06T23:19:19Z) so the dropdown
+// never goes empty: gpt-6-astra now leads at priority 1 with the six efforts
+// it reports (default medium), gpt-5.4 has left the roster, and every label
+// below is exactly what readCodexModelsCacheFile() renders from the cache's
+// display name ("GPT-6-Astra" → "GPT-6 Astra"). gpt-5.3-codex-spark is listed
+// but carries supported_in_api=false. Keep this in the roster's priority order.
 const CODEX_MODELS_FALLBACK = [
-    { id: 'gpt-5.6-sol',   label: 'GPT-5.6 Sol',   defaultEffort: 'low',    efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
-    { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
-    { id: 'gpt-5.6-luna',  label: 'GPT-5.6 Luna',  defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh', 'max'] },
-    { id: 'gpt-5.5',       label: 'GPT-5.5',       defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh'] },
+    { id: 'gpt-6-astra',         label: 'GPT-6 Astra',         defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
+    { id: 'gpt-5.6-sol',         label: 'GPT-5.6 Sol',         defaultEffort: 'low',    efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
+    { id: 'gpt-5.6-terra',       label: 'GPT-5.6 Terra',       defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
+    { id: 'gpt-5.6-luna',        label: 'GPT-5.6 Luna',        defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh', 'max'] },
+    { id: 'gpt-5.5',             label: 'GPT-5.5',             defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh'] },
+    { id: 'gpt-5.4-mini',        label: 'GPT-5.4 Mini',        defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh'] },
+    { id: 'gpt-5.3-codex-spark', label: 'GPT-5.3 Codex-Spark', defaultEffort: 'high',   efforts: ['low', 'medium', 'high', 'xhigh'] },
 ];
 const CODEX_MODELS_CACHE_FILE = process.env.CODEX_MODELS_CACHE_FILE
     || path.join(os.homedir(), '.codex', 'models_cache.json');

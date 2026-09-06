@@ -456,6 +456,65 @@ describe('model control route', () => {
         });
     });
 
+    test('codex roster: the fallback leads with gpt-6-astra and the live cache renders its label', () => {
+        const os = require('os');
+        const fs = require('fs');
+        const path = require('path');
+        const originalCacheFile = process.env.CODEX_MODELS_CACHE_FILE;
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-models-cache-'));
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+            // No readable cache → the static fallback, which mirrors the
+            // 2026-09-06 roster: astra first, with the six efforts the model
+            // itself reports and its own default of medium; gpt-5.4 is gone.
+            process.env.CODEX_MODELS_CACHE_FILE = path.join(dir, 'missing.json');
+            jest.resetModules();
+            const fallbackOnly = require('../routes/model-control');
+            const fallback = fallbackOnly.listCodexModels();
+            expect(fallback).toBe(fallbackOnly.CODEX_MODELS_FALLBACK);
+            expect(fallback[0]).toEqual({
+                id: 'gpt-6-astra', label: 'GPT-6 Astra', defaultEffort: 'medium',
+                efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+            });
+            expect(fallback.map((m) => m.id)).toEqual([
+                'gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna',
+                'gpt-5.5', 'gpt-5.4-mini', 'gpt-5.3-codex-spark',
+            ]);
+
+            // The live path: a cache shaped like ~/.codex/models_cache.json as
+            // read on 2026-09-06 sorts astra to the top by priority, drops the
+            // hidden gpt-reserve, and turns the display name "GPT-6-Astra"
+            // into exactly "GPT-6 Astra".
+            const cacheFile = path.join(dir, 'models_cache.json');
+            const levels = (efforts) => efforts.map((effort) => ({ effort }));
+            fs.writeFileSync(cacheFile, JSON.stringify({
+                fetched_at: '2026-09-06T23:19:19.137093Z',
+                models: [
+                    { slug: 'gpt-5.6-sol', display_name: 'GPT-5.6-Sol', priority: 6, visibility: 'list',
+                      default_reasoning_level: 'low', supported_reasoning_levels: levels(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) },
+                    { slug: 'gpt-reserve', display_name: 'GPT-Reserve', priority: 3, visibility: 'hide',
+                      default_reasoning_level: 'medium', supported_reasoning_levels: levels(['low', 'medium', 'high', 'xhigh', 'max']) },
+                    { slug: 'gpt-6-astra', display_name: 'GPT-6-Astra', priority: 1, visibility: 'list', upgrade: null,
+                      default_reasoning_level: 'medium', supported_reasoning_levels: levels(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) },
+                ],
+            }));
+            process.env.CODEX_MODELS_CACHE_FILE = cacheFile;
+            jest.resetModules();
+            const live = require('../routes/model-control').listCodexModels();
+            expect(live.map((m) => m.id)).toEqual(['gpt-6-astra', 'gpt-5.6-sol']);
+            expect(live[0]).toEqual({
+                id: 'gpt-6-astra', label: 'GPT-6 Astra', defaultEffort: 'medium',
+                efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+            });
+        } finally {
+            warn.mockRestore();
+            if (originalCacheFile === undefined) delete process.env.CODEX_MODELS_CACHE_FILE;
+            else process.env.CODEX_MODELS_CACHE_FILE = originalCacheFile;
+            fs.rmSync(dir, { recursive: true, force: true });
+            jest.resetModules();
+        }
+    });
+
     test('serves the antigravity model roster', async () => {
         const createModelControlRouter = require('../routes/model-control');
         const app = express();

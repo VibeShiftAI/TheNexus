@@ -127,6 +127,11 @@ const PRICE_PER_MTOK = {
     'gpt-5.6-terra': { in: 2.5, out: 15 },
     'gpt-5.6-luna': { in: 1, out: 6 },
     'gpt-5.5': { in: 1.25, out: 10 },
+    // gpt-6-astra (codex roster leader since 2026-09-06) has NO row on
+    // purpose: no public $/MTok was verifiable when it was added, and an
+    // invented rate would silently mis-state spend. priceFor() returns null
+    // for it (no key here is a prefix or substring of "gpt-6-astra"), so its
+    // runs report cost: null — "unknown", never a $0 that under-reports.
 };
 // A dispatch row carries ONE total token count, and for claude-code that
 // total sums every usage category — including cache reads, which dominate

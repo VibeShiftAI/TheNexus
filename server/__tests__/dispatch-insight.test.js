@@ -392,6 +392,30 @@ describe('dispatch-insight route', () => {
         expect(body.runs[0].overdue).toBe(false);
     });
 
+    test('a run on an unpriced model (gpt-6-astra) reports cost null — unknown, never a silent $0', async () => {
+        await boot();
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                id: 'disp-astra', task_id: 'task-running', executor: 'codex',
+                model: 'gpt-6-astra', started_at: new Date(Date.now() - 4 * HOUR).toISOString(),
+            }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/disp-astra`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                outcome: 'success', tokens: 1_000_000, completed_at: new Date(Date.now() - 3 * HOUR).toISOString(),
+            }),
+        });
+        const { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-running`);
+        const astra = body.runs.find((r) => r.dispatchId === 'disp-astra');
+        expect(astra.model).toBe('gpt-6-astra');
+        // No public $/MTok for gpt-6-astra was verifiable on 2026-09-06, so it
+        // has no PRICE_PER_MTOK row on purpose: the estimate is withheld
+        // (cost: null) rather than invented or reported as $0.
+        expect(astra.cost).toBeNull();
+    });
+
     test('cost estimate prices Fable 5.1 cache reads at $0.25/MTok and leaves other models unchanged', async () => {
         await boot();
         await requestJson(`${handle.baseUrl}/api/dispatches`, {
