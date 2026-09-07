@@ -45,13 +45,24 @@ cockpit surface.
   `npm run dev` uses nodemon for local API iteration.
 - Dashboard development: `cd dashboard && npm run dev` runs `next dev` on
   :3000 with development hot reload.
-- Dashboard production: `cd dashboard && npm run build && npm run start` runs
-  compiled output on :3000. `next start` does **not** compile source: after a
-  dashboard source change, rebuild and restart the supervised dashboard process
-  before expecting production :3000 to show it. For an isolated build that does
-  not replace the default `.next`, use
+- Supervised dashboard on :3000: the Praxis supervisor
+  (`Praxis/src/supervisor/index.ts`, `dashboardChildSpec`) spawns `npm run dev`
+  in `dashboard/` when `PRAXIS_DASHBOARD_DEV=1`, which
+  `~/Library/LaunchAgents/com.praxis.bot.plist` sets, so the live :3000 is a
+  hot-reloading `next dev` serving the working tree (verified 2026-09-07). With
+  the flag unset the supervisor runs `npm run start` instead, and `next start`
+  does **not** compile source: rebuild with `npm run build` and restart the child
+  before expecting :3000 to show a change. Either way the supervisor respawns
+  the child on exit; do not start a second server by hand. The dev server can
+  serve a stale `globals.css` chunk after a save it missed; `touch` does not
+  help, but appending a newline to `dashboard/src/app/globals.css`, waiting a few
+  seconds, and restoring the exact bytes re-emits the chunk without a restart.
+- Dashboard production build: `cd dashboard && npm run build && npm run start`.
+  For an isolated build that does not replace the default `.next`, use
   `cd dashboard && NEXT_DIST_DIR=.next-verify npm run build` (Next also appends
-  `.next-verify/types/**/*.ts` to `dashboard/tsconfig.json`; discard that rewrite).
+  `.next-verify/types/**/*.ts` to `dashboard/tsconfig.json`; discard that
+  rewrite). `dashboard/.gitignore` ignores every `.next-*/` dist dir so verify
+  builds never enter `git status` or a QA diff.
 - Fleet-shared secrets: `server/utils/fleet-env.js` (called first in
   `server/server.js`) loads `/Volumes/Projects/.fleet-env`
   (outside every repo; template `/Volumes/Projects/.fleet-env.example`) before

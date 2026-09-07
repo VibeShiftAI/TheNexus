@@ -15,6 +15,8 @@
 
 # next.js
 /.next/
+# NEXT_DIST_DIR verify builds (.next-verify, .next-<task>-verify, ...)
+/.next-*/
 /out/
 
 # production
