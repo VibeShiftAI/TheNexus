@@ -24,9 +24,10 @@ export interface DispatchStateSnapshot {
   state: DispatchStateResponse | null;
   /** True once a fetch has failed and no snapshot has since succeeded. */
   error: boolean;
+  updatedAt: string | null;
 }
 
-let snapshot: DispatchStateSnapshot = { state: null, error: false };
+let snapshot: DispatchStateSnapshot = { state: null, error: false, updatedAt: null };
 const subscribers = new Set<(s: DispatchStateSnapshot) => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
 let inflight: Promise<void> | null = null;
@@ -43,11 +44,11 @@ export function refreshDispatchState(): Promise<void> {
       const res = await fetch("/api/praxis/dispatch-state", { cache: "no-store" });
       if (!res.ok) throw new Error(`dispatch-state ${res.status}`);
       const data = (await res.json()) as DispatchStateResponse;
-      publish({ state: data, error: false });
+      publish({ state: data, error: false, updatedAt: new Date().toISOString() });
     } catch {
       // Keep the last good snapshot — panels degrade to SSE-only rather than
       // blanking out on a single failed poll.
-      publish({ state: snapshot.state, error: true });
+      publish({ ...snapshot, error: true });
     } finally {
       inflight = null;
     }
