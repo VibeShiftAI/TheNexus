@@ -84,7 +84,7 @@ export function FontScaleControl({
 }) {
   return (
     <div
-      className="flex items-center gap-0.5 rounded-full border border-slate-700 bg-slate-900/60 px-1 py-0.5"
+      className="flex shrink-0 items-center gap-0.5 rounded-full border border-slate-700 bg-slate-900/60 px-1 py-0.5"
       title="Text size for the inbox (saved for next time)"
     >
       <Type className="mx-0.5 h-3 w-3 text-slate-400" aria-hidden />

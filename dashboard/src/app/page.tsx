@@ -10,12 +10,12 @@ import { ScheduleTimeline } from "@/components/schedule-timeline";
 import { NotesButton } from "@/components/notes-console";
 import { HitlInbox } from "@/components/hitl-inbox";
 import { ActivityFeed } from "@/components/activity-feed";
+import { ActivityMonitor } from "@/components/bridge/activity-monitor";
 import { PraxisCore } from "@/components/bridge/praxis-core";
 import { DispatchStation } from "@/components/bridge/dispatch-station";
 import { KnowledgeStation } from "@/components/bridge/knowledge-station";
 import { PowerStation } from "@/components/bridge/power-station";
 import { TaskBoardStation } from "@/components/bridge/taskboard-station";
-import { VoiceCommandBar } from "@/components/bridge/voice-command-bar";
 import { AmbientMode } from "@/components/bridge/ambient-mode";
 import { StatusStrip } from "@/components/bridge/status-strip";
 import { BridgeFX, useBridgeCondition, conditionGlowClass } from "@/components/bridge/bridge-fx";
@@ -92,7 +92,7 @@ export default function Home() {
       <BridgeFX />
       {/* Header HUD */}
       <header className={`sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md shrink-0 ${conditionGlowClass(bridgeCondition)}`}>
-        <div className="mx-auto w-full max-w-[2400px] flex h-16 items-center justify-between px-6">
+        <div className="mx-auto w-full max-w-[2400px] flex min-h-16 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-1 sm:px-6 sm:py-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsNavOpen(true)}
@@ -116,16 +116,16 @@ export default function Home() {
             <ShellTabs />
           </div>
 
-          <div className="flex items-center gap-3">
-            <VoiceCommandBar />
+          <div className="flex items-center gap-2 sm:gap-3">
             <AmbientMode />
             <NotesButton />
             <button
               onClick={() => setShowNewProjectModal(true)}
+              aria-label="New project"
               className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/30 hover:border-cyan-500/50 px-3.5 py-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-all shadow-lg shadow-cyan-500/5"
             >
               <Plus size={14} />
-              <span>New Project</span>
+              <span className="hidden sm:inline">New Project</span>
             </button>
             <button
               onClick={() => setShowSettings(true)}
@@ -162,6 +162,8 @@ export default function Home() {
             <div id="station-core">
               <PraxisCore />
             </div>
+
+            <ActivityMonitor />
 
             {/* Stations, 2-up: Dispatch and Knowledge sit directly under the
                 core. Rows stretch so paired stations stay flush — Dispatch and

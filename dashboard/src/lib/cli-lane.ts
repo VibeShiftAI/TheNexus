@@ -11,9 +11,8 @@
  *
  * Rule for every field: an older Praxis omits the newer ones, so a missing
  * value renders as absent, never as zero. The gate's `reason` string is
- * authoritative and always shown verbatim — Praxis task sr-j is moving numbers
- * into the structured fields, and they DECORATE the sentence rather than
- * replacing it.
+ * authoritative and preserved verbatim in the expanded gate report. Compact
+ * labels summarize known reasons; an unfamiliar policy stays generic.
  */
 
 import type {
@@ -82,6 +81,22 @@ export interface CliLaneGate {
   readouts: { label: string; value: string; title?: string }[];
   /** True when nothing can start right now. */
   saturated: boolean;
+}
+
+/** Summarize the reported decision; never infer a blocker from its metrics. */
+export function gateStatusLabel(gate: CliLaneGate): string {
+  if (gate.burst === true) return "Parallel runs enabled";
+  const reason = gate.reason ?? "";
+  if (/^serial: swap recovery:/i.test(reason)) return "Checking recovery";
+  if (/^serial: outside .*burst window/i.test(reason)) return "Outside burst hours";
+  if (/^serial: (swap pathological:|swap=.*hard cap)/i.test(reason)) return "Swap limit reached";
+  if (/^serial: swap actively growing/i.test(reason)) return "Paging pressure";
+  if (/^serial: swap telemetry unavailable/i.test(reason)) return "Swap signal unavailable";
+  if (/^serial: memory free% unreadable/i.test(reason)) return "Memory signal unavailable";
+  if (/^serial: memFree=.*below/i.test(reason)) return "Low memory headroom";
+  if (/^serial: concurrency disabled/i.test(reason)) return "Single-run policy";
+  if (gate.burst === false) return "Capacity limited";
+  return gate.limit != null || reason ? "View capacity details" : "Awaiting capacity signal";
 }
 
 export interface CliLaneView {

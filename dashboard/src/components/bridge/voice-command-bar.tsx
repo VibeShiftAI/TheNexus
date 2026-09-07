@@ -5,13 +5,13 @@
  *   - Wake word: a lightweight webkitSpeechRecognition loop listens for
  *     "Praxis" while the bar is idle; hearing it chirps and opens the mic.
  *   - Click the mic (manual push-to-talk) any time.
- * Recording auto-stops on ~1.6s of silence (or 15s cap), goes to Praxis's
+ * Recording auto-stops on ~1.6s of silence (or 60s cap), goes to Praxis's
  * Groq Whisper transcriber, runs the local intent grammar (navigation,
  * local-only lever, local-queue pause/resume, status report), and anything
  * unmatched falls through to Praxis chat. Replies are spoken back through
- * the existing ElevenLabs route (/api/praxis/speak).
+ * the configured Praxis voice route (/api/praxis/speak).
  *
- * Also owns spoken red-alert announcements (task.failed / hitl.created) with
+ * Also owns configurable task and attention announcements with
  * quiet hours 22:00–08:00 and a 2-minute rate limit — excluding the routine
  * morning-review HITLs, which the morning greeting announces itself.
  *
@@ -27,18 +27,17 @@ import { useLiveBoardState } from "@/components/live-board-state";
 import { useVoiceStatus } from "@/hooks/use-voice-status";
 import { setLocalOnlyMode } from "@/lib/model-control";
 import { getAmbientIdleMinutes, setAmbientIdleMinutes } from "@/components/bridge/ambient-mode";
-import type { StreamEvent } from "@praxis/contract";
-
-type VoiceState = "idle" | "recording" | "transcribing" | "working" | "speaking";
+import { useBoardState } from "@/hooks/use-board-state";
+import { VoiceSpeech, type VoiceSession, type VoiceState } from "@/lib/voice-speech";
+import { VoiceConversation } from "@/lib/voice-conversation";
+import { VoiceAlerts, alertLine, readAlertMode, ALERT_MODE_KEY, type AlertMode } from "@/lib/voice-alerts";
 
 const WAKE_KEY = "nexus.voice.wakeword";
-const ALERTS_KEY = "nexus.voice.alerts";
 const WAKE_PATTERN = /\bpraxis\b|\bpraxus\b/i;
 const SILENCE_STOP_MS = 1600;
-const MAX_RECORDING_MS = 15_000;
+const MAX_RECORDING_MS = 60_000;
+const NO_SPEECH_MS = 10_000;
 const SILENCE_RMS_THRESHOLD = 0.015;
-const ALERT_RATE_LIMIT_MS = 2 * 60_000;
-const QUIET_HOURS = { start: 22, end: 8 }; // local time, inclusive start / exclusive end
 
 const NAV_TARGETS: { pattern: RegExp; route: string; label: string }[] = [
   { pattern: /task ?board|tasks/, route: "/task-board", label: "Task board" },
@@ -58,11 +57,6 @@ function mimeToFilename(mime: string): string {
   if (mime.includes("mp4")) return "voice.m4a";
   if (mime.includes("ogg")) return "voice.ogg";
   return "voice.webm";
-}
-
-function inQuietHours(date = new Date()): boolean {
-  const h = date.getHours();
-  return h >= QUIET_HOURS.start || h < QUIET_HOURS.end;
 }
 
 function readSetting(key: string, fallback: boolean): boolean {
@@ -115,34 +109,12 @@ function chirp(freq = 880) {
   }
 }
 
-/** Two-tone klaxon that precedes spoken alerts. */
-function alertChime() {
-  chirp(660);
-  setTimeout(() => chirp(494), 220);
-}
-
-/**
- * HITL kinds the morning routine announces on its own. The greeting ("Good
- * morning, Praxis") lands the [MORNING PLAN] trio — schedule proposal, skill
- * candidates, board maintenance — and speaks its own good-morning voice note.
- * Letting the red-alert path also bark "I need your attention on something"
- * over that (2026-07-25: Robert heard the alert instead of / on top of the
- * morning announcement) is noise, not news: these are expected, they carry
- * their own cards, and the inbox badge is the durable signal. Unexpected
- * HITLs — task questions, trade approvals, EOD commits — still speak.
- */
-const ROUTINE_HITL_KINDS = new Set(["day-schedule", "skill-candidates", "board-maintenance"]);
-
-function isRoutineMorningHitl(e: StreamEvent): boolean {
-  if (e.type !== "hitl.created") return false;
-  const kind = e.request?.metadata?.kind;
-  return typeof kind === "string" && ROUTINE_HITL_KINDS.has(kind);
-}
-
 export function VoiceCommandBar() {
   const router = useRouter();
   const { presence, recentEvents } = useLiveBoardState();
   const voiceStatus = useVoiceStatus();
+  const { projects } = useBoardState();
+  const projectsRef = useRef(projects); projectsRef.current = projects;
   const presenceRef = useRef(presence);
   presenceRef.current = presence;
 
@@ -154,55 +126,64 @@ export function VoiceCommandBar() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wakeEnabled, setWakeEnabled] = useState(false);
-  const [alertsEnabled, setAlertsEnabled] = useState(true);
+  const [alertMode, setAlertMode] = useState<AlertMode>('off');
+  const [conversationActive, setConversationActive] = useState(false);
+  const [wakeSuspended, setWakeSuspended] = useState(false);
+  const wakeSuspendedRef = useRef(false);
+  const [tabHidden, setTabHidden] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [speechNotice, setSpeechNotice] = useState<string | null>(null);
   const [ambientIdle, setAmbientIdle] = useState(10);
   const [wakeSupported, setWakeSupported] = useState(true);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const recognitionRef = useRef<RecognitionLike | null>(null);
   const wakeEnabledRef = useRef(false);
-  const lastAlertAtRef = useRef(0);
-  const announcedIdsRef = useRef<Set<string>>(new Set());
   const mountedAtRef = useRef(Date.now());
 
   useEffect(() => {
     setWakeEnabled(readSetting(WAKE_KEY, false));
-    setAlertsEnabled(readSetting(ALERTS_KEY, true));
+    setAlertMode(readAlertMode());
     setAmbientIdle(getAmbientIdleMinutes());
     setWakeSupported(Boolean(createRecognition()));
   }, []);
   wakeEnabledRef.current = wakeEnabled;
 
-  // ── Speech output ─────────────────────────────────────────────
-  const speak = useCallback(async (text: string, opts: { keepState?: boolean } = {}) => {
-    try {
-      if (!opts.keepState) setState("speaking");
-      const res = await fetch("/api/praxis/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.length > 600 ? `${text.slice(0, 600)}…` : text }),
-      });
-      if (!res.ok) return;
-      const { audio, mime } = await res.json();
-      if (!audio) return;
-      await new Promise<void>((resolve) => {
-        const el = new Audio(`data:${mime || "audio/mpeg"};base64,${audio}`);
-        audioRef.current = el;
-        el.onended = () => resolve();
-        el.onerror = () => resolve();
-        el.onpause = () => resolve(); // barge-in: pausing playback releases the await
-        el.play().catch(() => resolve());
-      });
-    } catch {
-      /* speech is best-effort */
-    } finally {
-      audioRef.current = null;
-      // Only reset if nothing else (e.g. a barge-in recording) took the state.
-      if (!opts.keepState && stateRef.current === "speaking") setState("idle");
-    }
+  // One session owns recording, requests, and playback until finish/cancel.
+  const mountedRef = useRef(true);
+  const speechRef = useRef<VoiceSpeech | null>(null);
+  if (!speechRef.current) speechRef.current = new VoiceSpeech({ onState: next => {
+    if (mountedRef.current) { stateRef.current = next; setState(next); }
+  } });
+  const speech = speechRef.current;
+  const startRecordingRef = useRef<(session: VoiceSession) => void>(() => {});
+  const conversationRef = useRef<VoiceConversation | null>(null);
+  if (!conversationRef.current) conversationRef.current = new VoiceConversation({
+    speech,
+    capture: session => startRecordingRef.current(session),
+    onChange: active => { if (mountedRef.current) setConversationActive(active); },
+  });
+  const conversation = conversationRef.current;
+  const suspendWake = useCallback(() => {
+    wakeSuspendedRef.current = true; setWakeSuspended(true);
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    if (recognition) { recognition.onend = null; recognition.abort(); }
   }, []);
+  const cancelAll = useCallback(() => {
+    suspendWake(); conversation.end(); speech.cancel();
+  }, [conversation, speech, suspendWake]);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; conversation.end(); speech.cancel(); };
+  }, [conversation, speech]);
+  const speak = useCallback(async (session: VoiceSession, text: string, voiceData?: { audio: string; mimeType: string }[]) => {
+    const followUp = conversation.owns(session);
+    const outcome = await speech.speak(session, text, voiceData, notice => {
+      if (session.owns()) { setSpeechNotice(notice); setPanelOpen(true); }
+    }, followUp);
+    if (followUp) conversation.complete(session, outcome);
+  }, [conversation, speech]);
 
   // ── Intent handling ───────────────────────────────────────────
   const runStatusReport = useCallback(async (): Promise<string> => {
@@ -226,43 +207,51 @@ export function VoiceCommandBar() {
 
   /** Execute a classified intent. Returns false for chat fall-through. */
   const runIntent = useCallback(
-    async (intent: ServerIntent): Promise<boolean> => {
+    async (session: VoiceSession, intent: ServerIntent): Promise<boolean> => {
+      if (!session.owns()) return true;
       switch (intent.type) {
         case "navigate":
           setResponse(`On screen: ${intent.label}.`);
           router.push(intent.route);
-          await speak(intent.speech);
+          await speak(session, intent.speech);
           return true;
         case "local_only":
           try {
             await setLocalOnlyMode(intent.enable, intent.enable ? "voice_command" : null);
+            if (!session.owns()) return true;
             setResponse(intent.speech);
-            await speak(intent.speech);
+            await speak(session, intent.speech);
           } catch {
-            setResponse("Couldn't reach model control.");
-            setState("idle");
+            if (session.owns()) setResponse("Couldn't reach model control.");
+            speech.finish(session);
           }
           return true;
         case "local_queue":
           try {
             const res = await fetch(`/api/local-queue/${intent.action}`, {
               method: "POST",
+              signal: session.signal,
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ reason: "voice_command" }),
             });
-            const msg = res.ok ? intent.speech : `Local queue ${intent.action} failed.`;
+            if (!session.owns()) return true;
+            if (!res.ok) {
+              setResponse(`Local queue ${intent.action} failed.`); speech.finish(session); return true;
+            }
+            const msg = intent.speech;
             setResponse(msg);
-            await speak(msg);
+            await speak(session, msg);
           } catch {
-            setResponse("Couldn't reach the local queue.");
-            setState("idle");
+            if (session.owns()) setResponse("Couldn't reach the local queue.");
+            speech.finish(session);
           }
           return true;
         case "status_report": {
           // Server composes the report; fall back to the local composer if empty.
           const report = intent.speech || (await runStatusReport());
+          if (!session.owns()) return true;
           setResponse(report);
-          await speak(report);
+          await speak(session, report);
           return true;
         }
         case "chat":
@@ -270,17 +259,17 @@ export function VoiceCommandBar() {
           return false;
       }
     },
-    [router, speak, runStatusReport]
+    [router, speak, runStatusReport, speech]
   );
 
   /** Offline fallback grammar — used only when Praxis's intent endpoint is unreachable. */
   const runLocalGrammar = useCallback(
-    async (text: string): Promise<boolean> => {
+    async (session: VoiceSession, text: string): Promise<boolean> => {
       const lower = text.toLowerCase().replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
       if (/(open|show|bring up|go to|take me to|display)\b/.test(lower)) {
         for (const target of NAV_TARGETS) {
           if (target.pattern.test(lower)) {
-            return runIntent({
+            return runIntent(session, {
               type: "navigate",
               route: target.route,
               label: target.label,
@@ -290,170 +279,160 @@ export function VoiceCommandBar() {
         }
       }
       if (/\b(status report|sitrep|status update|full report|report status)\b/.test(lower)) {
-        return runIntent({ type: "status_report", speech: "" });
+        return runIntent(session, { type: "status_report", speech: "" });
       }
       return false;
     },
     [runIntent]
   );
 
-  const executeTranscript = useCallback(
-    async (text: string) => {
-      setState("working");
-
-      // 1. Shared grammar on Praxis — one grammar for every cockpit surface.
-      let handled = false;
-      let serverReachable = true;
-      try {
-        const res = await fetch("/api/praxis/voice-intent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript: text }),
-        });
-        if (!res.ok) throw new Error();
-        const data = (await res.json()) as { intent: ServerIntent };
-        handled = await runIntent(data.intent);
-      } catch {
-        serverReachable = false;
-      }
-      if (handled) return;
-
-      // 2. Praxis unreachable → minimal local grammar keeps navigation working.
-      if (!serverReachable) {
-        if (await runLocalGrammar(text)) return;
-      }
-
-      // 3. Chat fall-through — the reply is spoken via the ElevenLabs route.
-      try {
-        const res = await fetch("/api/praxis/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text, stream: false }),
-        });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        const reply: string = data.response ?? "No response.";
-        setResponse(reply);
-        await speak(reply);
-      } catch {
-        setResponse("Praxis didn't answer. Check the comms channel.");
-        setState("idle");
-      }
-    },
-    [speak, runIntent, runLocalGrammar]
-  );
-
-  // ── Recording (manual or wake-word triggered) ─────────────────
-  const stopRecording = useCallback(() => {
-    recorderRef.current?.stop();
-  }, []);
-
-  const startRecording = useCallback(async () => {
-    // "speaking" is allowed: barge-in — cut Praxis off and listen.
-    if (stateRef.current !== "idle" && stateRef.current !== "speaking") return;
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+  const executeTranscript = useCallback(async (session: VoiceSession, text: string) => {
+    if (!session.owns()) return;
+    speech.setState(session, "working");
+    let serverReachable = true;
+    try {
+      const res = await fetch("/api/praxis/voice-intent", {
+        method: "POST", signal: session.signal,
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcript: text }),
+      });
+      if (!session.owns()) return;
+      if (!res.ok) throw new Error();
+      const data = await res.json(); if (!session.owns()) return;
+      const handled = await runIntent(session, data.intent);
+      if (!session.owns() || handled) return;
+    } catch { if (!session.owns()) return; serverReachable = false; }
+    if (!serverReachable) {
+      const handled = await runLocalGrammar(session, text);
+      if (!session.owns() || handled) return;
     }
-    setTranscript(null);
-    setResponse(null);
-    setPanelOpen(true);
+    try {
+      const res = await fetch("/api/praxis/chat", {
+        method: "POST", signal: session.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, stream: false, voiceConversation: true }),
+      });
+      if (!session.owns()) return;
+      if (!res.ok) throw new Error();
+      const data = await res.json(); if (!session.owns()) return;
+      const reply = typeof data.response === 'string' ? data.response : '';
+      if (!reply.trim() && !data.voiceData?.some((v: { audio?: string }) => typeof v.audio === 'string' && v.audio)) {
+        setResponse("Praxis didn't return a reply."); speech.finish(session); return;
+      }
+      setResponse(reply);
+      await speak(session, reply, Array.isArray(data.voiceData) ? data.voiceData : undefined);
+    } catch {
+      if (session.owns()) setResponse("Praxis didn't answer. Check the comms channel.");
+      speech.finish(session);
+    }
+  }, [speak, runIntent, runLocalGrammar, speech]);
+
+  // ── Recording (manual or explicitly enabled wake word) ─────────
+  const stopRecording = useCallback(() => {
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+  }, []);
+  const startRecording = useCallback(async (ownedSession?: VoiceSession) => {
+    if (document.hidden) { cancelAll(); return; }
+    if (!ownedSession && stateRef.current !== 'idle' && stateRef.current !== 'speaking') return;
+    if (!ownedSession) conversation.end();
+    const session = ownedSession ?? speech.begin(); if (!session || !session.owns()) return;
+    speech.setState(session, 'working');
+    setTranscript(null); setResponse(null); setSpeechNotice(null); setElapsed(0); setSettingsOpen(false); setPanelOpen(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/mp4")
-        ? "audio/mp4"
-        : "";
+      if (!session.owns()) { stream.getTracks().forEach(t => t.stop()); return; }
+      const releaseStream = () => stream.getTracks().forEach(t => t.stop());
+      session.cleanup.add(releaseStream);
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
       const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = e => { if (session.owns() && e.data.size > 0) chunks.push(e.data); };
+      let audioCtx: AudioContext | null = null;
+      let source: MediaStreamAudioSourceNode | null = null;
+      let timer: ReturnType<typeof setInterval> | null = null;
+      let cap: ReturnType<typeof setTimeout> | null = null;
+      const cleanup = () => {
+        if (timer) clearInterval(timer); if (cap) clearTimeout(cap);
+        recorder.onstop = null; recorder.ondataavailable = null; recorder.onerror = null;
+        if (recorder.state === 'recording') recorder.stop();
+        source?.disconnect?.(); audioCtx?.close().catch(() => {});
+        stream.getTracks().forEach(t => t.stop());
+        if (recorderRef.current === recorder) recorderRef.current = null;
+        session.cleanup.delete(cleanup);
       };
-
-      // Silence auto-stop: watch RMS on an analyser; stop after sustained
-      // silence once speech has been heard (or at the hard cap).
+      session.cleanup.delete(releaseStream);
+      session.cleanup.add(cleanup);
       const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      const audioCtx = Ctx ? new Ctx() : null;
-      let silenceTimer: ReturnType<typeof setInterval> | null = null;
-      let capTimer: ReturnType<typeof setTimeout> | null = null;
-      if (audioCtx) {
-        const source = audioCtx.createMediaStreamSource(stream);
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 512;
-        source.connect(analyser);
-        const buf = new Float32Array(analyser.fftSize);
-        let heardSpeech = false;
-        let silentSince = Date.now();
-        silenceTimer = setInterval(() => {
-          analyser.getFloatTimeDomainData(buf);
-          let sum = 0;
-          for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-          const rms = Math.sqrt(sum / buf.length);
-          if (rms > SILENCE_RMS_THRESHOLD) {
-            heardSpeech = true;
-            silentSince = Date.now();
-          } else if (heardSpeech && Date.now() - silentSince > SILENCE_STOP_MS) {
-            recorder.stop();
-          }
-        }, 150);
-      }
-      capTimer = setTimeout(() => recorder.stop(), MAX_RECORDING_MS);
-
+      let analyser: AnalyserNode | null = null;
+      try {
+        if (Ctx) { audioCtx = new Ctx(); source = audioCtx.createMediaStreamSource(stream); analyser = audioCtx.createAnalyser(); analyser.fftSize = 512; source.connect(analyser); }
+      } catch { audioCtx?.close().catch(() => {}); audioCtx = null; analyser = null; }
+      const buf = new Float32Array(512); const startedAt = Date.now();
+      let heardSpeech = false; let silentSince = startedAt;
+      timer = setInterval(() => {
+        if (!session.owns()) return;
+        setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+        if (analyser) {
+          try {
+            analyser.getFloatTimeDomainData(buf);
+            const rms = Math.sqrt(buf.reduce((sum, sample) => sum + sample * sample, 0) / buf.length);
+            if (rms > SILENCE_RMS_THRESHOLD) { heardSpeech = true; silentSince = Date.now(); }
+          } catch { analyser = null; }
+        }
+        // Manual capture can still use its stop button and cap without an
+        // analyser. Only an owned conversation must fail closed in this case.
+        if (!analyser && !conversation.owns(session)) return;
+        if (!heardSpeech && Date.now() - startedAt >= NO_SPEECH_MS) {
+          setResponse("I didn't hear anything. Tap the mic when you're ready."); speech.finish(session);
+        } else if (heardSpeech && Date.now() - silentSince > SILENCE_STOP_MS) stopRecording();
+      }, 150);
+      cap = setTimeout(stopRecording, MAX_RECORDING_MS);
       recorder.onstop = async () => {
-        if (silenceTimer) clearInterval(silenceTimer);
-        if (capTimer) clearTimeout(capTimer);
-        audioCtx?.close().catch(() => {});
-        stream.getTracks().forEach((t) => t.stop());
-        setState("transcribing");
+        cleanup(); if (!session.owns()) return;
+        speech.setState(session, 'transcribing');
         try {
-          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-          if (blob.size < 2000) {
-            // Nothing meaningful captured (wake word false positive etc.)
-            setState("idle");
-            return;
-          }
+          const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+          if (blob.size < 2000) { speech.finish(session); return; }
           const base64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-            reader.onerror = () => reject(reader.error);
+            const abort = () => { reader.abort?.(); reject(new Error('Canceled')); };
+            session.signal.addEventListener('abort', abort, { once: true });
+            reader.onload = () => { session.signal.removeEventListener('abort', abort); resolve(String(reader.result).split(',')[1] ?? ''); };
+            reader.onerror = () => { session.signal.removeEventListener('abort', abort); reject(reader.error); };
             reader.readAsDataURL(blob);
           });
-          const res = await fetch("/api/praxis/transcribe", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ audio: base64, filename: mimeToFilename(recorder.mimeType || "") }),
+          if (!session.owns()) return;
+          const res = await fetch('/api/praxis/transcribe', {
+            method: 'POST', signal: session.signal, headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio: base64, filename: mimeToFilename(recorder.mimeType || '') }),
           });
+          if (!session.owns()) return;
           if (!res.ok) throw new Error();
-          const { text } = await res.json();
-          // Strip a leading wake word so "Praxis, status report" routes cleanly.
-          const cleaned = String(text ?? "").replace(/^\s*(hey\s+)?(praxis|praxus)[\s,.!—-]*/i, "").trim();
-          if (!cleaned) {
-            setResponse("I didn't catch that.");
-            setState("idle");
-            return;
-          }
-          setTranscript(cleaned);
-          await executeTranscript(cleaned);
+          const data = await res.json(); if (!session.owns()) return;
+          const cleaned = String(data.text ?? '').replace(/^\s*(hey\s+)?(praxis|praxus)[\s,.!—-]*/i, '').trim();
+          if (!cleaned) { setResponse("I didn't catch that."); speech.finish(session); return; }
+          setTranscript(cleaned); await executeTranscript(session, cleaned);
         } catch {
-          setResponse("Transcription failed — is Praxis online?");
-          setState("idle");
+          if (session.owns()) setResponse('Transcription failed — is Praxis online?');
+          speech.finish(session);
         }
       };
-      recorder.start();
-      recorderRef.current = recorder;
-      setState("recording");
+      recorder.onerror = () => {
+        if (session.owns()) setResponse('Microphone recording failed. Tap the mic to try again.');
+        speech.finish(session);
+      };
+      recorderRef.current = recorder; recorder.start(); speech.setState(session, 'recording');
     } catch {
-      setResponse("Microphone unavailable. Check browser permissions.");
-      setState("idle");
-      setPanelOpen(true);
+      if (session.owns()) setResponse('Microphone unavailable. Check browser permissions.');
+      speech.finish(session);
     }
-  }, [executeTranscript]);
+  }, [cancelAll, conversation, executeTranscript, speech, stopRecording]);
+  startRecordingRef.current = session => { void startRecording(session); };
 
   // ── Wake word loop ────────────────────────────────────────────
   // Armed while idle AND while Praxis is speaking (say "Praxis" to barge in).
   useEffect(() => {
-    if (!wakeEnabled || (state !== "idle" && state !== "speaking")) {
+    if (!wakeEnabled || wakeSuspended || conversationActive || tabHidden || document.hidden || (state !== "idle" && state !== "speaking")) {
       recognitionRef.current?.abort();
       recognitionRef.current = null;
       return;
@@ -465,6 +444,7 @@ export function VoiceCommandBar() {
     }
     let disposed = false;
     rec.onresult = (event) => {
+      if (disposed || wakeSuspendedRef.current || conversation.active() || document.hidden) return;
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const alt = event.results[i][0];
         if (alt && WAKE_PATTERN.test(alt.transcript)) {
@@ -479,7 +459,7 @@ export function VoiceCommandBar() {
       // Chrome ends recognition periodically — restart while still armed.
       if (
         !disposed &&
-        wakeEnabledRef.current &&
+        wakeEnabledRef.current && !wakeSuspendedRef.current && !conversation.active() && !document.hidden &&
         (stateRef.current === "idle" || stateRef.current === "speaking")
       ) {
         try {
@@ -509,58 +489,55 @@ export function VoiceCommandBar() {
       rec.abort();
       if (recognitionRef.current === rec) recognitionRef.current = null;
     };
-  }, [wakeEnabled, state, startRecording]);
+  }, [wakeEnabled, wakeSuspended, conversationActive, tabHidden, state, startRecording, conversation]);
 
-  // ── Spoken red-alert announcements ────────────────────────────
+  const alertsRef = useRef<VoiceAlerts | null>(null);
   useEffect(() => {
-    if (!alertsEnabled || state !== "idle") return;
-    if (inQuietHours()) return;
-    if (Date.now() - lastAlertAtRef.current < ALERT_RATE_LIMIT_MS) return;
-    const alertEvent = recentEvents.find(
-      (e: StreamEvent) =>
-        (e.type === "task.failed" || e.type === "hitl.created") &&
-        !isRoutineMorningHitl(e) &&
-        e.eventId &&
-        !announcedIdsRef.current.has(e.eventId) &&
-        new Date(e.at).getTime() > mountedAtRef.current
-    );
-    if (!alertEvent || !alertEvent.eventId) return;
-    announcedIdsRef.current.add(alertEvent.eventId);
-    lastAlertAtRef.current = Date.now();
-    const line =
-      alertEvent.type === "task.failed"
-        ? `Alert. A task has failed: ${alertEvent.error?.slice(0, 120) ?? "unknown error"}`
-        : `Hi Robert, I need your attention on something: ${alertEvent.type === "hitl.created" ? alertEvent.request?.question?.slice(0, 120) ?? "approval required" : ""}`;
-    alertChime();
-    setTimeout(() => speak(line, { keepState: true }), 550);
-  }, [recentEvents, alertsEnabled, state, speak]);
+    const alerts = new VoiceAlerts({ mountedAt: mountedAtRef.current, announce: event => {
+      const session = speech.begin(true); if (!session) return null;
+      const line = alertLine(event, id => {
+        const task = projectsRef.current?.flatMap(project => project.tasks ?? []).find(task => task.id === id);
+        return task?.title || task?.name;
+      });
+      setResponse(line); setTranscript(null); setSpeechNotice(null); setSettingsOpen(false); setPanelOpen(true);
+      return speak(session, line);
+    } });
+    alertsRef.current = alerts;
+    return () => { alerts.dispose(); alertsRef.current = null; };
+  }, [speak, speech]);
+  useEffect(() => { alertsRef.current?.update(recentEvents, alertMode); }, [recentEvents, alertMode]);
 
   const onMicClick = () => {
-    if (state === "recording") stopRecording();
-    else if (state === "idle") startRecording();
-    else if (state === "speaking" && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-      setState("idle");
-    }
+    if (stateRef.current === 'recording') stopRecording();
+    else if (stateRef.current === 'idle') void startRecording();
+    else cancelAll();
   };
 
   useEffect(() => {
-    if (!panelOpen && !settingsOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        cancelAll();
         setPanelOpen(false);
         setSettingsOpen(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [panelOpen, settingsOpen]);
+  }, [cancelAll]);
+  useEffect(() => {
+    const onVisibility = () => {
+      setTabHidden(document.hidden);
+      if (document.hidden) cancelAll();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [cancelAll]);
 
+  const wakeListening = wakeEnabled && !wakeSuspended && !conversationActive && !tabHidden;
   const busy = state === "transcribing" || state === "working";
 
   return (
-    <div className="relative flex items-center gap-1">
+    <div className="relative flex flex-wrap items-center justify-end gap-1">
       {voiceStatus && !voiceStatus.available && (
         <span
           className="flex items-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] font-semibold text-amber-300"
@@ -573,7 +550,6 @@ export function VoiceCommandBar() {
       )}
       <button
         onClick={onMicClick}
-        disabled={busy}
         className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
           state === "recording"
             ? "border-red-500/60 bg-red-500/15 text-red-300 shadow-lg shadow-red-500/10 motion-safe:animate-pulse"
@@ -583,8 +559,8 @@ export function VoiceCommandBar() {
             ? "border-slate-700 bg-slate-900/50 text-slate-500"
             : "border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:border-cyan-500/50 hover:text-cyan-300"
         }`}
-        aria-label={state === "recording" ? "Stop recording" : "Start voice command"}
-        title={wakeEnabled ? 'Listening for "Praxis" — or click to talk' : "Voice command"}
+        aria-label={state === "recording" ? "Stop recording" : state === "speaking" ? "Stop speaking" : busy ? "Cancel voice command" : "Start voice command"}
+        title={wakeListening ? 'Listening for "Praxis" — or click to talk' : "Voice command"}
       >
         {state === "recording" ? (
           <Square size={13} />
@@ -592,28 +568,36 @@ export function VoiceCommandBar() {
           <Loader2 size={14} className="animate-spin" />
         ) : state === "speaking" ? (
           <Volume2 size={14} />
-        ) : wakeEnabled ? (
+        ) : wakeListening ? (
           <Ear size={14} />
         ) : (
           <Mic size={14} />
         )}
-        <span className="hidden sm:inline">
+        <span className={state === 'recording' ? 'inline' : 'hidden sm:inline'}>
           {state === "recording"
-            ? "Listening…"
+            ? `Listening… ${elapsed}s / 60s`
             : state === "transcribing"
             ? "Decoding…"
             : state === "working"
             ? "Working…"
             : state === "speaking"
             ? "Speaking"
-            : wakeEnabled
+            : wakeListening
             ? '"Praxis…"'
             : "Voice"}
         </span>
       </button>
 
       <button
-        onClick={() => setSettingsOpen((v) => !v)}
+        onClick={() => { if (conversation.active()) cancelAll(); else { suspendWake(); conversation.start(); } }}
+        aria-label={conversationActive ? "End conversation" : "Start conversation"}
+        className={`rounded-lg border px-2 py-1.5 text-xs font-semibold ${conversationActive ? 'border-red-500/50 text-red-300' : 'border-cyan-500/30 text-cyan-300'}`}
+      >
+        {conversationActive ? 'End conversation' : 'Start conversation'}
+      </button>
+      {state === 'speaking' && <button onClick={() => void startRecording()} aria-label="Interrupt and talk" className="rounded-lg border border-cyan-500/30 px-2 py-1.5 text-xs text-cyan-300">Talk</button>}
+      <button
+        onClick={() => { setSettingsOpen((v) => !v); setPanelOpen(false); }}
         className="p-1.5 rounded-lg border border-slate-800 bg-slate-900/50 text-slate-500 hover:text-white transition-all"
         aria-label="Voice settings"
         title="Voice settings"
@@ -622,7 +606,7 @@ export function VoiceCommandBar() {
       </button>
 
       {settingsOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-slate-800 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-md">
+        <div className="absolute right-0 bottom-full z-50 mb-3 w-80 max-w-[calc(100vw/var(--nexus-display-scale,1)-2.25rem)] max-h-[calc(100dvh/var(--nexus-display-scale,1)-8rem)] overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-md">
           <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">voice and ambient</div>
 
           <label className="flex items-center justify-between gap-2 py-1.5 text-xs text-slate-300">
@@ -634,29 +618,38 @@ export function VoiceCommandBar() {
             <input
               type="checkbox"
               checked={wakeEnabled}
-              disabled={!wakeSupported}
+              disabled={!wakeSupported || conversationActive}
               onChange={(e) => {
+                wakeSuspendedRef.current = false; setWakeSuspended(false);
                 setWakeEnabled(e.target.checked);
                 window.localStorage.setItem(WAKE_KEY, e.target.checked ? "1" : "0");
               }}
             />
           </label>
 
+          {wakeEnabled && wakeSuspended && <p className="text-[10px] text-amber-300">Wake word paused. Toggle it off and on to resume.</p>}
           <label className="flex items-center justify-between gap-2 py-1.5 text-xs text-slate-300">
             <span className="flex items-center gap-2">
               <Volume2 size={13} className="text-slate-400" />
               Spoken alerts <span className="text-[10px] text-slate-600">(quiet 22:00–08:00)</span>
             </span>
-            <input
-              type="checkbox"
-              checked={alertsEnabled}
-              onChange={(e) => {
-                setAlertsEnabled(e.target.checked);
-                window.localStorage.setItem(ALERTS_KEY, e.target.checked ? "1" : "0");
+            <select
+              aria-label="Spoken alert mode"
+              value={alertMode}
+              onChange={e => {
+                const mode = e.target.value as AlertMode;
+                setAlertMode(mode);
+                try { window.localStorage.setItem(ALERT_MODE_KEY, mode); } catch { /* session preference */ }
               }}
-            />
+              className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-200"
+            >
+              <option value="off">Off</option>
+              <option value="attention">Attention</option>
+              <option value="conversational">Conversational</option>
+            </select>
           </label>
 
+          <p className="mb-2 text-[10px] leading-relaxed text-slate-500">Attention speaks failures and unexpected approvals. Conversational also speaks task completions and blocks.</p>
           <label className="flex items-center justify-between gap-2 py-1.5 text-xs text-slate-300">
             <span>Ambient after idle</span>
             <select
@@ -678,8 +671,8 @@ export function VoiceCommandBar() {
         </div>
       )}
 
-      {panelOpen && (transcript || response) && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-slate-800 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-md">
+      {panelOpen && (transcript || response || speechNotice) && (
+        <div className="absolute right-0 bottom-full z-50 mb-3 w-80 max-w-[calc(100vw/var(--nexus-display-scale,1)-2.25rem)] max-h-[calc(100dvh/var(--nexus-display-scale,1)-8rem)] overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-md">
           <div className="mb-1 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">voice channel</span>
             <button onClick={() => setPanelOpen(false)} aria-label="Close voice panel">
@@ -691,6 +684,7 @@ export function VoiceCommandBar() {
               <span className="text-slate-600">you ›</span> {transcript}
             </p>
           )}
+          {speechNotice && <p role="status" className="mb-2 text-xs text-amber-300">{speechNotice}</p>}
           {response && (
             <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-slate-300">
               <span className="text-slate-600">praxis ›</span> {response}

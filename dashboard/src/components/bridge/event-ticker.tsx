@@ -7,6 +7,10 @@
  */
 "use client";
 
+import Link from "next/link";
+import { DisplayScaleControl } from "@/components/display-scale";
+import { activityFromStream, taskActivityHref } from "@/lib/bridge-activity";
+import { useBridgeActivity } from "./activity-provider";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Siren, Rss, ChevronUp, ScrollText } from "lucide-react";
 import { useLiveBoardState } from "@/components/live-board-state";
@@ -81,6 +85,7 @@ function eventTone(e: StreamEvent): string {
 
 export function EventTicker() {
   const { recentEvents, connected } = useLiveBoardState();
+  const { items: activityItems } = useBridgeActivity();
   const [logOpen, setLogOpen] = useState(false);
   // Re-render every 30s so time-windowed alerts (task.failed) expire visually.
   const [, setClockTick] = useState(0);
@@ -126,8 +131,9 @@ export function EventTicker() {
 
   return (
     <div className={`fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md transition-colors duration-500 ${frame}`}>
+      <div className="mx-auto flex max-w-[2400px] items-center gap-2 overflow-hidden px-3">
       <div
-        className="container mx-auto flex h-9 cursor-pointer items-center gap-3 overflow-hidden px-6"
+        className="flex min-w-0 flex-1 h-9 cursor-pointer items-center gap-3 overflow-hidden px-6"
         onClick={() => setLogOpen(true)}
         role="button"
         tabIndex={0}
@@ -157,13 +163,14 @@ export function EventTicker() {
 
         <div className="flex min-w-0 flex-1 items-center gap-6 overflow-hidden whitespace-nowrap font-mono text-[13px]">
           {alert !== "none" && alertText ? (
-            <span className={alert === "red" ? "text-red-200" : "text-amber-200"}>{alertText}</span>
+            <span className={`shrink-0 ${alert === "red" ? "text-red-200" : "text-amber-200"}`}>{alertText}</span>
           ) : null}
+          {activityItems[0] && lines[0] && Date.parse(activityItems[0].at) > Date.parse(lines[0].e.at) && <span className="shrink-0 text-cyan-200">{fmtClock(activityItems[0].at)} {activityItems[0].title} · {activityItems[0].detail}</span>}
           {lines.length === 0 ? (
-            <span className="text-slate-600">awaiting telemetry…</span>
+            <span className="shrink-0 text-slate-600">{activityItems[0] ? `${activityItems[0].title} · ${activityItems[0].detail}` : "awaiting telemetry…"}</span>
           ) : (
             lines.map(({ e, text }, i) => (
-              <span key={e.eventId ?? i} className={i === 0 ? "text-slate-300" : "text-slate-600"}>
+              <span key={e.eventId ?? i} className={`shrink-0 ${i === 0 ? "text-slate-300" : "text-slate-600"}`}>
                 <span className="text-slate-700">{fmtClock(e.at)}</span> {text}
               </span>
             ))
@@ -171,6 +178,9 @@ export function EventTicker() {
         </div>
 
         <ChevronUp size={13} className="shrink-0 text-slate-600" aria-hidden />
+      </div>
+
+      <DisplayScaleControl />
       </div>
 
       {logOpen && (
@@ -182,6 +192,7 @@ export function EventTicker() {
           onClose={() => setLogOpen(false)}
           wide
         >
+          <Link href="/activity" className="mb-4 block text-sm text-cyan-300">Memory, vault, execution & QA activity →</Link>
           {allLines.length === 0 ? (
             <p className="py-6 text-center text-xs text-slate-500">Awaiting telemetry…</p>
           ) : (
@@ -195,7 +206,7 @@ export function EventTicker() {
                   <span className="w-[118px] shrink-0 truncate text-[10px] uppercase tracking-wide text-slate-500">
                     {e.type}
                   </span>
-                  <span className={`min-w-0 flex-1 break-words ${eventTone(e)}`}>{text}</span>
+                  <Link href={activityFromStream(e)?.href ?? (e.type === "thinking.trace" && e.taskId ? taskActivityHref(e.taskId) : e.type === "council.update" ? `/council?session=${encodeURIComponent(e.council.sessionId)}` : e.type.startsWith("hitl.") ? "/inbox" : "/activity")} className={`min-w-0 flex-1 break-words underline decoration-slate-700 underline-offset-4 hover:text-white ${eventTone(e)}`}>{text}</Link>
                 </div>
               ))}
             </div>

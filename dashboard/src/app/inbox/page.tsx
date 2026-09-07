@@ -122,6 +122,14 @@ export default function InboxPage() {
   // decides the alert. Once the pending list is in, scroll the target into
   // view and glow it briefly; reset the filter if it would hide the target.
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  // Arriving by hash while already mounted (the Android shell routes push
+  // taps as "/inbox#<id>" on the running page) must re-run the trip below.
+  const [hashTrip, setHashTrip] = useState(0);
+  useEffect(() => {
+    const onHashChange = () => setHashTrip((n) => n + 1);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
   useEffect(() => {
     if (loading) return;
     const hash = decodeURIComponent(window.location.hash.replace(/^#/, ""));
@@ -140,7 +148,7 @@ export default function InboxPage() {
     // One trip only — a later refresh must not re-yank the scroll position.
     window.history.replaceState(null, "", window.location.pathname);
     return () => window.clearTimeout(timer);
-  }, [loading, pendingRequests, filter]);
+  }, [loading, pendingRequests, filter, hashTrip]);
 
   return (
     <div
@@ -153,7 +161,7 @@ export default function InboxPage() {
     >
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-10 border-b border-cyan-500/20 bg-slate-950/90 px-4 pb-3 pt-4 backdrop-blur">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="flex min-w-0 items-center gap-2.5">
             {/* The inbox is a full in-app route (never a popup), so it needs its
                 own way back to the bridge. */}

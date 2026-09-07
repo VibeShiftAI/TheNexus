@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { X, BookOpen, Gauge, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard, ClipboardList, Send, GraduationCap, Landmark } from "lucide-react";
+import { X, BookOpen, Gauge, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard, ClipboardList, Send, GraduationCap, Landmark, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { getProjects, type Project } from "@/lib/nexus";
 import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
 import { ModelAliasManager } from "@/components/model-alias-manager";
+import { postToShell, useMobileShell } from "@/lib/mobile-shell";
 
 interface NavSidebarProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [localOnly, setLocalOnly] = useState<{ enabled: boolean; reason: string | null }>({ enabled: false, reason: null });
+  const mobileShell = useMobileShell();
 
   // Fetch projects list
   useEffect(() => {
@@ -71,6 +73,7 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
   const larsDashboardHref = "http://192.168.86.205:7878";
 
   const navItems = [
+    { href: "/activity", label: "Activity — Live System Report", icon: BarChart3, color: "text-teal-400 hover:text-teal-300" },
     { href: "/task-board", label: "Task Board", icon: KanbanSquare, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/ops", label: "Ops — Dispatch Console", icon: Send, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/academy", label: "Academy — Skill Wiki", icon: GraduationCap, color: "text-pink-400 hover:text-pink-300" },
@@ -203,6 +206,19 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
           </div>
 
           <div className="pt-6 border-t border-slate-800">
+            {mobileShell ? (
+              <button
+                onClick={() => {
+                  postToShell({ type: "open-settings" });
+                  onClose();
+                }}
+                className="mb-2 flex w-full items-center gap-3 px-4 py-3 rounded-lg border border-slate-800 bg-slate-950/40 hover:bg-slate-950/80 text-slate-400 hover:text-white transition-all"
+              >
+                <Smartphone size={18} />
+                <span className="font-medium">Connection settings</span>
+                <span className="ml-auto text-[10px] font-mono uppercase tracking-wider text-slate-500">app v{mobileShell.appVersion}</span>
+              </button>
+            ) : null}
             <button
               onClick={() => {
                 onOpenSettings();

@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { DisplayScaleProvider } from "@/components/display-scale";
+import { BridgeActivityProvider } from "@/components/bridge/activity-provider";
 import { CortexProvider } from "@/components/cortex-provider";
+import { GlobalVoiceDock } from "@/components/global-voice-dock";
 import { EventTicker } from "@/components/bridge/event-ticker";
 import { LiveBoardStateProvider } from "@/components/live-board-state";
+import { MobileShellBridge } from "@/components/mobile-shell-bridge";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,9 +42,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '2.25rem' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '7rem' }}>
+          <DisplayScaleProvider>
           <CortexProvider>
             <LiveBoardStateProvider>
+            <BridgeActivityProvider>
             <main style={{ flex: 1 }}>
               {children}
             </main>
@@ -55,8 +61,13 @@ export default function RootLayout({
             </footer>
             {/* Live Praxis event strip — pinned to the bottom on every page */}
             <EventTicker />
+            {/* Android shell seam — renders nothing in a browser (docs/mobile-shell.md) */}
+            <MobileShellBridge />
+            <GlobalVoiceDock />
+            </BridgeActivityProvider>
             </LiveBoardStateProvider>
           </CortexProvider>
+          </DisplayScaleProvider>
         </div>
       </body>
     </html>

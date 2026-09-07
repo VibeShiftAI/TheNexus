@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "audit:responsive": "node scripts/responsive-audit.mjs",
     "test": "node --import ./test/register.mjs --test \"src/**/__tests__/*.test.mjs\" \"src/**/__tests__/*.test.ts\" \"test/*.test.mjs\""
   },
   "dependencies": {

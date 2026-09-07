@@ -276,3 +276,40 @@ html::-webkit-scrollbar-thumb:hover {
   --bridge-condition-color: rgba(255, 77, 94, 0.6);
   --bridge-condition-glow: rgba(255, 77, 94, 0.5);
 }
+
+/* Event-driven circuits borrow the core's colored orbit language. */
+.activity-circuit.is-active {
+  border-color: color-mix(in srgb, var(--circuit-color) 55%, transparent);
+  background: radial-gradient(ellipse at 15% 50%, color-mix(in srgb, var(--circuit-color) 14%, transparent), #0f172a80);
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--circuit-color) 7%, transparent), 0 0 12px color-mix(in srgb, var(--circuit-color) 9%, transparent);
+}
+.activity-orbit { opacity: 0.55; }
+.is-active .activity-orbit { opacity: 1; box-shadow: 0 0 16px color-mix(in srgb, var(--circuit-color) 25%, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  .is-active .activity-marker { animation: spin 1.8s linear infinite; }
+  .is-active .activity-orbit { animation: circuit-breathe 2.2s ease-in-out infinite; }
+}
+@keyframes circuit-breathe { 50% { box-shadow: 0 0 22px color-mix(in srgb, var(--circuit-color) 50%, transparent); } }
+
+/* Zoom scales every surface, including px text, chart labels and portal panels. */
+body { zoom: var(--nexus-display-scale, 1); }
+
+/* ---- Phone widths: the Android shell and any narrow browser -------------
+   The layouts are desktop-first. Below the md breakpoint, let flex/grid
+   children shrink (min-width:auto is what pushes rows past the viewport),
+   keep code blocks scrolling inside their card rather than the page, and
+   clip any residual horizontal overflow at the root — clip, not hidden, so
+   sticky headers keep working. See docs/mobile-shell.md. */
+@media (max-width: 767px) {
+  html { overflow-x: clip; }
+  /* Long tokens in pre-wrapped text (briefs, logs) wrap instead of widening the layout viewport. */
+  .whitespace-pre-wrap { overflow-wrap: anywhere; }
+  .flex > *, .grid > * { min-width: 0; }
+  pre { max-width: 100%; overflow-x: auto; }
+  /* The shared "Header HUD" rows (container mx-auto flex h-16 ...) and button groups wrap instead of squeezing their labels. */
+  header > .container.h-16 { flex-wrap: wrap; height: auto; min-height: 4rem; row-gap: 0.25rem; padding-top: 0.5rem; padding-bottom: 0.5rem; }
+  header > .container.h-16 > .flex { flex-wrap: wrap; row-gap: 0.25rem; }
+  .flex:has(> button + button + button) { flex-wrap: wrap; }
+}
+/* Inside the Android shell the page is the app: no tap flash, no rubber-band. */
+html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }

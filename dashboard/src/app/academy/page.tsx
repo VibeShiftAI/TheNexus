@@ -90,13 +90,13 @@ export default function AcademyPage() {
               </h1>
             </div>
           </div>
-          <div className="relative">
+          <div className="relative max-sm:basis-full">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search skills…"
-              className="w-56 rounded-lg border border-slate-800 bg-slate-900/50 py-1.5 pl-8 pr-3 text-xs text-slate-200 placeholder:text-slate-600 focus:border-cyan-500/50 focus:outline-none"
+              className="w-full sm:w-56 rounded-lg border border-slate-800 bg-slate-900/50 py-1.5 pl-8 pr-3 text-xs text-slate-200 placeholder:text-slate-600 focus:border-cyan-500/50 focus:outline-none"
             />
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function AcademyPage() {
                         isOpen ? "border-slate-600" : "border-slate-800 hover:border-slate-700"
                       }`}
                     >
-                      <div className="flex w-full items-center gap-2 px-3 py-2.5">
+                      <div className="flex w-full items-center gap-2 px-3 py-2.5 max-sm:flex-wrap">
                         <button
                           onClick={() => setExpanded(isOpen ? null : s.id)}
                           className="shrink-0"
@@ -151,7 +151,7 @@ export default function AcademyPage() {
                         </Link>
                         {s.provenance && (
                           <span
-                            className={`shrink-0 rounded border px-1 py-0.5 text-[9px] uppercase ${
+                            className={`min-w-0 max-w-full truncate rounded border px-1 py-0.5 text-[9px] uppercase ${
                               s.provenance === "user-created"
                                 ? "border-emerald-500/40 text-emerald-300"
                                 : "border-slate-700 text-slate-500"

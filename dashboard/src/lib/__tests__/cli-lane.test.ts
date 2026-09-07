@@ -1,9 +1,28 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { cliLaneSummary, deriveCliLane, formatDuration } from "../cli-lane";
+import { cliLaneSummary, deriveCliLane, formatDuration, gateStatusLabel } from "../cli-lane";
 
 const NOW = Date.parse("2026-09-03T01:20:00.000Z");
+
+test("compact gate status names the reported blocker without confusing measurements with a failure", () => {
+  const gate = deriveCliLane(snapshot(), NOW).gate;
+  for (const [reason, expected] of [
+    ["serial: swap recovery: waiting for a valid paging window of at least 120s", "Checking recovery"],
+    ["serial: outside the 6:00–17:00 burst window — cap 1", "Outside burst hours"],
+    ["serial: swap pathological: 14495MB > 7373MB ceiling; memFree=51%", "Swap limit reached"],
+    ["serial: swap=8000MB over the PRAXIS_CLI_BURST_SWAP_MAX_MB=7500 hard cap", "Swap limit reached"],
+    ["serial: swap actively growing: swapout=1.7MB/s", "Paging pressure"],
+    ["serial: memory free% unreadable (fail-safe serial)", "Memory signal unavailable"],
+    ["serial: swap telemetry unavailable (vm_stat probe failed; fail-safe serial)", "Swap signal unavailable"],
+    ["serial: memFree=20% below the 25% floor", "Low memory headroom"],
+    ["serial: concurrency disabled (PRAXIS_CLI_MAX_CONCURRENT=1)", "Single-run policy"],
+    ["serial: a new runtime policy; swap=1000MB, memFree=51%", "Capacity limited"],
+  ]) assert.equal(gateStatusLabel({ ...gate, reason }), expected);
+
+  assert.equal(gateStatusLabel({ ...gate, burst: true, reason: "burst: memFree=51%, swap=1000MB" }), "Parallel runs enabled");
+  assert.equal(gateStatusLabel(deriveCliLane(null).gate), "Awaiting capacity signal");
+});
 
 /**
  * Trimmed from a real GET http://127.0.0.1:54322/api/dispatch/state on

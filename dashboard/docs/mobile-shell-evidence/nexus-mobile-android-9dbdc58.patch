@@ -1,0 +1,2360 @@
+diff --git a/app.json b/app.json
+index 711ffdb..97161f7 100644
+--- a/app.json
++++ b/app.json
+@@ -2,7 +2,7 @@
+   "expo": {
+     "name": "The Nexus",
+     "slug": "the-nexus-r7g2wx",
+-    "version": "0.5.0",
++    "version": "0.6.0",
+     "orientation": "portrait",
+     "icon": "./assets/images/icon.png",
+     "scheme": "nexus",
+@@ -14,7 +14,7 @@
+     },
+     "android": {
+       "package": "com.vibeshiftai.nexus",
+-      "versionCode": 6,
++      "versionCode": 7,
+       "googleServicesFile": "./google-services.json",
+       "adaptiveIcon": {
+         "backgroundColor": "#0a0a0f",
+diff --git a/app/(tabs)/_layout.tsx b/app/(tabs)/_layout.tsx
+index c802918..4429d2a 100644
+--- a/app/(tabs)/_layout.tsx
++++ b/app/(tabs)/_layout.tsx
+@@ -1,184 +1,41 @@
+-import { Tabs, useRouter } from 'expo-router';
+-import { LayoutDashboard, Bot, Inbox, SquareKanban, StickyNote, Activity, TrendingUp } from 'lucide-react-native';
+-import { useAuth } from '@/components/auth-provider';
+-import { useHitlInbox } from '@/hooks/use-hitl-inbox';
+-import { View, Text, ActivityIndicator, Platform, Pressable, StyleSheet } from 'react-native';
++/**
++ * The native tab set was retired on 2026-09-07: the app is now a shell around
++ * the canonical dashboard (app/shell.tsx, docs/dashboard-shell.md).
++ *
++ * This layout stays so the old routes — '/', '/tasks', '/inbox', '/praxis',
++ * '/notes', '/system' — keep resolving for anything that still navigates to
++ * them (Praxis push payloads name '/(tabs)/inbox' and '/(tabs)/praxis'). It
++ * renders nothing of its own: it forwards to the shell showing the equivalent
++ * dashboard page, popping back to the existing shell entry when there is one
++ * so the stack never holds two shells. The screen files under this group are
++ * unreachable and are kept only until the sibling session's uncommitted edits
++ * to them land; delete them then.
++ */
++import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
++import { useEffect } from 'react';
++import { ActivityIndicator, View } from 'react-native';
+ 
+-export default function TabLayout() {
+-  const { isLoaded, isConnected } = useAuth();
+-  const { pendingRequests } = useHitlInbox();
++import { shellHrefForNativeRoute, type RouteParams } from '@/lib/shell/routes';
++
++export default function LegacyTabsRedirect() {
++  const pathname = usePathname();
++  const params = useGlobalSearchParams() as RouteParams;
+   const router = useRouter();
+ 
+-  // Wait for initial health check
+-  if (!isLoaded) {
+-    return (
+-      <View style={{ flex: 1, backgroundColor: '#0a0a0f', alignItems: 'center', justifyContent: 'center' }}>
+-        <ActivityIndicator size="large" color="#7c5bff" />
+-      </View>
+-    );
+-  }
++  useEffect(() => {
++    const href = shellHrefForNativeRoute(pathname, params);
++    if (router.canGoBack()) router.navigate(href);
++    else router.replace(href);
++    // The redirect is decided once, when this legacy route mounts.
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, []);
+ 
+   return (
+-    <View style={{ flex: 1 }}>
+-      {/* Disconnected banner — visible but non-blocking */}
+-      {!isConnected && (
+-        <Pressable
+-          onPress={() => router.push('/settings')}
+-          style={styles.disconnectedBanner}
+-        >
+-          <View style={styles.bannerDot} />
+-          <Text style={styles.bannerText}>Not connected — tap to configure</Text>
+-        </Pressable>
+-      )}
+-
+-      <Tabs
+-        screenOptions={{
+-          headerStyle: {
+-            backgroundColor: '#12121a',
+-            ...(Platform.OS === 'android' ? { elevation: 0 } : { shadowOpacity: 0 }),
+-          },
+-          headerTitleStyle: {
+-            fontWeight: '700',
+-            fontSize: 17,
+-            color: '#e8e8f0',
+-          },
+-          headerTintColor: '#e8e8f0',
+-          tabBarStyle: {
+-            backgroundColor: '#0a0a0f',
+-            borderTopColor: '#23233a',
+-            borderTopWidth: 1,
+-            height: Platform.OS === 'ios' ? 88 : 64,
+-            paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+-            paddingTop: 4,
+-          },
+-          tabBarActiveTintColor: '#7c5bff',
+-          tabBarInactiveTintColor: '#555575',
+-          tabBarLabelStyle: {
+-            fontSize: 10,
+-            fontWeight: '600',
+-            letterSpacing: 0.3,
+-          },
+-        }}
+-      >
+-        <Tabs.Screen
+-          name="index"
+-          options={{
+-            title: 'Dashboard',
+-            headerShown: false,
+-            tabBarIcon: ({ color, size }) => (
+-              <LayoutDashboard size={size - 2} color={color} />
+-            ),
+-          }}
+-        />
+-        <Tabs.Screen
+-          name="tasks"
+-          options={{
+-            title: 'Tasks',
+-            headerTitle: 'Task Board',
+-            headerShown: true,
+-            tabBarIcon: ({ color, size }) => (
+-              <SquareKanban size={size - 2} color={color} />
+-            ),
+-          }}
+-        />
+-        <Tabs.Screen
+-          name="inbox"
+-          options={{
+-            title: 'Inbox',
+-            headerTitle: 'Praxis Inbox',
+-            headerShown: true,
+-            tabBarBadge: pendingRequests.length > 0 ? pendingRequests.length : undefined,
+-            tabBarBadgeStyle: {
+-              backgroundColor: '#fbbf24',
+-              color: '#1c1503',
+-              fontSize: 10,
+-              fontWeight: '800',
+-            },
+-            tabBarIcon: ({ color, size }) => (
+-              <Inbox size={size - 2} color={color} />
+-            ),
+-          }}
+-        />
+-        <Tabs.Screen
+-          name="praxis"
+-          options={{
+-            title: 'Messenger',
+-            headerShown: false,
+-            tabBarAccessibilityLabel: 'Praxis Messenger',
+-            tabBarIcon: ({ color, size }) => (
+-              <Bot size={size - 2} color={color} />
+-            ),
+-          }}
+-        />
+-        <Tabs.Screen
+-          name="notes"
+-          options={{
+-            title: 'Notes',
+-            headerTitle: 'Scratchpad',
+-            headerShown: true,
+-            headerRight: () => (
+-              <Pressable
+-                onPress={() => router.push('/revenue')}
+-                hitSlop={8}
+-                style={styles.headerAction}
+-              >
+-                <TrendingUp size={14} color="#c084fc" />
+-                <Text style={styles.headerActionText}>LARS Ideas</Text>
+-              </Pressable>
+-            ),
+-            tabBarIcon: ({ color, size }) => (
+-              <StickyNote size={size - 2} color={color} />
+-            ),
+-          }}
+-        />
+-        <Tabs.Screen
+-          name="system"
+-          options={{
+-            title: 'System',
+-            headerTitle: 'System Monitor',
+-            headerShown: true,
+-            tabBarIcon: ({ color, size }) => (
+-              <Activity size={size - 2} color={color} />
+-            ),
+-          }}
+-        />
+-      </Tabs>
++    <View
++      testID="legacy-tabs-redirect"
++      style={{ flex: 1, backgroundColor: '#020617', alignItems: 'center', justifyContent: 'center' }}
++    >
++      <ActivityIndicator color="#22d3ee" />
+     </View>
+   );
+ }
+-
+-const styles = StyleSheet.create({
+-  disconnectedBanner: {
+-    flexDirection: 'row',
+-    alignItems: 'center',
+-    justifyContent: 'center',
+-    gap: 8,
+-    paddingVertical: 10,
+-    backgroundColor: 'rgba(255, 71, 87, 0.12)',
+-    borderBottomWidth: 1,
+-    borderBottomColor: 'rgba(255, 71, 87, 0.2)',
+-  },
+-  bannerDot: {
+-    width: 6,
+-    height: 6,
+-    borderRadius: 3,
+-    backgroundColor: '#ff4757',
+-  },
+-  bannerText: {
+-    color: '#ff8a94',
+-    fontSize: 12,
+-    fontWeight: '600',
+-  },
+-  headerAction: {
+-    flexDirection: 'row',
+-    alignItems: 'center',
+-    gap: 5,
+-    marginRight: 16,
+-    paddingVertical: 4,
+-  },
+-  headerActionText: {
+-    color: '#c084fc',
+-    fontSize: 13,
+-    fontWeight: '700',
+-  },
+-});
+diff --git a/app/+native-intent.tsx b/app/+native-intent.tsx
+new file mode 100644
+index 0000000..92a7b7f
+--- /dev/null
++++ b/app/+native-intent.tsx
+@@ -0,0 +1,16 @@
++/**
++ * Incoming system links (nexus://…, http(s) links routed to the app) are
++ * rewritten so links minted for the retired native screens land in the shell
++ * showing the equivalent dashboard page. Dev-client and Expo Go links pass
++ * through untouched. The pure logic lives in lib/shell/routes.ts
++ * (rewriteSystemPath) where it is unit-tested.
++ */
++import { rewriteSystemPath } from '@/lib/shell/routes';
++
++export function redirectSystemPath({ path }: { path: string; initial: boolean }): string {
++  try {
++    return rewriteSystemPath(path);
++  } catch {
++    return path;
++  }
++}
+diff --git a/app/_layout.tsx b/app/_layout.tsx
+index aadb425..1a3bc0e 100644
+--- a/app/_layout.tsx
++++ b/app/_layout.tsx
+@@ -1,16 +1,16 @@
+ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+ import { Stack, useRouter } from 'expo-router';
+ import { StatusBar } from 'expo-status-bar';
+-import { useEffect } from 'react';
++import { useEffect, useRef } from 'react';
+ import { Platform } from 'react-native';
+ import 'react-native-reanimated';
+ import '../global.css';
+ 
+ import { useColorScheme } from '@/hooks/use-color-scheme';
+ import { useNotifications } from '@/hooks/use-notifications';
+-import { AuthProvider } from '@/components/auth-provider';
+-import { CortexProvider } from '@/components/cortex-provider';
++import { AuthProvider, useAuth } from '@/components/auth-provider';
+ import { ErrorBoundary } from '@/components/error-boundary';
++import { shellHrefForNativeRoute } from '@/lib/shell/routes';
+ 
+ // Custom dark theme matching the Nexus dashboard palette
+ const NexusDarkTheme = {
+@@ -35,9 +35,31 @@ const NexusLightTheme = {
+ };
+ 
+ export const unstable_settings = {
+-  anchor: '(tabs)',
++  anchor: 'shell',
+ };
+ 
++/**
++ * First-run gate.
++ *
++ * No credentials ship in the bundle, so a fresh install has nothing to connect
++ * with until the user fills in Settings. Send them there once — Settings has a
++ * Skip button, and nagging on every render would trap anyone who skips.
++ * Rendered inside AuthProvider so it can read the resolved config.
++ */
++function FirstRunSetupGate() {
++  const { isLoaded, needsSetup } = useAuth();
++  const router = useRouter();
++  const promptedRef = useRef(false);
++
++  useEffect(() => {
++    if (!isLoaded || !needsSetup || promptedRef.current) return;
++    promptedRef.current = true;
++    router.push('/settings');
++  }, [isLoaded, needsSetup, router]);
++
++  return null;
++}
++
+ export function RootLayoutInner() {
+   const colorScheme = useColorScheme();
+   const router = useRouter();
+@@ -51,49 +73,48 @@ export function RootLayoutInner() {
+       return;
+     }
+ 
+-    router.push({
+-      pathname: lastRoute.pathname as '/(tabs)/praxis',
+-      params: lastRoute.params,
+-    });
++    // The shell is a singleton screen: navigate() returns to it (or pushes it once) and
++    // hands it the dashboard path that replaces the notification's native route.
++    router.navigate(shellHrefForNativeRoute(lastRoute.pathname, lastRoute.params));
+     clearLastRoute();
+   }, [clearLastRoute, lastRoute, router]);
+ 
+   return (
+     <ThemeProvider value={colorScheme === 'dark' ? NexusDarkTheme : NexusLightTheme}>
+       <AuthProvider>
+-        <CortexProvider>
+-          <Stack>
+-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+-            <Stack.Screen
+-              name="project/[id]"
+-              options={{
+-                headerShown: true,
+-                title: 'Project',
+-                headerStyle: { backgroundColor: '#12121a' },
+-                headerTintColor: '#e8e8f0',
+-              }}
+-            />
+-            <Stack.Screen
+-              name="task/[id]"
+-              options={{
+-                headerShown: true,
+-                title: 'Task',
+-                headerStyle: { backgroundColor: '#12121a' },
+-                headerTintColor: '#e8e8f0',
+-              }}
+-            />
+-            <Stack.Screen
+-              name="settings"
+-              options={{
+-                presentation: 'card',
+-                title: 'Settings',
+-                headerStyle: { backgroundColor: '#12121a' },
+-                headerTintColor: '#e8e8f0',
+-                ...(Platform.OS === 'android' && { animation: 'none' }),
+-              }}
+-            />
+-          </Stack>
+-        </CortexProvider>
++        <FirstRunSetupGate />
++        <Stack>
++          <Stack.Screen name="shell" options={{ headerShown: false, animation: 'none' }} />
++          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
++          <Stack.Screen
++            name="project/[id]"
++            options={{
++              headerShown: true,
++              title: 'Project',
++              headerStyle: { backgroundColor: '#12121a' },
++              headerTintColor: '#e8e8f0',
++            }}
++          />
++          <Stack.Screen
++            name="task/[id]"
++            options={{
++              headerShown: true,
++              title: 'Task',
++              headerStyle: { backgroundColor: '#12121a' },
++              headerTintColor: '#e8e8f0',
++            }}
++          />
++          <Stack.Screen
++            name="settings"
++            options={{
++              presentation: 'card',
++              title: 'Settings',
++              headerStyle: { backgroundColor: '#12121a' },
++              headerTintColor: '#e8e8f0',
++              ...(Platform.OS === 'android' && { animation: 'none' }),
++            }}
++          />
++        </Stack>
+       </AuthProvider>
+       <StatusBar style="light" />
+     </ThemeProvider>
+diff --git a/app/shell.tsx b/app/shell.tsx
+new file mode 100644
+index 0000000..66d70b5
+--- /dev/null
++++ b/app/shell.tsx
+@@ -0,0 +1,23 @@
++/**
++ * /shell — the app's one real screen: the canonical Nexus dashboard, hosted.
++ *
++ * Params: `path` (dashboard path to show, e.g. "/inbox#hitl-id") and `n`, a
++ * nonce that makes repeated requests for the same path distinguishable. Both
++ * are optional; the bridge home is the default.
++ */
++import { Stack, useLocalSearchParams } from 'expo-router';
++
++import { DashboardShell } from '@/components/shell/dashboard-shell';
++import { firstParam, sanitizeDashboardPath } from '@/lib/shell/routes';
++
++export default function ShellScreen() {
++  const params = useLocalSearchParams<{ path?: string | string[]; n?: string | string[] }>();
++  const path = sanitizeDashboardPath(firstParam(params.path) ?? '/');
++  const nonce = firstParam(params.n);
++  return (
++    <>
++      <Stack.Screen options={{ headerShown: false, animation: 'none' }} />
++      <DashboardShell path={path} nonce={nonce} />
++    </>
++  );
++}
+diff --git a/components/shell/dashboard-shell.test.tsx b/components/shell/dashboard-shell.test.tsx
+new file mode 100644
+index 0000000..f4701ba
+--- /dev/null
++++ b/components/shell/dashboard-shell.test.tsx
+@@ -0,0 +1,233 @@
++import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
++import * as Linking from 'expo-linking';
++import React from 'react';
++
++import { DashboardShell } from './dashboard-shell';
++
++const mockCaptured: { props: Record<string, any> | null } = { props: null };
++const mockInject = jest.fn();
++const mockReload = jest.fn();
++const mockGoBack = jest.fn();
++const mockPrime = jest.fn();
++const mockPush = jest.fn();
++const mockSetBadge = jest.fn(async (_count: number) => true);
++
++jest.mock('react-native-webview', () => {
++  const ReactActual = require('react');
++  const { View } = require('react-native');
++  const WebView = ReactActual.forwardRef((props: Record<string, any>, ref: unknown) => {
++    ReactActual.useImperativeHandle(ref, () => ({ injectJavaScript: mockInject, reload: mockReload, goBack: mockGoBack }));
++    mockCaptured.props = props;
++    return <View testID={props.testID} />;
++  });
++  return { __esModule: true, WebView, default: WebView };
++});
++jest.mock('@/lib/shell/session', () => ({ primeDashboardSession: (...args: unknown[]) => mockPrime(...args) }));
++jest.mock('expo-router', () => ({
++  useRouter: () => ({ push: mockPush, navigate: jest.fn(), replace: jest.fn(), canGoBack: () => false }),
++  useFocusEffect: (effect: () => undefined | (() => void)) => {
++    require('react').useEffect(effect, [effect]);
++  },
++}));
++jest.mock('@/components/auth-provider', () => ({
++  useAuth: () => ({ serverUrl: 'https://nexus.example', needsSetup: false, isLoaded: true, isConnected: true, refreshConnection: jest.fn() }),
++}));
++jest.mock('@/lib/config', () => ({ getCfClientId: async () => 'id', getCfClientSecret: async () => 'secret' }));
++jest.mock('react-native-safe-area-context', () => {
++  const { View } = require('react-native');
++  return { SafeAreaView: View };
++});
++jest.mock('expo-notifications', () => ({ setBadgeCountAsync: (count: number) => mockSetBadge(count) }));
++jest.mock('expo-haptics', () => ({
++  impactAsync: jest.fn(async () => undefined),
++  notificationAsync: jest.fn(async () => undefined),
++  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
++  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
++}));
++jest.mock('expo-constants', () => ({ __esModule: true, default: { expoConfig: { version: '0.6.0' } } }));
++
++const ORIGIN = 'https://nexus.example';
++const ACCESS_LOGIN = 'https://team.cloudflareaccess.com/cdn-cgi/access/login/nexus.example?kid=x';
++
++function message(url: string, payload: unknown) {
++  return { nativeEvent: { url, data: JSON.stringify(payload) } };
++}
++
++function request(url: string, isTopFrame = true) {
++  return { url, isTopFrame, navigationType: 'click', loading: false, title: '', canGoBack: false, canGoForward: false, lockIdentifier: 1 };
++}
++
++beforeEach(() => {
++  mockCaptured.props = null;
++  mockInject.mockClear();
++  mockReload.mockClear();
++  mockGoBack.mockClear();
++  mockPush.mockClear();
++  mockSetBadge.mockClear();
++  mockPrime.mockReset();
++  (Linking.openURL as jest.Mock).mockClear();
++});
++
++describe('DashboardShell', () => {
++  it('primes the Access session once, then loads the requested dashboard path on the configured origin', async () => {
++    mockPrime.mockResolvedValue({ ok: true, host: 'nexus.example' });
++    render(<DashboardShell path="/inbox#h1" />);
++
++    expect(screen.getByTestId('shell-overlay-priming')).toBeTruthy();
++    await screen.findByTestId('dashboard-webview');
++
++    expect(mockPrime).toHaveBeenCalledTimes(1);
++    expect(mockPrime).toHaveBeenCalledWith('https://nexus.example');
++    const props = mockCaptured.props!;
++    expect(props.source).toEqual({ uri: `${ORIGIN}/inbox#h1` });
++    expect(props.setSupportMultipleWindows).toBe(false);
++    expect(props.allowFileAccess).toBe(false);
++    expect(props.injectedJavaScriptBeforeContentLoadedForMainFrameOnly).toBe(true);
++    expect(props.injectedJavaScriptBeforeContentLoaded).toContain('window.location.origin !== shell.origin');
++    expect(props.injectedJavaScriptBeforeContentLoaded).toContain('"origin":"https://nexus.example"');
++    expect(props.applicationNameForUserAgent).toBe('NexusMobileShell/0.6.0');
++    expect(props.mediaCapturePermissionGrantType).toBe('grantIfSameHostElseDeny');
++  });
++
++  it('renders only the trusted origin inside the WebView and hands everything else to the system', async () => {
++    mockPrime.mockResolvedValue({ ok: true, host: 'nexus.example' });
++    render(<DashboardShell path="/" />);
++    await screen.findByTestId('dashboard-webview');
++    const shouldStart = mockCaptured.props!.onShouldStartLoadWithRequest;
++
++    expect(shouldStart(request(`${ORIGIN}/task/abc`))).toBe(true);
++    expect(shouldStart(request(`${ORIGIN}/cdn-cgi/access/callback?x=y`))).toBe(true);
++
++    expect(shouldStart(request('https://github.com/robert/x'))).toBe(false);
++    expect(Linking.openURL).toHaveBeenLastCalledWith('https://github.com/robert/x');
++
++    expect(shouldStart(request('mailto:robert@example.com'))).toBe(false);
++    expect(Linking.openURL).toHaveBeenLastCalledWith('mailto:robert@example.com');
++
++    (Linking.openURL as jest.Mock).mockClear();
++    expect(shouldStart(request('javascript:alert(1)'))).toBe(false);
++    expect(shouldStart(request('intent://scan/#Intent;scheme=zxing;end'))).toBe(false);
++    expect(shouldStart(request('https://github.com/in-a-frame', false))).toBe(false);
++    expect(Linking.openURL).not.toHaveBeenCalled();
++    expect(mockPrime).toHaveBeenCalledTimes(1);
++  });
++
++  it('re-primes silently when Access bounces the page, then reloads it', async () => {
++    mockPrime.mockResolvedValue({ ok: true, host: 'nexus.example' });
++    render(<DashboardShell path="/" />);
++    await screen.findByTestId('dashboard-webview');
++    const shouldStart = mockCaptured.props!.onShouldStartLoadWithRequest;
++
++    expect(shouldStart(request(ACCESS_LOGIN))).toBe(false);
++    await waitFor(() => expect(mockPrime).toHaveBeenCalledTimes(2));
++    await waitFor(() => expect(mockReload).toHaveBeenCalledTimes(1));
++    expect(screen.queryByTestId('shell-overlay-failed')).toBeNull();
++  });
++
++  it('stops bouncing after two silent re-primes and offers the interactive Access sign-in', async () => {
++    mockPrime.mockResolvedValue({ ok: true, host: 'nexus.example' });
++    render(<DashboardShell path="/" />);
++    await screen.findByTestId('dashboard-webview');
++    const shouldStart = mockCaptured.props!.onShouldStartLoadWithRequest;
++
++    expect(shouldStart(request(ACCESS_LOGIN))).toBe(false);
++    expect(shouldStart(request(ACCESS_LOGIN))).toBe(false);
++    await act(async () => {
++      expect(shouldStart(request(ACCESS_LOGIN))).toBe(false);
++    });
++    await screen.findByTestId('shell-overlay-failed');
++    expect(screen.getByText('Cloudflare Access refused the connection')).toBeTruthy();
++
++    fireEvent.press(screen.getByTestId('shell-login'));
++    await waitFor(() => expect(screen.queryByTestId('shell-overlay-failed')).toBeNull());
++    expect(mockCaptured.props!.onShouldStartLoadWithRequest(request(ACCESS_LOGIN))).toBe(true);
++  });
++
++  it('honours bridge messages only from the trusted origin', async () => {
++    mockPrime.mockResolvedValue({ ok: true, host: 'nexus.example' });
++    render(<DashboardShell path="/" />);
++    await screen.findByTestId('dashboard-webview');
++    const onMessage = mockCaptured.props!.onMessage;
++
++    onMessage(message('https://evil.example/', { type: 'open-settings' }));
++    onMessage(message('https://team.cloudflareaccess.com/x', { type: 'open-settings' }));
++    expect(mockPush).not.toHaveBeenCalled();
++
++    onMessage(message(`${ORIGIN}/inbox`, { type: 'open-settings' }));
++    expect(mockPush).toHaveBeenCalledWith('/settings');
++
++    onMessage(message(`${ORIGIN}/inbox`, { type: 'badge', count: 4 }));
++    expect(mockSetBadge).toHaveBeenCalledWith(4);
++
++    onMessage(message(`${ORIGIN}/inbox`, { type: 'open-external', url: 'https://docs.example/x' }));
++    expect(Linking.openURL).toHaveBeenLastCalledWith('https://docs.example/x');
++
++    (Linking.openURL as jest.Mock).mockClear();
++    onMessage(message(`${ORIGIN}/inbox`, { type: 'open-external', url: 'javascript:alert(1)' }));
++    onMessage(message(`${ORIGIN}/inbox`, { type: 'eval', code: '1' }));
++    expect(Linking.openURL).not.toHaveBeenCalled();
++  });
++
++  it('routes later navigation requests through the running dashboard instead of reloading', async () => {
++    mockPrime.mockResolvedValue({ ok: true, host: 'nexus.example' });
++    const view = render(<DashboardShell path="/" nonce="1" />);
++    await screen.findByTestId('dashboard-webview');
++
++    act(() => {
++      mockCaptured.props!.onMessage(message(`${ORIGIN}/`, { type: 'ready', path: '/' }));
++    });
++    view.rerender(<DashboardShell path="/task/abc" nonce="2" />);
++
++    expect(mockInject).toHaveBeenCalledTimes(1);
++    expect(mockInject.mock.calls[0][0]).toContain('nexus-mobile-navigate');
++    expect(mockInject.mock.calls[0][0]).toContain('"/task/abc"');
++    expect(mockCaptured.props!.source).toEqual({ uri: `${ORIGIN}/` });
++
++    view.rerender(<DashboardShell path="/task/abc" nonce="2" />);
++    expect(mockInject).toHaveBeenCalledTimes(1);
++  });
++
++  it('explains a refused token and lets the user retry or sign in', async () => {
++    mockPrime.mockResolvedValue({ ok: false, reason: 'access-denied', detail: 'nexus.example refused the credentials (HTTP 403).', status: 403 });
++    render(<DashboardShell path="/" />);
++
++    await screen.findByTestId('shell-overlay-failed');
++    expect(screen.getByText('Cloudflare Access refused the connection')).toBeTruthy();
++    expect(screen.getByText('nexus.example refused the credentials (HTTP 403).')).toBeTruthy();
++    expect(screen.queryByTestId('dashboard-webview')).toBeNull();
++
++    fireEvent.press(screen.getByTestId('shell-retry'));
++    await waitFor(() => expect(mockPrime).toHaveBeenCalledTimes(2));
++
++    fireEvent.press(screen.getByTestId('shell-settings'));
++    expect(mockPush).toHaveBeenCalledWith('/settings');
++
++    fireEvent.press(screen.getByTestId('shell-login'));
++    await screen.findByTestId('dashboard-webview');
++    expect(mockCaptured.props!.source).toEqual({ uri: `${ORIGIN}/` });
++  });
++
++  it('shows an unreachable server without a sign-in option', async () => {
++    mockPrime.mockResolvedValue({ ok: false, reason: 'unreachable', detail: 'Could not reach nexus.example: Network request failed' });
++    render(<DashboardShell path="/" />);
++    await screen.findByTestId('shell-overlay-failed');
++    expect(screen.getByText('nexus.example is unreachable')).toBeTruthy();
++    expect(screen.queryByTestId('shell-login')).toBeNull();
++    expect(screen.getByTestId('shell-retry')).toBeTruthy();
++  });
++
++  it('surfaces a page load failure over the WebView with a retry', async () => {
++    mockPrime.mockResolvedValue({ ok: true, host: 'nexus.example' });
++    render(<DashboardShell path="/" />);
++    await screen.findByTestId('dashboard-webview');
++
++    act(() => {
++      mockCaptured.props!.onError({ nativeEvent: { description: 'net::ERR_CONNECTION_REFUSED', code: -6, url: `${ORIGIN}/` } });
++    });
++    await screen.findByTestId('shell-overlay-page-error');
++    expect(screen.getByText('The dashboard failed to load')).toBeTruthy();
++
++    fireEvent.press(screen.getByTestId('shell-retry'));
++    expect(mockReload).toHaveBeenCalledTimes(1);
++  });
++});
+diff --git a/components/shell/dashboard-shell.tsx b/components/shell/dashboard-shell.tsx
+new file mode 100644
+index 0000000..857e889
+--- /dev/null
++++ b/components/shell/dashboard-shell.tsx
+@@ -0,0 +1,600 @@
++/**
++ * DashboardShell — the app, in one screen: a WebView showing the canonical
++ * Nexus dashboard at the configured server URL, plus the native pieces a
++ * browser tab cannot provide — Cloudflare Access session priming, Android
++ * back, push-notification routing, safe areas, and honest loading / failure /
++ * retry states. Design and acceptance mapping: docs/dashboard-shell.md.
++ *
++ * Trust boundary. Only the configured origin is rendered in this WebView (the
++ * Cloudflare Access login page is allowed as an explicit, user-chosen
++ * fallback). Every other http(s) URL opens in the system browser; mailto/tel
++ * go to their apps; every other scheme is refused. Bridge messages are
++ * honoured only when the sending frame is on the trusted origin, and the
++ * shell global is only defined on that origin. Credentials never cross into
++ * web content: the Access service token is used by ONE native fetch
++ * (lib/shell/session.ts) whose session cookie the WebView then carries.
++ */
++import Constants from 'expo-constants';
++import * as Haptics from 'expo-haptics';
++import * as Linking from 'expo-linking';
++import * as Notifications from 'expo-notifications';
++import { useFocusEffect, useRouter } from 'expo-router';
++import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
++import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
++import { SafeAreaView } from 'react-native-safe-area-context';
++import { WebView, type WebViewMessageEvent, type WebViewNavigation } from 'react-native-webview';
++import type {
++  ShouldStartLoadRequest,
++  WebViewErrorEvent,
++  WebViewHttpErrorEvent,
++  WebViewNavigationEvent,
++  WebViewProgressEvent,
++} from 'react-native-webview/lib/WebViewTypes';
++
++import { useAuth } from '@/components/auth-provider';
++import { getCfClientId, getCfClientSecret } from '@/lib/config';
++import { buildBootstrapScript, buildNavigateScript, parseShellMessage, type HapticStyle, type ShellMessage } from '@/lib/shell/bridge';
++import { classifyNavigation, hostOf, originOf, sanitizeDashboardPath } from '@/lib/shell/routes';
++import { primeDashboardSession, type PrimeResult } from '@/lib/shell/session';
++
++/** Matches the dashboard's `--background` so the first paint does not flash. */
++const DASHBOARD_BACKGROUND = '#020617';
++const ACCENT = '#22d3ee';
++const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0';
++/** Appended to the WebView user agent so server logs and the dashboard can tell the shell apart. */
++export const USER_AGENT_SUFFIX = `NexusMobileShell/${APP_VERSION}`;
++/** Re-exchange the service token for a fresh Access cookie after this long since the last exchange. */
++const REPRIME_AFTER_MS = 6 * 60 * 60 * 1000;
++/** Silent re-primes allowed per page before the user is offered the interactive login instead. */
++const MAX_ACCESS_BOUNCES = 2;
++
++type PrimeFailure = Extract<PrimeResult, { ok: false }>;
++type SessionStatus = 'priming' | 'ready' | 'failed';
++type PageState = { status: 'loading' } | { status: 'ready' } | { status: 'error'; title: string; detail: string };
++
++export interface DashboardShellProps {
++  /** Dashboard path to show (already sanitized by the caller; sanitized again here). */
++  path: string;
++  /** Changes when the caller wants `path` applied again even if it did not change. */
++  nonce?: string;
++}
++
++function describeFailure(failure: PrimeFailure, host: string | null): { title: string; hint: string } {
++  const where = host ?? 'The server';
++  switch (failure.reason) {
++    case 'not-configured':
++      return {
++        title: 'Set up the connection',
++        hint: 'Enter the Nexus server URL and the Cloudflare Access service token in Connection settings.',
++      };
++    case 'access-denied':
++      return {
++        title: 'Cloudflare Access refused the connection',
++        hint: 'Check the CF-Access client ID and secret in Connection settings, or sign in with your Access identity instead.',
++      };
++    case 'unreachable':
++      return {
++        title: `${where} is unreachable`,
++        hint: "Check the phone's network and that the Cloudflare tunnel on the Mac is up, then retry.",
++      };
++    case 'server-error':
++      return {
++        title: `${where} returned an error`,
++        hint: 'The tunnel answered but the Nexus API did not. Retry, or check the API process on the Mac.',
++      };
++  }
++}
++
++async function triggerHaptic(style: HapticStyle): Promise<void> {
++  try {
++    if (style === 'success' || style === 'warning' || style === 'error') {
++      const type = {
++        success: Haptics.NotificationFeedbackType.Success,
++        warning: Haptics.NotificationFeedbackType.Warning,
++        error: Haptics.NotificationFeedbackType.Error,
++      }[style];
++      await Haptics.notificationAsync(type);
++    } else {
++      const impact = {
++        light: Haptics.ImpactFeedbackStyle.Light,
++        medium: Haptics.ImpactFeedbackStyle.Medium,
++        heavy: Haptics.ImpactFeedbackStyle.Heavy,
++      }[style];
++      await Haptics.impactAsync(impact);
++    }
++  } catch {
++    // Haptics are decoration; never let them surface as errors.
++  }
++}
++
++function openExternally(url: string): void {
++  Linking.openURL(url).catch(() => undefined);
++}
++
++function ShellButton({
++  label,
++  onPress,
++  primary = false,
++  testID,
++}: {
++  label: string;
++  onPress: () => void;
++  primary?: boolean;
++  testID?: string;
++}) {
++  return (
++    <Pressable
++      accessibilityRole="button"
++      testID={testID}
++      onPress={onPress}
++      style={({ pressed }) => [styles.button, primary && styles.buttonPrimary, pressed && styles.buttonPressed]}
++    >
++      <Text style={[styles.buttonLabel, primary && styles.buttonLabelPrimary]}>{label}</Text>
++    </Pressable>
++  );
++}
++
++export function DashboardShell({ path, nonce }: DashboardShellProps) {
++  const router = useRouter();
++  const { serverUrl } = useAuth();
++  const origin = useMemo(() => originOf(serverUrl), [serverUrl]);
++  const host = useMemo(() => hostOf(serverUrl), [serverUrl]);
++
++  const webRef = useRef<WebView>(null);
++  const [webKey, setWebKey] = useState(0);
++  const [sourceUri, setSourceUriState] = useState<string | null>(null);
++  const [session, setSession] = useState<SessionStatus>('priming');
++  const [failure, setFailure] = useState<PrimeFailure | null>(null);
++  const [interactiveLogin, setInteractiveLogin] = useState(false);
++  const [page, setPage] = useState<PageState>({ status: 'loading' });
++  const [firstPaint, setFirstPaint] = useState(false);
++  const [progress, setProgress] = useState(0);
++
++  const requestedPathRef = useRef(sanitizeDashboardPath(path));
++  requestedPathRef.current = sanitizeDashboardPath(path);
++  const appliedNonceRef = useRef<string | undefined>(nonce);
++  const sourceUriRef = useRef<string | null>(null);
++  const webReadyRef = useRef(false);
++  const canGoBackRef = useRef(false);
++  const bouncesRef = useRef(0);
++  const interactiveRef = useRef(false);
++  const hasTokenRef = useRef(false);
++  const lastPrimeAtRef = useRef(0);
++  const mainUrlRef = useRef<string | null>(null);
++  const aliveRef = useRef(true);
++
++  useEffect(() => {
++    aliveRef.current = true;
++    return () => {
++      aliveRef.current = false;
++    };
++  }, []);
++
++  const setSourceUri = useCallback((uri: string | null) => {
++    sourceUriRef.current = uri;
++    setSourceUriState(uri);
++  }, []);
++
++  const remountWeb = useCallback(() => {
++    webReadyRef.current = false;
++    canGoBackRef.current = false;
++    setFirstPaint(false);
++    setProgress(0);
++    setPage({ status: 'loading' });
++    setWebKey((k) => k + 1);
++  }, []);
++
++  const reloadPage = useCallback(() => {
++    setPage({ status: 'loading' });
++    if (webRef.current) webRef.current.reload();
++    else remountWeb();
++  }, [remountWeb]);
++
++  /** Exchange the stored service token for an Access cookie; true when the dashboard can load. */
++  const prime = useCallback(async (): Promise<boolean> => {
++    setSession('priming');
++    setFailure(null);
++    const [id, secret] = await Promise.all([getCfClientId(), getCfClientSecret()]);
++    hasTokenRef.current = Boolean(id && secret);
++    const result = await primeDashboardSession(serverUrl);
++    if (!aliveRef.current) return false;
++    if (result.ok) {
++      lastPrimeAtRef.current = Date.now();
++      setSession('ready');
++      return true;
++    }
++    setFailure(result);
++    setSession('failed');
++    return false;
++  }, [serverUrl]);
++
++  /** (Re)connect: prime, then point the WebView at the requested path (or refresh the page it has). */
++  const connect = useCallback(async () => {
++    if (!origin) return;
++    const ok = await prime();
++    if (!ok || !aliveRef.current) return;
++    if (sourceUriRef.current) {
++      reloadPage();
++    } else {
++      setSourceUri(`${origin}${requestedPathRef.current}`);
++    }
++  }, [origin, prime, reloadPage, setSourceUri]);
++
++  /** Last resort when the service token is not accepted: let Access run its own login in the WebView. */
++  const startInteractiveLogin = useCallback(() => {
++    if (!origin) return;
++    interactiveRef.current = true;
++    bouncesRef.current = 0;
++    setInteractiveLogin(true);
++    setFailure(null);
++    setSession('ready');
++    setSourceUri(`${origin}${requestedPathRef.current}`);
++    remountWeb();
++  }, [origin, remountWeb, setSourceUri]);
++
++  const retry = useCallback(() => {
++    if (session !== 'ready') {
++      void connect();
++      return;
++    }
++    reloadPage();
++  }, [session, connect, reloadPage]);
++
++  const openSettings = useCallback(() => {
++    router.push('/settings');
++  }, [router]);
++
++  // Origin (re)configured: reset everything and connect from scratch.
++  useEffect(() => {
++    bouncesRef.current = 0;
++    interactiveRef.current = false;
++    lastPrimeAtRef.current = 0;
++    setInteractiveLogin(false);
++    setSourceUri(null);
++    remountWeb();
++    if (!origin) {
++      setSession('failed');
++      setFailure({
++        ok: false,
++        reason: 'not-configured',
++        detail: serverUrl ? `"${serverUrl}" is not an http(s) URL.` : 'No Nexus server URL is configured.',
++      });
++      return;
++    }
++    void connect();
++  }, [origin, serverUrl, connect, remountWeb, setSourceUri]);
++
++  // A new navigation request (push tap, deep link, legacy route) while mounted.
++  useEffect(() => {
++    if (nonce === appliedNonceRef.current) return;
++    appliedNonceRef.current = nonce;
++    if (!origin) return;
++    const target = sanitizeDashboardPath(path);
++    if (webReadyRef.current && webRef.current) {
++      webRef.current.injectJavaScript(buildNavigateScript(target));
++    } else if (sourceUriRef.current) {
++      setSourceUri(`${origin}${target}`);
++    }
++    // Otherwise the first load has not started yet; connect() reads requestedPathRef when it does.
++  }, [path, nonce, origin, setSourceUri]);
++
++  // Coming back to the foreground: recover from failures, keep the Access cookie fresh.
++  useEffect(() => {
++    const subscription = AppState.addEventListener('change', (state) => {
++      if (state !== 'active' || !origin) return;
++      if (session === 'failed' && !interactiveRef.current) {
++        void connect();
++        return;
++      }
++      if (page.status === 'error') {
++        reloadPage();
++        return;
++      }
++      if (session === 'ready' && hasTokenRef.current && Date.now() - lastPrimeAtRef.current > REPRIME_AFTER_MS) {
++        void primeDashboardSession(serverUrl).then((result) => {
++          if (result.ok && aliveRef.current) lastPrimeAtRef.current = Date.now();
++        });
++      }
++    });
++    return () => subscription.remove();
++  }, [origin, serverUrl, session, page.status, connect, reloadPage]);
++
++  // Android back: walk the dashboard's history first; only when it is exhausted
++  // does the system get the press (which backgrounds the app). Registered only
++  // while this screen is focused so /settings on top keeps its own back.
++  useFocusEffect(
++    useCallback(() => {
++      if (Platform.OS !== 'android') return undefined;
++      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
++        if (canGoBackRef.current && webRef.current) {
++          webRef.current.goBack();
++          return true;
++        }
++        return false;
++      });
++      return () => subscription.remove();
++    }, []),
++  );
++
++  const handleMessage = useCallback(
++    (message: ShellMessage) => {
++      switch (message.type) {
++        case 'ready':
++          webReadyRef.current = true;
++          bouncesRef.current = 0;
++          setFirstPaint(true);
++          setPage((current) => (current.status === 'error' ? current : { status: 'ready' }));
++          break;
++        case 'navigated':
++          if (origin) mainUrlRef.current = `${origin}${message.path}`;
++          break;
++        case 'open-external':
++          openExternally(message.url);
++          break;
++        case 'open-settings':
++          openSettings();
++          break;
++        case 'badge':
++          Notifications.setBadgeCountAsync(message.count).catch(() => undefined);
++          break;
++        case 'haptic':
++          void triggerHaptic(message.style);
++          break;
++        case 'reload':
++          reloadPage();
++          break;
++      }
++    },
++    [origin, openSettings, reloadPage],
++  );
++
++  const onMessage = useCallback(
++    (event: WebViewMessageEvent) => {
++      if (!origin || originOf(event.nativeEvent.url) !== origin) return;
++      const message = parseShellMessage(event.nativeEvent.data);
++      if (message) handleMessage(message);
++    },
++    [origin, handleMessage],
++  );
++
++  const onShouldStartLoadWithRequest = useCallback(
++    (request: ShouldStartLoadRequest): boolean => {
++      if (!origin) return false;
++      const kind = classifyNavigation(request.url, origin);
++      if (kind === 'trusted') return true;
++      // Nothing off-origin is ever rendered inside a frame of the dashboard.
++      if (request.isTopFrame === false) return false;
++      if (kind === 'access-login') {
++        if (interactiveRef.current) return true;
++        if (hasTokenRef.current && bouncesRef.current < MAX_ACCESS_BOUNCES) {
++          // The session cookie expired or was rejected: exchange the token again, then retry the page.
++          bouncesRef.current += 1;
++          void primeDashboardSession(serverUrl).then((result) => {
++            if (!aliveRef.current) return;
++            if (result.ok) {
++              lastPrimeAtRef.current = Date.now();
++              reloadPage();
++            } else {
++              setFailure(result);
++              setSession('failed');
++            }
++          });
++          return false;
++        }
++        setFailure({
++          ok: false,
++          reason: 'access-denied',
++          detail: `${host ?? 'The server'} keeps sending the app to the Cloudflare Access login, so the service token is not being accepted.`,
++        });
++        setSession('failed');
++        return false;
++      }
++      if (kind === 'external' || kind === 'handoff') openExternally(request.url);
++      return false;
++    },
++    [origin, host, serverUrl, reloadPage],
++  );
++
++  const onNavigationStateChange = useCallback(
++    (navigation: WebViewNavigation) => {
++      canGoBackRef.current = navigation.canGoBack;
++      if (origin && originOf(navigation.url) === origin) mainUrlRef.current = navigation.url;
++    },
++    [origin],
++  );
++
++  const onLoadStart = useCallback((event: WebViewNavigationEvent) => {
++    mainUrlRef.current = event.nativeEvent.url;
++    webReadyRef.current = false;
++    setProgress(0);
++    setPage({ status: 'loading' });
++  }, []);
++
++  const onLoadEnd = useCallback(() => {
++    setProgress(1);
++    setFirstPaint(true);
++    setPage((current) => (current.status === 'error' ? current : { status: 'ready' }));
++  }, []);
++
++  const onLoadProgress = useCallback((event: WebViewProgressEvent) => {
++    setProgress(event.nativeEvent.progress);
++  }, []);
++
++  const onError = useCallback((event: WebViewErrorEvent) => {
++    const { description, code, url } = event.nativeEvent;
++    setPage({
++      status: 'error',
++      title: 'The dashboard failed to load',
++      detail: `${description || 'Unknown error'} (${code})${url ? ` — ${url}` : ''}`,
++    });
++  }, []);
++
++  const onHttpError = useCallback(
++    (event: WebViewHttpErrorEvent) => {
++      const { statusCode, url } = event.nativeEvent;
++      // Sub-resource failures are the dashboard's to report; only the page itself dying is ours.
++      if (statusCode < 500 || (mainUrlRef.current && url !== mainUrlRef.current)) return;
++      setPage({
++        status: 'error',
++        title: `${host ?? 'The server'} answered HTTP ${statusCode}`,
++        detail: 'The tunnel is up but the dashboard is failing. Retry, or check the Next.js process on the Mac.',
++      });
++    },
++    [host],
++  );
++
++  const bootstrap = useMemo(
++    () => (origin ? buildBootstrapScript({ origin, platform: Platform.OS, appVersion: APP_VERSION }) : undefined),
++    [origin],
++  );
++
++  if (Platform.OS === 'web') {
++    return (
++      <View style={[styles.root, styles.center]} testID="shell-web-notice">
++        <Text style={styles.title}>Nexus dashboard</Text>
++        <Text style={styles.detail}>On the web, the dashboard is the app. Open it directly.</Text>
++        {origin ? (
++          <ShellButton label={`Open ${origin}`} primary onPress={() => openExternally(`${origin}${requestedPathRef.current}`)} />
++        ) : null}
++      </View>
++    );
++  }
++
++  const showSessionOverlay = session !== 'ready';
++  const showPageOverlay = page.status === 'error' || (page.status === 'loading' && !firstPaint);
++
++  let overlay: React.ReactNode = null;
++  if (showSessionOverlay) {
++    if (session === 'priming' || !failure) {
++      overlay = (
++        <View style={styles.overlay} testID="shell-overlay-priming">
++          <ActivityIndicator size="large" color={ACCENT} />
++          <Text style={styles.title}>Connecting to {host ?? 'Nexus'}…</Text>
++          <Text style={styles.detail}>Exchanging the Cloudflare Access service token for a session.</Text>
++        </View>
++      );
++    } else {
++      const { title, hint } = describeFailure(failure, host);
++      overlay = (
++        <View style={styles.overlay} testID="shell-overlay-failed" accessibilityRole="alert">
++          <Text style={styles.kicker}>Connection</Text>
++          <Text style={styles.title}>{title}</Text>
++          <Text style={styles.detail}>{failure.detail}</Text>
++          <Text style={styles.hint}>{hint}</Text>
++          <View style={styles.actions}>
++            {failure.reason !== 'not-configured' ? <ShellButton label="Retry" primary onPress={retry} testID="shell-retry" /> : null}
++            {failure.reason === 'access-denied' ? (
++              <ShellButton label="Sign in with Cloudflare Access" onPress={startInteractiveLogin} testID="shell-login" />
++            ) : null}
++            <ShellButton label="Connection settings" onPress={openSettings} testID="shell-settings" />
++          </View>
++        </View>
++      );
++    }
++  } else if (showPageOverlay) {
++    overlay =
++      page.status === 'error' ? (
++        <View style={styles.overlay} testID="shell-overlay-page-error" accessibilityRole="alert">
++          <Text style={styles.kicker}>Dashboard</Text>
++          <Text style={styles.title}>{page.title}</Text>
++          <Text style={styles.detail}>{page.detail}</Text>
++          <View style={styles.actions}>
++            <ShellButton label="Retry" primary onPress={retry} testID="shell-retry" />
++            <ShellButton label="Connection settings" onPress={openSettings} testID="shell-settings" />
++          </View>
++        </View>
++      ) : (
++        <View style={styles.overlay} testID="shell-overlay-loading">
++          <ActivityIndicator size="large" color={ACCENT} />
++          <Text style={styles.title}>Loading the dashboard…</Text>
++          <Text style={styles.detail}>{interactiveLogin ? 'Cloudflare Access sign-in' : host ?? ''}</Text>
++        </View>
++      );
++  }
++
++  return (
++    <SafeAreaView style={styles.root} edges={['top', 'right', 'bottom', 'left']}>
++      {sourceUri ? (
++        <WebView
++          key={webKey}
++          ref={webRef}
++          testID="dashboard-webview"
++          style={styles.web}
++          containerStyle={styles.web}
++          source={{ uri: sourceUri }}
++          originWhitelist={['*']}
++          onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
++          onMessage={onMessage}
++          onNavigationStateChange={onNavigationStateChange}
++          onLoadStart={onLoadStart}
++          onLoadEnd={onLoadEnd}
++          onLoadProgress={onLoadProgress}
++          onError={onError}
++          onHttpError={onHttpError}
++          onRenderProcessGone={remountWeb}
++          onContentProcessDidTerminate={remountWeb}
++          injectedJavaScriptBeforeContentLoaded={bootstrap}
++          injectedJavaScriptBeforeContentLoadedForMainFrameOnly
++          injectedJavaScriptForMainFrameOnly
++          javaScriptEnabled
++          domStorageEnabled
++          sharedCookiesEnabled
++          thirdPartyCookiesEnabled={false}
++          setSupportMultipleWindows={false}
++          allowFileAccess={false}
++          allowFileAccessFromFileURLs={false}
++          allowUniversalAccessFromFileURLs={false}
++          allowsInlineMediaPlayback
++          mediaPlaybackRequiresUserAction={false}
++          mediaCapturePermissionGrantType="grantIfSameHostElseDeny"
++          applicationNameForUserAgent={USER_AGENT_SUFFIX}
++          overScrollMode="never"
++          setBuiltInZoomControls={false}
++          cacheEnabled
++          startInLoadingState={false}
++          webviewDebuggingEnabled={__DEV__}
++        />
++      ) : null}
++      {page.status === 'loading' && firstPaint ? (
++        <View pointerEvents="none" style={styles.progressTrack}>
++          <View style={[styles.progressBar, { width: `${Math.max(5, Math.round(progress * 100))}%` }]} />
++        </View>
++      ) : null}
++      {overlay}
++    </SafeAreaView>
++  );
++}
++
++const styles = StyleSheet.create({
++  root: { flex: 1, backgroundColor: DASHBOARD_BACKGROUND },
++  web: { flex: 1, backgroundColor: DASHBOARD_BACKGROUND },
++  center: { alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
++  overlay: {
++    ...StyleSheet.absoluteFillObject,
++    backgroundColor: DASHBOARD_BACKGROUND,
++    alignItems: 'center',
++    justifyContent: 'center',
++    padding: 28,
++    gap: 10,
++  },
++  progressTrack: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, backgroundColor: 'transparent' },
++  progressBar: { height: 2, backgroundColor: ACCENT },
++  kicker: { color: ACCENT, fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
++  title: { color: '#f8fafc', fontSize: 18, fontWeight: '700', textAlign: 'center' },
++  detail: { color: '#cbd5e1', fontSize: 14, lineHeight: 20, textAlign: 'center' },
++  hint: { color: '#94a3b8', fontSize: 13, lineHeight: 18, textAlign: 'center' },
++  actions: { marginTop: 14, gap: 10, alignSelf: 'stretch', alignItems: 'stretch' },
++  button: {
++    borderWidth: 1,
++    borderColor: '#334155',
++    borderRadius: 10,
++    paddingVertical: 12,
++    paddingHorizontal: 18,
++    alignItems: 'center',
++    backgroundColor: 'rgba(15, 23, 42, 0.8)',
++  },
++  buttonPrimary: { borderColor: ACCENT, backgroundColor: 'rgba(34, 211, 238, 0.12)' },
++  buttonPressed: { opacity: 0.7 },
++  buttonLabel: { color: '#e2e8f0', fontSize: 15, fontWeight: '600' },
++  buttonLabelPrimary: { color: ACCENT },
++});
+diff --git a/docs/dashboard-shell.md b/docs/dashboard-shell.md
+new file mode 100644
+index 0000000..7e36b9d
+--- /dev/null
++++ b/docs/dashboard-shell.md
+@@ -0,0 +1,176 @@
++# Nexus mobile = the dashboard, hosted
++
++Task 556f1c50 (2026-09-07): "update the Nexus mobile app so it is just a mobile
++view of the desktop dashboard." One canonical UI, responsive to phone size,
++consumed by the Android app.
++
++## Decision: thin native shell around the existing dashboard
++
++The app is now a single screen, `app/shell.tsx`, whose only content is a
++`WebView` showing the canonical Nexus dashboard (`TheNexus/dashboard`, Next.js)
++at the configured server URL. The dashboard itself was made phone-responsive
++in its own repo (`TheNexus/dashboard/docs/mobile-shell.md`), so every desktop
++route, control, and future change is available on the phone with no parallel
++native screen.
++
++Why a hosted dashboard rather than native parity screens:
++
++- **One UI.** The native tab set (Bridge/Tasks/Inbox/Praxis/Notes/System plus
++  Dispatch, Council, Calendar, Reports, Revenue) re-implemented a fraction of
++  the dashboard and drifted on every dashboard change. The brief rules out a
++  cosmetic parity patch.
++- **The dashboard already runs remotely.** It is served through the
++  Cloudflare tunnel at `https://nexus.vibeshiftai.com` (ingress in
++  `~/.cloudflared/config.yml`: `/api/*` and `/socket.io/*` → :4000, the rest
++  → :3000). The phone was never talking to localhost; it was already using
++  that URL for the API, with a Cloudflare Access service token.
++- **Precedent.** `TheNexus/desktop` (the Tauri travel shell) hosts the same
++  dashboard the same way and solves the same Access problem the same way.
++
++What stays native, because a browser tab cannot do it: the app identity and
++Connection settings screen (`app/settings.tsx`), SecureStore credentials,
++push-token registration and notification tap routing, the Cloudflare Access
++session exchange, Android back, safe areas, and the honest
++loading / failure / retry states.
++
++## Connectivity and session
++
++`lib/shell/session.ts` — before the WebView loads anything, the app makes one
++native `GET <serverUrl>/api/health` carrying the stored `CF-Access-Client-Id`
++/ `CF-Access-Client-Secret` headers. Access answers with a `CF_Authorization`
++cookie; React Native's Android networking stores it in the WebView's
++`CookieManager` (`ForwardingCookieHandler`), so the WebView carries the session
++on every page load, `/api/*` call, Socket.IO and SSE request. The token never
++enters web content. The same request classifies failures: `not-configured`,
++`access-denied` (login bounce, 401/403, or HTML where JSON was expected),
++`unreachable`, `server-error`.
++
++If the dashboard later bounces to `*.cloudflareaccess.com` (cookie expired),
++the shell re-exchanges the token silently, at most twice per page, then
++offers **Sign in with Cloudflare Access** — an interactive login rendered in
++the WebView, the only off-origin page it will ever show. Returning to the
++foreground re-exchanges the token after six hours.
++
++LAN/plain-HTTP URLs (e.g. `http://192.168.x.x:3000`) work the same way minus
++Access; release builds block cleartext HTTP unless the manifest allows it
++(pre-existing constraint, unchanged).
++
++## Trust boundary (`lib/shell/routes.ts`, `lib/shell/bridge.ts`)
++
++- The WebView renders only the configured origin (`classifyNavigation` →
++  `trusted`). Cloudflare Access login pages are `access-login` and are shown
++  only after the user chooses the interactive fallback. Every other http(s)
++  URL is `external` and opens in the system browser; `mailto:`/`tel:`/`sms:`
++  hand off to their apps; `javascript:`, `data:`, `intent:`, `file:`, `blob:`
++  are refused. Off-origin loads inside sub-frames are refused outright.
++- `setSupportMultipleWindows={false}`, file access off, third-party cookies
++  off, media capture granted only to the same host, `applicationNameForUserAgent`
++  = `NexusMobileShell/<version>`.
++- Bridge messages (`window.ReactNativeWebView.postMessage`) are honoured only
++  when the sending frame's URL is on the trusted origin, and only these types:
++  `ready`, `navigated`, `open-external` (http(s) only), `open-settings`,
++  `badge` (0–999), `haptic`, `reload`. Nothing else is executable from web
++  content. The injected bootstrap defines a frozen
++  `window.__NEXUS_MOBILE_SHELL__` (platform, appVersion, origin,
++  capabilities) only when `location.origin` matches, main frame only, and
++  carries no secrets.
++- Native → web navigation is a `nexus-mobile-navigate` CustomEvent whose
++  detail is a sanitized same-origin path (`sanitizeDashboardPath`: absolute
++  path, no scheme, no `//host`, no control characters).
++
++## Navigation model
++
++- `app/shell.tsx` is a singleton screen with params `path` and `n` (nonce).
++  Push taps, deep links and legacy routes all `router.navigate` to it, so the
++  stack never holds two shells; the shell applies a new `path` by dispatching
++  the navigate event into the running dashboard (client-side routing) or, if
++  the page is not up yet, by loading it.
++- `app/+native-intent.tsx` rewrites incoming `nexus://…` and http(s) links to
++  `nexus://shell?path=…` (`rewriteSystemPath`); `/settings`, `/shell`,
++  dev-client and Expo Go links pass through.
++- `app/(tabs)/_layout.tsx` no longer renders tabs: anything that still
++  navigates to `/(tabs)/inbox`, `/praxis`, … (Praxis push payloads do) is
++  forwarded to the shell with the equivalent dashboard path
++  (`dashboardPathForNativeRoute`: tasks → `/task-board`, inbox + hitlId →
++  `/inbox#<id>`, system → `/system-monitor`, dispatch → `/ops`, reports →
++  `/activity`, praxis/notes/revenue → `/`). The screen files under
++  `app/(tabs)/`, `app/task/[id].tsx`, `app/project/[id].tsx`, `app/dispatch.tsx`,
++  `app/council.tsx`, `app/calendar.tsx`, `app/reports.tsx`, `app/revenue.tsx`
++  and `components/praxis/*` are now unreachable. They were not deleted in
++  this task because a sibling session has uncommitted edits in several of
++  them; delete them once that work lands.
++- Android back walks the dashboard's own history first; when it is exhausted
++  the system gets the press. Registered only while the shell is focused, so
++  Connection settings on top keeps its own back.
++
++## Acceptance mapping (mobile side)
++
++| Criterion | Where | Proof |
++| --- | --- | --- |
++| Canonical dashboard UI in the app, no parallel native screens | `components/shell/dashboard-shell.tsx`, `app/shell.tsx` | `components/shell/dashboard-shell.test.tsx` "primes … then loads the requested dashboard path"; native tabs retired in `app/(tabs)/_layout.tsx` |
++| Auth / remote connectivity | `lib/shell/session.ts` | `lib/shell/session.test.ts` (headers, bounce, 401/403, 5xx, timeout) |
++| Trusted-origin bridge, no credentials exposed | `lib/shell/routes.ts`, `lib/shell/bridge.ts` | `routes.test.ts` (classifyNavigation, sanitizeDashboardPath), `bridge.test.ts` (origin-guarded global, allowlist, "carries no secrets") |
++| Push taps and deep links land on the right dashboard page | `app/_layout.tsx`, `app/+native-intent.tsx`, `app/(tabs)/_layout.tsx` | `hooks/use-notifications.test.tsx` (tap → `/shell` with `/inbox#hitl-42`), `routes.test.ts` (`rewriteSystemPath`), `tests/legacy-tabs-redirect.test.tsx` |
++| Android back, loading / failure / retry states | `dashboard-shell.tsx` | `dashboard-shell.test.tsx` (unreachable, refused token, page error, retry, sign-in fallback); back handling is device-only (see limitations) |
++
++## Known limitations (device-only or not testable here)
++
++- **Voice.** The dashboard's voice command bar uses the Web Speech API
++  (`webkitSpeechRecognition`) for wake-word and dictation; Android WebView
++  does not implement it, so those controls report "unsupported" in the
++  shell. Recording via `MediaRecorder`/`getUserMedia` and playback of chat
++  audio do work in WebView, subject to the microphone permission
++  (`RECORD_AUDIO` is declared in the manifest; the WebView grants capture to
++  the same host only). Not verified on a device in this run.
++- **Attachments.** `<input type="file">` opens the Android file/photo picker
++  in WebView. Not verified on a device in this run.
++- **Keyboard and predictive back** need a device check: with `adjustResize`
++  the WebView shrinks above the keyboard; predictive back gestures on
++  Android 14+ go through the same `hardwareBackPress` handler.
++- **Access cookie lifetime** follows the Access application's session
++  duration; the shell re-exchanges silently on bounce and every six hours
++  in the foreground.
++- **Launcher badge** requires the dashboard to post `badge`; it does when the
++  shell bridge is present (`TheNexus/dashboard/src/components/mobile-shell-bridge.tsx`).
++
++## Build artifact (2026-09-07)
++
++Built with the existing EAS preview mechanism from a clean `git worktree`
++(detached at HEAD 9dbdc58 plus only this task's files) so that unrelated
++uncommitted work in the shared checkout did not ship:
++
++```sh
++EAS_NO_VCS=1 npx eas-cli build -p android --profile preview --non-interactive --no-wait --json
++```
++
++| Field | Value |
++| --- | --- |
++| Build id | `05c2e081-0837-4302-9a56-f1b8ad923916` |
++| Status | FINISHED, completed 2026-09-07T21:06:23Z |
++| App version / runtime version | 0.6.0 / 0.6.0 |
++| Android versionCode | 1 (EAS remote app version source; the same as every previous preview build, so it installs over 0.5.x) |
++| Channel / profile | preview / preview |
++| Build page | https://expo.dev/accounts/vibeshift-ai/projects/the-nexus-r7g2wx/builds/05c2e081-0837-4302-9a56-f1b8ad923916 |
++| APK | https://expo.dev/artifacts/eas/12a5NpgJzlhqGMnUO9HNDWlF2E-_OIbfx4k81ckP920.apk |
++| Local copy | `/tmp/nexus-mobile-0.6.0.apk`, 126,517,428 bytes, sha256 `b9ffe69a7b6278780e95f0b80ca10261a2814da593961aacc48fa9533238730d` |
++
++This is an internal preview build, not a store release. Because the runtime
++version changed (0.5.x to 0.6.0), an OTA update cannot deliver this change to
++the installed 0.5.0 app; the APK has to be installed.
++
++### Device-only checks still needed
++
++Nothing below could be exercised without an Android device or emulator:
++
++1. Install the APK, open the app with the tunnel URL configured, confirm the
++   dashboard renders and the Access session primes without a login page.
++2. Android back button: navigates back inside the dashboard, exits the app at
++   the root.
++3. Tap a push notification: the app opens `/inbox#<hitl id>` and the inbox
++   scrolls to that request.
++4. Open a `nexus://` deep link and an `https://nexus.vibeshiftai.com/...`
++   link from another app.
++5. Chat: send a message, watch delivery state, record and play a voice note,
++   attach a photo and a file (WebView file chooser and microphone prompt).
++6. Soft keyboard over the chat composer; predictive back gesture; rotation.
++7. Leave the app for more than the Access session lifetime and return.
+diff --git a/hooks/use-notifications.test.tsx b/hooks/use-notifications.test.tsx
+index 0a1a3dc..b4cd258 100644
+--- a/hooks/use-notifications.test.tsx
++++ b/hooks/use-notifications.test.tsx
+@@ -10,8 +10,13 @@ const mockGetInitialNotification = jest.fn().mockResolvedValue(null);
+ const mockOnNotificationReceived = jest.fn();
+ const mockOnNotificationTapped = jest.fn();
+ const mockPush = jest.fn();
++const mockNavigate = jest.fn();
+ const mockClearLastRoute = jest.fn();
+ 
++// Default to a configured app so the first-run gate stays out of the way of
++// the notification assertions; the gate has its own test below.
++const mockUseAuth = jest.fn(() => ({ isLoaded: true, needsSetup: false }));
++
+ function createUseNotificationsResult(
+   overrides: Partial<UseNotificationsResult> = {},
+ ): UseNotificationsResult {
+@@ -51,6 +56,7 @@ jest.mock('expo-router', () => {
+     ),
+     useRouter: () => ({
+       push: mockPush,
++      navigate: mockNavigate,
+     }),
+   };
+ });
+@@ -71,6 +77,7 @@ jest.mock('@/hooks/use-color-scheme', () => ({
+ 
+ jest.mock('@/components/auth-provider', () => ({
+   AuthProvider: ({ children }: { children?: ReactNode }) => <>{children}</>,
++  useAuth: () => mockUseAuth(),
+ }));
+ 
+ jest.mock('@/components/cortex-provider', () => ({
+@@ -98,6 +105,7 @@ describe('useNotifications', () => {
+   beforeEach(() => {
+     jest.clearAllMocks();
+     mockUseNotifications.mockReturnValue(createUseNotificationsResult());
++    mockUseAuth.mockReturnValue({ isLoaded: true, needsSetup: false });
+   });
+ 
+   afterEach(() => {
+@@ -171,14 +179,46 @@ describe('useNotifications', () => {
+     render(<RootLayoutInner />);
+ 
+     await waitFor(() => {
+-      expect(mockPush).toHaveBeenCalledWith({
+-        pathname: '/(tabs)/inbox',
+-        params: { hitlId: 'hitl-42' },
++      // The native inbox screen is retired: a tapped notification opens the dashboard inbox in the shell.
++      expect(mockNavigate).toHaveBeenCalledWith({
++        pathname: '/shell',
++        params: { path: '/inbox#hitl-42', n: expect.any(String) },
+       });
+       expect(mockClearLastRoute).toHaveBeenCalledTimes(1);
+     });
+   });
+ 
++  it('sends an unconfigured first run to Settings exactly once', async () => {
++    mockUseAuth.mockReturnValue({ isLoaded: true, needsSetup: true });
++
++    const { RootLayoutInner } = require('@/app/_layout');
++
++    const { rerender } = render(<RootLayoutInner />);
++
++    await waitFor(() => {
++      expect(mockPush).toHaveBeenCalledWith('/settings');
++    });
++
++    // Re-rendering must not nag someone who chose Skip Setup.
++    rerender(<RootLayoutInner />);
++
++    expect(mockPush.mock.calls.filter(([arg]) => arg === '/settings')).toHaveLength(1);
++  });
++
++  it('does not prompt for setup once credentials are configured', async () => {
++    mockUseAuth.mockReturnValue({ isLoaded: true, needsSetup: false });
++
++    const { RootLayoutInner } = require('@/app/_layout');
++
++    render(<RootLayoutInner />);
++
++    await waitFor(() => {
++      expect(mockUseAuth).toHaveBeenCalled();
++    });
++
++    expect(mockPush).not.toHaveBeenCalledWith('/settings');
++  });
++
+   it('ignores notification routes outside the allowlist', async () => {
+     const { result } = renderHook(() => useNotifications());
+ 
+diff --git a/lib/shell/bridge.test.ts b/lib/shell/bridge.test.ts
+new file mode 100644
+index 0000000..e6b138b
+--- /dev/null
++++ b/lib/shell/bridge.test.ts
+@@ -0,0 +1,75 @@
++import { buildBootstrapScript, buildNavigateScript, NAVIGATE_EVENT, parseShellMessage, SHELL_GLOBAL } from './bridge';
++
++describe('parseShellMessage', () => {
++  it('accepts every message on the contract, sanitising its payload', () => {
++    expect(parseShellMessage(JSON.stringify({ type: 'ready', path: '/inbox' }))).toEqual({ type: 'ready', path: '/inbox' });
++    expect(parseShellMessage(JSON.stringify({ type: 'navigated', path: 'https://evil.example' }))).toEqual({ type: 'navigated', path: '/' });
++    expect(parseShellMessage(JSON.stringify({ type: 'open-external', url: 'https://github.com/x' }))).toEqual({
++      type: 'open-external',
++      url: 'https://github.com/x',
++    });
++    expect(parseShellMessage(JSON.stringify({ type: 'open-settings' }))).toEqual({ type: 'open-settings' });
++    expect(parseShellMessage(JSON.stringify({ type: 'reload', extra: 1 }))).toEqual({ type: 'reload' });
++    expect(parseShellMessage(JSON.stringify({ type: 'badge', count: 3 }))).toEqual({ type: 'badge', count: 3 });
++    expect(parseShellMessage(JSON.stringify({ type: 'haptic', style: 'success' }))).toEqual({ type: 'haptic', style: 'success' });
++    expect(parseShellMessage(JSON.stringify({ type: 'haptic', style: 'nuke' }))).toEqual({ type: 'haptic', style: 'light' });
++  });
++
++  it('rejects anything off the contract', () => {
++    expect(parseShellMessage('')).toBeNull();
++    expect(parseShellMessage('not json')).toBeNull();
++    expect(parseShellMessage('[]')).toBeNull();
++    expect(parseShellMessage('null')).toBeNull();
++    expect(parseShellMessage(JSON.stringify({ type: 'eval', code: '1' }))).toBeNull();
++    expect(parseShellMessage(JSON.stringify({ type: 'open-external', url: 'javascript:alert(1)' }))).toBeNull();
++    expect(parseShellMessage(JSON.stringify({ type: 'open-external', url: 'intent://x' }))).toBeNull();
++    expect(parseShellMessage(JSON.stringify({ type: 'badge', count: -1 }))).toBeNull();
++    expect(parseShellMessage(JSON.stringify({ type: 'badge', count: 1.5 }))).toBeNull();
++    expect(parseShellMessage(JSON.stringify({ type: 'badge', count: '3' }))).toBeNull();
++    expect(parseShellMessage(JSON.stringify({ type: 'ready', path: 'x'.repeat(10_000) }))).toBeNull();
++    expect(parseShellMessage(42)).toBeNull();
++  });
++});
++
++type FakeWindow = Record<string, unknown> & { location: { origin: string } };
++
++function runBootstrap(script: string, origin: string) {
++  const window: FakeWindow = { location: { origin } };
++  const documentElement = { attrs: {} as Record<string, string>, setAttribute(k: string, v: string) { this.attrs[k] = v; } };
++  const document = { documentElement };
++  // eslint-disable-next-line no-new-func
++  new Function('window', 'document', script)(window, document);
++  return { window, documentElement };
++}
++
++describe('buildBootstrapScript', () => {
++  const script = buildBootstrapScript({ origin: 'https://nexus.vibeshiftai.com', platform: 'android', appVersion: '0.6.0' });
++
++  it('defines a frozen shell global only on the trusted origin', () => {
++    const { window, documentElement } = runBootstrap(script, 'https://nexus.vibeshiftai.com');
++    const shell = window[SHELL_GLOBAL] as Record<string, unknown>;
++    expect(shell).toMatchObject({ platform: 'android', appVersion: '0.6.0', origin: 'https://nexus.vibeshiftai.com', navigateEvent: NAVIGATE_EVENT });
++    expect(Object.isFrozen(shell)).toBe(true);
++    expect(Object.getOwnPropertyDescriptor(window, SHELL_GLOBAL)).toMatchObject({ writable: false, configurable: false });
++    expect(documentElement.attrs['data-nexus-shell']).toBe('android');
++  });
++
++  it('defines nothing anywhere else', () => {
++    const { window, documentElement } = runBootstrap(script, 'https://vibeshiftai.cloudflareaccess.com');
++    expect(window[SHELL_GLOBAL]).toBeUndefined();
++    expect(documentElement.attrs['data-nexus-shell']).toBeUndefined();
++  });
++
++  it('carries no secrets', () => {
++    expect(script).not.toMatch(/CF-Access|Bearer|secret|token/i);
++  });
++});
++
++describe('buildNavigateScript', () => {
++  it('dispatches the navigate event with a sanitised path', () => {
++    const script = buildNavigateScript('https://evil.example/x');
++    expect(script).toContain(NAVIGATE_EVENT);
++    expect(script).toContain('detail: "/"');
++    expect(buildNavigateScript('/task/abc#qa')).toContain('detail: "/task/abc#qa"');
++  });
++});
+diff --git a/lib/shell/bridge.ts b/lib/shell/bridge.ts
+new file mode 100644
+index 0000000..ef24eb7
+--- /dev/null
++++ b/lib/shell/bridge.ts
+@@ -0,0 +1,125 @@
++/**
++ * Dashboard shell — the native ↔ web bridge contract.
++ *
++ * Web → native: the dashboard calls window.ReactNativeWebView.postMessage(JSON)
++ * with one of the shapes in ShellMessage. The shell honours a message only
++ * when the frame that sent it is on the trusted origin (checked natively from
++ * the event's URL, not from anything the page says), and only these types.
++ *
++ * Native → web: before the document runs, the shell defines a frozen
++ * window.__NEXUS_MOBILE_SHELL__ — main frame only, and self-guarded so it only
++ * ever exists on the trusted origin — and later dispatches
++ * `nexus-mobile-navigate` CustomEvents carrying a dashboard path.
++ *
++ * No credential, token, or server address the page does not already know
++ * crosses this bridge in either direction.
++ */
++import { sanitizeDashboardPath } from './routes';
++
++export const SHELL_GLOBAL = '__NEXUS_MOBILE_SHELL__';
++export const NAVIGATE_EVENT = 'nexus-mobile-navigate';
++export const SHELL_CAPABILITIES = ['navigate', 'open-external', 'open-settings', 'badge', 'haptic', 'reload'] as const;
++
++export type HapticStyle = 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error';
++
++export type ShellMessage =
++  /** The dashboard has mounted its shell bridge; `path` is its current location. */
++  | { type: 'ready'; path: string }
++  /** Client-side route change inside the dashboard. */
++  | { type: 'navigated'; path: string }
++  /** Open an http(s) URL in the system browser. */
++  | { type: 'open-external'; url: string }
++  /** Open the native connection settings screen. */
++  | { type: 'open-settings' }
++  /** Set the launcher badge (0 clears it). */
++  | { type: 'badge'; count: number }
++  | { type: 'haptic'; style: HapticStyle }
++  /** Reload the current page (e.g. the dashboard's own "reload the deck" affordance). */
++  | { type: 'reload' };
++
++const MAX_MESSAGE_CHARS = 8 * 1024;
++const MAX_URL_CHARS = 2048;
++const HAPTIC_STYLES: ReadonlySet<string> = new Set(['light', 'medium', 'heavy', 'success', 'warning', 'error']);
++
++/** Parse and validate a raw postMessage payload; null for anything off-contract. */
++export function parseShellMessage(raw: unknown): ShellMessage | null {
++  if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_MESSAGE_CHARS) return null;
++  let parsed: unknown;
++  try {
++    parsed = JSON.parse(raw);
++  } catch {
++    return null;
++  }
++  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
++  const msg = parsed as Record<string, unknown>;
++  switch (msg.type) {
++    case 'ready':
++    case 'navigated':
++      return { type: msg.type, path: sanitizeDashboardPath(msg.path) };
++    case 'open-external': {
++      if (typeof msg.url !== 'string' || msg.url.length > MAX_URL_CHARS || !/^https?:\/\/[^\s]+$/i.test(msg.url)) return null;
++      return { type: 'open-external', url: msg.url };
++    }
++    case 'open-settings':
++      return { type: 'open-settings' };
++    case 'reload':
++      return { type: 'reload' };
++    case 'badge': {
++      const count = typeof msg.count === 'number' && Number.isInteger(msg.count) ? msg.count : NaN;
++      if (!(count >= 0 && count <= 999)) return null;
++      return { type: 'badge', count };
++    }
++    case 'haptic': {
++      const style = typeof msg.style === 'string' && HAPTIC_STYLES.has(msg.style) ? (msg.style as HapticStyle) : 'light';
++      return { type: 'haptic', style };
++    }
++    default:
++      return null;
++  }
++}
++
++export interface BootstrapOptions {
++  /** The one origin the shell trusts (`https://host`). */
++  origin: string;
++  platform: string;
++  appVersion: string;
++}
++
++/**
++ * JavaScript injected before the document runs (main frame only). It checks
++ * the page's own origin before defining anything, so a page from anywhere
++ * else — an Access login bounce, a link that slipped through — never sees the
++ * shell global. The global is frozen and non-configurable so page code cannot
++ * spoof a different capability set later.
++ */
++export function buildBootstrapScript(opts: BootstrapOptions): string {
++  const payload = JSON.stringify({
++    platform: opts.platform,
++    appVersion: opts.appVersion,
++    origin: opts.origin,
++    capabilities: SHELL_CAPABILITIES,
++    navigateEvent: NAVIGATE_EVENT,
++  });
++  return `(function () {
++  try {
++    var shell = ${payload};
++    if (!window.location || window.location.origin !== shell.origin) return;
++    if (!window[${JSON.stringify(SHELL_GLOBAL)}]) {
++      Object.defineProperty(window, ${JSON.stringify(SHELL_GLOBAL)}, {
++        value: Object.freeze(shell), writable: false, configurable: false, enumerable: true
++      });
++    }
++    if (document.documentElement) document.documentElement.setAttribute('data-nexus-shell', shell.platform);
++  } catch (e) {}
++})(); true;`;
++}
++
++/** JavaScript that asks the running dashboard to route to `path` client-side. */
++export function buildNavigateScript(path: string): string {
++  const detail = JSON.stringify(sanitizeDashboardPath(path));
++  return `(function () {
++  try {
++    window.dispatchEvent(new CustomEvent(${JSON.stringify(NAVIGATE_EVENT)}, { detail: ${detail} }));
++  } catch (e) {}
++})(); true;`;
++}
+diff --git a/lib/shell/routes.test.ts b/lib/shell/routes.test.ts
+new file mode 100644
+index 0000000..643f332
+--- /dev/null
++++ b/lib/shell/routes.test.ts
+@@ -0,0 +1,147 @@
++import {
++  classifyNavigation,
++  dashboardPathForNativeRoute,
++  hostOf,
++  originOf,
++  rewriteSystemPath,
++  sanitizeDashboardPath,
++  shellHrefForNativeRoute,
++  stripRouteGroups,
++} from './routes';
++
++const ORIGIN = 'https://nexus.vibeshiftai.com';
++
++describe('originOf / hostOf', () => {
++  it('normalises scheme, host case and default ports', () => {
++    expect(originOf('HTTPS://Nexus.VibeShiftAI.com:443/inbox?x=1')).toBe(ORIGIN);
++    expect(originOf('http://192.168.86.10:4000/')).toBe('http://192.168.86.10:4000');
++    expect(originOf('http://mac.local:80/x')).toBe('http://mac.local');
++    expect(hostOf('https://nexus.vibeshiftai.com:8443/x')).toBe('nexus.vibeshiftai.com');
++    expect(hostOf('http://[::1]:4000/')).toBe('[::1]');
++  });
++
++  it('rejects non-http URLs and userinfo spoofs', () => {
++    expect(originOf('javascript:alert(1)')).toBeNull();
++    expect(originOf('nexus://inbox')).toBeNull();
++    expect(originOf('https://nexus.vibeshiftai.com@evil.example/')).toBeNull();
++    expect(originOf('https://evil.example\\@nexus.vibeshiftai.com/')).toBe('https://evil.example');
++    expect(originOf(null)).toBeNull();
++    expect(hostOf('')).toBeNull();
++  });
++});
++
++describe('classifyNavigation', () => {
++  it('renders only the configured origin', () => {
++    expect(classifyNavigation(`${ORIGIN}/task/abc`, ORIGIN)).toBe('trusted');
++    expect(classifyNavigation('https://nexus.vibeshiftai.com.evil.example/', ORIGIN)).toBe('external');
++    expect(classifyNavigation('http://nexus.vibeshiftai.com/', ORIGIN)).toBe('external');
++    expect(classifyNavigation('https://github.com/x', ORIGIN)).toBe('external');
++  });
++
++  it('recognises the Cloudflare Access login and hands off phone/mail links', () => {
++    expect(classifyNavigation('https://vibeshiftai.cloudflareaccess.com/cdn-cgi/access/login/x', ORIGIN)).toBe('access-login');
++    expect(classifyNavigation('https://cloudflareaccess.com.evil.example/', ORIGIN)).toBe('external');
++    expect(classifyNavigation('mailto:robert@example.com', ORIGIN)).toBe('handoff');
++    expect(classifyNavigation('tel:+15551234567', ORIGIN)).toBe('handoff');
++  });
++
++  it('blocks every other scheme', () => {
++    for (const url of ['javascript:alert(1)', 'data:text/html,hi', 'intent://x#Intent;end', 'file:///etc/passwd', 'blob:https://x/y', 'about:blank']) {
++      expect(classifyNavigation(url, ORIGIN)).toBe('blocked');
++    }
++  });
++});
++
++describe('sanitizeDashboardPath', () => {
++  it('keeps same-origin paths with query and hash', () => {
++    expect(sanitizeDashboardPath('/inbox#hitl-1')).toBe('/inbox#hitl-1');
++    expect(sanitizeDashboardPath('/activity?channel=vault')).toBe('/activity?channel=vault');
++    expect(sanitizeDashboardPath('  /task/abc  ')).toBe('/task/abc');
++  });
++
++  it('collapses anything that could leave the origin', () => {
++    expect(sanitizeDashboardPath('https://evil.example/')).toBe('/');
++    expect(sanitizeDashboardPath('//evil.example/x')).toBe('/');
++    expect(sanitizeDashboardPath('/\\evil.example')).toBe('/');
++    expect(sanitizeDashboardPath('/inbox\nX')).toBe('/');
++    expect(sanitizeDashboardPath('inbox')).toBe('/');
++    expect(sanitizeDashboardPath(42)).toBe('/');
++    expect(sanitizeDashboardPath(undefined)).toBe('/');
++    expect(sanitizeDashboardPath(`/${'a'.repeat(3000)}`)).toBe('/');
++  });
++
++  it('percent-encodes raw spaces and non-ASCII without double-encoding', () => {
++    expect(sanitizeDashboardPath('/search?q=a b')).toBe('/search?q=a%20b');
++    expect(sanitizeDashboardPath('/search?q=a%20b')).toBe('/search?q=a%20b');
++    expect(sanitizeDashboardPath('/p/é')).toBe('/p/%C3%A9');
++  });
++});
++
++describe('dashboardPathForNativeRoute', () => {
++  it('maps the retired native screens onto dashboard routes', () => {
++    expect(stripRouteGroups('/(tabs)/inbox')).toBe('/inbox');
++    expect(stripRouteGroups('/(tabs)')).toBe('/');
++    expect(dashboardPathForNativeRoute('/(tabs)')).toBe('/');
++    expect(dashboardPathForNativeRoute('/(tabs)/tasks')).toBe('/task-board');
++    expect(dashboardPathForNativeRoute('/(tabs)/praxis')).toBe('/');
++    expect(dashboardPathForNativeRoute('/(tabs)/system')).toBe('/system-monitor');
++    expect(dashboardPathForNativeRoute('/dispatch')).toBe('/ops');
++    expect(dashboardPathForNativeRoute('/reports')).toBe('/activity');
++    expect(dashboardPathForNativeRoute('/report/2026-09-06.md')).toBe('/activity');
++    expect(dashboardPathForNativeRoute('/council/')).toBe('/council');
++  });
++
++  it('carries the HITL id into the inbox hash deep link', () => {
++    expect(dashboardPathForNativeRoute('/(tabs)/inbox', { hitlId: 'h 1' })).toBe('/inbox#h%201');
++    expect(dashboardPathForNativeRoute('/inbox', { hitlId: ['', 'h2'] })).toBe('/inbox#h2');
++    expect(dashboardPathForNativeRoute('/inbox')).toBe('/inbox');
++  });
++
++  it('passes task, project and unknown dashboard routes through', () => {
++    expect(dashboardPathForNativeRoute('/task/abc-123')).toBe('/task/abc-123');
++    expect(dashboardPathForNativeRoute('/project/p1')).toBe('/project/p1');
++    expect(dashboardPathForNativeRoute('/model-control')).toBe('/model-control');
++    expect(dashboardPathForNativeRoute('https://evil.example/')).toBe('/');
++  });
++});
++
++describe('shellHrefForNativeRoute', () => {
++  it('builds a /shell href with a nonce', () => {
++    expect(shellHrefForNativeRoute('/(tabs)/inbox', { hitlId: 'h1' }, 7)).toEqual({
++      pathname: '/shell',
++      params: { path: '/inbox#h1', n: '7' },
++    });
++    const { params } = shellHrefForNativeRoute('/(tabs)/praxis');
++    expect(params.path).toBe('/');
++    expect(params.n).toMatch(/^\d+$/);
++  });
++});
++
++describe('rewriteSystemPath', () => {
++  it('rewrites nexus:// links minted for the old screens', () => {
++    expect(rewriteSystemPath('nexus://inbox?hitlId=h1')).toBe('nexus://shell?path=%2Finbox%23h1');
++    expect(rewriteSystemPath('nexus://tasks')).toBe('nexus://shell?path=%2Ftask-board');
++    expect(rewriteSystemPath('nexus://')).toBe('nexus://shell?path=%2F');
++    expect(rewriteSystemPath('nexus://task/abc')).toBe('nexus://shell?path=%2Ftask%2Fabc');
++  });
++
++  it('keeps query strings and hashes for routes the dashboard owns', () => {
++    expect(rewriteSystemPath('nexus://activity?channel=vault')).toBe('nexus://shell?path=%2Factivity%3Fchannel%3Dvault');
++    expect(rewriteSystemPath('nexus://inbox#h2')).toBe('nexus://shell?path=%2Finbox%23h2');
++    expect(rewriteSystemPath('https://nexus.vibeshiftai.com/task/abc?tab=qa')).toBe('nexus://shell?path=%2Ftask%2Fabc%3Ftab%3Dqa');
++  });
++
++  it('leaves settings, shell, dev-client and Expo Go links alone', () => {
++    expect(rewriteSystemPath('nexus://settings')).toBe('nexus://settings');
++    expect(rewriteSystemPath('nexus://shell?path=%2Fops')).toBe('nexus://shell?path=%2Fops');
++    expect(rewriteSystemPath('exp+nexus-mobile://expo-development-client/?url=http%3A%2F%2F10.0.0.2%3A8081')).toBe(
++      'exp+nexus-mobile://expo-development-client/?url=http%3A%2F%2F10.0.0.2%3A8081',
++    );
++    expect(rewriteSystemPath('exp://10.0.0.2:8081/--/inbox')).toBe('exp://10.0.0.2:8081/--/inbox');
++  });
++
++  it('never lets a link pick a different origin', () => {
++    expect(rewriteSystemPath('nexus://https://evil.example/')).toBe('nexus://shell?path=%2F');
++    expect(rewriteSystemPath('nexus:////evil.example/')).toBe('nexus://shell?path=%2F');
++  });
++});
+diff --git a/lib/shell/routes.ts b/lib/shell/routes.ts
+new file mode 100644
+index 0000000..5605752
+--- /dev/null
++++ b/lib/shell/routes.ts
+@@ -0,0 +1,205 @@
++/**
++ * Dashboard shell — route mapping and navigation policy.
++ *
++ * The Android app is a thin shell around the canonical Nexus dashboard: one
++ * WebView pointed at the configured server URL. Everything in this module is a
++ * pure function so the policy that decides what the WebView may load, and how
++ * the retired native routes map onto dashboard pages, is unit-tested and
++ * auditable in one place. See docs/dashboard-shell.md.
++ */
++
++/** The single native screen that hosts the dashboard (app/shell.tsx). */
++export const SHELL_ROUTE = '/shell' as const;
++
++/** What the shell does with a URL the WebView wants to load. */
++export type NavigationKind =
++  /** On the configured dashboard origin: render it. */
++  | 'trusted'
++  /** Cloudflare Access login for that origin: render only as an explicit, user-chosen fallback. */
++  | 'access-login'
++  /** Any other http(s) URL: hand to the system browser. */
++  | 'external'
++  /** mailto:, tel:, sms: — hand to the matching system app. */
++  | 'handoff'
++  /** Anything else (javascript:, data:, intent:, file:, blob: …): refuse. */
++  | 'blocked';
++
++const ORIGIN_RE = /^(https?):\/\/([^/?#\s\\]+)/i;
++const HANDOFF_RE = /^(mailto|tel|sms):/i;
++// eslint-disable-next-line no-control-regex
++const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/;
++
++/**
++ * `scheme://host[:port]` of an http(s) URL, lower-cased, default port dropped;
++ * null for anything else. URLs with userinfo ("user@host") are rejected
++ * outright — that shape exists mainly to spoof origins.
++ */
++export function originOf(url: string | null | undefined): string | null {
++  if (typeof url !== 'string') return null;
++  const match = ORIGIN_RE.exec(url.trim());
++  if (!match) return null;
++  const scheme = match[1].toLowerCase();
++  let authority = match[2].toLowerCase();
++  if (authority.includes('@')) return null;
++  if ((scheme === 'https' && authority.endsWith(':443')) || (scheme === 'http' && authority.endsWith(':80'))) {
++    authority = authority.slice(0, authority.lastIndexOf(':'));
++  }
++  return `${scheme}://${authority}`;
++}
++
++/** Host name (no port) of an http(s) URL, or null. IPv6 literals keep their brackets. */
++export function hostOf(url: string | null | undefined): string | null {
++  const origin = originOf(url);
++  if (!origin) return null;
++  const authority = origin.slice(origin.indexOf('://') + 3);
++  if (authority.startsWith('[')) return authority.slice(0, authority.indexOf(']') + 1);
++  return authority.split(':')[0];
++}
++
++export function isCloudflareAccessHost(host: string | null): boolean {
++  return !!host && (host === 'cloudflareaccess.com' || host.endsWith('.cloudflareaccess.com'));
++}
++
++export function classifyNavigation(url: string, trustedOrigin: string): NavigationKind {
++  if (HANDOFF_RE.test(url.trim())) return 'handoff';
++  const origin = originOf(url);
++  if (!origin) return 'blocked';
++  if (origin === trustedOrigin) return 'trusted';
++  if (isCloudflareAccessHost(hostOf(url))) return 'access-login';
++  return 'external';
++}
++
++/**
++ * A dashboard path is an absolute path on the dashboard origin
++ * ("/task/abc?x=1#y"). Anything that could escape the origin — a scheme, a
++ * protocol-relative "//host", a backslash trick, control characters — or that
++ * is simply not a string collapses to the bridge home. Raw spaces and
++ * non-ASCII are percent-encoded; already-encoded sequences are left alone.
++ */
++export function sanitizeDashboardPath(input: unknown): string {
++  if (typeof input !== 'string') return '/';
++  const path = input.trim();
++  if (!path.startsWith('/')) return '/';
++  if (path.startsWith('//') || path.startsWith('/\\')) return '/';
++  if (CONTROL_CHARS_RE.test(path)) return '/';
++  if (path.length > 2048) return '/';
++  // A colon in the path segment is never a dashboard route; it is how "nexus://https://…" tries to smuggle a URL in.
++  if (path.split(/[?#]/, 1)[0].includes(':')) return '/';
++  return path.replace(/[^\x21-\x7e]/g, (c) => encodeURIComponent(c));
++}
++
++export type ParamValue = string | string[] | undefined;
++export type RouteParams = Record<string, ParamValue>;
++
++/** First non-empty string of an expo-router param (they may arrive as arrays). */
++export function firstParam(value: ParamValue): string | undefined {
++  if (Array.isArray(value)) return value.find((v) => typeof v === 'string' && v.length > 0);
++  return typeof value === 'string' && value.length > 0 ? value : undefined;
++}
++
++/** Strip expo-router group segments: "/(tabs)/inbox" → "/inbox". */
++export function stripRouteGroups(pathname: string): string {
++  const stripped = pathname.replace(/\/\([^/]*\)(?=\/|$)/g, '');
++  return stripped === '' ? '/' : stripped;
++}
++
++/**
++ * The native screens this app used to have, mapped onto the dashboard routes
++ * that serve the same purpose. Praxis push payloads still name
++ * '/(tabs)/inbox' and '/(tabs)/praxis', and older nexus:// links were minted
++ * against this screen set, so both keep working through this table.
++ */
++const LEGACY_NATIVE_ROUTES: Readonly<Record<string, string>> = {
++  '/': '/',
++  '/index': '/',
++  '/tasks': '/task-board',
++  '/inbox': '/inbox',
++  '/praxis': '/', // Praxis chat is the bridge main viewer
++  '/notes': '/', // the scratchpad is a bridge header control
++  '/system': '/system-monitor',
++  '/council': '/council',
++  '/calendar': '/calendar',
++  '/dispatch': '/ops',
++  '/reports': '/activity',
++  '/revenue': '/', // LARS opens from the bridge menu (external dashboard)
++};
++
++/** Dashboard path that replaces a native route + params; unknown routes pass through for the dashboard to resolve. */
++export function dashboardPathForNativeRoute(pathname: string, params: RouteParams = {}): string {
++  let path = stripRouteGroups(sanitizeDashboardPath(pathname));
++  if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
++  if (path === '/inbox') {
++    const hitlId = firstParam(params.hitlId) ?? firstParam(params.hitl_id) ?? firstParam(params.id);
++    return hitlId ? `/inbox#${encodeURIComponent(hitlId)}` : '/inbox';
++  }
++  if (Object.prototype.hasOwnProperty.call(LEGACY_NATIVE_ROUTES, path)) return LEGACY_NATIVE_ROUTES[path];
++  const task = /^\/task\/([^/?#]+)$/.exec(path);
++  if (task) return `/task/${task[1]}`;
++  const project = /^\/project\/([^/?#]+)$/.exec(path);
++  if (project) return `/project/${project[1]}`;
++  if (path.startsWith('/report/')) return '/activity';
++  return path;
++}
++
++export type ShellHref = { pathname: typeof SHELL_ROUTE; params: { path: string; n: string } };
++
++/**
++ * expo-router href that shows `path` in the shell. `n` is a nonce: the shell
++ * screen is a singleton whose params are updated in place, so two requests
++ * for the same path in a row still need to look different to be re-applied.
++ */
++export function shellHref(path: string, nonce: number = Date.now()): ShellHref {
++  return { pathname: SHELL_ROUTE, params: { path: sanitizeDashboardPath(path), n: String(nonce) } };
++}
++
++export function shellHrefForNativeRoute(pathname: string, params: RouteParams = {}, nonce?: number): ShellHref {
++  return shellHref(dashboardPathForNativeRoute(pathname, params), nonce);
++}
++
++function decodeSafe(value: string): string {
++  try {
++    return decodeURIComponent(value.replace(/\+/g, ' '));
++  } catch {
++    return value;
++  }
++}
++
++/**
++ * Rewrite an incoming system URL so links minted for the old native screens
++ * land in the shell showing the equivalent dashboard page. Handles the app's
++ * own nexus:// scheme and plain http(s) links; every other scheme (the
++ * exp+nexus-mobile:// dev-client links, Expo Go's exp://) passes through
++ * untouched, as do links that already target /shell or /settings.
++ */
++export function rewriteSystemPath(incoming: string): string {
++  if (typeof incoming !== 'string') return incoming;
++  const match = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]*)(.*)$/is.exec(incoming.trim());
++  const scheme = match ? match[1].toLowerCase() : null;
++  if (scheme && scheme !== 'nexus' && scheme !== 'http' && scheme !== 'https') return incoming;
++
++  // nexus://inbox?x=1 puts "inbox" where a host would be; http(s) links carry a real host.
++  let rest = match ? (scheme === 'nexus' ? `/${match[2]}${match[3]}` : match[3]) : incoming;
++  rest = rest.replace(/^\/--\//, '/');
++  if (!rest.startsWith('/')) rest = `/${rest}`;
++
++  const hashIndex = rest.indexOf('#');
++  const hash = hashIndex >= 0 ? rest.slice(hashIndex) : '';
++  const beforeHash = hashIndex >= 0 ? rest.slice(0, hashIndex) : rest;
++  const queryIndex = beforeHash.indexOf('?');
++  const pathname = queryIndex >= 0 ? beforeHash.slice(0, queryIndex) : beforeHash;
++  const query = queryIndex >= 0 ? beforeHash.slice(queryIndex + 1) : '';
++  if (pathname === '/settings' || pathname === SHELL_ROUTE) return incoming;
++
++  const params: RouteParams = {};
++  for (const pair of query.split('&')) {
++    if (!pair) continue;
++    const eq = pair.indexOf('=');
++    params[decodeSafe(eq >= 0 ? pair.slice(0, eq) : pair)] = decodeSafe(eq >= 0 ? pair.slice(eq + 1) : '');
++  }
++  const mapped = dashboardPathForNativeRoute(pathname, params);
++  const passThrough = mapped === stripRouteGroups(pathname);
++  let target = mapped;
++  if (passThrough && query && !target.includes('?')) target += `?${query}`;
++  if (hash && !target.includes('#')) target += hash;
++  return `nexus://shell?path=${encodeURIComponent(sanitizeDashboardPath(target))}`;
++}
+diff --git a/lib/shell/session.test.ts b/lib/shell/session.test.ts
+new file mode 100644
+index 0000000..352ec88
+--- /dev/null
++++ b/lib/shell/session.test.ts
+@@ -0,0 +1,82 @@
++import { HEALTH_PATH, primeDashboardSession } from './session';
++
++jest.mock('@/lib/auth', () => ({
++  getMediaAuthHeaders: jest.fn(async () => ({ 'CF-Access-Client-Id': 'id', 'CF-Access-Client-Secret': 'secret' })),
++}));
++
++function response(init: { status?: number; url?: string; contentType?: string }) {
++  const status = init.status ?? 200;
++  return {
++    ok: status >= 200 && status < 300,
++    status,
++    url: init.url ?? 'https://nexus.vibeshiftai.com/api/health',
++    headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? init.contentType ?? null : null) },
++  };
++}
++
++describe('primeDashboardSession', () => {
++  const fetchMock = jest.fn();
++  beforeEach(() => {
++    fetchMock.mockReset();
++    global.fetch = fetchMock as unknown as typeof fetch;
++  });
++
++  it('sends the Access service-token headers to the API health endpoint', async () => {
++    fetchMock.mockResolvedValue(response({ contentType: 'application/json; charset=utf-8' }));
++    const result = await primeDashboardSession('https://nexus.vibeshiftai.com/');
++    expect(result).toEqual({ ok: true, host: 'nexus.vibeshiftai.com' });
++    expect(fetchMock).toHaveBeenCalledTimes(1);
++    const [url, init] = fetchMock.mock.calls[0];
++    expect(url).toBe(`https://nexus.vibeshiftai.com${HEALTH_PATH}`);
++    expect(init.headers).toMatchObject({ 'CF-Access-Client-Id': 'id', 'CF-Access-Client-Secret': 'secret', Accept: 'application/json' });
++    expect(init.signal).toBeDefined();
++  });
++
++  it('reports access-denied when Access bounces to its login page', async () => {
++    fetchMock.mockResolvedValue(
++      response({ url: 'https://vibeshiftai.cloudflareaccess.com/cdn-cgi/access/login/nexus.vibeshiftai.com?x', contentType: 'text/html' }),
++    );
++    const result = await primeDashboardSession('https://nexus.vibeshiftai.com');
++    expect(result).toMatchObject({ ok: false, reason: 'access-denied' });
++  });
++
++  it('reports access-denied for 401/403 and for an HTML answer where JSON was expected', async () => {
++    fetchMock.mockResolvedValueOnce(response({ status: 403 }));
++    expect(await primeDashboardSession('https://nexus.vibeshiftai.com')).toMatchObject({ ok: false, reason: 'access-denied', status: 403 });
++    fetchMock.mockResolvedValueOnce(response({ contentType: 'text/html' }));
++    expect(await primeDashboardSession('https://nexus.vibeshiftai.com')).toMatchObject({ ok: false, reason: 'access-denied' });
++  });
++
++  it('reports server-error for 5xx and unreachable for network failures', async () => {
++    fetchMock.mockResolvedValueOnce(response({ status: 502, contentType: 'text/html' }));
++    expect(await primeDashboardSession('https://nexus.vibeshiftai.com')).toMatchObject({ ok: false, reason: 'server-error', status: 502 });
++    fetchMock.mockRejectedValueOnce(new TypeError('Network request failed'));
++    expect(await primeDashboardSession('https://nexus.vibeshiftai.com')).toMatchObject({ ok: false, reason: 'unreachable' });
++  });
++
++  it('reports not-configured without touching the network', async () => {
++    expect(await primeDashboardSession(null)).toMatchObject({ ok: false, reason: 'not-configured' });
++    expect(await primeDashboardSession('nexus://x')).toMatchObject({ ok: false, reason: 'not-configured' });
++    expect(fetchMock).not.toHaveBeenCalled();
++  });
++
++  it('gives up after the timeout', async () => {
++    jest.useFakeTimers();
++    try {
++      fetchMock.mockImplementation((_url: string, init: { signal: AbortSignal }) =>
++        new Promise((_resolve, reject) => {
++          init.signal.addEventListener('abort', () => {
++            const error = new Error('Aborted');
++            error.name = 'AbortError';
++            reject(error);
++          });
++        }),
++      );
++      const pending = primeDashboardSession('https://nexus.vibeshiftai.com', 50);
++      await jest.advanceTimersByTimeAsync(60);
++      expect(await pending).toMatchObject({ ok: false, reason: 'unreachable', detail: expect.stringContaining('did not answer') });
++    } finally {
++      jest.useRealTimers();
++    }
++  });
++});
+diff --git a/lib/shell/session.ts b/lib/shell/session.ts
+new file mode 100644
+index 0000000..e0bd6e8
+--- /dev/null
++++ b/lib/shell/session.ts
+@@ -0,0 +1,85 @@
++/**
++ * Dashboard shell — Cloudflare Access session priming.
++ *
++ * The hosted Nexus (https://nexus.vibeshiftai.com) sits behind Cloudflare
++ * Access. The phone holds a Service Auth token (CF-Access-Client-Id / Secret
++ * in SecureStore), but a WebView cannot attach headers to every request the
++ * dashboard makes. So, exactly like the desktop travel shell
++ * (TheNexus/desktop/src-tauri/src/main.rs), the app trades the token for a
++ * `CF_Authorization` session cookie with ONE native request: React Native's
++ * Android networking stores response cookies in the WebView's CookieManager
++ * (ForwardingCookieHandler), so from then on the WebView carries the session
++ * on every request it makes — page loads, /api/* fetches, Socket.IO and SSE.
++ * The credentials themselves never enter web content.
++ *
++ * The same request doubles as the reachability check: it tells apart a
++ * server that is down, a token Access refuses, and a backend that is broken.
++ */
++import { getMediaAuthHeaders } from '@/lib/auth';
++import { hostOf, isCloudflareAccessHost } from './routes';
++
++export type PrimeFailure = 'not-configured' | 'access-denied' | 'unreachable' | 'server-error';
++
++export type PrimeResult =
++  | { ok: true; host: string }
++  | { ok: false; reason: PrimeFailure; detail: string; status?: number };
++
++/** Small JSON endpoint on the API side of the tunnel (routed to :4000, no auth of its own). */
++export const HEALTH_PATH = '/api/health';
++
++export const DEFAULT_PRIME_TIMEOUT_MS = 12_000;
++
++export async function primeDashboardSession(
++  serverUrl: string | null | undefined,
++  timeoutMs: number = DEFAULT_PRIME_TIMEOUT_MS,
++): Promise<PrimeResult> {
++  const host = hostOf(serverUrl);
++  if (!serverUrl || !host) {
++    return { ok: false, reason: 'not-configured', detail: 'No Nexus server URL is configured.' };
++  }
++  const controller = new AbortController();
++  const timer = setTimeout(() => controller.abort(), timeoutMs);
++  try {
++    const headers = await getMediaAuthHeaders();
++    const response = await fetch(`${serverUrl.replace(/\/+$/, '')}${HEALTH_PATH}`, {
++      method: 'GET',
++      headers: { ...headers, Accept: 'application/json' },
++      signal: controller.signal,
++    });
++    const landedOn = hostOf(response.url) ?? host;
++    if (isCloudflareAccessHost(landedOn)) {
++      return {
++        ok: false,
++        reason: 'access-denied',
++        detail: 'Cloudflare Access sent the request to its login page: the service token is missing, wrong, or not allowed by the Access policy for this app.',
++        status: response.status,
++      };
++    }
++    if (response.status === 401 || response.status === 403) {
++      return { ok: false, reason: 'access-denied', detail: `${host} refused the credentials (HTTP ${response.status}).`, status: response.status };
++    }
++    const contentType = response.headers.get('content-type') ?? '';
++    if (response.ok && /json/i.test(contentType)) {
++      return { ok: true, host };
++    }
++    if (response.ok) {
++      return {
++        ok: false,
++        reason: 'access-denied',
++        detail: `${host} answered ${contentType || 'a non-JSON response'} instead of the health check — usually an Access login page.`,
++        status: response.status,
++      };
++    }
++    return { ok: false, reason: 'server-error', detail: `${host} answered HTTP ${response.status} for ${HEALTH_PATH}.`, status: response.status };
++  } catch (error) {
++    const timedOut = error instanceof Error && error.name === 'AbortError';
++    const message = error instanceof Error ? error.message : String(error);
++    return {
++      ok: false,
++      reason: 'unreachable',
++      detail: timedOut ? `${host} did not answer within ${Math.round(timeoutMs / 1000)}s.` : `Could not reach ${host}: ${message}`,
++    };
++  } finally {
++    clearTimeout(timer);
++  }
++}
+diff --git a/tests/legacy-tabs-redirect.test.tsx b/tests/legacy-tabs-redirect.test.tsx
+new file mode 100644
+index 0000000..431e66d
+--- /dev/null
++++ b/tests/legacy-tabs-redirect.test.tsx
+@@ -0,0 +1,42 @@
++import { render, screen } from '@testing-library/react-native';
++import React from 'react';
++
++import LegacyTabsRedirect from '../app/(tabs)/_layout';
++
++const mockNavigate = jest.fn();
++const mockReplace = jest.fn();
++let mockCanGoBack = true;
++let mockPathname = '/(tabs)/inbox';
++let mockParams: Record<string, string> = {};
++
++jest.mock('expo-router', () => ({
++  useRouter: () => ({ navigate: mockNavigate, replace: mockReplace, canGoBack: () => mockCanGoBack }),
++  usePathname: () => mockPathname,
++  useGlobalSearchParams: () => mockParams,
++}));
++
++beforeEach(() => {
++  mockNavigate.mockClear();
++  mockReplace.mockClear();
++});
++
++describe('legacy (tabs) routes', () => {
++  it('pop back to the existing shell showing the equivalent dashboard page', () => {
++    mockCanGoBack = true;
++    mockPathname = '/(tabs)/inbox';
++    mockParams = { hitlId: 'h1' };
++    render(<LegacyTabsRedirect />);
++    expect(screen.getByTestId('legacy-tabs-redirect')).toBeTruthy();
++    expect(mockNavigate).toHaveBeenCalledWith({ pathname: '/shell', params: { path: '/inbox#h1', n: expect.any(String) } });
++    expect(mockReplace).not.toHaveBeenCalled();
++  });
++
++  it('replace themselves with the shell when nothing is below them', () => {
++    mockCanGoBack = false;
++    mockPathname = '/(tabs)/tasks';
++    mockParams = {};
++    render(<LegacyTabsRedirect />);
++    expect(mockReplace).toHaveBeenCalledWith({ pathname: '/shell', params: { path: '/task-board', n: expect.any(String) } });
++    expect(mockNavigate).not.toHaveBeenCalled();
++  });
++});
