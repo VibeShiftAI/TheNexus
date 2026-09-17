@@ -69,11 +69,11 @@ function visibleAndFocused(): boolean {
  * True when THIS client is the operator's last active device (and should
  * therefore auto-play voice announcements).
  */
-export async function isThisClientActive(): Promise<boolean> {
+export async function isThisClientActive(signal?: AbortSignal): Promise<boolean> {
   try {
     const res = await fetch("/api/presence/active-client", {
       cache: "no-store",
-      signal: AbortSignal.timeout(1_500),
+      signal: signal ?? AbortSignal.timeout(1_500),
     });
     if (!res.ok) return visibleAndFocused();
     const data = (await res.json()) as { active?: { clientId?: string } | null };

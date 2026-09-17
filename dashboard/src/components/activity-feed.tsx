@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useArrivalPulse } from "@/hooks/use-arrival-pulse";
 import { useRouter } from "next/navigation";
 import { getActivity, getActivityEvents, Activity, ActivityEvent } from "@/lib/nexus";
 import { useLiveRefetch } from "@/components/live-board-state";
@@ -309,6 +311,8 @@ export function ActivityFeed() {
 
     const rows = useMemo(() => mergeActivityRows(activities, events, filter), [activities, events, filter]);
 
+    const arrivals = useArrivalPulse(mergeActivityRows(activities, events, "all").map(row => row.key), !loading);
+
     const tab = (value: Filter, label: string, count: number) => (
         <button
             key={value}
@@ -326,11 +330,11 @@ export function ActivityFeed() {
     );
 
     return (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-            <div className="mb-4 flex items-center justify-between gap-2">
+        <div className={`rounded-xl border border-slate-800 bg-slate-900/50 p-4 transition-[border-color,box-shadow] ${arrivals.size > 0 ? "module-live" : ""}`}>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <Clock size={18} className="text-cyan-400" />
-                    Recent Activity
+                    <Link href="/activity" className="hover:text-cyan-200" title="Open the full system activity report">Recent Activity</Link>
                 </h3>
                 <div className="flex items-center gap-1">
                     {tab('all', 'All', activities.length + events.length)}
@@ -344,12 +348,12 @@ export function ActivityFeed() {
                 <div className="text-slate-500 text-sm">No recent activity</div>
             ) : (
                 <div className="custom-scrollbar max-h-[400px] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
-                    {rows.map(row =>
-                        row.kind === 'commit' ? (
+                    {rows.map(row => <div key={row.key} className={arrivals.has(row.key) ? 'module-new rounded-lg' : ''}>
+                        {row.kind === 'commit' ? (
                             <CommitRow key={row.key} commit={row.commit} onOpenLogs={openLogs} />
                         ) : (
                             <EventRow key={row.key} event={row.event} onOpenTask={(taskId) => router.push(`/task/${taskId}`)} />
-                        ),
+                        )}</div>
                     )}
                 </div>
             )}

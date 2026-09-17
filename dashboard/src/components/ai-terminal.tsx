@@ -24,6 +24,8 @@ import { Bot, Loader2, MessageSquare, Paperclip, Download } from "lucide-react";
 import { useParams } from "next/navigation";
 
 import { getAuthHeader } from "@/lib/auth";
+import { noteChatSend } from "@/hooks/use-chat-activity";
+import { readPraxisEventStream } from "@/lib/read-praxis-event-stream";
 import { useCortex } from "@/components/cortex-provider";
 import { dispatchMorningKickoff } from "@/components/bridge/bridge-fx";
 import { useChatAudio } from "@/hooks/use-chat-audio";
@@ -61,47 +63,6 @@ function createClientMessageId(): string {
         return crypto.randomUUID();
     }
     return `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-async function readPraxisEventStream(
-    response: Response,
-    onDelta: (delta: string) => void,
-): Promise<any> {
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error('Streaming response did not include a readable body');
-
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let finalEvent: any = null;
-
-    const handleFrame = (frame: string) => {
-        const data = frame
-            .split(/\r?\n/)
-            .filter(line => line.startsWith('data:'))
-            .map(line => line.slice(5).trimStart())
-            .join('\n');
-        if (!data || data === '[DONE]') return;
-
-        const event = JSON.parse(data);
-        if (event.type === 'delta' && typeof event.delta === 'string') {
-            onDelta(event.delta);
-        } else if (event.type === 'final') {
-            finalEvent = event;
-        }
-    };
-
-    while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const frames = buffer.split(/\r?\n\r?\n/);
-        buffer = frames.pop() || '';
-        frames.forEach(handleFrame);
-    }
-
-    buffer += decoder.decode();
-    if (buffer.trim()) handleFrame(buffer);
-    return finalEvent;
 }
 
 export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function AITerminal({ isOpen = true, onClose, mode = 'modal', hideHeader = false }, ref) {
@@ -246,6 +207,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         };
 
         setMessages(prev => [...prev, userMessage]);
+        noteChatSend(clientMessageId,'sending',{conversationId,preview:messageContent});
         const filesToUpload = [...attachedFiles];
         clearAttachments(); // detaches the files and revokes their preview URLs
         const currentAudioBlob = audioBlob;
@@ -414,6 +376,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 // If the server included a user-facing response (e.g., Praxis proxy error),
                 // show it instead of a raw error so the user gets context
                 if (fallbackResponse) {
+                    noteChatSend(clientMessageId,'failed',{detail});
                     setMessages(prev => [...prev, {
                         role: 'assistant',
                         content: fallbackResponse,
@@ -426,6 +389,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
             const responseContentType = response.headers.get('content-type') || '';
             if (streamingAssistantId && responseContentType.includes('text/event-stream')) {
+                noteChatSend(clientMessageId,'working');
                 setMessages(prev => [...prev, {
                     id: streamingAssistantId,
                     role: 'assistant',
@@ -434,6 +398,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 }]);
 
                 const finalEvent = await readPraxisEventStream(response, (delta) => {
+                    noteChatSend(clientMessageId,'replying');
                     setMessages(prev => prev.map(message =>
                         message.id === streamingAssistantId
                             ? { ...message, content: `${message.content}${delta}` }
@@ -447,6 +412,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     content: finalEvent?.response || 'No response received',
                     timestamp: new Date(),
                     voiceData: finalEvent?.voiceData,
+                    ...(finalEvent?.suppressVoice === true ? { metadata: { suppressVoice: true } } : {}),
                 };
 
                 setMessages(prev => {
@@ -457,6 +423,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     return [...withoutStreaming, finalMessage];
                 });
                 if (finalEvent?.morningKickoff) dispatchMorningKickoff();
+                noteChatSend(clientMessageId,finalEvent.historySaved===false?'failed':'completed',{detail:finalEvent.historySaved===false?'Praxis replied, but Nexus could not save the reply to conversation history.':undefined});
                 return;
             }
 
@@ -468,6 +435,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 content: data.response || 'No response received',
                 timestamp: new Date(),
                 voiceData: data.voiceData, // Attach any voice responses
+                ...(data.suppressVoice === true ? { metadata: { suppressVoice: true } } : {}),
             };
 
             setMessages(prev => {
@@ -477,7 +445,9 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 return [...prev, assistantMessage];
             });
             if (data.morningKickoff) dispatchMorningKickoff();
+            noteChatSend(clientMessageId,data.historySaved===false?'failed':'completed',{detail:data.historySaved===false?'Praxis replied, but Nexus could not save the reply to conversation history.':undefined});
         } catch (error: any) {
+            noteChatSend(clientMessageId,'failed',{detail:error?.message || 'Reply could not be confirmed'});
             console.error('AI Chat error:', error);
             // Show a diagnostic error instead of the misleading "429 Rate Limit"
             const errMsg = error?.message || String(error);
@@ -505,7 +475,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
     // than a boxed widget.
     if (isInline) {
         return (
-            <div className="h-full flex flex-col overflow-hidden">
+            <div className="h-full min-h-0 flex flex-col overflow-hidden">
                 {renderTerminalContent()}
             </div>
         );
@@ -574,7 +544,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             {/* Messages - with drag-and-drop support */}
             <div
                 ref={messagesContainerRef}
-                className={`custom-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 relative ${isDragging ? 'bg-cyan-500/10' : ''}`}
+                className={`custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-4 relative ${isDragging ? 'bg-cyan-500/10' : ''}`}
                 onDragEnter={handleDragEnter}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}

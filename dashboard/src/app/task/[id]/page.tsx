@@ -41,6 +41,7 @@ import { TaskDispatchConsole } from "@/components/task-view/dispatch-console";
 import { QaReviewPanel } from "@/components/task-view/qa-review-panel";
 import { QaHoldPanel } from "@/components/task-view/qa-hold-panel";
 import { TaskSequencePanel } from "@/components/task-view/task-sequence";
+import { ReviewDocumentsPanel } from "@/components/task-view/review-documents-panel";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 const TASK_POLL_MS = 20_000;
@@ -346,6 +347,8 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 </section>
 
                 <TaskSequencePanel task={task} projectId={projectId} onChanged={load} />
+
+                <ReviewDocumentsPanel taskId={task.id} />
 
                 {walkthrough?.content && (
                   <section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">

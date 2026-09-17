@@ -10,6 +10,7 @@
  * Shapes: @praxis/contract entities/contact.ts (Member = Contact).
  */
 const express = require('express');
+const { MemberMemoryInputSchema } = require('@praxis/contract');
 
 function createContactsRouter({ db }) {
     const router = express.Router();
@@ -80,18 +81,94 @@ function createContactsRouter({ db }) {
      */
     router.post('/:id/log', async (req, res) => {
         try {
-            const { note, source, touch_contact } = req.body || {};
-            if (!note?.trim()) return res.status(400).json({ error: 'note required' });
+            const { note, source, touch_contact, source_ref, idempotency_key } = req.body || {};
+            if (typeof note !== 'string' || !note.trim()) return res.status(400).json({ error: 'note required' });
             const contact = await db.appendContactLog(req.params.id, {
                 note,
                 source,
+                source_ref,
+                idempotency_key,
                 touchContact: Boolean(touch_contact),
             });
             if (!contact) return res.status(404).json({ error: 'Member not found' });
             res.json({ success: true, contact, member: contact });
         } catch (error) {
             console.error('Error appending member log:', error);
-            res.status(500).json({ error: 'Failed to append log' });
+            res.status([400, 404, 409].includes(error.status) ? error.status : 500)
+                .json({ error: error.status ? error.message : 'Failed to append log' });
+        }
+    });
+
+    // Exact memory scope: omitted/empty project_id means general only.
+    router.get('/:id/memory', async (req, res) => {
+        try {
+            const allowed = new Set(['project_id', 'before_seq', 'limit', '_cb']);
+            if (Object.entries(req.query).some(([key, value]) => !allowed.has(key) || typeof value !== 'string')) {
+                return res.status(400).json({ error: 'Invalid memory query fields' });
+            }
+            const options = { project_id: req.query.project_id || null };
+            for (const key of ['before_seq', 'limit']) {
+                if (req.query[key] !== undefined) {
+                    if (!/^[1-9]\d*$/.test(req.query[key])) return res.status(400).json({ error: `${key} must be a positive integer` });
+                    options[key] = Number(req.query[key]);
+                }
+            }
+            res.json(await db.getMemberMemory(req.params.id, options));
+        } catch (error) {
+            res.status([400, 404, 409].includes(error.status) ? error.status : 500)
+                .json({ error: error.status ? error.message : 'Failed to fetch member memory' });
+        }
+    });
+
+    router.post('/:id/memory', async (req, res) => {
+        const parsed = MemberMemoryInputSchema.safeParse(req.body);
+        if (!parsed.success) return res.status(400).json({ error: parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ') });
+        try {
+            const event = await db.appendMemberMemory(req.params.id, parsed.data);
+            res.status(201).json({ event });
+        } catch (error) {
+            res.status([400, 404, 409].includes(error.status) ? error.status : 500)
+                .json({ error: error.status ? error.message : 'Failed to append member memory' });
+        }
+    });
+
+    // Profile proposal source/scope and all writes are independently validated in the store.
+    router.post('/:id/profile-proposals', async (req, res) => {
+        try {
+            res.status(201).json(await db.submitMemberProfileProposals(req.params.id, req.body));
+        } catch (error) {
+            const status = [400, 404, 409].includes(error.status) ? error.status : 500;
+            res.status(status).json({ error: status === 500 ? 'Failed to submit profile proposals' : error.message });
+        }
+    });
+
+    router.get('/:id/profile-proposals', async (req, res) => {
+        try {
+            const allowed = new Set(['project_id', 'status', 'before_created_seq', 'limit', '_cb']);
+            if (Object.entries(req.query).some(([key, value]) => !allowed.has(key) || typeof value !== 'string')) {
+                return res.status(400).json({ error: 'Invalid profile proposal query fields' });
+            }
+            const options = {};
+            for (const key of ['project_id', 'status']) if (req.query[key] !== undefined) options[key] = req.query[key];
+            for (const key of ['before_created_seq', 'limit']) {
+                if (req.query[key] !== undefined) {
+                    if (!/^[1-9]\d*$/.test(req.query[key])) return res.status(400).json({ error: `${key} must be a positive integer` });
+                    options[key] = Number(req.query[key]);
+                }
+            }
+            res.json(await db.listMemberProfileProposals(req.params.id, options));
+        } catch (error) {
+            const status = [400, 404, 409].includes(error.status) ? error.status : 500;
+            res.status(status).json({ error: status === 500 ? 'Failed to list profile proposals' : error.message });
+        }
+    });
+
+    router.post('/:id/profile-proposals/:proposalId/review', async (req, res) => {
+        try {
+            res.json(await db.reviewMemberProfileProposal(req.params.id, req.params.proposalId, req.body));
+        } catch (error) {
+            const status = [400, 404, 409].includes(error.status) ? error.status : 500;
+            res.status(status).json({ error: status === 500 ? 'Failed to review profile proposal' : error.message });
         }
     });
 

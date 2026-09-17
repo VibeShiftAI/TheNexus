@@ -53,7 +53,11 @@ export type PulseKind =
   | "hitl-created"
   | "hitl-resolved"
   | "council-verdict"
-  | "trace";
+  | "trace"
+  | "memory-access"
+  | "vault-write"
+  | "dispatch"
+  | "qa";
 
 export interface CorePulse {
   id: string;

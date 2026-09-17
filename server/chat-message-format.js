@@ -78,6 +78,7 @@ function buildPraxisAssistantMetadata(data = {}) {
         model: 'praxis-agent',
         provider: 'Praxis',
         hasVoice: normalizedVoiceData.length > 0,
+        ...(data.suppressVoice === true ? { suppressVoice: true } : {}),
         ...(normalizedVoiceData.length > 0 ? { voiceData: normalizedVoiceData } : {}),
         ...(attachments.length > 0 ? { attachments } : {}),
     };
@@ -94,6 +95,7 @@ function formatStoredChatMessage(message) {
     return {
         ...message,
         metadata,
+        ...(metadata.suppressVoice === true ? { suppressVoice: true } : {}),
         ...(attachments.length > 0 ? { attachments } : {}),
         ...(voiceData.length > 0 ? { voiceData } : {}),
     };

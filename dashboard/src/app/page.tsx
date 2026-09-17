@@ -9,8 +9,8 @@ import { NavSidebar } from "@/components/nav-sidebar";
 import { ScheduleTimeline } from "@/components/schedule-timeline";
 import { NotesButton } from "@/components/notes-console";
 import { HitlInbox } from "@/components/hitl-inbox";
+import { useLiveRefetch } from "@/components/live-board-state";
 import { ActivityFeed } from "@/components/activity-feed";
-import { ActivityMonitor } from "@/components/bridge/activity-monitor";
 import { PraxisCore } from "@/components/bridge/praxis-core";
 import { DispatchStation } from "@/components/bridge/dispatch-station";
 import { KnowledgeStation } from "@/components/bridge/knowledge-station";
@@ -20,6 +20,7 @@ import { AmbientMode } from "@/components/bridge/ambient-mode";
 import { StatusStrip } from "@/components/bridge/status-strip";
 import { BridgeFX, useBridgeCondition, conditionGlowClass } from "@/components/bridge/bridge-fx";
 import { ShellTabs } from "@/components/shell-tabs";
+import { VoiceLauncher } from "@/components/voice-launcher";
 import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-react";
 
 export default function Home() {
@@ -63,6 +64,11 @@ export default function Home() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const refreshProjectPulse = useCallback(async () => {
+    try { setPulses(await getProjectsPulse()); } catch { /* Keep history; arrival glows expire independently. */ }
+  }, []);
+  useLiveRefetch(["activity", "task"], refreshProjectPulse, { immediate: false, fallbackPollMs: 60_000 });
 
   const handleNewProjectSuccess = () => {
     loadData();
@@ -117,6 +123,7 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <VoiceLauncher />
             <AmbientMode />
             <NotesButton />
             <button
@@ -139,7 +146,7 @@ export default function Home() {
       </header>
 
       {/* Main Workspace */}
-      <div className="mx-auto w-full max-w-[2400px] p-6 flex-1 flex flex-col min-h-0">
+      <div className="mx-auto w-full max-w-[2400px] p-3 sm:p-6 flex-1 flex flex-col min-h-0">
         {error && (
           <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-400 mb-6 flex items-start gap-2.5 text-left">
             <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -163,7 +170,6 @@ export default function Home() {
               <PraxisCore />
             </div>
 
-            <ActivityMonitor />
 
             {/* Stations, 2-up: Dispatch and Knowledge sit directly under the
                 core. Rows stretch so paired stations stay flush — Dispatch and

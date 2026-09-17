@@ -14,6 +14,7 @@ import { Bot, User, Loader2, X, XCircle, Maximize2, Square, ChevronRight, Volume
 
 import { MarkdownMessage, TaskLinkedText } from "@/components/chat/markdown-message";
 import { fullReportAudioForMessage } from "@/lib/chat-audio";
+import { bindMediaSpeech } from "@/lib/speech-ownership";
 import { voiceKeyForMessage } from "@/hooks/use-chat-audio";
 import type { CritiqueFeedbackState } from "@/components/chat/plan-review-modal";
 import type {
@@ -513,8 +514,10 @@ export function MessageRow({
                                 src={`data:${v.mimeType};base64,${v.audio}`}
                                 controls
                                 ref={(el) => {
-                                    if (el) voiceAudioRefs.current.set(voiceKey, el);
-                                    else voiceAudioRefs.current.delete(voiceKey);
+                                    if (!el) return;
+                                    voiceAudioRefs.current.set(voiceKey, el);
+                                    const unbind = bindMediaSpeech(el);
+                                    return () => { unbind(); voiceAudioRefs.current.delete(voiceKey); };
                                 }}
                                 onPlay={() => {
                                     // One voice at a time — a manual play preempts everything else,

@@ -14,29 +14,12 @@
 
 import Link from "next/link";
 import { Cpu, ListOrdered, ShieldAlert } from "lucide-react";
+import { CapacityGate } from "./capacity-gate";
 import {
   cliLaneSummary,
   formatDuration,
   type CliLaneView,
 } from "@/lib/cli-lane";
-
-function GateReadouts({ view }: { view: CliLaneView }) {
-  const { gate } = view;
-  if (gate.readouts.length === 0) return null;
-  return (
-    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-      {gate.readouts.map((r) => (
-        <span
-          key={r.label}
-          className="rounded-md border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-[10px] tabular-nums text-slate-400"
-          title={r.title}
-        >
-          <span className="text-slate-600">{r.label}</span> {r.value}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 export function CliLanePanel({ view }: { view: CliLaneView }) {
   if (view.unavailable) {
@@ -161,20 +144,8 @@ export function CliLanePanel({ view }: { view: CliLaneView }) {
         </div>
       )}
 
-      {/* The gate's own verdict — rendered verbatim, never re-derived. */}
-      {gate.reason && (
-        <div
-          className={`rounded-md border px-2 py-1 text-[10px] leading-4 ${
-            gate.saturated
-              ? "border-amber-500/30 bg-amber-500/5 text-amber-200/90"
-              : "border-slate-700 bg-slate-950 text-slate-400"
-          }`}
-        >
-          <span className="uppercase tracking-wide text-slate-600">gate</span>{" "}
-          <span title={gate.reason}>{gate.reason}</span>
-          <GateReadouts view={view} />
-        </div>
-      )}
+      {/* Compact capacity readout; the exact runtime verdict is one click deep. */}
+      <CapacityGate gate={gate} />
 
       {view.stalledCount > 0 && (
         <div className="flex items-center gap-1 text-[10px] text-rose-300">

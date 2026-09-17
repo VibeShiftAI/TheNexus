@@ -11,7 +11,14 @@ const Database = require('better-sqlite3');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
-const { normalizeTaskBoardStatus, isTaskDone } = require('@praxis/contract');
+const { normalizeTaskBoardStatus, isTaskDone, MemberMemoryInputSchema } = require('@praxis/contract');
+const { prepareProjectPatch, invalid: invalidProject, timestamp: projectTimestamp } = require('./project-data');
+const { applyCheckpointTransition, applyCheckpointReopen } = require('./project-checkpoints');
+const { initializeMemberMemory, createMemberMemoryLedger } = require('./member-memory');
+const { initializeMemberProfileProposals, createMemberProfileProposals } = require('./member-profile-proposals');
+const { captureMemberDirectoryChange } = require('./member-directory-memory');
+const { migrateUsageStats } = require('./usage-stats-migration');
+const { initializeDocumentReviews, createDocumentReviewStore } = require('./document-reviews');
 
 /**
  * Write-side backstop for the canonical task-status enum (@praxis/contract
@@ -41,6 +48,9 @@ const DB_PATH = process.env.NEXUS_DB_PATH
     || path.resolve(__dirname, '../nexus.db');
 
 let db;
+let memberMemory;
+let memberProfileProposals;
+let documentReviews;
 try {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
@@ -63,7 +73,13 @@ try {
 
     runModelControlMigrations(db);
     runContactsMigrations(db);
+    initializeMemberMemory(db);
+    memberMemory = createMemberMemoryLedger(db);
+    initializeMemberProfileProposals(db);
+    memberProfileProposals = createMemberProfileProposals(db, memberMemory);
     runStakeholderMigrations(db);
+    initializeDocumentReviews(db);
+    documentReviews = createDocumentReviewStore(db);
 
     // Canonical-status sweep (2026-07-05 unification): idempotent, runs every
     // boot. Writers normalize at createTask/updateTask, but a process still on
@@ -82,20 +98,10 @@ try {
         console.warn('[Database] Canonical-status sweep skipped:', err.message);
     }
 
-    // Migration: add 'source' column to usage_stats for per-caller tracking
-    try {
-        const cols = db.prepare("PRAGMA table_info(usage_stats)").all();
-        if (cols.length > 0 && !cols.find(c => c.name === 'source')) {
-            db.exec("ALTER TABLE usage_stats ADD COLUMN source TEXT DEFAULT 'unknown'");
-            // Drop old unique constraint and create new one including source
-            // SQLite can't drop constraints, so we need to recreate the index
-            try { db.exec("DROP INDEX IF EXISTS idx_usage_stats_date_model_source"); } catch {}
-            db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_usage_stats_date_model_source ON usage_stats(date, model, source)");
-            console.log('[Database] Migration: added source column to usage_stats');
-        }
-    } catch (err) {
-        console.warn('[Database] usage_stats source migration skipped:', err.message);
-    }
+    // A source index cannot override SQLite's old date/model table constraint.
+    // Fail database initialization if the transaction cannot establish the new
+    // identity; accepting writes against the legacy schema loses usage records.
+    migrateUsageStats(db);
 
     // Migration: project/task archival (see db/migrations/027_project_archival.sql)
     // projects.status already supports 'archived' (migration 024). Here we add the
@@ -161,6 +167,11 @@ try {
             if (!pdCols.find(c => c.name === 'end_state_criteria')) {
                 db.exec("ALTER TABLE projects ADD COLUMN end_state_criteria TEXT DEFAULT '[]'");
                 console.log('[Database] Migration: added end_state_criteria column to projects');
+            }
+            // `checkpoints` (2026-09-15): ordered checkpoint plan under the long-term end_state
+            // (docs/project-checkpoints.md). NULL = no plan, which every existing project keeps.
+            for (const column of ['endpoint', 'end_state_assessment', 'checkpoints']) {
+                if (!pdCols.some(c => c.name === column)) db.exec(`ALTER TABLE projects ADD COLUMN ${column} TEXT`);
             }
             if (!pdCols.find(c => c.name === 'end_state_history')) {
                 db.exec("ALTER TABLE projects ADD COLUMN end_state_history TEXT DEFAULT '[]'");
@@ -279,7 +290,7 @@ const JSON_COLS = new Set([
     'antigravity_payload', 'dependencies',
     'suspended_context', 'resume_action',
     'tags',
-    'needs', 'end_state_history', 'end_state_criteria',
+    'needs', 'end_state_history', 'end_state_criteria', 'endpoint', 'end_state_assessment', 'checkpoints',
     'preferences', 'expertise', 'interests', 'claims', 'interaction_log',
     // Stakeholder governance (2026-08-22): per-project comms controls, the
     // branded report template, and calendar attendee lists.
@@ -790,56 +801,118 @@ async function getProjectByPath(projectPath) {
 async function upsertProject(project) {
     if (!db) return null;
     try {
-        if (!project.id) project.id = uuid();
-        project.updated_at = now();
-        if (!project.created_at) project.created_at = now();
-        const { sql, values } = buildInsert('projects', project, 'name');
-        db.prepare(sql).run(...values);
-        return deserRow(db.prepare('SELECT * FROM projects WHERE name = ?').get(project.name));
+        return db.transaction(() => {
+            const existing = deserRow(db.prepare('SELECT * FROM projects WHERE id = ? OR name = ?').get(project.id || '', project.name));
+            if (existing) return writeProject(existing.id, project);
+            const input = { ...project, id: project.id || uuid(), created_at: project.created_at || now() };
+            const prepared = prepareProjectPatch({}, input);
+            const { sql, values } = buildInsert('projects', prepared, 'name');
+            db.prepare(sql).run(...values);
+            return deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(input.id));
+        })();
     } catch (err) {
+        if (err.status) throw err;
         console.error('[Database] Error upserting project:', err.message);
         return null;
     }
 }
 
+function writeProject(projectId, updates, options) {
+    const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
+    if (!current) return null;
+    const patch = prepareProjectPatch(current, updates, options);
+    // Identity is stable even when a scanner upserts the same project by name.
+    delete patch.id;
+    const { sql, values } = buildUpdate('projects', patch, 'id', projectId);
+    db.prepare(sql).run(...values);
+    return deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
+}
+
 async function updateProject(projectId, updates) {
     if (!db) return null;
     try {
-        const patch = { ...updates };
-        // end_state_source / end_state_reason are revision metadata, not
-        // columns — consume them here so buildUpdate never sees them.
-        const revisionSource = patch.end_state_source;
-        const revisionReason = patch.end_state_reason;
-        delete patch.end_state_source;
-        delete patch.end_state_reason;
-
-        // Evolving end states: every end_state change appends a revision to
-        // end_state_history (newest entry mirrors the live value), so the
-        // goal can move without losing where it came from. Done here — not in
-        // the route — so the dashboard, Praxis, and the MCP all get
-        // versioning for free.
-        if (Object.prototype.hasOwnProperty.call(patch, 'end_state')) {
-            const current = db.prepare('SELECT end_state, end_state_history FROM projects WHERE id = ?').get(projectId);
-            if (current && (current.end_state || '') !== (patch.end_state || '')) {
-                let history = [];
-                try {
-                    const parsed = JSON.parse(current.end_state_history || '[]');
-                    if (Array.isArray(parsed)) history = parsed;
-                } catch { /* corrupted history — restart the log rather than fail the update */ }
-                const revision = { end_state: patch.end_state || '', at: now() };
-                if (revisionSource) revision.source = revisionSource;
-                if (revisionReason) revision.reason = revisionReason;
-                history.push(revision);
-                patch.end_state_history = history;
-                patch.end_state_updated_at = revision.at;
-            }
-        }
-
-        const { sql, values } = buildUpdate('projects', patch, 'id', projectId);
-        db.prepare(sql).run(...values);
-        return deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
+        return db.transaction(() => writeProject(projectId, updates))();
     } catch (err) {
+        if (err.status) throw err;
         console.error('[Database] Error updating project:', err.message);
+        return null;
+    }
+}
+
+/** A single transaction owns the read/merge/write, including saved-answer guards. */
+function updateProjectNeed(projectId, needId, updates) {
+    if (!db) return null;
+    try {
+        return db.transaction(() => {
+            const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ? OR name = ?').get(projectId, projectId));
+            if (!current) return null;
+            if (!Array.isArray(current.needs ?? [])) throw new Error('Invalid stored needs array');
+            const needs = [...(current.needs || [])];
+            const { expected, ...patch } = updates;
+            if (needId) {
+                const index = needs.findIndex(need => need.id === needId);
+                if (index < 0) throw invalidProject('Need not found', 404);
+                if (expected && ['status', 'notes', 'description', 'kind'].some(key =>
+                    (needs[index][key] ?? '') !== (expected[key] ?? '')
+                )) return { conflict: true };
+                needs[index] = { ...needs[index], ...patch, id: needId };
+            } else {
+                needs.push({ ...patch, id: crypto.randomUUID().slice(0, 8) });
+            }
+            const updated = writeProject(current.id, { needs }, { needMutation: { source: patch.source } });
+            return { ...updated, success: true, need: needId ? updated.needs.find(need => need.id === needId) : updated.needs.at(-1) };
+        }).immediate();
+    } catch (err) {
+        if (err.status) throw err;
+        console.error('[Database] Error updating project need:', err.message);
+        return null;
+    }
+}
+
+/**
+ * The single authoritative checkpoint advancement (docs/project-checkpoints.md).
+ * Read, verdict and write happen in one BEGIN IMMEDIATE transaction, so two
+ * evaluators racing on the same evidence cannot both advance: the first bumps
+ * the plan revision and the second fails its expected_checkpoints_revision guard.
+ * Returns `{ project, transition }`, or null when the project does not exist.
+ */
+function transitionProjectCheckpoint(projectId, input) {
+    if (!db) return null;
+    try {
+        return db.transaction(() => {
+            const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ? OR name = ?').get(projectId, projectId));
+            if (!current) return null;
+            const at = projectTimestamp(current.updated_at);
+            const { plan, transition, changed } = applyCheckpointTransition(current, input, at);
+            if (changed) {
+                const { sql, values } = buildUpdate('projects', { checkpoints: plan, end_state_assessment: null, updated_at: at }, 'id', current.id);
+                db.prepare(sql).run(...values);
+            }
+            return { project: deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(current.id)), transition };
+        }).immediate();
+    } catch (err) {
+        if (err.status) throw err;
+        console.error('[Database] Error transitioning project checkpoint:', err.message);
+        return null;
+    }
+}
+
+/** Operator-initiated reopen of a completed checkpoint; the completion stays in its history. */
+function reopenProjectCheckpoint(projectId, checkpointId, input = {}) {
+    if (!db) return null;
+    try {
+        return db.transaction(() => {
+            const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ? OR name = ?').get(projectId, projectId));
+            if (!current) return null;
+            const at = projectTimestamp(current.updated_at);
+            const { plan, current_checkpoint_id } = applyCheckpointReopen(current, checkpointId, input, at);
+            const { sql, values } = buildUpdate('projects', { checkpoints: plan, end_state_assessment: null, updated_at: at }, 'id', current.id);
+            db.prepare(sql).run(...values);
+            return { project: deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(current.id)), current_checkpoint_id };
+        }).immediate();
+    } catch (err) {
+        if (err.status) throw err;
+        console.error('[Database] Error reopening project checkpoint:', err.message);
         return null;
     }
 }
@@ -1278,7 +1351,10 @@ async function getBoardState(projectId) {
             tasks: tasksByProject.get(project.id) || [],
             task_summary: {
                 total: (tasksByProject.get(project.id) || []).length,
-                unblocked: (tasksByProject.get(project.id) || []).filter(t => t.is_unblocked && t.status !== 'complete' && t.status !== 'completed' && t.status !== 'done' && t.status !== 'suspended').length,
+                unblocked: (tasksByProject.get(project.id) || []).filter(t =>
+                    t.is_unblocked && !t.archived_at &&
+                    ['idea', 'planning', 'todo'].includes(normalizeTaskBoardStatus(t.status))
+                ).length,
                 complete: (tasksByProject.get(project.id) || []).filter(t => t.status === 'complete' || t.status === 'completed' || t.status === 'done').length,
                 suspended: (tasksByProject.get(project.id) || []).filter(t => t.status === 'suspended').length,
             }
@@ -1510,22 +1586,16 @@ async function recordUsage(model, inputTokens, outputTokens, source = 'unknown')
     if (!db) return;
     try {
         const today = new Date().toISOString().split('T')[0];
-        const existing = db.prepare('SELECT * FROM usage_stats WHERE date = ? AND model = ? AND source = ?').get(today, model, source);
-        if (existing) {
-            db.prepare(`
-                UPDATE usage_stats SET
-                    input_tokens = input_tokens + ?,
-                    output_tokens = output_tokens + ?,
-                    total_tokens = total_tokens + ?,
-                    request_count = request_count + 1
-                WHERE date = ? AND model = ? AND source = ?
-            `).run(inputTokens, outputTokens, inputTokens + outputTokens, today, model, source);
-        } else {
-            db.prepare(`
-                INSERT INTO usage_stats (id, date, model, input_tokens, output_tokens, total_tokens, request_count, source)
-                VALUES (?, ?, ?, ?, ?, ?, 1, ?)
-            `).run(uuid(), today, model, inputTokens, outputTokens, inputTokens + outputTokens, source);
-        }
+        db.prepare(`
+            INSERT INTO usage_stats
+                (id, date, model, source, input_tokens, output_tokens, total_tokens, request_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            ON CONFLICT(date, model, source) DO UPDATE SET
+                input_tokens = usage_stats.input_tokens + excluded.input_tokens,
+                output_tokens = usage_stats.output_tokens + excluded.output_tokens,
+                total_tokens = usage_stats.total_tokens + excluded.total_tokens,
+                request_count = usage_stats.request_count + 1
+        `).run(uuid(), today, model, source ?? 'unknown', inputTokens, outputTokens, inputTokens + outputTokens);
     } catch (err) {
         console.error('[Database] Error recording usage:', err.message);
     }
@@ -2412,33 +2482,38 @@ function mintSeatId(name) {
 async function createContact({ name, email, phone, relationship, birthday, notes, preferences, expertise, interests, claims, source, kind, seat_id, status }) {
     if (!db) return null;
     try {
-        const memberKind = kind === 'ai' ? 'ai' : 'human';
-        const contact = {
-            id: crypto.randomUUID(),
-            name: String(name).trim(),
-            kind: memberKind,
-            // AI members carry their council seat id ("cli:codex"); humans get
-            // a minted "human:<slug>" unless the caller supplied one.
-            seat_id: seat_id || (memberKind === 'human' ? mintSeatId(name) : null),
-            email: email ? String(email).trim() : null,
-            phone: phone || null,
-            relationship: relationship || null,
-            birthday: birthday || null,
-            notes: notes || null,
-            preferences: JSON.stringify(preferences || {}),
-            expertise: JSON.stringify(expertise || []),
-            interests: JSON.stringify(interests || []),
-            claims: JSON.stringify(claims || []),
-            interaction_log: JSON.stringify([]),
-            status: status === 'dormant' ? 'dormant' : 'active',
-            source: source || 'operator',
-            last_contact_at: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
-        const { sql, values } = buildInsert('contacts', contact);
-        db.prepare(sql).run(...values);
-        return getContact(contact.id);
+        const id = db.transaction(() => {
+            const memberKind = kind === 'ai' ? 'ai' : 'human';
+            const contact = {
+                id: crypto.randomUUID(),
+                name: String(name).trim(),
+                kind: memberKind,
+                // AI members carry their council seat id ("cli:codex"); humans get
+                // a minted "human:<slug>" unless the caller supplied one.
+                seat_id: seat_id || (memberKind === 'human' ? mintSeatId(name) : null),
+                email: email ? String(email).trim() : null,
+                phone: phone || null,
+                relationship: relationship || null,
+                birthday: birthday || null,
+                notes: notes || null,
+                preferences: JSON.stringify(preferences || {}),
+                expertise: JSON.stringify(expertise || []),
+                interests: JSON.stringify(interests || []),
+                claims: JSON.stringify(claims || []),
+                interaction_log: JSON.stringify([]),
+                status: status === 'dormant' ? 'dormant' : 'active',
+                source: source || 'operator',
+                last_contact_at: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+            const { sql, values } = buildInsert('contacts', contact);
+            db.prepare(sql).run(...values);
+            captureMemberDirectoryChange(memberMemory, null,
+                deserRow(db.prepare('SELECT * FROM contacts WHERE id = ?').get(contact.id)));
+            return contact.id;
+        }).immediate();
+        return getContact(id);
     } catch (err) {
         console.error('[Database] Error creating contact:', err.message);
         return null;
@@ -2451,28 +2526,57 @@ async function findContactBySeat(seatId) {
     return row ? deserRow(row) : null;
 }
 
-/** Append a Praxis interaction note ({ note, source?, at? }); optionally stamp last_contact_at. */
-async function appendContactLog(id, { note, source, at, touchContact = false } = {}) {
+/** Full durable observation + bounded member-facing compatibility log in one transaction. */
+async function appendContactLog(id, { note, source, at, source_ref, idempotency_key, touchContact = false } = {}) {
     if (!db || !note) return null;
-    try {
-        const row = db.prepare('SELECT interaction_log FROM contacts WHERE id = ?').get(id);
-        if (!row) return null;
-        let log = [];
-        try {
-            log = JSON.parse(row.interaction_log || '[]');
-        } catch { /* rebuild from empty */ }
-        log.push({ at: at || new Date().toISOString(), note: String(note).slice(0, 2000), source: source || 'praxis' });
-        // Keep the log bounded — the newest 200 entries tell the story.
-        if (log.length > 200) log = log.slice(-200);
-        const now = new Date().toISOString();
-        db.prepare(
-            `UPDATE contacts SET interaction_log = ?, updated_at = ?${touchContact ? ', last_contact_at = ?' : ''} WHERE id = ?`
-        ).run(...(touchContact ? [JSON.stringify(log), now, now, id] : [JSON.stringify(log), now, id]));
-        return getContact(id);
-    } catch (err) {
-        console.error('[Database] Error appending contact log:', err.message);
-        return null;
+    if (!db.prepare('SELECT 1 FROM contacts WHERE id = ?').get(id)) return null;
+    const input = { kind: 'observation', text: note, evidence: 'observed', source: source || 'praxis' };
+    if (source_ref !== undefined) input.source_ref = source_ref;
+    if (idempotency_key !== undefined) input.idempotency_key = idempotency_key;
+    if (at !== undefined) {
+        const parsed = MemberMemoryInputSchema.safeParse({ ...input, occurred_at: at });
+        if (parsed.success) input.occurred_at = parsed.data.occurred_at;
     }
+    memberMemory.append(id, input, {
+        ...(at !== undefined ? { legacyAt: at } : {}),
+        onAppend(event) {
+            const row = db.prepare('SELECT interaction_log FROM contacts WHERE id = ?').get(id);
+            let log = [];
+            try { log = JSON.parse(row.interaction_log || '[]'); } catch { /* rebuild from empty */ }
+            if (!Array.isArray(log)) log = [];
+            log.push({ at: at || event.recorded_at, note: event.text.slice(0, 2000), source: event.source });
+            log = log.slice(-200);
+            const now = event.recorded_at;
+            db.prepare(`UPDATE contacts SET interaction_log = ?, updated_at = ?${touchContact ? ', last_contact_at = ?' : ''} WHERE id = ?`)
+                .run(...(touchContact ? [JSON.stringify(log), now, now, id] : [JSON.stringify(log), now, id]));
+        },
+    });
+    return getContact(id);
+}
+
+async function appendMemberMemory(id, input) {
+    if (!memberMemory) throw new Error('Member memory database unavailable');
+    return memberMemory.append(id, input);
+}
+
+async function getMemberMemory(id, options) {
+    if (!memberMemory) throw new Error('Member memory database unavailable');
+    return memberMemory.snapshot(id, options);
+}
+
+async function submitMemberProfileProposals(id, input) {
+    if (!memberProfileProposals) throw new Error('Member profile proposals database unavailable');
+    return memberProfileProposals.submit(id, input);
+}
+
+async function listMemberProfileProposals(id, options) {
+    if (!memberProfileProposals) throw new Error('Member profile proposals database unavailable');
+    return memberProfileProposals.list(id, options);
+}
+
+async function reviewMemberProfileProposal(id, proposalId, input) {
+    if (!memberProfileProposals) throw new Error('Member profile proposals database unavailable');
+    return memberProfileProposals.review(id, proposalId, input);
 }
 
 async function updateContact(id, updates) {
@@ -2490,8 +2594,17 @@ async function updateContact(id, updates) {
     sets.push(`updated_at = ?`);
     values.push(new Date().toISOString());
     try {
-        const result = db.prepare(`UPDATE contacts SET ${sets.join(', ')} WHERE id = ?`).run(...values, id);
-        return result.changes > 0 ? getContact(id) : null;
+        const changed = db.transaction(() => {
+            const before = deserRow(db.prepare('SELECT * FROM contacts WHERE id = ?').get(id));
+            if (!before) return false;
+            const result = db.prepare(`UPDATE contacts SET ${sets.join(', ')} WHERE id = ?`).run(...values, id);
+            if (result.changes > 0) {
+                captureMemberDirectoryChange(memberMemory, before,
+                    deserRow(db.prepare('SELECT * FROM contacts WHERE id = ?').get(id)));
+            }
+            return result.changes > 0;
+        }).immediate();
+        return changed ? getContact(id) : null;
     } catch (err) {
         console.error('[Database] Error updating contact:', err.message);
         return null;
@@ -2501,8 +2614,10 @@ async function updateContact(id, updates) {
 async function deleteContact(id) {
     if (!db) return false;
     try {
-        db.prepare('DELETE FROM project_contacts WHERE contact_id = ?').run(id);
-        return db.prepare('DELETE FROM contacts WHERE id = ?').run(id).changes > 0;
+        return db.transaction(() => {
+            db.prepare('DELETE FROM project_contacts WHERE contact_id = ?').run(id);
+            return db.prepare('DELETE FROM contacts WHERE id = ?').run(id).changes > 0;
+        })();
     } catch (err) {
         console.error('[Database] Error deleting contact:', err.message);
         return false;
@@ -3152,6 +3267,9 @@ module.exports = {
     getProjectByPath,
     upsertProject,
     updateProject,
+    updateProjectNeed,
+    transitionProjectCheckpoint,
+    reopenProjectCheckpoint,
     deleteProject,
     archiveProject,
     unarchiveProject,
@@ -3228,6 +3346,9 @@ module.exports = {
     // Dual-Payload Task Operations (Phase 1: Executive Planning)
     batchCreateTasks,
     getBoardState,
+    getBoardSummary: options => require('./board-summary').getBoardSummary(db, options),
+    // Markdown document reviews (db/document-reviews.js); undefined when the DB failed to open
+    documentReviews,
     reorderTasks,
     // Notes (Agent Scratchpad)
     getNotes,
@@ -3244,6 +3365,11 @@ module.exports = {
     createContact,
     updateContact,
     appendContactLog,
+    appendMemberMemory,
+    getMemberMemory,
+    submitMemberProfileProposals,
+    listMemberProfileProposals,
+    reviewMemberProfileProposal,
     deleteContact,
     listProjectContacts,
     listProjectDecisionMakers,

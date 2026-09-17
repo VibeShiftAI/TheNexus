@@ -8,6 +8,8 @@
  */
 "use client";
 
+import { useBridgeActivity } from "@/components/bridge/activity-provider";
+import type { CorePulse } from "@/lib/core-state";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveBoardState, useLiveRefetch } from "@/components/live-board-state";
 import { useCrewActivity } from "./use-crew-activity";
@@ -21,6 +23,7 @@ const COUNCIL_POLL_MS = 30_000;
 export function useCoreState(): CoreState & { connected: boolean } {
   const { presence, recentEvents, connected } = useLiveBoardState();
   const { crew } = useCrewActivity();
+  const bridge = useBridgeActivity();
   const [councilSeed, setCouncilSeed] = useState<CouncilSeed | null>(null);
   // Re-derive periodically so time-based transitions (council staleness,
   // pulse expiry in the renderer's static frame) don't wait for an event.
@@ -78,18 +81,19 @@ export function useCoreState(): CoreState & { connected: boolean } {
   }, [load]);
 
   return useMemo(
-    () => ({
-      ...deriveCoreState({
+    () => {
+      const state = deriveCoreState({
         presence,
         connected,
         recentEvents,
         crew,
         councilSeed,
         now: Date.now(),
-      }),
-      connected,
-    }),
+      });
+      const extra: CorePulse[] = bridge.items.filter(item => ["memory", "vault", "dispatch", "qa"].includes(item.channel) && bridge.channels.find(c => c.id === item.channel)?.available && bridge.now - Date.parse(item.at) >= 0 && bridge.now - Date.parse(item.at) < 12000).slice(0, 8).map(item => ({id:item.id, at:Date.parse(item.at), kind:item.status === "failed" ? "task-fail" : item.channel === "memory" ? "memory-access" : item.channel === "vault" ? "vault-write" : item.channel === "qa" ? "qa" : "dispatch"}));
+      return { ...state, pulses:[...state.pulses,...extra], intensity:Math.min(1,state.intensity+(extra.length ? 0.2 : 0)), connected };
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tick forces time-based re-derivation
-    [presence, connected, recentEvents, crew, councilSeed, tick],
+    [presence, connected, recentEvents, crew, councilSeed, tick, bridge],
   );
 }

@@ -1,10 +1,14 @@
 // Minimal, controllable Next navigation context for component lifecycle tests.
 import { useSyncExternalStore } from 'react';
 let pathname = '/';
+let params = {};
 const listeners = new Set();
 export function setPathname(next) { pathname = next; for (const listener of listeners) listener(); }
 const router = { push: setPathname, replace: setPathname, back() {}, prefetch() {} };
-export function useParams() { return {}; }
+export function setParams(next) { params = next; for (const listener of listeners) listener(); }
+export function useParams() {
+    return useSyncExternalStore(listener => { listeners.add(listener); return () => listeners.delete(listener); }, () => params, () => params);
+}
 export function useRouter() { return router; }
 export function usePathname() {
     return useSyncExternalStore(listener => { listeners.add(listener); return () => listeners.delete(listener); }, () => pathname, () => '/');

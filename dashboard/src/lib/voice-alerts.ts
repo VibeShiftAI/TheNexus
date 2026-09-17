@@ -18,17 +18,23 @@ export function readAlertMode(): AlertMode {
 }
 export function eligibleAlert(e: StreamEvent, mode: AlertMode): boolean {
   if (mode === 'off') return false;
+  // Review worker lifecycle is presence telemetry, not the parent task verdict.
+  if ('taskId' in e && e.taskId?.startsWith('qa--')) return false;
+  if (e.type === 'task.completed' && e.result?.summary?.trimStart().startsWith('⏸️')) return false;
   if (e.type === 'hitl.created') return !ROUTINE.has(String(e.request?.metadata?.kind));
   return e.type === 'task.failed' || (mode === 'conversational' && (e.type === 'task.completed' || e.type === 'task.blocked'));
 }
-export function alertLine(e: StreamEvent, titleFor: (id: string) => string | undefined = () => undefined): string {
-  const title = 'taskId' in e && e.taskId ? titleFor(e.taskId) || `Task ${e.taskId}` : 'A task';
+export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | undefined = () => undefined): Record<string, unknown> {
+  const taskId = e.type === 'hitl.created' ? e.request?.taskId : 'taskId' in e ? e.taskId : undefined;
+  const candidate = taskId ? titleFor(taskId)?.trim() : undefined;
+  const title = candidate && candidate !== taskId && !/qa--|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i.test(candidate) ? candidate : undefined;
+  const task = taskId ? { taskId, ...(title ? { title } : {}) } : {};
   switch (e.type) {
-    case 'task.failed': return `Robert, ${title} failed. ${e.error || 'The task board has the details.'}`;
-    case 'task.completed': return `${title} is complete. Ready when you are to take a look.`;
-    case 'task.blocked': return `${title} is blocked. ${e.reason}`;
-    case 'hitl.created': return `Robert, I need your attention. ${e.request?.question || 'An approval is waiting.'}`;
-    default: return '';
+    case 'task.failed': return { ...task, status: 'failed', reason: e.error };
+    case 'task.completed': return { ...task, status: 'execution_finished', outcome: e.result?.outcome, summary: e.result?.summary, verification: 'not established by this event' };
+    case 'task.blocked': return { ...task, status: 'blocked', reason: e.reason };
+    case 'hitl.created': return { ...task, status: 'attention', question: e.request?.question };
+    default: return task;
   }
 }
 export function alertDelay(now: number, lastAt: number): number {
@@ -55,7 +61,7 @@ export class VoiceAlerts {
   private unsubscribe: () => void;
   constructor(private options: {
     mountedAt: number; announce: (event: StreamEvent) => Promise<void> | null;
-    now?: () => number; active?: () => Promise<boolean>;
+    now?: () => number; active?: (signal?: AbortSignal) => Promise<boolean>;
     setTimer?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout> | number;
     clearTimer?: (timer: ReturnType<typeof setTimeout> | number) => void;
   }) { this.unsubscribe = speechOwner.subscribe(() => this.wake()); }
@@ -65,6 +71,26 @@ export class VoiceAlerts {
     this.wake();
   }
   dispose() { this.disposed = true; this.clear(); this.unsubscribe(); }
+  /** Recheck playback after prose generation; this event already owns its ID and rate reservation. */
+  async canPlay(event: StreamEvent, signal: AbortSignal, owns: () => boolean): Promise<boolean> {
+    const eligible = () => {
+      const now = (this.options.now ?? Date.now)();
+      return !this.disposed && !signal.aborted && owns() && eligibleAlert(event, this.mode)
+        && now - Date.parse(event.at) <= MAX_AGE_MS && alertDelay(now, 0) === 0;
+    };
+    if (!eligible()) return false;
+    const controller = new AbortController();
+    let cancel!: (value: boolean) => void;
+    const canceled = new Promise<boolean>(resolve => { cancel = resolve; });
+    const abort = () => { cancel(false); controller.abort(); };
+    const timer = setTimeout(abort, 1500);
+    signal.addEventListener('abort', abort, { once: true });
+    try {
+      const active = await Promise.race([(this.options.active ?? isThisClientActive)(controller.signal), canceled]);
+      return active && eligible();
+    } catch { return false; }
+    finally { clearTimeout(timer); signal.removeEventListener('abort', abort); }
+  }
   private clear() { if (this.timer !== null) (this.options.clearTimer ?? (id => clearTimeout(id)))(this.timer); this.timer = null; }
   private schedule(delay: number) {
     if (this.disposed || this.mode === 'off') return;

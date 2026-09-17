@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { useLiveRefetch } from "@/components/live-board-state";
 
 import Link from "next/link";
@@ -200,6 +200,11 @@ export default function KnowledgeIngestionPage() {
             setKnowledgeLoading(false);
         }
     }, []);
+
+    useEffect(() => {
+        const term = new URLSearchParams(window.location.search).get("term");
+        if (term) void explore(term);
+    }, [explore]);
 
     // Double-click expansion: fetch a node's neighbors and merge them into the
     // current graph (dedup by node id / edge identity).
@@ -857,7 +862,7 @@ export default function KnowledgeIngestionPage() {
                 </section>
 
                 {/* ── Knowledge explorer ─────────────────────────────── */}
-                <section className="rounded-lg border border-slate-800 bg-slate-900/40">
+                <section id="knowledge-explorer" className="rounded-lg border border-slate-800 bg-slate-900/40">
                     <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 px-4 py-3">
                         <div className="flex items-center gap-2">
                             <BrainCircuit size={18} className="text-violet-300" />

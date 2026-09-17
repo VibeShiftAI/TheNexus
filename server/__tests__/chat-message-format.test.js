@@ -140,3 +140,10 @@ describe('chat-message-format', () => {
     ])).toEqual([attachment]);
   });
 });
+
+test('suppressVoice remains explicit through storage and client formatting', () => {
+  const metadata = buildPraxisAssistantMetadata({ suppressVoice: true });
+  expect(metadata.suppressVoice).toBe(true);
+  expect(formatStoredChatMessage({ content: 'Report started.', metadata: JSON.stringify(metadata) }).suppressVoice).toBe(true);
+  expect(buildPraxisAssistantMetadata({ suppressVoice: 'true' }).suppressVoice).toBeUndefined();
+});

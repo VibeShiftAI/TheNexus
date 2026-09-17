@@ -22,7 +22,9 @@ function buildClaudeSkill(entry, raw) {
   return [
     '---',
     `name: ${entry.id}`,
-    `description: ${description}`,
+    // Descriptions include colon-separated tag hints; quote them as YAML
+    // strings so discovery does not interpret their text as another mapping.
+    `description: ${JSON.stringify(description)}`,
     '---',
     SYNC_MARKER,
     `> Synced from \`${VAULT}/${entry.relPath}\` by the vault watcher.`,

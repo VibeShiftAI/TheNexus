@@ -3,6 +3,7 @@
 // re-renders of the non-markdown message rows. Everything delegates to the
 // real implementation.
 import {
+    internalHref,
     isInternalHref,
     isTaskHref,
     isTaskId,
@@ -11,7 +12,7 @@ import {
     taskHref,
 } from "../../src/lib/task-links.ts";
 
-export { isInternalHref, isTaskHref, isTaskId, remarkTaskLinks, taskHref };
+export { internalHref, isInternalHref, isTaskHref, isTaskId, remarkTaskLinks, taskHref };
 
 export const splitCounter = { count: 0 };
 

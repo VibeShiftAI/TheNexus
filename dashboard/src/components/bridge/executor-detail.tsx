@@ -9,16 +9,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Loader2, Send } from "lucide-react";
+import { taskActivityHref } from "@/lib/bridge-activity";
 import { HudModal, HudStat } from "@/components/bridge/hud";
 import { fmtGb, lmStudioActive, type DispatchStateResponse, type ExecutorRun } from "@/components/bridge/dispatch-station";
 
-export type ExecutorId = "antigravity" | "codex" | "claude-code" | "local-llm";
+export type ExecutorId = string;
 
 const LABELS: Record<ExecutorId, string> = {
   antigravity: "Antigravity",
   codex: "Codex",
   "claude-code": "Claude Code",
   "local-llm": "Local LLM",
+  openrouter: "OpenRouter",
 };
 
 function fmtWhen(iso?: string) {
@@ -70,7 +72,7 @@ export function ExecutorDetailModal({ executor, onClose }: { executor: ExecutorI
 
   return (
     <HudModal
-      title={LABELS[executor]}
+      title={LABELS[executor] ?? executor}
       subtitle="dispatch telemetry"
       icon={<Send size={15} />}
       accent="cyan"
@@ -128,7 +130,7 @@ export function ExecutorDetailModal({ executor, onClose }: { executor: ExecutorI
   );
 }
 
-function RunRow({ run }: { run: ExecutorRun }) {
+export function RunRow({ run }: { run: ExecutorRun }) {
   return (
     <div className={`rounded-md border px-2.5 py-2 ${RUN_TONE[run.status]}`}>
       <div className="flex items-center justify-between gap-2">
@@ -149,6 +151,7 @@ function RunRow({ run }: { run: ExecutorRun }) {
         <span>{runDuration(run)}</span>
         {run.workspace ? <span className="truncate font-mono">{run.workspace}</span> : null}
       </div>
+      <Link href={run.kind === "agent" ? "/ops" : taskActivityHref(run.kind === "qa" && !run.taskId.startsWith("qa--") ? `qa--${run.taskId}` : run.taskId)} className="mt-2 inline-flex items-center gap-1 text-[11px] text-cyan-300 hover:text-white">{run.kind === "qa" ? "Open QA verdict and evidence" : run.kind === "agent" ? "Open operations report" : "Open task and full report"}<ArrowUpRight size={12}/></Link>
       {run.summary ? <p className="mt-1 line-clamp-2 text-[11px] text-slate-400">{run.summary}</p> : null}
     </div>
   );

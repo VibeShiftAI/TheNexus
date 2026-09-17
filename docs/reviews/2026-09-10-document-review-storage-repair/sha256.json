@@ -1,0 +1,19 @@
+{
+  "/Volumes/Projects/Praxis/src/chat-idempotency.ts": "61f864b166ca62791b67ceab6c965af334b667e92e960c3fdeffec768367eafc",
+  "/Volumes/Projects/Praxis/src/routes/chat.ts": "a32760db61af18524c76e3dc1cce192d1b2f008393c51484ebc202da914c5c9e",
+  "/Volumes/Projects/Praxis/tests/chat_idempotency.test.ts": "d557dfa8c54404efbfc08bef90874cd4d8b130c992ad70c43c19971a6871cd92",
+  "/Volumes/Projects/TheNexus/server/__tests__/document-review-receiver.test.js": "3cf5af5a3e0eb4ba22ec9d7f0a4c6a4a468c87a2ba159b6ebd229fdde2e19608",
+  "/Volumes/Projects/TheNexus/docs/superpowers/specs/2026-09-10-markdown-document-review-design.md": "410d93d45963634072692b8666f37c5377c3486d36fd1618a3f409d70570451a",
+  "/Volumes/Projects/TheNexus/docs/superpowers/plans/2026-09-10-document-review-storage-repair.md": "2f7fcc1b9c8e9175bfb07733b28f7496c5d2f41004b4cef61f03744f95c66b9f",
+  "/Volumes/Projects/TheNexus/scripts/document-review-qa/README.md": "4e13565590ded1f4dac0ac4f6690f26d6e4d8fb206568e374c5dcfd22d1a1b8f",
+  "/Volumes/Projects/TheNexus/scripts/document-review-qa/api.cjs": "bdfe90ce6c90692f47a5e9f6bc8bd817677fce14d7bd59e3000060e4d2605e1e",
+  "/Volumes/Projects/TheNexus/scripts/document-review-qa/receiver.cjs": "0f8816cdfc62d7b1172c6c6eb036680a779c9912cfa16770f2a2b000f7d747f5",
+  "/Volumes/Projects/TheNexus/scripts/document-review-qa/verify.mjs": "b51d2f1127ddfd8331cd12aec38a444269ade904ca393a979767b982db9f4751",
+  "/Volumes/Projects/TheNexus/docs/reviews/2026-09-10-document-review-storage-repair/1440-delivered.png": "d81347c7ebbccee6845a473a116e764ff79a782e5081188c6dcdecef1b6d3503",
+  "/Volumes/Projects/TheNexus/docs/reviews/2026-09-10-document-review-storage-repair/390-note.png": "02b467aa550e1ebe5de126a678a598fb99b4dbfd0668efe7372f8093c84e0c29",
+  "/Volumes/Projects/TheNexus/docs/reviews/2026-09-10-document-review-storage-repair/390-saved.png": "6afb44a135d2d26033aa0a758f4b8795b103316e2dc5c08f77e73e39bb814c7e",
+  "/Volumes/Projects/TheNexus/docs/reviews/2026-09-10-document-review-storage-repair/binding-constraints.md": "87c9421b695e224a726308e02e13254ff2d12ca12bdefa35d8987f5f133cf0d3",
+  "/Volumes/Projects/TheNexus/docs/reviews/2026-09-10-document-review-storage-repair/browser-verification.txt": "eadcbf3b12edd8ee172f5d172a658dbdd247fb7aa0a5e077075a667b14d889be",
+  "/Volumes/Projects/TheNexus/docs/reviews/2026-09-10-document-review-storage-repair/verification.txt": "c11d8ff5262ab31cc651b618631f8b9236253a486e77fe2b88f2dabd45ad7da6",
+  "/Volumes/Projects/TheNexus/docs/reviews/2026-09-10-document-review-storage-repair/walkthrough.md": "e8b92ed3e4992290e3255e5aac51475295230fc8cea325856315d3f73a6c443b"
+}

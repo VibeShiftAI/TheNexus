@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  internalHref,
   isInternalHref,
   isTaskHref,
   isTaskId,
@@ -134,4 +135,46 @@ test("a tree with no mentions is not rewritten", () => {
   const children = [{ type: "paragraph", children: [{ type: "text", value: "All clear." }] }];
   const tree = transform({ type: "root", children });
   assert.equal(tree.children, children);
+});
+
+test("links into this dashboard collapse to in-app paths on the current origin", () => {
+  const DOC = "bb977fdf-5496-48bb-98bb-031421cc9c1a";
+  // The review link Praxis mints (server default NEXUS_DASHBOARD_URL) — the
+  // Mac bridge app runs on localhost:3000, so opening this as a new window
+  // meant a Cloudflare Access login. In-app it is just the reviewer route.
+  assert.equal(internalHref(`https://nexus.vibeshiftai.com/documents/${DOC}`), `/documents/${DOC}`);
+  assert.equal(internalHref(`http://localhost:3000/documents/${DOC}`), `/documents/${DOC}`);
+  assert.equal(internalHref(`https://NEXUS.vibeshiftai.com/task/${ID}?tab=qa#review`), `/task/${ID}?tab=qa#review`);
+  assert.equal(internalHref("https://nexus.vibeshiftai.com/"), "/");
+  assert.equal(internalHref("/documents"), "/documents");
+  assert.equal(internalHref(`/documents/${DOC}`), `/documents/${DOC}`);
+  assert.ok(isInternalHref(`https://nexus.vibeshiftai.com/documents/${DOC}`));
+  // Relative routes Praxis notices already use keep working unchanged.
+  assert.equal(internalHref("/inbox#day-schedule-2026-08-30-abc"), "/inbox#day-schedule-2026-08-30-abc");
+  assert.equal(internalHref(taskHref(ID)), taskHref(ID));
+});
+
+test("everything that is not a dashboard page stays a plain link", () => {
+  // Other hosts, including look-alikes and the Cloudflare Access login itself.
+  assert.equal(internalHref("https://github.com/x/y"), null);
+  assert.equal(internalHref("https://nexus.vibeshiftai.com.evil.example/documents/x"), null);
+  assert.equal(internalHref("https://vibeshiftai.cloudflareaccess.com/cdn-cgi/access/login/nexus.vibeshiftai.com"), null);
+  assert.equal(internalHref("https://lab.vibeshiftai.com/p/nyc-home-finder"), null);
+  assert.equal(internalHref("https://user@nexus.vibeshiftai.com/documents/x"), null);
+  // Dashboard-host paths the Next client does not render (API, sockets, Cortex ingress, hub, login).
+  assert.equal(internalHref("https://nexus.vibeshiftai.com/api/documents/x/raw?download=1"), null);
+  assert.equal(internalHref("/api/documents/x/raw"), null);
+  assert.equal(internalHref("https://nexus.vibeshiftai.com/graph/abc"), null);
+  assert.equal(internalHref("https://nexus.vibeshiftai.com/runs/abc"), null);
+  assert.equal(internalHref("https://nexus.vibeshiftai.com/hub/"), null);
+  assert.equal(internalHref("https://nexus.vibeshiftai.com/login"), null);
+  assert.equal(internalHref("/unknown-page"), null);
+  // Schemes and origin-escaping shapes.
+  assert.equal(internalHref("javascript:alert(1)"), null);
+  assert.equal(internalHref("mailto:robert@example.com"), null);
+  assert.equal(internalHref("//nexus.vibeshiftai.com/documents/x"), null);
+  assert.equal(internalHref("/\\evil.example/documents/x"), null);
+  assert.equal(internalHref(""), null);
+  assert.equal(internalHref(undefined), null);
+  assert.ok(!isInternalHref("https://example.com/inbox"));
 });

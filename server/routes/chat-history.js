@@ -3,6 +3,7 @@
  * Conversation management, message history, and cross-platform sync.
  */
 const express = require('express');
+const { resolveChatConversation } = require('../chat-conversation');
 
 function createChatHistoryRouter({ db, io }) {
     const router = express.Router();
@@ -115,38 +116,56 @@ function createChatHistoryRouter({ db, io }) {
             if (!messages || !Array.isArray(messages) || messages.length === 0) {
                 return res.status(400).json({ error: 'messages array is required' });
             }
-            const conversation = await db.getActiveConversation(mode);
+            const conversation = await resolveChatConversation(db, mode, req.body.conversationId);
             if (!conversation) return res.status(500).json({ error: 'Could not resolve active conversation' });
             const conversationId = conversation.id;
 
-            let synced = 0;
+            const stored = [];
             for (const msg of messages) {
                 if (!msg.role || !msg.content) continue;
                 try {
-                    const savedMessage = await db.saveChatMessage({
-                        id: msg.id, conversation_id: conversationId, role: msg.role, content: msg.content, mode,
-                        metadata: { platform: msg.platform || 'unknown', ...(msg.metadata || {}) }
-                    });
-                    if (savedMessage && io) {
-                        io.emit('chat-message', buildChatMessageEvent(savedMessage));
+                    const announcementId = msg.metadata?.voiceAnnouncement === true && msg.role === 'assistant'
+                        && typeof msg.metadata.eventId === 'string' && msg.id === `voice-alert:${msg.metadata.eventId}`;
+                    // The first generated wording belongs to the event. A replay
+                    // may generate a different sentence, but must reuse that row.
+                    let savedMessage = announcementId ? await db.getChatMessageById(msg.id) : null;
+                    let inserted = false;
+                    try {
+                        if (!savedMessage) {
+                            savedMessage = await db.saveChatMessage({
+                                id: msg.id, conversation_id: conversationId, role: msg.role, content: msg.content, mode,
+                                metadata: { platform: msg.platform || 'unknown', ...(msg.metadata || {}) }
+                            });
+                            inserted = Boolean(savedMessage);
+                        }
+                    } catch (error) {
+                        if (!error.message?.includes('UNIQUE constraint')) throw error;
                     }
-                    synced++;
+                    // The facade returns null for both duplicate IDs and write failures.
+                    // Normal messages require an identical row; voice events reuse their canonical wording.
+                    if (!savedMessage && msg.id) savedMessage = await db.getChatMessageById(msg.id);
+                    if (!savedMessage || savedMessage.role !== msg.role || savedMessage.mode !== mode) continue;
+                    const formatted = formatStoredChatMessage(savedMessage);
+                    const canonicalAnnouncement = announcementId && formatted.metadata?.voiceAnnouncement === true
+                        && formatted.metadata.eventId === msg.metadata.eventId && formatted.metadata.playbackOwner === 'voice'
+                        && formatted.metadata.suppressVoice === true;
+                    if (!canonicalAnnouncement && (savedMessage.conversation_id !== conversationId || savedMessage.content !== msg.content)) continue;
+                    stored.push(formatted);
+                    if (inserted && io) {
+                        io.emit('chat-message', buildChatMessageEvent(savedMessage));
+                        if (msg.role === 'assistant' && formatted.metadata?.attachments?.length > 0) {
+                            io.emit('cortex-artifact', { type: 'CHAT_RESPONSE', data: { content: msg.content, attachments: formatted.metadata.attachments } });
+                        }
+                    }
                 } catch (saveErr) {
-                    if (saveErr.message?.includes('UNIQUE constraint')) continue;
                     console.error(`[Chat Sync] Error saving message:`, saveErr.message);
                 }
             }
-
-            // Broadcast synced assistant messages with attachments via WebSocket
-            for (const msg of messages) {
-                if (msg.role === 'assistant' && msg.metadata?.attachments?.length > 0) {
-                    io.emit('cortex-artifact', { type: 'CHAT_RESPONSE', data: { content: msg.content, attachments: msg.metadata.attachments } });
-                }
-            }
-
-            res.json({ ok: true, synced, conversationId });
+            const ok = stored.length === messages.length;
+            res.status(ok ? 200 : 503).json({ ok, synced: stored.length, conversationId, messages: stored,
+                ...(!ok ? { error: 'Some messages could not be saved. Retry archival with the same message IDs.' } : {}) });
         } catch (error) {
-            res.status(500).json({ error: 'Failed to sync messages: ' + error.message });
+            res.status(error.status || 500).json({ error: 'Failed to sync messages: ' + error.message });
         }
     });
 

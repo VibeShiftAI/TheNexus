@@ -34,13 +34,25 @@ async function httpJSON(url, { method = 'GET', body = null, headers = {}, timeou
 
 const cortexHeaders = () => (cfg.CORTEX_GATEWAY_KEY ? { 'X-Gateway-Key': cfg.CORTEX_GATEWAY_KEY } : {});
 
-async function cortexSearch({ query, k = 10, namespace = 'ai-research' }) {
+async function cortexSearch({
+  query,
+  k = 10,
+  namespace = 'ai-research',
+  evidence_only = false,
+  include_query_expansion = true,
+}) {
   // Cortex semantic search lives behind a few possible endpoints — try the
   // canonical recent-nodes search shape first; fall back gracefully.
   return httpJSON(`${cfg.CORTEX_GATEWAY}/api/memory/search`, {
     method: 'POST',
     headers: cortexHeaders(),
-    body: { query, k, namespace },
+    body: {
+      query,
+      max_results: k,
+      namespace,
+      evidence_only,
+      include_query_expansion,
+    },
   });
 }
 

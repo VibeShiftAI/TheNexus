@@ -309,3 +309,129 @@ describe('ONE BACKEND — board reads go through lib/backends, and a 404 still r
     expect(backends.nexusBoardState).toHaveBeenCalledWith('p1');
   });
 });
+
+describe('project endpoint and knowledge wire records', () => {
+  const knowledge = { question: 'Which rollout works?', tags: ['safe-rollouts'], satisfaction_test: 'A measured trial.', criterion_ids: ['c1'], task_ids: ['t1'], blocking: true, research_status: 'open', evidence: [] };
+  test('MCP accepts an explicit observation clear when revising a criterion', () => {
+    const { backends } = fakeNexus();
+    const { praxisMind } = loadSurface({ backends });
+    const schema = praxisMind(writer('agent')).tools.get('nexus_project_update').schema.end_state_criteria;
+    expect(schema.safeParse([{ id: 'c1', kind: 'manual', description: 'Revised acceptance', observation: null }]).success).toBe(true);
+    expect(schema.safeParse([{ id: 'c1', kind: 'manual', description: 'Revised acceptance', observation: 'cleared' }]).success).toBe(false);
+  });
+
+  test.each([true, false])('MCP verifies observation removal against readback (backend clears: %s)', async (clears) => {
+    const { backends, projects } = fakeNexus();
+    const observation = { status: 'pass', observed_at: '2026-09-07T12:00:00Z', evidence_ref: 'old-review' };
+    const criterion = { id: 'c1', kind: 'manual', description: 'Old acceptance', observation };
+    projects.get('p1').end_state_criteria = [criterion];
+    backends.nexusProjectUpdate = jest.fn(async (id, patch) => {
+      const row = { ...criterion, ...patch.end_state_criteria[0] };
+      if (clears) delete row.observation;
+      else row.observation = observation;
+      projects.get(id).end_state_criteria = [row];
+      return { ...projects.get(id) };
+    });
+    const { praxisMind } = loadSurface({ backends });
+    const result = await praxisMind(writer('agent')).tools.get('nexus_project_update').handler({
+      project_id: 'p1', end_state_criteria: [{ ...criterion, description: 'Revised acceptance', observation: null }],
+    });
+    if (clears) {
+      expect(result.isError).toBeUndefined();
+      expect(jsonOf(result).project.end_state_criteria[0]).not.toHaveProperty('observation');
+    } else {
+      expect(result.isError).toBe(true);
+      expect(textOf(result)).toMatch(/observation/);
+    }
+  });
+
+  test('project list retains all needs, complete criteria, endpoint, assessment and revision guards', async () => {
+    const { backends, projects } = fakeNexus();
+    const need = { id: 'n1', kind: 'information', description: 'Rollout', status: 'met', knowledge: { ...knowledge, answer: 'Canaries', evidence: [{ ref: 'trial' }] } };
+    const criterion = { id: 'c1', kind: 'metric', description: 'Availability', metric: { target: 99, operator: 'gte' }, observation: { status: 'pass', value: 99.5, evidence_ref: 'report', observed_at: '2026-09-07T12:00:00Z' } };
+    projects.set('p1', { ...projects.get('p1'), endpoint: { scope: 'Canaries' }, end_state_assessment: { achieved: false }, end_state_history: [{ at: 'rev' }], end_state_criteria: [criterion], needs: [need], updated_at: 'now' });
+    const { praxisMind } = loadSurface({ backends });
+    const result = jsonOf(await praxisMind(writer('agent')).tools.get('nexus_projects_list').handler({}));
+    expect(result[0]).toEqual(expect.objectContaining({ needs: [need], end_state_criteria: [criterion], endpoint: { scope: 'Canaries' }, end_state_assessment: { achieved: false }, updated_at: 'now', end_state_history: [{ at: 'rev' }] }));
+  });
+  test('MCP schema and handler carry endpoint and partial need application without requiring closure', async () => {
+    const { backends, projects } = fakeNexus();
+    const need = { id: 'n1', kind: 'information', description: 'Rollout', status: 'open', knowledge };
+    projects.get('p1').needs = [need];
+    backends.nexusProjectUpdateNeed = jest.fn(async (id, needId, patch) => {
+      const updated = { ...need, ...patch, knowledge: { ...need.knowledge, ...patch.knowledge } };
+      projects.get(id).needs = [updated];
+      return { need: updated };
+    });
+    const { praxisMind } = loadSurface({ backends });
+    const tool = praxisMind(writer('agent')).tools.get('nexus_project_update');
+    expect(tool.schema.endpoint).toBeDefined();
+    expect(tool.schema.end_state_criteria).toBeDefined();
+    expect(tool.schema.resolve_need.safeParse({ id: 'n1', knowledge: { application: { status: 'insufficient', task_id: 't1' } } }).success).toBe(true);
+    const resolve_need = { id: 'n1', knowledge: { application: { status: 'insufficient', task_id: 't1' } } };
+    const result = await tool.handler({ project_id: 'p1', endpoint: { scope: 'Canaries' }, resolve_need });
+    expect(result.isError).toBeUndefined();
+    expect(backends.nexusProjectUpdate).toHaveBeenCalledWith('p1', expect.objectContaining({ endpoint: { scope: 'Canaries' }, end_state_source: 'coding-agents-agent' }));
+    expect(backends.nexusProjectUpdateNeed).toHaveBeenCalledWith('p1', 'n1', expect.objectContaining({ knowledge: resolve_need.knowledge, source: 'coding-agents-agent' }));
+    expect(jsonOf(result).project.endpoint).toEqual({ scope: 'Canaries' });
+  });
+  test('MCP accepts server verification stamps when a stale need is explicitly re-satisfied', async () => {
+    const { backends, projects } = fakeNexus();
+    const need = { id: 'n1', kind: 'information', description: 'Rollout', status: 'open', knowledge: { ...knowledge, research_status: 'stale', verified_at: 'old', answer: 'Canaries', evidence: [{ ref: 'trial' }] } };
+    projects.get('p1').needs = [need];
+    backends.nexusProjectUpdateNeed = jest.fn(async (id, needId, patch) => {
+      const updated = { ...need, status: 'met', knowledge: { ...need.knowledge, ...patch.knowledge, research_status: 'evidence_ready', verified_at: 'new', verified_by: 'coding-agents-agent' } };
+      projects.get(id).needs = [updated];
+      return { need: updated };
+    });
+    const { praxisMind } = loadSurface({ backends });
+    const result = await praxisMind(writer('agent')).tools.get('nexus_project_update').handler({ project_id: 'p1', resolve_need: { id: 'n1', status: 'met', knowledge: need.knowledge } });
+    expect(result.isError).toBeUndefined();
+    expect(jsonOf(result).resolved_need.knowledge.verified_at).toBe('new');
+  });
+
+  test('MCP forwards expected revision to the database-backed HTTP guard', async () => {
+    const { backends, projects } = fakeNexus();
+    projects.get('p1').end_state_updated_at = 'rev';
+    const { praxisMind } = loadSurface({ backends });
+    const result = await praxisMind(writer('agent')).tools.get('nexus_project_update').handler({ project_id: 'p1', endpoint: { proposed_next: 'Later' }, expected_end_state_updated_at: 'rev' });
+    expect(result.isError).toBeUndefined();
+    expect(backends.nexusProjectUpdate).toHaveBeenCalledWith('p1', expect.objectContaining({ expected_end_state_updated_at: 'rev' }));
+  });
+});
+
+test('checkpoint MCP reads preserve the plan and guarded authoring verifies stored criteria', async () => {
+  const { backends, projects } = fakeNexus();
+  const plan = { revision: 'cp-rev', items: [{ id: 'a', title: 'First', goal: 'Goal', criteria: [{ id: 'c', kind: 'manual', description: 'Accepted' }], need_ids: [] }], archived: [] };
+  projects.get('p1').checkpoints = plan;
+  backends.nexusProjectUpdate.mockImplementation(async (id, patch) => {
+    expect(patch.expected_checkpoints_revision).toBe('cp-rev');
+    const updated = { ...projects.get(id), checkpoints: { ...plan, revision: 'next', items: patch.checkpoints } };
+    projects.set(id, updated);
+    return updated;
+  });
+  const { praxisMind } = loadSurface({ backends });
+  const tools = praxisMind(writer('checkpoint-agent')).tools;
+  const listed = jsonOf(await tools.get('nexus_projects_list').handler({}));
+  expect(JSON.stringify(listed)).toContain('cp-rev');
+  const saved = await tools.get('nexus_project_update').handler({ project_id: 'p1', checkpoints: plan.items, expected_checkpoints_revision: 'cp-rev' });
+  expect(saved.isError).toBeUndefined();
+  expect(backends.nexusProjectUpdate).toHaveBeenCalledTimes(1);
+});
+
+
+test.each([true, false])('MCP definition edit verifies intentional acceptance clearing (clears=%s)', async clears => {
+  const { backends, projects } = fakeNexus();
+  const observation = { status: 'pass', observed_at: '2026-09-01T00:00:00Z', evidence_ref: 'old acceptance' };
+  const item = { id: 'a', title: 'First', goal: 'Goal', definition_revision: 'old', criteria: [{ id: 'c', kind: 'manual', description: 'Accepted', observation }], need_ids: [] };
+  projects.get('p1').checkpoints = { revision: 'old', items: [item], archived: [] };
+  backends.nexusProjectUpdate.mockImplementation(async (id, patch) => {
+    const next = { ...patch.checkpoints[0], definition_revision: 'new', criteria: patch.checkpoints[0].criteria.map(c => { const result = { ...c }; if (clears) delete result.observation; return result; }) };
+    const updated = { ...projects.get(id), checkpoints: { revision: 'new', items: [next], archived: [] } };
+    projects.set(id, updated); return updated;
+  });
+  const { praxisMind } = loadSurface({ backends });
+  const result = await praxisMind(writer('checkpoint-agent')).tools.get('nexus_project_update').handler({ project_id: 'p1', checkpoints: [{ id: item.id, title: item.title, goal: 'Changed', criteria: item.criteria, need_ids: [] }], expected_checkpoints_revision: 'old' });
+  if (clears) expect(result.isError).toBeUndefined();
+  else expect(result.isError).toBe(true);
+});

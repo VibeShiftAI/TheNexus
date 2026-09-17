@@ -5,7 +5,7 @@
  */
 "use client";
 
-import { Component, useEffect, type ReactNode } from "react";
+import { Component, useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
@@ -89,6 +89,7 @@ export function HudPanel({
   headerRight,
   headerCenter,
   className = "",
+  activity = "idle",
   children,
 }: {
   icon: ReactNode;
@@ -97,23 +98,24 @@ export function HudPanel({
   headerRight?: ReactNode;
   headerCenter?: ReactNode;
   className?: string;
+  activity?: "idle" | "active";
   children: ReactNode;
 }) {
   const a = ACCENTS[accent];
   return (
-    <div className={`hud-scanlines relative rounded-lg border border-slate-800 bg-slate-900/40 p-4 ${className}`}>
+    <div data-activity={activity} className={`hud-scanlines relative rounded-lg border border-slate-800 bg-slate-900/40 p-4 transition-[border-color,box-shadow] duration-700 ${activity === "active" ? "module-live" : ""} ${className}`}>
       {/* top hairline glow */}
       <span
         className={`pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent to-transparent ${a.hairline}`}
       />
       <CornerBrackets accent={accent} />
-      <div className="mb-3 flex items-center gap-3">
-        <div className="flex min-w-0 shrink-0 items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <div className="flex min-w-0 max-w-full items-center gap-2">
           <span className={a.text}>{icon}</span>
           <h3 className="truncate text-sm font-bold tracking-tight text-white">{title}</h3>
         </div>
         {headerCenter ? <div className="min-w-0 flex-1">{headerCenter}</div> : <div className="flex-1" />}
-        {headerRight ? <div className="flex shrink-0 items-center gap-2">{headerRight}</div> : null}
+        {headerRight ? <div className="flex max-w-full flex-wrap items-center gap-2">{headerRight}</div> : null}
       </div>
       {children}
     </div>
@@ -139,13 +141,27 @@ export function HudModal({
 }) {
   const a = ACCENTS[accent];
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    const controls = () => Array.from(panel?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]') ?? []);
+    controls()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      if (e.defaultPrevented || dialogs[dialogs.length - 1] !== panel) return;
+      if (e.key === "Escape") { e.preventDefault(); closeRef.current(); }
+      if (e.key === "Tab") {
+        const list = controls(), first = list[0], last = list[list.length - 1];
+        if (e.shiftKey && (document.activeElement === first || !panel?.contains(document.activeElement))) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && (document.activeElement === last || !panel?.contains(document.activeElement))) { e.preventDefault(); first?.focus(); }
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    return () => { window.removeEventListener("keydown", onKey); if (previous?.isConnected) previous.focus(); };
+  }, []);
 
   // Portal to <body>: a host inside a transformed/backdrop-filtered ancestor
   // (e.g. the sticky blurred page header) would otherwise become the
@@ -155,10 +171,11 @@ export function HudModal({
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`hud-scanlines relative flex max-h-[84vh] w-full flex-col rounded-lg border bg-slate-950/95 ${a.modalBorder} ${a.modalGlow} ${
+        className={`hud-scanlines relative flex max-h-[calc(84dvh/var(--nexus-display-scale,1))] w-full flex-col rounded-lg border bg-slate-950/95 ${a.modalBorder} ${a.modalGlow} ${
           wide ? "max-w-3xl" : "max-w-lg"
         } motion-safe:animate-[hud-pop_0.18s_ease-out]`}
       >

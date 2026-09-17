@@ -42,13 +42,16 @@ import {
   type TaskDispatch,
 } from "@/lib/dispatches";
 import {
+  describeUnknownRuns,
   formatCostUsd,
+  formatCoverage,
   formatMs,
   getTaskDispatchInsight,
   killTaskRun,
   type RunInsight,
   type RunVerification,
   type TaskDispatchInsight,
+  type UsageRollup,
 } from "@/lib/dispatch-insight";
 import {
   DEFAULT_EXECUTOR,
@@ -140,6 +143,42 @@ function VerdictChip({ verification }: { verification: RunVerification }) {
 }
 
 /**
+ * Aggregate run cost for the task, never shown without its coverage.
+ *
+ * A total summed over partial telemetry reads as the whole bill. When runs are
+ * missing a usage record the aggregate silently under-reports, and the gap can
+ * be big enough to reverse the ordering it is used to justify — the failure
+ * arXiv:2609.11987 §5.1 documents, where 58 unrecorded runs left a billed cost
+ * ordering unresolved. So the coverage sits beside the number, and a total
+ * over zero priced runs is "unknown", not "$0".
+ */
+function UsageRollupChip({ rollup }: { rollup: UsageRollup }) {
+  if (!rollup || rollup.totalRuns === 0) return null;
+  const complete = rollup.unknownRuns === 0;
+  const unknownDetail = describeUnknownRuns(rollup);
+  return (
+    <span
+      className="inline-flex items-center gap-1.5"
+      title={
+        rollup.estimatedUsd == null
+          ? `No run on this task could be priced, so its cost is unknown — not $0. ${unknownDetail}`
+          : `ESTIMATE over ${formatCoverage(rollup)} — a cache-aware blended notional rate, not a bill.${
+              complete ? "" : ` Excluded from this total: ${unknownDetail}.`
+            }`
+      }
+    >
+      Run cost{" "}
+      {rollup.estimatedUsd == null ? (
+        <span className="font-semibold text-slate-400">unknown</span>
+      ) : (
+        <span className="font-semibold text-slate-200">{formatCostUsd(rollup.estimatedUsd)} est</span>
+      )}
+      <span className={complete ? "text-slate-500" : "text-amber-400/90"}>· {formatCoverage(rollup)}</span>
+    </span>
+  );
+}
+
+/**
  * Compact containment line for the whole console: the enforced wall-clock
  * ceiling (flagged when it's the assumed default rather than a task
  * override), the day-schedule estimate, and the accepted verdict of the
@@ -163,6 +202,7 @@ function GovernanceStrip({ insight }: { insight: TaskDispatchInsight }) {
           Schedule estimate <span className="font-semibold text-slate-200">{insight.scheduleEstimateMinutes}m</span>
         </span>
       )}
+      <UsageRollupChip rollup={insight.usageRollup} />
       {insight.latestVerification ? (
         <span className="inline-flex items-center gap-1.5">
           Accepted outcome <VerdictChip verification={insight.latestVerification} />
@@ -182,7 +222,7 @@ function GovernanceStrip({ insight }: { insight: TaskDispatchInsight }) {
 }
 
 /** Confirm-then-kill control for a running dispatch row. */
-function KillButton({ taskId, onKilled }: { taskId: string; onKilled: () => void }) {
+function KillButton({ taskId, dispatchId, onKilled }: { taskId: string; dispatchId: string; onKilled: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const kill = async (e: React.MouseEvent) => {
@@ -196,7 +236,7 @@ function KillButton({ taskId, onKilled }: { taskId: string; onKilled: () => void
     setBusy(true);
     setError(null);
     try {
-      await killTaskRun(taskId);
+      await killTaskRun(taskId, dispatchId);
       onKilled();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kill failed");
@@ -384,7 +424,7 @@ function DispatchBar({
   defaultInstructions?: string | null;
   onDispatched: () => void;
 }) {
-  const { optionsFor, credentialFor, providerKeys, refreshCredentials } = useExecutorModelOptions();
+  const { optionsFor, credentialFor, refreshCredentials } = useExecutorModelOptions();
 
   // Initial values come straight from the task's saved dispatch defaults. The
   // task is already loaded before this bar mounts, so there's no empty flash.
@@ -408,7 +448,7 @@ function DispatchBar({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ tone: "ok" | "refused" | "error"; text: string } | null>(null);
 
-  const { options, fallback, spendNote, credential, fallbackBlocked } = optionsFor(executor);
+  const { options, fallback, spendNote, credential, fallbackBlocked, keyLane } = optionsFor(executor);
   // Human-readable model for the collapsed summary — the pinned model's label,
   // or the executor default when nothing is pinned.
   const selectedOption = model ? options.find((o) => o.id === model) : undefined;
@@ -665,7 +705,7 @@ function DispatchBar({
 
       {routeBlock && <RouteBlockNotice block={routeBlock} busy={busy} onForce={() => submit(true)} />}
 
-      {showAdvanced && <ProviderKeyStrip providers={providerKeys} />}
+      {showAdvanced && keyLane && <ProviderKeyStrip providers={[keyLane]} />}
 
       {showInstructions && (
         <textarea
@@ -871,27 +911,45 @@ function DispatchRow({
             {dispatch.model}
           </span>
         )}
-        {typeof dispatch.tokens === "number" && (
+        {typeof dispatch.tokens === "number" ? (
           <span
             className="rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[11px] tabular-nums text-cyan-200"
             title={
               dispatch.tokens_estimated
-                ? `~${dispatch.tokens.toLocaleString()} tokens (estimated from text volume)`
-                : `${dispatch.tokens.toLocaleString()} tokens`
+                ? `~${dispatch.tokens.toLocaleString()} tokens — ESTIMATED from text volume, not a measured count`
+                : `${dispatch.tokens.toLocaleString()} tokens — measured from the run's own usage record`
             }
           >
             {dispatch.tokens_estimated ? "~" : ""}
             {dispatch.tokens.toLocaleString()} tok
+            <span className="ml-1 text-cyan-400/70">{dispatch.tokens_estimated ? "est" : "measured"}</span>
+          </span>
+        ) : (
+          /* A run with no usage record is reported as unknown, never omitted:
+             a missing chip reads as "no spend", which is a different claim. */
+          <span
+            className="rounded border border-slate-600/50 bg-slate-700/20 px-1.5 py-0.5 text-[11px] text-slate-400"
+            title="This run left no usage record, so its token count is unknown — not zero."
+          >
+            tokens unknown
           </span>
         )}
-        {insight?.cost && (
+        {insight?.cost ? (
           <span
             className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[11px] tabular-nums text-emerald-200"
-            title="Estimated API-equivalent value of the run — a cache-aware blended notional rate over the total token count (subscription runs don't bill per token; the input/output/cache split isn't recorded per run)"
+            title="ESTIMATE, not a bill — the API-equivalent value of the run at a cache-aware blended notional rate over the total token count (subscription runs don't bill per token; the input/output/cache split isn't recorded per run)"
           >
             {formatCostUsd(insight.cost.usd)} est
           </span>
-        )}
+        ) : insight ? (
+          <span
+            className="rounded border border-slate-600/50 bg-slate-700/20 px-1.5 py-0.5 text-[11px] text-slate-400"
+            title={insight.usageUnknown?.detail
+              ?? "No cost figure is available for this run."}
+          >
+            cost unknown
+          </span>
+        ) : null}
         <OutcomeChip outcome={dispatch.outcome} />
         {insight?.overdue && (
           <span
@@ -910,7 +968,7 @@ function DispatchRow({
             <ShieldAlert size={11} /> {insight.guardrails.length}
           </span>
         )}
-        {insight?.canKill && <KillButton taskId={taskId} onKilled={onRefresh} />}
+        {insight?.canKill && <KillButton taskId={taskId} dispatchId={dispatch.id} onKilled={onRefresh} />}
         <span className="ml-auto flex items-center gap-2 text-[11px] text-slate-500">
           {dispatch.session_id && (
             <span

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { VoiceCommandBar } from '../../components/bridge/voice-command-bar';
+import { cortexTestStore } from '../../../test/stubs/cortex-provider.mjs';
 import { speechOwner } from '../speech-ownership';
 import { VoiceAlerts } from '../voice-alerts';
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -25,8 +26,7 @@ class AudioFake {
 type Options = { fetch?: (url: string, init: RequestInit | undefined) => Promise<Response | undefined>; analyser?: 'speech' | 'silence' | 'broken'; synth?: boolean; chunks?: number; wake?: boolean; };
 async function mount(t: TestContext, options: Options = {}) {
   t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'] });
-  localStorage.clear(); localStorage.setItem('nexus.voice.alertMode', 'off');
-  if (options.wake) localStorage.setItem('nexus.voice.wakeword', '1');
+  cortexTestStore.reset(); localStorage.clear(); localStorage.setItem('nexus.voice.alertMode', 'off');
   Recorder.all = []; Recorder.size = 2500; AudioFake.all = []; AudioFake.blocked = false;
   let captures = 0; let stopped = 0;
   Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => { captures++; return { getTracks: () => [{ stop: () => stopped++ }] }; } } });
@@ -42,7 +42,7 @@ async function mount(t: TestContext, options: Options = {}) {
     const override = await options.fetch?.(url, init); if (override) return override;
     if (url.includes('voice-intent')) return Response.json({ intent: { type: 'chat' } });
     if (url.includes('transcribe')) return Response.json({ text: 'Tell me about the work today' });
-    if (url.endsWith('/chat')) return Response.json({ response: 'A full reply.', ...(!options.synth ? { voiceData: Array.from({ length: options.chunks ?? 1 }, (_, i) => ({ audio: `reply-${i}`, mimeType: 'audio/wav' })) } : {}) });
+    if (url.endsWith('/chat')) return Response.json({ accepted: true, status: 'completed', clientMessageId: JSON.parse(String(init?.body)).clientMessageId, conversationId: 'test-conversation', response: 'A full reply.', ...(!options.synth ? { voiceData: Array.from({ length: options.chunks ?? 1 }, (_, i) => ({ audio: `reply-${i}`, mimeType: 'audio/wav' })) } : {}) });
     if (url.endsWith('/speak')) return Response.json({ audio: 'synthetic' });
     if (url.includes('board')) return Response.json([]);
     return Response.json({ available: true });
@@ -55,6 +55,10 @@ async function mount(t: TestContext, options: Options = {}) {
   const unmount = async () => { if (!unmounted) { unmounted = true; await act(async () => root.unmount()); } };
   t.after(async () => { await unmount(); host.remove(); Object.assign(globalThis, originals); Object.assign(window, { AudioContext: originalContext }); });
   const click = async (label: string) => { const button = host.querySelector(`[aria-label="${label}"]`) as HTMLButtonElement; assert.ok(button, label); await act(async () => { button.click(); await tick(); }); };
+  if (options.wake) {
+    await click('Voice settings');
+    await act(async () => { (host.querySelector('input[type="checkbox"]') as HTMLInputElement).click(); await tick(); });
+  }
   const advance = async (ms = 1000) => { await act(async () => { t.mock.timers.tick(ms); await tick(); }); };
   const endAudio = async () => { await act(async () => { const audio = AudioFake.all.at(-1); if (audio) { audio.paused = true; audio.ended = true; audio.onpause?.(); await tick(); audio.onended?.(); } await tick(); }); };
   const assertEnded = () => { assert.ok(host.querySelector('[aria-label="Start conversation"]')); assert.equal(host.querySelector('[aria-label="End conversation"]'), null); };
@@ -106,10 +110,10 @@ for (const analyser of [undefined, 'silence', 'broken'] as const) test(`ten-seco
   await f.advance(61000); assert.equal(f.captures(), 1);
 });
 for (const failure of ['permission', 'empty-blob', 'empty-transcript', 'transcription', 'chat', 'empty-reply', 'synthesis', 'playback', 'blocked-playback', 'recorder']) test(`${failure} failure ends conversation without reopening the mic`, async t => {
-  const f = await mount(t, { synth: failure === 'synthesis', fetch: async url => {
+  const f = await mount(t, { synth: failure === 'synthesis', fetch: async (url, init) => {
     if (failure === 'empty-transcript' && url.endsWith('/transcribe')) return Response.json({ text: '' });
-    if (failure === 'empty-reply' && url.endsWith('/chat')) return Response.json({ response: '   ' });
-    if ((failure === 'transcription' && url.endsWith('/transcribe')) || (failure === 'chat' && url.endsWith('/chat')) || (failure === 'synthesis' && url.endsWith('/speak'))) return new Response('', { status: 500 });
+    if ((failure === 'empty-reply' || failure === 'chat') && url.endsWith('/chat')) return Response.json({ accepted: true, clientMessageId: JSON.parse(String(init?.body)).clientMessageId, conversationId: 'test-conversation', status: failure === 'chat' ? 'failed' : 'completed', response: '   ' });
+    if ((failure === 'transcription' && url.endsWith('/transcribe')) || (failure === 'synthesis' && url.endsWith('/speak'))) return new Response('', { status: 500 });
   } });
   if (failure === 'permission') Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => { throw new Error('denied'); } } });
   if (failure === 'empty-blob') Recorder.size = 0;

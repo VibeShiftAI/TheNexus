@@ -143,6 +143,9 @@ const PRICE_PER_MTOK = {
 //   where cacheReadRate = price.cacheRead / price.in when set, else 0.1
 const BLEND = { cacheReadShare: 0.85, inputShare: 0.02, cacheWriteShare: 0.08, outputShare: 0.05 };
 
+/** How many runs the dispatch console lists. A DISPLAY cap, never an aggregation one. */
+const RUN_PAGE = 50;
+
 function priceFor(model) {
     const m = String(model || '').toLowerCase();
     if (!m) return null;
@@ -161,13 +164,88 @@ function cacheReadShareOfInput(price) {
     return typeof price.cacheRead === 'number' ? price.cacheRead / price.in : 0.1;
 }
 
+// ── Missing-usage attribution ────────────────────────────────────────────
+// A cost of null has several distinct causes, and collapsing them loses the
+// one fact the reader needs: WHY this run carries no figure. A UI that simply
+// omits the chip reports "no spend" and "no record" identically — the exact
+// confusion that left a published cost ordering unresolved when 58 runs on an
+// Anthropic account had no usage record (arXiv:2609.11987 §5.1). So classify
+// the absence and let the surface say "unknown" with its reason.
+const USAGE_UNKNOWN_REASONS = {
+    no_model: 'No model was recorded for this run, so no rate applies.',
+    unpriced_model: 'This model has no verified $/MTok rate — inventing one would mis-state spend.',
+    no_token_record: 'This run left no usage record, so its token count is unknown.',
+};
+
+/**
+ * Why a run has no cost figure — null when it HAS one.
+ * Order matters: a run with neither a model nor tokens is reported against
+ * the token gap, because that is the telemetry that went missing.
+ */
+function usageUnknownReason(tokens, model) {
+    // A RECORDED ZERO is a measurement, not a gap. A run that reported 0
+    // tokens has usage telemetry; filing it under 'no_token_record' would
+    // hide a real datum behind the word reserved for absent ones, and drag
+    // the task's coverage down as if the run had gone unmeasured. Only an
+    // absent, non-finite or negative count is genuinely unknown.
+    const hasTokens = typeof tokens === 'number' && Number.isFinite(tokens) && tokens >= 0;
+    if (!hasTokens) return 'no_token_record';
+    if (!String(model || '').trim()) return 'no_model';
+    if (!priceFor(model)) return 'unpriced_model';
+    return null;
+}
+
+/**
+ * Blended $ estimate for one run, or null when the run cannot be priced.
+ * The null condition is EXACTLY usageUnknownReason() returning a reason, so
+ * the figure and the "why is this missing" label can never disagree: a run
+ * shown as unknown always lacks a cost, and a priced run never carries a
+ * reason. A priced run measured at 0 tokens costs $0.000, which is a real
+ * measurement rather than the absence of one.
+ */
 function estimateRunCostUsd(tokens, model) {
-    if (typeof tokens !== 'number' || tokens <= 0) return null;
+    if (usageUnknownReason(tokens, model)) return null;
     const price = priceFor(model);
-    if (!price) return null;
     const blended = price.in * (BLEND.cacheReadShare * cacheReadShareOfInput(price) + BLEND.inputShare + BLEND.cacheWriteShare * 1.25)
         + price.out * BLEND.outputShare;
     return Math.round((tokens / 1e6) * blended * 1000) / 1000;
+}
+
+/**
+ * Task-level cost roll-up with its own coverage, so an aggregate is never
+ * read as complete. `estimatedUsd` sums ONLY the priced runs; `coverage` is
+ * the fraction of runs that contributed to it. When nothing is priced the sum
+ * is null rather than 0 (zero priced runs is not zero spend).
+ *
+ * `rows` MUST be the task's COMPLETE dispatch history, never the page the
+ * console happens to render. Aggregating the page silently drops older runs
+ * and then reports full coverage over whatever survived the limit, which is
+ * the exact concealment this roll-up exists to prevent.
+ */
+function summarizeRunUsage(rows) {
+    const unknownByReason = {};
+    let pricedRuns = 0;
+    let subtotal = 0;
+    for (const row of rows) {
+        const reason = usageUnknownReason(row.tokens, row.model);
+        if (reason) {
+            unknownByReason[reason] = (unknownByReason[reason] || 0) + 1;
+            continue;
+        }
+        pricedRuns += 1;
+        subtotal += estimateRunCostUsd(row.tokens, row.model);
+    }
+    const totalRuns = rows.length;
+    return {
+        totalRuns,
+        pricedRuns,
+        unknownRuns: totalRuns - pricedRuns,
+        unknownByReason,
+        // Every priced figure is a notional blended estimate, never a bill.
+        estimatedUsd: pricedRuns > 0 ? Math.round(subtotal * 1000) / 1000 : null,
+        estimated: true,
+        coverage: totalRuns > 0 ? Math.round((pricedRuns / totalRuns) * 1000) / 1000 : null,
+    };
 }
 
 function normalizeStatus(status) {
@@ -291,6 +369,7 @@ function createDispatchInsightRouter({
             const ms = Number(rec.timeoutMs);
             if (!Number.isFinite(ms) || ms <= 0) return null;
             return {
+                executionId: typeof rec.executionId === "string" ? rec.executionId : null,
                 timeoutMs: Math.floor(ms),
                 startedAt: rec.startedAt || null,
                 pid: Number.isInteger(rec.pid) ? rec.pid : null,
@@ -692,12 +771,20 @@ function createDispatchInsightRouter({
     router.get('/task/:taskId', async (req, res) => {
         const taskId = req.params.taskId;
         let dispatches;
+        let usageRows;
         try {
             dispatches = db.prepare(`
                 SELECT id, executor, model, tokens, tokens_estimated, outcome, started_at, completed_at
                 FROM task_dispatches WHERE task_id = ?
-                ORDER BY started_at DESC, created_at DESC LIMIT 50
-            `).all(taskId);
+                ORDER BY started_at DESC, created_at DESC LIMIT ?
+            `).all(taskId, RUN_PAGE);
+            // Coverage is a claim about the WHOLE task, so it is computed over
+            // the whole task: deliberately no LIMIT here. Two columns per row
+            // on a task-id lookup, against a page of runs that is capped at
+            // RUN_PAGE for display only.
+            usageRows = db.prepare(
+                'SELECT model, tokens FROM task_dispatches WHERE task_id = ?',
+            ).all(taskId);
         } catch (err) {
             console.error('[DispatchInsight] task read failed:', err.message);
             return res.status(500).json({ error: 'Failed to read task insight: ' + err.message });
@@ -826,6 +913,16 @@ function createDispatchInsightRouter({
                     const usd = estimateRunCostUsd(d.tokens, d.model);
                     return usd != null ? { usd, estimated: true } : null;
                 })(),
+                // Token provenance, so the surface can separate a MEASURED
+                // count from a text-volume guess instead of showing both as
+                // bare numbers. Null tokens stay null — never coerced to 0.
+                tokens: typeof d.tokens === 'number' ? d.tokens : null,
+                tokensEstimated: d.tokens_estimated === 1,
+                // Present only when `cost` is null: why the figure is missing.
+                usageUnknown: (() => {
+                    const reason = usageUnknownReason(d.tokens, d.model);
+                    return reason ? { reason, detail: USAGE_UNKNOWN_REASONS[reason] } : null;
+                })(),
                 verification,
                 guardrails,
                 canKill: running,
@@ -839,6 +936,12 @@ function createDispatchInsightRouter({
             spineAvailable,
             praxisReachable,
             latestVerification: verifications.length > 0 ? verifications[verifications.length - 1] : null,
+            // Aggregate spend carries its own coverage: an unqualified total
+            // over partial telemetry is the defect, not the summary. Computed
+            // over every dispatch row for the task, so `usageRollup.totalRuns`
+            // can legitimately exceed `runs.length` on a task with more than
+            // RUN_PAGE runs.
+            usageRollup: summarizeRunUsage(usageRows),
             runs,
         });
     });
@@ -854,7 +957,7 @@ function createDispatchInsightRouter({
     // Without a record there is nothing to target: a run the registry still
     // shows active is refused (409), and a ghost row (no record, no active
     // run) is closed as pure bookkeeping with no Praxis call at all.
-    function closeRunningRows(taskId, note) {
+    function closeRunningRows(taskId, note, dispatchId = null) {
         try {
             return db.prepare(`
                 UPDATE task_dispatches SET
@@ -862,8 +965,8 @@ function createDispatchInsightRouter({
                     error = COALESCE(error, ?),
                     completed_at = ?,
                     updated_at = datetime('now')
-                WHERE task_id = ? AND outcome = 'running'
-            `).run(note, new Date().toISOString(), taskId).changes;
+                WHERE task_id = ? AND outcome = 'running' AND (? IS NULL OR id = ?)
+            `).run(note, new Date().toISOString(), taskId, dispatchId, dispatchId).changes;
         } catch (err) {
             console.warn('[DispatchInsight] kill row-close failed:', err.message);
             return 0;
@@ -885,6 +988,11 @@ function createDispatchInsightRouter({
             : null;
         if (!taskId) return res.status(400).json({ error: 'taskId is required' });
 
+        const dispatchId = typeof req.body?.dispatchId === 'string' ? req.body.dispatchId : null;
+        if (dispatchId) {
+            const latest = db.prepare("SELECT id FROM task_dispatches WHERE task_id = ? AND outcome = 'running' ORDER BY started_at DESC, rowid DESC LIMIT 1").get(taskId);
+            if (!latest || latest.id !== dispatchId) return res.status(409).json({ok:false, error:'This is no longer the current running dispatch. Refresh before stopping it.'});
+        }
         const record = readDetachedRunRecord(taskId);
         // Group liveness, not leader liveness: a dead wrapper with a
         // surviving child still means the run is alive and killable.
@@ -910,6 +1018,19 @@ function createDispatchInsightRouter({
                     });
                 }
             } else {
+                // Persist intent before signalling; Praxis must not classify this exit as retryable.
+                // A changed ownership record means the selected attempt was replaced.
+                const controlFile = path.join(detachedRunsDir, `${taskId}.control`);
+                try {
+                    const current = fs.existsSync(controlFile) ? JSON.parse(fs.readFileSync(controlFile,'utf8')) : null;
+                    const id = record.executionId || `legacy:${record.startedAt}`;
+                    if (current && current.id !== id) return res.status(409).json({ok:false,error:'Execution ownership changed; no signal sent.'});
+                    const control = {...(current || {id,taskId,executor:record.executor,startedAt:record.startedAt}), pid:record.pid, stopRequestedAt: current?.stopRequestedAt || new Date().toISOString()};
+                    const temp = `${controlFile}.${process.pid}.tmp`;
+                    fs.writeFileSync(temp,JSON.stringify(control)); fs.renameSync(temp,controlFile);
+                } catch (error) {
+                    return res.status(503).json({ok:false,error:`Cannot persist stop intent; no signal sent: ${error.message}`});
+                }
                 killGroup(record.pid, 'SIGTERM');
                 let method = 'sigterm';
                 // Poll the GROUP: the leader dying while a TERM-resistant
@@ -932,7 +1053,8 @@ function createDispatchInsightRouter({
                 }
                 const closed = closeRunningRows(
                     taskId,
-                    `Killed from the dispatch console (${method.toUpperCase()} to process group ${record.pid}, full group death confirmed). Praxis finalizes the run as failed when its poller observes the exit.`,
+                    `Killed from the dispatch console (${method.toUpperCase()} to process group ${record.pid}, full group death confirmed). Stop intent is durable; Praxis will preserve progress without retrying.`,
+                    dispatchId,
                 );
                 return res.json({ ok: true, cancelled: true, method, closedDispatches: closed });
             }
@@ -959,6 +1081,7 @@ function createDispatchInsightRouter({
         const closed = closeRunningRows(
             taskId,
             'Closed from the dispatch console — no process, no run record, and no active run in the Praxis registry (ghost row left by a crashed executor).',
+            dispatchId,
         );
         res.json({ ok: true, cancelled: true, method: 'ghost_cleanup', closedDispatches: closed });
     });

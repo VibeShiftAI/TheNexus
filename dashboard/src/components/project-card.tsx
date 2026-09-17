@@ -7,6 +7,7 @@ import {
 } from "@/lib/nexus";
 import { GitBranch, Zap, AlertTriangle, ExternalLink, Star, Upload, Tag, ListTodo, Eye, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { useArrivalPulse } from "@/hooks/use-arrival-pulse";
 import { CornerBrackets } from "@/components/bridge/hud";
 import { PulseSparkline, ActivityLed, CrewChip, timeAgo, activityBand, BAND_STYLES } from "@/components/pulse-visuals";
 
@@ -54,6 +55,7 @@ export function ProjectCard({ project, pulse, isPinned = false, onPinChange, pen
     // waiting out the batched pulse cache.
     const [gitOverride, setGitOverride] = useState<PulseGit | null>(null);
 
+    const arrivals = useArrivalPulse(pulse?.lastActivityAt ? [pulse.lastActivityAt] : [], Boolean(pulse));
     const git = gitOverride ?? pulse?.git ?? null;
     const band = activityBand(pulse?.lastActivityAt);
     const bandStyle = BAND_STYLES[band];
@@ -256,7 +258,7 @@ export function ProjectCard({ project, pulse, isPinned = false, onPinChange, pen
         <div
             className={`hud-scanlines group relative flex h-full flex-col overflow-hidden rounded-lg border bg-gradient-to-br from-slate-900/80 to-slate-950/90 p-4 transition-all
                 ${isHot ? "border-cyan-500/25 hover:border-cyan-400/50 hover:shadow-[0_0_24px_rgba(34,211,238,0.12)]" : "border-slate-800 hover:border-slate-600 hover:shadow-lg hover:shadow-cyan-500/5"}
-                ${band === "dormant" ? "opacity-75 hover:opacity-100" : ""}`}
+                ${band === "dormant" ? "opacity-75 hover:opacity-100" : ""} ${arrivals.size > 0 ? "module-live module-new" : ""}`}
         >
             <CornerBrackets accent={isHot ? "cyan" : "teal"} />
             {/* top hairline glow, brighter on hot projects */}

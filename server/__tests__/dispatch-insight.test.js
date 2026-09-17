@@ -416,6 +416,238 @@ describe('dispatch-insight route', () => {
         expect(astra.cost).toBeNull();
     });
 
+    test('a run with no cost names WHY it is unknown, so an absent figure is never read as no spend', async () => {
+        await boot();
+        // Three distinct ways a run ends up with no cost, all of which the old
+        // surface collapsed into "render nothing".
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                id: 'disp-nomodel', task_id: 'task-running', executor: 'claude-code',
+                started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+            }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/disp-nomodel`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                outcome: 'success', tokens: 1_000, completed_at: new Date(Date.now() - 4 * HOUR).toISOString(),
+            }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                id: 'disp-astra2', task_id: 'task-running', executor: 'codex',
+                model: 'gpt-6-astra', started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+            }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/disp-astra2`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                outcome: 'success', tokens: 1_000, completed_at: new Date(Date.now() - 4 * HOUR).toISOString(),
+            }),
+        });
+        // A run that finished but left NO usage record — the E31 case.
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                id: 'disp-norecord', task_id: 'task-running', executor: 'claude-code',
+                model: 'claude-opus-5', started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+            }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/disp-norecord`, {
+            method: 'PATCH',
+            body: JSON.stringify({ outcome: 'success', completed_at: new Date(Date.now() - 4 * HOUR).toISOString() }),
+        });
+
+        const { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-running`);
+        const byId = Object.fromEntries(body.runs.map((r) => [r.dispatchId, r]));
+        expect(byId['disp-nomodel'].cost).toBeNull();
+        expect(byId['disp-nomodel'].usageUnknown.reason).toBe('no_model');
+        expect(byId['disp-astra2'].cost).toBeNull();
+        expect(byId['disp-astra2'].usageUnknown.reason).toBe('unpriced_model');
+        expect(byId['disp-norecord'].cost).toBeNull();
+        expect(byId['disp-norecord'].usageUnknown.reason).toBe('no_token_record');
+        // Tokens stay null — never coerced to a 0 that would claim a measurement.
+        expect(byId['disp-norecord'].tokens).toBeNull();
+        expect(byId['disp-nomodel'].tokens).toBe(1_000);
+        // Every unknown carries operator-readable detail, not just a code.
+        expect(typeof byId['disp-astra2'].usageUnknown.detail).toBe('string');
+    });
+
+    test('the task cost aggregate carries its own coverage and never sums to a false $0', async () => {
+        await boot();
+        // One priced run + two that left no usage record: the aggregate must
+        // say it covers 1 of 3, not present $2.275 as the task's whole cost.
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                id: 'disp-priced', task_id: 'task-queued', executor: 'claude-code',
+                model: 'claude-opus-5', started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+            }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/disp-priced`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                outcome: 'success', tokens: 1_000_000, completed_at: new Date(Date.now() - 4 * HOUR).toISOString(),
+            }),
+        });
+        for (const id of ['disp-blank1', 'disp-blank2']) {
+            await requestJson(`${handle.baseUrl}/api/dispatches`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    id, task_id: 'task-queued', executor: 'claude-code', model: 'claude-opus-5',
+                    started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+                }),
+            });
+            await requestJson(`${handle.baseUrl}/api/dispatches/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ outcome: 'success', completed_at: new Date(Date.now() - 4 * HOUR).toISOString() }),
+            });
+        }
+
+        const { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-queued`);
+        expect(body.usageRollup).toMatchObject({
+            totalRuns: 3,
+            pricedRuns: 1,
+            unknownRuns: 2,
+            estimatedUsd: 2.275,
+            estimated: true,
+        });
+        expect(body.usageRollup.coverage).toBeCloseTo(1 / 3, 3);
+        expect(body.usageRollup.unknownByReason.no_token_record).toBe(2);
+        // A run that WAS priced carries no unknown reason.
+        const priced = body.runs.find((r) => r.dispatchId === 'disp-priced');
+        expect(priced.usageUnknown).toBeNull();
+        expect(priced.cost).toEqual({ usd: 2.275, estimated: true });
+    });
+
+    test('a task where NOTHING could be priced aggregates to unknown, not $0', async () => {
+        await boot();
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                id: 'disp-allunknown', task_id: 'task-queued', executor: 'codex',
+                model: 'gpt-6-astra', started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+            }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/disp-allunknown`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                outcome: 'success', tokens: 1_000, completed_at: new Date(Date.now() - 4 * HOUR).toISOString(),
+            }),
+        });
+        const { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-queued`);
+        // The whole point: zero priced runs is not zero spend.
+        expect(body.usageRollup.estimatedUsd).toBeNull();
+        expect(body.usageRollup.pricedRuns).toBe(0);
+        expect(body.usageRollup.coverage).toBe(0);
+        expect(body.usageRollup.unknownByReason.unpriced_model).toBe(1);
+    });
+
+    test('coverage spans the WHOLE task history, not just the page of runs the console lists', async () => {
+        await boot();
+        // The console lists the newest 50 runs. Aggregating that page would
+        // drop the 51st and then report 100% coverage over what was left,
+        // which is precisely the concealment the roll-up exists to prevent.
+        const seed = new Database(dbPath);
+        const insert = seed.prepare(`
+            INSERT INTO task_dispatches
+                (id, task_id, executor, model, tokens, tokens_estimated, outcome, started_at, completed_at, created_at)
+            VALUES (?, ?, ?, ?, ?, 0, 'success', ?, ?, ?)
+        `);
+        const base = Date.now() - 200 * HOUR;
+        // The OLDEST run is the one that left no usage record, so only a
+        // full-history aggregate can see it.
+        const oldest = new Date(base).toISOString();
+        insert.run('disp-page-old', 'task-queued', 'claude-code', 'claude-opus-5', null, oldest, oldest, oldest);
+        for (let i = 0; i < 50; i += 1) {
+            const at = new Date(base + (i + 1) * HOUR).toISOString();
+            insert.run(`disp-page-${i}`, 'task-queued', 'claude-code', 'claude-opus-5', 1_000_000, at, at, at);
+        }
+        seed.close();
+
+        const { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-queued`);
+        // Display stays paged...
+        expect(body.runs).toHaveLength(50);
+        expect(body.runs.some((r) => r.dispatchId === 'disp-page-old')).toBe(false);
+        // ...while coverage counts every run the task actually has.
+        expect(body.usageRollup.totalRuns).toBe(51);
+        expect(body.usageRollup.pricedRuns).toBe(50);
+        expect(body.usageRollup.unknownRuns).toBe(1);
+        expect(body.usageRollup.unknownByReason.no_token_record).toBe(1);
+        expect(body.usageRollup.coverage).toBeLessThan(1);
+    });
+
+    test('a recorded zero is a measurement, not missing telemetry', async () => {
+        await boot();
+        // A run on a priced model that genuinely reported 0 tokens. Treating
+        // it as 'no_token_record' would file a real datum under the word
+        // reserved for absent ones AND drag the task's coverage to 0%.
+        await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({
+                id: 'disp-zero', task_id: 'task-queued', executor: 'claude-code',
+                model: 'claude-opus-5', started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+            }),
+        });
+        await requestJson(`${handle.baseUrl}/api/dispatches/disp-zero`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                outcome: 'success', tokens: 0, completed_at: new Date(Date.now() - 4 * HOUR).toISOString(),
+            }),
+        });
+
+        const { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-queued`);
+        const zero = body.runs.find((r) => r.dispatchId === 'disp-zero');
+        expect(zero.tokens).toBe(0);
+        expect(zero.usageUnknown).toBeNull();
+        expect(zero.cost).toEqual({ usd: 0, estimated: true });
+        // Fully covered: the one run on this task reported its usage.
+        expect(body.usageRollup).toMatchObject({
+            totalRuns: 1, pricedRuns: 1, unknownRuns: 0, estimatedUsd: 0, coverage: 1,
+        });
+    });
+
+    test('pricing and the unknown classifier never disagree about a run', async () => {
+        await boot();
+        // The invariant the two findings above both broke: cost non-null
+        // exactly when usageUnknown is null. Exercised across every cause.
+        const cases = [
+            { id: 'disp-inv-ok', model: 'claude-opus-5', tokens: 1_000 },
+            { id: 'disp-inv-zero', model: 'claude-opus-5', tokens: 0 },
+            { id: 'disp-inv-nomodel', model: null, tokens: 1_000 },
+            { id: 'disp-inv-unpriced', model: 'gpt-6-astra', tokens: 1_000 },
+            { id: 'disp-inv-norecord', model: 'claude-opus-5', tokens: null },
+        ];
+        for (const c of cases) {
+            await requestJson(`${handle.baseUrl}/api/dispatches`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    id: c.id, task_id: 'task-queued', executor: 'claude-code',
+                    ...(c.model ? { model: c.model } : {}),
+                    started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+                }),
+            });
+            await requestJson(`${handle.baseUrl}/api/dispatches/${c.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    outcome: 'success',
+                    ...(c.tokens === null ? {} : { tokens: c.tokens }),
+                    completed_at: new Date(Date.now() - 4 * HOUR).toISOString(),
+                }),
+            });
+        }
+
+        const { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-queued`);
+        for (const run of body.runs) {
+            expect(Boolean(run.cost) === (run.usageUnknown === null)).toBe(true);
+        }
+        // And the roll-up's own split agrees with the per-run verdicts.
+        const pricedRows = body.runs.filter((r) => r.cost).length;
+        expect(body.usageRollup.pricedRuns).toBe(pricedRows);
+        expect(body.usageRollup.unknownRuns).toBe(body.runs.length - pricedRows);
+    });
+
     test('cost estimate prices Fable 5.1 cache reads at $0.25/MTok and leaves other models unchanged', async () => {
         await boot();
         await requestJson(`${handle.baseUrl}/api/dispatches`, {
@@ -501,6 +733,12 @@ describe('dispatch-insight route', () => {
             body: JSON.stringify({ id: 'disp-kill', task_id: 'task-running', executor: 'claude-code' }),
         });
 
+        const stale = await requestJson(`${handle.baseUrl}/api/dispatch-insight/kill`, {
+            method: 'POST', body: JSON.stringify({ taskId: 'task-running', dispatchId: 'obsolete-row' }),
+        });
+        expect(stale.status).toBe(409);
+        expect(pidAlive(pid)).toBe(true);
+
         const { status, body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/kill`, {
             method: 'POST',
             body: JSON.stringify({ taskId: 'task-running' }),
@@ -511,6 +749,9 @@ describe('dispatch-insight route', () => {
         expect(['sigterm', 'sigkill']).toContain(body.method);
         expect(body.closedDispatches).toBe(1);
         expect(pidAlive(pid)).toBe(false); // the process is genuinely dead
+        const control = JSON.parse(fs.readFileSync(path.join(tmpDir, 'detached-runs', 'task-running.control'), 'utf8'));
+        expect(control.stopRequestedAt).toBeTruthy();
+        expect(control.executor).toBe('claude-code');
         expect(agentToolCalls).toEqual([]); // antigravity_abort is never invoked
 
         const list = await requestJson(`${handle.baseUrl}/api/dispatches?task_id=task-running`);

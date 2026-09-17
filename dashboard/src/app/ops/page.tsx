@@ -5,7 +5,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, Clock, AlertTriangle, MessageSquare, Terminal, Landmark } from "lucide-react";
@@ -19,14 +19,14 @@ import {
 } from "@/lib/council";
 import {
   DispatchStation,
-  fmtGb,
-  lmStudioActive,
   type DispatchStateResponse,
   type ExecutorRun,
   type CronJob,
 } from "@/components/bridge/dispatch-station";
 import { useLiveRefetch } from "@/components/live-board-state";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
+import { AutonomyControl, useAutonomyControl } from "@/components/autonomy-control";
+import { OpsLocalQueue } from "@/components/ops-local-queue";
 
 function relTime(iso?: string) {
   if (!iso) return "—";
@@ -109,11 +109,18 @@ export default function OpsConsolePage() {
   const [state, setState] = useState<DispatchStateResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [queueRefreshKey, setQueueRefreshKey] = useState(0);
   // Council sessions (deliberations) — clickable into the Chamber transcript.
   const [councilSessions, setCouncilSessions] = useState<CouncilSessionSummary[]>([]);
 
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const autonomyControl = useAutonomyControl(setActionMsg);
+  const refreshAutonomy = autonomyControl.refresh;
+
   const load = useCallback(async () => {
     setRefreshing(true);
+    setQueueRefreshKey(key => key + 1);
+    const autonomyRefresh = refreshAutonomy();
     try {
       const res = await fetch("/api/praxis/dispatch-state", { cache: "no-store" });
       if (!res.ok) throw new Error(`dispatch-state ${res.status}`);
@@ -129,31 +136,17 @@ export default function OpsConsolePage() {
     } catch {
       /* keep the last list */
     }
+    await autonomyRefresh;
     setRefreshing(false);
-  }, []);
+  }, [refreshAutonomy]);
 
   // P3-30 phase 2: the Ops console reacts to live frames instead of a fixed
   // 10s loop against the rate-limited API. `dispatch` + `system` + `activity`
-  // cover the executor lanes, the council list and the queue; the fallback
-  // poll is kept (and kept short-ish) because several panels here — CLI slot
-  // health, local-queue counts — move for reasons no Praxis frame reports.
+  // cover executor lanes and the council list. The fallback also catches
+  // CLI slot health changes without a frame. The local-model panel has its
+  // own five-second poll, since direct model requests do not emit frames.
   useLiveRefetch(["dispatch", "system", "activity"], load, { fallbackPollMs: 30_000 });
 
-  const toggleLocalQueue = async () => {
-    const action = localPaused ? "resume" : "pause";
-    try {
-      await fetch(`/api/local-queue/${action}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: "ops_console" }),
-      });
-      load();
-    } catch {
-      /* surface on next poll */
-    }
-  };
-
-  const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [togglingCron, setTogglingCron] = useState<string | null>(null);
 
   const toggleCronJob = async (key: string, paused: boolean, label: string) => {
@@ -184,16 +177,6 @@ export default function OpsConsolePage() {
     ...registryRuns,
     ...sseRuns.filter((s) => !registryRuns.some((r) => r.taskId === s.taskId)),
   ];
-  const localJobs = state?.localLlm?.jobs ?? [];
-  const localCounts = state?.localLlm?.counts ?? {};
-  const localPaused = Boolean(state?.localLlm?.worker?.paused);
-  const activeCount = (localCounts["running"] ?? 0) + (localCounts["queued"] ?? 0);
-  const lmStudio = state?.lmStudio;
-  const memory = state?.system?.memory;
-  // Queue idle but LM Studio saw traffic in the last two minutes: a direct
-  // caller (TheCortex embeddings) is working the box outside this queue.
-  const lmDirectActive = (localCounts["running"] ?? 0) === 0 && lmStudioActive(lmStudio?.lastActivityAt);
-
   // Executor Runs rows: live work first, then everything else newest-first.
   const runRows: ExecutorRun[] = [...runs];
   const runRank = (r: ExecutorRun) => (r.status === "active" ? 0 : 1);
@@ -214,7 +197,7 @@ export default function OpsConsolePage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 pb-12">
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-        <div className="container mx-auto flex h-16 items-center justify-between px-6">
+        <div className="container mx-auto flex flex-wrap items-center justify-between gap-3 px-6 py-3">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push("/")}
@@ -235,6 +218,9 @@ export default function OpsConsolePage() {
           >
             <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} /> refresh
           </button>
+        </div>
+        <div className="container mx-auto px-6 pb-3">
+          <AutonomyControl {...autonomyControl} />
         </div>
       </header>
 
@@ -504,116 +490,7 @@ export default function OpsConsolePage() {
           )}
         </div>
 
-        {/* Local LLM queue */}
-          <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-bold tracking-tight text-white">
-                LOCAL LLM QUEUE{" "}
-                <span className="ml-1 text-xs font-normal text-slate-500">
-                  ({activeCount} active
-                  {localCounts["failed"] ? ` · ${localCounts["failed"]} failed` : ""}
-                  {localCounts["succeeded"] ? ` · ${localCounts["succeeded"]} done` : ""})
-                </span>
-              </h3>
-              <button
-                onClick={toggleLocalQueue}
-                className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition-all ${
-                  localPaused
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-                    : "border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
-                }`}
-              >
-                {localPaused ? <PlayCircle size={13} /> : <PauseCircle size={13} />}
-                {localPaused ? "resume worker" : "pause worker"}
-              </button>
-            </div>
-            {/* LM Studio live state — direct traffic (TheCortex embeddings)
-                bypasses the queue below, so the box gets its own strip. The
-                strip hides entirely on old Praxis payloads without the field. */}
-            {lmStudio && (
-            <div className="mb-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-                <span className="font-semibold uppercase tracking-wide text-slate-400">LM Studio</span>
-                {!lmStudio.reachable ? (
-                  <span className="text-amber-300/90">unreachable — resident-model telemetry unavailable</span>
-                ) : (
-                  <>
-                    <span className="text-slate-500">
-                      {(lmStudio.loadedCount ?? 0)} of {lmStudio.models?.length ?? 0} models resident
-                    </span>
-                    {lmStudio.lastActivityAt && (
-                      <span
-                        className={lmDirectActive ? "text-cyan-300" : "text-slate-500"}
-                        title="Last LM Studio server activity — includes direct callers (e.g. TheCortex embeddings) invisible to this queue"
-                      >
-                        activity {relTime(lmStudio.lastActivityAt)}
-                        {lmDirectActive ? " · direct traffic" : ""}
-                      </span>
-                    )}
-                    {memory?.availBytes != null && memory.totalBytes != null && (
-                      <span
-                        className={`tabular-nums ${
-                          (memory.availPct ?? 100) < 10
-                            ? "text-rose-300"
-                            : (memory.availPct ?? 100) < 25
-                              ? "text-amber-300"
-                              : "text-slate-500"
-                        }`}
-                        title={`Mac Studio available memory${memory.swapUsedBytes ? ` · swap ${fmtGb(memory.swapUsedBytes)} used` : ""}`}
-                      >
-                        mem {fmtGb(memory.availBytes)} / {fmtGb(memory.totalBytes)} free
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-              {lmStudio.reachable && (lmStudio.models?.length ?? 0) > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {lmStudio.models!.map((m, i) => (
-                    <span
-                      key={m.id ?? i}
-                      className={`rounded border px-1.5 py-0.5 font-mono text-[10px] ${
-                        m.state === "loaded"
-                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                          : "border-slate-800 bg-slate-900/60 text-slate-600"
-                      }`}
-                      title={`${m.id}${m.type ? ` (${m.type})` : ""} — ${m.state === "loaded" ? "resident in memory" : "not loaded"}`}
-                    >
-                      {m.id}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-            )}
-            {localJobs.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-500">
-                {lmDirectActive
-                  ? "No queue jobs — but LM Studio is serving direct traffic."
-                  : "No active jobs in local queue."}
-              </div>
-            ) : (
-              <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
-                {localJobs.map((j, i) => (
-                  <div
-                    key={j.id ?? i}
-                    className="flex items-center gap-3 rounded border border-slate-800/60 bg-slate-950/40 px-3 py-2"
-                  >
-                    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] uppercase ${statusChip(j.status ?? "")}`}>
-                      {j.status}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-xs text-slate-300" title={j.type}>
-                      {j.type}
-                    </span>
-                    <span className="shrink-0 text-[10px] text-slate-600">
-                      try {j.attempts ?? 0}/{j.maxAttempts ?? 0}
-                    </span>
-                    <span className="w-16 shrink-0 text-right text-[10px] text-slate-500">{relTime(j.updatedAt)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        <OpsLocalQueue refreshKey={queueRefreshKey} />
       </div>
     </main>
   );

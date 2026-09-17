@@ -8,6 +8,8 @@
  * PATCH  /api/projects/:id                      — Update project (status/priority/end_state/upgrade_posture/needs/…)
  * POST   /api/projects/:id/needs                — Add one need to the project's needs registry
  * PATCH  /api/projects/:id/needs/:needId        — Update one need (status → met/dropped/open, notes)
+ * POST   /api/projects/:id/checkpoints/transition — Submit fresh evidence for the current checkpoint (advances at most once)
+ * POST   /api/projects/:id/checkpoints/:checkpointId/reopen — Reopen a completed checkpoint (operator regression)
  * DELETE /api/projects/:id                      — Delete project
  * POST   /api/projects/:id/archive              — Archive project + its tasks (files left intact)
  * POST   /api/projects/:id/unarchive            — Restore an archived project + its tasks
@@ -401,90 +403,16 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     // instead of silently storing a typo the schedulers then can't interpret.
     const PROJECT_STATUSES = ['active', 'parked', 'paused', 'completed', 'archived'];
     const UPGRADE_POSTURES = ['auto', 'propose', 'off'];
-    const NEED_KINDS = ['capability', 'resource', 'credential', 'decision', 'information'];
-    const NEED_STATUSES = ['open', 'met', 'dropped'];
-    const MAX_NEEDS = 50;
-
-    const CRITERION_KINDS = ['url_up', 'command', 'task_set'];
-    const MAX_CRITERIA = 20;
-
-    /** Normalize + validate a full end_state_criteria array (mirrors
-     *  @praxis/contract EndStateCriterionSchema). Returns { criteria } or { error }. */
-    function normalizeCriteria(raw) {
-        if (!Array.isArray(raw)) return { error: 'end_state_criteria must be an array' };
-        if (raw.length > MAX_CRITERIA) return { error: `end_state_criteria capped at ${MAX_CRITERIA} entries` };
-        const criteria = [];
-        for (const item of raw) {
-            if (!item || typeof item !== 'object') return { error: 'each criterion must be an object' };
-            const description = String(item.description || '').trim();
-            if (!description) return { error: 'each criterion requires a description' };
-            if (!CRITERION_KINDS.includes(item.kind)) {
-                return { error: `criterion kind must be one of: ${CRITERION_KINDS.join(', ')}` };
-            }
-            if (item.kind === 'url_up' && !String(item.url || '').match(/^https?:\/\//)) {
-                return { error: 'url_up criterion requires an http(s) url' };
-            }
-            if (item.kind === 'command' && !String(item.command || '').trim()) {
-                return { error: 'command criterion requires a command' };
-            }
-            if (item.kind === 'task_set' && (!Array.isArray(item.task_ids) || item.task_ids.length === 0)) {
-                return { error: 'task_set criterion requires a non-empty task_ids array' };
-            }
-            const criterion = {
-                id: item.id || crypto.randomUUID().slice(0, 8),
-                kind: item.kind,
-                description: description.slice(0, 300),
-                enabled: item.enabled !== false,
-                created_at: item.created_at || new Date().toISOString(),
-            };
-            if (item.url) criterion.url = String(item.url).slice(0, 500);
-            if (item.expect_status !== undefined) criterion.expect_status = Number(item.expect_status);
-            if (item.command) criterion.command = String(item.command).slice(0, 300);
-            if (Array.isArray(item.task_ids)) criterion.task_ids = item.task_ids.map(String).slice(0, 50);
-            if (item.source) criterion.source = String(item.source).slice(0, 80);
-            criteria.push(criterion);
-        }
-        return { criteria };
-    }
-
-    /** Normalize + validate a full needs array. Returns { needs } or { error }. */
-    function normalizeNeeds(raw) {
-        if (!Array.isArray(raw)) return { error: 'needs must be an array' };
-        if (raw.length > MAX_NEEDS) return { error: `needs capped at ${MAX_NEEDS} entries` };
-        const needs = [];
-        for (const item of raw) {
-            if (!item || typeof item !== 'object') return { error: 'each need must be an object' };
-            const description = String(item.description || '').trim();
-            if (!description) return { error: 'each need requires a description' };
-            if (!NEED_KINDS.includes(item.kind)) {
-                return { error: `need kind must be one of: ${NEED_KINDS.join(', ')}` };
-            }
-            const status = item.status || 'open';
-            if (!NEED_STATUSES.includes(status)) {
-                return { error: `need status must be one of: ${NEED_STATUSES.join(', ')}` };
-            }
-            const need = {
-                id: item.id || crypto.randomUUID().slice(0, 8),
-                kind: item.kind,
-                description: description.slice(0, 500),
-                status,
-                created_at: item.created_at || new Date().toISOString(),
-            };
-            if (item.resolved_at) need.resolved_at = item.resolved_at;
-            if (status !== 'open' && !need.resolved_at) need.resolved_at = new Date().toISOString();
-            if (item.source) need.source = String(item.source).slice(0, 80);
-            if (item.notes) need.notes = String(item.notes).slice(0, 500);
-            needs.push(need);
-        }
-        return { needs };
-    }
-
     router.patch('/:id', async (req, res) => {
         const { id } = req.params;
         const allowedFields = [
             'name', 'description', 'type', 'vibe', 'stack', 'urls', 'path',
             'status', 'priority', 'end_state', 'tags',
-            'upgrade_posture', 'needs', 'end_state_criteria',
+            'upgrade_posture', 'needs', 'end_state_criteria', 'endpoint', 'end_state_assessment',
+            'expected_updated_at', 'expected_end_state_updated_at', 'expected_status',
+            // Ordered checkpoint plan under the long-term end_state (docs/project-checkpoints.md):
+            // a replacement array merged by stable id, guarded by its own plan revision.
+            'checkpoints', 'expected_checkpoints_revision',
             // Stakeholder governance: communication controls + branded status
             // report template (JSON objects, whole-object replace like needs).
             'comms_settings', 'report_template',
@@ -505,16 +433,6 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         if (filteredUpdates.upgrade_posture !== undefined && !UPGRADE_POSTURES.includes(filteredUpdates.upgrade_posture)) {
             return res.status(400).json({ error: `upgrade_posture must be one of: ${UPGRADE_POSTURES.join(', ')}` });
         }
-        if (filteredUpdates.needs !== undefined) {
-            const result = normalizeNeeds(filteredUpdates.needs);
-            if (result.error) return res.status(400).json({ error: result.error });
-            filteredUpdates.needs = result.needs;
-        }
-        if (filteredUpdates.end_state_criteria !== undefined) {
-            const result = normalizeCriteria(filteredUpdates.end_state_criteria);
-            if (result.error) return res.status(400).json({ error: result.error });
-            filteredUpdates.end_state_criteria = result.criteria;
-        }
         for (const key of ['comms_settings', 'report_template']) {
             if (filteredUpdates[key] === undefined) continue;
             const value = filteredUpdates[key];
@@ -531,59 +449,70 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             if (!updated) return res.status(404).json({ error: 'Project not found or update failed' });
             res.json(updated);
         } catch (error) {
+            if (error.status) return res.status(error.status).json({ error: error.message, ...(error.code ? { code: error.code } : {}) });
             console.error(`Error updating project ${id}:`, error);
             res.status(500).json({ error: 'Failed to update project' });
         }
     });
 
-    // ─── Needs registry (add / resolve one need without racing the array) ─
-    // POST adds a single open need; PATCH updates one need's status/notes.
-    // Server-side read-modify-write so concurrent agents don't clobber each
-    // other the way full-array PATCHes would.
-    router.post('/:id/needs', async (req, res) => {
-        const { kind, description, source, notes } = req.body || {};
-        const project = await getProjectById(PROJECT_ROOT, req.params.id);
-        if (!project) return res.status(404).json({ error: 'Project not found' });
-        const existing = Array.isArray(project.needs) ? project.needs : [];
-        const result = normalizeNeeds([...existing, { kind, description, source, notes }]);
-        if (result.error) return res.status(400).json({ error: result.error });
+    // ─── Checkpoint advancement ─────────────────────────────────────────
+    // POST /:id/checkpoints/transition — submit a fresh assessment of the CURRENT
+    // checkpoint. The database recomputes the verdict and advances at most once
+    // under the plan revision guard (docs/project-checkpoints.md). Failed,
+    // unknown, unverifiable or stale evidence records "waiting" and moves nothing.
+    router.post('/:id/checkpoints/transition', async (req, res) => {
+        if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return res.status(400).json({ error: 'Transition body must be an object' });
         try {
-            const updated = await db.updateProject(project.id, { needs: result.needs });
-            if (!updated) return res.status(500).json({ error: 'Failed to add need' });
-            res.status(201).json({ success: true, need: result.needs[result.needs.length - 1], needs: updated.needs });
+            const result = await db.transitionProjectCheckpoint(req.params.id, req.body);
+            if (!result) return res.status(404).json({ error: 'Project not found' });
+            res.json({ success: true, transition: result.transition, checkpoints: result.project.checkpoints, updated_at: result.project.updated_at, project: result.project });
         } catch (error) {
-            console.error(`Error adding need to project ${req.params.id}:`, error);
-            res.status(500).json({ error: 'Failed to add need' });
+            if (error.status) return res.status(error.status).json({ error: error.message, ...(error.code ? { code: error.code } : {}) });
+            console.error(`Error transitioning checkpoint for project ${req.params.id}:`, error);
+            res.status(500).json({ error: 'Failed to transition checkpoint' });
         }
     });
 
-    router.patch('/:id/needs/:needId', async (req, res) => {
-        const { status, notes } = req.body || {};
-        if (status !== undefined && !NEED_STATUSES.includes(status)) {
-            return res.status(400).json({ error: `need status must be one of: ${NEED_STATUSES.join(', ')}` });
-        }
-        const project = await getProjectById(PROJECT_ROOT, req.params.id);
-        if (!project) return res.status(404).json({ error: 'Project not found' });
-        const needs = Array.isArray(project.needs) ? [...project.needs] : [];
-        const idx = needs.findIndex(n => n && n.id === req.params.needId);
-        if (idx === -1) return res.status(404).json({ error: 'Need not found' });
-        const need = { ...needs[idx] };
-        if (status !== undefined) {
-            need.status = status;
-            if (status === 'open') delete need.resolved_at;
-            else need.resolved_at = new Date().toISOString();
-        }
-        if (notes !== undefined) need.notes = String(notes).slice(0, 500);
-        needs[idx] = need;
+    // POST /:id/checkpoints/:checkpointId/reopen — explicit operator regression of a
+    // completed checkpoint; its completion evidence stays in the checkpoint history.
+    router.post('/:id/checkpoints/:checkpointId/reopen', async (req, res) => {
+        const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
         try {
-            const updated = await db.updateProject(project.id, { needs });
-            if (!updated) return res.status(500).json({ error: 'Failed to update need' });
-            res.json({ success: true, need, needs: updated.needs });
+            const result = await db.reopenProjectCheckpoint(req.params.id, req.params.checkpointId, body);
+            if (!result) return res.status(404).json({ error: 'Project not found' });
+            res.json({ success: true, current_checkpoint_id: result.current_checkpoint_id, checkpoints: result.project.checkpoints, updated_at: result.project.updated_at, project: result.project });
         } catch (error) {
-            console.error(`Error updating need on project ${req.params.id}:`, error);
-            res.status(500).json({ error: 'Failed to update need' });
+            if (error.status) return res.status(error.status).json({ error: error.message, ...(error.code ? { code: error.code } : {}) });
+            console.error(`Error reopening checkpoint for project ${req.params.id}:`, error);
+            res.status(500).json({ error: 'Failed to reopen checkpoint' });
         }
     });
+
+    // Need-scoped mutations are read/merged/written atomically inside SQLite.
+    async function mutateNeed(req, res, adding) {
+        const allowed = ['kind', 'description', 'source', 'notes', 'knowledge', 'status', 'expected'];
+        if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return res.status(400).json({ error: 'Need patch must be an object' });
+        const expected = req.body.expected;
+        if (expected !== undefined && (!expected || Array.isArray(expected) ||
+            ['status', 'notes', 'description', 'kind'].some(key => typeof expected[key] !== 'string'))) {
+            return res.status(400).json({ error: 'expected must contain a complete need snapshot' });
+        }
+        const updates = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
+        if (!Object.keys(updates).length) return res.status(400).json({ error: 'No valid need fields to update' });
+        try {
+            const updated = await db.updateProjectNeed(req.params.id, adding ? null : req.params.needId, updates);
+            if (!updated) return res.status(404).json({ error: 'Project not found' });
+            if (updated.conflict) return res.status(409).json({ error: 'Need changed; saved answer was not applied', code: 'NEED_CONFLICT' });
+            const need = adding ? updated.needs.at(-1) : updated.needs.find(need => need.id === req.params.needId);
+            res.status(adding ? 201 : 200).json({ success: true, need, needs: updated.needs, updated_at: updated.updated_at });
+        } catch (error) {
+            if (error.status) return res.status(error.status).json({ error: error.message });
+            console.error(`Error updating project need ${req.params.id}:`, error);
+            res.status(500).json({ error: 'Failed to update need' });
+        }
+    }
+    router.post('/:id/needs', (req, res) => mutateNeed(req, res, true));
+    router.patch('/:id/needs/:needId', (req, res) => mutateNeed(req, res, false));
 
     // ─── Delete project ──────────────────────────────────────────────────
     router.delete('/:id', async (req, res) => {

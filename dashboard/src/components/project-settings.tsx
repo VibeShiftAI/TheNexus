@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Project, ProjectNeed, EndStateCriterion, updateProject, archiveProject } from "@/lib/nexus";
-import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen, Target, Archive, PauseCircle, Gauge, Bot, ListChecks, History } from "lucide-react";
+import { Project, updateProject, archiveProject } from "@/lib/nexus";
+import { Edit2, Save, X, Globe, GitBranch, Layout, Plus, Trash2, FolderOpen, Archive, PauseCircle, Gauge, Bot } from "lucide-react";
 
 interface ProjectSettingsProps {
     project: Project;
@@ -26,15 +26,6 @@ const POSTURE_LABELS: Record<string, string> = {
     off: "Upgrades: off",
 };
 
-const NEED_KINDS: ProjectNeed["kind"][] = ["capability", "resource", "credential", "decision", "information"];
-
-const CRITERION_KINDS: EndStateCriterion["kind"][] = ["url_up", "command", "task_set"];
-const CRITERION_HINT: Record<EndStateCriterion["kind"], string> = {
-    url_up: "https://… (passes when the URL responds 2xx/3xx)",
-    command: "npm test (runs in the project workspace; passes on exit 0)",
-    task_set: "task-id, task-id (passes when all listed tasks are completed)",
-};
-
 export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
     const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
@@ -43,71 +34,6 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
     const [confirmArchive, setConfirmArchive] = useState(false);
     const [editedProject, setEditedProject] = useState<Project>(project);
     const [stackEntry, setStackEntry] = useState({ key: '', value: '' });
-    const [endStateReason, setEndStateReason] = useState('');
-    const [showHistory, setShowHistory] = useState(false);
-    const [needEntry, setNeedEntry] = useState<{ kind: ProjectNeed["kind"]; description: string }>({ kind: 'capability', description: '' });
-    const [criterionEntry, setCriterionEntry] = useState<{ kind: EndStateCriterion["kind"]; description: string; target: string }>({ kind: 'url_up', description: '', target: '' });
-
-    const openNeeds = (project.needs ?? []).filter(n => n.status === 'open');
-    const endStateChanged = (editedProject.end_state || '') !== (project.end_state || '');
-
-    const handleAddNeed = () => {
-        if (!needEntry.description.trim()) return;
-        const need: ProjectNeed = {
-            id: crypto.randomUUID().slice(0, 8),
-            kind: needEntry.kind,
-            description: needEntry.description.trim(),
-            status: 'open',
-            created_at: new Date().toISOString(),
-            source: 'operator',
-        };
-        setEditedProject(prev => ({ ...prev, needs: [...(prev.needs ?? []), need] }));
-        setNeedEntry({ kind: 'capability', description: '' });
-    };
-
-    const handleNeedStatus = (id: string, status: ProjectNeed["status"]) => {
-        setEditedProject(prev => ({
-            ...prev,
-            needs: (prev.needs ?? []).map(n => n.id === id ? { ...n, status } : n),
-        }));
-    };
-
-    const handleRemoveNeed = (id: string) => {
-        setEditedProject(prev => ({ ...prev, needs: (prev.needs ?? []).filter(n => n.id !== id) }));
-    };
-
-    const handleAddCriterion = () => {
-        const target = criterionEntry.target.trim();
-        const description = criterionEntry.description.trim();
-        if (!description || !target) return;
-        const criterion: EndStateCriterion = {
-            id: crypto.randomUUID().slice(0, 8),
-            kind: criterionEntry.kind,
-            description,
-            enabled: true,
-            created_at: new Date().toISOString(),
-            source: 'operator',
-            ...(criterionEntry.kind === 'url_up' ? { url: target } : {}),
-            ...(criterionEntry.kind === 'command' ? { command: target } : {}),
-            ...(criterionEntry.kind === 'task_set'
-                ? { task_ids: target.split(',').map(s => s.trim()).filter(Boolean) }
-                : {}),
-        };
-        setEditedProject(prev => ({ ...prev, end_state_criteria: [...(prev.end_state_criteria ?? []), criterion] }));
-        setCriterionEntry({ kind: 'url_up', description: '', target: '' });
-    };
-
-    const handleToggleCriterion = (id: string) => {
-        setEditedProject(prev => ({
-            ...prev,
-            end_state_criteria: (prev.end_state_criteria ?? []).map(c => c.id === id ? { ...c, enabled: c.enabled === false } : c),
-        }));
-    };
-
-    const handleRemoveCriterion = (id: string) => {
-        setEditedProject(prev => ({ ...prev, end_state_criteria: (prev.end_state_criteria ?? []).filter(c => c.id !== id) }));
-    };
-
     const handleArchive = async () => {
         setArchiving(true);
         try {
@@ -165,18 +91,12 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                 vibe: editedProject.vibe,
                 urls: editedProject.urls,
                 stack: editedProject.stack,
-                end_state: editedProject.end_state,
-                // Revision metadata — recorded on the end_state_history entry
-                // when the end state actually changed.
-                ...(endStateChanged ? { end_state_source: 'operator', ...(endStateReason.trim() ? { end_state_reason: endStateReason.trim() } : {}) } : {}),
                 status: editedProject.status,
                 priority: editedProject.priority ?? 0,
                 upgrade_posture: editedProject.upgrade_posture ?? 'auto',
-                needs: editedProject.needs ?? [],
-                end_state_criteria: editedProject.end_state_criteria ?? [],
+                expected_updated_at: editedProject.updated_at,
             });
             setIsEditing(false);
-            setEndStateReason('');
             onUpdate();
         } catch (error) {
             console.error('Failed to update project:', error);
@@ -190,7 +110,8 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
         return (
             <div className="relative group">
                 <button
-                    onClick={() => setIsEditing(true)}
+                    aria-label="Edit project settings"
+                    onClick={() => { setEditedProject(structuredClone(project)); setIsEditing(true); }}
                     className="absolute top-0 right-0 p-2 bg-slate-800 text-slate-400 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:text-cyan-400 hover:bg-slate-700"
                 >
                     <Edit2 size={16} />
@@ -271,40 +192,6 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                     </div>
                 )}
 
-                {/* End State display — the evolving goal */}
-                {project.end_state && (
-                    <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 border border-emerald-500/20">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                            <div className="flex items-center gap-2">
-                                <Target size={14} className="text-emerald-400" />
-                                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">End State</span>
-                            </div>
-                            <span className="text-[11px] text-slate-500">
-                                {(project.end_state_history?.length ?? 0) > 1 && `evolved ×${(project.end_state_history!.length - 1)} · `}
-                                {project.end_state_updated_at && `updated ${new Date(project.end_state_updated_at).toLocaleDateString()}`}
-                            </span>
-                        </div>
-                        <p className="text-sm text-slate-300 leading-relaxed">{project.end_state}</p>
-                    </div>
-                )}
-
-                {/* Open needs — what this project is missing */}
-                {openNeeds.length > 0 && (
-                    <div className="mt-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                        <div className="flex items-center gap-2 mb-1.5">
-                            <ListChecks size={14} className="text-amber-400" />
-                            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Open Needs ({openNeeds.length})</span>
-                        </div>
-                        <ul className="space-y-1">
-                            {openNeeds.map(n => (
-                                <li key={n.id} className="text-sm text-slate-300 flex items-start gap-2">
-                                    <span className="shrink-0 mt-0.5 px-1.5 py-px rounded bg-amber-500/15 text-amber-300 text-[10px] font-mono uppercase">{n.kind}</span>
-                                    <span>{n.description}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
             </div>
         );
     }
@@ -416,177 +303,6 @@ export function ProjectSettings({ project, onUpdate }: ProjectSettingsProps) {
                             <option value="off">Off — no autonomous filings</option>
                         </select>
                         <p className="text-xs text-slate-500">How much improvement work Praxis may invent here on his own.</p>
-                    </div>
-                </div>
-
-                <div className="space-y-2">
-                    <label className="text-xs font-medium text-emerald-400 uppercase flex items-center gap-2">
-                        <Target size={12} />
-                        End State — Goal Regression Target
-                    </label>
-                    <textarea
-                        value={editedProject.end_state || ''}
-                        onChange={(e) => handleChange('end_state', e.target.value)}
-                        placeholder="Describe the desired end state of this project. Praxis will use this to backward-chain tasks and evaluate progress."
-                        className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-400 transition-colors h-28 resize-none placeholder:text-slate-600"
-                    />
-                    <p className="text-xs text-slate-500">Praxis uses this to evaluate progress, identify gaps, and auto-generate missing tasks. Every change is versioned.</p>
-                    {endStateChanged && (
-                        <input
-                            type="text"
-                            value={endStateReason}
-                            onChange={(e) => setEndStateReason(e.target.value)}
-                            placeholder="Why is the goal moving? (optional — stored on this revision)"
-                            className="w-full bg-slate-950 border border-emerald-500/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors placeholder:text-slate-600"
-                        />
-                    )}
-                    {(project.end_state_history?.length ?? 0) > 0 && (
-                        <div>
-                            <button
-                                type="button"
-                                onClick={() => setShowHistory(v => !v)}
-                                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 transition-colors"
-                            >
-                                <History size={12} />
-                                {showHistory ? 'Hide' : 'Show'} end-state history ({project.end_state_history!.length} revision{project.end_state_history!.length === 1 ? '' : 's'})
-                            </button>
-                            {showHistory && (
-                                <ul className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-1">
-                                    {[...project.end_state_history!].reverse().map((rev, i) => (
-                                        <li key={i} className="text-xs bg-slate-950 border border-slate-800 rounded-lg p-2">
-                                            <div className="text-slate-500 mb-1">
-                                                {new Date(rev.at).toLocaleString()}
-                                                {rev.source && <span> · {rev.source}</span>}
-                                                {rev.reason && <span className="text-emerald-500/80"> · {rev.reason}</span>}
-                                            </div>
-                                            <div className="text-slate-300">{rev.end_state || <em className="text-slate-600">(cleared)</em>}</div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* Needs registry — what this project is missing */}
-                <div className="space-y-2">
-                    <label className="text-xs font-medium text-amber-400 uppercase flex items-center gap-2">
-                        <ListChecks size={12} />
-                        Needs — What This Project Is Missing
-                    </label>
-                    <div className="bg-slate-950 border border-amber-500/20 rounded-lg p-3 space-y-2">
-                        {(editedProject.needs ?? []).length === 0 && (
-                            <p className="text-xs text-slate-600">No declared needs. Add capabilities, resources, credentials, decisions, or information this project is missing — Praxis's councils aim work at open needs.</p>
-                        )}
-                        {(editedProject.needs ?? []).map(n => (
-                            <div key={n.id} className={`flex items-center justify-between gap-2 text-sm rounded px-2 py-1.5 ${n.status === 'open' ? 'bg-slate-900' : 'bg-slate-900/40 opacity-60'}`}>
-                                <div className="flex items-start gap-2 min-w-0">
-                                    <span className="shrink-0 mt-0.5 px-1.5 py-px rounded bg-amber-500/15 text-amber-300 text-[10px] font-mono uppercase">{n.kind}</span>
-                                    <span className={`text-slate-300 ${n.status !== 'open' ? 'line-through' : ''}`}>{n.description}</span>
-                                    {n.status !== 'open' && <span className="shrink-0 text-[10px] uppercase text-slate-500 mt-0.5">{n.status}</span>}
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                    {n.status === 'open' ? (
-                                        <>
-                                            <button type="button" onClick={() => handleNeedStatus(n.id, 'met')} title="Mark met" className="px-1.5 py-0.5 text-[10px] rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25">MET</button>
-                                            <button type="button" onClick={() => handleNeedStatus(n.id, 'dropped')} title="Drop" className="px-1.5 py-0.5 text-[10px] rounded bg-slate-700/50 text-slate-400 hover:bg-slate-700">DROP</button>
-                                        </>
-                                    ) : (
-                                        <button type="button" onClick={() => handleNeedStatus(n.id, 'open')} title="Reopen" className="px-1.5 py-0.5 text-[10px] rounded bg-slate-700/50 text-slate-400 hover:bg-slate-700">REOPEN</button>
-                                    )}
-                                    <button type="button" onClick={() => handleRemoveNeed(n.id)} className="text-slate-600 hover:text-red-400 ml-1">
-                                        <Trash2 size={13} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                        <div className="flex gap-2 pt-1">
-                            <select
-                                value={needEntry.kind}
-                                onChange={(e) => setNeedEntry(prev => ({ ...prev, kind: e.target.value as ProjectNeed["kind"] }))}
-                                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:border-amber-500 outline-none appearance-none"
-                            >
-                                {NEED_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
-                            </select>
-                            <input
-                                type="text"
-                                placeholder="What's missing? (e.g. YouTube Data API credentials)"
-                                value={needEntry.description}
-                                onChange={(e) => setNeedEntry(prev => ({ ...prev, description: e.target.value }))}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddNeed(); } }}
-                                className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:border-amber-500 outline-none"
-                            />
-                            <button
-                                type="button"
-                                onClick={handleAddNeed}
-                                className="p-1.5 bg-amber-500/20 text-amber-400 rounded hover:bg-amber-500/30"
-                            >
-                                <Plus size={16} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* End-state acceptance criteria — how "done" is verified */}
-                <div className="space-y-2">
-                    <label className="text-xs font-medium text-cyan-400 uppercase flex items-center gap-2">
-                        <ListChecks size={12} />
-                        End-State Acceptance Criteria — How &quot;Done&quot; Is Verified
-                    </label>
-                    <div className="bg-slate-950 border border-cyan-500/20 rounded-lg p-3 space-y-2">
-                        {(editedProject.end_state_criteria ?? []).length === 0 && (
-                            <p className="text-xs text-slate-600">No machine-checkable criteria. Declare URL probes, test commands, or task sets — the weekly steward verifies these and reports per-criterion pass/fail instead of guessing from open-task counts.</p>
-                        )}
-                        {(editedProject.end_state_criteria ?? []).map(c => (
-                            <div key={c.id} className={`flex items-center justify-between gap-2 text-sm rounded px-2 py-1.5 ${c.enabled !== false ? 'bg-slate-900' : 'bg-slate-900/40 opacity-60'}`}>
-                                <div className="flex items-start gap-2 min-w-0">
-                                    <span className="shrink-0 mt-0.5 px-1.5 py-px rounded bg-cyan-500/15 text-cyan-300 text-[10px] font-mono uppercase">{c.kind}</span>
-                                    <span className={`text-slate-300 ${c.enabled === false ? 'line-through' : ''}`}>
-                                        {c.description}
-                                        <span className="text-slate-500 ml-1 font-mono text-xs">{c.url || c.command || (c.task_ids ?? []).join(', ')}</span>
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                    <button type="button" onClick={() => handleToggleCriterion(c.id)} className={`px-1.5 py-0.5 text-[10px] rounded ${c.enabled !== false ? 'bg-slate-700/50 text-slate-400 hover:bg-slate-700' : 'bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25'}`}>
-                                        {c.enabled !== false ? 'DISABLE' : 'ENABLE'}
-                                    </button>
-                                    <button type="button" onClick={() => handleRemoveCriterion(c.id)} className="text-slate-600 hover:text-red-400 ml-1">
-                                        <Trash2 size={13} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                        <div className="flex gap-2 pt-1">
-                            <select
-                                value={criterionEntry.kind}
-                                onChange={(e) => setCriterionEntry(prev => ({ ...prev, kind: e.target.value as EndStateCriterion["kind"] }))}
-                                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:border-cyan-500 outline-none appearance-none"
-                            >
-                                {CRITERION_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
-                            </select>
-                            <input
-                                type="text"
-                                placeholder="What this proves (e.g. site is live)"
-                                value={criterionEntry.description}
-                                onChange={(e) => setCriterionEntry(prev => ({ ...prev, description: e.target.value }))}
-                                className="w-56 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:border-cyan-500 outline-none"
-                            />
-                            <input
-                                type="text"
-                                placeholder={CRITERION_HINT[criterionEntry.kind]}
-                                value={criterionEntry.target}
-                                onChange={(e) => setCriterionEntry(prev => ({ ...prev, target: e.target.value }))}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCriterion(); } }}
-                                className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:border-cyan-500 outline-none"
-                            />
-                            <button
-                                type="button"
-                                onClick={handleAddCriterion}
-                                className="p-1.5 bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30"
-                            >
-                                <Plus size={16} />
-                            </button>
-                        </div>
                     </div>
                 </div>
 

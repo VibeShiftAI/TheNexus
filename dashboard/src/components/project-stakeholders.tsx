@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Crown, Mail, Plus, Trash2, UserRound, Users, X } from "lucide-react";
 import { memberAge } from "@praxis/contract";
 import { HudPanel } from "@/components/bridge/hud";
+import { MemberMemory } from "@/components/member-memory";
 import {
   createContact,
   getProjectContacts,
@@ -373,6 +374,7 @@ function StakeholderRow({
           <Field label="Notes">
             <textarea value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} className="hud-input min-h-[54px]" />
           </Field>
+          <MemberMemory memberId={contact.id} projectId={projectId} />
           {(contact.interaction_log?.length ?? 0) > 0 && (
             <div>
               <p className="mb-0.5 text-[10px] uppercase tracking-widest text-slate-500">Praxis interaction notes</p>

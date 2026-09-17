@@ -1,5 +1,6 @@
 import type { StreamEvent } from "@praxis/contract";
 import type { ExecutorRun } from "@/components/bridge/dispatch-station";
+import type { TopicAccess } from "@/lib/topic-activity";
 
 export const CHANNELS = [
   {
@@ -7,7 +8,7 @@ export const CHANNELS = [
     label: "Memory",
     color: "#2dd4bf",
     href: "/knowledge-ingestion",
-    description: "Recorded MCP memory searches, reads, and observations.",
+    description: "Recorded MCP memory calls and topic access from Cortex entity retrieval stamps.",
   },
   {
     id: "vault",
@@ -52,6 +53,7 @@ export const CHANNELS = [
 ] as const;
 export type ActivityChannel = (typeof CHANNELS)[number]["id"];
 export interface ActivityItem {
+  model?: string;
   id: string;
   at: string;
   channel: ActivityChannel;
@@ -60,12 +62,16 @@ export interface ActivityItem {
   status: "active" | "success" | "failed" | "recorded";
   source: string;
   taskId?: string;
+  executor?: string;
+  phase?: string;
   href?: string;
   path?: string;
+  topicId?: number;
 }
 export interface KnowledgeSnapshot {
   at: string;
-  sources: { memory: boolean; vault: boolean };
+  sources: { memory: boolean; vault: boolean; topics?: boolean };
+  topicAccesses?: TopicAccess[];
   calls: {
     id: number;
     at: string;
@@ -98,6 +104,8 @@ export function activityFromStream(e: StreamEvent): ActivityItem | null {
     case "task.started":
       return {
         ...common,
+        executor: e.executor,
+        phase: "dispatching",
         channel: qa ? "qa" : "dispatch",
         title: qa ? "Review dispatched" : "Executor dispatched",
         detail: e.executor,
@@ -106,6 +114,8 @@ export function activityFromStream(e: StreamEvent): ActivityItem | null {
     case "executor.progress":
       return {
         ...common,
+        executor: e.progress.executor,
+        phase: e.progress.phase,
         channel: qa ? "qa" : "working",
         title: `${e.progress.executor} · ${e.progress.phase}`,
         detail: e.progress.message ?? "Progress received from executor",
@@ -114,6 +124,7 @@ export function activityFromStream(e: StreamEvent): ActivityItem | null {
     case "task.completed":
       return {
         ...common,
+        executor: e.result?.executor,
         channel: qa ? "qa" : "completed",
         title: qa
           ? "Review finished — verdict in report"
@@ -130,6 +141,7 @@ export function activityFromStream(e: StreamEvent): ActivityItem | null {
     case "task.failed":
       return {
         ...common,
+        executor: e.result?.executor,
         channel: qa ? "qa" : "completed",
         title: qa ? "Review run failed" : "Task failed",
         detail: e.error,
@@ -182,6 +194,7 @@ export function deriveBridgeActivity(input: {
   const active = new Map<string, ActivityItem>();
   for (const run of input.runs) {
     const last = latestTask.get(run.taskId);
+    if (last && last.executor === run.executor && run.model) last.model = run.model;
     const ownerId = run.kind === "agent" ? undefined : run.taskId;
     const qa = run.kind === "qa" || run.taskId.startsWith("qa--");
     const item: ActivityItem = {
@@ -200,6 +213,9 @@ export function deriveBridgeActivity(input: {
               ? "recorded"
               : "success",
       taskId: ownerId,
+      executor: run.executor,
+      model: run.model,
+      phase: run.phase,
       href: ownerId ? taskActivityHref(ownerId) : "/ops",
     };
     if (!last || Date.parse(last.at) < Date.parse(run.updatedAt)) {
@@ -260,6 +276,19 @@ export function deriveBridgeActivity(input: {
       href: `/activity?document=${encodeURIComponent(file.path)}`,
     });
   }
+  for (const access of knowledge?.topicAccesses ?? []) {
+    add({
+      id: `topic:${access.topicId}:${access.at}`,
+      at: access.at,
+      topicId: access.topicId,
+      channel: "memory",
+      title: `${access.title ?? `Topic ${access.topicId}`} accessed`,
+      detail: `${access.entityCount} ${access.entityCount === 1 ? "entity" : "entities"} retrieved in the last 5 minutes${access.entities.length ? ` · ${access.entities.join(" · ")}` : ""}`,
+      status: "recorded",
+      source: "Cortex retrieval stamps · latest access per topic",
+      href: `/knowledge-ingestion?term=${encodeURIComponent(access.entities[0] ?? access.title ?? "")}#knowledge-explorer`,
+    });
+  }
   const sorted = [...items.values()]
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .slice(0, 240);
@@ -271,7 +300,7 @@ export function deriveBridgeActivity(input: {
     const group = sorted.filter((e) => e.channel === c.id);
     const available =
       c.id === "memory" || c.id === "vault"
-        ? Boolean(knowledgeFresh && knowledge?.sources[c.id])
+        ? Boolean(knowledgeFresh && (knowledge?.sources[c.id] || (c.id === "memory" && knowledge?.sources.topics)))
         : input.connected || input.runsAvailable;
     const count = [...active.values()].filter((e) =>
       c.id === "qa"
@@ -298,5 +327,7 @@ export function deriveBridgeActivity(input: {
           })),
     };
   });
-  return { items: sorted, channels };
+  const topicsAvailable = Boolean(knowledgeFresh && knowledge?.sources.topics);
+  const topicAccesses = topicsAvailable ? knowledge?.topicAccesses ?? [] : [];
+  return { items: sorted, channels, activeItems: [...active.values()], topicAccesses, topicsAvailable };
 }

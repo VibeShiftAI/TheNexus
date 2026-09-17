@@ -202,6 +202,19 @@ describe('present provider keys decide api_key routes', () => {
         }
     });
 
+    test('pinned subscription models retain subscription auth with provider metadata', () => {
+        const state = { executors: assessExecutorLanes([], NOW, withoutKey), providers: withoutKey };
+        for (const [executor, provider, model] of [
+            ['codex', 'openai', 'gpt-6-astra'],
+            ['claude-code', 'anthropic', 'claude-opus-5'],
+            ['antigravity', 'google', 'gemini-3.1-pro-preview'],
+        ]) {
+            expect(checkDispatchRoute({ executor, provider, model, state }).allowed).toBe(true);
+        }
+        expect(checkDispatchRoute({ provider: 'openai', model: 'gpt-6-astra', state }))
+            .toMatchObject({ allowed: false, code: 'missing_key' });
+    });
+
     test('a missing key outranks an observed fault on the same lane', () => {
         const lanes = assessExecutorLanes([
             row({ executor: 'gemini', output: '429 rate limit' }),
@@ -349,13 +362,13 @@ describe('dispatch relay key-aware gate', () => {
 
         // No model pinned: the gate resolves codex's default (gpt-5.6-sol),
         // which is the model actually on cooldown.
-        const impliedModel = await post({ taskId: 't1', executor: 'codex' });
+        const impliedModel = await post({ taskId: 't1', executor: 'codex', provider: 'openai' });
         expect(impliedModel.status).toBe(409);
         expect((await impliedModel.json()).reply).toMatch(/gpt-5\.6-sol/);
         expect(proxied).toBe(0);
 
         // A healthy sibling model on the same worker still routes.
-        const healthy = await post({ taskId: 't1', executor: 'codex', model: 'gpt-5.6-terra' });
+        const healthy = await post({ taskId: 't1', executor: 'codex', model: 'gpt-6-astra', provider: 'openai' });
         expect(healthy.status).toBe(200);
         expect(proxied).toBe(1);
 

@@ -34,13 +34,78 @@ export function isTaskHref(href: string | undefined): href is string {
 }
 
 /**
+ * Hosts that serve this dashboard. The Mac bridge app (desktop/src-tauri,
+ * macOS personality) loads http://localhost:3000; the phone shell and the
+ * Windows travel shell load the Cloudflare tunnel host; the page's own host
+ * covers everything else (a verify stack on another port, a future rename).
+ * Any link that lands on one of these is the same app Robert is already
+ * signed into, so it must navigate in place rather than open a new
+ * window — a new window on the tunnel host means a fresh Cloudflare Access
+ * login, which is exactly the "sign in separately" hop this removes
+ * (2026-09-10, task 762637e6).
+ */
+const DASHBOARD_HOSTS = new Set(["nexus.vibeshiftai.com", "localhost:3000", "127.0.0.1:3000"]);
+
+/**
+ * First path segments of the dashboard's own App Router pages
+ * (dashboard/src/app/*). Anything else on a dashboard host — /api/*,
+ * /socket.io, the Cortex /graph and /runs ingress, /hub, /login — is not a
+ * page this client renders and keeps the plain-anchor behaviour.
+ */
+const IN_APP_ROUTES = new Set([
+    "academy", "activity", "agents", "calendar", "codex", "core-lab", "council",
+    "dispatch-preview", "documents", "inbox", "intake-reports", "knowledge-ingestion",
+    "llm-activity", "local-queue", "mail", "model-control", "module-preview", "ops",
+    "project", "studio", "system-monitor", "task", "task-board", "workflow-builder",
+]);
+
+function isDashboardHost(host: string): boolean {
+    if (DASHBOARD_HOSTS.has(host)) return true;
+    if (typeof window !== "undefined" && window.location && window.location.host.toLowerCase() === host) return true;
+    return false;
+}
+
+function isInAppPath(path: string): boolean {
+    const pathname = path.split(/[?#]/, 1)[0];
+    if (pathname === "/") return true;
+    return IN_APP_ROUTES.has(pathname.split("/")[1] ?? "");
+}
+
+/**
+ * The in-app path for a chat link, or null when the link must stay a plain
+ * anchor. A same-origin path ("/task/<id>", "/inbox#<hitlId>",
+ * "/documents/<id>") comes back as is; an absolute URL on a dashboard host
+ * (see DASHBOARD_HOSTS) collapses to its path + query + hash so the Next
+ * router opens it on the current origin, inside the current session. Every
+ * other scheme, host or path returns null.
+ */
+export function internalHref(href: string | undefined): string | null {
+    if (typeof href !== "string") return null;
+    const trimmed = href.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith("/")) {
+        if (trimmed.startsWith("//") || trimmed.startsWith("/\\")) return null;
+        return isInAppPath(trimmed) ? trimmed : null;
+    }
+    let url: URL;
+    try { url = new URL(trimmed); } catch { return null; }
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (url.username || url.password) return null;
+    if (!isDashboardHost(url.host.toLowerCase())) return null;
+    const path = `${url.pathname}${url.search}${url.hash}`;
+    return isInAppPath(path) ? path : null;
+}
+
+/**
  * In-app routes that chat markdown may link to. Praxis notices link
  * "/inbox#<hitlId>" (and "/task/<id>") so a system message can hand Robert
  * straight to the card that decides the alert; these must navigate the app,
- * not open a new tab (2026-08-30 chat-isolation rework).
+ * not open a new tab (2026-08-30 chat-isolation rework). Since 2026-09-10 the
+ * same holds for every dashboard page, including document-review links that
+ * Praxis mints as absolute tunnel URLs — see {@link internalHref}.
  */
 export function isInternalHref(href: string | undefined): href is string {
-    return typeof href === "string" && (href.startsWith("/task/") || href.startsWith("/inbox"));
+    return internalHref(href) !== null;
 }
 
 export function isTaskId(value: string): boolean {

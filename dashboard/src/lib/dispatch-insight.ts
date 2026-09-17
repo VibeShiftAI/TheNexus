@@ -105,9 +105,32 @@ export interface RunInsight {
   ceiling: { ms: number; source: "praxis_run_record" | "default_assumed" };
   overdue: boolean;
   cost: { usd: number; estimated: boolean } | null;
+  /** Measured token count, or null when the run left no usage record. */
+  tokens: number | null;
+  /** True when `tokens` is a text-volume guess rather than a measured count. */
+  tokensEstimated: boolean;
+  /** Present only when `cost` is null — why this run carries no figure. */
+  usageUnknown: { reason: UsageUnknownReason; detail: string } | null;
   verification: RunVerification | null;
   guardrails: RunGuardrailEvent[];
   canKill: boolean;
+}
+
+export type UsageUnknownReason = "no_model" | "unpriced_model" | "no_token_record";
+
+/**
+ * Task-level spend with the coverage that qualifies it. `estimatedUsd` sums
+ * ONLY the priced runs and is null when none were priced — zero priced runs
+ * is not zero spend. `coverage` is the 0–1 fraction of runs behind the sum.
+ */
+export interface UsageRollup {
+  totalRuns: number;
+  pricedRuns: number;
+  unknownRuns: number;
+  unknownByReason: Partial<Record<UsageUnknownReason, number>>;
+  estimatedUsd: number | null;
+  estimated: boolean;
+  coverage: number | null;
 }
 
 export interface TaskDispatchInsight {
@@ -122,6 +145,13 @@ export interface TaskDispatchInsight {
   spineAvailable: boolean;
   praxisReachable: boolean;
   latestVerification: RunVerification | null;
+  /**
+   * Aggregate cost for the WHOLE task, always paired with its own coverage.
+   * Computed over every dispatch row the task has, whereas `runs` below is
+   * only the display page (newest 50), so `usageRollup.totalRuns` can exceed
+   * `runs.length` and is the authoritative count of the task's runs.
+   */
+  usageRollup: UsageRollup;
   runs: RunInsight[];
 }
 
@@ -153,11 +183,12 @@ export async function getTaskDispatchInsight(taskId: string): Promise<TaskDispat
  */
 export async function killTaskRun(
   taskId: string,
+  dispatchId?: string,
 ): Promise<{ ok: boolean; cancelled: boolean; method: string; closedDispatches: number }> {
   const res = await fetch("/api/dispatch-insight/kill", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ taskId }),
+    body: JSON.stringify({ taskId, dispatchId }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `Kill failed (${res.status})`);
@@ -180,4 +211,29 @@ export function formatMs(ms: number): string {
 export function formatCostUsd(usd: number): string {
   if (usd >= 1) return `~$${usd.toFixed(2)}`;
   return `~$${usd.toFixed(3).replace(/0$/, "")}`;
+}
+
+/**
+ * "12 of 19 runs priced (63%)" — the coverage that must sit beside any
+ * aggregate. Never returns a bare percentage: the denominator is the point.
+ */
+export function formatCoverage(rollup: UsageRollup): string {
+  const { pricedRuns, totalRuns } = rollup;
+  if (totalRuns === 0) return "no runs yet";
+  const pct = Math.round((pricedRuns / totalRuns) * 100);
+  return `${pricedRuns} of ${totalRuns} run${totalRuns === 1 ? "" : "s"} priced (${pct}%)`;
+}
+
+/** Human-readable tally of WHY runs are missing a cost, for a tooltip. */
+export function describeUnknownRuns(rollup: UsageRollup): string {
+  const labels: Record<UsageUnknownReason, string> = {
+    no_token_record: "left no usage record",
+    no_model: "recorded no model",
+    unpriced_model: "ran on a model with no verified rate",
+  };
+  const parts = (Object.entries(rollup.unknownByReason) as Array<[UsageUnknownReason, number]>)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([reason, n]) => `${n} ${labels[reason]}`);
+  return parts.length > 0 ? parts.join(" · ") : "";
 }

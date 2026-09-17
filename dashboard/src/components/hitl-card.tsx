@@ -9,9 +9,7 @@
  * `confidenceScore`, while the fullscreen alone had the priority rail, the
  * relative timestamp, ⌘⏎ submit, and Park. Neither surface was strictly
  * better — Robert simply saw different things depending on where he opened
- * the same queue. The split also made a fix land half-done: the 2026-08-30
- * phone-only marking for "accept as-is" was applied to the widget and silently
- * missed the fullscreen view, which is the one he actually reviews in.
+ * the same queue.
  *
  * There is one inbox, so there is one card. Everything below is the union of
  * what the two copies did; surfaces differ only in the chrome AROUND the list
@@ -25,7 +23,6 @@ import { Archive, ChevronDown, ChevronRight, Loader2, Send } from "lucide-react"
 import type { HITLRequest } from "@praxis/contract";
 
 import { hitlTaskMeta, parseResumeContext, PRIORITY_TONES, REASON_LABELS } from "@/lib/hitl-meta";
-import { isPhoneOnlyChoice, PHONE_ONLY_HINT } from "@/lib/hitl-choices";
 import {
   BoardMaintenanceHitlCard,
   ScheduleHitlCard,
@@ -222,33 +219,18 @@ export function HitlRequestCard({
 
         {/* option quick-chips */}
         {request.options && request.options.length > 0 ? (
-          <>
-            <div className="mb-3 flex flex-wrap gap-2">
-              {request.options.map((option) => {
-                const phoneOnly = isPhoneOnlyChoice(option);
-                return (
-                  <button
-                    key={option}
-                    disabled={resolving}
-                    onClick={() => void submit(option)}
-                    title={phoneOnly ? PHONE_ONLY_HINT : undefined}
-                    className={
-                      phoneOnly
-                        ? "rounded-md border border-slate-600 px-2.5 py-1 text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-400 transition hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
-                        : "rounded-md border border-cyan-500/40 px-2.5 py-1 text-[length:var(--hitl-fs-xs,0.75rem)] text-cyan-200 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
-                    }
-                  >
-                    {phoneOnly ? `${option} 📱` : option}
-                  </button>
-                );
-              })}
-            </div>
-            {request.options.some(isPhoneOnlyChoice) ? (
-              <p className="mb-3 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-500">
-                📱 {PHONE_ONLY_HINT}
-              </p>
-            ) : null}
-          </>
+          <div className="mb-3 flex flex-wrap gap-2">
+            {request.options.map((option) => (
+              <button
+                key={option}
+                disabled={resolving}
+                onClick={() => void submit(option)}
+                className="rounded-md border border-cyan-500/40 px-2.5 py-1 text-[length:var(--hitl-fs-xs,0.75rem)] text-cyan-200 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
         ) : null}
 
         {/* reply */}

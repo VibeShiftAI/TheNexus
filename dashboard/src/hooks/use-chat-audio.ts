@@ -19,8 +19,10 @@
  *     re-announcing it.
  */
 
+import { playAnnouncementCue } from "@/lib/announcement-cue";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { speechOwner, claimMediaSpeech, type SpeechLease } from "@/lib/speech-ownership";
 import { isThisClientActive } from "@/lib/active-client";
 import {
     fullReportAudioForMessage,
@@ -150,6 +152,7 @@ export function useChatAudio({ messages, chatAudio, playChatAudio }: UseChatAudi
     const voiceAudioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
     const nowPlayingVoiceRef = useRef<string | null>(null);
     const voiceQueueRef = useRef<string[]>([]);
+    const queuedUntilRef = useRef(new Map<string, number>());
     // True from chirp-start until the voice element actually starts — guards
     // the queue against double-starts during the ~0.5s chirp window.
     const voiceStartPendingRef = useRef(false);
@@ -174,114 +177,108 @@ export function useChatAudio({ messages, chatAudio, playChatAudio }: UseChatAudi
         }
     }, [getPlayedVoice]);
 
-    // TNG-style comm chirp: two quick rising tones synthesized with WebAudio
-    // (no audio asset, no copyright), played a beat before each auto-played
-    // Praxis voice note. Resolves after the chirp (or immediately on any
-    // failure/blocked-autoplay) so the voice always follows.
-    const playCommChirp = useCallback((): Promise<void> => new Promise((resolve) => {
-        try {
-            type WindowWithWebkitAudio = Window & { webkitAudioContext?: typeof AudioContext };
-            const Ctx = window.AudioContext || (window as WindowWithWebkitAudio).webkitAudioContext;
-            if (!Ctx) return resolve();
-            const ctx = new Ctx();
-            const tone = (start: number, dur: number, f0: number, f1: number) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = "sine";
-                osc.frequency.setValueAtTime(f0, ctx.currentTime + start);
-                osc.frequency.exponentialRampToValueAtTime(f1, ctx.currentTime + start + dur);
-                gain.gain.setValueAtTime(0.0001, ctx.currentTime + start);
-                gain.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + start + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
-                osc.connect(gain).connect(ctx.destination);
-                osc.start(ctx.currentTime + start);
-                osc.stop(ctx.currentTime + start + dur + 0.05);
-            };
-            tone(0, 0.16, 620, 1320);
-            tone(0.2, 0.22, 980, 1980);
-            window.setTimeout(() => {
-                ctx.close().catch(() => {});
-                resolve();
-            }, 560);
-        } catch {
-            resolve();
-        }
-    }), []);
+    const playbackEpoch = useRef(0);
+    const playbackLease = useRef<SpeechLease | null>(null);
+    const playbackAbort = useRef<AbortController | null>(null);
+    const mounted = useRef(true);
+    const cancelPendingPlayback = useCallback(() => {
+        ++playbackEpoch.current;
+        playbackAbort.current?.abort();
+        playbackAbort.current = null;
+        voiceStartPendingRef.current = false;
+        voiceAudioRefs.current.forEach(el => { if (!el.paused) el.pause(); });
+        nowPlayingVoiceRef.current = null;
+        playbackLease.current?.release();
+        playbackLease.current = null;
+    }, []);
 
     // Fresh full-report briefing waiting for its turn on the GLOBAL player
     // (provider-owned, survives navigating to /inbox). It starts only when
     // the inline voice queue is idle — one Praxis voice at a time.
     const pendingReportRef = useRef<ChatAudioItem | null>(null);
-    const maybeStartPendingReport = useCallback(() => {
-        const item = pendingReportRef.current;
-        if (!item) return;
-        if (voiceStartPendingRef.current || nowPlayingVoiceRef.current || voiceQueueRef.current.length > 0) return;
-        pendingReportRef.current = null;
-        isThisClientActive().then((active) => {
-            // Same discipline as voice notes: inactive devices keep the manual
-            // player, and a started briefing never re-announces after refresh.
-            markVoicePlayed(item.key);
-            if (!active) return;
-            voiceAudioRefs.current.forEach((el) => {
-                if (!el.paused) el.pause();
-            });
-            playCommChirp().then(() => playChatAudio(item));
-        });
-    }, [markVoicePlayed, playCommChirp, playChatAudio]);
-
-    const playNextQueuedVoice = useCallback(() => {
-        if (voiceStartPendingRef.current) return;
-        if (voiceQueueRef.current.length === 0) {
-            nowPlayingVoiceRef.current = null;
-            maybeStartPendingReport();
-            return;
-        }
+    const pendingReportUntil = useRef(0);
+    const startQueuedAudio = useCallback(async () => {
+        if (!mounted.current || voiceStartPendingRef.current || speechOwner.busy()) return;
+        if (!voiceQueueRef.current.length && !pendingReportRef.current) return;
+        const lease = speechOwner.claim('chat-autoplay', cancelPendingPlayback, false);
+        if (!lease) return;
+        playbackLease.current = lease;
         voiceStartPendingRef.current = true;
-        // Last-active-location gate: announcements auto-play only on the
-        // device Robert most recently touched (2026-07-17 — the Studio's
-        // desktop app AND a web tab both spoke while he worked on the
-        // laptop). Inactive clients keep the "New Voice Message" badge for
-        // manual play; the queue is dropped so a stale note never blurts
-        // out minutes later when this device becomes active again.
-        isThisClientActive().then((active) => {
+        const epoch = ++playbackEpoch.current;
+        const controller = new AbortController(); playbackAbort.current = controller;
+        const owns = () => mounted.current && epoch === playbackEpoch.current && lease.owns();
+        try {
+            const active = await isThisClientActive();
+            if (!owns()) return;
             if (!active) {
-                // Dropped notes are marked played so they can't re-queue and
-                // blurt out later when this device becomes active — the
-                // "New Voice Message" badge stays for manual play.
                 voiceQueueRef.current.forEach(markVoicePlayed);
                 voiceQueueRef.current = [];
-                voiceStartPendingRef.current = false;
-                nowPlayingVoiceRef.current = null;
+                queuedUntilRef.current.clear();
+                if (pendingReportRef.current) markVoicePlayed(pendingReportRef.current.key);
+                pendingReportRef.current = null;
                 return;
             }
             let key: string | null = null;
             let el: HTMLAudioElement | null = null;
-            while (voiceQueueRef.current.length > 0) {
+            while (voiceQueueRef.current.length) {
                 const candidateKey = voiceQueueRef.current.shift()!;
+                const expires = queuedUntilRef.current.get(candidateKey) ?? 0;
+                queuedUntilRef.current.delete(candidateKey);
+                if (Date.now() > expires) { markVoicePlayed(candidateKey); continue; }
                 const candidate = voiceAudioRefs.current.get(candidateKey);
-                if (candidate && !candidate.ended) {
-                    key = candidateKey;
-                    el = candidate;
-                    break;
-                }
+                if (candidate && !candidate.ended) { key = candidateKey; el = candidate; break; }
             }
-            if (!key || !el) {
-                voiceStartPendingRef.current = false;
-                nowPlayingVoiceRef.current = null;
+            if (pendingReportRef.current && Date.now() > pendingReportUntil.current) {
+                markVoicePlayed(pendingReportRef.current.key);
+                pendingReportRef.current = null;
+            }
+            const report = !el ? pendingReportRef.current : null;
+            if (!el && !report) return;
+            if (key) nowPlayingVoiceRef.current = key;
+            if (!await playAnnouncementCue(controller.signal)) {
+                // A blocked cue consumes this automatic attempt. Otherwise a
+                // pending report immediately retries when this lease releases.
+                // Explicit cancellation leaves the queued report available.
+                if (owns()) {
+                    if (key) markVoicePlayed(key);
+                    if (report) { markVoicePlayed(report.key); pendingReportRef.current = null; }
+                }
                 return;
             }
-            const playKey = key;
-            const playEl = el;
-            nowPlayingVoiceRef.current = playKey;
-            playCommChirp().then(() => {
+            if (!owns()) return;
+            // Transfer the reservation synchronously to the actual player.
+            voiceStartPendingRef.current = false;
+            if (el && key) {
+                markVoicePlayed(key);
+                // bindMediaSpeech claims on native play; release our reservation first.
+                lease.release(); playbackLease.current = null;
+                const mediaLease = claimMediaSpeech(el);
+                try { await el.play(); } catch { mediaLease?.release(); }
+            } else if (report) {
+                pendingReportRef.current = null;
+                markVoicePlayed(report.key);
+                lease.release(); playbackLease.current = null;
+                playChatAudio(report);
+            }
+        } catch { /* blocked autoplay retains manual controls */ }
+        finally {
+            if (epoch === playbackEpoch.current) {
                 voiceStartPendingRef.current = false;
-                playEl.play().catch(() => {
-                    // Autoplay blocked (no user gesture yet) — drop, don't loop.
-                    if (nowPlayingVoiceRef.current === playKey) nowPlayingVoiceRef.current = null;
-                });
-            });
+                playbackAbort.current = null;
+                lease.release();
+                if (playbackLease.current === lease) playbackLease.current = null;
+            }
+        }
+    }, [cancelPendingPlayback, markVoicePlayed, playChatAudio]);
+    const playNextQueuedVoice = useCallback(() => { void startQueuedAudio(); }, [startQueuedAudio]);
+    useEffect(() => {
+        mounted.current = true;
+        const unsubscribe = speechOwner.subscribe(() => {
+            // Ownership transfers finish synchronously before deciding whether a queue is idle.
+            queueMicrotask(() => { if (mounted.current && !speechOwner.busy()) playNextQueuedVoice(); });
         });
-    }, [playCommChirp, markVoicePlayed, maybeStartPendingReport]);
+        return () => { mounted.current = false; unsubscribe(); cancelPendingPlayback(); };
+    }, [cancelPendingPlayback, playNextQueuedVoice]);
 
     useEffect(() => {
         // Enqueue voice notes by stable message identity. Eligibility, not
@@ -291,6 +288,9 @@ export function useChatAudio({ messages, chatAudio, playChatAudio }: UseChatAudi
         // without re-announcing them.
         const nowMs = Date.now();
         for (const msg of messages) {
+            // VoiceSession owns its full reply, including delayed receipt playback.
+            // Keep these attachments available to the existing manual players.
+            if (msg.metadata?.playbackOwner === 'voice' || msg.metadata?.suppressVoice === true) continue;
             // A full-report attachment is the message's SOLE report audio —
             // it rides the global player, and any accidental legacy voice on
             // the same message stays out of the inline queue.
@@ -305,6 +305,7 @@ export function useChatAudio({ messages, chatAudio, playChatAudio }: UseChatAudi
                     pendingKey: pendingReportRef.current?.key ?? null,
                 })) {
                     pendingReportRef.current = reportItem;
+                    pendingReportUntil.current = msg.timestamp.getTime() + REPORT_AUTOPLAY_FRESH_MS;
                 }
                 continue;
             }
@@ -320,6 +321,7 @@ export function useChatAudio({ messages, chatAudio, playChatAudio }: UseChatAudi
             })) continue;
             if (!voiceQueueRef.current.includes(key) && nowPlayingVoiceRef.current !== key) {
                 voiceQueueRef.current.push(key);
+                queuedUntilRef.current.set(key, msg.timestamp.getTime() + VOICE_AUTOPLAY_FRESH_MS);
             }
         }
 

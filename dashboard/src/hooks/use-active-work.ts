@@ -36,6 +36,14 @@ interface ActiveDispatch {
   model: string | null;
   tokens: number | null;
   tokensEstimated: boolean;
+  /**
+   * How many of this task's dispatch rows actually carried a usage record,
+   * and how many rows it has in total. Optional on the wire: an older API
+   * that predates the coverage fields must degrade to "no coverage known"
+   * rather than to a confident-looking 0 of 0.
+   */
+  tokensCountedRuns?: number;
+  tokensTotalRuns?: number;
   title: string | null;
   startedAt: string;
 }
@@ -61,6 +69,14 @@ export interface ActiveWork {
   tokens: number | null;
   /** whether `tokens` is an estimate (text-volume) rather than an exact count */
   tokensEstimated: boolean;
+  /**
+   * Coverage of `tokens`: how many of the task's dispatch rows contributed to
+   * that sum, out of how many exist. A cumulative total drawn from 1 of 8 runs
+   * is not the task's usage, and a strip that prints it bare says it is. Both
+   * are 0 when no dispatch is attributable.
+   */
+  tokensCountedRuns: number;
+  tokensTotalRuns: number;
   /** which executor is running it (dispatch executor or crew id), if known */
   executor: string | null;
   /** presence stream connection state */
@@ -118,6 +134,8 @@ export function useActiveWork(): ActiveWork {
     let model: string | null = null;
     let tokens: number | null = null;
     let tokensEstimated = false;
+    let tokensCountedRuns = 0;
+    let tokensTotalRuns = 0;
     let executor: string | null = null;
 
     if (dispatch) {
@@ -126,6 +144,10 @@ export function useActiveWork(): ActiveWork {
       model = dispatch.model;
       tokens = dispatch.tokens;
       tokensEstimated = dispatch.tokensEstimated;
+      // /dispatches/active reports these; dropping them here is what let the
+      // strip show a partial sum as if it covered the whole task.
+      tokensCountedRuns = dispatch.tokensCountedRuns ?? 0;
+      tokensTotalRuns = dispatch.tokensTotalRuns ?? 0;
       executor = dispatch.executor;
     } else if (praxisBusy && presence?.summary) {
       // Praxis itself is working; no dispatch row → model/tokens stay unavailable.
@@ -138,6 +160,17 @@ export function useActiveWork(): ActiveWork {
       taskLabel = presence.summary;
     }
 
-    return { running, activity, taskLabel, model, tokens, tokensEstimated, executor, connected };
+    return {
+      running,
+      activity,
+      taskLabel,
+      model,
+      tokens,
+      tokensEstimated,
+      tokensCountedRuns,
+      tokensTotalRuns,
+      executor,
+      connected,
+    };
   }, [presence, crew, active, connected]);
 }

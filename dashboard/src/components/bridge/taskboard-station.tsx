@@ -9,13 +9,16 @@
 "use client";
 
 import Link from "next/link";
-import { ClipboardList, ArrowUpRight, AlertTriangle, Play, CircleDashed, Radio } from "lucide-react";
+import { ClipboardList, ArrowUpRight, AlertTriangle, Play, CircleDashed, Radio, CheckCheck, ShieldCheck } from "lucide-react";
 import { HudPanel } from "@/components/bridge/hud";
 import { groupBoardTasks, type BoardTask } from "@/lib/task-board";
 import { useBoardState } from "@/hooks/use-board-state";
 import { useLiveRefetch } from "@/components/live-board-state";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
 import { isDayWellUnderway } from "@/lib/day-underway";
+
+import { useBridgeActivity } from "./activity-provider";
+import type { ActivityItem } from "@/lib/bridge-activity";
 
 const QUEUE_LIMIT = 5;
 
@@ -69,22 +72,26 @@ function AttentionRow({ task }: { task: BoardTask }) {
 }
 
 /** Running right now — a light sweep crosses the card while it works. */
-function ActiveRow({ task }: { task: BoardTask }) {
+export function ActiveRow({ task, activity }: { task: BoardTask; activity?: ActivityItem }) {
+  const qa = activity?.channel === "qa";
+  const color = qa ? "#a78bfa" : "#22d3ee";
   return (
     <Link
-      href={`/task/${task.id}`}
+      href={activity?.href ?? `/task/${task.id}`}
+      data-working={Boolean(activity)}
+      style={{borderColor: activity ? `${color}60` : undefined}}
       className="relative flex items-center gap-2 overflow-hidden rounded-md border border-violet-500/30 bg-violet-500/5 px-2 py-1.5 transition-colors hover:border-violet-400/60 hover:bg-violet-500/10"
       title="Open this task's console and run logs"
     >
-      <span className="hud-sheen pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-violet-300/10 to-transparent" />
-      <Play size={12} className="shrink-0 text-violet-300 motion-safe:animate-pulse" />
+      {activity && <span className="hud-sheen pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-cyan-300/10 to-transparent" />}
+      <span className="task-phase-signal" data-active={Boolean(activity)} style={{color}} aria-hidden="true">{qa ? <ShieldCheck size={14}/> : activity ? <><i/><i/><i/></> : <CircleDashed size={13}/>}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-xs font-semibold text-slate-100">{taskTitle(task)}</span>
         <span className="block truncate text-[10px] text-slate-500">{task.projectName || "Unknown project"}</span>
       </span>
       <span className="shrink-0 text-right">
         <span className="block text-[9px] font-semibold uppercase tracking-wide text-violet-300">
-          {prettyStatus(task.status)}
+          {activity ? `${qa ? "QA · " : ""}${activity.phase ?? "working"}` : "No live run"}
         </span>
         <span className="block text-[9px] tabular-nums text-slate-600">{timeAgo(task)}</span>
       </span>
@@ -109,6 +116,8 @@ function QueuedRow({ task }: { task: BoardTask }) {
 }
 
 export function TaskBoardStation() {
+  const { activeItems, items, now } = useBridgeActivity();
+  const recentResults = items.filter(item => item.channel === "completed" && item.taskId && now - Date.parse(item.at) >= 0 && now - Date.parse(item.at) < 300_000).filter((item, i, all) => all.findIndex(other => other.taskId === item.taskId) === i).slice(0, 3);
   // Deck-wide shared board poller (one fetch loop no matter how many
   // stations subscribe); stream events nudge it between polls.
   const { projects, loading, refresh } = useBoardState();
@@ -141,6 +150,7 @@ export function TaskBoardStation() {
     <HudPanel
       icon={<ClipboardList size={16} />}
       title="TACTICAL — TASK BOARD"
+      activity={activeItems.some(item => active.some(t => t.id === item.taskId?.replace(/^qa--/, ""))) ? "active" : "idle"}
       accent={degraded ? "red" : "emerald"}
       className="flex h-full flex-col"
       headerRight={
@@ -179,9 +189,9 @@ export function TaskBoardStation() {
 
           {active.length > 0 && (
             <div className="space-y-1.5">
-              <SectionLabel tone="text-violet-300">active now</SectionLabel>
+              <SectionLabel tone="text-violet-300">in progress</SectionLabel>
               {active.map((t) => (
-                <ActiveRow key={t.id} task={t} />
+                <ActiveRow key={t.id} task={t} activity={activeItems.find(item => item.taskId?.replace(/^qa--/, "") === t.id)} />
               ))}
             </div>
           )}
@@ -204,6 +214,9 @@ export function TaskBoardStation() {
           )}
         </div>
       )}
+      {recentResults.length > 0 && <div className="mt-3 space-y-1.5"><SectionLabel tone="text-emerald-300">recent results</SectionLabel>{recentResults.map(item => <Link key={item.id} href={item.href ?? `/task/${item.taskId}`} className={`module-new flex items-center gap-2 rounded-md border px-2 py-2 text-xs ${item.status === "failed" ? "border-rose-500/30 text-rose-300" : "border-emerald-500/30 text-emerald-300"}`}>
+        {item.status === "failed" ? <AlertTriangle size={13}/> : <CheckCheck size={13}/>}<span className="min-w-0 flex-1 truncate">{item.title}</span><ArrowUpRight size={12}/>
+      </Link>)}</div>}
     </HudPanel>
   );
 }

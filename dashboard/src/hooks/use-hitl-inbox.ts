@@ -18,12 +18,8 @@ type ResolveInput = {
 };
 
 /**
- * Turn a refused resolve into something readable. The server explains itself
- * in the body (`detail`) — most importantly for "accept as-is", which this
- * surface cannot perform at all: that capability token is delivered only in
- * the card's push notification, so accepting is a phone action by design.
- * A bare "Resolve failed with 403" left Robert with nothing to act on
- * (2026-08-30, four refused taps across two days).
+ * Turn a refused resolve into something readable using the server's detail
+ * or error message, with the HTTP status as a fallback.
  */
 async function describeResolveFailure(response: Response): Promise<string> {
   try {

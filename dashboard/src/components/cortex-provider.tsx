@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useRef, ReactNode, Disp
 import type { Socket } from "socket.io-client";
 import { acquireLiveSocket } from "@/lib/live-socket";
 import { Pause, Play, Volume2, X } from "lucide-react";
+import { bindMediaSpeech, claimMediaSpeech } from "@/lib/speech-ownership";
 import { reportClientActivity } from "@/lib/active-client";
 import type { ChatAudioItem } from "@/lib/chat-audio";
 
@@ -624,12 +625,14 @@ export function CortexProvider({ children }: { children: ReactNode }) {
     // and /inbox cannot interrupt playback.
     const [chatAudio, setChatAudio] = useState<ChatAudioNowPlaying | null>(null);
     const chatAudioElRef = useRef<HTMLAudioElement | null>(null);
+    const chatAudioCleanupRef = useRef<(() => void) | null>(null);
     const chatAudioItemRef = useRef<ChatAudioItem | null>(null);
 
     const ensureChatAudioEl = useCallback((): HTMLAudioElement => {
         if (!chatAudioElRef.current) {
             const el = new Audio();
             el.preload = "metadata";
+            chatAudioCleanupRef.current = bindMediaSpeech(el);
             el.addEventListener("loadedmetadata", () => {
                 setChatAudio(prev => prev ? { ...prev, duration: Number.isFinite(el.duration) ? el.duration : 0 } : prev);
             });
@@ -661,7 +664,8 @@ export function CortexProvider({ children }: { children: ReactNode }) {
             chatAudioItemRef.current = item;
             setChatAudio({ item, playing: false, currentTime: 0, duration: 0 });
         }
-        void el.play().catch(() => { /* autoplay blocked — controls remain */ });
+        const lease = claimMediaSpeech(el);
+        void el.play().catch(() => { lease?.release(); /* controls remain */ });
     }, [ensureChatAudioEl]);
 
     const toggleChatAudio = useCallback((item: ChatAudioItem) => {
@@ -686,6 +690,12 @@ export function CortexProvider({ children }: { children: ReactNode }) {
         }
         chatAudioItemRef.current = null;
         setChatAudio(null);
+    }, []);
+
+    useEffect(() => () => {
+        chatAudioCleanupRef.current?.();
+        const el = chatAudioElRef.current;
+        if (el) { el.pause(); el.removeAttribute('src'); el.load(); }
     }, []);
 
     const seekChatAudio = useCallback((seconds: number) => {

@@ -8,44 +8,23 @@ import type { ProjectCommsSettings, ReportTemplate } from '@praxis/contract';
 // PROJECT TYPES
 // ═══════════════════════════════════════════════════════════════
 
-/** One revision of a project's end state (appended server-side on every change). */
-export interface EndStateRevision {
-    end_state: string;
-    at: string;
-    source?: string;
-    reason?: string;
-}
-
-/** A declared need — something the project is missing on the way to its end state. */
-export interface ProjectNeed {
-    id: string;
-    kind: 'capability' | 'resource' | 'credential' | 'decision' | 'information';
-    description: string;
-    status: 'open' | 'met' | 'dropped';
-    created_at: string;
-    resolved_at?: string;
-    source?: string;
-    notes?: string;
-}
-
+// Shared wire types preserve structured knowledge and criterion evidence.
+export type { EndStateRevision, ProjectNeed, Checkpoint, CheckpointPlan, CheckpointAssessment } from '@praxis/contract';
+import type { EndStateRevision, ProjectNeed, EndStateCriterion as ContractCriterion, EndpointDefinition, EndStateAssessment, CheckpointPlan } from '@praxis/contract';
+export type EndStateCriterion = Omit<ContractCriterion, 'enabled'> & { enabled?: boolean };
 export type UpgradePosture = 'auto' | 'propose' | 'off';
-
 /**
- * A machine-checkable end-state acceptance criterion. The Project Data
- * Steward evaluates these weekly and cites per-criterion pass/fail instead
- * of the bare "no open tasks" heuristic.
+ * Author-owned checkpoint fields sent on PATCH `checkpoints` (the whole
+ * ordered plan). Server fields (status, completion, history) are never
+ * written by clients; `{ id }` alone keeps a checkpoint unchanged and no id
+ * adds a new one. See docs/project-checkpoints.md.
  */
-export interface EndStateCriterion {
-    id: string;
-    kind: 'url_up' | 'command' | 'task_set';
-    description: string;
-    url?: string;
-    expect_status?: number;
-    command?: string;
-    task_ids?: string[];
-    enabled?: boolean;
-    created_at?: string;
-    source?: string;
+export interface CheckpointDefinitionInput {
+    id?: string;
+    title?: string;
+    goal?: string;
+    criteria?: EndStateCriterion[];
+    need_ids?: string[];
 }
 
 export interface Project {
@@ -61,9 +40,14 @@ export interface Project {
         production?: string;
         repo?: string;
     };
+    updated_at?: string;
+    endpoint?: EndpointDefinition;
+    end_state_assessment?: EndStateAssessment | null;
     end_state?: string;
     end_state_updated_at?: string | null;
     end_state_history?: EndStateRevision[];
+    /** Ordered checkpoints under the long-term goal; null or absent = none defined. */
+    checkpoints?: CheckpointPlan | null;
     tags?: string[];
     status?: 'active' | 'parked' | 'paused' | 'completed' | 'archived' | string;
     /** Attention priority: 0 = normal, >0 elevated, <0 backburner. */
@@ -183,6 +167,10 @@ export interface PulseCrew {
     tokens24h: number;
     tokens7d: number;
     dispatches7d: number;
+    /** How many of `dispatches7d` actually reported a usage record. */
+    tokensCounted7d: number;
+    /** True when any run behind `tokens7d` was a char/4 estimate, not measured. */
+    tokensEstimated: boolean;
 }
 
 export interface ProjectPulse {
@@ -540,18 +528,68 @@ export async function updateProject(
     id: string,
     // end_state_reason/source are revision metadata consumed by the server's
     // end-state history appender (not stored as columns).
-    updates: Partial<Project> & { end_state_reason?: string; end_state_source?: string },
+    updates: Partial<Omit<Project, 'checkpoints'>> & {
+        end_state_reason?: string;
+        end_state_source?: string;
+        expected_updated_at?: string;
+        /** Replacement ordered plan; checkpoints left out are archived with their evidence. */
+        checkpoints?: CheckpointDefinitionInput[];
+        /** Guard: the plan revision the editor loaded (null when the project had no plan). */
+        expected_checkpoints_revision?: string | null;
+    },
 ): Promise<Project> {
+    // Undefined is an intentional editor clear only when the draft owns the
+    // observation key. JSON would omit it and the server would retain the old
+    // observation; null is the API's explicit removal operation.
+    const clearObservation = (criterion: EndStateCriterion) =>
+        Object.prototype.hasOwnProperty.call(criterion, 'observation') && criterion.observation === undefined
+            ? { ...criterion, observation: null }
+            : criterion;
+    const payload = {
+        ...updates,
+        ...(updates.end_state_criteria ? {
+            end_state_criteria: updates.end_state_criteria.map(clearObservation),
+        } : {}),
+        ...(updates.checkpoints ? {
+            checkpoints: updates.checkpoints.map(checkpoint =>
+                checkpoint.criteria ? { ...checkpoint, criteria: checkpoint.criteria.map(clearObservation) } : checkpoint),
+        } : {}),
+    };
     const res = await authFetch(`${API_URL}/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(payload),
     });
     if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Failed to update project");
+        throw new Error(res.status === 409 || res.status === 428 ? `${data.error || "Project changed"}. Reload the project before saving again.` : data.error || "Failed to update project");
     }
     return res.json();
+}
+
+/**
+ * Return a verified checkpoint to pending (an explicit operator regression;
+ * the completion evidence stays in the checkpoint's history). Automatic
+ * advancement never runs from the dashboard: TheNexus records it from Praxis
+ * evidence through the transition endpoint.
+ */
+export async function reopenProjectCheckpoint(
+    id: string,
+    checkpointId: string,
+    body: { reason?: string; expected_checkpoints_revision?: string | null },
+): Promise<Project> {
+    const res = await authFetch(`${API_URL}/${id}/checkpoints/${encodeURIComponent(checkpointId)}/reopen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+        throw new Error(res.status === 409
+            ? `${data.error || 'Checkpoint changed'}. Reload the project before trying again.`
+            : data.error || 'Failed to reopen checkpoint');
+    }
+    return data.project;
 }
 
 /**

@@ -16,8 +16,9 @@ import type { BoardProject } from "@/lib/task-board";
 
 const POLL_MS = 60_000;
 
-let projects: BoardProject[] | null = null;
-const subscribers = new Set<(p: BoardProject[]) => void>();
+type BoardSnapshot = { projects: BoardProject[] | null; error: boolean; updatedAt: string | null };
+let snapshot: BoardSnapshot = { projects: null, error: false, updatedAt: null };
+const subscribers = new Set<(p: BoardSnapshot) => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
 let inflight: Promise<void> | null = null;
 
@@ -26,20 +27,21 @@ function refresh(): Promise<void> {
   inflight = (async () => {
     try {
       const data = await getBoardState();
-      projects = data || [];
-      for (const fn of subscribers) fn(projects);
+      if (!Array.isArray(data)) throw new Error('Invalid board snapshot');
+      snapshot = { projects: data, error: false, updatedAt: new Date().toISOString() };
     } catch {
-      /* keep the last snapshot */
+      snapshot = { ...snapshot, error: true };
     } finally {
+      for (const fn of subscribers) fn(snapshot);
       inflight = null;
     }
   })();
   return inflight;
 }
 
-function subscribe(fn: (p: BoardProject[]) => void): () => void {
+function subscribe(fn: (p: BoardSnapshot) => void): () => void {
   subscribers.add(fn);
-  if (projects) fn(projects);
+  fn(snapshot);
   if (!timer) {
     refresh();
     timer = setInterval(refresh, POLL_MS);
@@ -54,12 +56,12 @@ function subscribe(fn: (p: BoardProject[]) => void): () => void {
 }
 
 export function useBoardState() {
-  const [state, setState] = useState<BoardProject[] | null>(projects);
+  const [state, setState] = useState<BoardSnapshot>(snapshot);
   useEffect(() => subscribe(setState), []);
   // P3-30 phase 2: a board frame refreshes the shared store immediately
   // instead of the deck waiting out the interval. The module-level 60s timer
   // above IS the fallback poll, so this subscription adds none of its own —
   // and refresh() coalesces, so N subscribers still make one request.
   useLiveRefetch(["board", "task"], refresh, { immediate: false, fallbackPollMs: 0 });
-  return { projects: state, loading: state === null, refresh };
+  return { ...state, loading: state.projects === null && !state.error, refresh };
 }

@@ -347,11 +347,11 @@ export function CouncilBenchControls() {
             <div className="border-b border-slate-800 px-4 py-3">
                 <div className="flex items-center gap-2">
                     <Users size={15} className="text-amber-300" />
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-amber-200">Council Benches</h2>
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-amber-200">Council Models</h2>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                    Who sits on each council. Subscription CLI seats spend a plan; OpenRouter seats are free —
-                    a paid model is refused rather than quietly billed.
+                    Choose council contributors and the model that aggregates their responses.
+                    Opus 5 is the minimum. A selected aggregator model takes precedence over the legacy arbiter rotation.
                 </p>
             </div>
             <div className="grid gap-4 p-4 lg:grid-cols-2">

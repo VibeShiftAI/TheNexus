@@ -18,6 +18,7 @@ const { randomUUID } = require('crypto');
 const fs = require('fs');
 const { PRAXIS_BRIDGE_TOKEN_FILE } = require('../shared/constants');
 const { praxisFetch, praxisProxyJson, praxisStream } = require('../services/praxis-client');
+const { readUsageWaits, validDispatchSnapshot } = require('../services/focus-usage-waits');
 
 /**
  * Praxis's full-scope bridge token, read fresh per call (it is minted on
@@ -239,8 +240,8 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
             ...(request.taskId ? { taskId: request.taskId } : {}),
         };
         pushService.notify({
-            title: 'Praxis needs input',
-            body: request.question || request.reason || 'Human input required',
+            title: request.metadata?.taskTitle || request.metadata?.title || 'Your input is needed',
+            body: request.question || request.reason || 'Open your inbox to see the decision and available options.',
             data: {
                 type: 'hitl_request',
                 ...deepLink,
@@ -562,6 +563,8 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
         req.body = { name: 'problem_intake', args };
         return proxyJson(req, res, '/agent-tool');
     });
+    router.get('/models/ladder-settings', (req, res) => proxyJson(req, res, '/api/models/ladder-settings'));
+    router.put('/models/ladder-settings', (req, res) => proxyJson(req, res, '/api/models/ladder-settings'));
     // Arbiter preference (bridge Ops control) — which CLI seat writes the verdict.
     router.get('/council/arbiter', (req, res) => proxyJson(req, res, '/api/council/arbiter'));
     router.post('/council/arbiter', (req, res) => proxyJson(req, res, '/api/council/arbiter'));
@@ -581,8 +584,32 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
         const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
         return proxyJson(req, res, `/api/comms${qs}`);
     });
+    router.get('/mailbox', (req, res) => {
+        res.setHeader('Cache-Control', 'no-store');
+        const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+        return proxyJson(req, res, `/api/mailbox${qs}`);
+    });
+    router.get('/mailbox/:folder/:id', (req, res) => {
+        res.setHeader('Cache-Control', 'no-store');
+        return proxyJson(req, res, `/api/mailbox/${encodeURIComponent(req.params.folder)}/${encodeURIComponent(req.params.id)}`);
+    });
     router.get('/skills', (req, res) => proxyJson(req, res, '/api/skills'));
-    router.get('/dispatch-state', (req, res) => proxyJson(req, res, '/api/dispatch/state'));
+    router.get('/dispatch-state', async (_req, res) => {
+        res.setHeader('Cache-Control', 'no-store');
+        try {
+            const upstream = await praxisFetch('/api/dispatch/state', { timeoutMs: 8000 });
+            const data = await upstream.json();
+            if (!upstream.ok) return res.status(upstream.status).json(data);
+            if (!validDispatchSnapshot(data)) throw new Error('Invalid dispatch snapshot');
+            return res.json({ ...data, executors: { ...data.executors, usageWaits: readUsageWaits() } });
+        } catch {
+            return res.status(502).json({ error: 'Dispatch activity is unavailable.' });
+        }
+    });
+    // Fleet switch: the browser reaches the loopback-only Praxis API through this relay.
+    router.get('/autonomy', (req, res) => proxyJson(req, res, '/api/autonomy'));
+    router.post('/autonomy/pause', (req, res) => proxyJson(req, res, '/api/autonomy/pause'));
+    router.post('/autonomy/resume', (req, res) => proxyJson(req, res, '/api/autonomy/resume'));
 
     // -- Model status board (Model Control Center) ------------------
     // Which models dispatch can reach, why any are held, and the target that
@@ -613,8 +640,8 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
             const executor = typeof body.executor === 'string' ? body.executor.trim() : null;
             const route = checkDispatchRoute({
                 executor,
-                // A caller naming a provider is asking for a per-token API route,
-                // which cannot run without that provider's key present.
+                // A pinned model may include provider metadata while still using
+                // its selected executor subscription; the gate resolves auth.
                 provider: typeof body.provider === 'string' && body.provider.trim() ? body.provider.trim() : null,
                 model: await effectiveModel({
                     db,
@@ -640,6 +667,42 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     router.post('/dispatch/clear-failed', (req, res) => proxyJson(req, res, '/api/dispatch/clear-failed'));
     // Shared voice-command grammar (classification lives with the agent).
     router.post('/voice-intent', (req, res) => proxyJson(req, res, '/api/voice/intent'));
+
+    // Prose is a single bounded, action-free request. Failure never becomes a
+    // stock spoken response, and the abort covers both headers and body reads.
+    router.post('/voice-prose', async (req, res) => {
+        res.setHeader('Cache-Control', 'no-store');
+        const { kind, facts, maxWords = 80 } = req.body ?? {};
+        const kinds = new Set(['command-result', 'alert', 'voice-test', 'schedule-approved', 'morning-prep', 'status-ready', 'chat-reply', 'demo-mode', 'away-briefing']);
+        const validFacts = typeof facts === 'string' || (facts !== null && typeof facts === 'object' && !Array.isArray(facts));
+        if (!kinds.has(kind) || !validFacts || JSON.stringify(facts).length > 12000
+            || !Number.isInteger(maxWords) || maxWords < 20 || maxWords > 300) {
+            return res.status(400).json({ error: 'Invalid spoken prose request' });
+        }
+        const controller = new AbortController();
+        let rejectAbort;
+        const canceled = new Promise((_, reject) => { rejectAbort = reject; });
+        const abort = () => { controller.abort(); rejectAbort(new Error('Spoken prose unavailable')); };
+        const timer = setTimeout(abort, 35000);
+        res.once('close', abort);
+        try {
+            const data = await Promise.race([canceled, (async () => {
+                const upstream = await praxisFetch('/api/voice/prose', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ kind, facts, maxWords }), signal: controller.signal,
+                });
+                if (!upstream.ok) throw new Error('Spoken prose unavailable');
+                return upstream.json();
+            })()]);
+            if (typeof data?.text !== 'string' || !data.text.trim()) throw new Error('Spoken prose unavailable');
+            return res.json({ text: data.text });
+        } catch {
+            if (!res.destroyed) return res.status(503).json({ error: 'Spoken prose unavailable' });
+        } finally {
+            clearTimeout(timer);
+            res.removeListener('close', abort);
+        }
+    });
 
     // ── Status reports (themed HTML rendered by Praxis) ────────────
     // Raw passthrough (not proxyJson — the payload is text/html). The chat

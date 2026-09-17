@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLiveRefetch } from "@/components/live-board-state";
 
 import Link from "next/link";
@@ -18,10 +18,12 @@ import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
 import { fmtTokens, type TokenDay } from "@/lib/token-usage";
 import { useTokenUsage } from "@/hooks/use-token-usage";
 
+import { useBridgeActivity } from "./activity-provider";
+
 interface CallerAgg {
   caller: string;
   calls: number;
-  tokens: number;
+  tokens: number | null;
   failures: number;
 }
 interface LogResponse {
@@ -29,6 +31,8 @@ interface LogResponse {
     by_caller: CallerAgg[];
     by_provider: { provider: string; calls: number }[];
     total_calls: number;
+    /** Calls in the window that left no usage record — the coverage caveat. */
+    missing_usage_calls?: number;
   };
 }
 
@@ -56,7 +60,7 @@ const TOKEN_SOURCES: { key: keyof TokenDay & ("claudeCode" | "codex" | "local" |
  * Reactor-style arc gauge: today's tokens stacked by source, scaled against
  * the single-day record (the pale tick). Full arc = your biggest day ever.
  */
-function TokenGauge({ today, record }: { today: TokenDay; record: { date: string; total: number } }) {
+function TokenGauge({ today, record, activeColors = [] }: { today: TokenDay; record: { date: string; total: number }; activeColors?: string[] }) {
   const SIZE = 112;
   const c = SIZE / 2;
   const r = c - 9;
@@ -96,6 +100,7 @@ function TokenGauge({ today, record }: { today: TokenDay; record: { date: string
             style={{ filter: `drop-shadow(0 0 3px ${s.color})` }}
           />
         ))}
+        {activeColors.map((color, i) => <circle key={color} cx={c} cy={c} r={r - 11 - i * 4} fill="none" stroke={color} strokeWidth="1.5" strokeDasharray="3 15" className="module-flow" opacity=".8" />)}
         {/* Day-record tick */}
         <line
           x1={c + (r - 6) * Math.cos(recRad)}
@@ -116,7 +121,21 @@ function TokenGauge({ today, record }: { today: TokenDay; record: { date: string
 }
 
 export function PowerStation() {
-  const { usage } = useTokenUsage();
+  const { usage, err: usageError } = useTokenUsage();
+  const { now } = useBridgeActivity();
+  const previousUsage = useRef<TokenDay | null>(null);
+  const [tokenPulse, setTokenPulse] = useState({ at: 0, sources: [] as string[] });
+  useEffect(() => {
+    if (!usage) return;
+    const prev = previousUsage.current;
+    if (prev && prev.date === usage.today.date) {
+      const sources = TOKEN_SOURCES.filter(src => usage.today[src.key] > prev[src.key]).map(src => src.key);
+      if (sources.length) setTokenPulse({at: Date.now(), sources});
+    }
+    previousUsage.current = usage.today;
+  }, [usage]);
+  const charging = !usageError && now >= tokenPulse.at && now - tokenPulse.at < 12000;
+  const activeSources = charging ? tokenPulse.sources : [];
   const [log, setLog] = useState<LogResponse | null>(null);
   const [err, setErr] = useState(false);
   const [localOnly, setLocalOnly] = useState<{ enabled: boolean; reason: string | null }>({
@@ -171,6 +190,7 @@ export function PowerStation() {
     <HudPanel
       icon={<Zap size={16} />}
       title="ENGINEERING — POWER"
+      activity={charging ? "active" : "idle"}
       accent="amber"
       className="flex h-full flex-col"
       headerRight={
@@ -181,7 +201,7 @@ export function PowerStation() {
     >
       <div className="mb-3 flex items-center gap-3">
         {usage ? (
-          <TokenGauge today={usage.today} record={usage.record} />
+          <Link href="/llm-activity" aria-label="Inspect token usage" className="rounded-full focus-visible:outline-2 focus-visible:outline-cyan-300"><TokenGauge today={usage.today} record={usage.record} activeColors={TOKEN_SOURCES.filter(src => activeSources.includes(src.key)).map(src => src.color)} /></Link>
         ) : (
           <div className="flex h-[112px] w-[112px] shrink-0 items-center justify-center text-[10px] text-slate-600">
             reading…
@@ -190,13 +210,13 @@ export function PowerStation() {
         <div className="min-w-0 flex-1">
           <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
             {TOKEN_SOURCES.map((src) => (
-              <div key={src.key} className="flex min-w-0 items-center gap-1.5">
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: src.color }} />
+              <Link href="/llm-activity" key={src.key} title={`Inspect ${src.label} usage`} className={`relative flex min-w-0 items-center gap-1.5 rounded hover:bg-slate-800/70 ${activeSources.includes(src.key) ? "module-new" : ""}`}>
+                <span className={`h-2 w-2 shrink-0 rounded-full ${activeSources.includes(src.key) ? "module-breathe shadow-[0_0_10px_currentColor]" : ""}`} style={{ backgroundColor: src.color, color: src.color }} />
                 <span className="min-w-0 flex-1 truncate text-[10px] text-slate-400">{src.label}</span>
                 <span className="shrink-0 text-[11px] font-semibold tabular-nums text-slate-200">
                   {usage ? fmtTokens(usage.today[src.key]) : "—"}
                 </span>
-              </div>
+              </Link>
             ))}
             <div
               className="flex min-w-0 items-center gap-1.5"
@@ -278,6 +298,16 @@ export function PowerStation() {
             {agg.total_calls} calls / {agg.by_provider.length} provider{agg.by_provider.length === 1 ? "" : "s"} in the
             last hour
           </div>
+          {/* Per-caller token figures above cover only the calls that reported
+              usage. Without this the rollup reads as the whole hour. */}
+          {!!agg.missing_usage_calls && (
+            <div
+              className="text-[10px] text-amber-400/90"
+              title={`${agg.missing_usage_calls} of ${agg.total_calls} calls left no usage record, so the token figures above are a partial sample — not the whole hour.`}
+            >
+              tokens unknown for {agg.missing_usage_calls} of {agg.total_calls} calls
+            </div>
+          )}
         </div>
       )}
 

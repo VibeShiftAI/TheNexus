@@ -7,6 +7,8 @@ export function getClientId() {
 
 export function reportClientActivity() {}
 
+let active = false;
+export function setActiveClient(value) { active = value; }
 export async function isThisClientActive() {
-    return false;
+    return typeof active === "function" ? active() : active;
 }

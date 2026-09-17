@@ -23,6 +23,8 @@ import {
 import { ModelAliasManager } from "@/components/model-alias-manager";
 import { ModelRoleManager } from "@/components/model-role-manager";
 import { UsageRoutingPanel } from "@/components/usage-routing-panel";
+import { CouncilBenchControls } from "@/components/council-bench-controls";
+import { ModelLadderSettings } from "@/components/model-ladder-settings";
 import { ModelStatusPanel } from "@/components/model-status-panel";
 import {
     getModelControlState,
@@ -40,6 +42,7 @@ import {
     setThinkingLevel,
     filterClaudeModels,
     filterCodexModels,
+    thinkingLevelOptions,
     getAntigravityModels,
     apiModelIdOf,
     setAgentBackend,
@@ -162,20 +165,6 @@ function ExecutionRow({ snapshot }: { snapshot: ModelExecutionSnapshot }) {
             )}
         </div>
     );
-}
-
-/**
- * Thinking levels a model's CLI will actually accept. Mirrors the server's
- * per-slug rules (server/services/model-discovery.js OPENAI_MODEL_EFFORT_TIERS
- * and `claude --effort`); the PUT re-validates, this only shapes the dropdown.
- * "ultra" is deliberately not offered — it is an agentic mode, not an effort.
- */
-function thinkingLevelOptions(modelId: string): string[] {
-    const slug = (modelId || "").trim().toLowerCase();
-    if (slug.startsWith("gpt-5.6")) return ["low", "medium", "high", "xhigh", "max"];
-    if (slug.startsWith("gpt-")) return ["low", "medium", "high", "xhigh"];
-    if (slug.includes("claude")) return ["low", "medium", "high", "xhigh", "max"];
-    return ["low", "medium", "high"];
 }
 
 export default function ModelControlPage() {
@@ -524,7 +513,9 @@ export default function ModelControlPage() {
                     </div>
                 )}
 
+                <ModelLadderSettings />
                 <ModelStatusPanel />
+                <CouncilBenchControls />
 
                 <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard icon={<Brain size={18} />} label="Active models" value={String(stats.models)} />
@@ -858,11 +849,11 @@ export default function ModelControlPage() {
                                             className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
                                         >
                                             <option value="">CLI default</option>
-                                            {thinkingLevelOptions(id).map(level => (
+                                            {thinkingLevelOptions(id, state.codexModels).map(level => (
                                                 <option key={level} value={level}>{level}</option>
                                             ))}
                                             {/* Keep a stored value selectable even if the roster shifted */}
-                                            {current && !thinkingLevelOptions(id).includes(current) && (
+                                            {current && !thinkingLevelOptions(id, state.codexModels).includes(current) && (
                                                 <option value={current}>{current}</option>
                                             )}
                                         </select>

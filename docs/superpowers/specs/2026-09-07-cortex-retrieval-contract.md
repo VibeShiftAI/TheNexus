@@ -1,0 +1,3 @@
+# Cortex retrieval contract repair
+
+The user approved proceeding with retrieval repair and reliable capture. Preserve the existing MCP memory_search interface and its provenance boundary. Map the existing public k argument to the gateway max_results field. Add evidence_only and include_query_expansion as optional booleans, preserving gateway defaults false and true. Forward explicit false correctly. Do not add a fallback or alter namespace defaults, privilege checks, or retrieved-content wrapping. Verify the actual HTTP request body and registered tool schema with synthetic responses, plus existing boundary and stateless-conformance regressions. No Cortex server mutation is needed.

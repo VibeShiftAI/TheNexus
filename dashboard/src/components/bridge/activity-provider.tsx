@@ -27,7 +27,10 @@ export function BridgeActivityProvider({ children }: { children: ReactNode }) {
   const live = useLiveBoardState();
   const dispatch = useDispatchState();
   const [knowledge, setKnowledge] = useState<KnowledgeSnapshot | null>(null);
-  const [now, setNow] = useState(0);
+  const [clockTick, setNow] = useState(0);
+  // Fetches and live events can render between ticks. Compare their timestamps
+  // with the current clock, not the previous tick (which makes fresh data look future-dated).
+  const now = clockTick ? Math.max(clockTick, Date.now()) : 0;
   useEffect(() => {
     let busy = false,
       disposed = false;
@@ -92,7 +95,10 @@ export function BridgeActivityProvider({ children }: { children: ReactNode }) {
         now,
         connected: producerLive || runsAvailable,
         events: live.recentEvents,
-        runs: dispatch.state?.executors?.runs ?? [],
+        runs: (dispatch.state?.executors?.runs ?? []).map(run => ({
+          ...run,
+          model: run.model ?? dispatch.state?.executors?.sessions?.find(session => session.taskId === run.taskId && session.executor === run.executor && session.status === "open")?.model,
+        })),
         runsAvailable,
         knowledge,
       }),

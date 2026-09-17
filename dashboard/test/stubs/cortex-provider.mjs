@@ -30,6 +30,7 @@ function subscribe(listener) {
 export const cortexTestStore = {
     reset(messages = []) {
         state.messages = messages;
+        state.conversationId = "test-conversation";
         state.hasMoreMessages = true;
         state.isLoadingMore = false;
         state.loadMoreCalls = 0;
@@ -46,6 +47,9 @@ export const cortexTestStore = {
         state.messages = fn(state.messages);
         emit();
     },
+    setConversation(id, messages = []) {
+        state.conversationId = id; state.messages = messages; emit();
+    },
     setHasMore(value) {
         state.hasMoreMessages = value;
         emit();
@@ -61,6 +65,7 @@ const EMPTY_SET = new Set();
 
 export function useCortex() {
     const messages = useSyncExternalStore(subscribe, () => state.messages);
+    const conversationId = useSyncExternalStore(subscribe, () => state.conversationId);
     const hasMoreMessages = useSyncExternalStore(subscribe, () => state.hasMoreMessages);
     const setMessages = useCallback((next) => {
         state.messages = typeof next === "function" ? next(state.messages) : next;
@@ -74,7 +79,7 @@ export function useCortex() {
         setMessages,
         readyForReview: EMPTY_SET,
         setReadyForReview: noop,
-        conversationId: state.conversationId,
+        conversationId,
         conversations: [],
         startNewConversation: asyncNoop,
         switchConversation: asyncNoop,

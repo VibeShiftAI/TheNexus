@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { dispatchModelKeyProvider } from "@/lib/dispatch-model-key-lane";
 import { useLiveRefetch } from "@/components/live-board-state";
 import {
   apiModelIdOf,
@@ -234,13 +235,11 @@ export function useExecutorModelOptions(): {
             observedAt: null,
           }
         : null;
-    // An explicitly pinned discovered model names its provider, so it is a
-    // provider-key route even though the unpinned CLI default remains a
-    // subscription route. This makes missing-key filtering reachable from the
-    // actual console without key-gating the three workers themselves.
+    // Pinning a model retains the selected subscription's authentication.
     const blockFor = (option: ExecutorModelOption) => {
-      const optionKeyLane = option.provider
-        ? providerKeys.find((p) => p.provider === option.provider) ?? null
+      const keyProvider = dispatchModelKeyProvider(executor, option.provider);
+      const optionKeyLane = keyProvider
+        ? providerKeys.find((p) => p.provider === keyProvider) ?? null
         : keyLane;
       return missingKeyBlockFor(optionKeyLane, option.id)
         ?? credential?.blockedModels.find((b) => b.model === option.id)

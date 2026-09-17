@@ -1,7 +1,7 @@
 ---
 context_type: dashboard-workflow-map
 status: active
-updated_at: 2026-09-07T20:56:54.234Z
+updated_at: 2026-09-12T01:16:51.769Z
 ---
 
 # Dashboard Workflow Architecture

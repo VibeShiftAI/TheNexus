@@ -44,6 +44,69 @@ describe('praxis-stream route', () => {
     delete process.env.PRAXIS_URL;
   });
 
+  it('enriches dispatch snapshots with safe saved waits while preserving upstream failures', async () => {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'focus-waits-test-'));
+    const prior = process.env.PRAXIS_USAGE_RESUME_FILE;
+    process.env.PRAXIS_USAGE_RESUME_FILE = path.join(dir, 'waits.json');
+    fs.writeFileSync(process.env.PRAXIS_USAGE_RESUME_FILE, JSON.stringify([{ taskId: 'task-one', executor: 'codex', session: {sessionId: 'private-session', model:'gpt-6-astra'}, resumeAtIso:'2026-09-08T12:00:00Z' }]));
+    let failing = false;
+    let malformed = null;
+    try {
+      const praxis = express();
+      praxis.get('/api/dispatch/state', (_req, res) => failing ? res.status(503).json({error:'Paused for maintenance'}) : res.json(malformed ?? {executors:{runs:[],cliQueue:[],sessions:[]},cron:[],localLlm:{jobs:[]}}));
+      praxisHandle = await listen(praxis);
+      process.env.PRAXIS_URL = praxisHandle.baseUrl;
+      const nexus = express();
+      nexus.use('/api/praxis', track(require('../routes/praxis-stream')()));
+      nexusHandle = await listen(nexus);
+      const response = await fetch(`${nexusHandle.baseUrl}/api/praxis/dispatch-state`);
+      const body = await response.json();
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(body.executors.runs).toEqual([]);
+      expect(body.executors.usageWaits.items[0].model).toBe('gpt-6-astra');
+      expect(JSON.stringify(body)).not.toContain('private-session');
+      fs.writeFileSync(process.env.PRAXIS_USAGE_RESUME_FILE, '{invalid');
+      const partial = await requestJson(`${nexusHandle.baseUrl}/api/praxis/dispatch-state`);
+      expect(partial.body.executors.usageWaits.available).toBe(false);
+      for (const payload of [{}, {executors:{runs:{},cliQueue:[]}}, {executors:{runs:[null],cliQueue:[],sessions:[]},cron:[],localLlm:{jobs:[]}}]) {
+        malformed = payload;
+        expect((await requestJson(`${nexusHandle.baseUrl}/api/praxis/dispatch-state`)).status).toBe(502);
+      }
+      failing = true;
+      await expect(requestJson(`${nexusHandle.baseUrl}/api/praxis/dispatch-state`)).resolves.toEqual({status:503,body:{error:'Paused for maintenance'}});
+    } finally {
+      if (prior === undefined) delete process.env.PRAXIS_USAGE_RESUME_FILE;
+      else process.env.PRAXIS_USAGE_RESUME_FILE = prior;
+      fs.rmSync(dir, {recursive:true,force:true});
+    }
+  });
+
+  it('proxies mailbox reads, pagination, encoded ids, and upstream errors', async () => {
+    const praxis = express();
+    const seen = [];
+    praxis.get('/api/mailbox', (req, res) => {
+      seen.push(req.query);
+      res.json({ folder: req.query.folder, items: [], nextCursor: null });
+    });
+    praxis.get('/api/mailbox/:folder/:id', (req, res) => {
+      seen.push(req.params);
+      res.status(409).json({ error: 'Mailbox changed. Refresh and try again.' });
+    });
+    praxisHandle = await listen(praxis);
+    process.env.PRAXIS_URL = praxisHandle.baseUrl;
+    const nexus = express();
+    nexus.use('/api/praxis', track(require('../routes/praxis-stream')()));
+    nexusHandle = await listen(nexus);
+    await expect(requestJson(`${nexusHandle.baseUrl}/api/praxis/mailbox?folder=sent&cursor=abc%2B123&limit=30`))
+      .resolves.toEqual({ status: 200, body: { folder: 'sent', items: [], nextCursor: null } });
+    await expect(requestJson(`${nexusHandle.baseUrl}/api/praxis/mailbox/inbox/valid%2Buid`))
+      .resolves.toEqual({ status: 409, body: { error: 'Mailbox changed. Refresh and try again.' } });
+    expect(seen).toEqual([{ folder: 'sent', cursor: 'abc+123', limit: '30' }, { folder: 'inbox', id: 'valid+uid' }]);
+  });
+
   it('proxies HITL list, detail, and resolve calls to Praxis', async () => {
     const praxis = express();
     praxis.use(express.json());
@@ -222,7 +285,7 @@ describe('praxis-stream route', () => {
     const notify = await driveHitlPush(event);
 
     expect(notify).toHaveBeenCalledWith({
-      title: 'Praxis needs input',
+      title: 'Your input is needed',
       body: 'Should Praxis continue?',
       data: { type: 'hitl_request', ...deepLink },
       channelId: 'praxis-agent',
@@ -246,7 +309,7 @@ describe('praxis-stream route', () => {
     const notify = await driveHitlPush(event);
 
     expect(notify).toHaveBeenCalledWith({
-      title: 'Praxis needs input',
+      title: 'Your input is needed',
       body: 'Should Praxis continue?',
       data: {
         type: 'hitl_request',

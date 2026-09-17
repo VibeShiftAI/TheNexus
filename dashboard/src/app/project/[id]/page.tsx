@@ -15,6 +15,9 @@ import { ProjectNotes } from "@/components/project-notes";
 import { ProjectStakeholders } from "@/components/project-stakeholders";
 import { ProjectRequests } from "@/components/project-requests";
 import { ProjectComms } from "@/components/project-comms";
+import { ProjectEndpointPanel } from "@/components/project-endpoint/endpoint-panel";
+import { ProjectNeedsPanel } from "@/components/project-endpoint/needs-panel";
+import { ProjectCheckpointsPanel } from "@/components/project-endpoint/checkpoints-panel";
 import { MissionBrief } from "@/components/project-brief/mission-brief";
 import { ActivityReport } from "@/components/project-brief/activity-report";
 import { HudPanel } from "@/components/bridge/hud";
@@ -261,6 +264,14 @@ export default function ProjectDetailPage() {
                 {/* Mission brief hero */}
                 <div className="hud-boot">
                     <MissionBrief project={project} brief={brief} />
+                </div>
+
+                {/* Checkpoint sequence under the long-term goal: what the crew works toward now */}
+                <ProjectCheckpointsPanel project={project} onUpdate={setProject} />
+
+                <div className="grid items-start gap-6 xl:grid-cols-2">
+                    <ProjectEndpointPanel project={project} onUpdate={setProject} />
+                    <ProjectNeedsPanel project={project} tasks={tasks} onUpdate={setProject} />
                 </div>
 
                 {/* Reports row — operations report beside git + artifacts rail */}

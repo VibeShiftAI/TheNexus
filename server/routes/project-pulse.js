@@ -143,7 +143,8 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
     `);
     // project_id is often null on dispatch rows — attribute through the task.
     const dispatchStmt = dbc.prepare(`
-        SELECT d.executor, d.model, d.tokens, d.outcome, d.started_at, d.completed_at,
+        SELECT d.executor, d.model, d.tokens, d.tokens_estimated, d.outcome,
+               d.started_at, d.completed_at,
                COALESCE(d.project_id, t.project_id) AS project_id,
                t.name AS task_name
         FROM task_dispatches d
@@ -163,7 +164,15 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
         return { active: 0, activeNames: [], queued: 0, attention: 0, review: 0, done7d: 0, total: 0, lastTouchMs: null };
     }
     function emptyCrew() {
-        return { running: 0, last: null, tokens24h: 0, tokens7d: 0, dispatches7d: 0 };
+        return {
+            running: 0, last: null, tokens24h: 0, tokens7d: 0, dispatches7d: 0,
+            // Coverage + provenance for tokens7d: how many of the window's
+            // dispatches actually reported usage, and whether any contributing
+            // row was a char/4 text-volume estimate rather than a measured
+            // count. Without these the sum laundered guesses and silently
+            // dropped unrecorded runs into one confident-looking number.
+            tokensCounted7d: 0, tokensEstimated: false,
+        };
     }
 
     /** Task + dispatch rollups for every project in one pass over the board. */
@@ -200,8 +209,10 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
             if (d.outcome === 'running' && nowMs - startedMs <= RUNNING_WINDOW_MS) c.running++;
             if (nowMs - startedMs <= 7 * DAY_MS) {
                 c.dispatches7d++;
-                if (d.tokens) {
+                if (typeof d.tokens === 'number') {
                     c.tokens7d += d.tokens;
+                    c.tokensCounted7d++;
+                    if (d.tokens_estimated === 1) c.tokensEstimated = true;
                     if (nowMs - startedMs <= DAY_MS) c.tokens24h += d.tokens;
                 }
             }

@@ -5,14 +5,17 @@ import { useLiveRefetch } from "@/components/live-board-state";
 
 import Link from "next/link";
 import { Brain, ArrowUpRight, Activity } from "lucide-react";
+import { fmtTokens } from "@/lib/token-usage";
 
-interface CallerAgg { caller: string; calls: number; tokens: number; failures: number }
+interface CallerAgg { caller: string; calls: number; tokens: number | null; failures: number }
 interface LogResponse {
   aggregates: {
     by_caller: CallerAgg[];
     by_provider: { provider: string; calls: number }[];
     total_calls: number;
     since_hours: number;
+    /** Calls in the window that left no usage record — the coverage caveat. */
+    missing_usage_calls?: number;
   };
 }
 
@@ -29,11 +32,6 @@ function barColor(caller: string) {
 }
 function shortName(caller: string) {
   return caller.replace(/^praxis\./, "").replace(/^mcp\./, "🤖 ");
-}
-function fmtTokens(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(0)}k`;
-  return String(n);
 }
 
 export function LLMActivityWidget() {
@@ -85,6 +83,17 @@ export function LLMActivityWidget() {
             <span className="text-2xl font-bold text-white">{agg.total_calls}</span>
             <span className="text-xs text-slate-400">calls across {agg.by_provider.length} provider{agg.by_provider.length === 1 ? "" : "s"}</span>
           </div>
+          {/* The details page qualifies these rollups with their usage coverage;
+              this widget showed the same numbers without it, so a partial
+              sample read as a complete one. Carry the caveat here too. */}
+          {!!agg.missing_usage_calls && (
+            <div
+              className="mb-2 text-[10px] text-amber-400/90"
+              title={`${agg.missing_usage_calls} of ${agg.total_calls} calls in this window left no usage record, so token figures below are a partial sample — not the whole hour.`}
+            >
+              usage unknown for {agg.missing_usage_calls} of {agg.total_calls} calls
+            </div>
+          )}
           <div className="space-y-1.5">
             {callers.map((c) => (
               <div key={c.caller} className="flex items-center gap-2">

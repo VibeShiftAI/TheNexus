@@ -167,6 +167,10 @@ const PULSE_COLORS: Record<CorePulse["kind"], string> = {
   "hitl-resolved": "#fbbf24",
   "council-verdict": "#a78bfa",
   trace: "#e2e8f0",
+  "memory-access": "#2dd4bf",
+  "vault-write": "#a78bfa",
+  dispatch: "#38bdf8",
+  qa: "#fbbf24",
 };
 
 // ── Renderer ─────────────────────────────────────────────────────────────

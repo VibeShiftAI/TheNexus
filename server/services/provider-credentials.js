@@ -449,15 +449,18 @@ function getRoutingState({ dbPath = DEFAULT_DB_PATH, now = Date.now(), env = pro
 /**
  * Which API-key lane a route must have present in order to run at all.
  *
- * An explicit `provider` (a per-token model route) always requires its key. An
+ * Provider metadata matching a subscription executor does not change its auth. A
+ * provider-only or cross-provider route requires its key. An
  * executor requires one only when its lane authenticates that way — the three
  * subscription CLIs return null here, and MUST, or the gate would ban the
  * default worker on a machine that legitimately holds no API keys.
  */
 function requiredKeyLane(routing, { executor, provider }) {
     const providers = routing.providers || [];
-    if (provider) return providerLaneFor(providers, normalizeProviderName(provider));
     const lane = (routing.executors || []).find(e => e.name === executor);
+    const providerName = provider ? normalizeProviderName(provider) : null;
+    if (lane?.kind === 'subscription' && (!providerName || providerName === lane.provider)) return null;
+    if (providerName) return providerLaneFor(providers, providerName);
     if (!lane || lane.kind !== 'api_key') return null;
     return providerLaneFor(providers, lane.provider);
 }

@@ -104,7 +104,7 @@ function authenticate(req, res, next) {
 // Apply auth to protected route prefixes
 ['/api/projects', '/api/tasks', '/api/ai', '/api/pins', '/api/models', '/api/model-control',
  '/api/activity', '/api/dashboard', '/api/mcp', '/api/initiatives', '/api/local-queue',
- '/api/skill-candidates'
+ '/api/skill-candidates', '/api/documents'
 ].forEach(prefix => app.use(prefix, authenticate));
 
 // ─── Shared Dependencies (injected into route factories) ────────────────────
@@ -128,7 +128,6 @@ const createModelsRouter    = require('./routes/models');
 const createModelControlRouter = require('./routes/model-control');
 const createSettingsRouter  = require('./routes/settings');
 const createDashboardRouter = require('./routes/dashboard');
-const { guardDispatchPayload } = require('./lib/provenance');
 const createSystemRouter    = require('./routes/system');
 const createUsageRouter     = require('./routes/usage');
 const createProjectsRouter  = require('./routes/projects');
@@ -137,6 +136,8 @@ const createAIChatRouter    = require('./routes/ai-chat');
 const createIngestRouter    = require('./routes/ingest');
 const createAgentsRouter    = require('./routes/agents');
 const createNotesRouter     = require('./routes/notes');
+const createDocumentsRouter = require('./routes/documents');
+const { createDocumentReviewDelivery } = require('./services/document-review-delivery');
 const createContactsRouter  = require('./routes/contacts');
 const createChatHistoryRouter = require('./routes/chat-history');
 const createChatFilesRouter   = require('./routes/chat-files');
@@ -181,6 +182,7 @@ app.use('/api/skill-candidates', require('./routes/skill-candidates')());
 // Read-only skill-wiki browser over the shared-mind vault (manifests,
 // telemetry, knowledge pages, backlink graph). No write path by design.
 app.use('/api/skill-wiki', require('./routes/skill-wiki')());
+app.use('/api/knowledge-activity', require('./routes/knowledge-activity')());
 app.use('/api/ingestion-control', createIngestionControlRouter());
 app.use('/api/studio',    createStudioRouter({ db, callAI }));
 const dispatchesRouter = createDispatchesRouter();
@@ -213,35 +215,18 @@ app.use('/api/projects', createProjectWorkflowsRouter({ db, getProjectById, PROJ
 // ─── Board State (Praxis executive planning) ───────────────────────────
 // Returns projects annotated with tasks + summary counts.
 // Praxis uses this for autonomous planning and prioritization.
-app.get('/api/board-state', authenticate, async (req, res) => {
-    const { project_id } = req.query;
-    try {
-        const boardState = await db.getBoardState(project_id || undefined);
-        const compatResult = boardState.map(project => ({
-            ...project,
-            tasks: (project.tasks || []).map(t => ({
-                ...t,
-                title: t.name,
-                createdAt: t.created_at,
-                updatedAt: t.updated_at,
-                // Board state is a read seam that carries antigravity_payload —
-                // gate external-tier payloads like every other read path
-                // (server/lib/provenance.js guardDispatchPayload).
-                ...(t.antigravity_payload ? { antigravity_payload: guardDispatchPayload(t) } : {})
-            }))
-        }));
-        res.json(compatResult);
-    } catch (err) {
-        console.error('[Board State] Error:', err);
-        res.status(500).json({ error: 'Failed to compute board state' });
-    }
-});
+app.get('/api/board-state', authenticate, createDashboardRouter.createBoardStateHandler({ db, compat: true }));
 
 // AI & chat
 app.use('/api/ai/chat',  createAIChatRouter({ db, callAI, pushService, io }));
 app.use('/api/ingest',   createIngestRouter({ db }));
 app.use('/api/agents',   createAgentsRouter({ db }));
 app.use('/api/notes',    createNotesRouter({ db }));
+// Markdown document reviews: registry, drafts, and the outbox that delivers a
+// finished review into the Praxis conversation (design 2026-09-10).
+const documentReviewDelivery = createDocumentReviewDelivery({ db, io });
+app.use('/api/documents', createDocumentsRouter({ db, delivery: documentReviewDelivery }));
+documentReviewDelivery.start();
 // Members — the unified people directory (2026-07-16). /api/members is the
 // canonical mount; /api/contacts stays as the legacy alias (same router).
 app.use('/api/members',  createContactsRouter({ db }));

@@ -40,20 +40,11 @@ test("dispatch client forwards the provider selected by the console", async () =
   assert.match(result.reply, /ANTHROPIC_API_KEY/);
 });
 
-test("console blocks a selected provider model when its key is missing", () => {
-  const hook = fs.readFileSync(
-    path.join(dashboardRoot, "src/hooks/use-executor-models.ts"),
-    "utf-8",
-  );
-  const consoleSource = fs.readFileSync(
-    path.join(dashboardRoot, "src/components/task-view/dispatch-console.tsx"),
-    "utf-8",
-  );
-
-  assert.match(hook, /provider:\s*m\.provider/);
-  assert.match(hook, /providerKeys\.find\(\(p\) => p\.provider === option\.provider\)/);
-  assert.match(consoleSource, /const selectedProvider = model/);
-  assert.match(consoleSource, /selectedOption\?\.provider\s*\?\?/);
-  assert.match(consoleSource, /provider:\s*selectedProvider/);
-  assert.match(consoleSource, /disabled=\{busy \|\| Boolean\(routeBlock\)\}/);
+test("pinned CLI models use subscriptions; API routes still require keys", async () => {
+  const { dispatchModelKeyProvider } = await import("../../lib/dispatch-model-key-lane.ts");
+  assert.equal(dispatchModelKeyProvider("codex", "openai"), null);
+  assert.equal(dispatchModelKeyProvider("claude-code", "anthropic"), null);
+  assert.equal(dispatchModelKeyProvider("antigravity", "google"), null);
+  assert.equal(dispatchModelKeyProvider("openrouter", "openrouter"), "openrouter");
+  assert.equal(dispatchModelKeyProvider("codex", "anthropic"), "anthropic");
 });

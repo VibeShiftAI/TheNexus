@@ -11,6 +11,7 @@
  */
 "use client";
 
+import { activeModelName } from "@/lib/active-model";
 import { useEffect, useMemo, useState } from "react";
 import { useLiveBoardState } from "@/components/live-board-state";
 import { useDispatchState } from "./use-dispatch-state";
@@ -97,12 +98,16 @@ export function useCrewActivity(): {
     for (const ex of EXECUTORS) {
       const lane = lanes[ex.id];
       const registryActive = registryRuns.find((r) => r.executor === ex.id && r.status === "active");
+      const modelFor = (taskId: string) => activeModelName(
+        registryRuns.find(r => r.taskId === taskId && r.executor === ex.id)?.model
+        ?? dispatchState?.executors?.sessions?.find(s => s.taskId === taskId && s.executor === ex.id && s.status === "open")?.model,
+      );
       const laneLive = lane && !(lane.status !== "active" && now - lane.at > SETTLE_MS);
 
       if (laneLive && lane) {
         crew.push({
           id: ex.id,
-          label: ex.label,
+          label: lane.status === "active" ? modelFor(lane.taskId) ?? ex.label : ex.label,
           state: lane.status === "done" ? "done" : lane.status === "failed" ? "failed" : "active",
           detail: lane.status === "active" ? lane.phase : lane.phase,
         });
@@ -119,7 +124,7 @@ export function useCrewActivity(): {
           });
         }
       } else if (registryActive) {
-        crew.push({ id: ex.id, label: ex.label, state: "active", detail: registryActive.phase });
+        crew.push({ id: ex.id, label: modelFor(registryActive.taskId) ?? ex.label, state: "active", detail: registryActive.phase });
       } else {
         crew.push({ id: ex.id, label: ex.label, state: "idle" });
       }

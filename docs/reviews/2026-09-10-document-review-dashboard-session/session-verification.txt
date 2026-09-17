@@ -1,0 +1,109 @@
+DOC 38368c96-13f8-4fa9-9405-d5416015b8c1
+WARM / 200
+WARM /documents 200
+WARM /documents/38368c96-13f8-4fa9-9405-d5416015b8c1 200
+SESSION_SUMMARY {
+  "390": {
+    "menuEntry": "Documents — Reports for Review",
+    "index": {
+      "path": "/documents",
+      "origin": "http://127.0.0.1:3100",
+      "marker": "nexus-session-1789061222122",
+      "windows": 0
+    },
+    "indexRow": {
+      "title": "Isolated reliability report",
+      "href": "/documents/38368c96-13f8-4fa9-9405-d5416015b8c1",
+      "target": null,
+      "label": "Review document",
+      "state": "Not reviewed yet"
+    },
+    "reviewer": {
+      "path": "/documents/38368c96-13f8-4fa9-9405-d5416015b8c1",
+      "origin": "http://127.0.0.1:3100",
+      "marker": "nexus-session-1789061222122",
+      "windows": 0
+    },
+    "reviewerTitle": "Isolated reliability report",
+    "reviewerCrumb": {
+      "href": "/documents",
+      "visible": true
+    },
+    "scrollWidth": {
+      "client": 390,
+      "scroll": 390
+    },
+    "afterRefresh": {
+      "path": "/documents/38368c96-13f8-4fa9-9405-d5416015b8c1",
+      "origin": "http://127.0.0.1:3100",
+      "marker": null,
+      "windows": 0,
+      "navigationStatus": 200,
+      "title": "Isolated reliability report"
+    },
+    "backToIndex": {
+      "path": "/documents",
+      "origin": "http://127.0.0.1:3100",
+      "marker": "nexus-session-1789061222122",
+      "windows": 0
+    },
+    "backToBridge": {
+      "path": "/",
+      "origin": "http://127.0.0.1:3100",
+      "marker": "nexus-session-1789061222122",
+      "windows": 0
+    }
+  },
+  "1440": {
+    "menuEntry": "Documents — Reports for Review",
+    "index": {
+      "path": "/documents",
+      "origin": "http://127.0.0.1:3100",
+      "marker": "nexus-session-1789061222122",
+      "windows": 0
+    },
+    "indexRow": {
+      "title": "Isolated reliability report",
+      "href": "/documents/38368c96-13f8-4fa9-9405-d5416015b8c1",
+      "target": null,
+      "label": "Review document",
+      "state": "Not reviewed yet"
+    },
+    "reviewer": {
+      "path": "/documents/38368c96-13f8-4fa9-9405-d5416015b8c1",
+      "origin": "http://127.0.0.1:3100",
+      "marker": "nexus-session-1789061222122",
+      "windows": 0
+    },
+    "reviewerTitle": "Isolated reliability report",
+    "reviewerCrumb": {
+      "href": "/documents",
+      "visible": true
+    },
+    "scrollWidth": {
+      "client": 1440,
+      "scroll": 1440
+    },
+    "afterRefresh": {
+      "path": "/documents/38368c96-13f8-4fa9-9405-d5416015b8c1",
+      "origin": "http://127.0.0.1:3100",
+      "marker": null,
+      "windows": 0,
+      "navigationStatus": 200,
+      "title": "Isolated reliability report"
+    },
+    "backToIndex": {
+      "path": "/documents",
+      "origin": "http://127.0.0.1:3100",
+      "marker": "nexus-session-1789061222122",
+      "windows": 0
+    },
+    "backToBridge": {
+      "path": "/",
+      "origin": "http://127.0.0.1:3100",
+      "marker": "nexus-session-1789061222122",
+      "windows": 0
+    }
+  }
+}
+SESSION_OK

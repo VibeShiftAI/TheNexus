@@ -1,0 +1,86 @@
+/tmp/nexus-ledger-before.log
+[2026-09-10T16:15:44.411Z] [ERROR] [ChatIdempotency] Could not persist the ledger: QA injected ledger storage outage
+[Webhook] Remote Chat Request: "Isolated QA feedback..."
+[2026-09-10T16:15:44.411Z] [INFO] [Webhook] Remote Chat Request: "Isolated QA feedback..."
+[Webhook] Agent mode → Cortex System-2 think: "Isolated QA feedback..."
+[2026-09-10T16:15:44.417Z] [INFO] [Webhook] Agent mode → Cortex System-2 think: "Isolated QA feedback..."
+[ChatIdempotency] Could not persist the ledger: QA injected ledger storage outage
+[2026-09-10T16:15:44.417Z] [ERROR] [ChatIdempotency] Could not persist the ledger: QA injected ledger storage outage
+[Webhook] Remote Chat Request: "Isolated QA feedback..."
+[2026-09-10T16:15:44.423Z] [INFO] [Webhook] Remote Chat Request: "Isolated QA feedback..."
+[Webhook] Agent mode → Cortex System-2 think: "Isolated QA feedback..."
+[2026-09-10T16:15:44.423Z] [INFO] [Webhook] Agent mode → Cortex System-2 think: "Isolated QA feedback..."
+QA_LEDGER_PERSISTENCE {"firstStatus":200,"firstReply":"processed-1","durableReceiptExists":false,"retryStatus":200,"retryReply":"processed-2","duplicate":false,"processedTurns":2}
+
+/tmp/nexus-ledger-after.log
+[2026-09-10T16:21:23.138Z] [INFO] [LLM] ✅ Primary set explicitly to google/gemini-3.1-pro-preview (LLM_PRIMARY_PROVIDER)
+[Webhook] Ingestion control API mounted at /ingestion/*
+[2026-09-10T16:21:23.644Z] [INFO] [Webhook] Ingestion control API mounted at /ingestion/*
+[ChatIdempotency] Could not persist the ledger: QA injected ledger storage outage
+[2026-09-10T16:21:23.665Z] [ERROR] [ChatIdempotency] Could not persist the ledger: QA injected ledger storage outage
+[Webhook] Chat claim docreview:qa-storage-loss could not be saved: Error: QA injected ledger storage outage
+[2026-09-10T16:21:23.666Z] [ERROR] [Webhook] Chat claim docreview:qa-storage-loss could not be saved: Error: QA injected ledger storage outage
+[Webhook] Remote Chat Request: "Isolated QA feedback..."
+[2026-09-10T16:21:23.680Z] [INFO] [Webhook] Remote Chat Request: "Isolated QA feedback..."
+[Webhook] Agent mode → Cortex System-2 think: "Isolated QA feedback..."
+[2026-09-10T16:21:23.684Z] [INFO] [Webhook] Agent mode → Cortex System-2 think: "Isolated QA feedback..."
+QA_LEDGER_PERSISTENCE {"firstStatus":503,"durableReceiptExists":false,"retryStatus":200,"retryReply":"processed-1","duplicate":false,"processedTurns":1}
+
+/tmp/nexus-ledger-red.log
+  200 !== 409
+  
+      at TestContext.<anonymous> (/Volumes/Projects/Praxis/tests/chat_idempotency.test.ts:229:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 200,
+    expected: 409,
+    operator: 'strictEqual'
+  }
+
+/tmp/nexus-ledger-final.log
+[Webhook] Agent mode → Cortex System-2 think: "plain chat..."
+[2026-09-10T16:24:56.125Z] [INFO] [Webhook] Remote Chat Request: "plain chat..."
+[2026-09-10T16:24:56.126Z] [INFO] [Webhook] Agent mode → Cortex System-2 think: "plain chat..."
+✔ key reuse for a different message, a streamed keyed request, and a malformed key are refused before any run (25.2795ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2247.253458
+
+/tmp/nexus-documents-final.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-doc-receiver-Nv0864/nexus.db
+
+      at Object.log (db/index.js:243:13)
+
+PASS server/__tests__/document-registry.test.js
+PASS server/__tests__/document-review-format.test.js
+
+Test Suites: 5 passed, 5 total
+Tests:       38 passed, 38 total
+Snapshots:   0 total
+Time:        1.71 s, estimated 2 s
+Ran all test suites matching document.
+
+/tmp/nexus-dashboard-final.log
+✔ a finish rejected before it was processed says so and keeps the draft editable (33.43075ms)
+✔ on the phone, adding a whole-document note closes the review drawer so the composer is reachable, then returns to it (39.76725ms)
+✔ lists the task documents with a Review document link and truthful review state (48.172625ms)
+✔ renders nothing without documents and shows a retry on errors (10.932375ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1687.090958
+
+Praxis npx tsc --noEmit: exit 0; 0 output bytes.
+Live document GET: {"file_state": "ok", "review": null, "document_id": "bb977fdf-5496-48bb-98bb-031421cc9c1a", "task_id": "6f6017f3-a752-417f-a3a7-28602892c4f2", "sha256": "6ac46b926a856561c485d400fd66a0979b92aab25c2ed76732c151da37aa0366"}

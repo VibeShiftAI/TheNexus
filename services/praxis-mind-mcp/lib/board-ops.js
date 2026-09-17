@@ -156,11 +156,15 @@ async function listProjects(ctx, { tool = OPS.PROJECTS_LIST } = {}) {
         description: p.description,
         end_state: p.end_state || null,
         end_state_updated_at: p.end_state_updated_at || null,
+        updated_at: p.updated_at,
+        endpoint: p.endpoint,
+        checkpoints: p.checkpoints ?? null,
+        end_state_assessment: p.end_state_assessment,
+        end_state_history: p.end_state_history || [],
+        needs,
         tags: Array.isArray(p.tags) ? p.tags : [],
-        open_needs: openNeeds.map((n) => ({ id: n.id, kind: n.kind, description: n.description })),
-        end_state_criteria: Array.isArray(p.end_state_criteria)
-          ? p.end_state_criteria.map((c) => ({ id: c.id, kind: c.kind, description: c.description, enabled: c.enabled !== false }))
-          : [],
+        open_needs: openNeeds,
+        end_state_criteria: Array.isArray(p.end_state_criteria) ? p.end_state_criteria : [],
       };
     });
   });
@@ -217,6 +221,41 @@ async function getTask(ctx, { tool = OPS.TASK_STATUS, task_id } = {}) {
  * envelope. `patch` holds only the fields to change; `expected` is the
  * optimistic-concurrency guard. Returns the committed transaction.
  */
+function compareProjectFields(actual, expected, prefix = '') {
+  const mismatches = [];
+  for (const [field, value] of Object.entries(expected || {})) {
+    if (value === undefined) continue;
+    const key = prefix ? `${prefix}.${field}` : field;
+    if (field === 'knowledge' || field === 'endpoint' || field === 'application') {
+      mismatches.push(...compareProjectFields(actual?.[field], value, key));
+    } else if (field === 'checkpoints' && Array.isArray(value)) {
+      // The plan is stored as {items, archived, revision}; verify the ordered definitions
+      // landed (ids the server assigned are not known in advance, so match by position).
+      const items = actual?.checkpoints?.items;
+      if (!Array.isArray(items) || items.length !== value.length) {
+        mismatches.push({ field: key, expected: value.length, actual: Array.isArray(items) ? items.length : null });
+      } else {
+        value.forEach((item, index) => {
+          const { criteria, ...definition } = item;
+          mismatches.push(...compareProjectFields(items[index], definition, `${key}.${index}`));
+          if (Array.isArray(criteria)) mismatches.push(...compareProjectFields({ end_state_criteria: items[index].criteria }, { end_state_criteria: criteria }, `${key}.${index}`).map(m => ({ ...m, field: m.field.replace('end_state_criteria', 'criteria') })));
+        });
+      }
+    } else if (Array.isArray(value) && ['end_state_criteria', 'needs'].includes(field)) {
+      if (actual?.[field]?.length !== value.length) mismatches.push({ field: key, expected: value.length, actual: actual?.[field]?.length });
+      else value.forEach((item, index) => mismatches.push(...compareProjectFields(actual[field][index], item, `${key}.${index}`)));
+    } else {
+      let normalized = value;
+      // The HTTP API consumes null as a clear operation and omits the stored
+      // observation. Verify that absence; retaining old evidence must fail.
+      if (field === 'observation' && value === null) normalized = undefined;
+      if (field === 'tags' && Array.isArray(value)) normalized = [...new Set(value.map(tag => tag.trim().replace(/^#+/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')))];
+      mismatches.push(...compareFields(actual, { [field]: normalized }).map(mismatch => ({ ...mismatch, field: key })));
+    }
+  }
+  return mismatches;
+}
+
 async function updateProject(ctx, {
   tool = OPS.PROJECT_UPDATE,
   project_id,
@@ -233,7 +272,7 @@ async function updateProject(ctx, {
     for (const [key, value] of Object.entries(requested)) {
       if (value !== undefined) patch[key] = value;
     }
-    if (patch.end_state !== undefined) {
+    if (patch.end_state !== undefined || patch.endpoint !== undefined || patch.end_state_criteria !== undefined || patch.checkpoints !== undefined) {
       patch.end_state_source = sourceFor(caller);
       if (end_state_reason) patch.end_state_reason = end_state_reason;
     }
@@ -248,56 +287,67 @@ async function updateProject(ctx, {
       target,
       intent: { patch, add_need, resolve_need, expected },
       captureBefore: () => backends.nexusProjectById(project_id),
-      validatePreconditions: ({ before }) => compareFields(before, expected),
+      validatePreconditions: ({ before }) => compareFields({ ...before, checkpoints_revision: before?.checkpoints?.revision ?? null }, expected),
       apply: async () => {
         const result = {};
         if (Object.keys(patch).length > 0) {
-          const updated = await backends.nexusProjectUpdate(project_id, patch);
-          result.project = {
-            id: updated.id,
-            name: updated.name,
-            status: updated.status,
-            priority: updated.priority,
-            upgrade_posture: updated.upgrade_posture,
-            end_state: updated.end_state,
-            end_state_updated_at: updated.end_state_updated_at,
-          };
+          const guards = {};
+          for (const [field, value] of Object.entries(expected)) {
+            if (['updated_at', 'end_state_updated_at', 'status', 'checkpoints_revision'].includes(field)) guards[`expected_${field}`] = value;
+          }
+          const updated = await backends.nexusProjectUpdate(project_id, { ...patch, ...guards });
+          result.project = updated;
         }
         if (add_need) {
           const added = await backends.nexusProjectAddNeed(project_id, { ...add_need, source: sourceFor(caller) });
           result.added_need = added.need;
         }
         if (resolve_need) {
-          const resolved = await backends.nexusProjectUpdateNeed(project_id, resolve_need.id, {
-            status: resolve_need.status,
-            notes: resolve_need.notes,
-          });
+          const { id, ...needPatch } = resolve_need;
+          const resolved = await backends.nexusProjectUpdateNeed(project_id, id, { ...needPatch, source: sourceFor(caller) });
           result.resolved_need = resolved.need;
         }
         return result;
       },
       readAfter: () => backends.nexusProjectById(project_id),
-      verify: ({ after, applyResult }) => {
+      verify: ({ before, after, applyResult }) => {
         const intendedPatch = { ...patch };
         delete intendedPatch.end_state_source;
         delete intendedPatch.end_state_reason;
-        const mismatches = compareFields(after, intendedPatch);
+        if (Array.isArray(intendedPatch.checkpoints)) {
+          intendedPatch.checkpoints = intendedPatch.checkpoints.map(item => {
+            const previous = before?.checkpoints?.items?.find(cp => cp.id === item.id) || before?.checkpoints?.archived?.find(cp => cp.id === item.id);
+            const saved = after?.checkpoints?.items?.find(cp => cp.id === item.id);
+            // A definition revision intentionally clears copied acceptance. Verify that clearing,
+            // while still checking exact observations on unchanged definitions.
+            if (!previous || !saved || previous.definition_revision === saved.definition_revision || !item.criteria) return item;
+            return { ...item, criteria: item.criteria.map(criterion => ({ ...criterion, observation: null })) };
+          });
+        }
+        const mismatches = compareProjectFields(after, intendedPatch);
         if (add_need) {
           const added = (after?.needs || []).find((need) => need.id === applyResult?.added_need?.id);
           if (!added) {
             mismatches.push({ field: 'add_need', expected: applyResult?.added_need?.id, actual: null });
           } else {
-            mismatches.push(...compareFields(added, add_need).map((m) => ({ ...m, field: `add_need.${m.field}` })));
+            mismatches.push(...compareProjectFields(added, add_need).map((m) => ({ ...m, field: `add_need.${m.field}` })));
           }
         }
         if (resolve_need) {
           const resolved = (after?.needs || []).find((need) => need.id === resolve_need.id);
-          const expectedNeed = { status: resolve_need.status };
-          if (resolve_need.notes !== undefined) expectedNeed.notes = resolve_need.notes;
+          const { id, ...expectedNeed } = resolve_need;
+          // The API may reopen stale knowledge after acceptance/application changes.
+          // Verify the returned complete record and all explicitly supplied knowledge.
+          if (applyResult?.resolved_need?.status === 'open' && applyResult.resolved_need.knowledge?.research_status === 'stale') expectedNeed.status = 'open';
+          if (expectedNeed.knowledge) {
+            expectedNeed.knowledge = { ...expectedNeed.knowledge };
+            for (const field of ['verified_at', 'verified_by', 'endpoint_revision', 'review_reason', 'research_status']) delete expectedNeed.knowledge[field];
+          }
           if (!resolved) {
             mismatches.push({ field: 'resolve_need.id', expected: resolve_need.id, actual: null });
           } else {
-            mismatches.push(...compareFields(resolved, expectedNeed).map((m) => ({ ...m, field: `resolve_need.${m.field}` })));
+            mismatches.push(...compareFields(resolved, applyResult.resolved_need).map(m => ({ ...m, field: `resolved_record.${m.field}` })));
+            mismatches.push(...compareProjectFields(resolved, expectedNeed).map((m) => ({ ...m, field: `resolve_need.${m.field}` })));
           }
         }
         return { ok: mismatches.length === 0, mismatches };

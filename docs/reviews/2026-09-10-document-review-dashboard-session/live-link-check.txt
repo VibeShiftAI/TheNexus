@@ -1,0 +1,7 @@
+LIVE_BRIDGE {"origin":"http://localhost:3000","found":true,"links":[{"href":"/documents/bb977fdf-5496-48bb-98bb-031421cc9c1a","target":null,"text":"reliability repairs report in the new reviewer","inTranscript":true}]}
+LIVE_MENU {"found":true,"entry":"Documents — Reports for Review"}
+LIVE_BRIDGE_390 {"found":true,"links":[{"href":"/documents/bb977fdf-5496-48bb-98bb-031421cc9c1a","target":null,"text":"reliability repairs report in the new reviewer","inTranscript":true}]}
+LIVE_MENU_390 {"found":true,"entry":"Documents — Reports for Review","visible":true}
+LIVE_TASK_PANEL {"found":true,"links":[{"href":"/documents/bb977fdf-5496-48bb-98bb-031421cc9c1a","target":null,"text":"Review document"}]}
+LIVE_INDEX {"found":true,"row":{"title":"Reliability readiness check — September 10, 2026","href":"/documents/bb977fdf-5496-48bb-98bb-031421cc9c1a","target":null,"label":"Review document","text":"Reliability readiness check — September 10, 2026report2026-09-10-reliability-readiness.mdrev 6ac46b92 · 9/10/2026, 11:13:48 AMfrom taskprojectNot reviewed yetReview document "}}
+LIVE_LINK_CHECK_OK

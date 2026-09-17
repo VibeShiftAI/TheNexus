@@ -101,7 +101,7 @@ describe('AI chat durable dedupe fallback', () => {
                 conversation_id: 'conversation-1',
                 role: 'assistant',
                 content: 'Both come from the same failure, two lines apart.',
-                metadata: { voiceData: [{ audio: 'YWJj', mimeType: 'audio/mpeg' }] },
+                metadata: { suppressVoice: true, voiceData: [{ audio: 'YWJj', mimeType: 'audio/mpeg' }] },
             },
         ]);
         await mount(db);
@@ -112,6 +112,7 @@ describe('AI chat durable dedupe fallback', () => {
         expect(response.body.response).toBe('Both come from the same failure, two lines apart.');
         expect(response.body.assistantMessageId).toBe('assistant-1');
         expect(response.body.replayedFromStore).toBe(true);
+        expect(response.body.suppressVoice).toBe(true);
         // Stored voice metadata rides along so the replayed answer is complete.
         expect(response.body.voiceData).toEqual([{ audio: 'YWJj', mimeType: 'audio/mpeg' }]);
         // Zero relay calls: the agent must not run a second time.

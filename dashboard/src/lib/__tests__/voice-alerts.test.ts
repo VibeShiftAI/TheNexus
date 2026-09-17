@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { StreamEvent } from '@praxis/contract';
-import { VoiceAlerts, alertLine, readAlertMode, ALERT_MODE_KEY, ALERT_STORE_KEY, alertDelay, eligibleAlert } from '../voice-alerts';
+import { VoiceAlerts, alertFacts, readAlertMode, ALERT_MODE_KEY, ALERT_STORE_KEY, alertDelay, eligibleAlert } from '../voice-alerts';
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const event = (type: string, extra = {}) => ({ type, eventId: 'event-1', at: new Date(2026, 8, 7, 12).toISOString(), taskId: 'task-1', ...extra }) as StreamEvent;
 test('settings default conversational and honor previously disabled alerts', () => {
@@ -17,8 +17,8 @@ test('attention and conversational selection preserve routine exclusions and who
   assert.equal(eligibleAlert(event('task.completed'), 'conversational'), true);
   assert.equal(eligibleAlert(event('task.blocked'), 'conversational'), true);
   assert.equal(eligibleAlert(event('hitl.created', { request: { question: 'Approve?', metadata: { kind: 'day-schedule' } } }), 'conversational'), false);
-  assert.match(alertLine(failed, () => 'Build the ship'), /Build the ship/);
-  assert.ok(alertLine(failed).endsWith('Detailed failure. '.repeat(50)));
+  assert.equal(alertFacts(failed, () => 'Build the ship').title, 'Build the ship');
+  assert.equal(alertFacts(failed).reason, 'Detailed failure. '.repeat(50));
 });
 test('quiet hours and rate interval provide a concrete future wakeup', () => {
   const noon = new Date(2026, 8, 7, 12).getTime();
@@ -84,4 +84,77 @@ test('quiet hours are checked again after a delayed active-device response', asy
   t.after(() => alerts.dispose());
   alerts.update([event('task.failed', { at: new Date(now).toISOString() })], 'attention'); now += 2000; finish(true); await tick();
   assert.equal(spoken, 0); alerts.dispose();
+});
+
+test('alert composition receives event facts instead of stock spoken lines', async () => {
+  const alerts = await import('../voice-alerts');
+  assert.equal(typeof alerts.alertFacts, 'function');
+  assert.deepEqual(alerts.alertFacts(event('task.failed', { error: 'Compiler failed' }), () => 'Build the ship'), { taskId: 'task-1', title: 'Build the ship', status: 'failed', reason: 'Compiler failed' });
+  assert.deepEqual(alerts.alertFacts(event('hitl.created', { request: { taskId: 'task-1', question: 'Approve the release?' } }), () => 'Release'), { taskId: 'task-1', title: 'Release', status: 'attention', question: 'Approve the release?' });
+});
+
+function playbackFixture(now = new Date(2026, 8, 7, 12).getTime(), active: (signal?: AbortSignal) => Promise<boolean> = async () => true) {
+  let currentNow = now;
+  const alerts = new VoiceAlerts({ mountedAt: 0, now: () => currentNow, active, announce: () => null });
+  alerts.update([], 'conversational');
+  return { alerts, controller: new AbortController(), setNow: (value: number) => { currentNow = value; } };
+}
+test('alert playback rechecks mode and quiet hours without rejecting its own recorded event', async () => {
+  const f = playbackFixture();
+  try {
+    assert.equal(typeof f.alerts.canPlay, 'function');
+    localStorage.setItem(ALERT_STORE_KEY, JSON.stringify({ ids: ['event-1'], lastAt: new Date(2026, 8, 7, 12).getTime() }));
+    assert.equal(await f.alerts.canPlay(event('task.completed'), f.controller.signal, () => true), true);
+    f.alerts.update([], 'attention');
+    assert.equal(await f.alerts.canPlay(event('task.completed'), f.controller.signal, () => true), false);
+    assert.equal(await f.alerts.canPlay(event('task.failed'), f.controller.signal, () => true), true);
+    f.alerts.update([], 'off');
+    assert.equal(await f.alerts.canPlay(event('task.failed'), f.controller.signal, () => true), false);
+    f.alerts.update([], 'conversational'); f.setNow(new Date(2026, 8, 7, 22).getTime());
+    assert.equal(await f.alerts.canPlay(event('task.failed', { at: new Date(2026, 8, 7, 21, 59).toISOString() }), f.controller.signal, () => true), false);
+  } finally { f.alerts.dispose(); localStorage.clear(); }
+});
+for (const change of ['mode', 'quiet-hours', 'ownership', 'device']) test(`alert playback rechecks ${change} after the active-device await`, async () => {
+  let finish!: (active: boolean) => void;
+  const at = new Date(2026, 8, 7, 21, 59, 59).getTime();
+  const f = playbackFixture(at, () => new Promise(resolve => finish = resolve)); let owns = true;
+  try {
+    assert.equal(typeof f.alerts.canPlay, 'function');
+    const pending = f.alerts.canPlay(event('task.completed', { at: new Date(at).toISOString() }), f.controller.signal, () => owns);
+    if (change === 'mode') f.alerts.update([], 'attention');
+    if (change === 'quiet-hours') f.setNow(at + 2000);
+    if (change === 'ownership') owns = false;
+    finish(change !== 'device');
+    assert.equal(await pending, false);
+  } finally { f.alerts.dispose(); }
+});
+for (const stop of ['timeout', 'cancel']) test(`alert playback bounds an unresponsive active-device check on ${stop}`, async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] }); let requestSignal: AbortSignal | undefined;
+  const f = playbackFixture(undefined, signal => { requestSignal = signal; return new Promise(() => {}); });
+  try {
+    assert.equal(typeof f.alerts.canPlay, 'function');
+    const pending = f.alerts.canPlay(event('task.failed'), f.controller.signal, () => true);
+    if (stop === 'cancel') f.controller.abort(); else t.mock.timers.tick(1500);
+    assert.equal(await pending, false); assert.equal(requestSignal?.aborted, true);
+  } finally { f.alerts.dispose(); }
+});
+
+test('internal QA runs and suspension terminal events never announce task completion', () => {
+  for (const type of ['task.completed', 'task.failed', 'task.blocked']) {
+    assert.equal(eligibleAlert(event(type, { taskId: 'qa--a35ec50b-a5c7-4c07-bf7b-328fc45df620' }), 'conversational'), false);
+  }
+  assert.equal(eligibleAlert(event('task.completed', { result: { summary: '⏸️ Waiting for input', outcome: 'success' } }), 'conversational'), false);
+});
+
+test('completion facts retain outcome and summary without claiming reviewed completion', () => {
+  const facts = alertFacts(event('task.completed', { result: { outcome: 'success', summary: 'Repaired calendar sync; three checks passed.' } }), () => 'Repair calendar sync');
+  assert.equal(facts.summary, 'Repaired calendar sync; three checks passed.');
+  assert.equal(facts.outcome, 'success');
+  assert.equal(facts.status, 'execution_finished');
+  assert.equal(facts.verification, 'not established by this event');
+});
+
+test('unknown and identifier-shaped titles are never presented as human task names', () => {
+  assert.equal(alertFacts(event('task.failed')).title, undefined);
+  assert.equal(alertFacts(event('task.failed'), () => 'a35ec50b-a5c7-4c07-bf7b-328fc45df620').title, undefined);
 });

@@ -1,0 +1,73 @@
+DOC ad8cfb80-b3ae-4e1b-8258-ac9cee7ba577
+PHONE_PAGE {
+  title: 'Isolated reliability report',
+  width: 390,
+  scroll: 390,
+  tables: 1
+}
+DRAWER_OPEN true
+MOBILE_NOTE {
+  composerExists: true,
+  hitIsTextarea: true,
+  hitTag: 'TEXTAREA',
+  hitInReviewDrawer: false,
+  reviewDrawerStillOpen: false,
+  textareaFocused: true
+}
+TYPED Isolated phone note: the composer is reachable and saves.
+SAVE_TAP { x: 300.59375, y: 792, w: 128.8125, h: 30 }
+MOBILE_SAVED {
+  sheetGone: true,
+  drawerOpen: true,
+  noteListed: true,
+  header: 'Comments (1)',
+  saved: true
+}
+DESKTOP_DRAFT_RESUMED true
+FAILED_STATE  Delivery failed · retry scheduledFinished 9/10/2026, 12:23:40 PMfetch failedAttempts: 1. Automatic retry at 9/10/2026, 12:23:43 PM; this page keeps watching until it lands. Retry delivery
+DELIVERED_WITHOUT_RELOAD true
+DELIVERED_STATE  Delivered to PraxisFinished 9/10/2026, 12:23:40 PMReceipt: delivered 9/10/2026, 12:23:45 PM into the Praxis conversation (02e67818…). Praxis's reply is in the bridge chat.
+API_CALLS_SINCE_FINISH { finish: 1, submissionPolls: 2, retries: 0 }
+RECEIVER {
+  turns: [
+    {
+      key: 'docreview:4f551ea0-9de8-4086-a7ff-c13e9647bb23',
+      message: '[DOCUMENT REVIEW] Robert finished reviewing "Isolated reliability report".\n' +
+        'Document: /private/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-document-review-qa.OMGieeQW2c/Praxis/readiness.md\n' +
+        'Reviewed revision: 6ac46b926a85 (captured 2026-09-10T16:23:31.086Z)\n' +
+        'Source task: "Isolated verification" (44444444-4444-4444-8444-444444444444)\n' +
+        'Project: Isolated project\n' +
+        'Review link: https://nexus.vibeshiftai.com/documents/ad8cfb80-b3ae-4e1b-8258-ac9cee7ba577\n' +
+        'Submission id: 4f551ea0-9de8-4086-a7ff-c13e9647bb23\n' +
+        '\n' +
+        '**Summary**\n' +
+        'Isolated summary.\n' +
+        '\n' +
+        '**Whole-document notes (1)**\n' +
+        '1. Isolated phone note: the composer is reachable and saves.\n' +
+        '\n' +
+        'This feedback is verbatim from the document reviewer; the document itself is unchanged. Reply here as usual.'
+    }
+  ],
+  requests: [
+    {
+      t: '2026-09-10T16:23:45.081Z',
+      url: '/api/chat',
+      key: 'docreview:4f551ea0-9de8-4086-a7ff-c13e9647bb23',
+      attempt: 2
+    },
+    { t: '2026-09-10T16:23:47.135Z', url: '/__state', key: null }
+  ]
+}
+SERVER_SUBMISSION {
+  status: 'submitted',
+  delivery: 'delivered',
+  attempts: 2,
+  receipt: {
+    conversation_id: '02e67818-7182-4b12-a495-931df73795e7',
+    user_message_id: 'docreview:4f551ea0-9de8-4086-a7ff-c13e9647bb23',
+    assistant_message_id: 'docreview:4f551ea0-9de8-4086-a7ff-c13e9647bb23:reply',
+    delivered_at: '2026-09-10T16:23:45.084Z'
+  }
+}
+PHONE_AFTER { delivered: true, finished: true, scroll: 390 }

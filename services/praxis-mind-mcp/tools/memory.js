@@ -22,14 +22,22 @@ function register(server, ctx) {
       query: z.string().describe('Natural-language query.'),
       k: z.number().int().min(1).max(50).default(10).describe('How many results to return.'),
       namespace: z.string().optional().describe('Pinecone namespace. Default "ai-research" (Praxis Path B corpus). Other valid namespaces: "coding-agents-claude", "coding-agents-codex", "identity".'),
+      evidence_only: z.boolean().optional().default(false).describe('Return only evidence-backed results.'),
+      include_query_expansion: z.boolean().optional().default(true).describe('Allow Cortex to expand the search query.'),
     },
-    async ({ query, k, namespace }) => {
+    async ({ query, k, namespace, evidence_only, include_query_expansion }) => {
       const auth = checkPrivilege(ctx.caller, 'memory.search');
       if (auth) return auth;
       const started = Date.now();
       try {
         const ns = namespace || 'ai-research';
-        const data = await backends.cortexSearch({ query, k, namespace: ns });
+        const data = await backends.cortexSearch({
+          query,
+          k,
+          namespace: ns,
+          evidence_only,
+          include_query_expansion,
+        });
         ledger.record({ caller: ctx.caller.identity, tool: 'memory_search', success: true, latency_ms: Date.now() - started });
         // The research corpus is externally ingested (papers, articles) — the
         // exact material the authority-laundering finding is about.

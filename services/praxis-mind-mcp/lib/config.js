@@ -8,6 +8,13 @@ const os = require('os');
 // an arbitrary cwd, so the require must resolve from services/praxis-mind-mcp/.
 const { vaultRoot } = require('../../../server/lib/vault-paths');
 
+// Shared fleet credentials precede the legacy MCP file. Presence (including an
+// explicit empty value) wins, so clients can deliberately disable credentials.
+const { loadFleetEnv } = require('../../../server/utils/fleet-env');
+let gatewayKeySource = 'CORTEX_GATEWAY_KEY' in process.env ? 'process_env' : 'unset';
+loadFleetEnv();
+if (gatewayKeySource === 'unset' && 'CORTEX_GATEWAY_KEY' in process.env) gatewayKeySource = 'fleet_env';
+
 // Load ~/.praxis-mind/.env into process.env BEFORE reading values below.
 // Tiny inline parser (we don't want a dotenv dep for an ephemeral MCP server).
 (() => {
@@ -28,10 +35,14 @@ const { vaultRoot } = require('../../../server/lib/vault-paths');
   }
 })();
 
+if (gatewayKeySource === 'unset' && 'CORTEX_GATEWAY_KEY' in process.env) gatewayKeySource = 'legacy_env';
+
 module.exports = {
   // Backends
   CORTEX_GATEWAY: process.env.CORTEX_GATEWAY_URL || 'http://localhost:8100',
   CORTEX_GATEWAY_KEY: process.env.CORTEX_GATEWAY_KEY || '',
+  // Safe diagnostic: source label only, never the credential itself.
+  CORTEX_GATEWAY_KEY_SOURCE: gatewayKeySource,
   PRAXIS: process.env.PRAXIS_URL || 'http://localhost:54322',
   NEXUS: process.env.NEXUS_URL || 'http://localhost:4000',
 

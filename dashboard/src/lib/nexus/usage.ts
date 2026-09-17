@@ -116,7 +116,9 @@ export interface UsageFamilyState {
         cacheReadTokens: number;
         cacheWriteTokens: number;
         byModel: Record<string, { events: number; inputTokens: number; outputTokens: number }>;
-        estCostUsd: number;
+        estCostUsd: number | null;
+        pricedSubtotalUsd?: number;
+        unpricedEvents?: number;
     };
     window: UsageWindow | null;
     rateLimits: UsageRateLimit[];

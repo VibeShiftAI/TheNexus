@@ -1,0 +1,637 @@
+--- a/lib/shared/praxis-contract.ts
++++ b/lib/shared/praxis-contract.ts
+@@ -7,8 +7,8 @@
+ //   npm run sync:mobile-contract -- --check
+ //
+ // Source contract version: 0.2.0
+-// Content hash (sha256/16): 76a59399ddb04e66
+-// Mirrored types: AntigravityPayload, BrokerName, ChannelVoice, CommsFeed, CommsItem, ContactPreferences, Member, CouncilPhase, CouncilSeat, CouncilSeatStatus, CouncilSnapshot, CouncilUpdateEvent, EndStateCriterionKind, EndStateCriterion, EndStateRevision, ExecutionOutcome, ExecutionPhase, ExecutionProgress, ExecutionRequest, ExecutionResult, ExecutorName, ExecutorProgressEvent, Executor, ExecutorStatus, FeedbackConsoleError, FeedbackKind, FeedbackMarkupBox, FeedbackMarkupPoint, FeedbackMarkupRegion, FeedbackMarkup, FeedbackMarkupShape, FeedbackMarkupTarget, FeedbackRecord, FeedbackRoute, FeedbackStatus, FeedbackSubmissionMeta, FeedbackTriage, Fill, GitCommitSummary, GitStatusSummary, HeartbeatEvent, HitlCreatedEvent, HITLDeepLink, HITLOriginalPayload, HITLPriority, HITLReason, HITLRequest, HITLResolution, HITLResolveBody, HitlResolvedEvent, HumanQueryRecord, HumanQueryStatus, HumanQuestion, IdentityChannel, IdentityPatch, Identity, MemberClaim, MemberLogEntry, Member, OperatorProfile, PACTRecord, PaperOrLive, PersonaThesis, Position, PresenceActivity, PresenceBudget, PresenceChangedEvent, PresenceState, ProjectContactLink, ProjectContact, ProjectHealth, ProjectNeedKind, ProjectNeed, Project, ProjectStats, ProjectStatus, ProjectUrls, QuestionnaireAnswers, QuestionnaireSpec, RelayPendingItem, RiskVerdict, ScheduleUpdatedEvent, StreamEvent, StreamResetEvent, TaskBlockedEvent, TaskBoardStatus, TaskCompletedEvent, TaskCreatedEvent, TaskCreateInput, TaskExecutionStatus, TaskFailedEvent, TaskLifecycleStage, TaskPatch, TaskPriority, Task, TaskSequence, TaskStartedEvent, TaskUpdatedEvent, ThinkingTraceEvent, TradeBlockedEvent, TradeDirection, TradeFilledEvent, TradeJournalEntry, TradeSignalEvent, TradeSignal, UpgradePosture, WorkingProfile
++// Content hash (sha256/16): bbb53a9f6b115425
++// Mirrored types: AntigravityPayload, BrokerName, ChannelVoice, CheckpointAssessment, CheckpointCompletion, CheckpointDefinition, CheckpointHistoryEvent, CheckpointPlan, Checkpoint, CheckpointSnapshot, CheckpointStatus, CommsFeed, CommsItem, ContactPreferences, Member, CouncilPhase, CouncilSeat, CouncilSeatStatus, CouncilSnapshot, CouncilUpdateEvent, CriterionObservation, CriterionStatus, EndpointDefinition, EndStateAssessment, EndStateCriterionKind, EndStateCriterionResult, EndStateCriterion, EndStateRevision, ExecutionOutcome, ExecutionPhase, ExecutionProgress, ExecutionRequest, ExecutionResult, ExecutorName, ExecutorProgressEvent, Executor, ExecutorStatus, FeedbackConsoleError, FeedbackKind, FeedbackMarkupBox, FeedbackMarkupPoint, FeedbackMarkupRegion, FeedbackMarkup, FeedbackMarkupShape, FeedbackMarkupTarget, FeedbackRecord, FeedbackRoute, FeedbackStatus, FeedbackSubmissionMeta, FeedbackTriage, Fill, GitCommitSummary, GitStatusSummary, HeartbeatEvent, HitlCreatedEvent, HITLDeepLink, HITLOriginalPayload, HITLPriority, HITLReason, HITLRequest, HITLResolution, HITLResolveBody, HitlResolvedEvent, HostedReportSpec, HumanQueryRecord, HumanQueryStatus, HumanQuestion, IdentityChannel, IdentityPatch, Identity, KnowledgeApplication, KnowledgeEvidence, KnowledgeNeed, MemberClaim, MemberLogEntry, MemberMemoryEvent, MemberMemoryInput, MemberMemorySnapshot, Member, MetricDefinition, OperatorProfile, PACTRecord, PaperOrLive, PersonaThesis, Position, PresenceActivity, PresenceBudget, PresenceChangedEvent, PresenceState, ProjectCommsSettings, ProjectContactLink, ProjectContact, ProjectHealth, ProjectNeedKind, ProjectNeed, Project, ProjectStats, ProjectStatus, ProjectUrls, QuestionnaireAnswers, QuestionnaireSpec, RelayPendingItem, ReportBrand, ReportItemDecision, ReportItemKind, ReportItemResponse, ReportItem, ReportQuestion, ReportRecipient, ReportRecipients, ReportResponse, ReportSections, ReportSendMode, ReportStatus, ReportTemplateChange, ReportTemplate, ReportTrigger, RiskVerdict, ScheduleUpdatedEvent, StakeholderDecision, StakeholderGate, StakeholderGateStatus, StakeholderParty, StakeholderReport, StreamEvent, StreamResetEvent, TaskBlockedEvent, TaskBoardStatus, TaskCompletedEvent, TaskCreatedEvent, TaskCreateInput, TaskExecutionStatus, TaskFailedEvent, TaskLifecycleStage, TaskPatch, TaskPriority, Task, TaskSequence, TaskStartedEvent, TaskSuspension, TaskUpdatedEvent, ThinkingTraceEvent, TradeBlockedEvent, TradeDirection, TradeFilledEvent, TradeJournalEntry, TradeSignalEvent, TradeSignal, UpgradePosture, WeeklyReportSchedule, WorkingProfile
+ // ============================================================================
+ export interface AntigravityPayload {
+   prompt: string;
+@@ -28,6 +28,83 @@
+   format?: string;
+   notes?: string;
+ }
++
++export interface CheckpointAssessment {
++  evaluated_at: string;
++  endpoint_revision?: string;
++  results: Array<EndStateCriterionResult>;
++  knowledge: {
++  required: number;
++  satisfied: number;
++  unresolved: number;
++};
++  checkpoints?: {
++  current_id: string | null;
++  completed: number;
++  total: number;
++  sequence_complete: boolean;
++};
++  achieved?: boolean;
++  checkpoint_id: string;
++  definition_revision: string;
++}
++
++export interface CheckpointCompletion {
++  at: string;
++  definition_revision: string;
++  source?: string;
++  assessment: CheckpointAssessment;
++}
++
++export interface CheckpointDefinition {
++  id: string;
++  title: string;
++  goal?: string;
++  criteria?: Array<EndStateCriterion>;
++  need_ids?: Array<string>;
++}
++
++export interface CheckpointHistoryEvent {
++  kind: "completed" | "reopened" | "definition_changed" | "archived" | "restored";
++  at: string;
++  definition_revision: string;
++  source?: string;
++  reason?: string;
++  definition?: CheckpointSnapshot;
++  assessment?: CheckpointAssessment;
++}
++
++export interface CheckpointPlan {
++  items?: Array<Checkpoint>;
++  archived?: Array<Checkpoint>;
++  revision: string;
++  sequence_completed_at?: string | null;
++}
++
++export interface Checkpoint {
++  id: string;
++  title: string;
++  goal?: string;
++  criteria?: Array<EndStateCriterion>;
++  need_ids?: Array<string>;
++  created_at: string;
++  definition_revision: string;
++  status?: CheckpointStatus;
++  completion?: CheckpointCompletion | null;
++  assessment?: CheckpointAssessment | null;
++  history?: Array<CheckpointHistoryEvent>;
++  archived_at?: string;
++}
++
++export interface CheckpointSnapshot {
++  id: string;
++  title: string;
++  goal: string;
++  criteria: Array<EndStateCriterion>;
++  need_ids: Array<string>;
++}
++
++export type CheckpointStatus = "pending" | "completed" | "archived";
+ 
+ export interface CommsFeed {
+   items: Array<CommsItem>;
+@@ -110,7 +187,59 @@
+   council: CouncilSnapshot;
+ }
+ 
+-export type EndStateCriterionKind = "url_up" | "command" | "task_set";
++export interface CriterionObservation {
++  status: CriterionStatus;
++  observed_at: string;
++  evidence_ref: string;
++  value?: number;
++  sample_size?: number;
++  detail?: string;
++}
++
++export type CriterionStatus = "pass" | "fail" | "unknown" | "unverifiable";
++
++export interface EndpointDefinition {
++  beneficiary?: string;
++  scope?: string;
++  exclusions?: string;
++  resource_budget?: string;
++  review_at?: string;
++  completion_policy?: "complete" | "maintain" | "park" | "propose_next";
++  proposed_next?: string;
++}
++
++export interface EndStateAssessment {
++  evaluated_at: string;
++  endpoint_revision?: string;
++  results: Array<EndStateCriterionResult>;
++  knowledge: {
++  required: number;
++  satisfied: number;
++  unresolved: number;
++};
++  checkpoints?: {
++  current_id: string | null;
++  completed: number;
++  total: number;
++  sequence_complete: boolean;
++};
++  achieved?: boolean;
++}
++
++export type EndStateCriterionKind = "url_up" | "command" | "task_set" | "manual" | "metric";
++
++export interface EndStateCriterionResult {
++  id: string;
++  description?: string;
++  kind?: EndStateCriterionKind;
++  pass: boolean;
++  status: CriterionStatus;
++  checked_at: string;
++  detail?: string;
++  value?: number;
++  sample_size?: number;
++  evidence_ref?: string;
++}
+ 
+ export interface EndStateCriterion {
+   id: string;
+@@ -123,6 +252,8 @@
+   enabled?: boolean;
+   created_at?: string;
+   source?: string;
++  metric?: MetricDefinition;
++  observation?: CriterionObservation;
+ }
+ 
+ export interface EndStateRevision {
+@@ -130,6 +261,8 @@
+   at: string;
+   source?: string;
+   reason?: string;
++  endpoint?: EndpointDefinition;
++  end_state_criteria?: Array<EndStateCriterion>;
+ }
+ 
+ export type ExecutionOutcome = "success" | "failure" | "timeout" | "cancelled";
+@@ -168,7 +301,7 @@
+   commitHash?: string;
+ }
+ 
+-export type ExecutorName = "antigravity" | "codex" | "claude-code" | "inline";
++export type ExecutorName = "antigravity" | "codex" | "claude-code" | "openrouter" | "inline";
+ 
+ export interface ExecutorProgressEvent {
+   at: string;
+@@ -412,6 +545,35 @@
+   resolution: HITLResolution;
+ }
+ 
++export interface HostedReportSpec {
++  token?: string;
++  report_id: string;
++  tag: string;
++  project_name: string;
++  brand: ReportBrand;
++  title: string;
++  summary: string;
++  period: {
++  from: string;
++  to: string;
++};
++  sections: Array<{
++  id: string;
++  title: string;
++  blurb?: string;
++  items: Array<ReportItem>;
++}>;
++  questions?: Array<ReportQuestion>;
++  respondents?: Array<{
++  id: string;
++  name: string;
++}>;
++  intro?: string;
++  footer?: string;
++  createdAt?: string;
++  expiresAt?: string;
++}
++
+ export interface HumanQueryRecord {
+   id: string;
+   tag: string;
+@@ -422,6 +584,8 @@
+   questionnaireUrl?: string;
+   status: HumanQueryStatus;
+   workRef?: string;
++  projectId?: string;
++  needBindings?: Record<string, string>;
+   answers?: QuestionnaireAnswers;
+   replyText?: string;
+   createdAt: string;
+@@ -472,6 +636,37 @@
+   updatedAt?: string;
+ }
+ 
++export interface KnowledgeApplication {
++  status: "untried" | "successful" | "insufficient" | "outdated";
++  task_id?: string;
++  at?: string;
++  evidence_ref?: string;
++  notes?: string;
++}
++
++export interface KnowledgeEvidence {
++  ref: string;
++  summary?: string;
++  checked_at?: string;
++}
++
++export interface KnowledgeNeed {
++  question: string;
++  tags?: Array<string>;
++  satisfaction_test: string;
++  criterion_ids?: Array<string>;
++  task_ids?: Array<string>;
++  blocking?: boolean;
++  research_status?: "open" | "researching" | "evidence_ready" | "stale";
++  answer?: string;
++  evidence?: Array<KnowledgeEvidence>;
++  endpoint_revision?: string;
++  verified_at?: string;
++  verified_by?: string;
++  review_reason?: string;
++  application?: KnowledgeApplication;
++}
++
+ export interface MemberClaim {
+   domain: string;
+   note?: string;
+@@ -483,6 +678,65 @@
+   at: string;
+   note: string;
+   source?: string;
++}
++
++export interface MemberMemoryEvent {
++  project_id?: string | null;
++  kind: "observation" | "fact" | "commitment" | "retraction" | "resolution";
++  text: string;
++  fact_key?: string;
++  evidence: "self_reported" | "operator_confirmed" | "observed" | "inferred" | "legacy";
++  source: string;
++  source_ref?: string;
++  occurred_at?: string;
++  valid_from?: string;
++  valid_until?: string;
++  supersedes_id?: string;
++  target_id?: string;
++  owner?: "praxis" | "member";
++  due_at?: string;
++  outcome?: "completed" | "cancelled";
++  idempotency_key?: string;
++  id: string;
++  seq: number;
++  member_id: string;
++  recorded_at: string;
++  legacy_at?: string;
++  legacy_source?: string;
++}
++
++export interface MemberMemoryInput {
++  project_id?: string | null;
++  kind: "observation" | "fact" | "commitment" | "retraction" | "resolution";
++  text: string;
++  fact_key?: string;
++  evidence: "self_reported" | "operator_confirmed" | "observed" | "inferred";
++  source: string;
++  source_ref?: string;
++  occurred_at?: string;
++  valid_from?: string;
++  valid_until?: string;
++  supersedes_id?: string;
++  target_id?: string;
++  owner?: "praxis" | "member";
++  due_at?: string;
++  outcome?: "completed" | "cancelled";
++  idempotency_key?: string;
++}
++
++export interface MemberMemorySnapshot {
++  member_id: string;
++  project_id: string | null;
++  as_of: string;
++  current_facts: Array<MemberMemoryEvent>;
++  conflicts: Array<{
++  fact_key: string;
++  events: Array<MemberMemoryEvent>;
++}>;
++  open_commitments: Array<MemberMemoryEvent>;
++  timeline: Array<MemberMemoryEvent>;
++  total_events: number;
++  next_before_seq: number | null;
+ }
+ 
+ export interface Member {
+@@ -507,6 +761,15 @@
+   last_contact_at?: string | undefined | null;
+ }
+ 
++export interface MetricDefinition {
++  baseline?: number;
++  target: number;
++  operator: "gte" | "lte" | "eq";
++  unit?: string;
++  window_days?: number;
++  min_samples?: number;
++}
++
+ export interface OperatorProfile {
+   name: string;
+   aliases?: Array<string>;
+@@ -576,11 +839,26 @@
+   thinkingTrace?: string;
+ }
+ 
++export interface ProjectCommsSettings {
++  active?: boolean;
++  send_mode?: ReportSendMode;
++  quiet_minutes?: number;
++  event_trigger?: boolean;
++  weekly?: WeeklyReportSchedule;
++  recipients?: ReportRecipients;
++  cc_operator?: boolean;
++  timezone?: string;
++  last_report_at?: string;
++  last_trigger?: "activity" | "weekly" | "manual";
++  last_report_id?: string;
++}
++
+ export interface ProjectContactLink {
+   project_id: string;
+   contact_id: string;
+   role?: string | undefined | null;
+   notes?: string | undefined | null;
++  decision_maker?: boolean | undefined | null;
+   added_at: string;
+ }
+ 
+@@ -606,6 +884,7 @@
+   last_contact_at?: string | undefined | null;
+   role?: string | undefined | null;
+   link_notes?: string | undefined | null;
++  decision_maker?: boolean | undefined | null;
+   added_at?: string;
+ }
+ 
+@@ -622,6 +901,7 @@
+   resolved_at?: string;
+   source?: string;
+   notes?: string;
++  knowledge?: KnowledgeNeed;
+ }
+ 
+ export interface Project {
+@@ -641,15 +921,20 @@
+   vibe?: string;
+   urls?: ProjectUrls;
+   endState?: string;
++  endpoint?: EndpointDefinition;
++  endStateAssessment?: EndStateAssessment | null;
+   priority?: number;
+   upgradePosture?: UpgradePosture;
+   needs?: Array<ProjectNeed>;
+   endStateHistory?: Array<EndStateRevision>;
+   endStateCriteria?: Array<EndStateCriterion>;
+   endStateUpdatedAt?: string;
++  checkpoints?: CheckpointPlan | null;
+   createdAt?: string;
+   updatedAt?: string;
+   completedAt?: string;
++  commsSettings?: ProjectCommsSettings;
++  reportTemplate?: ReportTemplate;
+   metadata?: Record<string, unknown>;
+ }
+ 
+@@ -692,6 +977,110 @@
+   project?: string;
+ }
+ 
++export interface ReportBrand {
++  name: string;
++  accent?: string;
++  logo_url?: string;
++  tagline?: string;
++  tone?: string;
++  from_name?: string;
++}
++
++export type ReportItemDecision = "approve" | "changes" | "not_now" | "duplicate";
++
++export type ReportItemKind = "request" | "completed" | "in_progress" | "next" | "question";
++
++export interface ReportItemResponse {
++  decision?: ReportItemDecision;
++  note?: string;
++}
++
++export interface ReportItem {
++  id: string;
++  kind: ReportItemKind;
++  title: string;
++  summary?: string;
++  task_id?: string;
++  feedback_tag?: string;
++  requested_by?: string;
++  requested_at?: string;
++  duplicate_of_item?: string;
++  duplicate_of_task?: string;
++  duplicate_note?: string;
++  decision_options?: Array<ReportItemDecision>;
++  current_decision?: StakeholderGateStatus;
++}
++
++export interface ReportQuestion {
++  id: string;
++  prompt: string;
++  item_id?: string;
++}
++
++export interface ReportRecipient {
++  member_id?: string;
++  name?: string;
++  email: string;
++  role?: "decision_maker" | "member" | "extra" | "operator";
++}
++
++export interface ReportRecipients {
++  decision_makers?: boolean;
++  member_ids?: Array<string>;
++  emails?: Array<string>;
++}
++
++export interface ReportResponse {
++  token: string;
++  report_id?: string;
++  tag?: string;
++  respondent?: {
++  id?: string;
++  name?: string;
++  email?: string;
++};
++  items?: Record<string, ReportItemResponse>;
++  overall?: {
++  text?: string;
++  rating?: number;
++  template_feedback?: string;
++};
++  answered_at: string;
++}
++
++export interface ReportSections {
++  requests?: boolean;
++  completed?: boolean;
++  in_progress?: boolean;
++  next?: boolean;
++  questions?: boolean;
++  feedback?: boolean;
++}
++
++export type ReportSendMode = "review" | "auto";
++
++export type ReportStatus = "draft" | "review" | "sent" | "cancelled" | "failed";
++
++export interface ReportTemplateChange {
++  at: string;
++  by: string;
++  note: string;
++}
++
++export interface ReportTemplate {
++  version?: number;
++  created_at: string;
++  updated_at: string;
++  source?: "auto" | "operator" | "pdm";
++  brand: ReportBrand;
++  sections?: ReportSections;
++  intro?: string;
++  footer?: string;
++  change_log?: Array<ReportTemplateChange>;
++}
++
++export type ReportTrigger = "activity" | "weekly" | "manual";
++
+ export interface RiskVerdict {
+   approved: boolean;
+   sizeShares: number;
+@@ -711,6 +1100,73 @@
+ }>;
+ }
+ 
++export interface StakeholderDecision {
++  decision: "approve" | "reject" | "duplicate" | "defer";
++  note?: string;
++  duplicate_of?: string;
++  decided_by?: StakeholderParty;
++}
++
++export interface StakeholderGate {
++  status: StakeholderGateStatus;
++  requested_by?: StakeholderParty;
++  requested_at: string;
++  feedback_tag?: string;
++  submission_id?: string;
++  decided_by?: StakeholderParty;
++  decided_at?: string;
++  note?: string;
++  duplicate_of?: string;
++  report_id?: string;
++  history?: Array<{
++  at: string;
++  status: StakeholderGateStatus;
++  by?: StakeholderParty;
++  note?: string;
++}>;
++}
++
++export type StakeholderGateStatus = "pending" | "approved" | "rejected" | "duplicate" | "deferred";
++
++export interface StakeholderParty {
++  member_id?: string;
++  name?: string;
++  email?: string;
++  via?: "operator" | "report" | "email" | "api";
++}
++
++export interface StakeholderReport {
++  id: string;
++  project_id: string;
++  project_name: string;
++  tag: string;
++  trigger: ReportTrigger;
++  period: {
++  from: string;
++  to: string;
++};
++  generated_at: string;
++  summary: string;
++  items: Array<ReportItem>;
++  questions?: Array<ReportQuestion>;
++  recipients?: Array<ReportRecipient>;
++  template_version?: number;
++  hosted_url?: string;
++  hosted_token?: string;
++  html_file?: string;
++  status?: ReportStatus;
++  sent_at?: string;
++  hitl_id?: string;
++  feedback?: Array<{
++  at: string;
++  from?: StakeholderParty;
++  text?: string;
++  rating?: number;
++  template_feedback?: string;
++  via?: "report" | "email" | "operator";
++}>;
++}
++
+ export type StreamEvent = PresenceChangedEvent | TaskCreatedEvent | TaskUpdatedEvent | TaskStartedEvent | TaskCompletedEvent | TaskFailedEvent | TaskBlockedEvent | HitlCreatedEvent | HitlResolvedEvent | HeartbeatEvent | ThinkingTraceEvent | ScheduleUpdatedEvent | ExecutorProgressEvent | CouncilUpdateEvent | TradeSignalEvent | TradeFilledEvent | TradeBlockedEvent | StreamResetEvent;
+ 
+ export interface StreamResetEvent {
+@@ -729,7 +1185,7 @@
+   blockedOnHitlId?: string;
+ }
+ 
+-export type TaskBoardStatus = "idea" | "planning" | "todo" | "scheduled" | "dispatched" | "in_progress" | "needs_input" | "blocked" | "ready_for_review" | "review" | "completed" | "failed" | "cancelled" | "archived";
++export type TaskBoardStatus = "idea" | "planning" | "todo" | "scheduled" | "dispatched" | "in_progress" | "needs_input" | "blocked" | "ready_for_review" | "review" | "completed" | "failed" | "cancelled" | "archived" | "suspended";
+ 
+ export interface TaskCompletedEvent {
+   at: string;
+@@ -834,6 +1290,15 @@
+   executor: ExecutorName;
+ }
+ 
++export interface TaskSuspension {
++  suspended_at?: string;
++  reason?: string;
++  context?: Record<string, unknown> | string;
++  resume_action?: Record<string, unknown> | string;
++  resumed_at?: string;
++  cancelled_at?: string;
++}
++
+ export interface TaskUpdatedEvent {
+   at: string;
+   eventId: string;
+@@ -900,6 +1365,12 @@
+ }
+ 
+ export type UpgradePosture = "auto" | "propose" | "off";
++
++export interface WeeklyReportSchedule {
++  enabled?: boolean;
++  weekday?: number;
++  hour?: number;
++}
+ 
+ export interface WorkingProfile {
+   problem_solving: string;

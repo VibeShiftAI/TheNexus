@@ -7,6 +7,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { resolveModelAssignment, recordModelExecutionSnapshot } = require('../services/model-control');
 const { hasRealActivity } = require('../lib/task-activity');
+const { requireValidKnowledgeMetadata } = require('../lib/task-knowledge');
 const { TaskBoardStatusSchema, normalizeTaskBoardStatus, AntigravityPayloadSchema } = require('@praxis/contract');
 const { checkPredecessorGate, triggerSuccessors } = require('../lib/task-sequence');
 const { praxisFetch } = require('../services/praxis-client');
@@ -123,9 +124,10 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // human layer (title/description), machine layer (antigravity_payload),
     // and sequencing (dependencies = predecessors, successor_id).
     router.post('/', async (req, res) => {
-        const { project_id, title, name, status, priority, description, model_assignment, antigravity_payload, dependencies, successor_id, source } = req.body;
+        const { project_id, title, name, status, priority, description, model_assignment, antigravity_payload, dependencies, successor_id, source, metadata } = req.body;
         const taskName = title || name;
         if (!project_id || !taskName) return res.status(400).json({ error: 'project_id and title are required' });
+        if (!requireValidKnowledgeMetadata(res, metadata)) return;
         let canonicalStatus = 'planning';
         if (status !== undefined && status !== null) {
             canonicalStatus = requireValidStatus(res, status);
@@ -168,6 +170,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 ...(deps.length > 0 ? { dependencies: deps } : {}),
                 ...(successor_id ? { successor_id } : {}),
                 ...(claim.source ? { source: claim.source } : {}),
+                ...(metadata !== undefined ? { metadata } : {}),
                 last_activity_at: new Date().toISOString()
             });
             res.status(201).json(result);
@@ -204,11 +207,12 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
 
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
-        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title, default_executor, default_model, dispatch_instructions, source, suspended_at, suspended_reason, suspended_context, resume_action } = req.body;
+        const { status, research_output, plan_output, walkthrough, status_message, priority, dependencies, successor_id, description, model_assignment, antigravity_payload, name, title, default_executor, default_model, dispatch_instructions, source, suspended_at, suspended_reason, suspended_context, resume_action, knowledge_context, knowledge_need_ids, knowledge_unresolved_need_ids } = req.body;
         const expectedVersion = req.body.expected_version;
         if (expectedVersion !== undefined && (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0)) {
             return res.status(400).json({ error: 'expected_version must be a non-negative safe integer' });
         }
+        if (!requireValidKnowledgeMetadata(res, { knowledge_context, knowledge_need_ids, knowledge_unresolved_need_ids })) return;
         try {
             const existing = await db.getTask(taskId);
             if (!existing) return res.status(404).json({ error: 'Task not found' });
@@ -278,8 +282,13 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             // "suspended" via PATCH keeps the block as history unless the
             // caller explicitly nulls the fields.
             const suspensionPatch = buildSuspensionPatch(existing, { suspended_at, suspended_reason, suspended_context, resume_action, status: updates.status });
-            if (status_message !== undefined || suspensionPatch !== undefined) {
+            if (status_message !== undefined || suspensionPatch !== undefined || knowledge_context !== undefined || knowledge_need_ids !== undefined || knowledge_unresolved_need_ids !== undefined) {
                 updates.metadata = { ...(existing.metadata || {}) };
+                // A narrow PATCH surface prevents knowledge backfills from
+                // replacing unrelated metadata or writing verification state.
+                if (knowledge_context !== undefined) updates.metadata.knowledge_context = knowledge_context;
+                if (knowledge_need_ids !== undefined) updates.metadata.knowledge_need_ids = knowledge_need_ids;
+                if (knowledge_unresolved_need_ids !== undefined) updates.metadata.knowledge_unresolved_need_ids = knowledge_unresolved_need_ids;
                 if (status_message !== undefined) updates.metadata.status_message = status_message;
                 if (suspensionPatch !== undefined) {
                     if (suspensionPatch === null) delete updates.metadata.suspension;
@@ -336,6 +345,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (!project) return res.status(404).json({ error: `Project '${project_id}' not found.` });
             const stableIdToRealId = new Map();
             for (const task of tasks) {
+                if (!requireValidKnowledgeMetadata(res, task.metadata)) return;
                 if (task.status !== undefined && task.status !== null) {
                     const canonicalStatus = requireValidStatus(res, task.status);
                     if (canonicalStatus === null) return;

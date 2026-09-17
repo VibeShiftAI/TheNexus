@@ -169,8 +169,18 @@ async function notifyTaskUpdate(task, oldStatus) {
     };
 
     const emoji = statusEmoji[task.status] || '📋';
-    const title = `${emoji} Task Update`;
-    const body = `"${task.name || task.title || 'Unnamed task'}" → ${task.status.replace(/_/g, ' ')}`;
+    const title = `${emoji} ${task.name || task.title || 'Task status changed'}`;
+    const statusDetail = {
+        completed: 'This work is marked complete. Open the task to see the result.',
+        in_progress: 'Work has started. You can follow its progress in the task.',
+        ready_for_review: 'The work is ready for review; it has not been approved yet.',
+        failed: 'The work could not finish. Open the task for the failure details.',
+        blocked: 'Progress is blocked. Open the task to see what is needed.',
+        awaiting_approval: 'Your approval is needed before this can continue.',
+        suspended: 'Work is paused. Open the task for the reason and next steps.',
+        cancelled: 'This work has been cancelled.',
+    };
+    const body = statusDetail[task.status] || `The task is now ${task.status.replace(/_/g, ' ')}. Open it for details.`;
 
     return notify({
         title,

@@ -6,10 +6,13 @@
  */
 "use client";
 
-import type { Project, ProjectBrief } from "@/lib/nexus";
+import type { Project, ProjectBrief, PulseCrew } from "@/lib/nexus";
+import { knowledgeSatisfied } from "@/lib/project-endpoint";
+import { currentWorkNeeds } from "@praxis/contract";
+import { checkpointView } from "@/lib/project-checkpoints";
 import { CornerBrackets } from "@/components/bridge/hud";
 import { ActivityLed, activityBand, BAND_STYLES, timeAgo } from "@/components/pulse-visuals";
-import { Crosshair, ListChecks, CircleAlert, Tag } from "lucide-react";
+import { Crosshair, ListChecks, CircleAlert, Tag, Flag } from "lucide-react";
 
 function Readout({ label, value, tone, sub }: { label: string; value: React.ReactNode; tone?: string; sub?: string }) {
     return (
@@ -19,6 +22,21 @@ function Readout({ label, value, tone, sub }: { label: string; value: React.Reac
             {sub && <div className="truncate text-[10px] text-slate-500">{sub}</div>}
         </div>
     );
+}
+
+/**
+ * Sub-label for the 7d token readout: the coverage behind the sum, plus the
+ * 24h figure when there is one. Zero counted runs reads "no usage reported"
+ * rather than a 0 that would claim the work was free.
+ */
+function tokenCoverageSub(crew: PulseCrew): string {
+    const { tokensCounted7d, dispatches7d, tokens24h, tokensEstimated } = crew;
+    if (dispatches7d === 0) return "no runs in 7d";
+    if (tokensCounted7d === 0) return `no usage reported (0 of ${dispatches7d} runs)`;
+    const coverage = `${tokensCounted7d} of ${dispatches7d} runs reported`;
+    return tokens24h > 0
+        ? `${tokensEstimated ? "~" : ""}${fmtTokensShort(tokens24h)} in 24h · ${coverage}`
+        : coverage;
 }
 
 export function fmtTokensShort(n: number): string {
@@ -31,9 +49,14 @@ export function MissionBrief({ project, brief }: { project: Project; brief: Proj
     const band = activityBand(brief?.lastActivityAt);
     const bandStyle = BAND_STYLES[band];
     const directive = project.end_state?.trim() || project.description?.trim() || "No mission directive on file.";
-    const criteria = (project.end_state_criteria ?? []).filter(c => c.enabled !== false);
-    const openNeeds = (project.needs ?? []).filter(n => n.status === "open");
+    const checkpoints = checkpointView(project);
+    const criteria = (checkpoints.current?.criteria ?? project.end_state_criteria ?? []).filter(c => c.enabled !== false);
+    const openNeeds = currentWorkNeeds(project.checkpoints, project.needs ?? []).filter(n => n.knowledge
+        ? n.status !== "dropped" && !knowledgeSatisfied(n, project.end_state_updated_at)
+        : n.status === "open");
     const crew = brief?.crew;
+    // Checkpoint sequence under the directive: the current checkpoint is what
+    // the crew works toward now; the directive itself stays the long-term goal.
 
     return (
         <section className="hud-scanlines relative overflow-hidden rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900/70 via-slate-950/80 to-slate-950/90">
@@ -68,11 +91,31 @@ export function MissionBrief({ project, brief }: { project: Project; brief: Proj
                     </div>
                     <p className="whitespace-pre-line text-sm leading-relaxed text-slate-300">{directive}</p>
 
+                    {checkpoints.phase === "current" && checkpoints.current && (
+                        <div className="mt-3 rounded-md border border-cyan-800/60 bg-cyan-950/30 px-3 py-2">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300">
+                                <Flag size={11} />
+                                Working toward now
+                                <span className="font-mono text-cyan-500/80">checkpoint {checkpoints.position} of {checkpoints.total}</span>
+                            </div>
+                            <div className="mt-1 break-words text-sm font-semibold text-white">{checkpoints.current.title}</div>
+                            {checkpoints.current.goal && (
+                                <p className="mt-0.5 whitespace-pre-line break-words text-xs leading-relaxed text-slate-300">{checkpoints.current.goal}</p>
+                            )}
+                        </div>
+                    )}
+                    {checkpoints.phase === "complete" && (
+                        <div className="mt-3 rounded-md border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-200">
+                            <Flag size={11} className="mr-1 inline" />
+                            All {checkpoints.total} checkpoints verified · final goal {checkpoints.finalGoal.achieved ? "verified" : "awaiting verification"}
+                        </div>
+                    )}
+
                     {criteria.length > 0 && (
                         <div className="mt-4">
                             <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-400/90">
                                 <ListChecks size={11} />
-                                Acceptance criteria
+                                {checkpoints.current ? "Current checkpoint acceptance criteria" : "Final-goal acceptance criteria"}
                             </div>
                             <ul className="space-y-1">
                                 {criteria.map(c => (
@@ -99,7 +142,8 @@ export function MissionBrief({ project, brief }: { project: Project; brief: Proj
                                     <li key={n.id} className="flex items-start gap-2 text-xs text-amber-200/80">
                                         <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-amber-400/80" />
                                         <span className="min-w-0">
-                                            {n.description}
+                                            {n.knowledge?.question || n.description}
+                                            {n.knowledge?.blocking && <span className="ml-1 text-amber-300"> · blocking knowledge</span>}
                                             <span className="ml-1.5 font-mono text-[10px] text-amber-500/60">[{n.kind}]</span>
                                         </span>
                                     </li>
@@ -151,11 +195,20 @@ export function MissionBrief({ project, brief }: { project: Project; brief: Proj
                             label="Queued"
                             value={brief ? brief.tasks.queued : "—"}
                         />
+                        {/* The 7d token sum covers only the runs that reported
+                            usage, and char/4 estimates land in the same column
+                            as measured counts — so the figure carries both its
+                            coverage and its provenance instead of reading as a
+                            complete measurement. */}
                         <Readout
-                            label="Tokens · 7d"
-                            value={crew ? fmtTokensShort(crew.tokens7d) : "—"}
-                            sub={crew && crew.tokens24h > 0 ? `${fmtTokensShort(crew.tokens24h)} in 24h` : undefined}
-                            tone="text-purple-300"
+                            label={crew?.tokensEstimated ? "Tokens · 7d (est)" : "Tokens · 7d"}
+                            value={
+                                !crew ? "—"
+                                    : crew.tokensCounted7d === 0 ? "unknown"
+                                        : `${crew.tokensEstimated ? "~" : ""}${fmtTokensShort(crew.tokens7d)}`
+                            }
+                            sub={crew ? tokenCoverageSub(crew) : undefined}
+                            tone={crew && crew.tokensCounted7d === 0 ? "text-slate-500" : "text-purple-300"}
                         />
                     </div>
 

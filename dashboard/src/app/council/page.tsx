@@ -450,7 +450,7 @@ function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | n
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
                     {mode === "problem"
-                        ? "Three top-tier seats (Codex GPT-5.6 Sol, Antigravity Gemini 3.1 Pro, Claude Fable 5) critique the setup and propose ideas, the same sessions resume to rank every idea, the ranks are aggregated, and the aggregator drafts the charter that sets the project up. 10–25 minutes on subscription capacity."
+                        ? "The contributors selected in Model Control critique the setup and propose ideas, the same sessions resume to rank every idea, the ranks are aggregated, and the aggregator drafts the charter that sets the project up. 10–25 minutes on subscription capacity."
                         : "Runs the configured council seats and may use paid API or subscription capacity."}
                 </p>
             </div>

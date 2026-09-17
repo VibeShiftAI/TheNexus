@@ -20,6 +20,7 @@ export interface LocalLlmJob {
     updatedAt: string;
     startedAt?: string;
     completedAt?: string;
+    executionLane?: 'local' | 'spillover';
     result?: string;
     error?: string;
 }
@@ -35,6 +36,40 @@ export interface LocalLlmQueueState {
     counts?: Record<string, number>;
 }
 
+export interface LocalModelWork {
+    observedAt: string;
+    lmStudio: {
+        available: boolean;
+        error?: string;
+        models: { id: string; name: string; type: string | null; status: string | null; queued: number | null }[];
+    };
+    background: {
+        available: boolean;
+        error?: string;
+        worker: LocalLlmQueueState['worker'] | null;
+        counts: Record<string, number>;
+        jobs: LocalLlmJob[];
+    };
+    evidence?: {
+        available: boolean;
+        error?: string;
+        batch: {
+            date: string;
+            name: string;
+            total: number;
+            attempted: number;
+            complete: number;
+            partial: number;
+            failed: number;
+            remaining: number;
+            activity: 'processing' | 'between-sources' | 'unconfirmed';
+            lastProgressAt: string;
+            current: { index: number; title: string; source: string; startedAt: string }[];
+            waiting: { index: number; title: string; source: string }[];
+        } | null;
+    };
+}
+
 export interface EnqueueLocalLlmJobInput {
     type: string;
     priority?: number;
@@ -44,6 +79,12 @@ export interface EnqueueLocalLlmJobInput {
 }
 
 const LOCAL_QUEUE_API = API_URL.replace(/\/projects$/, '/local-queue');
+
+export async function getLocalModelWork(signal?: AbortSignal): Promise<LocalModelWork> {
+    const res = await authFetch(`${LOCAL_QUEUE_API}/work`, { cache: 'no-store', signal });
+    if (!res.ok) throw new Error(`Local model queue unavailable (${res.status})`);
+    return res.json();
+}
 
 export async function getLocalLlmQueue(activeOnly = true): Promise<LocalLlmQueueState> {
     // activeOnly (default) returns worker + counts + running/queued jobs only —
@@ -104,5 +145,3 @@ export async function resumeLocalLlmQueue(): Promise<LocalLlmQueueState> {
     if (!res.ok) throw new Error(`Failed to resume local queue (${res.status})`);
     return res.json();
 }
-
-

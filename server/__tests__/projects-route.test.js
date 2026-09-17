@@ -37,6 +37,21 @@ describe('projects route', () => {
     handle = null;
   });
 
+  it('rejects stale conditional need projections at the HTTP boundary', async () => {
+    const expected = { status: 'open', notes: '', description: 'Choose policy', kind: 'decision' };
+    const db = { updateProjectNeed: jest.fn(() => ({ conflict: true })) };
+    const app = express(); app.use(express.json());
+    app.use('/api/projects', require('../routes/projects')({ db, PROJECT_ROOT: '/tmp', getProjectById: async () => ({ id: 'p' }), getAllProjects: jest.fn(), scanProjects: jest.fn(), callAI: jest.fn(), contextSync: {} }));
+    handle = await listen(app);
+    const result = await requestJson(`${handle.baseUrl}/api/projects/p/needs/n`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: 'Saved answer', expected }) });
+    expect(result.status).toBe(409);
+    expect(result.body.code).toBe('NEED_CONFLICT');
+    expect(db.updateProjectNeed).toHaveBeenCalledWith('p', 'n', { notes: 'Saved answer', expected, status: undefined });
+    const malformed = await requestJson(`${handle.baseUrl}/api/projects/p/needs/n`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: 'Saved answer', expected: {} }) });
+    expect(malformed.status).toBe(400);
+    expect(db.updateProjectNeed).toHaveBeenCalledTimes(1);
+  });
+
   it('accepts planning rotation metadata updates', async () => {
     const db = {
       updateProject: jest.fn().mockImplementation(async (id, updates) => ({

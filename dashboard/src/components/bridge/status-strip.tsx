@@ -7,18 +7,17 @@
  */
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Activity, Send, Inbox, Zap, CheckCircle2, Radio } from "lucide-react";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
-import { useCrewActivity } from "@/hooks/use-crew-activity";
+import { useCurrentFocus } from "@/hooks/use-current-focus";
+import { CurrentFocusPanel } from "@/components/bridge/current-focus";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
 import { useTokenUsage } from "@/hooks/use-token-usage";
-import { useComms } from "@/hooks/use-comms";
-import { CommsModal } from "@/components/bridge/comms-modal";
 import { useAutonomyChip } from "@/components/bridge/autonomy-indicator";
 import { fmtTokens } from "@/lib/token-usage";
 import { coreStyle } from "@/components/bridge/core-canvas";
-import { isDayWellUnderway } from "@/lib/day-underway";
 import type { PresenceActivity } from "@praxis/contract";
 
 function flashPanel(id: string) {
@@ -56,31 +55,20 @@ interface Chip {
 
 export function StatusStrip() {
   const { presence, connected } = usePraxisStream();
-  const { crew, dispatchedToday } = useCrewActivity();
-  const { pendingRequests } = useHitlInbox();
+  const { pendingRequests, error: inputError, refresh: refreshInput } = useHitlInbox();
+  const focus = useCurrentFocus(pendingRequests, inputError, refreshInput);
+  const [showFocus, setShowFocus] = useState(false);
+  const focusLabel = focus.errors.length ? "Activity incomplete" : focus.loading ? "Reading activity…" : focus.view.label;
   const { usage } = useTokenUsage();
-  const { feed, newCount, available: commsAvailable, lastSeen, markSeen } = useComms();
+  const router = useRouter();
   // May the fleet start work at all — running / explicit pause (who, since) /
   // no live day schedule. The full reason rides the chip's title and label.
   const autonomy = useAutonomyChip();
-  const [commsOpen, setCommsOpen] = useState(false);
 
   const activity: PresenceActivity = connected ? (presence?.activity ?? "offline") : "offline";
   const praxisStyle = coreStyle(activity);
-  const busy = crew.filter((m) => m.state === "active").length;
   const pending = pendingRequests.length;
   const doneToday = presence?.completedTasksToday;
-  // Zero dispatches only reads as degraded once the day's well underway —
-  // before dawn it's an early idle fleet, not a dead one.
-  const crewDegraded = dispatchedToday?.total === 0 && isDayWellUnderway();
-
-  const commsValue = !commsAvailable
-    ? "—"
-    : newCount > 0
-      ? `${newCount} new`
-      : feed
-        ? `${feed.counts.in}↓ ${feed.counts.out}↑`
-        : "…";
 
   const chips: Chip[] = [
     {
@@ -105,12 +93,14 @@ export function StatusStrip() {
     },
     {
       id: "crew",
-      label: "CREW",
-      value: busy > 0 ? `${busy} working` : (crewDegraded ? "degraded" : "idle"),
+      label: "CURRENT FOCUS",
+      value: focusLabel,
       icon: <Send size={13} />,
-      tone: busy > 0 ? "text-cyan-300" : (crewDegraded ? "text-amber-400" : "text-slate-400"),
-      target: "station-dispatch",
-      title: "Ops — dispatch lanes",
+      tone: focus.errors.length ? "text-amber-400" : focus.view.tone,
+      title: "Open Current Focus — activity by project",
+      hoverTitle: focus.errors.length ? focus.errors.join(' ') : `${focusLabel} — click for project activity`,
+      ariaLabel: `Current Focus: ${focusLabel}. Open activity by project`,
+      onClick: () => setShowFocus(true),
     },
     {
       id: "inbox",
@@ -134,14 +124,11 @@ export function StatusStrip() {
     {
       id: "comms",
       label: "COMMS",
-      value: commsValue,
+      value: "Inbox / Outbox",
       icon: <Radio size={13} />,
-      tone: newCount > 0 ? "text-amber-300" : commsAvailable ? "text-cyan-300" : "text-slate-500",
-      title: "External comms — feedback + human channel",
-      onClick: () => {
-        setCommsOpen(true);
-        markSeen();
-      },
+      tone: "text-cyan-300",
+      title: "Open Praxis email Inbox and Outbox",
+      onClick: () => router.push('/mail'),
     },
     {
       id: "done",
@@ -155,7 +142,7 @@ export function StatusStrip() {
   ];
 
   return (
-    <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-7">
+    <><div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-7">
       {chips.map((c) => (
         <button
           key={c.id}
@@ -173,9 +160,8 @@ export function StatusStrip() {
           </span>
         </button>
       ))}
-      {commsOpen && (
-        <CommsModal feed={feed} lastSeen={lastSeen} onClose={() => setCommsOpen(false)} />
-      )}
     </div>
+    {showFocus && <CurrentFocusPanel {...focus} onClose={() => setShowFocus(false)} />}
+    </>
   );
 }

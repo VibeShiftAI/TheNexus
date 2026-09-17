@@ -63,6 +63,14 @@ describe('AI chat Praxis relay', () => {
         return { status: res.status, body: await res.json() };
     }
 
+    test('non-streaming responses preserve speech suppression in JSON and history', async () => {
+        global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ response: 'Report started.', suppressVoice: true }) }));
+        const db = createDb(); await mount(db);
+        const response = await post({ message: 'status report', mode: 'praxis' });
+        expect(response.body.suppressVoice).toBe(true);
+        expect(db.saveChatMessage.mock.calls.at(-1)[0].metadata.suppressVoice).toBe(true);
+    });
+
     test('every mode relays to Praxis — including legacy "chat"', async () => {
         global.fetch = jest.fn(async () => ({
             ok: true,
@@ -161,17 +169,26 @@ describe('AI chat Praxis relay', () => {
         });
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         try {
-            await mount(createDb());
+            const db=createDb();let savedUser;
+            db.getChatMessageById=jest.fn(async()=>savedUser);
+            db.getNextAssistantMessage=jest.fn(async()=>null);
+            db.saveChatMessage.mockImplementation(async message=>{
+                if(message.role==='user') {if(savedUser)return null;savedUser={...message};return savedUser;}
+                return {...message,id:'retry-reply'};
+            });
+            await mount(db);
 
             // First run fails → 502, and the failure must NOT be cached.
             const failed = await post({ message: 'retry me', mode: 'praxis', clientMessageId: 'msg-retry-2' });
             expect(failed.status).toBe(502);
+            expect((await(await nativeFetch(`${handle.baseUrl}/api/ai/chat/activity`)).json()).turns[0].phase).toBe('failed');
 
             // A later retry with the same id re-runs and succeeds…
             const retried = await post({ message: 'retry me', mode: 'praxis', clientMessageId: 'msg-retry-2' });
             expect(retried.status).toBe(200);
             expect(retried.body.response).toBe('second try worked');
             expect(global.fetch).toHaveBeenCalledTimes(2);
+            expect((await(await nativeFetch(`${handle.baseUrl}/api/ai/chat/activity`)).json()).turns[0]).toMatchObject({phase:'completed',attempt:2});
 
             // …and a straggler retry arriving after completion joins the
             // cached result instead of running the agent a third time.

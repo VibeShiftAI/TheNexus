@@ -66,7 +66,7 @@ test('playback failure reports incomplete audio and does not synthesize later ch
   const f = fixture((async () => { requests++; return Response.json({ audio: 'ok' }); }) as typeof fetch);
   const session = f.speech.begin()!; const pending = f.speech.speak(session, 'Long reply. '.repeat(300), undefined, message => notice = message);
   await tick(); f.audios[0].onerror?.(); await tick();
-  assert.equal(requests, 1); assert.match(notice, /stopped before/); f.speech.cancel(); await pending;
+  assert.equal(requests, 1); assert.match(notice, /audio playback failure/i); f.speech.cancel(); await pending;
 });
 test('ownership is rechecked after deferred response JSON decoding', async () => {
   const body = deferred<{ audio: string }>();
@@ -102,4 +102,73 @@ test('natural pause waits for ended, and intervening explicit playback still can
   assert.equal(settled, false); assert.equal(session.owns(), true);
   const other = f.owner.claim('chat', () => {})!; staleEnd?.();
   assert.equal(await pending, 'canceled'); assert.equal(other.owns(), true); other.release();
+});
+
+test('announcement cue runs after synthesis, once before the first speech chunk', async () => {
+  const cue = deferred<boolean>(); let cues = 0;
+  const f = fixture((async () => Response.json({ audio: 'ready' })) as typeof fetch);
+  const session = f.speech.begin(true)!;
+  const pending = f.speech.speak(session, 'A long update. '.repeat(150), undefined, undefined, false, async () => { cues++; return cue.promise; });
+  await tick(); assert.equal(cues, 1); assert.equal(f.audios.length, 0);
+  cue.resolve(true); await tick(); assert.equal(f.audios.length, 1);
+  while (session.owns()) { f.audios.at(-1)?.finishNaturally(); await tick(); }
+  assert.equal(await pending, 'completed'); assert.equal(cues, 1);
+});
+test('cancel during the cue prevents speech and preserves a new microphone owner', async () => {
+  const cue = deferred<boolean>();
+  const f = fixture((async () => Response.json({ audio: 'ready' })) as typeof fetch);
+  const pending = f.speech.speak(f.speech.begin(true)!, 'Update.', undefined, undefined, false, () => cue.promise);
+  await tick(); const recording = f.speech.begin()!; cue.resolve(true);
+  assert.equal(await pending, 'canceled'); assert.equal(f.audios.length, 0); assert.equal(recording.owns(), true); f.speech.cancel();
+});
+test('failed cue keeps the announcement silent and releases ownership', async () => {
+  const f = fixture((async () => Response.json({ audio: 'ready' })) as typeof fetch);
+  assert.equal(await f.speech.speak(f.speech.begin(true)!, 'Update.', undefined, undefined, false, async () => false), 'canceled');
+  assert.equal(f.audios.length, 0); assert.equal(f.owner.busy(), false);
+});
+
+for (const status of [401, 403, 429, 503, 504]) test(`speech HTTP ${status} reports a preparation failure, not interrupted playback`, async () => {
+  let notice = '';
+  const f = fixture((async () => Response.json({ error: 'unavailable' }, { status })) as typeof fetch);
+  assert.equal(await f.speech.speak(f.speech.begin()!, 'Reply.', undefined, text => notice = text), 'failed');
+  assert.match(notice, new RegExp(String(status)));
+  assert.doesNotMatch(notice, /stopped before the reply finished/);
+  assert.equal(f.audios.length, 0);
+});
+test('a sign-in HTML response is distinguished from speech audio', async () => {
+  let notice = '';
+  const f = fixture((async () => new Response('<html>Sign in</html>', { headers: { 'Content-Type': 'text/html' } })) as typeof fetch);
+  await f.speech.speak(f.speech.begin()!, 'Reply.', undefined, text => notice = text);
+  assert.match(notice, /sign.in|web page/i); assert.doesNotMatch(notice, /stopped before/);
+});
+test('autoplay rejection retains the browser error identity and explains that audio never started', async () => {
+  let notice = '';
+  const f = fixture((async () => Response.json({ audio: 'ok' })) as typeof fetch);
+  const originalPlay = AudioFake.prototype.play;
+  AudioFake.prototype.play = () => Promise.reject(new DOMException('gesture required', 'NotAllowedError'));
+  try {
+    await f.speech.speak(f.speech.begin()!, 'Reply.', undefined, text => notice = text);
+    assert.match(notice, /blocked.*playback|playback.*blocked/i);
+    assert.match(notice, /NotAllowedError/); assert.doesNotMatch(notice, /stopped before/);
+  } finally { AudioFake.prototype.play = originalPlay; }
+});
+test('network failure before audio exists is reported as a delivery failure', async () => {
+  let notice = '';
+  const f = fixture((async () => { throw new TypeError('Failed to fetch'); }) as typeof fetch);
+  await f.speech.speak(f.speech.begin()!, 'Reply.', undefined, text => notice = text);
+  assert.match(notice, /connection|network/i); assert.doesNotMatch(notice, /stopped before/);
+});
+
+for (const cancel of [false, true]) test(`playback callback waits for actual audio start and ignores canceled start: ${cancel}`, async () => {
+  const playback = deferred<void>(); let starts = 0;
+  const owner = new SpeechOwner(); const audio = new AudioFake('');
+  audio.play = () => playback.promise;
+  const speech = new VoiceSpeech({ owner, createAudio: () => audio as unknown as HTMLAudioElement, onState: () => {} });
+  const pending = speech.speak(speech.begin()!, 'hello', [{ audio: 'provided', mimeType: 'audio/wav' }], undefined, false, undefined, () => starts++);
+  await tick(); assert.equal(starts, 0);
+  if (cancel) speech.cancel();
+  playback.resolve(); await tick();
+  assert.equal(starts, cancel ? 0 : 1);
+  if (!cancel) audio.finishNaturally();
+  assert.equal(await pending, cancel ? 'canceled' : 'completed');
 });

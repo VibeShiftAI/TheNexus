@@ -8,6 +8,9 @@
  */
 "use client";
 
+import Link from "next/link";
+import { ActivityDetails, ActivityList } from "./activity-monitor";
+import type { ActivityItem } from "@/lib/bridge-activity";
 import { useState, useRef } from "react";
 import { Radio, Maximize2, Minimize2, Plus, History } from "lucide-react";
 import { useLiveBoardState } from "@/components/live-board-state";
@@ -17,7 +20,7 @@ import { useCoreState } from "@/hooks/use-core-state";
 import { useTokenUsage } from "@/hooks/use-token-usage";
 import { fmtTokens } from "@/lib/token-usage";
 import { CoreCanvas, EXECUTOR_COLORS } from "@/components/bridge/core-canvas";
-import { HudPanel, HudErrorBoundary } from "@/components/bridge/hud";
+import { HudPanel, HudErrorBoundary, HudModal } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
 import { AITerminal, type AITerminalHandle } from "@/components/ai-terminal";
 import { NowStrip } from "@/components/bridge/now-strip";
@@ -48,6 +51,9 @@ export function PraxisCore() {
   const core = useCoreState();
   const work = useActiveWork();
   const { usage } = useTokenUsage();
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityDetail, setActivityDetail] = useState<ActivityItem | null>(null);
+  const [traceOpen, setTraceOpen] = useState(false);
   const [viewscreenMax, setViewscreenMax] = useState(false);
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
   const terminalRef = useRef<AITerminalHandle>(null);
@@ -58,12 +64,12 @@ export function PraxisCore() {
 
   const stats = (
     [
-      { label: "Scheduled", value: presence?.scheduledTaskCount },
-      { label: "Done today", value: presence?.completedTasksToday },
-      { label: "Tokens today", value: usage ? fmtTokens(usage.today.total) : undefined },
-      { label: "Next wake", value: fmtTime(presence?.nextWakeAt) },
-    ] as { label: string; value: number | string | null | undefined }[]
-  ).filter((s): s is { label: string; value: number | string } => s.value !== undefined && s.value !== null);
+      { label: "Scheduled", href: "/calendar", value: presence?.scheduledTaskCount },
+      { label: "Done today", href: "/activity?channel=completed", value: presence?.completedTasksToday },
+      { label: "Tokens today", href: "/llm-activity", value: usage ? fmtTokens(usage.today.total) : undefined },
+      { label: "Next wake", href: "/calendar", value: fmtTime(presence?.nextWakeAt) },
+    ] as { label: string; href: string; value: number | string | null | undefined }[]
+  ).filter((s): s is { label: string; href: string; value: number | string } => s.value !== undefined && s.value !== null);
 
   // Chat controls hoisted out of the terminal so the whole header is one row.
   // ChatModelControl leads: which model is answering as Praxis is a readout
@@ -123,16 +129,16 @@ export function PraxisCore() {
     >
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Core column — presence, vitals, thought stream */}
-        <div className="flex w-full shrink-0 flex-col items-center lg:w-[240px]">
-          <CoreCanvas state={core} size={150} />
+        <div className="praxis-core-presence flex w-full shrink-0 flex-col items-center lg:w-[240px]">
+          <button type="button" onClick={() => {setActivityOpen(true); setActivityDetail(null);}} aria-label="Inspect Praxis core activity" className="rounded-full transition hover:bg-cyan-300/5 focus-visible:outline-2 focus-visible:outline-cyan-300"><CoreCanvas state={core} size={150} /></button>
 
-          <div className={`text-lg font-bold tracking-tight ${core.textClass}`}>{core.label}</div>
+          <div className={`praxis-core-label text-lg font-bold tracking-tight ${core.textClass}`}>{core.label}</div>
           {/* Sub-line prefers the dispatch-correlated "what is actually
               running" signal (same source as the NOW strip) over
               presence.summary, which can describe a finished flow until the
               producer hands presence off. */}
           <div
-            className="mt-0.5 line-clamp-2 text-center text-[11px] text-slate-400"
+            className="praxis-core-summary mt-0.5 line-clamp-2 text-center text-[11px] text-slate-400"
             title={work.taskLabel ?? presence?.summary}
           >
             {work.taskLabel ??
@@ -142,7 +148,7 @@ export function PraxisCore() {
 
           {/* Live deliberation readout — the seats around the orb, named. */}
           {core.council && (
-            <div
+            <Link href={`/council?session=${encodeURIComponent(core.council.sessionId)}`}
               className={`mt-1.5 w-full rounded-md border px-2 py-1 text-[10px] ${COUNCIL_ACCENT[core.council.kind]}`}
               title={core.council.topic}
             >
@@ -155,16 +161,16 @@ export function PraxisCore() {
                 </span>
               </div>
               <div className="mt-0.5 truncate opacity-70">{core.council.topic}</div>
-            </div>
+            </Link>
           )}
 
           {stats.length > 0 && (
             <div className="mt-2.5 grid w-full grid-cols-2 gap-1.5">
               {stats.map((s) => (
-                <div key={s.label} className="rounded-md border border-slate-800 bg-slate-950/50 px-2 py-1">
+                <Link href={s.href} key={s.label} className="transition hover:border-cyan-400/40 rounded-md border border-slate-800 bg-slate-950/50 px-2 py-1">
                   <div className="text-[9px] uppercase tracking-wide text-slate-500">{s.label}</div>
                   <div className="text-[13px] font-semibold tabular-nums text-slate-200">{s.value}</div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -225,12 +231,12 @@ export function PraxisCore() {
           </div>
 
           {traceText && (core.activity === "thinking" || core.activity === "executing") && (
-            <div className="mt-2.5 max-h-16 w-full overflow-hidden rounded-md border border-slate-800/60 bg-slate-950/60 px-2.5 py-1.5">
+            <button type="button" onClick={() => setTraceOpen(true)} aria-label="Read full thought trace" className="text-left hover:border-cyan-400/40 mt-2.5 max-h-16 w-full overflow-hidden rounded-md border border-slate-800/60 bg-slate-950/60 px-2.5 py-1.5">
               <div className="text-[10px] uppercase tracking-wide text-slate-600">thought stream</div>
               <p className="truncate font-mono text-[11px] leading-relaxed text-slate-500" title={traceText}>
                 {traceText}
               </p>
-            </div>
+            </button>
           )}
         </div>
 
@@ -249,8 +255,8 @@ export function PraxisCore() {
         <div
           className={
             viewscreenMax
-              ? "hud-scanlines fixed inset-4 z-[71] flex flex-col rounded-lg border border-slate-700 bg-slate-950/95 p-4 shadow-2xl"
-              : "flex h-[420px] min-w-0 flex-1 flex-col border-t border-slate-800/70 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0"
+              ? "hud-scanlines fixed inset-4 z-[71] flex min-h-0 flex-col rounded-lg border border-slate-700 bg-slate-950/95 p-3 shadow-2xl sm:p-4"
+              : "flex h-[420px] max-h-[65dvh] min-h-0 min-w-0 flex-none flex-col border-t border-slate-800/70 pt-3 lg:max-h-none lg:flex-1 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0"
           }
         >
           <HudErrorBoundary label="viewscreen">
@@ -272,6 +278,8 @@ export function PraxisCore() {
       </div>
 
       {inspecting && <ExecutorDetailModal executor={inspecting} onClose={() => setInspecting(null)} />}
+      {traceOpen && <HudModal title="Thought trace" onClose={() => setTraceOpen(false)} wide><p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-300">{traceText}</p><Link href="/activity" className="mt-4 block text-sm text-cyan-300">Open activity report →</Link></HudModal>}
+      {activityOpen && <HudModal title="Praxis core activity" onClose={() => setActivityOpen(false)} wide>{activityDetail ? <><button className="mb-4 text-sm text-cyan-300" onClick={() => setActivityDetail(null)}>← All events</button><ActivityDetails item={activityDetail}/></> : <ActivityList onSelect={setActivityDetail}/>}<Link href="/activity" className="mt-4 block text-sm text-cyan-300">Full activity report →</Link></HudModal>}
     </HudPanel>
   );
 }

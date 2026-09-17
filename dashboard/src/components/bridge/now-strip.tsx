@@ -24,7 +24,25 @@ function fmtTokens(n: number) {
 }
 
 export function NowStrip({ bare = false }: { bare?: boolean } = {}) {
-  const { running, activity, taskLabel, model, tokens, tokensEstimated, connected } = useActiveWork();
+  const {
+    running,
+    activity,
+    taskLabel,
+    model,
+    tokens,
+    tokensEstimated,
+    tokensCountedRuns,
+    tokensTotalRuns,
+    connected,
+  } = useActiveWork();
+  // The cumulative figure covers only the runs that reported usage. When some
+  // did not, the count is a floor, not the task's total, and saying so is the
+  // difference between a partial measurement and a wrong one.
+  const partialCoverage = tokensTotalRuns > 0 && tokensCountedRuns < tokensTotalRuns;
+  const coverageNote =
+    tokensTotalRuns > 0
+      ? `counted from ${tokensCountedRuns} of ${tokensTotalRuns} run${tokensTotalRuns === 1 ? "" : "s"}`
+      : null;
   const style = coreStyle(activity);
   const stateLabel = running ? style.label : "Idle";
   const name = running
@@ -83,21 +101,47 @@ export function NowStrip({ bare = false }: { bare?: boolean } = {}) {
         )}
         {tokens != null ? (
           <span
-            className="inline-flex items-center gap-1 rounded border border-cyan-500/25 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-cyan-200"
+            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${
+              partialCoverage
+                ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                : "border-cyan-500/25 bg-cyan-500/10 text-cyan-200"
+            }`}
             title={`${tokensEstimated ? "~" : ""}${tokens.toLocaleString()} tokens for this task${
               tokensEstimated ? " (estimated)" : ""
+            }${
+              partialCoverage
+                ? `, ${coverageNote}. The other ${
+                    tokensTotalRuns - tokensCountedRuns
+                  } left no usage record, so this task's total is unknown, not this figure.`
+                : coverageNote
+                ? `, ${coverageNote}`
+                : ""
             }`}
           >
             <Coins size={9} className="shrink-0" />
             {tokensEstimated ? "~" : ""}
             {fmtTokens(tokens)}
+            {partialCoverage && (
+              <span className="font-normal text-amber-300/80">
+                · {tokensCountedRuns}/{tokensTotalRuns} runs
+              </span>
+            )}
           </span>
         ) : (
           <span
             className="inline-flex items-center gap-1 rounded border border-slate-800 px-1.5 py-0.5 text-[10px] text-slate-600"
-            title={running ? "Token count pending (reported at completion)" : "No token usage recorded"}
+            title={
+              tokensTotalRuns > 0
+                ? `No usage recorded for any of this task's ${tokensTotalRuns} run${
+                    tokensTotalRuns === 1 ? "" : "s"
+                  }, so its token count is unknown (not zero).`
+                : running
+                ? "Token count pending (reported at completion)"
+                : "No token usage recorded"
+            }
           >
-            <Coins size={9} className="shrink-0" />—
+            <Coins size={9} className="shrink-0" />
+            {tokensTotalRuns > 0 ? <span>unknown</span> : "—"}
           </span>
         )}
       </div>

@@ -37,6 +37,23 @@ function windowLabel(minutes: number): string {
     return `${Math.round(minutes / 60)}h`;
 }
 
+/**
+ * Coverage of a family's daily cost aggregate: how many of today's events
+ * carried a price. Praxis reports `unpricedEvents`; the priced count is the
+ * remainder of `events`. Reported as a ratio rather than a bare count of
+ * failures, because the aggregate's credibility depends on the denominator —
+ * 864 unpriced out of 864 is a different claim from 864 out of 20,000.
+ */
+function describePricedCoverage(today: UsageFamilyState["today"]): { label: string; complete: boolean } {
+    const events = today.events ?? 0;
+    const unpriced = today.unpricedEvents ?? 0;
+    const priced = Math.max(0, events - unpriced);
+    if (events === 0) return { label: "no events today", complete: true };
+    if (unpriced === 0) return { label: `all ${events} events priced`, complete: true };
+    const pct = Math.round((priced / events) * 100);
+    return { label: `${priced} of ${events} events priced (${pct}%)`, complete: false };
+}
+
 function FamilyCard({
     name,
     accent,
@@ -49,6 +66,7 @@ function FamilyCard({
     now: number;
 }) {
     const { today, window: win, rateLimits, limit } = family;
+    const pricedCoverage = describePricedCoverage(today);
     return (
         <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
             <div className="mb-3 flex items-center justify-between">
@@ -72,8 +90,30 @@ function FamilyCard({
                     <div className="text-xs text-slate-500">output today</div>
                 </div>
                 <div>
-                    <div className="text-lg font-semibold text-slate-100">${today.estCostUsd.toFixed(2)}</div>
+                    <div
+                        className={`text-lg font-semibold ${today.estCostUsd == null ? 'text-slate-400' : 'text-slate-100'}`}
+                        title={today.estCostUsd == null
+                            ? 'No event today could be priced, so the API-equivalent value is unknown — not $0.'
+                            : 'ESTIMATE, not a bill — the API-equivalent value of subscription work at notional list rates.'}
+                    >
+                        {today.estCostUsd == null ? 'Unknown' : `~$${today.estCostUsd.toFixed(2)}`}
+                    </div>
                     <div className="text-xs text-slate-500">est. API value</div>
+                    {/* Coverage sits beside the aggregate: a total over partial
+                        telemetry is not the whole figure, and the reader cannot
+                        tell how far it falls short without the denominator. */}
+                    <div className={`text-xs ${pricedCoverage.complete ? 'text-slate-500' : 'text-amber-400/90'}`}>
+                        {pricedCoverage.label}
+                    </div>
+                    {!!today.unpricedEvents && <div className="text-xs text-slate-500">{today.unpricedEvents} events without a price</div>}
+                    {/* Only claim a priced subtotal when something was actually
+                        priced. With every event unpriced Praxis sends a 0
+                        subtotal, and rendering that as "$0.00" asserts a
+                        measured zero the telemetry never established — the
+                        coverage line above already states the zero honestly. */}
+                    {!!today.unpricedEvents && typeof today.pricedSubtotalUsd === 'number' && today.pricedSubtotalUsd > 0 && (
+                        <div className="text-xs text-slate-500">Priced subtotal: ${today.pricedSubtotalUsd.toFixed(2)}</div>
+                    )}
                 </div>
             </div>
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { calendarEventsUrl, calendarEventTone, type CalendarEvent, type CalendarEventStatus } from "@/lib/calendar";
+import { useArrivalPulse } from "@/hooks/use-arrival-pulse";
 import { useLiveRefetch } from "@/components/live-board-state";
 import { HudPanel } from "@/components/bridge/hud";
 import { CalendarDays, ChevronDown, ChevronUp, ScrollText, ArrowRight, ArrowUpRight, Clock } from "lucide-react";
@@ -122,12 +123,14 @@ function DayTrack({
   spanStart,
   spanEnd,
   onJump,
+  live,
 }: {
   events: CalendarEvent[];
   nowTs: number;
   spanStart: number;
   spanEnd: number;
   onJump: (id: string) => void;
+  live: boolean;
 }) {
   const nowPct = pctOfSpan(nowTs, spanStart, spanEnd);
   // A tick every 6 hours across the span. Midnight ticks are taller and carry
@@ -157,7 +160,7 @@ function DayTrack({
           <button
             key={e.id}
             onClick={() => onJump(e.id)}
-            className={`absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform hover:scale-150 ${trackDot(e.status)}`}
+            className={`absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform hover:scale-150 ${!live && e.status === "in_progress" ? "bg-amber-400/40" : trackDot(e.status)}`}
             style={{ left: `${pctOfSpan(new Date(effectiveTimeIso(e)).getTime(), spanStart, spanEnd)}%` }}
             title={`${formatWhen(effectiveTimeIso(e), spanStart)} · ${e.title}${ranOffSchedule(e) ? ` (planned ${formatWhen(e.start_time, spanStart)})` : ""}`}
             aria-label={`Jump to ${e.title}`}
@@ -185,6 +188,8 @@ export function ScheduleTimeline() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastGoodAt, setLastGoodAt] = useState(0);
+  const [signalError, setSignalError] = useState(false);
   const [nowTs, setNowTs] = useState(() => Date.now());
   const listRef = useRef<HTMLDivElement>(null);
   const nowMarkerRef = useRef<HTMLDivElement>(null);
@@ -212,8 +217,11 @@ export function ScheduleTimeline() {
           new Date(effectiveTimeIso(a)).getTime() - new Date(effectiveTimeIso(b)).getTime()
         );
         setEvents(sorted);
-      }
+        const fetchedAt = Date.now();
+        setLastGoodAt(fetchedAt); setNowTs(fetchedAt); setSignalError(false);
+      } else { setSignalError(true); }
     } catch (e) {
+      setSignalError(true);
       console.error("Failed to fetch schedule events:", e);
     } finally {
       setLoading(false);
@@ -257,6 +265,8 @@ export function ScheduleTimeline() {
     [scrollListTo],
   );
 
+  const scheduleLive = !signalError && lastGoodAt > 0 && nowTs - lastGoodAt >= 0 && nowTs - lastGoodAt < 90_000;
+  const transitions = useArrivalPulse(events.map(e => `${e.id}:${e.status}`), !loading);
   const doneCount = events.filter((e) => e.status === "completed").length;
 
   // Today, and the tail the plan pushed past midnight. Splitting on the day
@@ -296,14 +306,15 @@ export function ScheduleTimeline() {
       <div
         key={event.id}
         id={`sched-${event.id}`}
-        className={`relative pl-5 ${event.status === "skipped" ? "opacity-50" : isPast && event.status === "completed" ? "opacity-80" : ""}`}
+        className={`relative rounded-md pl-5 ${transitions.has(`${event.id}:${event.status}`) ? "module-new" : ""} ${event.status === "skipped" ? "opacity-50" : isPast && event.status === "completed" ? "opacity-80" : ""}`}
       >
-        <span className={`absolute left-[1px] top-[7px] h-2 w-2 rounded-full ${nodeClasses(event.status)}`} />
+        <span className={`absolute left-[1px] top-[7px] h-2 w-2 rounded-full ${!scheduleLive && event.status === "in_progress" ? "bg-amber-400/40" : nodeClasses(event.status)}`} />
         <button
           onClick={() => toggleExpand(event.id)}
           aria-expanded={isExpanded}
-          className="flex w-full min-w-0 items-center gap-2 rounded px-1 py-0.5 text-left transition-colors hover:bg-slate-800/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-purple-500/60"
+          className={`relative flex w-full min-w-0 items-center gap-2 overflow-hidden rounded px-1 py-1 text-left transition-colors hover:bg-slate-800/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-purple-500/60 ${event.status === "in_progress" ? "bg-amber-400/5 text-amber-200" : ""}`}
         >
+          {scheduleLive && event.status === "in_progress" && <span aria-hidden="true" className="hud-sheen pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-amber-300/15 to-transparent"/>}
           <span
             className="w-[46px] shrink-0 font-mono text-[10px] tabular-nums text-slate-500"
             title={
@@ -393,6 +404,7 @@ export function ScheduleTimeline() {
     <HudPanel
       icon={<CalendarDays size={16} />}
       title="TODAY'S SCHEDULE"
+      activity={scheduleLive && events.some(e => e.status === "in_progress") ? "active" : "idle"}
       accent="purple"
       headerRight={
         <>
@@ -421,7 +433,8 @@ export function ScheduleTimeline() {
         </div>
       ) : (
         <>
-          <DayTrack events={events} nowTs={nowTs} spanStart={spanStart} spanEnd={spanEnd} onJump={jumpToEvent} />
+          {!scheduleLive && !loading && <p className="mb-2 text-[10px] text-amber-300">Schedule signal delayed · last reported state</p>}
+          <DayTrack live={scheduleLive} events={events} nowTs={nowTs} spanStart={spanStart} spanEnd={spanEnd} onJump={jumpToEvent} />
 
           <div ref={listRef} className="custom-scrollbar relative max-h-[300px] space-y-1 overflow-y-auto pr-1">
             {/* Timeline rail behind the status nodes */}

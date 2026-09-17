@@ -267,8 +267,9 @@ async function getChatConfig(db) {
  *   - claude-code CLI `--effort`      → low | medium | high | xhigh | max
  *   - codex `model_reasoning_effort`  → minimal | low | medium | high | xhigh | max
  *     (per-slug; see OPENAI_MODEL_EFFORT_TIERS in model-discovery.js —
- *     gpt-5.5/5.4 stop at xhigh, the 5.6 family adds ultra which Praxis
- *     deliberately does not forward)
+ *     gpt-5.5/5.4-mini stop at xhigh, 5.6-luna adds max, and gpt-6-astra,
+ *     5.6-sol and 5.6-terra add ultra, which Praxis forwards in chat but
+ *     deliberately does not forward for autonomous dispatch)
  *   - antigravity (agy) has NO reasoning-effort knob: its thinking level is
  *     baked into the model DISPLAY name ("Gemini 3.1 Pro (High)"), so no entry
  *     is offered for it.

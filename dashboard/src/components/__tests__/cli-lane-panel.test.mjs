@@ -84,12 +84,17 @@ function mount(state, now = NOW) {
     };
 }
 
-test("the gate's reason string renders verbatim", () => {
+test("the compact gate opens its original reason verbatim in the full report", () => {
     const view = mount(LIVE_SNAPSHOT);
     try {
-        assert.match(view.text, /serial: outside the 6:00–17:00 burst window/);
-        assert.match(view.text, /occupancy 1\/1 \(claude-code 1\/1, codex 0\/1, antigravity 0\/1\)/);
+        assert.match(view.text, /Outside burst hours/);
+        assert.equal(view.text.includes('occupancy 1/1'), false);
         assert.match(view.text, /1\/1 running/);
+        act(() => view.container.querySelector('button[aria-label^="Inspect executor capacity"]').click());
+        const report = document.querySelector('[role="dialog"] details');
+        act(() => report.querySelector('summary').click());
+        assert.equal(report.open, true);
+        assert.ok(report.textContent.includes(LIVE_SNAPSHOT.executors.cliConcurrency.reason));
     } finally {
         view.unmount();
     }
@@ -155,16 +160,19 @@ test("an older Praxis without the fields says so instead of rendering an empty g
     }
 });
 
-test("structured gate numbers render beside the reason once Praxis sends them", () => {
+test("structured gate numbers are available in the capacity detail panel", () => {
     const state = structuredClone(LIVE_SNAPSHOT);
     state.executors.cliConcurrency.metrics = { memFreePct: 55.4, swapoutMbPerSec: 0.25 };
 
     const view = mount(state);
     try {
-        assert.match(view.text, /mem free 55%/);
-        assert.match(view.text, /swap rate 0\.3 MB\/s/);
-        // …without displacing the sentence.
-        assert.match(view.text, /serial: outside the 6:00–17:00 burst window/);
+        assert.equal(view.text.includes('mem free'), false);
+        act(() => view.container.querySelector('button[aria-label^="Inspect executor capacity"]').click());
+        const detail = document.querySelector('[role="dialog"]');
+        assert.match(detail.textContent, /mem free\s*55%/);
+        assert.match(detail.textContent, /swap rate\s*0\.3 MB\/s/);
+        assert.ok(detail.querySelector('[title="Gate opens at 25% free memory"]'));
+        assert.ok(detail.querySelector('details').textContent.includes(state.executors.cliConcurrency.reason));
     } finally {
         view.unmount();
     }

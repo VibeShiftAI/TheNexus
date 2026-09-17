@@ -29,6 +29,8 @@ interface LLMCall {
   caller: string;
   provider: string | null;
   model: string | null;
+  subject?: string | null;
+  record_kind?: 'activity' | 'usage';
   tier: string | null;
   prompt_tokens: number | null;
   completion_tokens: number | null;
@@ -37,9 +39,9 @@ interface LLMCall {
   success: number;
   error: string | null;
 }
-interface CallerAgg { caller: string; calls: number; tokens: number; failures: number }
-interface ProviderAgg { provider: string; calls: number; tokens: number }
-interface ModelAgg { model: string; provider: string; calls: number; tokens: number }
+interface CallerAgg { caller: string; calls: number; tokens: number | null; failures: number }
+interface ProviderAgg { provider: string; calls: number; tokens: number | null }
+interface ModelAgg { model: string; provider: string; calls: number; tokens: number | null }
 interface LogResponse {
   recent: LLMCall[];
   aggregates: {
@@ -48,6 +50,9 @@ interface LogResponse {
     by_provider: ProviderAgg[];
     by_model: ModelAgg[];
     total_calls: number;
+    activity_records?: number;
+    reported_usage_calls?: number;
+    missing_usage_calls?: number;
   };
 }
 
@@ -160,6 +165,11 @@ export default function LLMActivityPage() {
         <Card icon={<Brain size={18} />} label="Providers in use" value={String(agg?.by_provider?.length ?? 0)} />
       </div>
 
+      {agg?.missing_usage_calls != null && <p className="mb-4 text-sm text-slate-400">
+        Usage reported for {agg.reported_usage_calls} calls; unknown for {agg.missing_usage_calls}.
+        {' '}{agg.activity_records ?? 0} activity records are excluded from usage totals.
+      </p>}
+
       {/* Charts */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
         <Panel title="Calls by caller">
@@ -217,6 +227,7 @@ export default function LLMActivityPage() {
                   <td style={{ padding: "6px 8px" }}>
                     <span style={{ color: colorFor(PROVIDER_COLORS, c.provider ?? "", i) }}>{c.provider ?? "—"}</span>
                     <span style={{ color: "#64748b" }}> / {c.model ?? "—"}</span>
+                    {c.subject && <div style={{ color: '#94a3b8' }}>Activity: {c.subject}</div>}
                   </td>
                   <td style={{ padding: "6px 8px", color: "#94a3b8" }}>{c.tier ?? "—"}</td>
                   <td style={{ padding: "6px 8px", textAlign: "right", color: "#cbd5e1" }}>{fmt(c.total_tokens)}</td>

@@ -17,7 +17,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import Link from "next/link";
 
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
-import { isInternalHref, remarkTaskLinks, splitOnTaskIds, taskHref } from "@/lib/task-links";
+import { internalHref, remarkTaskLinks, splitOnTaskIds, taskHref } from "@/lib/task-links";
 
 // One shared prose scale for every conversational message — Praxis replies,
 // [MORNING ROUTINE] / [PRAXIS EVENT] system cards, plans, etc. Keeping the
@@ -80,19 +80,28 @@ export const TaskLinkedText = memo(function TaskLinkedText({ text }: { text: str
 const REMARK_PLUGINS = [remarkGfm, remarkTaskLinks];
 
 const MARKDOWN_COMPONENTS: Components = {
-    // Task ids (rewritten to /task/<id> by remarkTaskLinks) and inbox
-    // links from Praxis notices open in-app; everything else opens in a
-    // new tab so an external link never navigates the bridge away.
-    a: ({ node: _node, href, children, ...props }) =>
-        isInternalHref(href) ? (
-            <Link href={href} {...props} className={TASK_LINK_CLASS}>
+    // Task ids (rewritten to /task/<id> by remarkTaskLinks), inbox links
+    // from Praxis notices and any other link into this dashboard — including
+    // the absolute https://nexus.vibeshiftai.com/documents/<id> review links
+    // Praxis posts — open in-app on the current origin, so the session Robert
+    // already has carries over (internalHref strips a dashboard host down to
+    // its path). Everything else opens in a new tab so an external link never
+    // navigates the bridge away.
+    a: ({ node: _node, href, children, ...props }) => {
+        const internal = internalHref(href);
+        // Task and inbox links keep their monospace id styling; other pages
+        // (the document reviewer, the board) read as ordinary prose links.
+        const mono = internal !== null && (internal.startsWith("/task/") || internal.startsWith("/inbox"));
+        return internal ? (
+            <Link href={internal} {...props} className={mono ? TASK_LINK_CLASS : undefined}>
                 {children}
             </Link>
         ) : (
             <a href={href} {...props} target="_blank" rel="noopener noreferrer">
                 {children}
             </a>
-        ),
+        );
+    },
     // Keep wide tables (e.g. the Day Schedule) from blowing out
     // the narrow viewscreen — scroll them horizontally instead.
     table: ({ node: _node, ...props }) => (

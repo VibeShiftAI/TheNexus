@@ -165,3 +165,12 @@ test("agent runs open operations rather than a nonexistent task and snapshot sta
   assert.equal(item.taskId, undefined);
   assert.equal(result.channels.find((c) => c.id === "dispatch")!.recent, 1);
 });
+
+
+test("fresh stream progress retains the registry's resolved model", () => {
+  const result = deriveBridgeActivity({...base,
+    events:[frame("executor.progress",{progress:{taskId:"model-run",executor:"claude-code",phase:"writing"}})],
+    runs:[{taskId:"model-run",executor:"claude-code",model:"claude-fable-5-1",title:"Test",kind:"task",phase:"thinking",status:"active",startedAt:at,updatedAt:new Date(now-2000).toISOString()}],
+  });
+  assert.equal(result.activeItems[0].model, "claude-fable-5-1");
+});

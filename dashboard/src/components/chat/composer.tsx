@@ -43,7 +43,12 @@ export function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio,
         const el = inputRef.current;
         if (!el) return;
         el.style.height = "auto";
-        el.style.height = `${Math.min(el.scrollHeight, COMPOSER_MAX_HEIGHT)}px`;
+        // scrollHeight includes padding but excludes the border. The textarea
+        // uses border-box sizing, so include both borders to avoid a scrollbar
+        // on an empty or single-line draft.
+        const style = getComputedStyle(el);
+        const borderHeight = (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.borderBottomWidth) || 0);
+        el.style.height = `${Math.min(el.scrollHeight + borderHeight, COMPOSER_MAX_HEIGHT)}px`;
     }, []);
 
     // Re-measure whenever the draft text changes (typing, seeding, or clearing after send).
@@ -104,8 +109,8 @@ export function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio,
                 onKeyDown={handleKeyDown}
                 placeholder={hasAudio ? "Add a message (optional)..." : (attachedCount > 0 ? "Add a message (optional)..." : "Message Praxis...")}
                 className={isInline
-                    ? "flex-1 min-w-0 resize-none overflow-y-auto rounded-md bg-slate-900/60 border border-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-cyan-500/60 focus:outline-none transition-colors"
-                    : "flex-1 resize-none overflow-y-auto rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"}
+                    ? "custom-scrollbar flex-1 min-w-0 resize-none overflow-y-auto overscroll-y-contain rounded-md bg-slate-900/60 border border-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-cyan-500/60 focus:outline-none transition-colors"
+                    : "custom-scrollbar flex-1 resize-none overflow-y-auto overscroll-y-contain rounded-lg bg-slate-800 border border-slate-600 px-4 py-2 text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"}
                 style={{ maxHeight: COMPOSER_MAX_HEIGHT }}
                 disabled={loading}
             />
@@ -220,7 +225,7 @@ export function ComposerRow({
                 </div>
             )}
 
-            <div className={isInline ? "flex items-stretch gap-1.5" : "flex gap-2"}>
+            <div className={isInline ? "nexus-chat-controls flex items-stretch gap-1.5" : "flex gap-2"}>
                 {/* Voice Record button */}
                 {!isRecording && !audioBlob && (
                     <button

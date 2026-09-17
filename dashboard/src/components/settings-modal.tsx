@@ -1,5 +1,6 @@
 "use client";
 
+import { DisplayScaleControl } from "@/components/display-scale";
 import { useState, useEffect, useCallback } from "react";
 import {
     Settings, X, Save, Loader2, Eye, EyeOff,
@@ -116,7 +117,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 {/* Body */}
-                <div className="px-6 py-5 max-h-[70vh] overflow-y-auto space-y-5">
+                <div className="px-6 py-5 max-h-[calc(70dvh/var(--nexus-display-scale,1))] overflow-y-auto space-y-5">
+                    <section className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
+                        <h3 className="mb-3 text-sm font-semibold text-white">Text & display size</h3>
+                        <DisplayScaleControl full />
+                    </section>
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="animate-spin text-cyan-400" size={28} />

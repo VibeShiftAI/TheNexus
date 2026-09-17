@@ -14,15 +14,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Send, ArrowUpRight, CalendarClock, AlertTriangle, Landmark } from "lucide-react";
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import { useBoardState } from "@/hooks/use-board-state";
 import { HudPanel } from "@/components/bridge/hud";
 import { ExecutorDetailModal, type ExecutorId } from "@/components/bridge/executor-detail";
-import { CrewFlow, type CrewLaneView } from "@/components/bridge/crew-flow";
+import { DispatchMap } from "./dispatch-map";
+import { useCortex } from "@/components/cortex-provider";
+import { useChatActivity } from "@/hooks/use-chat-activity";
+import { useBridgeActivity } from "./activity-provider";
 import { getBoardLaneId } from "@/lib/task-board";
 import { isDayWellUnderway } from "@/lib/day-underway";
 import { useDispatchState } from "@/hooks/use-dispatch-state";
-import { CliLanePanel } from "@/components/bridge/cli-lane-panel";
 import { deriveCliLane } from "@/lib/cli-lane";
 import type {
   AttemptStallState,
@@ -32,6 +33,8 @@ import type {
 } from "@/lib/nexus";
 import {
   getCouncilSessions,
+  getCouncilBenches,
+  type CouncilBenchState,
   getCouncilArbiter,
   setCouncilArbiter,
   isLiveSession,
@@ -41,17 +44,7 @@ import {
   type CouncilArbiterState,
   type CouncilSessionSummary,
 } from "@/lib/council";
-import type { ExecutorName, ExecutionPhase } from "@praxis/contract";
-
-const PHASE_PCT: Record<ExecutionPhase, number> = {
-  dispatching: 8,
-  loading: 22,
-  thinking: 42,
-  writing: 62,
-  testing: 78,
-  committing: 90,
-  completing: 100,
-};
+import type { ExecutorName } from "@praxis/contract";
 
 const LANES: { id: ExecutorName & ExecutorId; label: string }[] = [
   { id: "antigravity", label: "Antigravity" },
@@ -59,15 +52,8 @@ const LANES: { id: ExecutorName & ExecutorId; label: string }[] = [
   { id: "claude-code", label: "Claude Code" },
 ];
 
-interface LaneState {
-  taskId: string;
-  pct: number;
-  phase: string;
-  status: "active" | "done" | "failed";
-  at: number;
-}
-
 export interface ExecutorRun {
+  model?: string;
   taskId: string;
   executor: string;
   title: string;
@@ -139,6 +125,8 @@ export interface DispatchStateResponse {
     runs?: ExecutorRun[];
     /** CLI conversations per dispatched task, newest-first (open + recently closed). */
     sessions?: CliSession[];
+    /** Safe read-only projection of the persisted continuation ledger. */
+    usageWaits?: { available: boolean; items: import('@/lib/current-focus').FocusWait[] };
     history?: DispatchHistoryRow[];
     /** Executor dispatches since local midnight, from the persistent llm_calls log. */
     dispatchedToday?: { total: number; failed: number };
@@ -191,10 +179,11 @@ export function fmtGb(bytes: number) {
  */
 export function lmStudioActive(lastActivityAt?: string | null) {
   if (!lastActivityAt) return false;
-  return Date.now() - new Date(lastActivityAt).getTime() < 2 * 60_000;
+  const age = Date.now() - new Date(lastActivityAt).getTime();
+  return age >= 0 && age < 2 * 60_000;
 }
 
-const LANE_SETTLE_MS = 60_000;
+
 
 /** Countdown to a cron nextRun, e.g. "in 3h 12m". */
 function inFmt(iso: string) {
@@ -222,11 +211,10 @@ function councilPhaseLabel(phase: CouncilSessionSummary["phase"]) {
 }
 
 export function DispatchStation() {
-  const { recentEvents } = usePraxisStream();
+  const { activeItems, items, now: activityNow } = useBridgeActivity();
   // Deck-wide shared dispatch-state poller (see useDispatchState) — the crew
   // strip and task board read the same snapshot from one fetch loop.
-  const { state, error: err } = useDispatchState();
-  const [lanes, setLanes] = useState<Partial<Record<ExecutorName, LaneState>>>({});
+  const { state, error: err, updatedAt } = useDispatchState();
   const [inspecting, setInspecting] = useState<ExecutorId | null>(null);
 
   // Count of board tasks in the Needs Attention lane (blocked / failed /
@@ -245,51 +233,10 @@ export function DispatchStation() {
     return count;
   }, [boardProjects]);
 
-  // Fold stream events into lane state (newest event wins per executor).
-  useEffect(() => {
-    const next: Partial<Record<ExecutorName, LaneState>> = {};
-    for (let i = recentEvents.length - 1; i >= 0; i--) {
-      const e = recentEvents[i];
-      if (e.type === "executor.progress") {
-        const p = e.progress;
-        next[p.executor] = {
-          taskId: p.taskId,
-          pct: p.progressPct ?? PHASE_PCT[p.phase] ?? 50,
-          phase: p.phase,
-          status: "active",
-          at: new Date(e.at).getTime(),
-        };
-      } else if (e.type === "task.started") {
-        next[e.executor] = {
-          taskId: e.taskId,
-          pct: PHASE_PCT.dispatching,
-          phase: "dispatching",
-          status: "active",
-          at: new Date(e.at).getTime(),
-        };
-      } else if (e.type === "task.completed" && e.result?.executor) {
-        next[e.result.executor] = {
-          taskId: e.taskId,
-          pct: 100,
-          phase: e.result.outcome,
-          status: e.result.outcome === "success" ? "done" : "failed",
-          at: new Date(e.at).getTime(),
-        };
-      } else if (e.type === "task.failed" && e.result?.executor) {
-        next[e.result.executor] = {
-          taskId: e.taskId,
-          pct: 100,
-          phase: "failed",
-          status: "failed",
-          at: new Date(e.at).getTime(),
-        };
-      }
-    }
-    setLanes(next);
-  }, [recentEvents]);
-
   // Council chamber: poll the session store fast while a council sits,
   // lazily otherwise (mirrors the /council page cadence).
+  const [benches, setBenches] = useState<CouncilBenchState | null>(null);
+  const [councilUpdatedAt, setCouncilUpdatedAt] = useState(0);
   const [councilSessions, setCouncilSessions] = useState<CouncilSessionSummary[] | null>(null);
   const liveCouncil = useMemo(
     () => councilSessions?.find(isLiveSession) ?? null,
@@ -304,13 +251,15 @@ export function DispatchStation() {
     const load = async () => {
       try {
         const data = await getCouncilSessions(12);
-        if (active) setCouncilSessions(data.sessions);
+        if (active) { setCouncilSessions(data.sessions); setCouncilUpdatedAt(Date.now()); }
       } catch {
         // Council telemetry is best-effort; the section hides itself.
       }
       try {
         const arb = await getCouncilArbiter();
         if (active) setArbiter(arb);
+        const roster = await getCouncilBenches();
+        if (active) setBenches(roster);
       } catch {
         // Older Praxis without the endpoint — the badges just don't render.
       }
@@ -355,7 +304,12 @@ export function DispatchStation() {
   const lmStudio = state?.lmStudio;
   const memory = state?.system?.memory;
 
-  const now = Date.now();
+  // A dispatch response can arrive after the activity provider's last tick.
+  const now = Math.max(activityNow, Date.now());
+  const { conversationId } = useCortex();
+  const chat = useChatActivity(conversationId, now);
+  const available = !err && updatedAt != null && now >= Date.parse(updatedAt) && now - Date.parse(updatedAt) < 45_000;
+  const councilAvailable = councilUpdatedAt > 0 && now - councilUpdatedAt < 65_000;
 
   const councilToday = useMemo(() => {
     if (!councilSessions) return 0;
@@ -364,44 +318,13 @@ export function DispatchStation() {
   }, [councilSessions]);
   const lastCouncil = councilSessions?.[0] ?? null;
 
-  // Per-provider lane view for the crew graph: live SSE events win, the run
-  // registry backfills runs started before this page loaded, and settled
-  // (done/failed > 60s) lanes drop back to idle.
-  const laneView = useMemo(() => {
-    const out: Partial<Record<ExecutorName, CrewLaneView>> = {};
-    for (const lane of LANES) {
-      const registryRun = lanes[lane.id]
-        ? undefined
-        : state?.executors?.runs?.find((r) => r.executor === lane.id && r.status === "active");
-      const l: LaneState | undefined =
-        lanes[lane.id] ??
-        (registryRun
-          ? {
-              taskId: registryRun.taskId,
-              pct: PHASE_PCT[registryRun.phase as ExecutionPhase] ?? 50,
-              phase: registryRun.phase,
-              status: "active",
-              at: new Date(registryRun.updatedAt).getTime(),
-            }
-          : undefined);
-      if (!l) continue;
-      if (l.status !== "active" && now - l.at > LANE_SETTLE_MS) continue;
-      out[lane.id] = { pct: l.pct, phase: l.phase, status: l.status };
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lanes, state, now]);
-
-  // Who holds each CLI slot, who is queued behind them with position and
-  // waiting-since, and the concurrency gate's own reason. `now` is passed so
-  // the wait clocks re-derive on the same tick as the rest of the panel.
-  const cliLane = useMemo(() => deriveCliLane(state, now), [state, now]);
+  const cliLane = useMemo(() => deriveCliLane(state ?? {}, now), [state, now]);
 
   // Headline for the status line when no council sits: the freshest active run.
   const activeRun = useMemo(() => {
-    const active = (state?.executors?.runs ?? []).filter((r) => r.status === "active");
+    const active = (state?.executors?.runs ?? []).filter((r) => available && r.status === "active" && activeItems.some(item => item.taskId === r.taskId));
     return active.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0] ?? null;
-  }, [state]);
+  }, [state, available, activeItems]);
 
   const councilRefs = liveCouncil?.voices.filter((v) => !isAggregatorVoice(v)) ?? [];
   const councilReported = councilRefs.filter((v) => v.status !== "pending" && v.status !== "running").length;
@@ -424,16 +347,17 @@ export function DispatchStation() {
     <HudPanel
       icon={<Send size={16} />}
       title="OPS — DISPATCH"
+      activity={available && activeItems.length > 0 || councilAvailable && !!liveCouncil ? "active" : "idle"}
       accent={degraded ? "amber" : "cyan"}
-      className="flex h-full flex-col"
+      className="dispatch-station flex h-full flex-col"
       headerRight={
         <>
-          {today && (
+          {(
             <span
-              className={`text-[10px] tabular-nums ${degraded ? "font-semibold text-amber-400" : "text-slate-500"}`}
-              title={`${today.total} dispatches since midnight${today.failed > 0 ? ` (${today.failed} failed)` : ""} — persistent count, survives Praxis restarts`}
+              className={`w-[88px] truncate text-right text-[10px] tabular-nums ${degraded ? "font-semibold text-amber-400" : "text-slate-500"}`}
+              title={`${today?.total ?? "Unknown"} dispatches since midnight${today && today.failed > 0 ? ` (${today.failed} failed)` : ""} — persistent count, survives Praxis restarts`}
             >
-              {today.total} today {degraded && <span className="ml-1 uppercase tracking-widest opacity-80">(degraded)</span>}
+              {today?.total ?? "—"} today
             </span>
           )}
           <Link href="/ops" className={`flex items-center gap-1 text-[11px] ${degraded ? "text-amber-400 hover:text-amber-300" : "text-cyan-400 hover:text-cyan-300"}`}>
@@ -442,13 +366,16 @@ export function DispatchStation() {
         </>
       }
     >
-      {err && !state ? (
-        <div className="py-4 text-center text-xs text-slate-500">Dispatch telemetry unavailable</div>
-      ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-          <CrewFlow
-            lanes={laneView}
-            runs={state?.executors?.runs}
+          <DispatchMap
+            view={cliLane}
+            chat={chat}
+            available={available}
+            activeItems={activeItems}
+            recentItems={items.filter(item => item.status !== "active" && item.channel !== "dispatch" && now - Date.parse(item.at) >= 0 && now - Date.parse(item.at) < 60_000)}
+            councilAvailable={councilAvailable}
+            bench={benches?.benches.find(b => b.name === (liveCouncil?.metadata?.preset ?? benches.defaultPreset)) ?? null}
+            memory={memory}
             council={liveCouncil}
             local={{
               running: localRunning,
@@ -465,8 +392,8 @@ export function DispatchStation() {
           />
 
           {/* Status ticker: the one thing moving through the system right now */}
-          <div className="mt-1.5 flex items-center gap-2 border-t border-slate-800/60 pt-1.5 text-[10px] leading-4">
-            {liveCouncil ? (
+          <div className="dispatch-status-line mt-1.5 flex items-center gap-2 border-t border-slate-800/60 pt-1.5 text-[10px] leading-4">
+            {councilAvailable && liveCouncil ? (
               <Link href="/council" className="flex min-w-0 flex-1 items-center gap-2" title="Council in session — open the chamber">
                 <span className="flex min-w-0 flex-1 items-center gap-1.5 text-amber-200">
                   <Landmark size={10} className="shrink-0 text-amber-400" />
@@ -475,7 +402,7 @@ export function DispatchStation() {
                   </span>
                   <span className="truncate">{liveCouncil.topic}</span>
                 </span>
-                <span className="shrink-0 tabular-nums text-amber-300">
+                <span className="max-w-[48%] truncate tabular-nums text-amber-300">
                   {councilPhaseLabel(liveCouncil.phase)} · {councilReported}/{councilRefs.length} in ·{" "}
                   {Math.max(0, Math.floor((now - liveCouncil.createdAt) / 60_000))}m
                 </span>
@@ -488,13 +415,13 @@ export function DispatchStation() {
                   </span>{" "}
                   {activeRun.title}
                 </span>
-                <span className="shrink-0 tabular-nums text-slate-500">
+                <span className="max-w-[48%] truncate tabular-nums text-slate-500">
                   {activeRun.kind === "qa" ? "qa" : activeRun.kind === "agent" ? "agent" : "exec"} · {activeRun.phase}
                 </span>
               </>
             ) : (
               <>
-                <span className="min-w-0 flex-1 truncate text-slate-500">crew standing by — chamber dark</span>
+                <span className="min-w-0 flex-1 truncate text-slate-500">{!councilAvailable && liveCouncil ? "Council signal delayed" : available ? "crew standing by" : "Dispatch signal delayed"}</span>
                 {lastCouncil && (
                   <Link href="/council" className="shrink-0 tabular-nums text-slate-500 transition-colors hover:text-slate-300">
                     {councilToday > 0 ? `${councilToday} council${councilToday === 1 ? "" : "s"} today · ` : ""}
@@ -507,34 +434,8 @@ export function DispatchStation() {
 
           {/* Bottom instruments pin to the panel floor so the station fills
               its row evenly beside the knowledge constellation. */}
-          <div className="mt-auto space-y-2.5 pt-2">
-            <CliLanePanel view={cliLane} />
-            {memory?.availBytes != null && memory.totalBytes != null && (
-              <div
-                className="flex items-center gap-2 border-t border-slate-800/60 pt-2 text-[10px]"
-                title={`Mac Studio available memory (kern.memorystatus_level)${
-                  memory.swapUsedBytes ? ` · swap used ${fmtGb(memory.swapUsedBytes)}` : ""
-                }${lmStudio?.reachable ? ` · LM Studio: ${lmStudio.loadedCount ?? 0} model(s) resident` : " · LM Studio offline"}`}
-              >
-                <span className="uppercase tracking-wide text-slate-600">mac studio mem</span>
-                <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-800">
-                  <div
-                    className={`h-full rounded-full ${
-                      (memory.availPct ?? 0) < 10 ? "bg-rose-500" : (memory.availPct ?? 0) < 25 ? "bg-amber-400" : "bg-emerald-500"
-                    }`}
-                    style={{ width: `${Math.min(100, Math.max(2, memory.availPct ?? 0))}%` }}
-                  />
-                </div>
-                <span
-                  className={`shrink-0 tabular-nums ${
-                    (memory.availPct ?? 0) < 10 ? "text-rose-300" : (memory.availPct ?? 0) < 25 ? "text-amber-300" : "text-slate-400"
-                  }`}
-                >
-                  {fmtGb(memory.availBytes)} free of {fmtGb(memory.totalBytes)}
-                </span>
-              </div>
-            )}
-            {(upcoming.length > 0 || attention !== null) && (
+          <div className="dispatch-upcoming mt-auto space-y-2.5 pt-2">
+            {(
               <div className="space-y-1 border-t border-slate-800/60 pt-2">
                 <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-slate-600">
                   <span>next scheduled ops</span>
@@ -550,19 +451,18 @@ export function DispatchStation() {
                   </Link>
                 </div>
                 {upcoming.map((j) => (
-                  <div key={j.key} className="flex items-center gap-2 text-[11px]">
+                  <Link href="/calendar" key={j.key} className="flex items-center gap-2 rounded text-[11px] hover:bg-slate-800/60">
                     <CalendarClock size={11} className="shrink-0 text-cyan-500/70" />
                     <span className="min-w-0 flex-1 truncate text-slate-300" title={j.description}>
                       {j.label}
                     </span>
-                    <span className="shrink-0 tabular-nums text-slate-500">{inFmt(j.nextRun!)}</span>
-                  </div>
+                    <span className="max-w-[48%] truncate tabular-nums text-slate-500">{inFmt(j.nextRun!)}</span>
+                  </Link>
                 ))}
               </div>
             )}
           </div>
         </div>
-      )}
 
       {inspecting && <ExecutorDetailModal executor={inspecting} onClose={() => setInspecting(null)} />}
     </HudPanel>

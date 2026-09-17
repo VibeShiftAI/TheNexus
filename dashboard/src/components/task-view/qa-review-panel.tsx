@@ -208,6 +208,12 @@ export function QaReviewPanel({ taskId }: { taskId: string }) {
     [reviews],
   );
 
+  useEffect(() => {
+    if (loaded && ordered.length > 0 && window.location.hash === "#qa-reviews") {
+      document.getElementById("qa-reviews")?.scrollIntoView({ block: "start" });
+    }
+  }, [loaded, ordered.length]);
+
   // Nothing to show until we've loaded AND there's at least one review — the
   // panel self-hides on tasks that never went through cross-executor QA.
   if (!loaded || ordered.length === 0) return null;
@@ -215,7 +221,7 @@ export function QaReviewPanel({ taskId }: { taskId: string }) {
   const latestVerdict = deriveVerdict(ordered[ordered.length - 1]?.output ?? null);
 
   return (
-    <section className="rounded-lg border border-sky-500/30 bg-sky-500/5 p-4">
+    <section id="qa-reviews" className="scroll-mt-6 rounded-lg border border-sky-500/30 bg-sky-500/5 p-4">
       <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-sky-200">
         <ShieldCheck size={15} /> QA review — cross-executor verdict
         <span className="ml-1 rounded-full border border-sky-500/30 px-1.5 py-0 text-[11px] font-normal text-sky-300/80">

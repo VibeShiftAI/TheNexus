@@ -1,0 +1,70 @@
+# Verification log — task 762637e6 (Integrate document reviews into the Dashboard's existing session)
+# All commands run 2026-09-10 (America/New_York) from /Volumes/Projects/TheNexus unless noted.
+
+## Trace of the separate sign-in (read-only observations, before any edit)
+- launchctl list | grep praxis                      -> com.praxis.bot pid 78118 (Praxis), "The Nexus" LaunchAgent runs /Applications/The Nexus.app (desktop/src-tauri, macOS personality loads http://localhost:3000)
+- lsof :3000 / :4000                                 -> next dev pid 78280 (supervised NexusDashboard), Nexus API pid 32330
+- desktop/src-tauri/src/main.rs:151-171              -> macOS window `on_new_window`: every http(s) new-window request is handed to the system browser (`open::that`) and denied in-app
+- dashboard/src/components/chat/markdown-message.tsx (baseline 08efcb17): `isInternalHref(href)` only for "/task/…" and "/inbox…"; every other href renders `<a target="_blank" rel="noopener noreferrer">`
+- server/services/document-review-format.js:9-18     -> review_url = `${NEXUS_DASHBOARD_URL || 'https://nexus.vibeshiftai.com'}/documents/<id>` (absolute tunnel host)
+- ~/.cloudflared/config.yml                          -> nexus.vibeshiftai.com ingress: /socket.io.*, /api/.* -> :4000; /graph/.*, /runs/.* -> :8000; everything else -> :3000; host behind Cloudflare Access
+- GET http://localhost:4000/api/chat/active?limit=200 -> conversation 3abe0db4-37ba-46cd-bf5e-5560cfdcc7fc, message ad355745-e1dd-4777-bc38-2230ff0f80b2 (assistant, 2026-09-10T17:06:04Z):
+    "Open the [reliability repairs report in the new reviewer](https://nexus.vibeshiftai.com/documents/bb977fdf-5496-48bb-98bb-031421cc9c1a). Sign in through the usual Nexus login if prompted. … [source task](https://nexus.vibeshiftai.com/task/6f6017f3-…)"
+- Robert's next message (1:08 PM): "ok, it looks great, but I want something integrated into the Dashboard so I don't have to sign in separately to view things. Can you fix that?"
+- curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}" https://nexus.vibeshiftai.com/documents/bb977fdf-… (anonymous)      -> 302 -> https://vibeshiftai.cloudflareaccess.com/cdn-cgi/access/login/nexus.vibeshiftai.com?…
+- curl … https://nexus.vibeshiftai.com/api/documents/bb977fdf-… (anonymous)                                                      -> 302 -> Cloudflare Access login
+- curl … https://nexus.vibeshiftai.com/documents (anonymous)                                                                     -> 302
+- ls /Volumes/Projects | grep -i "dashboard|nexus"  -> TheNexus, nexus-audit-2026-09-07, nexus-shared (no NexusDashboard repo; the supervisor child "NexusDashboard" is `${nexusDir}/dashboard`, Praxis/src/supervisor/index.ts:99-109)
+
+## Unit / component regression (dashboard, node:test + jsdom)
+cd dashboard && node --import ./test/register.mjs --test \
+  src/lib/__tests__/task-links.test.ts \
+  src/components/__tests__/markdown-message-links.test.mjs \
+  src/components/__tests__/documents-index.test.mjs \
+  src/components/__tests__/review-documents-panel.test.mjs \
+  src/components/__tests__/document-review.test.mjs \
+  src/components/__tests__/document-markdown.test.mjs
+  -> tests 32, pass 32, fail 0
+
+cd dashboard && npm test                              -> tests 496, pass 496, fail 0
+cd dashboard && npx tsc --noEmit -p tsconfig.json     -> no output (clean); an earlier run caught a type-guard narrowing error in markdown-message.tsx, fixed before re-running
+npx jest document --runInBand                         -> Test Suites: 5 passed, 5 total; Tests: 38 passed, 38 total (server untouched; regression only)
+
+## Isolated browser verification (never the live DB or Robert's chat)
+QA dir: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-document-review-qa-762637e6-1789061025
+  NEXUS_REVIEW_QA_DIR=$QA node scripts/document-review-qa/api.cjs                       (API :4100, temp DB, fake Praxis :4199)
+  cd dashboard && NEXT_PUBLIC_API_URL=http://127.0.0.1:4100 NEXT_DIST_DIR=.next-document-review-qa npm run dev -- --port 3100
+  NEXUS_REVIEW_QA_DIR=$QA node scripts/document-review-qa/verify-session.mjs             -> exit 0, SESSION_OK (session-verification.txt)
+      1440 and 390: bridge → menu entry "Documents — Reports for Review" → /documents (marker kept: client-side) → "Review document" → /documents/<id> (marker kept, origin http://127.0.0.1:3100, window.open calls 0)
+      refresh -> navigation responseStatus 200, reviewer re-rendered; Documents crumb -> /documents; history.back() x3 -> /documents, /documents/<id>, / (marker kept: no reload)
+      phone: documentElement.clientWidth 390 == scrollWidth 390 (no horizontal overflow)
+  NEXUS_REVIEW_QA_DIR=$QA node scripts/document-review-qa/verify.mjs                     -> exit 0 (finish-review-verification.txt)
+      MOBILE_NOTE hitIsTextarea:true, MOBILE_SAVED noteListed:true, DESKTOP_DRAFT_RESUMED true, FAILED_STATE (receiver down) then
+      DELIVERED_WITHOUT_RELOAD true, API_CALLS_SINCE_FINISH { finish: 1, submissionPolls: 2, retries: 0 }, one receiver turn, PHONE_AFTER delivered:true
+  Teardown: killed npm run dev / next dev / next-server (:3100) and api.cjs (:4100); verify.mjs stopped its own receiver; the two Next-generated
+  `.next-document-review-qa/*` include entries were removed from dashboard/tsconfig.json (git diff -- dashboard/tsconfig.json is empty).
+
+## Live cockpit, read-only (http://localhost:3000 — the origin the Mac bridge app loads; the supervised `next dev` hot-reloaded the working tree)
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/documents                       -> 200 (body contains "Documents for review")
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/documents/bb977fdf-…            -> 200
+NEXUS_LIVE_SHOTS=/tmp/nexus-live-shots-762637e6 node scripts/document-review-qa/live-link-check.mjs   (live-link-check.txt)
+  LIVE_BRIDGE      origin http://localhost:3000; Praxis's transcript link now renders href "/documents/bb977fdf-5496-48bb-98bb-031421cc9c1a", target null
+  LIVE_MENU        "Documents — Reports for Review" present in the navigation menu
+  LIVE_BRIDGE_390  same link, same href/target at 390px
+  LIVE_MENU_390    "Documents — Reports for Review" present and on-screen (visible:true) in the phone-width menu
+  LIVE_TASK_PANEL  /task/6f6017f3-…: "Review document" href "/documents/bb977fdf-…", target null
+  LIVE_INDEX       /documents lists "Reliability readiness check — September 10, 2026", report, rev 6ac46b92, "Not reviewed yet", link "/documents/bb977fdf-…"
+
+## Report identity and real feedback (read-only)
+shasum -a 256 /Volumes/Projects/Praxis/docs/reports/2026-09-10-reliability-readiness.md -> 6ac46b926a856561c485d400fd66a0979b92aab25c2ed76732c151da37aa0366
+GET http://localhost:4000/api/documents/bb977fdf-…  -> file_state ok, review null (no real draft or submission existed before or after this run),
+    revision 904a039a… content_hash 6ac46b926a856561…, sha256(content) == file sha256, links.review_url unchanged (https://nexus.vibeshiftai.com/documents/bb977fdf-…)
+GET http://localhost:4000/api/documents              -> exactly one registered document (bb977fdf, report, task 6f6017f3, review_state null)
+
+## Activation
+- Dashboard: the only runtime surface changed. The supervised NexusDashboard child (pid 78280, `next dev`, PRAXIS_DASHBOARD_DEV=1) serves the working tree; the live checks above ran against it after the edits. No restart was needed or performed.
+- Nexus API (pid 32330): no server file changed; not restarted.
+- Praxis (com.praxis.bot pid 78118, started 2026-09-10 07:38:00): still the pre-repair process. The idempotent chat receiver (Praxis/src/chat-idempotency.ts 12:22, src/routes/chat.ts 12:24) is NOT active until Praxis restarts; executors cannot restart it (launchd KeepAlive, no watch). Recorded as pending, not announced as live.
+
+## Encoding
+UTF-8 decode + mojibake scan (UTF-8-read-as-Latin-1 marker sequences and U+FFFD) over the 13 touched text files and the evidence text files -> all ok

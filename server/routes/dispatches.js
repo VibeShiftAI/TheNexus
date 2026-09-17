@@ -261,9 +261,14 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
         ORDER BY started_at DESC, created_at DESC
         LIMIT ?
     `);
+    // `counted` vs `rows` is the coverage of the cumulative figure: COUNT(tokens)
+    // skips NULLs, so a task with 1 of 8 dispatches reporting usage would
+    // otherwise surface a confident sum with no hint that 7 runs are missing
+    // from it. Both are returned so the strip can qualify the number.
     const taskTokenStmt = db.prepare(`
         SELECT COALESCE(SUM(tokens), 0) AS total,
                COUNT(tokens) AS counted,
+               COUNT(*) AS rows_total,
                MAX(COALESCE(tokens_estimated, 0)) AS estimated
         FROM task_dispatches WHERE task_id = ?
     `);
@@ -299,6 +304,10 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
                     // cumulative tokens for THIS task; null when nothing recorded yet
                     tokens: counted > 0 ? tok.total : null,
                     tokensEstimated: counted > 0 ? Boolean(tok.estimated) : false,
+                    // Coverage of that sum: how many of the task's dispatch rows
+                    // actually carried a usage record.
+                    tokensCountedRuns: counted,
+                    tokensTotalRuns: tok.rows_total || 0,
                     title: titleFor(r.task_id),
                     startedAt: r.started_at,
                 };

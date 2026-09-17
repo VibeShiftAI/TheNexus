@@ -18,10 +18,59 @@ const { withTransactionId } = boardOps;
 
 const text = (value) => ({ content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] });
 
+// These input schemas describe partial writes. The canonical contract is
+// validated at the Nexus database boundary after merging with the saved card.
+const knowledgeShape = {
+  question: z.string().min(1),
+  tags: z.array(z.string()),
+  satisfaction_test: z.string().min(1),
+  criterion_ids: z.array(z.string()),
+  task_ids: z.array(z.string()),
+  blocking: z.boolean(),
+  research_status: z.enum(['open', 'researching', 'evidence_ready', 'stale']),
+  answer: z.string(),
+  evidence: z.array(z.object({ ref: z.string().min(1), summary: z.string().optional(), checked_at: z.string().optional() })),
+  endpoint_revision: z.string(),
+  verified_at: z.string(),
+  verified_by: z.string(),
+  review_reason: z.string(),
+  application: z.object({
+    status: z.enum(['untried', 'successful', 'insufficient', 'outdated']),
+    task_id: z.string().optional(), at: z.string().optional(),
+    evidence_ref: z.string().optional(), notes: z.string().optional(),
+  }),
+};
+const knowledgePatch = z.object(knowledgeShape).partial();
+const endpointPatch = z.object({
+  beneficiary: z.string(), scope: z.string(), exclusions: z.string(),
+  resource_budget: z.string(), review_at: z.string(),
+  completion_policy: z.enum(['complete', 'maintain', 'park', 'propose_next']),
+  proposed_next: z.string(),
+}).partial();
+const criterionInput = z.object({
+  id: z.string().optional(), kind: z.enum(['url_up', 'command', 'task_set', 'manual', 'metric']),
+  description: z.string(), url: z.string().optional(), expect_status: z.number().int().optional(),
+  command: z.string().optional(), task_ids: z.array(z.string()).optional(), enabled: z.boolean().optional(),
+  created_at: z.string().optional(), source: z.string().optional(),
+  metric: z.object({ baseline: z.number().optional(), target: z.number(), operator: z.enum(['gte', 'lte', 'eq']), unit: z.string().optional(), window_days: z.number().positive().optional(), min_samples: z.number().int().positive().optional() }).optional(),
+  observation: z.object({ status: z.enum(['pass', 'fail', 'unknown', 'unverifiable']), observed_at: z.string(), evidence_ref: z.string(), value: z.number().optional(), sample_size: z.number().int().optional(), detail: z.string().optional() }).nullable().optional().describe('Dated evidence; null clears prior evidence when the acceptance test changes.'),
+});
+// Ordered checkpoints under the long-term end_state (TheNexus docs/project-checkpoints.md).
+// The array is the whole plan in order: omit a checkpoint to archive it (evidence kept),
+// send only {id} to keep one unchanged, omit id to add one. Server fields (status,
+// completion, assessment, history, definition_revision) are never written by clients.
+const checkpointInput = z.object({
+  id: z.string().optional().describe('Stable checkpoint id; omit to create a new checkpoint.'),
+  title: z.string().min(1).optional().describe('Short name of the checkpoint (required for new checkpoints).'),
+  goal: z.string().optional().describe('The checkpoint\'s own endpoint statement: what is observably true when it is reached.'),
+  criteria: z.array(criterionInput).optional().describe('Acceptance criteria for THIS checkpoint (replacement array, same rules as end_state_criteria).'),
+  need_ids: z.array(z.string()).optional().describe('Existing need ids whose blocking knowledge this checkpoint requires.'),
+});
+
 function register(server, ctx) {
   server.tool(
     'nexus_projects_list',
-    'List all projects in The Nexus with their full project card: id, name, path, type, status (active/parked/paused/completed/archived), priority (0=normal, >0 elevated, <0 backburner), upgrade_posture (auto/propose/off — how much autonomous improvement work the project accepts), end_state (the evolving goal, with end_state_updated_at), tags, and open needs (what the project is missing). USE FIRST when you need a project_id, and to understand which projects are eligible for work.',
+    'List all projects in The Nexus with their full project card: id, name, path, type, status (active/parked/paused/completed/archived), priority (0=normal, >0 elevated, <0 backburner), upgrade_posture (auto/propose/off — how much autonomous improvement work the project accepts), end_state (the long-term goal, with end_state_updated_at), checkpoints (the ordered plan under that goal; the first pending item is the effective endpoint right now, with its revision for guarded edits), tags, and open needs (what the project is missing). USE FIRST when you need a project_id, and to understand which projects are eligible for work.',
     {},
     async () => {
       const r = await boardOps.listProjects(ctx, { tool: 'nexus_projects_list' });
@@ -31,7 +80,7 @@ function register(server, ctx) {
 
   server.tool(
     'nexus_project_update',
-    'Update project-level data in The Nexus. USE FOR: setting status (parked = dormant, excluded from all autonomous work; active = full participation), priority (0=normal, >0 elevated, <0 backburner), upgrade_posture (auto = system may file+schedule improvement tasks; propose = file but never auto-schedule; off = no autonomous filings), evolving the end_state (every change is versioned into end_state_history — pass end_state_reason to say why the goal moved), editing the description, and maintaining the needs registry (add_need to declare something the project is missing; resolve_need to mark it met/dropped). Does NOT touch tasks — use nexus_task_update for those.',
+    'Update project-level data in The Nexus. USE FOR: setting status (parked = dormant, excluded from all autonomous work; active = full participation), priority (0=normal, >0 elevated, <0 backburner), upgrade_posture (auto = system may file+schedule improvement tasks; propose = file but never auto-schedule; off = no autonomous filings), evolving the end_state (every change is versioned into end_state_history — pass end_state_reason to say why the goal moved), editing the description, maintaining the needs registry (add_need to declare something the project is missing; resolve_need to mark it met/dropped), and authoring the ordered checkpoint plan (checkpoints: the sequence of intermediate endpoints under the long-term end_state; the first pending checkpoint is the effective endpoint until Praxis verifies it and TheNexus advances automatically; pass expected_checkpoints_revision from the current card). Checkpoint completion is never written by this tool: it comes only from verified evidence through the transition endpoint. Does NOT touch tasks — use nexus_task_update for those.',
     {
       project_id: z.string().describe('Project UUID (from nexus_projects_list).'),
       status: z.enum(['active', 'parked', 'paused', 'completed', 'archived']).optional()
@@ -41,6 +90,10 @@ function register(server, ctx) {
       description: z.string().optional().describe('Replacement project description.'),
       end_state: z.string().optional()
         .describe('New/evolved end state (the goal the system works toward). Every change is appended to end_state_history automatically.'),
+      endpoint: endpointPatch.optional().describe('Merge current endpoint bounds/policy, or record proposed_next without evolving the current endpoint.'),
+      end_state_criteria: z.array(criterionInput).optional().describe('Replacement acceptance criteria, including metric targets and dated observations.'),
+      end_state_assessment: z.record(z.string(), z.unknown()).nullable().optional().describe('Persist the latest evidence-based endpoint evaluation; include expected_updated_at from the evaluated project and expected_end_state_updated_at.'),
+      expected_updated_at: z.string().optional().describe('Reject the project write when another writer changed the card.'),
       end_state_reason: z.string().optional()
         .describe('Why the end state changed (e.g. "previous horizon reached", "scope pivot"). Stored on the revision.'),
       upgrade_posture: z.enum(['auto', 'propose', 'off']).optional()
@@ -49,26 +102,35 @@ function register(server, ctx) {
         .describe('Optimistic concurrency guard: reject unless the current project status exactly matches.'),
       expected_end_state_updated_at: z.string().optional()
         .describe('Optimistic concurrency guard: reject unless the current end-state revision timestamp exactly matches.'),
+      checkpoints: z.array(checkpointInput).optional()
+        .describe('Replacement ordered checkpoint plan under the long-term end_state. Keeps ids stable, archives omitted checkpoints with their evidence, and resets any checkpoint whose definition changed (its earlier completion becomes history). Never replaces end_state.'),
+      expected_checkpoints_revision: z.string().nullable().optional()
+        .describe('Optimistic concurrency guard for checkpoints: the current checkpoints.revision (null when the project has no plan yet).'),
       add_need: z.object({
         kind: z.enum(['capability', 'resource', 'credential', 'decision', 'information'])
           .describe('capability = missing component/ability, resource = compute/money/hardware, credential = key/account Robert must provision, decision = human call needed, information = knowledge to hunt first.'),
         description: z.string().describe('What is missing, concretely.'),
         notes: z.string().optional(),
+        knowledge: knowledgePatch.optional().describe('Structured question; include question and satisfaction_test. Satisfaction requires answer and evidence.'),
       }).optional().describe('Declare one thing the project is missing on the way to its end state.'),
       resolve_need: z.object({
         id: z.string().describe('Need id (from nexus_projects_list open_needs).'),
-        status: z.enum(['met', 'dropped', 'open']).describe('met = satisfied, dropped = no longer relevant, open = reopen.'),
+        status: z.enum(['met', 'dropped', 'open']).optional().describe('met = satisfied, dropped = no longer relevant, open = reopen.'),
         notes: z.string().optional().describe('How it was met / why dropped.'),
+        description: z.string().optional(),
+        knowledge: knowledgePatch.optional().describe('Merge knowledge fields or record application feedback. Application feedback does not require status; insufficient/outdated reopens stale.'),
       }).optional().describe('Close out (or reopen) one existing need.'),
     },
-    async ({ project_id, status, priority, description, end_state, end_state_reason, upgrade_posture, add_need, resolve_need, expected_status, expected_end_state_updated_at }) => {
+    async ({ project_id, status, priority, description, end_state, endpoint, end_state_criteria, end_state_assessment, checkpoints, end_state_reason, upgrade_posture, add_need, resolve_need, expected_status, expected_end_state_updated_at, expected_updated_at, expected_checkpoints_revision }) => {
       const expected = {};
+      if (expected_updated_at !== undefined) expected.updated_at = expected_updated_at;
       if (expected_status !== undefined) expected.status = expected_status;
       if (expected_end_state_updated_at !== undefined) expected.end_state_updated_at = expected_end_state_updated_at;
+      if (expected_checkpoints_revision !== undefined) expected.checkpoints_revision = expected_checkpoints_revision;
       const r = await boardOps.updateProject(ctx, {
         tool: 'nexus_project_update',
         project_id,
-        patch: { status, priority, description, upgrade_posture, end_state },
+        patch: { status, priority, description, upgrade_posture, end_state, endpoint, end_state_criteria, end_state_assessment, checkpoints },
         end_state_reason,
         add_need,
         resolve_need,

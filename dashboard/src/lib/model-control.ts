@@ -699,3 +699,12 @@ export function formatResolvedModel(resolved?: ResolvedModelControl | null): str
     if (resolved.fallbackUsed) return `${label} (fallback)`;
     return label;
 }
+
+/** Use the live Codex capabilities instead of guessing effort support by version. */
+export function thinkingLevelOptions(modelId: string, codexModels: CodexModelOption[] = []): string[] {
+    const slug = (modelId || "").trim().toLowerCase();
+    const model = codexModels.find(candidate => candidate.id === slug);
+    if (model?.efforts?.length) return model.efforts;
+    if (slug.includes("claude")) return ["low", "medium", "high", "xhigh", "max"];
+    return ["low", "medium", "high"];
+}

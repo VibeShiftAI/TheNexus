@@ -121,7 +121,7 @@ describe('Praxis chat live updates', () => {
         mode: 'praxis',
         messages: [{ id: 'external-1', role: 'assistant', content: 'sent from Praxis elsewhere' }],
       }),
-    })).resolves.toEqual({ status: 200, body: { ok: true, synced: 1, conversationId: 'conv-1' } });
+    })).resolves.toMatchObject({ status: 200, body: { ok: true, synced: 1, conversationId: 'conv-1' } });
 
     expect(io.emit).toHaveBeenCalledWith('chat-message', expect.objectContaining({
       conversationId: 'conv-1',

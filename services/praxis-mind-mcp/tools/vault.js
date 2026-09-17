@@ -222,6 +222,7 @@ function register(server, ctx) {
       const auth = checkPrivilege(ctx.caller, 'vault.read');
       if (auth) return auth;
       let grepNote = '';
+      let degradedReason = null;
       if (mode !== 'grep') {
         try {
           const res = await cortexVaultSearch({ query, k });
@@ -229,6 +230,15 @@ function register(server, ctx) {
           // Result sets mix files of differing provenance, so the block floors
           // to advisory. Read a specific path with vault_read for its own tier.
           return {
+            structuredContent: {
+              mode: res.mode || 'hybrid',
+              status: res.status || (res.degraded_reason ? 'degraded' : 'ok'),
+              degraded_reason: res.degraded_reason || null,
+              source_generated_at: res.source_generated_at || res.generated || null,
+              fallback_notice: res.fallback_notice || null,
+              results: res.results || [],
+              source: res,
+            },
             content: [{
               type: 'text',
               text: formatRetrieved(
@@ -238,13 +248,24 @@ function register(server, ctx) {
             }],
           };
         } catch (e) {
-          grepNote = `[Cortex vault index unavailable (${e.message}) — fell back to grep scan]\n`;
+          degradedReason = [401, 403].includes(e.status) ? 'authentication_failed' : 'backend_unavailable';
+          // Do not echo upstream response bodies: they may contain credentials.
+          const reason = degradedReason === 'authentication_failed' ? `authentication failed (HTTP ${e.status})` : 'backend unavailable';
+          grepNote = `[Cortex vault index ${reason} — fell back to grep scan]\n`;
         }
       }
       try {
         const lines = grepVault(query);
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_search', success: true });
         return {
+          structuredContent: {
+            mode: 'grep',
+            status: degradedReason ? 'degraded' : 'ok',
+            degraded_reason: degradedReason,
+            source_generated_at: null,
+            fallback_notice: grepNote.trim() || null,
+            results: lines,
+          },
           content: [{
             type: 'text',
             text: formatRetrieved(
@@ -255,7 +276,17 @@ function register(server, ctx) {
         };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_search', success: false, error: e.message });
-        return { content: [{ type: 'text', text: `Error searching vault: ${e.message}` }], isError: true };
+        return {
+          structuredContent: {
+            mode: 'grep', status: 'error',
+            degraded_reason: degradedReason || 'grep_failed',
+            source_generated_at: null,
+            fallback_notice: grepNote.trim() || null,
+            results: [],
+          },
+          content: [{ type: 'text', text: `${grepNote}Error searching vault: ${e.message}` }],
+          isError: true,
+        };
       }
     },
   );
@@ -269,15 +300,12 @@ function register(server, ctx) {
 function grepVault(query) {
   ensureRipgrepAvailable();
 
-  const result = runRipgrep(query, false);
-  if (result.error) throw result.error;
-  if (result.status === 2) {
-    const literalResult = runRipgrep(query, true);
-    if (literalResult.error) throw literalResult.error;
-    return parseRipgrepOutput(literalResult.stdout);
-  }
-  if (result.status && result.status !== 1) {
-    throw new Error((result.stderr || `ripgrep exited with status ${result.status}`).trim());
+  let result = runRipgrep(query, false);
+  if (!result.error && result.status === 2) result = runRipgrep(query, true);
+  // Only 0 (matches) and 1 (no matches) are valid, including after the literal
+  // retry. Never include stderr/spawn errors: they may echo sensitive queries.
+  if (result.error || ![0, 1].includes(result.status)) {
+    throw new Error('ripgrep scan failed');
   }
   return parseRipgrepOutput(result.stdout);
 }
@@ -287,10 +315,10 @@ function ensureRipgrepAvailable() {
   const result = spawnSync('rg', ['--version'], { encoding: 'utf8' });
   if (result.error) {
     if (result.error.code === 'ENOENT') throw new Error(RIPGREP_MISSING_MESSAGE);
-    throw result.error;
+    throw new Error('ripgrep availability check failed');
   }
   if (result.status !== 0) {
-    throw new Error((result.stderr || 'ripgrep availability check failed').trim());
+    throw new Error('ripgrep availability check failed');
   }
   ripgrepValidated = true;
 }
@@ -314,6 +342,7 @@ function runRipgrep(query, fixedStrings) {
       '--color',
       'never',
       ...(fixedStrings ? ['--fixed-strings'] : []),
+      '--',
       query,
       '.',
     ],

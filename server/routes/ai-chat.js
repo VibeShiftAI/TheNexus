@@ -47,7 +47,7 @@ function wantsEventStream(req) {
     return /\btext\/event-stream\b/i.test(req.get('accept') || '');
 }
 
-async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversationId, metadata = {} }) {
+async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversationId, metadata = {}, onReply = () => {} }) {
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
     const decoder = new TextDecoder();
     const reader = praxisResponse.body?.getReader?.();
@@ -59,7 +59,9 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
     let streamedResponse = '';
     let finalResponse = '';
     let voiceData = [];
+    let suppressVoice = false;
     let morningKickoff = false;
+    let finalized = false;
 
     async function handleFrame(frame) {
         const dataLines = frame
@@ -77,15 +79,19 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
             return false;
         }
 
+        if (event.type === 'error') throw new Error(event.error || 'Praxis stream failed');
         const delta = event.delta ?? event.choices?.[0]?.delta?.content ?? '';
         if (delta) {
+            onReply();
             streamedResponse += delta;
             res.write(`data: ${JSON.stringify({ type: 'delta', delta })}\n\n`);
         }
 
         if (event.type === 'final' || event.response) {
+            finalized = true;
             finalResponse = event.response || streamedResponse;
             voiceData = Array.isArray(event.voiceData) ? event.voiceData : [];
+            suppressVoice = event.suppressVoice === true;
             morningKickoff = event.morningKickoff === true;
         }
 
@@ -111,6 +117,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         await handleFrame(buffer);
     }
 
+    if (!finalized) throw new Error('Praxis stream ended before confirming the reply was complete');
     const fullResponse = finalResponse || streamedResponse || 'No response';
     let assistantMessageId = null;
 
@@ -121,7 +128,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
                 role: 'assistant',
                 content: fullResponse,
                 mode: 'praxis',
-                metadata: buildPraxisAssistantMetadata({ ...metadata, voiceData }),
+                metadata: buildPraxisAssistantMetadata({ ...metadata, voiceData, suppressVoice }),
             });
             assistantMessageId = savedAssistantMessage?.id || null;
             if (savedAssistantMessage && io) {
@@ -140,13 +147,16 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         mode: 'praxis',
         conversationId,
         assistantMessageId,
+        historySaved: !!assistantMessageId,
         isThinking: false,
         tokenUsage: { total: 0 },
         artifacts: [],
         voiceData,
+        ...(suppressVoice ? { suppressVoice: true } : {}),
         morningKickoff,
     })}\n\n`);
     res.write('data: [DONE]\n\n');
+    return !!assistantMessageId;
 }
 
 /** Inline attached text-file contents into the message Praxis receives.
@@ -220,6 +230,7 @@ async function findStoredReplyForClientMessage(db, clientMessageId) {
             tokenUsage: { total: 0 },
             artifacts: [],
             ...(stored.voiceData ? { voiceData: stored.voiceData } : {}),
+            ...(stored.suppressVoice === true ? { suppressVoice: true } : {}),
             replayedFromStore: true,
         };
     } catch (err) {
@@ -231,7 +242,24 @@ async function findStoredReplyForClientMessage(db, clientMessageId) {
 
 function createAIChatRouter({ db, io }) {
     const router = express.Router();
+    const activity = require('../services/chat-activity').createChatActivity({io});
+    router.get('/activity', (_req,res) => {res.setHeader('Cache-Control','no-store');res.json(activity.snapshot());});
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
+    const { readConversationContext } = require('../chat-conversation-context');
+    const { resolveChatConversation } = require('../chat-conversation');
+
+    router.use(require('./ai-chat-async')({ db, io, activity, run: async (body, userMessage) => {
+        const conversationContext = await readConversationContext(db, userMessage);
+        const response = await praxisFetch('/api/chat', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: inlineFilesIntoMessage(body.message, body.files),
+                history: body.history, projectId: body.projectId, audio: body.audio, voiceConversation: body.voiceConversation === true,
+                attachments: body.attachments, conversationContext }),
+            timeoutMs: getPraxisChatTimeoutMs(), dispatcher: getPraxisChatDispatcher(),
+        });
+        if (!response.ok) throw new Error(`Praxis returned ${response.status}`);
+        return response.json();
+    } }));
 
     router.post('/', async (req, res) => {
         const { message, mode, history, projectId, files, attachments, audio, clientMessageId } = req.body || {};
@@ -277,9 +305,12 @@ function createAIChatRouter({ db, io }) {
         if (!message) return res.status(400).json({ error: 'Message is required' });
 
         let conversationId = null;
+        let conversationContext;
+        const activityId = clientMessageId || require('crypto').randomUUID();
+        let activityAttempt;
         try {
             console.log(`[AI Chat] Relaying request to Praxis Agent (Port 54322)...`);
-            const conversation = await db.getActiveConversation('praxis');
+            const conversation = await resolveChatConversation(db, 'praxis', req.body.conversationId);
             conversationId = conversation ? conversation.id : null;
 
             if (conversationId) {
@@ -294,6 +325,15 @@ function createAIChatRouter({ db, io }) {
                 if (savedUserMessage && io) {
                     io.emit('chat-message', buildChatMessageEvent(savedUserMessage));
                 }
+                let receipt = savedUserMessage;
+                if (!receipt && clientMessageId && db.getChatMessageById) {
+                    try {
+                        const stored = await db.getChatMessageById(clientMessageId);
+                        if (stored?.role === 'user' && stored.conversation_id === conversationId) receipt = stored;
+                    } catch { /* Receipt telemetry must not change relay behavior. */ }
+                }
+                if (receipt) activityAttempt = activity.begin({id:activityId,conversationId,preview:message});
+                conversationContext = await readConversationContext(db, receipt);
             }
 
             // Legacy agent/cortex mode tells Praxis to drive Cortex System-2
@@ -304,6 +344,7 @@ function createAIChatRouter({ db, io }) {
             const praxisPayload = {
                 message: inlineFilesIntoMessage(message, files),
                 history,
+                conversationContext,
                 projectId,
                 audio,
                 attachments: attachments || undefined,
@@ -326,6 +367,7 @@ function createAIChatRouter({ db, io }) {
 
             if (canStream) {
                 const praxisResponse = await fetchPraxis();
+                activity.update(activityId,'working',undefined,activityAttempt);
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');
                 res.setHeader('Connection', 'keep-alive');
@@ -333,14 +375,17 @@ function createAIChatRouter({ db, io }) {
                 res.flushHeaders?.();
                 res.socket?.setNoDelay(true);
                 try {
-                    await writePraxisStreamToClient({
+                    const historySaved = await writePraxisStreamToClient({
                         praxisResponse,
                         res,
                         db,
                         io,
                         conversationId,
+                        onReply: () => activity.update(activityId,'replying',undefined,activityAttempt),
                     });
+                    activity.update(activityId,historySaved?'completed':'failed',historySaved?undefined:'Praxis replied, but Nexus could not save the reply to conversation history.',activityAttempt);
                 } catch (streamErr) {
+                    activity.update(activityId,'failed',streamErr.message,activityAttempt);
                     console.error(`[AI Chat] Praxis stream relay error:`, streamErr);
                     res.write(`data: ${JSON.stringify({ type: 'error', error: streamErr.message || 'Praxis stream failed' })}\n\n`);
                     res.write('data: [DONE]\n\n');
@@ -375,12 +420,14 @@ function createAIChatRouter({ db, io }) {
                     }
                 }
 
-                return { response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData, morningKickoff: data.morningKickoff === true };
+                activity.update(activityId,assistantMessageId?'completed':'failed',assistantMessageId?undefined:'Praxis replied, but Nexus could not save the reply to conversation history.',activityAttempt);
+                return { response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, historySaved: !!assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData, ...(data.suppressVoice === true ? { suppressVoice: true } : {}), morningKickoff: data.morningKickoff === true };
             })();
 
             if (joinable) rememberChatRun(clientMessageId, runPromise);
             return res.json(await runPromise);
         } catch (error) {
+            activity.update(activityId,'failed',error.message,activityAttempt);
             console.error(`[AI Chat] Praxis Proxy Error:`, error);
             if (res.headersSent) return;
             return res.status(502).json({
