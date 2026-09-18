@@ -70,6 +70,7 @@ export const EVENT_DOMAINS: Record<StreamEventType, LiveDomain[]> = {
     // A dispatch lane opens and closes on these too — the executor strip and
     // the CLI-slot panels read the same lifecycle.
     "task.started": ["board", "task", "schedule", "dispatch", "activity"],
+    "task.qa-passed": ["board", "task", "schedule", "activity"],
     "task.completed": ["board", "task", "schedule", "dispatch", "activity"],
     "task.failed": ["board", "task", "schedule", "dispatch", "activity"],
     "schedule.updated": ["schedule", "board", "activity"],

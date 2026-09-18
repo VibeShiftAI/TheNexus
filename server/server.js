@@ -139,6 +139,7 @@ const createNotesRouter     = require('./routes/notes');
 const createDocumentsRouter = require('./routes/documents');
 const { createDocumentReviewDelivery } = require('./services/document-review-delivery');
 const createContactsRouter  = require('./routes/contacts');
+const createMemberCommitmentsRouter = require('./routes/member-commitments');
 const createChatHistoryRouter = require('./routes/chat-history');
 const createChatFilesRouter   = require('./routes/chat-files');
 const createPushRouter      = require('./routes/push');
@@ -235,6 +236,7 @@ documentReviewDelivery.start();
 // canonical mount; /api/contacts stays as the legacy alias (same router).
 app.use('/api/members',  createContactsRouter({ db }));
 app.use('/api/contacts', createContactsRouter({ db }));
+app.use('/api/member-commitments', createMemberCommitmentsRouter({ db }));
 app.use('/api/chat',     createChatHistoryRouter({ db, io }));
 app.use('/api/chat/files', createChatFilesRouter());
 

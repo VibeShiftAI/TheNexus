@@ -101,6 +101,15 @@ function projectState(events, asOf) {
         open_commitments: visible.filter(event => event.kind === 'commitment' && !closedCommitments.has(event.id)),
     };
 }
+function conflictGroups(currentFacts) {
+    const groups = new Map();
+    for (const fact of currentFacts) {
+        if (!groups.has(fact.fact_key)) groups.set(fact.fact_key, []);
+        groups.get(fact.fact_key).push(fact);
+    }
+    return [...groups].filter(([, facts]) => new Set(facts.map(fact => fact.text)).size > 1)
+        .map(([fact_key, facts]) => ({ fact_key, events: facts }));
+}
 function validateReadOptions(options = {}) {
     if (!options || typeof options !== 'object' || Array.isArray(options)) throw failure(400, 'Invalid memory query');
     const projectId = options.project_id ?? null;
@@ -180,13 +189,7 @@ function createMemberMemoryLedger(db, { now = () => new Date().toISOString() } =
                 throw failure(404, 'Project not found');
             }
             const state = projectState(stateEvents(memberId, scope.project_id), asOf);
-            const groups = new Map();
-            for (const fact of state.current_facts) {
-                if (!groups.has(fact.fact_key)) groups.set(fact.fact_key, []);
-                groups.get(fact.fact_key).push(fact);
-            }
-            const conflicts = [...groups].filter(([, facts]) => new Set(facts.map(fact => fact.text)).size > 1)
-                .map(([fact_key, facts]) => ({ fact_key, events: facts }));
+            const conflicts = conflictGroups(state.current_facts);
             const cursorClause = scope.before_seq === null ? '' : ' AND seq < ?';
             const params = [memberId, scope.project_id];
             if (scope.before_seq !== null) params.push(scope.before_seq);
@@ -198,7 +201,17 @@ function createMemberMemoryLedger(db, { now = () => new Date().toISOString() } =
                 total_events: totalEvents, next_before_seq: page.length > scope.limit ? timeline.at(-1).seq : null };
         })();
     }
-    return { append, snapshot };
+    /**
+     * Read-only exact-scope projection shared with the evidence lookup: the
+     * state events (no observations), the current view at `asOf`, and the
+     * conflict groups. The caller checks the member exists.
+     */
+    function state(memberId, projectId, asOf = now()) {
+        const events = stateEvents(memberId, projectId);
+        const projected = projectState(events, asOf);
+        return { as_of: asOf, events, ...projected, conflicts: conflictGroups(projected.current_facts) };
+    }
+    return { append, snapshot, state };
 }
 
-module.exports = { initializeMemberMemory, createMemberMemoryLedger };
+module.exports = { initializeMemberMemory, createMemberMemoryLedger, effectiveAt, cancelledBeforeEffective };

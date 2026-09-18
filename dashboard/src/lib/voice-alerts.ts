@@ -22,7 +22,7 @@ export function eligibleAlert(e: StreamEvent, mode: AlertMode): boolean {
   if ('taskId' in e && e.taskId?.startsWith('qa--')) return false;
   if (e.type === 'task.completed' && e.result?.summary?.trimStart().startsWith('⏸️')) return false;
   if (e.type === 'hitl.created') return !ROUTINE.has(String(e.request?.metadata?.kind));
-  return e.type === 'task.failed' || (mode === 'conversational' && (e.type === 'task.completed' || e.type === 'task.blocked'));
+  return e.type === 'task.failed' || (mode === 'conversational' && (e.type === 'task.qa-passed' || e.type === 'task.blocked'));
 }
 export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | undefined = () => undefined): Record<string, unknown> {
   const taskId = e.type === 'hitl.created' ? e.request?.taskId : 'taskId' in e ? e.taskId : undefined;
@@ -30,6 +30,16 @@ export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | un
   const title = candidate && candidate !== taskId && !/qa--|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i.test(candidate) ? candidate : undefined;
   const task = taskId ? { taskId, ...(title ? { title } : {}) } : {};
   switch (e.type) {
+    case 'task.qa-passed': {
+      // The speech API rejects >12k characters. Full findings stay in chat;
+      // keep a bounded excerpt so a long critic report cannot silence the pass.
+      const original = e.improvements ?? [];
+      const enhancements = original.slice(0, 3).map(s => ({ source: s.source.slice(0, 80), text: s.text.slice(0, 1800) }));
+      return { ...task, ...(e.title ? { title: e.title.slice(0, 500) } : {}), status: 'qa_passed', reviewer: e.reviewer,
+        enhancements, enhancementsAbridged: original.length > 3 || original.some(s => s.text.length > 1800),
+        reviewerNoneOffered: e.reviewerNoneOffered === true,
+        enhancementStatus: 'Optional QA suggestions; not established as implemented. Mention what QA found. If abridged, full details are in chat. Say QA offered none only when reviewerNoneOffered is true; otherwise an empty list means no enhancement answer was recorded.' };
+    }
     case 'task.failed': return { ...task, status: 'failed', reason: e.error };
     case 'task.completed': return { ...task, status: 'execution_finished', outcome: e.result?.outcome, summary: e.result?.summary, verification: 'not established by this event' };
     case 'task.blocked': return { ...task, status: 'blocked', reason: e.reason };

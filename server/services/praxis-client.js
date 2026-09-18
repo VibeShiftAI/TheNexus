@@ -35,6 +35,7 @@
 const http = require('http');
 const https = require('https');
 const { URL } = require('url');
+const crypto = require('crypto');
 
 const constants = require('../shared/constants');
 
@@ -212,8 +213,71 @@ function praxisStream(path, opts = {}, onResponse) {
     return req;
 }
 
+/**
+ * Operator provenance (2026-09-18; Praxis src/operator-provenance.ts).
+ *
+ * Praxis cannot tell a local POST /api/chat from Robert apart from one sent
+ * by a dispatched executor or a system-agent run: they are all loopback,
+ * same user, same machine. After operator-access.js validates the originating
+ * human identity, the chat relay signs that authenticated message
+ * with PRAXIS_OPERATOR_KEY, a key that lives once in
+ * /Volumes/Projects/.fleet-env (loaded by server/utils/fleet-env.js) and that
+ * Praxis strips from its own process.env at boot so no child of it inherits
+ * it. Praxis mints an operator turn grant (self_restart authority for that
+ * one turn, when Robert asks for a restart) only for a message whose
+ * signature verifies against the exact text it received.
+ *
+ *   X-Praxis-Operator-Provenance: v1;surface=<name>;ts=<unix ms>;nonce=<hex>;sig=<hex>
+ *   sig = HMAC-SHA256(key, "praxis-operator-provenance/v1\n<surface>\n<ts>\n<nonce>\n<sha256 hex of message>")
+ *
+ * Fresh nonce per call (Praxis accepts each once, for five minutes). A key
+ * shorter than 32 characters counts as unset, the same rule Praxis applies.
+ * Without a key the relay still forwards the message; Praxis simply runs
+ * that turn without operator authority, and the reason is logged once here.
+ */
+const OPERATOR_PROVENANCE_HEADER = 'X-Praxis-Operator-Provenance';
+const OPERATOR_KEY_MIN_CHARS = 32;
+let warnedNoOperatorKey = false;
+
+function operatorProvenanceKey() {
+    const raw = process.env.PRAXIS_OPERATOR_KEY;
+    const key = typeof raw === 'string' ? raw.trim() : '';
+    return key.length >= OPERATOR_KEY_MIN_CHARS ? key : null;
+}
+
+/**
+ * Headers to add ONLY after operator-access.js validates the originating user.
+ * This signing primitive does not authenticate a request by itself.
+ * `message` must be the exact string placed in the payload's `message`
+ * field (a non-string signs as the empty string, matching Praxis).
+ *
+ * @param {string|undefined} message
+ * @param {{ surface?: string, now?: number, nonce?: string }} [opts]
+ * @returns {Record<string, string>} `{}` when no key is configured.
+ */
+function operatorProvenanceHeaders(message, { surface = 'nexus-chat', now = Date.now(), nonce } = {}) {
+    const key = operatorProvenanceKey();
+    if (!key) {
+        if (!warnedNoOperatorKey) {
+            warnedNoOperatorKey = true;
+            console.warn('[Praxis client] PRAXIS_OPERATOR_KEY is not set (or is shorter than 32 characters): chat turns reach Praxis without operator provenance, so none can carry restart authority');
+        }
+        return {};
+    }
+    const text = typeof message === 'string' ? message : '';
+    const ts = String(Math.floor(now));
+    const n = typeof nonce === 'string' && nonce ? nonce : crypto.randomBytes(16).toString('hex');
+    const digest = crypto.createHash('sha256').update(text, 'utf8').digest('hex');
+    const sig = crypto.createHmac('sha256', key)
+        .update(`praxis-operator-provenance/v1\n${surface}\n${ts}\n${n}\n${digest}`, 'utf8')
+        .digest('hex');
+    return { [OPERATOR_PROVENANCE_HEADER]: `v1;surface=${surface};ts=${ts};nonce=${n};sig=${sig}` };
+}
+
 module.exports = {
     praxisUrl,
+    operatorProvenanceHeaders,
+    OPERATOR_PROVENANCE_HEADER,
     praxisFetch,
     praxisJson,
     praxisProxyJson,

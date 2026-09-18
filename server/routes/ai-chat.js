@@ -10,7 +10,7 @@
  * gone; Praxis is the single orchestrator and does its own model routing.
  */
 const express = require('express');
-const { praxisFetch } = require('../services/praxis-client');
+const { praxisFetch, operatorProvenanceHeaders } = require('../services/praxis-client');
 
 const DEFAULT_PRAXIS_CHAT_TIMEOUT_MS = 20 * 60 * 1000;
 
@@ -242,6 +242,18 @@ async function findStoredReplyForClientMessage(db, clientMessageId) {
 
 function createAIChatRouter({ db, io }) {
     const router = express.Router();
+    const authenticateOperator = require('../services/operator-access').createOperatorAuthenticator();
+    // Server-owned membership, not a body flag or the legacy req.user stub.
+    // The async relay retains this exact body object after sending its 202.
+    const operatorTurns = new WeakSet();
+    router.post('/', async (req, _res, next) => {
+        if (req.body && typeof req.body === 'object' && await authenticateOperator(req)) {
+            operatorTurns.add(req.body);
+        }
+        next();
+    });
+    const provenanceFor = (body, message, surface) => operatorTurns.has(body)
+        ? operatorProvenanceHeaders(message, { surface }) : {};
     const activity = require('../services/chat-activity').createChatActivity({io});
     router.get('/activity', (_req,res) => {res.setHeader('Cache-Control','no-store');res.json(activity.snapshot());});
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
@@ -250,9 +262,12 @@ function createAIChatRouter({ db, io }) {
 
     router.use(require('./ai-chat-async')({ db, io, activity, run: async (body, userMessage) => {
         const conversationContext = await readConversationContext(db, userMessage);
+        // Operator provenance is signed over the exact message Praxis receives
+        // (praxis-client.js), so inline the files first and sign that.
+        const relayMessage = inlineFilesIntoMessage(body.message, body.files);
         const response = await praxisFetch('/api/chat', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: inlineFilesIntoMessage(body.message, body.files),
+            method: 'POST', headers: { 'Content-Type': 'application/json', ...provenanceFor(body, relayMessage, 'nexus-chat-async') },
+            body: JSON.stringify({ message: relayMessage,
                 history: body.history, projectId: body.projectId, audio: body.audio, voiceConversation: body.voiceConversation === true,
                 attachments: body.attachments, conversationContext }),
             timeoutMs: getPraxisChatTimeoutMs(), dispatcher: getPraxisChatDispatcher(),
@@ -353,7 +368,9 @@ function createAIChatRouter({ db, io }) {
             };
             const fetchPraxis = async () => {
                 const praxisResponse = await praxisFetch('/api/chat', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}) },
+                    method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}),
+                        // Operator provenance: signed over the exact message in the payload (praxis-client.js).
+                        ...provenanceFor(req.body, praxisPayload.message, 'nexus-chat') },
                     body: JSON.stringify(praxisPayload), timeoutMs: getPraxisChatTimeoutMs(), // local agent loops can be long
                     dispatcher: getPraxisChatDispatcher(),
                 });

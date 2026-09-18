@@ -145,7 +145,7 @@ test('alerts wait throughout a conversation turn and settling gap, then never ar
   const f = await mount(t); await f.click('Start conversation');
   let announcements = 0; const now = new Date(2026, 8, 7, 12).getTime();
   const alerts = new VoiceAlerts({ mountedAt: now - 1000, now: () => now, active: async () => true, announce: async () => { announcements++; } });
-  t.after(() => alerts.dispose()); alerts.update([{ eventId: 'owned-turn', at: new Date(now).toISOString(), type: 'task.completed', taskId: 'one' } as any], 'conversational');
+  t.after(() => alerts.dispose()); alerts.update([{ eventId: 'owned-turn', at: new Date(now).toISOString(), type: 'task.qa-passed', taskId: 'one' } as any], 'conversational');
   await f.click('Stop recording'); await f.endAudio(); await f.advance(200); assert.equal(announcements, 0); assert.equal(f.captures(), 1);
   await f.click('End conversation'); await f.advance(5000); assert.equal(announcements, 1); assert.equal(f.captures(), 1); f.assertEnded();
 });

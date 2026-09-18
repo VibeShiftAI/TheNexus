@@ -78,6 +78,7 @@ const EVENT_TYPES: StreamEvent["type"][] = [
   "task.updated",
   "task.started",
   "task.completed",
+  "task.qa-passed",
   "task.failed",
   "task.blocked",
   "hitl.created",

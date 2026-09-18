@@ -303,7 +303,7 @@ test('two eligible live alerts each compose once and replayed event IDs stay ded
   assert.equal(FakeAudio.all.length, 1, 'speech waits for the combadge');
   await act(async () => { FakeAudio.all[0].onended?.(); await tick(); await tick(); });
   assert.equal(FakeAudio.all.length, 2); assert.match(FakeAudio.all[1].src, /synthetic/);
-  await act(async () => { FakeAudio.all[1].onended?.(); await tick(); t.mock.timers.tick(120000); socket.__emit('praxis:event', first); socket.__emit('praxis:event', { ...first, type: 'task.completed', eventId: 'fresh-alert-second', at: new Date().toISOString() }); await tick(); await tick(); });
+  await act(async () => { FakeAudio.all[1].onended?.(); await tick(); t.mock.timers.tick(120000); socket.__emit('praxis:event', first); socket.__emit('praxis:event', { ...first, type: 'task.qa-passed', eventId: 'fresh-alert-second', at: new Date().toISOString() }); await tick(); await tick(); });
   assert.equal(f.requests.filter(r => r.url.endsWith('/voice-prose')).length, 2);
   assert.deepEqual(f.requests.filter(r => r.url.endsWith('/speak')).map(r => r.body.text), ['Fresh spoken response 1.', 'Fresh spoken response 2.']);
   assert.doesNotMatch(f.host.textContent ?? '', /Fresh spoken response 2./);
@@ -378,7 +378,7 @@ for (const change of ['off', 'attention', 'quiet-hours', 'device']) test(`an ale
   }, true);
   await act(async () => {
     t.mock.timers.tick(1);
-    __sockets.at(-1).__emit('praxis:event', { type: 'task.completed', eventId: `held-alert-${change}`, taskId: 'task-1', at: new Date().toISOString() });
+    __sockets.at(-1).__emit('praxis:event', { type: 'task.qa-passed', eventId: `held-alert-${change}`, taskId: 'task-1', at: new Date().toISOString() });
     await tick(); await tick();
   });
   assert.equal(f.requests.filter(r => r.url.endsWith('/voice-prose')).length, 1);
@@ -413,7 +413,7 @@ test('alert playback cancels a stalled active-device response body at its deadli
   }, true);
   await act(async () => {
     t.mock.timers.tick(1);
-    __sockets.at(-1).__emit('praxis:event', { type: 'task.completed', eventId: 'held-device-body', taskId: 'task-1', at: new Date().toISOString() });
+    __sockets.at(-1).__emit('praxis:event', { type: 'task.qa-passed', eventId: 'held-device-body', taskId: 'task-1', at: new Date().toISOString() });
     await tick(); await tick();
   });
   assert.equal(checks, 2);

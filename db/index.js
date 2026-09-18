@@ -17,6 +17,8 @@ const { applyCheckpointTransition, applyCheckpointReopen } = require('./project-
 const { initializeMemberMemory, createMemberMemoryLedger } = require('./member-memory');
 const { initializeMemberProfileProposals, createMemberProfileProposals } = require('./member-profile-proposals');
 const { captureMemberDirectoryChange } = require('./member-directory-memory');
+const { createMemberEvidence } = require('./member-evidence');
+const { createMemberCommitments } = require('./member-commitments');
 const { migrateUsageStats } = require('./usage-stats-migration');
 const { initializeStakeholderPolicy, createStakeholderPolicy } = require('./stakeholder-policy');
 const { initializeDocumentReviews, createDocumentReviewStore } = require('./document-reviews');
@@ -51,6 +53,8 @@ const DB_PATH = process.env.NEXUS_DB_PATH
 let db;
 let memberMemory;
 let memberProfileProposals;
+let memberEvidence;
+let memberCommitments;
 let documentReviews;
 let stakeholderPolicy;
 try {
@@ -79,6 +83,8 @@ try {
     memberMemory = createMemberMemoryLedger(db);
     initializeMemberProfileProposals(db);
     memberProfileProposals = createMemberProfileProposals(db, memberMemory);
+    memberEvidence = createMemberEvidence(db, memberMemory);
+    memberCommitments = createMemberCommitments(db);
     runStakeholderMigrations(db);
     initializeStakeholderPolicy(db);
     stakeholderPolicy = createStakeholderPolicy(db);
@@ -2583,6 +2589,18 @@ async function reviewMemberProfileProposal(id, proposalId, input) {
     return memberProfileProposals.review(id, proposalId, input);
 }
 
+/** Read-only evidence lookup: explicit scope and question type over one canonical member. */
+async function getMemberEvidence(id, options) {
+    if (!memberEvidence) throw new Error('Member evidence database unavailable');
+    return memberEvidence.lookup(id, options);
+}
+
+/** Read-only commitment queue: one member, one project, or the explicit operator aggregate. */
+async function listMemberCommitments(options) {
+    if (!memberCommitments) throw new Error('Member commitment queue unavailable');
+    return memberCommitments.list(options);
+}
+
 async function updateContact(id, updates) {
     if (!db) return null;
     const allowed = ['name', 'email', 'phone', 'relationship', 'birthday', 'notes', 'preferences', 'expertise', 'interests', 'claims', 'status', 'kind', 'seat_id', 'last_contact_at'];
@@ -3381,6 +3399,8 @@ module.exports = {
     submitMemberProfileProposals,
     listMemberProfileProposals,
     reviewMemberProfileProposal,
+    getMemberEvidence,
+    listMemberCommitments,
     deleteContact,
     listProjectContacts,
     listProjectDecisionMakers,

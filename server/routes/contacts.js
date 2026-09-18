@@ -132,6 +132,28 @@ function createContactsRouter({ db }) {
         }
     });
 
+    // Evidence lookup: one canonical member UUID, an explicit scope (general, or
+    // exactly one project) and a question type. Sources come back separately
+    // labelled so a global directory setting is never an implicit project answer.
+    router.get('/:id/evidence', async (req, res) => {
+        try {
+            const allowed = new Set(['scope', 'project_id', 'question', 'fact_key', 'limit', '_cb']);
+            if (Object.entries(req.query).some(([key, value]) => !allowed.has(key) || typeof value !== 'string')) {
+                return res.status(400).json({ error: 'Invalid evidence query fields' });
+            }
+            const options = {};
+            for (const key of ['scope', 'project_id', 'question', 'fact_key']) if (req.query[key]) options[key] = req.query[key];
+            if (req.query.limit !== undefined) {
+                if (!/^[1-9]\d*$/.test(req.query.limit)) return res.status(400).json({ error: 'limit must be a positive integer' });
+                options.limit = Number(req.query.limit);
+            }
+            res.json(await db.getMemberEvidence(req.params.id, options));
+        } catch (error) {
+            const status = [400, 404, 409].includes(error.status) ? error.status : 500;
+            res.status(status).json({ error: status === 500 ? 'Failed to look up member evidence' : error.message });
+        }
+    });
+
     // Profile proposal source/scope and all writes are independently validated in the store.
     router.post('/:id/profile-proposals', async (req, res) => {
         try {

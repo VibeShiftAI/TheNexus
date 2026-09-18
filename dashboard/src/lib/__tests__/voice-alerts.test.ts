@@ -14,7 +14,9 @@ test('attention and conversational selection preserve routine exclusions and who
   const failed = event('task.failed', { error: 'Detailed failure. '.repeat(50) });
   assert.equal(eligibleAlert(failed, 'off'), false); assert.equal(eligibleAlert(failed, 'attention'), true);
   assert.equal(eligibleAlert(event('task.completed'), 'attention'), false);
-  assert.equal(eligibleAlert(event('task.completed'), 'conversational'), true);
+  assert.equal(eligibleAlert(event('task.completed'), 'conversational'), false);
+  assert.equal(eligibleAlert(event('task.qa-passed'), 'conversational'), true);
+  assert.equal(eligibleAlert(event('task.qa-passed'), 'attention'), false);
   assert.equal(eligibleAlert(event('task.blocked'), 'conversational'), true);
   assert.equal(eligibleAlert(event('hitl.created', { request: { question: 'Approve?', metadata: { kind: 'day-schedule' } } }), 'conversational'), false);
   assert.equal(alertFacts(failed, () => 'Build the ship').title, 'Build the ship');
@@ -104,9 +106,9 @@ test('alert playback rechecks mode and quiet hours without rejecting its own rec
   try {
     assert.equal(typeof f.alerts.canPlay, 'function');
     localStorage.setItem(ALERT_STORE_KEY, JSON.stringify({ ids: ['event-1'], lastAt: new Date(2026, 8, 7, 12).getTime() }));
-    assert.equal(await f.alerts.canPlay(event('task.completed'), f.controller.signal, () => true), true);
+    assert.equal(await f.alerts.canPlay(event('task.qa-passed'), f.controller.signal, () => true), true);
     f.alerts.update([], 'attention');
-    assert.equal(await f.alerts.canPlay(event('task.completed'), f.controller.signal, () => true), false);
+    assert.equal(await f.alerts.canPlay(event('task.qa-passed'), f.controller.signal, () => true), false);
     assert.equal(await f.alerts.canPlay(event('task.failed'), f.controller.signal, () => true), true);
     f.alerts.update([], 'off');
     assert.equal(await f.alerts.canPlay(event('task.failed'), f.controller.signal, () => true), false);
@@ -120,7 +122,7 @@ for (const change of ['mode', 'quiet-hours', 'ownership', 'device']) test(`alert
   const f = playbackFixture(at, () => new Promise(resolve => finish = resolve)); let owns = true;
   try {
     assert.equal(typeof f.alerts.canPlay, 'function');
-    const pending = f.alerts.canPlay(event('task.completed', { at: new Date(at).toISOString() }), f.controller.signal, () => owns);
+    const pending = f.alerts.canPlay(event('task.qa-passed', { at: new Date(at).toISOString() }), f.controller.signal, () => owns);
     if (change === 'mode') f.alerts.update([], 'attention');
     if (change === 'quiet-hours') f.setNow(at + 2000);
     if (change === 'ownership') owns = false;
@@ -157,4 +159,22 @@ test('completion facts retain outcome and summary without claiming reviewed comp
 test('unknown and identifier-shaped titles are never presented as human task names', () => {
   assert.equal(alertFacts(event('task.failed')).title, undefined);
   assert.equal(alertFacts(event('task.failed'), () => 'a35ec50b-a5c7-4c07-bf7b-328fc45df620').title, undefined);
+});
+
+test('QA pass speech carries the reviewer enhancements without claiming implementation', () => {
+  const facts = alertFacts(event('task.qa-passed', { title: 'Repair sync', reviewer: 'codex', improvements: [{ source: 'reviewer', text: 'Add retry jitter.' }] }));
+  assert.equal(facts.status, 'qa_passed');
+  assert.equal(facts.title, 'Repair sync');
+  assert.deepEqual(facts.enhancements, [{ source: 'reviewer', text: 'Add retry jitter.' }]);
+  assert.match(String(facts.enhancementStatus), /suggestions.*not.*implemented/i);
+});
+
+test('long enhancements fit the speech endpoint while indicating abridgement', () => {
+  const facts = alertFacts(event('task.qa-passed', { improvements: Array.from({length: 10}, () => ({source:'reviewer', text:'A long finding. '.repeat(3000)})) }));
+  assert.ok(JSON.stringify(facts).length <= 12000);
+  assert.equal(facts.enhancementsAbridged, true);
+});
+test('speech distinguishes no suggestions from an unavailable answer', () => {
+  assert.equal(alertFacts(event('task.qa-passed', { improvements: [], reviewerNoneOffered: true })).reviewerNoneOffered, true);
+  assert.equal(alertFacts(event('task.qa-passed', { improvements: [] })).reviewerNoneOffered, false);
 });

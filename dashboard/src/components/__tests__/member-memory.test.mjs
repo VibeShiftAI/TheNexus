@@ -17,7 +17,9 @@ const snapshot = (scope, events = [base]) => ({ member_id: member, project_id: s
 const json = data => new Response(JSON.stringify(data), { status: 200 });
 async function mount(fetcher) {
   const original = globalThis.fetch; globalThis.fetch = (url, opts) => String(url).includes('/profile-proposals')
-    ? Promise.resolve(json({ member_id: member, project_id: new URL(url, 'http://localhost').searchParams.get('project_id'), memory_version: 0, proposals: [], total: 0, next_before_created_seq: null })) : fetcher(url, opts);
+    ? Promise.resolve(json({ member_id: member, project_id: new URL(url, 'http://localhost').searchParams.get('project_id'), memory_version: 0, proposals: [], total: 0, next_before_created_seq: null }))
+    // The evidence panel is collapsed by default and only fetches once opened; keep it inert here.
+    : String(url).includes('/evidence') ? Promise.resolve(new Response(JSON.stringify({ error: 'evidence not stubbed' }), { status: 503 })) : fetcher(url, opts);
   const node = document.createElement('div'); document.body.append(node); const root = createRoot(node);
   await act(async () => root.render(React.createElement(MemberMemory, { memberId: member, projectId: project })));
   return { node, dispose: async () => { await act(async () => root.unmount()); node.remove(); globalThis.fetch = original; } };

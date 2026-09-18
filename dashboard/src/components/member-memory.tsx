@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { MemberMemoryInputSchema, type MemberMemoryEvent, type MemberMemorySnapshot } from '@praxis/contract';
 import { appendMemberMemory, getMemberMemory } from '@/lib/nexus/member-memory';
 import { MemberProfileProposals } from './member-profile-proposals';
+import { MemberEvidence } from './member-evidence';
 
 const evidenceLabels: Record<string, string> = {
   self_reported: 'Member stated', operator_confirmed: 'Operator confirmed',
@@ -166,5 +167,6 @@ function MemoryScope({ memberId, projectId }: { memberId: string; projectId: str
       </details>
       <p className="text-[10px] text-slate-500">Current as of {dateLabel(memory.as_of)}. Contact settings above still govern outreach.</p>
     </>}
+    <MemberEvidence memberId={memberId} projectId={projectId} version={memory?.as_of ?? null} />
   </div>;
 }
