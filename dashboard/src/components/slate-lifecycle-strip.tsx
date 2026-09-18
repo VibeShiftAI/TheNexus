@@ -17,7 +17,7 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Ban, Check, ChevronRight, CircleDashed, Clock, HelpCircle } from "lucide-react";
+import { AlertTriangle, Ban, Check, CheckCheck, ChevronRight, CircleDashed, Clock, HelpCircle } from "lucide-react";
 import { useLiveRefetch } from "@/components/live-board-state";
 import {
   describeSlate,
@@ -25,6 +25,8 @@ import {
   formatDuration,
   getSlateLifecycle,
   SLATE_STAGE_LABEL,
+  stageNotes,
+  stageProgress,
   stageTone,
   type SlateLifecycle,
   type SlateStage,
@@ -32,9 +34,13 @@ import {
   type SlateStall,
 } from "@/lib/slate-lifecycle";
 
-/** One palette per tone, so the four states are never told apart by text alone. */
+/** One palette per tone, so the six states are never told apart by text alone. */
 const TONE_CLASS: Record<SlateStageTone, string> = {
   done: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+  // Reached but unfinished. Close enough to done to read as progress, far
+  // enough from it that "3 of 12 verified" is never mistaken for a finished
+  // slate at a glance or on a phone.
+  partial: "border-cyan-500/40 bg-cyan-500/10 text-cyan-200",
   waiting: "border-amber-500/50 bg-amber-500/10 text-amber-200",
   upcoming: "border-slate-700 bg-slate-900 text-slate-500",
   blocked: "border-rose-500/50 bg-rose-500/10 text-rose-200",
@@ -43,7 +49,8 @@ const TONE_CLASS: Record<SlateStageTone, string> = {
 
 function ToneIcon({ tone }: { tone: SlateStageTone }) {
   const size = 13;
-  if (tone === "done") return <Check size={size} strokeWidth={3} className="shrink-0" />;
+  if (tone === "done") return <CheckCheck size={size} strokeWidth={3} className="shrink-0" />;
+  if (tone === "partial") return <Check size={size} strokeWidth={3} className="shrink-0" />;
   if (tone === "waiting") return <Clock size={size} className="shrink-0" />;
   if (tone === "blocked") return <Ban size={size} className="shrink-0" />;
   if (tone === "unknown") return <HelpCircle size={size} className="shrink-0" />;
@@ -58,19 +65,45 @@ function stageTime(at: string | null): string | null {
   return new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+/**
+ * One stage, with its progress ON the chip.
+ *
+ * The counts used to live only in the chip's `title`, which is a hover: on a
+ * phone, and for anyone not hunting with a mouse, a slate with three of twelve
+ * slots verified was indistinguishable from a finished one. So the fraction and
+ * every qualifying outcome (out of band, unproven, not QA-reviewed,
+ * operator-accepted) render as text, and the tooltip keeps the long sentence
+ * rather than carrying the fact.
+ */
 function StageChip({ stage, stall }: { stage: SlateStage; stall: SlateStall | null }) {
   const tone = stageTone(stage, stall);
   const time = stageTime(stage.at);
   const waiting = tone === "waiting" && stall?.waitingMs != null ? formatDuration(stall.waitingMs) : null;
+  const progress = stageProgress(stage);
+  const notes = stageNotes(stage);
   return (
     <span
-      className={`flex items-center gap-1.5 rounded-md border px-2 py-1 ${TONE_CLASS[tone]}`}
+      className={`flex flex-wrap items-center gap-1.5 rounded-md border px-2 py-1 ${TONE_CLASS[tone]}`}
       title={`${SLATE_STAGE_LABEL[stage.stage]}: ${stage.detail}${stage.at ? `\n${stage.at}` : ""}`}
     >
       <ToneIcon tone={tone} />
       <span className="font-semibold">{SLATE_STAGE_LABEL[stage.stage]}</span>
+      {progress && (
+        <span className="text-[11px] tabular-nums opacity-90">
+          {progress.done}/{progress.total}
+        </span>
+      )}
       {time && <span className="text-[11px] opacity-80">{time}</span>}
       {waiting && <span className="text-[11px] opacity-80">waiting {waiting}</span>}
+      {notes.map((note) => (
+        <span
+          key={note.label}
+          title={note.title}
+          className="rounded border border-current/30 px-1 text-[10px] uppercase tracking-wide opacity-80"
+        >
+          {note.label}
+        </span>
+      ))}
     </span>
   );
 }
@@ -80,21 +113,42 @@ function StageChip({ stage, stall }: { stage: SlateStage; stall: SlateStall | nu
  * job is the stage, and twelve rows of slot titles would bury it.
  */
 function SlotTable({ lifecycle }: { lifecycle: SlateLifecycle }) {
+  const qaUnknown = lifecycle.qaEvidence?.available === false;
   return (
     <ul className="mt-2 space-y-1 border-t border-slate-800 pt-2">
       {lifecycle.slots.map((slot) => {
+        // A completion that never entered the dispatch plane says so here, in
+        // the row, rather than borrowing the word "completed" from work that
+        // was dispatched and QA-passed.
         const state = slot.withdrawn
           ? `${slot.status}${slot.skipSource ? ` (${slot.skipSource})` : ""}`
           : slot.operatorAccepted
             ? "operator-accepted (not QA-passed)"
-            : slot.status;
+            : slot.outOfBand
+              ? "done out of band (no plane run)"
+              : slot.unprovenCompletion
+                ? "completed (no dispatch evidence)"
+                : slot.qaUnverified
+                  ? `completed (${qaUnknown ? "QA evidence unreadable" : "not QA-reviewed"})`
+                  : slot.status;
         const tone = slot.verified
           ? "text-emerald-300"
           : slot.withdrawn
             ? "text-slate-600"
-            : slot.attempted
-              ? "text-cyan-300"
-              : "text-slate-400";
+            : slot.qaUnverified && qaUnknown
+              ? "text-slate-400"
+              : slot.outOfBand || slot.unprovenCompletion || slot.qaUnverified
+                ? "text-amber-300"
+                : slot.attempted
+                  ? "text-cyan-300"
+                  : "text-slate-400";
+        // The reviewer and Praxis's grade of the evidence ride in the title:
+        // useful when reading one row, too noisy for every row at once.
+        const title = slot.qaPassed
+          ? `QA ${slot.qaOutcome ?? "pass"}${slot.qaReviewer ? ` by ${slot.qaReviewer}` : ""}${slot.qaVerdict ? `; Praxis graded the evidence ${slot.qaVerdict}` : ""}`
+          : slot.qaOutcome
+            ? `QA audit recorded as ${slot.qaOutcome}, which is not a pass`
+            : undefined;
         return (
           <li key={`${slot.slotNumber}-${slot.taskId}`} className="flex items-baseline gap-2">
             <span className="w-5 shrink-0 text-right text-slate-600">{slot.slotNumber ?? "—"}</span>
@@ -105,7 +159,7 @@ function SlotTable({ lifecycle }: { lifecycle: SlateLifecycle }) {
             ) : (
               <span className="truncate text-slate-300">{slot.title}</span>
             )}
-            <span className={`ml-auto shrink-0 ${tone}`}>{state}</span>
+            <span className={`ml-auto shrink-0 ${tone}`} title={title}>{state}</span>
             {slot.spineUnrecorded && (
               <span className="shrink-0 text-amber-300" title="The run-events spine rejected this slot's provenance write, so the slot carries the only surviving evidence it ran.">
                 spine gap
@@ -178,6 +232,12 @@ export function SlateLifecycleStrip() {
             </span>
           ))}
         </div>
+        {lifecycle.qaEvidence?.available === false && (
+          <span className="flex items-center gap-1.5 text-amber-300" title={lifecycle.qaEvidence.reason ?? undefined}>
+            <HelpCircle size={13} className="shrink-0" />
+            QA evidence unreadable
+          </span>
+        )}
         {stall && (
           <span className={`flex items-center gap-1.5 ${alarm ? "text-amber-300" : "text-slate-400"}`}>
             {alarm && <AlertTriangle size={13} className="shrink-0" />}
