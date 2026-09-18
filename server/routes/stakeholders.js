@@ -16,6 +16,8 @@
  * StakeholderDecision, STAKEHOLDER_DECISION_STATUS).
  */
 const express = require('express');
+const { requireStakeholderAuthority } = require('../services/stakeholder-authority');
+const { reservedKind } = require('../../db/stakeholder-policy');
 
 const DECISIONS = ['approve', 'reject', 'duplicate', 'defer'];
 // Mirrors STAKEHOLDER_DECISION_STATUS in the contract (kept inline — this
@@ -50,15 +52,42 @@ function createStakeholderRouters({ db }) {
     const router = express.Router();
     const tasksRouter = express.Router();
 
+    const respondError = (res, error) => res.status([400, 403, 404, 409, 503].includes(error.status) ? error.status : 500)
+        .json({ error: error.status ? error.message : 'Stakeholder operation failed' });
+    router.get('/:id/stakeholder-policy', async (req, res) => {
+        try {
+            if (!await db.getProject(req.params.id)) return res.status(404).json({ error: 'Project not found' });
+            res.json({ policy: db.getStakeholderPolicy(), project_id: req.params.id, project_policy: null });
+        } catch (error) { respondError(res, error); }
+    });
+    tasksRouter.get('/:taskId/stakeholder-proposal', (req, res) => {
+        try {
+            const proposal = db.getStakeholderProposal(req.params.taskId);
+            if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
+            res.json({ proposal });
+        } catch (error) { respondError(res, error); }
+    });
+    tasksRouter.post('/:taskId/stakeholder-proposal', (req, res) => {
+        try { res.status(201).json({ proposal: db.proposeStakeholderAction(req.params.taskId, req.body || {}) }); }
+        catch (error) { respondError(res, error); }
+    });
+    tasksRouter.post('/:taskId/stakeholder-receipt', (req, res) => {
+        try {
+            requireStakeholderAuthority(req, 'runtime');
+            res.json({ proposal: db.recordStakeholderReceipt(req.params.taskId, req.body || {}) });
+        } catch (error) { respondError(res, error); }
+    });
+
     // GET /api/projects/:id/stakeholders
     router.get('/:id/stakeholders', async (req, res) => {
         try {
             const members = await db.listProjectContacts(req.params.id);
             const decision_makers = members.filter((m) => m.decision_maker === true && (m.status ?? 'active') !== 'dormant');
-            res.json({ decision_makers, members });
+            res.json({ decision_makers, members, policy: db.getStakeholderPolicy(), project_policy: null,
+                proposals: db.listStakeholderProposals(req.params.id) });
         } catch (error) {
             console.error('Error listing stakeholders:', error);
-            res.status(500).json({ error: 'Failed to list stakeholders' });
+            respondError(res, error);
         }
     });
 
@@ -66,7 +95,15 @@ function createStakeholderRouters({ db }) {
     router.get('/:id/requests', async (req, res) => {
         const status = typeof req.query.status === 'string' && req.query.status ? req.query.status : 'pending';
         try {
-            const tasks = await db.listStakeholderRequests(req.params.id, { status });
+            const tasks = await db.listStakeholderRequests(req.params.id, { status: 'all' });
+            const proposals = new Map(db.listStakeholderProposals(req.params.id).map(proposal => [proposal.task_id, proposal]));
+            // Registry survives metadata removal and preserves exact original project scope.
+            for (const proposal of proposals.values()) {
+                if (!tasks.some(t => t.id === proposal.task_id)) {
+                    const task = await db.getTask(proposal.task_id);
+                    if (task) tasks.push(task);
+                }
+            }
             const requests = tasks.map((t) => ({
                 id: t.id,
                 name: t.name,
@@ -76,12 +113,17 @@ function createStakeholderRouters({ db }) {
                 source: t.source ?? null,
                 created_at: t.created_at,
                 updated_at: t.updated_at ?? null,
-                gate: t.metadata.stakeholder_gate,
+                gate: t.metadata?.stakeholder_gate,
+                // A moved task may have a proposal bound to another project. Read
+                // uncached tasks to preserve the exact-project filter below.
+                proposal: proposals.get(t.id) ?? db.getStakeholderProposal(t.id),
             }));
-            res.json({ requests });
+            res.json({ requests: requests.filter(r => (!r.proposal || r.proposal.project_id === req.params.id) && (status === 'all' || (r.proposal
+                ? (status === 'pending' ? ['proposed', 'deferred', 'invalidated'].includes(r.proposal.state) : r.proposal.state === status)
+                : r.gate?.status === status))), policy: db.getStakeholderPolicy(), project_policy: null });
         } catch (error) {
             console.error('Error listing stakeholder requests:', error);
-            res.status(500).json({ error: 'Failed to list requests' });
+            respondError(res, error);
         }
     });
 
@@ -97,6 +139,12 @@ function createStakeholderRouters({ db }) {
         try {
             const task = await db.getTask(req.params.taskId);
             if (!task) return res.status(404).json({ error: 'Task not found' });
+            if (db.getStakeholderProposal(task.id) || ['invitation', 'scope_change'].includes(reservedKind(task))) {
+                const authority = requireStakeholderAuthority(req, 'operator');
+                const proposal = db.decideStakeholderProposal(task.id, req.body, authority);
+                const updated = await db.getTask(task.id);
+                return res.json({ success: true, task: updated, gate: updated.metadata.stakeholder_gate, proposal });
+            }
             const gate = task.metadata && typeof task.metadata === 'object' ? task.metadata.stakeholder_gate : null;
             if (!gate || typeof gate !== 'object') {
                 return res.status(409).json({ error: 'Task has no stakeholder gate' });
@@ -140,8 +188,7 @@ function createStakeholderRouters({ db }) {
             }
             res.json({ success: true, task: updated, gate: nextGate });
         } catch (error) {
-            console.error('Error applying stakeholder decision:', error);
-            res.status(500).json({ error: 'Failed to apply decision' });
+            respondError(res, error);
         }
     });
 

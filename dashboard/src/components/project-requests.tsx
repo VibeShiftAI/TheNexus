@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { StakeholderProposalReview } from "./stakeholder-proposal-review";
 import { ChevronDown, ChevronUp, ExternalLink, Inbox, RefreshCw } from "lucide-react";
 import { HudPanel } from "@/components/bridge/hud";
 import { timeAgo } from "@/components/pulse-visuals";
@@ -25,6 +26,8 @@ import {
   type StakeholderDecision,
   type StakeholderGate,
 } from "@/lib/nexus";
+
+import { getProjectStakeholderPolicy, type StakeholderPolicy } from "@/lib/nexus/stakeholders";
 
 type GateStatus = StakeholderGate["status"];
 type Decision = StakeholderDecision["decision"];
@@ -60,6 +63,7 @@ export function ProjectRequests({
   onChanged?: () => void;
 }) {
   const [requests, setRequests] = useState<ProjectRequest[]>([]);
+  const [policy, setPolicy] = useState<StakeholderPolicy | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +93,14 @@ export function ProjectRequests({
     void reload();
   }, [reload]);
 
-  const pendingCount = requests.filter((r) => r.gate?.status === "pending").length;
+  useEffect(() => {
+    let active = true;
+    setPolicy(null);
+    getProjectStakeholderPolicy(projectId).then(value => { if (active) setPolicy(value); }).catch(() => {});
+    return () => { active = false; };
+  }, [projectId]);
+
+  const pendingCount = requests.filter((r) => r.proposal ? ["proposed", "deferred", "invalidated"].includes(r.proposal.state) : r.gate?.status === "pending").length;
 
   return (
     <HudPanel
@@ -123,6 +134,15 @@ export function ProjectRequests({
         </>
       }
     >
+      <div className="mb-3 rounded border border-slate-700 p-3 text-xs text-slate-300">
+        <p className="font-semibold">General stakeholder policy</p>
+        {policy ? <>
+          <p className="mt-1">Independent preparation: {policy.independent.map(value => value.replaceAll("_", " ")).join(", ")}.</p>
+          <p className="mt-1">Robert approval required: {policy.requires_robert.map(value => value.replaceAll("_", " ")).join(", ")}. Directory membership does not establish invitation or acceptance.</p>
+          <details className="mt-1"><summary>Operating boundaries</summary>{policy.boundaries.map(text => <p key={text} className="mt-1">{text}</p>)}</details>
+          <p className="mt-1">No separate project-specific policy is recorded.</p>
+        </> : <p>Policy unavailable. Reserved actions still require Robert approval.</p>}
+      </div>
       {error && <p className="mb-2 text-xs text-amber-400">{error}</p>}
       {loading && !error && <p className="text-[11px] text-slate-600">Loading…</p>}
 
@@ -136,7 +156,10 @@ export function ProjectRequests({
 
       {requests.length > 0 && (
         <div className="space-y-2">
-          {requests.map((r) => (
+          {requests.map((r) => r.proposal ? (
+            <StakeholderProposalReview key={r.id} name={r.name} proposal={r.proposal}
+              onDecided={() => { void reload(); onChangedRef.current?.(); }} />
+          ) : (
             <RequestRow
               key={r.id}
               request={r}

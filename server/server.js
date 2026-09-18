@@ -191,6 +191,10 @@ app.use('/api/dispatches', dispatchesRouter);
 // ceilings/cost/verdicts, and the kill relay. Mounted after dispatches so the
 // task_dispatches table exists by the time this router reads it.
 app.use('/api/dispatch-insight', require('./routes/dispatch-insight')());
+// Slate lifecycle: drafted → approved → attempted → verified for the day's
+// slate, read from Praxis's schedule file so a stage that has stalled (the
+// 2026-08-24 never-approved slate) is visible on the board.
+app.use('/api/slate', require('./routes/slate')());
 
 // Projects & tasks
 // Pulse first: the projects router's GET /:id would otherwise swallow /pulse.

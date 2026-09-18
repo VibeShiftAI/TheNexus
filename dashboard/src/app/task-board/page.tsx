@@ -29,6 +29,7 @@ import {
   type DispatchEligibilityResponse,
   type TaskEligibility,
 } from "@/lib/dispatch-insight";
+import { SlateLifecycleStrip } from "@/components/slate-lifecycle-strip";
 import { TaskEditModal, STATUS_OPTIONS } from "@/components/task-edit-modal";
 import {
   BOARD_LANES,
@@ -369,6 +370,10 @@ export default function TaskBoardPage() {
             </div>
           </div>
         )}
+
+        {/* Above containment on purpose: "was the slate ever approved" comes
+            before "can the fleet dispatch it". */}
+        <SlateLifecycleStrip />
 
         {eligibility && <ContainmentStrip eligibility={eligibility} />}
 

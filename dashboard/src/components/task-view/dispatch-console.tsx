@@ -25,6 +25,7 @@ import {
   ChevronRight,
   CornerDownRight,
   KeyRound,
+  ListChecks,
   Loader2,
   MessageSquareText,
   Rocket,
@@ -53,6 +54,13 @@ import {
   type TaskDispatchInsight,
   type UsageRollup,
 } from "@/lib/dispatch-insight";
+import {
+  describeCompletenessCeiling,
+  describeTraceGaps,
+  formatAuditCompleteness,
+  formatTraceCompleteness,
+  type TraceQuality,
+} from "@/lib/run-trace";
 import {
   DEFAULT_EXECUTOR,
   EXECUTOR_OPTIONS,
@@ -123,6 +131,45 @@ const VERDICT_STYLES: Record<string, string> = {
   partial: "border-amber-500/40 bg-amber-500/10 text-amber-300",
   unverified: "border-rose-500/40 bg-rose-500/10 text-rose-300",
 };
+
+/**
+ * Task-level audit-trace completeness: the control-effectiveness measure from
+ * the run-trace contract (docs/contracts/run-trace.md).
+ *
+ * Shown with its denominator and with the ceiling that the fleet's own
+ * instrumentation gaps impose. Without that second sentence a reader takes
+ * 75% as a fault in this task's runs, when it is the two fields nothing in
+ * the fleet records at all.
+ */
+function TraceCompletenessChip({ quality }: { quality: TraceQuality | null | undefined }) {
+  const audit = quality?.controlEffectiveness?.auditTraceCompleteness;
+  if (!audit) return null;
+  const ceiling = describeCompletenessCeiling(quality);
+  const scored = audit.scoredRuns > 0 && audit.mean != null;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5"
+      title={[
+        formatAuditCompleteness(quality),
+        ceiling,
+        "Every run is reported against a fixed eight-field list (run ID, agent or workflow version, model calls, tool calls, retries, approvals, errors, final outcome). A field is either observed or unknown with a reason; nothing defaults to zero.",
+      ].filter(Boolean).join(" ")}
+    >
+      <ListChecks size={12} className="text-slate-500" />
+      Trace{" "}
+      {scored ? (
+        <span className="font-semibold text-slate-200">{Math.round(audit.mean! * 100)}% complete</span>
+      ) : (
+        <span className="font-semibold text-slate-400">unscored</span>
+      )}
+      {scored && (
+        <span className="text-slate-500">
+          · {audit.scoredRuns} finished run{audit.scoredRuns === 1 ? "" : "s"}
+        </span>
+      )}
+    </span>
+  );
+}
 
 function VerdictChip({ verification }: { verification: RunVerification }) {
   const style = VERDICT_STYLES[verification.verdict] || VERDICT_STYLES.unverified;
@@ -203,6 +250,7 @@ function GovernanceStrip({ insight }: { insight: TaskDispatchInsight }) {
         </span>
       )}
       <UsageRollupChip rollup={insight.usageRollup} />
+      <TraceCompletenessChip quality={insight.traceQuality} />
       {insight.latestVerification ? (
         <span className="inline-flex items-center gap-1.5">
           Accepted outcome <VerdictChip verification={insight.latestVerification} />
@@ -966,6 +1014,17 @@ function DispatchRow({
             title={insight.guardrails.map((g) => `${g.label}: ${g.detail || ""}`).join("\n")}
           >
             <ShieldAlert size={11} /> {insight.guardrails.length}
+          </span>
+        )}
+        {insight?.runTrace && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[11px] font-semibold text-slate-400 tabular-nums"
+            title={[formatTraceCompleteness(insight.runTrace), describeTraceGaps(insight.runTrace)]
+              .filter(Boolean)
+              .join(" · ")}
+          >
+            <ListChecks size={11} />
+            {insight.runTrace.completeness.observedFields}/{insight.runTrace.completeness.requiredFields}
           </span>
         )}
         {insight?.canKill && <KillButton taskId={taskId} dispatchId={dispatch.id} onKilled={onRefresh} />}

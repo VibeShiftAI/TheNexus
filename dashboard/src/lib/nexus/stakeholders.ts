@@ -40,6 +40,7 @@ export interface ProjectRequest {
     updated_at?: string;
     source?: string;
     gate: StakeholderGate;
+    proposal?: ReservedStakeholderProposal | null;
 }
 
 /** Requests awaiting (or past) a PDM/operator decision. `pending` = gate still open. */
@@ -196,3 +197,41 @@ export function stakeholderReportPreviewUrl(htmlFile?: string | null): string | 
     return `/api/praxis/report/${path}`;
 }
 
+
+/** Reserved-action contract v1. Generic gate labels are never execution authority. */
+export interface StakeholderPolicy {
+    id: string;
+    independent: string[];
+    requires_robert: string[];
+    boundaries: string[];
+}
+export interface ReservedStakeholderProposal {
+    task_id: string;
+    project_id: string;
+    kind: "invitation" | "scope_change";
+    member_id: string | null;
+    member: { name: string; email: string | null } | null;
+    revision: number;
+    content_hash: string;
+    state: string;
+    content: Record<string, unknown>;
+    project_snapshot: Record<string, unknown>;
+    decisions: Record<string, unknown>[];
+    events: Record<string, unknown>[];
+    history: Record<string, unknown>[];
+    revisions: Record<string, unknown>[];
+}
+export async function getProjectStakeholderPolicy(projectId: string): Promise<StakeholderPolicy> {
+    const res = await authFetch(`/api/projects/${encodeURIComponent(projectId)}/stakeholder-policy`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Policy unavailable');
+    return data.policy;
+}
+export async function decideReservedStakeholderProposal(proposal: ReservedStakeholderProposal, decision: 'approve' | 'reject' | 'defer', operatorKey: string): Promise<void> {
+    const res = await authFetch(`/api/tasks/${encodeURIComponent(proposal.task_id)}/stakeholder-decision`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${operatorKey}` },
+        body: JSON.stringify({ decision, revision: proposal.revision, content_hash: proposal.content_hash }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Decision failed');
+}

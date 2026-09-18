@@ -6,6 +6,8 @@
  * kill relay. Same direct-fetch pattern as lib/dispatches.ts.
  */
 
+import type { RunTrace, TraceQuality } from "./run-trace";
+
 export type EligibilityReasonCode =
   | "queued"
   | "predecessors_incomplete"
@@ -113,6 +115,11 @@ export interface RunInsight {
   usageUnknown: { reason: UsageUnknownReason; detail: string } | null;
   verification: RunVerification | null;
   guardrails: RunGuardrailEvent[];
+  /**
+   * This run reported against the standard run-trace field list, with each
+   * field either observed or unknown-with-a-reason (lib/run-trace.ts).
+   */
+  runTrace: RunTrace;
   canKill: boolean;
 }
 
@@ -152,6 +159,12 @@ export interface TaskDispatchInsight {
    * `runs.length` and is the authoritative count of the task's runs.
    */
   usageRollup: UsageRollup;
+  /**
+   * Decision-quality, execution-reliability and control-effectiveness
+   * measures over the task's runs, including audit-trace completeness.
+   * Computed over the COMPLETE dispatch history, same as `usageRollup`.
+   */
+  traceQuality: TraceQuality;
   runs: RunInsight[];
 }
 

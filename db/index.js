@@ -18,6 +18,7 @@ const { initializeMemberMemory, createMemberMemoryLedger } = require('./member-m
 const { initializeMemberProfileProposals, createMemberProfileProposals } = require('./member-profile-proposals');
 const { captureMemberDirectoryChange } = require('./member-directory-memory');
 const { migrateUsageStats } = require('./usage-stats-migration');
+const { initializeStakeholderPolicy, createStakeholderPolicy } = require('./stakeholder-policy');
 const { initializeDocumentReviews, createDocumentReviewStore } = require('./document-reviews');
 
 /**
@@ -51,6 +52,7 @@ let db;
 let memberMemory;
 let memberProfileProposals;
 let documentReviews;
+let stakeholderPolicy;
 try {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
@@ -78,6 +80,8 @@ try {
     initializeMemberProfileProposals(db);
     memberProfileProposals = createMemberProfileProposals(db, memberMemory);
     runStakeholderMigrations(db);
+    initializeStakeholderPolicy(db);
+    stakeholderPolicy = createStakeholderPolicy(db);
     initializeDocumentReviews(db);
     documentReviews = createDocumentReviewStore(db);
 
@@ -3251,6 +3255,13 @@ async function deleteCalendarEvent(eventId) {
 // EXPORTS
 // ============================================================================
 
+function requireStakeholderPolicy() {
+    if (!db || !stakeholderPolicy) {
+        throw Object.assign(new Error('Stakeholder policy database unavailable'), { status: 503 });
+    }
+    return stakeholderPolicy;
+}
+
 module.exports = {
     isDatabaseEnabled,
     testConnection,
@@ -3379,6 +3390,12 @@ module.exports = {
     observeContact,
     // Stakeholder governance
     listStakeholderRequests,
+    getStakeholderPolicy: () => requireStakeholderPolicy().policy(),
+    getStakeholderProposal: id => requireStakeholderPolicy().read(id),
+    listStakeholderProposals: id => requireStakeholderPolicy().list(id),
+    proposeStakeholderAction: (id, input) => requireStakeholderPolicy().propose(id, input),
+    decideStakeholderProposal: (id, input, authority) => requireStakeholderPolicy().decide(id, input, authority),
+    recordStakeholderReceipt: (id, input) => requireStakeholderPolicy().receipt(id, input),
     // Chat Conversations & Messages (persistent Praxis chat history)
     getChatConversations,
     getActiveConversation,

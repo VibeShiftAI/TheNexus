@@ -6,7 +6,8 @@ import { useArrivalPulse } from "@/hooks/use-arrival-pulse";
 import { useRouter } from "next/navigation";
 import { getActivity, getActivityEvents, Activity, ActivityEvent } from "@/lib/nexus";
 import { useLiveRefetch } from "@/components/live-board-state";
-import { GitCommit, Clock, Cpu, Coins, ChevronRight, FileX2, User, Radio, AlertTriangle, Siren, ChevronDown } from "lucide-react";
+import { GitCommit, Clock, Cpu, Coins, ChevronRight, FileX2, User, Radio, AlertTriangle, Siren, ChevronDown, ListChecks } from "lucide-react";
+import { formatTraceCompleteness, describeTraceGaps } from "@/lib/run-trace";
 
 // Compact token count: 12345 → "12.3k", 2_000_000 → "2M".
 function formatTokens(n: number) {
@@ -245,6 +246,22 @@ function CommitRow({ commit, onOpenLogs }: { commit: Activity; onOpenLogs: (a: A
                             <Coins size={9} className="shrink-0" />—
                         </span>
                     )}
+                    {/* How completely this activity's run is traced, against the
+                        standard field list. Always "n of 8", never a bare
+                        score: the tooltip names the missing fields and why,
+                        so a low number reads as a telemetry gap with a cause
+                        rather than as a verdict on the run. */}
+                    {commit.runTrace ? (
+                        <span
+                            className="inline-flex items-center gap-1 rounded border border-slate-700 bg-slate-800/60 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 tabular-nums"
+                            title={[formatTraceCompleteness(commit.runTrace), describeTraceGaps(commit.runTrace)]
+                                .filter(Boolean)
+                                .join(" · ")}
+                        >
+                            <ListChecks size={9} className="shrink-0" />
+                            {commit.runTrace.completeness.observedFields}/{commit.runTrace.completeness.requiredFields}
+                        </span>
+                    ) : null}
                     {/* Drill-down affordance — logs to open, or a clear no-logs state */}
                     {hasLogs ? (
                         <span className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-medium text-cyan-400/50 transition-colors group-hover:text-cyan-300">

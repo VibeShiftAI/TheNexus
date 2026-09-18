@@ -36,6 +36,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const simpleGit = require('simple-git');
+const { buildRunTrace } = require('../services/run-trace');
 
 // Names/emails that mark a commit trailer as belonging to an AI executor, so
 // the Recent Activity Feed can attribute a commit to the model that authored it.
@@ -185,6 +186,51 @@ function correlateDispatch(commitDate, dispatches) {
         dispatchId: best.id || null,
         taskId: best.task_id || null,
     };
+}
+
+/**
+ * The standard run-trace (services/run-trace.js) for one activity row.
+ *
+ * The feed is the attribution surface, so it reports against the same field
+ * list the dispatch console does; it just sees less, and the trace says which
+ * fields it did not look at rather than leaving them blank:
+ *
+ *   - RETRIES are unknown here on purpose. Retry depth is a claim about a
+ *     task's COMPLETE dispatch history, and this handler holds a rolling
+ *     window of recent rows across every project. Counting attempts inside
+ *     that window would report attempt 9 as attempt 2 whenever the older rows
+ *     have aged out, which is worse than an honest unknown.
+ *   - APPROVALS are unknown here because the feed never opens Praxis's
+ *     run-events spine (the console does, per run), so `not_queried` names
+ *     where the answer lives instead of implying none exists.
+ *
+ * A commit with no dispatch behind it gets the "no run to trace" trace, which
+ * is a different thing from a run whose telemetry went missing.
+ *
+ * `trailerModel` is the PRECISE model name off the commit's own Model:/
+ * Co-Authored-By: trailer, and wins over the dispatch row for the same reason
+ * the feed's own model chip prefers it. The executor-derived label ("Codex",
+ * "Gemini") is deliberately NOT passed: it names which agent ran, not which
+ * version of it, which is exactly what the field list excludes.
+ *
+ * @param {object|null} run  The matched task_dispatches row, or null.
+ * @param {string|null} trailerModel  Precise model from the commit trailer, if any.
+ */
+function activityRunTrace(run, trailerModel = null) {
+    if (!run) return buildRunTrace({ dispatchMatched: false });
+    return buildRunTrace({
+        dispatchId: run.id || null,
+        executor: run.executor || null,
+        model: trailerModel || run.model || null,
+        outcome: run.outcome || null,
+        tokens: typeof run.tokens === 'number' ? run.tokens : null,
+        tokensEstimated: !!run.tokens_estimated,
+        attempts: null,
+        approvalChannelReadable: false,
+        approvalChannelReason: 'not_queried',
+        error: run.error || null,
+        guardrails: [],
+    });
 }
 
 function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, getRecentDispatches }) {
@@ -838,12 +884,16 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         // commit can be attributed to the real executor/model + token count the
         // orchestrator recorded, rather than trailer text executors rarely write.
         const dispatchesByProject = new Map();
+        // Same rows keyed by id, so a correlated commit can report the run's
+        // standard run-trace without a second pass over the bucket.
+        const dispatchById = new Map();
         try {
             const rows = typeof getRecentDispatches === 'function' ? (getRecentDispatches(300) || []) : [];
             for (const row of rows) {
                 if (!row.project_id) continue;
                 if (!dispatchesByProject.has(row.project_id)) dispatchesByProject.set(row.project_id, []);
                 dispatchesByProject.get(row.project_id).push(row);
+                if (row.id) dispatchById.set(row.id, row);
             }
         } catch (e) {
             console.warn('[Activity] Could not load dispatch attribution:', e.message);
@@ -872,7 +922,13 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                     // logs. Null when nothing matched → the row has no logs to show.
                     const dispatchId = matched.dispatchId;
                     const taskId = matched.taskId;
-                    activities.push({ projectId: project.id, projectName: project.name, type: 'commit', hash: commit.hash, message: commit.message, author: commit.author_name, date: commit.date, model, modelInferred, tokens, tokensEstimated, dispatchId, taskId });
+                    // The standard run-trace field list, reported against the
+                    // run behind this activity (services/run-trace.js).
+                    const runTrace = activityRunTrace(
+                        dispatchId ? dispatchById.get(dispatchId) : null,
+                        trailer.model,
+                    );
+                    activities.push({ projectId: project.id, projectName: project.name, type: 'commit', hash: commit.hash, message: commit.message, author: commit.author_name, date: commit.date, model, modelInferred, tokens, tokensEstimated, dispatchId, taskId, runTrace });
                 }
             } catch (error) {
                 if (!error.message?.includes('does not have any commits')) console.warn(`[Activity] Could not get log for ${project.name}: ${error.message}`);
@@ -920,3 +976,4 @@ module.exports = createProjectsRouter;
 module.exports.deriveActivityAttribution = deriveActivityAttribution;
 module.exports.correlateDispatch = correlateDispatch;
 module.exports.executorModelLabel = executorModelLabel;
+module.exports.activityRunTrace = activityRunTrace;

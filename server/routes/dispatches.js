@@ -354,7 +354,7 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
     // layer in projects.js falls back to an executor-derived label so a row is
     // never blank just because the writer skipped the model column.)
     const recentDispatchesNoJoinStmt = db.prepare(`
-        SELECT id, task_id, project_id, executor, model, tokens, tokens_estimated, outcome, started_at, completed_at
+        SELECT id, task_id, project_id, executor, model, tokens, tokens_estimated, outcome, started_at, completed_at, error
         FROM task_dispatches
         WHERE project_id IS NOT NULL
         ORDER BY started_at DESC
@@ -381,7 +381,7 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
                         SELECT d.id, d.task_id,
                                COALESCE(d.project_id, t.project_id) AS project_id,
                                d.executor, d.model, d.tokens, d.tokens_estimated,
-                               d.outcome, d.started_at, d.completed_at
+                               d.outcome, d.started_at, d.completed_at, d.error
                         FROM task_dispatches d
                         LEFT JOIN tasks t ON t.id = d.task_id
                         WHERE COALESCE(d.project_id, t.project_id) IS NOT NULL

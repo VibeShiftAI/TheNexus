@@ -3,6 +3,7 @@ import type { TaskStatus } from './tasks';
 import { API_URL, authFetch } from './shared';
 import type { Task } from './tasks';
 import type { ProjectCommsSettings, ReportTemplate } from '@praxis/contract';
+import type { RunTrace } from '../run-trace';
 
 // ═══════════════════════════════════════════════════════════════
 // PROJECT TYPES
@@ -293,6 +294,12 @@ export interface Activity {
     dispatchId?: string | null;
     /** Task the correlated dispatch belongs to — the Log Viewer is scoped to it. */
     taskId?: string | null;
+    /**
+     * This activity reported against the standard run-trace field list
+     * (lib/run-trace.ts). The feed sees fewer fields than the dispatch console
+     * does and says which ones it did not read, rather than leaving them blank.
+     */
+    runTrace?: RunTrace | null;
 }
 
 /**

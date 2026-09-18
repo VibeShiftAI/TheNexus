@@ -41,6 +41,7 @@ const path = require('path');
 const { execFile } = require('child_process');
 const { isTaskDone, TaskBoardStatusSchema, LEGACY_TASK_STATUS_MAP } = require('@praxis/contract');
 const { praxisFetch } = require('../services/praxis-client');
+const { buildRunTrace, summarizeTraceQuality } = require('../services/run-trace');
 const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 
 const DEFAULT_DB_PATH = resolveNexusDbPath();
@@ -394,6 +395,63 @@ function createDispatchInsightRouter({
             console.warn(`[DispatchInsight] spine read failed (${err.message})`);
             return null;
         }
+    }
+
+    // Adjudication + stale-state counts for one task, read off the Praxis
+    // operational-event log the board already stores. These are the
+    // task-level signals a per-run trace cannot carry: the QA loop writes
+    // them against the task, not against any one dispatch row.
+    //
+    // Named honestly. The source's measures are "human rejection rate" and
+    // "human correction rate"; what this fleet can count is a DIFFERENT-MODEL
+    // QA agent's verdicts, so they are reported as reviewer measures and the
+    // human ones stay unknown (see summarizeTraceQuality). `qa_improvement_
+    // requested` is a failed round, `task_correction_redispatch` is the
+    // correction that followed, and the denominator is the set of rounds that
+    // actually produced a verdict (passed + failed), not every dispatch.
+    //
+    // ag_events is absent from dispatch-only test DBs; every count degrades
+    // to null there, which the trace reports as not_recorded rather than 0.
+    const TRACE_SIGNAL_EVENTS = {
+        rejected: 'qa_improvement_requested',
+        passed: 'task_qa_passed',
+        corrected: 'task_correction_redispatch',
+        // A run the CLI gate lost track of and had to reconcile: the fleet's
+        // own stale-state failure, alongside the boot reconciliations the
+        // spine records.
+        stalled: 'cli_gate_stall_requires_reconciliation',
+    };
+
+    // ag_events is missing only in dispatch-only test DBs, and the console
+    // polls this endpoint every 6s while a run is live: warn once, not once
+    // per poll.
+    let warnedNoEventLog = false;
+
+    function readTraceSignals(taskId, spineReconciliations = 0) {
+        let byType;
+        try {
+            byType = new Map(
+                db.prepare(
+                    'SELECT event_type, COUNT(*) AS n FROM ag_events WHERE task_id = ? GROUP BY event_type',
+                ).all(taskId).map((r) => [r.event_type, r.n]),
+            );
+        } catch (err) {
+            if (!warnedNoEventLog) {
+                warnedNoEventLog = true;
+                console.warn(`[DispatchInsight] trace signals unavailable (${err.message})`);
+            }
+            return { staleStateFailures: spineReconciliations || null };
+        }
+        const n = (key) => byType.get(TRACE_SIGNAL_EVENTS[key]) || 0;
+        const adjudicatedRuns = n('passed') + n('rejected');
+        return {
+            reviewerRejections: n('rejected'),
+            reviewerCorrections: n('corrected'),
+            // A rate needs a denominator that exists: a task no reviewer ever
+            // saw has no rejection rate, not a rate of zero.
+            adjudicatedRuns: adjudicatedRuns > 0 ? adjudicatedRuns : null,
+            staleStateFailures: n('stalled') + (spineReconciliations || 0),
+        };
     }
 
     // Both read endpoints need the Praxis snapshot and the console polls at
@@ -774,17 +832,21 @@ function createDispatchInsightRouter({
         let usageRows;
         try {
             dispatches = db.prepare(`
-                SELECT id, executor, model, tokens, tokens_estimated, outcome, started_at, completed_at
+                SELECT id, executor, model, tokens, tokens_estimated, outcome, started_at, completed_at, error
                 FROM task_dispatches WHERE task_id = ?
                 ORDER BY started_at DESC, created_at DESC LIMIT ?
             `).all(taskId, RUN_PAGE);
             // Coverage is a claim about the WHOLE task, so it is computed over
-            // the whole task: deliberately no LIMIT here. Two columns per row
-            // on a task-id lookup, against a page of runs that is capped at
-            // RUN_PAGE for display only.
-            usageRows = db.prepare(
-                'SELECT model, tokens FROM task_dispatches WHERE task_id = ?',
-            ).all(taskId);
+            // the whole task: deliberately no LIMIT here, against a page of
+            // runs that is capped at RUN_PAGE for display only. The run-trace
+            // roll-up obeys the same rule for the same reason, and retry depth
+            // cannot be read off a page at all (attempt 9 looks like attempt 1
+            // once the older rows fall off), so this reader now carries every
+            // column a trace needs rather than the two the cost sum needed.
+            usageRows = db.prepare(`
+                SELECT id, executor, model, tokens, tokens_estimated, outcome, started_at, completed_at, error
+                FROM task_dispatches WHERE task_id = ?
+            `).all(taskId);
         } catch (err) {
             console.error('[DispatchInsight] task read failed:', err.message);
             return res.status(500).json({ error: 'Failed to read task insight: ' + err.message });
@@ -857,16 +919,21 @@ function createDispatchInsightRouter({
         }
 
         const now = Date.now();
-        const runs = dispatches.map((d) => {
-            const started = toTime(d.started_at);
-            const completed = toTime(d.completed_at);
-            const end = completed ?? now;
-            const elapsedMs = started != null && end >= started ? end - started : null;
-            const running = d.outcome === 'running';
 
-            const windowStart = started != null ? started - 60_000 : null;
-            const windowEnd = end + 60_000;
-            const guardrails = [
+        // Every run start the task has ever had, oldest first. Retry depth and
+        // verification ownership are both claims about the task's WHOLE
+        // history: read off the display page, attempt 9 reads as attempt 1 and
+        // a verdict written after a run that fell off the page lands on the
+        // wrong row. usageRows is the unlimited reader, so both derive from it.
+        const historyAsc = [...usageRows].sort(
+            (a, b) => (toTime(a.started_at) ?? 0) - (toTime(b.started_at) ?? 0),
+        );
+        const allStarts = historyAsc.map((r) => toTime(r.started_at)).filter((t) => t != null);
+        // 1-based attempt number per dispatch id, over the complete history.
+        const attemptById = new Map(historyAsc.map((r, i) => [r.id, i + 1]));
+
+        function guardrailsFor(d, windowStart, windowEnd) {
+            return [
                 ...incidents
                     .filter((inc) => {
                         if (inc.reason && inc.reason.includes(taskId)) return true;
@@ -880,17 +947,68 @@ function createDispatchInsightRouter({
                     return at != null && windowStart != null && at >= windowStart && at <= windowEnd;
                 }),
             ].sort((a, b) => String(a.at).localeCompare(String(b.at)));
+        }
 
-            // A verification record belongs to the latest run that started
-            // before it was written (QA finalizes after the run completes).
-            const verification = verifications.find((v) => {
+        // A verification record belongs to the latest run that started
+        // before it was written (QA finalizes after the run completes).
+        function verificationFor(started) {
+            return verifications.find((v) => {
                 const ts = toTime(v.ts);
                 if (ts == null || started == null || ts < started) return false;
-                const newerRunStart = dispatches
-                    .map((o) => toTime(o.started_at))
-                    .filter((s) => s != null && s > started && s <= ts);
-                return newerRunStart.length === 0;
+                return !allStarts.some((s) => s > started && s <= ts);
             }) || null;
+        }
+
+        /**
+         * One run's standard run-trace (services/run-trace.js).
+         *
+         * The approval channel is the spine: when it could not be read, the
+         * trace says so rather than reporting "no approvals", because a run
+         * whose verdict is unseen and a run that was never adjudicated are
+         * different facts. Retry depth is passed only from the complete
+         * history above, never from the page.
+         */
+        function traceFor(d) {
+            const started = toTime(d.started_at);
+            const end = toTime(d.completed_at) ?? now;
+            const windowStart = started != null ? started - 60_000 : null;
+            const attempt = attemptById.get(d.id) ?? null;
+            const verification = verificationFor(started);
+            return buildRunTrace({
+                dispatchId: d.id,
+                executor: d.executor,
+                model: d.model,
+                outcome: d.outcome,
+                tokens: typeof d.tokens === 'number' ? d.tokens : null,
+                tokensEstimated: d.tokens_estimated === 1,
+                attempts: attempt != null
+                    ? { attempt, priorAttempts: attempt - 1 }
+                    : null,
+                approvals: verification
+                    ? [{ kind: 'verification', at: verification.ts, verdict: verification.verdict, basis: verification.basis }]
+                    : [],
+                approvalChannelReadable: spineAvailable,
+                error: d.error ?? null,
+                guardrails: guardrailsFor(d, windowStart, end + 60_000),
+            });
+        }
+
+        // Built once per row and shared: the display page below and the
+        // task-level roll-up want the same trace, and verification ownership
+        // is an O(verdicts x runs) scan that should not be paid twice.
+        const traceById = new Map(historyAsc.map((d) => [d.id, traceFor(d)]));
+
+        const runs = dispatches.map((d) => {
+            const started = toTime(d.started_at);
+            const completed = toTime(d.completed_at);
+            const end = completed ?? now;
+            const elapsedMs = started != null && end >= started ? end - started : null;
+            const running = d.outcome === 'running';
+
+            const windowStart = started != null ? started - 60_000 : null;
+            const windowEnd = end + 60_000;
+            const guardrails = guardrailsFor(d, windowStart, windowEnd);
+            const verification = verificationFor(started);
 
             // This row's own ceiling: the run record's real value only for
             // the row the record describes; the assumed default everywhere
@@ -925,9 +1043,21 @@ function createDispatchInsightRouter({
                 })(),
                 verification,
                 guardrails,
+                // The standard run-trace field list (services/run-trace.js),
+                // reported against this run: every field either observed or
+                // explicitly unknown with its reason, plus this run's
+                // audit-trace completeness.
+                runTrace: traceById.get(d.id) ?? traceFor(d),
                 canKill: running,
             };
         });
+
+        // Task-level trace quality, over the COMPLETE dispatch history rather
+        // than the page above, for the same reason usageRollup is.
+        const traceQuality = summarizeTraceQuality(
+            [...traceById.values()],
+            readTraceSignals(taskId, reconciliations.length),
+        );
 
         res.json({
             taskId,
@@ -942,6 +1072,10 @@ function createDispatchInsightRouter({
             // can legitimately exceed `runs.length` on a task with more than
             // RUN_PAGE runs.
             usageRollup: summarizeRunUsage(usageRows),
+            // Decision-quality, execution-reliability and control-effectiveness
+            // measures over this task's runs, including audit-trace
+            // completeness. Same complete-history rule as usageRollup.
+            traceQuality,
             runs,
         });
     });
