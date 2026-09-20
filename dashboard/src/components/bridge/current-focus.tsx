@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, Activity, RefreshCw, Loader2, Clock3 } from 'lucide-react';
 import { HudModal } from './hud';
-import type { FocusItem, FocusStatus, FocusView } from '@/lib/current-focus';
+import { stages, type FocusItem, type FocusStatus, type FocusView } from '@/lib/current-focus';
 
 const colors:Record<FocusStatus,string>={running:'border-cyan-500/30 text-cyan-300 bg-cyan-500/5',queued:'border-amber-500/25 text-amber-300 bg-amber-500/5',quota:'border-violet-500/30 text-violet-300 bg-violet-500/5',awaiting_input:'border-amber-500/30 text-amber-300 bg-amber-500/5',blocked:'border-rose-500/30 text-rose-300 bg-rose-500/5',unconfirmed:'border-slate-700 text-slate-400 bg-slate-900/40'};
 const stateLabels:Record<FocusStatus,string>={running:'Running',queued:'Queued',quota:'Limit reset',awaiting_input:'Your input',blocked:'Needs attention',unconfirmed:'Board only'};
@@ -25,9 +25,15 @@ function FocusRow({item}:{item:FocusItem}) {
     <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
       <span className={item.status==='running'?'text-cyan-300':'text-slate-300'}>{item.stage}</span>
       <span className="text-slate-500">{item.executor??'Executor not reported'}</span>
-      <span className="break-all text-slate-500">{item.model??'Model not reported'}</span>
+      <span className="break-all text-slate-500" title={item.evidence.model.reason??undefined}>{item.model??`Model not reported: ${item.evidence.model.reason??'no reason recorded'}`}{item.model && item.evidence.model.source && item.evidence.model.source!=='run' && <span data-focus-model-source className="text-slate-600"> · {item.evidence.model.source}</span>}</span>
     </div>
+    {item.status==='running' && !item.evidence.phase.value && <p data-focus-phase-reason className="mt-1 text-[11px] leading-relaxed text-slate-500">Sub-phase not evidenced: {item.evidence.phase.reason}</p>}
     <p className="mt-1.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-300">{item.action??'No step detail reported yet.'}</p>
+    <p data-focus-lifecycle className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+      Last recorded: board {item.lifecycle.board??'status not reported'}{item.lifecycle.boardAt?` (${when(item.lifecycle.boardAt)})`:''}
+      {item.lifecycle.run?` · run ${item.lifecycle.run}${item.lifecycle.runPhase&&item.lifecycle.runPhase!==item.lifecycle.run?`, phase ${stages[item.lifecycle.runPhase]??item.lifecycle.runPhase}`:''} (${when(item.lifecycle.runAt)})`:' · no run recorded'}
+    </p>
+    {item.conflicts.length>0 && <ul data-focus-conflicts className="mt-1.5 space-y-0.5 text-[11px] leading-relaxed text-amber-300">{item.conflicts.map(c=><li key={c}>Feeds disagree: {c}</li>)}</ul>}
     {item.resumeAt && <p className="mt-2 flex items-start gap-1.5 text-xs text-violet-300"><Clock3 size={12} className="mt-0.5 shrink-0"/><span>Scheduled resume: {when(item.resumeAt)}{Date.parse(item.resumeAt)<=Date.now()?' · time reached; execution not yet confirmed':''}</span></p>}
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/60 pt-2 text-[11px] text-slate-500">
       <div className="flex flex-wrap gap-x-3 gap-y-1">
