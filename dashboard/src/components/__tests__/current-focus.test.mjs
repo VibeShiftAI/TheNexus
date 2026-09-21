@@ -40,3 +40,24 @@ test('input wait opens existing approval and keyboard focus stays in the panel',
     assert.equal(document.activeElement,buttons[0]);
   }finally{t.cleanup()}
 });
+test('a cached phase renders as Running with its reason, and the durable record and feed disagreements stay visible',()=>{
+  const staleView=deriveCurrentFocus({projects:[{id:'p',name:'Meeple Magnate',tasks:[{id:'t',name:'Improve card contrast',status:'in_progress',updated_at:'2026-09-07T11:00:00Z'}]}],
+    state:{executors:{runs:[{taskId:'t',title:'Improve card contrast',executor:'codex',phase:'testing',status:'active',startedAt:'2026-09-07T11:30:00Z',updatedAt:'2026-09-07T11:40:00Z'}],cliQueue:[{taskId:'t',executor:'codex',state:'claimed',enqueuedAt:'2026-09-07T11:35:00Z'}]}},now:Date.parse('2026-09-07T12:06:00Z')});
+  const t=setup({view:staleView});try{
+    const row=document.querySelector('[data-focus-task="t"]');
+    assert.match(row.textContent,/Running/);assert.doesNotMatch(row.querySelector('.text-cyan-300').textContent,/Testing/);
+    assert.match(row.querySelector('[data-focus-phase-reason]').textContent,/No phase report in the last 5 min/);
+    assert.match(row.querySelector('[data-focus-lifecycle]').textContent,/board in_progress/);assert.match(row.querySelector('[data-focus-lifecycle]').textContent,/run active, phase Testing/);
+    assert.match(row.querySelector('[data-focus-conflicts]').textContent,/Feeds disagree: queue entry \(claimed\)/);
+    assert.match(row.textContent,/Model not reported: No model reported by the run or by a saved session/);
+  }finally{t.cleanup()}
+});
+test('a session-derived model names its source inline, not only in a tooltip',()=>{
+  const sessionView=deriveCurrentFocus({projects:[{id:'p',name:'Meeple Magnate',tasks:[{id:'t',name:'Improve card contrast',status:'in_progress'}]}],
+    state:{executors:{runs:[{taskId:'t',title:'Improve card contrast',executor:'codex',phase:'testing',status:'active',startedAt:'2026-09-07T12:00:00Z',updatedAt:'2026-09-07T12:05:00Z'}],sessions:[{taskId:'t',executor:'codex',model:'gpt-6-astra',status:'open',lastUsedAt:'2026-09-07T12:00:00Z'}]}},now:Date.parse('2026-09-07T12:06:00Z')});
+  const t=setup({view:sessionView});try{
+    const row=document.querySelector('[data-focus-task="t"]');
+    assert.match(row.textContent,/gpt-6-astra · saved session/);
+    assert.equal(row.querySelector('[data-focus-model-source]').textContent,' · saved session');
+  }finally{t.cleanup()}
+});
