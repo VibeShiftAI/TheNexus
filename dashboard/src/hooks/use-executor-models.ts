@@ -62,6 +62,27 @@ export const DEFAULT_EXECUTOR: ExecutorName = "claude-code";
  *  minute scale (a usage window resets at a stated time), not the second. */
 const CREDENTIAL_POLL_MS = 60_000;
 
+/**
+ * Claude models on Praxis's routing ladder (GET /api/praxis/models/ladder-settings).
+ * The registry keeps one row per family ("Claude Opus"), so a ladder model that
+ * shares a family with another (Opus 5.5 beside Opus 5) never reaches it. Merging
+ * the ladder in keeps every model the router can pick assignable by hand.
+ */
+const LADDER_SETTINGS_ENDPOINT = "/api/praxis/models/ladder-settings";
+const LADDER_MODEL_LABELS: Record<string, string> = {
+  "claude-opus-5-5": "Claude Opus 5.5",
+  "claude-opus-5": "Claude Opus 5",
+  "claude-fable-5-1": "Claude Fable 5.1",
+};
+
+function withLadderModels(
+  registry: ExecutorModelOption[],
+  ladder: ExecutorModelOption[],
+): ExecutorModelOption[] {
+  const seen = new Set(registry.map((option) => option.id));
+  return [...registry, ...ladder.filter((option) => !seen.has(option.id))];
+}
+
 export interface ExecutorModelOption {
   id: string;
   label: string;
@@ -105,6 +126,7 @@ export function useExecutorModelOptions(): {
   refreshCredentials: () => void;
 } {
   const [claudeModels, setClaudeModels] = useState<ExecutorModelOption[]>([]);
+  const [ladderClaudeModels, setLadderClaudeModels] = useState<ExecutorModelOption[]>([]);
   const [claudeDefault, setClaudeDefault] = useState<string>("claude-opus-5");
   const [codexModels, setCodexModels] = useState<ExecutorModelOption[]>([]);
   const [codexDefault, setCodexDefault] = useState<string>("");
@@ -149,6 +171,19 @@ export function useExecutorModelOptions(): {
       .catch(() => {
         /* dropdown falls back to the default-only option */
       });
+    fetch(LADDER_SETTINGS_ENDPOINT)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { models?: unknown } | null) => {
+        if (cancelled || !Array.isArray(body?.models)) return;
+        setLadderClaudeModels(
+          body.models
+            .filter((id): id is string => typeof id === "string" && id.startsWith("claude-"))
+            .map((id) => ({ id, label: LADDER_MODEL_LABELS[id] || id, provider: "anthropic" })),
+        );
+      })
+      .catch(() => {
+        /* registry options alone still render */
+      });
     getAntigravityModels()
       .then((names) => {
         if (!cancelled) setAntigravityModels(names.map((name) => ({ id: name, label: name })));
@@ -189,7 +224,7 @@ export function useExecutorModelOptions(): {
     const { options, fallback, note, spendNote } =
       executor === "claude-code"
         ? {
-            options: claudeModels,
+            options: withLadderModels(claudeModels, ladderClaudeModels),
             fallback: claudeDefault,
             note: "Claude",
             spendNote: "billed to the Claude subscription",
