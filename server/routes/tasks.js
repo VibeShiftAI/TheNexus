@@ -4,6 +4,7 @@
  * approve/reject research/plan, and local task lifecycle updates.
  */
 const express = require('express');
+const { boardRequestLease, sendLeaseError } = require('../lib/write-leases');
 const crypto = require('crypto');
 const { resolveModelAssignment, recordModelExecutionSnapshot } = require('../services/model-control');
 const { hasRealActivity } = require('../lib/task-activity');
@@ -35,6 +36,7 @@ function requireValidStatus(res, rawStatus) {
 
 function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, runDeepResearch, validateInitiativeRequest, pushService }) {
     const router = express.Router();
+    router.use(boardRequestLease(db));
 
     // Successor auto-start (task sequencing): the completed transition here
     // is the single choke point every completion path goes through — UI,
@@ -175,6 +177,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             });
             res.status(201).json(result);
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             res.status(500).json({ error: 'Failed to create task: ' + error.message });
         }
     });
@@ -204,6 +207,20 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         if (resume_action !== undefined) next.resume_action = resume_action;
         return next;
     }
+
+    // ─── Reorder tasks ───────────────────────────────────────────────────
+    router.patch('/reorder', async (req, res) => {
+        const { ordering } = req.body;
+        if (!ordering || !Array.isArray(ordering)) return res.status(400).json({ error: 'ordering array is required' });
+        try {
+            const success = await db.reorderTasks(ordering);
+            if (!success) return res.status(500).json({ error: 'Failed to reorder tasks.' });
+            res.json({ success: true, reordered_count: ordering.length });
+        } catch (error) {
+            if (sendLeaseError(res, error)) return;
+            res.status(500).json({ error: 'Failed to reorder tasks: ' + error.message });
+        }
+    });
 
     router.patch('/:taskId', async (req, res) => {
         const { taskId } = req.params;
@@ -327,6 +344,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             maybeTriggerSuccessors(existing, updated);
             res.json({ success: true, task: updated });
         } catch (err) {
+            if (sendLeaseError(res, err)) return;
             if (err.code === 'task_version_conflict') {
                 return res.status(409).json({ error: err.message, code: err.code });
             }
@@ -387,20 +405,8 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 tasks: created.map(t => ({ id: t.id, name: t.name, status: t.status, sort_order: t.sort_order, has_payload: !!t.antigravity_payload, dependencies: t.dependencies || [], successor_id: t.successor_id || null }))
             });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             res.status(500).json({ error: 'Failed to batch-create tasks: ' + error.message });
-        }
-    });
-
-    // ─── Reorder tasks ───────────────────────────────────────────────────
-    router.patch('/reorder', async (req, res) => {
-        const { ordering } = req.body;
-        if (!ordering || !Array.isArray(ordering)) return res.status(400).json({ error: 'ordering array is required' });
-        try {
-            const success = await db.reorderTasks(ordering);
-            if (!success) return res.status(500).json({ error: 'Failed to reorder tasks.' });
-            res.json({ success: true, reordered_count: ordering.length });
-        } catch (error) {
-            res.status(500).json({ error: 'Failed to reorder tasks: ' + error.message });
         }
     });
 
@@ -476,6 +482,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             });
             res.json({ success: true, task: { ...created, title: created.name, createdAt: created.created_at } });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             res.status(500).json({ error: 'Failed to create task' });
         }
     });
@@ -489,6 +496,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (!success) return res.status(404).json({ error: 'Task not found or failed to delete' });
             res.json({ success: true, message: 'Task deleted' });
         } catch (err) {
+            if (sendLeaseError(res, err)) return;
             res.status(500).json({ error: 'Database error' });
         }
     });
@@ -535,6 +543,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             }
             res.json({ success: true, task: { ...updated, title: updated.name, createdAt: updated.created_at, updatedAt: updated.updated_at } });
         } catch (err) {
+            if (sendLeaseError(res, err)) return;
             res.status(500).json({ error: 'Database error' });
         }
     });
@@ -594,6 +603,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const updated = await db.getTask(req.params.taskId);
             return res.json({ success: true, message: 'Plan approved', task: { ...updated, title: updated.name, createdAt: updated.created_at } });
         } catch (err) {
+            if (sendLeaseError(res, err)) return;
             res.status(500).json({ error: 'Database error: ' + err.message });
         }
     });
@@ -609,7 +619,9 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const { stage, action, node_id, details, next_stage } = req.body;
             const step = await db.addExecutionStep(req.params.featureId, { stage: stage || 'unknown', action: action || 'step', node_id, details, next_stage });
             res.json({ success: true, step });
-        } catch (error) { res.status(500).json({ error: 'Failed to add timeline step' }); }
+        } catch (error) {
+            if (sendLeaseError(res, error)) return;
+            res.status(500).json({ error: 'Failed to add timeline step' }); }
     });
 
     // ─── Inline Comments ─────────────────────────────────────────────────
@@ -624,7 +636,9 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (!stage || !content) return res.status(400).json({ error: 'stage and content are required' });
             const comment = await db.addInlineComment(req.params.featureId, { stage, section_id: section_id || null, content, line_start: line_start || null, line_end: line_end || null, author: author || 'user' });
             res.json({ success: true, comment });
-        } catch (error) { res.status(500).json({ error: 'Failed to add comment' }); }
+        } catch (error) {
+            if (sendLeaseError(res, error)) return;
+            res.status(500).json({ error: 'Failed to add comment' }); }
     });
 
     router.patch('/:id/features/:featureId/comments/:commentId', async (req, res) => {
@@ -632,7 +646,9 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             const comment = await db.updateInlineComment(req.params.commentId, { resolved: req.body.resolved });
             if (!comment) return res.status(404).json({ error: 'Comment not found' });
             res.json({ success: true, comment });
-        } catch (error) { res.status(500).json({ error: 'Failed to update comment' }); }
+        } catch (error) {
+            if (sendLeaseError(res, error)) return;
+            res.status(500).json({ error: 'Failed to update comment' }); }
     });
 
     // ─── Resume suspended task ───────────────────────────────────────────
@@ -716,11 +732,15 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 task: { ...updated, title: updated.name, createdAt: updated.created_at, updatedAt: updated.updated_at },
             });
         } catch (err) {
+            if (sendLeaseError(res, err)) return;
             console.error('[Tasks] Error resuming task:', err);
             res.status(500).json({ error: 'Failed to resume task: ' + err.message });
         }
     });
 
+    router.use((error, _req, res, next) => {
+        if (!sendLeaseError(res, error)) next(error);
+    });
     return router;
 }
 

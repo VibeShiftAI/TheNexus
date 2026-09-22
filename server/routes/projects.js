@@ -32,6 +32,7 @@
  * DELETE /api/projects/:id/pin                   — Unpin project
  */
 const express = require('express');
+const { boardRequestLease, requestLease, requireLeases, sendLeaseError, workspaceCommand } = require('../lib/write-leases');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -235,6 +236,16 @@ function activityRunTrace(run, trailerModel = null) {
 
 function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, getRecentDispatches }) {
     const router = express.Router();
+    router.use(boardRequestLease(db));
+    if ('writeLeases' in db) router.use(requestLease(db, async req => {
+        if (req.method === 'POST' && ['/', '/scaffold'].includes(req.path) && typeof req.body?.name === 'string') {
+            return { scope: 'workspace', path: path.resolve(PROJECT_ROOT, req.body.name) };
+        }
+        const match = req.path.match(/^\/([^/]+)(?:\/(context(?:\/sync)?|git\/(?:init|remote)|commit-push))?$/);
+        if (!match || !(match[2] || (req.method === 'DELETE' && req.query.deleteFiles === 'true'))) return null;
+        const project = await getProjectById(PROJECT_ROOT, decodeURIComponent(match[1]));
+        return project?.path ? { scope: 'workspace', path: project.path } : null;
+    }));
 
     // Scan cache to prevent redundant filesystem scans
     let scanCache = null;
@@ -353,6 +364,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             const projects = await getAllProjects(PROJECT_ROOT);
             res.json(projects);
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             console.error('[Projects] Error getting projects:', error);
             res.status(500).json({ error: 'Failed to get projects' });
         }
@@ -369,9 +381,10 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             };
             const result = await db.upsertProject(newProject);
             const projectPath = path.join(PROJECT_ROOT, name);
-            if (!fs.existsSync(projectPath)) fs.mkdirSync(projectPath, { recursive: true });
+            if (!fs.existsSync(projectPath)) requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.mkdirSync(projectPath, { recursive: true }));
             res.status(201).json(result);
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             console.error('Error creating project:', error);
             res.status(500).json({ error: 'Failed to create project: ' + error.message });
         }
@@ -388,25 +401,24 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             return res.status(400).json({ error: `Project '${name}' already exists.` });
         }
         try {
-            fs.mkdirSync(projectPath, { recursive: true });
+            requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.mkdirSync(projectPath, { recursive: true }));
             const projectMeta = {
                 name, type: type || 'web-app', description: description || '',
                 created: new Date().toISOString(), vibe: supervisor ? 'immaculate' : 'default',
                 tasks: supervisor?.tasks || [], stack: {}, urls: { production: '', repo: '' }
             };
-            fs.writeFileSync(path.join(projectPath, 'project.json'), JSON.stringify(projectMeta, null, 4));
-            const git = simpleGit(projectPath);
-            await git.init();
+            requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.writeFileSync(path.join(projectPath, 'project.json'), JSON.stringify(projectMeta, null, 4)));
+            workspaceCommand(requireLeases(db), projectPath, 'git', ['init']);
 
             if (supervisor) {
                 const supervisorPath = path.join(projectPath, 'supervisor');
-                fs.mkdirSync(supervisorPath, { recursive: true });
-                fs.writeFileSync(path.join(supervisorPath, 'product.md'), `# Product Guide: ${name}\n\n## 1. Initial Concept\n${supervisor.concept}\n\n## 2. Target Audience\n${supervisor.audience.map(a => `*   **${a}**`).join('\n')}\n\n## 3. Core Value Proposition\n*   **Primary Goal:** ${supervisor.goals.join(', ')}\n*   **Type:** ${type}\n\n## 4. Key Tasks & Capabilities\n${supervisor.tasks.map(f => `*   **${f}**`).join('\n')}\n\n## 5. Design Philosophy\n*   **Aesthetic:** ${supervisor.aesthetic}\n*   **Tone:** ${supervisor.tone}\n*   **Interaction:** ${supervisor.aiInteraction}\n`);
-                fs.writeFileSync(path.join(supervisorPath, 'product-guidelines.md'), `# Product Guidelines: ${name}\n\n## 1. Brand Identity & Voice\n*   **Tone:** ${supervisor.tone}\n*   **AI Persona:** ${supervisor.aiInteraction}\n\n## 2. Visual Design System\n*   **Aesthetic:** ${supervisor.aesthetic}\n\n## 3. User Experience (UX) Principles\n*   **Interaction Model:** ${supervisor.aiInteraction}\n`);
-                fs.writeFileSync(path.join(supervisorPath, 'tech-stack.md'), `# Technology Stack: ${name}\n\n## 1. Project Type\n${type}\n\n## 2. Core Technologies (Default)\n*   **Frontend:** Next.js, Tailwind CSS (inferred from defaults)\n*   **Backend:** Node.js / Python (inferred from defaults)\n*   **Database:** SQLite (local)\n`);
-                fs.writeFileSync(path.join(supervisorPath, 'workflow.md'), `# Project Workflow\n\n## Guiding Principles\n1. **The Plan is the Source of Truth**\n2. **Test-Driven Development**\n3. **High Code Coverage (>90%)**\n\n## Workflow\n1. Select Task\n2. Write Failing Tests\n3. Implement\n4. Refactor\n5. Verify\n6. Commit\n`);
-                fs.writeFileSync(path.join(supervisorPath, 'tracks.md'), '# Project Tracks\n\n## [ ] Track: Initial Setup\n');
-                fs.writeFileSync(path.join(supervisorPath, 'setup_state.json'), JSON.stringify({ last_successful_step: "scaffold_complete", created_at: new Date().toISOString() }, null, 2));
+                requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.mkdirSync(supervisorPath, { recursive: true }));
+                requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.writeFileSync(path.join(supervisorPath, 'product.md'), `# Product Guide: ${name}\n\n## 1. Initial Concept\n${supervisor.concept}\n\n## 2. Target Audience\n${supervisor.audience.map(a => `*   **${a}**`).join('\n')}\n\n## 3. Core Value Proposition\n*   **Primary Goal:** ${supervisor.goals.join(', ')}\n*   **Type:** ${type}\n\n## 4. Key Tasks & Capabilities\n${supervisor.tasks.map(f => `*   **${f}**`).join('\n')}\n\n## 5. Design Philosophy\n*   **Aesthetic:** ${supervisor.aesthetic}\n*   **Tone:** ${supervisor.tone}\n*   **Interaction:** ${supervisor.aiInteraction}\n`));
+                requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.writeFileSync(path.join(supervisorPath, 'product-guidelines.md'), `# Product Guidelines: ${name}\n\n## 1. Brand Identity & Voice\n*   **Tone:** ${supervisor.tone}\n*   **AI Persona:** ${supervisor.aiInteraction}\n\n## 2. Visual Design System\n*   **Aesthetic:** ${supervisor.aesthetic}\n\n## 3. User Experience (UX) Principles\n*   **Interaction Model:** ${supervisor.aiInteraction}\n`));
+                requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.writeFileSync(path.join(supervisorPath, 'tech-stack.md'), `# Technology Stack: ${name}\n\n## 1. Project Type\n${type}\n\n## 2. Core Technologies (Default)\n*   **Frontend:** Next.js, Tailwind CSS (inferred from defaults)\n*   **Backend:** Node.js / Python (inferred from defaults)\n*   **Database:** SQLite (local)\n`));
+                requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.writeFileSync(path.join(supervisorPath, 'workflow.md'), `# Project Workflow\n\n## Guiding Principles\n1. **The Plan is the Source of Truth**\n2. **Test-Driven Development**\n3. **High Code Coverage (>90%)**\n\n## Workflow\n1. Select Task\n2. Write Failing Tests\n3. Implement\n4. Refactor\n5. Verify\n6. Commit\n`));
+                requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.writeFileSync(path.join(supervisorPath, 'tracks.md'), '# Project Tracks\n\n## [ ] Track: Initial Setup\n'));
+                requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.writeFileSync(path.join(supervisorPath, 'setup_state.json'), JSON.stringify({ last_successful_step: "scaffold_complete", created_at: new Date().toISOString() }, null, 2)));
             }
 
             let projectId = null;
@@ -425,6 +437,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                 path: projectPath, id: projectId
             });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             console.error(`Error scaffolding project:`, error);
             res.status(500).json({ error: 'Failed to scaffold project: ' + error.message });
         }
@@ -495,6 +508,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             if (!updated) return res.status(404).json({ error: 'Project not found or update failed' });
             res.json(updated);
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             if (error.status) return res.status(error.status).json({ error: error.message, ...(error.code ? { code: error.code } : {}) });
             console.error(`Error updating project ${id}:`, error);
             res.status(500).json({ error: 'Failed to update project' });
@@ -513,6 +527,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             if (!result) return res.status(404).json({ error: 'Project not found' });
             res.json({ success: true, transition: result.transition, checkpoints: result.project.checkpoints, updated_at: result.project.updated_at, project: result.project });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             if (error.status) return res.status(error.status).json({ error: error.message, ...(error.code ? { code: error.code } : {}) });
             console.error(`Error transitioning checkpoint for project ${req.params.id}:`, error);
             res.status(500).json({ error: 'Failed to transition checkpoint' });
@@ -528,6 +543,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             if (!result) return res.status(404).json({ error: 'Project not found' });
             res.json({ success: true, current_checkpoint_id: result.current_checkpoint_id, checkpoints: result.project.checkpoints, updated_at: result.project.updated_at, project: result.project });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             if (error.status) return res.status(error.status).json({ error: error.message, ...(error.code ? { code: error.code } : {}) });
             console.error(`Error reopening checkpoint for project ${req.params.id}:`, error);
             res.status(500).json({ error: 'Failed to reopen checkpoint' });
@@ -552,6 +568,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             const need = adding ? updated.needs.at(-1) : updated.needs.find(need => need.id === req.params.needId);
             res.status(adding ? 201 : 200).json({ success: true, need, needs: updated.needs, updated_at: updated.updated_at });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             if (error.status) return res.status(error.status).json({ error: error.message });
             console.error(`Error updating project need ${req.params.id}:`, error);
             res.status(500).json({ error: 'Failed to update need' });
@@ -567,12 +584,15 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         try {
             const project = await getProjectById(PROJECT_ROOT, id);
             if (!project) return res.status(404).json({ error: 'Project not found' });
+            if (deleteFiles === 'true' && project.path) {
+                requireLeases(db).runSync({ scope: 'workspace', path: project.path }, () => {});
+            }
             const dbDeleted = await db.deleteProject(id);
             if (!dbDeleted) return res.status(500).json({ error: 'Failed to delete project from database' });
             let filesDeleted = false;
             if (deleteFiles === 'true' && project.path && fs.existsSync(project.path)) {
                 try {
-                    fs.rmSync(project.path, { recursive: true, force: true });
+                    requireLeases(db).runSync({ scope: 'workspace', path: project.path }, () => fs.rmSync(project.path, { recursive: true, force: true }));
                     filesDeleted = true;
                 } catch (fsError) {
                     return res.json({ success: true, dbDeleted: true, filesDeleted: false, error: 'Database entry deleted but failed to remove files: ' + fsError.message });
@@ -580,6 +600,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             }
             res.json({ success: true, dbDeleted: true, filesDeleted, message: filesDeleted ? 'Project and files deleted' : 'Project removed from database' });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             console.error(`Error deleting project ${id}:`, error);
             res.status(500).json({ error: 'Failed to delete project: ' + error.message });
         }
@@ -603,6 +624,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                 message: `Project archived (${result.tasksArchived} task(s) archived). Files left intact.`
             });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             console.error(`Error archiving project ${id}:`, error);
             res.status(500).json({ error: 'Failed to archive project: ' + error.message });
         }
@@ -623,6 +645,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                 message: `Project restored (${result.tasksRestored} task(s) restored).`
             });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             console.error(`Error unarchiving project ${id}:`, error);
             res.status(500).json({ error: 'Failed to unarchive project: ' + error.message });
         }
@@ -680,9 +703,10 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         if (!project) return res.status(404).json({ error: 'Project not found' });
         if (fs.existsSync(path.join(project.path, '.git'))) return res.status(400).json({ error: 'Git already initialized' });
         try {
-            await simpleGit(project.path).init();
+            workspaceCommand(requireLeases(db), project.path, 'git', ['init']);
             res.json({ success: true, message: 'Git initialized successfully' });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             res.status(500).json({ error: 'Failed to initialize git' });
         }
     });
@@ -694,9 +718,10 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
         try {
-            await simpleGit(project.path).addRemote('origin', url);
+            workspaceCommand(requireLeases(db), project.path, 'git', ['remote', 'add', 'origin', url]);
             res.json({ success: true, message: 'Remote added successfully' });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             res.status(500).json({ error: 'Failed to add remote: ' + error.message });
         }
     });
@@ -763,15 +788,16 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         if (!fs.existsSync(path.join(project.path, '.git'))) return res.status(400).json({ error: 'No git repository in this project' });
         try {
             const git = simpleGit(project.path);
-            await git.add('.');
+            workspaceCommand(requireLeases(db), project.path, 'git', ['add', '.']);
             const status = await git.status();
             if (status.files.length === 0) return res.json({ success: true, message: 'No changes to commit', filesCommitted: 0 });
-            await git.commit(message.trim());
+            workspaceCommand(requireLeases(db), project.path, 'git', ['commit', '-m', message.trim()]);
             const remotes = await git.getRemotes();
             if (remotes.length === 0) return res.json({ success: true, message: `Committed ${status.files.length} file(s). No remote configured, push skipped.`, filesCommitted: status.files.length, pushed: false });
-            await git.push('origin', status.current);
+            workspaceCommand(requireLeases(db), project.path, 'git', ['push', 'origin', status.current]);
             res.json({ success: true, message: `Committed and pushed ${status.files.length} file(s)`, filesCommitted: status.files.length, pushed: true });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             res.status(500).json({ error: 'Failed to commit/push: ' + error.message });
         }
     });
@@ -835,6 +861,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             } catch (e) { /* fall through */ }
             res.json({ message: `Update: ${status.files.length} file(s) changed`, generated: false });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             res.status(500).json({ error: 'Failed to generate commit message' });
         }
     });
@@ -854,7 +881,9 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             const result = await db.updateProjectContext(req.params.id, type, content, status);
             if (!result) return res.status(500).json({ error: 'Failed to update context' });
             res.json({ success: true, context: result });
-        } catch (error) { res.status(500).json({ error: 'Failed to update context' }); }
+        } catch (error) {
+            if (sendLeaseError(res, error)) return;
+            res.status(500).json({ error: 'Failed to update context' }); }
     });
 
     router.post('/:id/context/sync', async (req, res) => {
@@ -864,7 +893,9 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         try {
             const result = await contextSync.pullAndSyncFromGit(req.params.id, project.path, db);
             res.json({ success: result.success, synced: result.synced, pulled: result.pulled, errors: result.errors });
-        } catch (error) { res.status(500).json({ error: 'Failed to sync context: ' + error.message }); }
+        } catch (error) {
+            if (sendLeaseError(res, error)) return;
+            res.status(500).json({ error: 'Failed to sync context: ' + error.message }); }
     });
 
     router.get('/:id/context/verify', async (req, res) => {
@@ -966,9 +997,14 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             const note = await db.createNote({ project_id: req.params.id, content: content.trim(), category: category || 'general', source: source || 'operator' });
             if (!note) return res.status(500).json({ error: 'Failed to create note' });
             res.status(201).json({ success: true, note });
-        } catch (error) { res.status(500).json({ error: 'Failed to create note' }); }
+        } catch (error) {
+            if (sendLeaseError(res, error)) return;
+            res.status(500).json({ error: 'Failed to create note' }); }
     });
 
+    router.use((error, _req, res, next) => {
+        if (!sendLeaseError(res, error)) next(error);
+    });
     return router;
 }
 

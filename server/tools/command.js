@@ -1,23 +1,13 @@
-const { exec } = require('child_process');
+const { canonicalPath, requireLeases, workspaceCommand } = require('../lib/write-leases');
 const path = require('path');
 const { z } = require("zod");
 
 // Helper to ensure paths are within the project root
 function validatePath(projectPath, targetPath) {
-    // If targetPath is not provided, return projectPath
-    if (!targetPath) return projectPath;
-
-    // If targetPath is absolute, check if it starts with projectPath
-    if (path.isAbsolute(targetPath)) {
-        if (!targetPath.startsWith(path.resolve(projectPath))) {
-            throw new Error(`Access denied: Path ${targetPath} is outside the project root.`);
-        }
-        return targetPath;
-    }
-
-    // Resolve relative path
-    const resolvedPath = path.resolve(projectPath, targetPath);
-    if (!resolvedPath.startsWith(path.resolve(projectPath))) {
+    const root = canonicalPath(projectPath);
+    const resolvedPath = canonicalPath(path.resolve(root, targetPath || '.'));
+    const relative = path.relative(root, resolvedPath);
+    if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
         throw new Error(`Access denied: Path ${targetPath} is outside the project root.`);
     }
     return resolvedPath;
@@ -30,9 +20,10 @@ const tools = [
         schema: z.object({
             project_name: z.string().describe("The name of the project"),
             command: z.string().describe("The command to run (e.g., 'npm install', 'git status')"),
+            lease_token: z.string().optional().describe('Workspace write lease acquired before reading'),
             cwd: z.string().optional().describe("Optional subdirectory to run the command in (relative to project root)")
         }),
-        execute: async ({ project_name, command, cwd }, { getProjectPath }) => {
+        execute: async ({ project_name, command, cwd, lease_token }, { getProjectPath, writeLeases }) => {
             try {
                 const projectRoot = getProjectPath(project_name);
                 if (!projectRoot) throw new Error(`Project '${project_name}' not found`);
@@ -45,28 +36,11 @@ const tools = [
                     return { isError: true, content: "Command blocked for safety reasons." };
                 }
 
-                return await new Promise((resolve) => {
-                    const timeout = setTimeout(() => {
-                        resolve({ isError: true, content: "Command timed out after 30 seconds." });
-                    }, 30000);
-
-                    exec(command, { cwd: workingDir, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
-                        clearTimeout(timeout);
-
-                        let output = "";
-                        if (stdout) output += `STDOUT:\n${stdout}\n`;
-                        if (stderr) output += `STDERR:\n${stderr}\n`;
-
-                        if (error) {
-                            output += `\nEXECUTION ERROR:\n${error.message}`;
-                            resolve({ isError: true, content: output });
-                        } else {
-                            resolve({ content: output.trim() || "Command executed successfully with no output." });
-                        }
-                    });
-                });
+                const leases = writeLeases || requireLeases(require('../../db'));
+                const output = workspaceCommand(leases, workingDir, command, [], { shell: true, token: lease_token, leasePath: projectRoot, includeStderr: true });
+                return { content: output.trim() || 'Command executed successfully with no output.' };
             } catch (error) {
-                return { isError: true, content: `Failed to run command: ${error.message}` };
+                return { isError: true, code: error.code, content: `Failed to run command: ${error.message}${error.stdout ? `\nSTDOUT:\n${error.stdout}` : ''}${error.stderr ? `\nSTDERR:\n${error.stderr}` : ''}` };
             }
         }
     }

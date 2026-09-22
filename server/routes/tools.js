@@ -6,9 +6,18 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { requireLeases, sendLeaseError, requestLease, canonicalPath, boardRequestLease, workspaceCommand } = require('../lib/write-leases');
 
 module.exports = function createToolsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects }) {
     const router = express.Router();
+    router.use('/create-task', boardRequestLease(db));
+    router.use(requestLease(db, req => {
+        if (req.path === '/write-file' && typeof req.body?.path === 'string') {
+            return { scope: 'workspace', path: path.resolve(req.body.path) };
+        }
+        if (req.path === '/run-command') return { scope: 'workspace', path: path.resolve(req.body?.cwd || process.cwd()) };
+        return null;
+    }));
 
     // Read a file
     router.get('/read-file', async (req, res) => {
@@ -46,23 +55,26 @@ module.exports = function createToolsRouter({ db, PROJECT_ROOT, getProjectById, 
         }
 
         try {
-            const absolutePath = path.resolve(filePath);
+            const absolutePath = canonicalPath(path.resolve(filePath));
 
-            // Create parent directories if needed
-            if (createDirs) {
-                const dir = path.dirname(absolutePath);
-                if (!fs.existsSync(dir)) {
-                    fs.mkdirSync(dir, { recursive: true });
+            requireLeases(db).runSync({ scope: 'workspace', path: absolutePath }, () => {
+                // Create parent directories if needed
+                if (createDirs) {
+                    const dir = path.dirname(absolutePath);
+                    if (!fs.existsSync(dir)) {
+                        fs.mkdirSync(dir, { recursive: true });
+                    }
                 }
-            }
 
-            fs.writeFileSync(absolutePath, content, 'utf-8');
+                fs.writeFileSync(absolutePath, content, 'utf-8');
+            });
             res.json({
                 success: true,
                 path: absolutePath,
                 size: content.length
             });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             res.status(500).json({ error: error.message });
         }
     });
@@ -116,13 +128,7 @@ module.exports = function createToolsRouter({ db, PROJECT_ROOT, getProjectById, 
         const workingDir = cwd ? path.resolve(cwd) : process.cwd();
 
         try {
-            const { execSync } = require('child_process');
-            const output = execSync(command, {
-                cwd: workingDir,
-                timeout,
-                encoding: 'utf-8',
-                stdio: ['pipe', 'pipe', 'pipe']
-            });
+            const output = workspaceCommand(requireLeases(db), workingDir, command, [], { shell: true, timeout });
 
             res.json({
                 success: true,
@@ -131,6 +137,7 @@ module.exports = function createToolsRouter({ db, PROJECT_ROOT, getProjectById, 
                 output: output.trim()
             });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             res.json({
                 success: false,
                 command,
@@ -195,6 +202,7 @@ module.exports = function createToolsRouter({ db, PROJECT_ROOT, getProjectById, 
                 matches: results.slice(0, 100)  // Limit results
             });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             res.status(500).json({ error: error.message });
         }
     });
@@ -239,6 +247,7 @@ module.exports = function createToolsRouter({ db, PROJECT_ROOT, getProjectById, 
                 }
             });
         } catch (error) {
+            if (sendLeaseError(res, error)) return;
             console.error('[Tools] Create task error:', error);
             res.status(500).json({ error: error.message });
         }

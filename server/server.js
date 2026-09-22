@@ -104,8 +104,10 @@ function authenticate(req, res, next) {
 // Apply auth to protected route prefixes
 ['/api/projects', '/api/tasks', '/api/ai', '/api/pins', '/api/models', '/api/model-control',
  '/api/activity', '/api/dashboard', '/api/mcp', '/api/initiatives', '/api/local-queue',
- '/api/skill-candidates', '/api/documents'
+ '/api/skill-candidates', '/api/documents', '/api/write-leases'
 ].forEach(prefix => app.use(prefix, authenticate));
+
+app.use('/api/write-leases', require('./routes/write-leases')({ db }));
 
 // ─── Shared Dependencies (injected into route factories) ────────────────────
 const deps = { db, io, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, pushService };

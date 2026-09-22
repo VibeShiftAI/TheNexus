@@ -8,6 +8,7 @@
 const path = require('path');
 const fs = require('fs');
 const simpleGit = require('simple-git');
+const { requireLeases, workspaceCommand } = require('../lib/write-leases');
 
 // Context type to filename mapping
 const CONTEXT_TYPE_FILES = {
@@ -43,24 +44,27 @@ function getContextDirectory(projectPath) {
  * @param {string} content - Markdown content to write
  * @param {string} status - Optional status for frontmatter
  */
-async function writeContextFile(projectPath, contextType, content, status = 'draft') {
-    const contextDir = getContextDirectory(projectPath);
+async function writeContextFile(projectPath, contextType, content, status = 'draft', options = {}) {
+    const leases = options.writeLeases || requireLeases(require('../../db'));
+    const filepath = require('../../db/context-path')(projectPath, contextType);
+    return leases.runSync({ scope: 'workspace', path: projectPath }, () => {
+        const contextDir = getContextDirectory(projectPath);
 
-    // Create directory if needed
-    if (!fs.existsSync(contextDir)) {
-        fs.mkdirSync(contextDir, { recursive: true });
-    }
+        // Create directory if needed
+        if (!fs.existsSync(contextDir)) {
+            fs.mkdirSync(contextDir, { recursive: true });
+        }
 
-    const filename = CONTEXT_TYPE_FILES[contextType] || `${contextType}.md`;
-    const filepath = path.join(contextDir, filename);
+        const filename = path.basename(filepath);
 
-    // Format with frontmatter
-    const formattedContent = formatWithFrontmatter(content, contextType, status);
+        // Format with frontmatter
+        const formattedContent = formatWithFrontmatter(content, contextType, status);
 
-    fs.writeFileSync(filepath, formattedContent, 'utf-8');
-    console.log(`[ContextSync] Wrote ${filename}`);
+        fs.writeFileSync(filepath, formattedContent, 'utf-8');
+        console.log(`[ContextSync] Wrote ${filename}`);
 
-    return filepath;
+        return filepath;
+    });
 }
 
 /**
@@ -166,6 +170,12 @@ function readAllContextFiles(projectPath) {
  * @returns {{ success: boolean, synced: number, pulled: boolean, errors: string[] }}
  */
 async function pullAndSyncFromGit(projectId, projectPath, db) {
+    const leases = requireLeases(db);
+    return leases.run({ scope: 'board' }, () => leases.run({ scope: 'workspace', path: projectPath },
+        () => pullAndSyncOwned(projectId, projectPath, db, leases)));
+}
+
+async function pullAndSyncOwned(projectId, projectPath, db, leases) {
     const errors = [];
     let synced = 0;
     let pulled = false;
@@ -180,11 +190,12 @@ async function pullAndSyncFromGit(projectId, projectPath, db) {
             const remotes = await git.getRemotes();
             if (remotes.length > 0) {
                 console.log(`[ContextSync] Pulling latest from git...`);
-                await git.pull();
+                workspaceCommand(leases, projectPath, 'git', ['pull']);
                 pulled = true;
                 console.log(`[ContextSync] Git pull complete`);
             }
         } catch (err) {
+            if (err.code?.startsWith('write_lease')) throw err;
             // Git pull failed - might be offline or no remote
             console.warn(`[ContextSync] Git pull skipped: ${err.message}`);
             errors.push(`Git pull failed: ${err.message}`);
@@ -208,6 +219,7 @@ async function pullAndSyncFromGit(projectId, projectPath, db) {
             synced++;
             console.log(`[ContextSync] Synced ${ctx.type} to DB`);
         } catch (err) {
+            if (err.code?.startsWith('write_lease')) throw err;
             errors.push(`Failed to sync ${ctx.type}: ${err.message}`);
             console.error(`[ContextSync] Error syncing ${ctx.type}:`, err.message);
         }

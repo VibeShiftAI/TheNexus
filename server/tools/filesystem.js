@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { canonicalPath, requireLeases } = require('../lib/write-leases');
 const { z } = require("zod");
 
 // Helper to ensure paths are within the project root
@@ -7,8 +8,10 @@ function validatePath(projectPath, targetPath) {
     if (!targetPath) {
         throw new Error('Path is required');
     }
-    const resolvedPath = path.resolve(projectPath, targetPath);
-    if (!resolvedPath.startsWith(path.resolve(projectPath))) {
+    const root = canonicalPath(projectPath);
+    const resolvedPath = canonicalPath(path.resolve(projectPath, targetPath));
+    const relative = path.relative(root, resolvedPath);
+    if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
         throw new Error(`Access denied: Path ${targetPath} is outside the project root.`);
     }
     return resolvedPath;
@@ -71,7 +74,7 @@ const tools = [
 
                 return { content: header + content };
             } catch (error) {
-                return { isError: true, content: `Failed to read file: ${error.message}` };
+                return { isError: true, code: error.code, content: `Failed to read file: ${error.message}` };
             }
         }
     },
@@ -83,7 +86,7 @@ const tools = [
             path: z.string().describe("Relative path to the file"),
             content: z.string().describe("The content to write to the file")
         }),
-        execute: async (args, { getProjectPath }) => {
+        execute: async (args, { getProjectPath, writeLeases }) => {
             try {
                 const { project_name, content } = args;
                 const file_path = normalizeFilePath(args);
@@ -126,13 +129,13 @@ const tools = [
                 // Ensure directory exists
                 const dir = path.dirname(fullPath);
                 if (!fs.existsSync(dir)) {
-                    fs.mkdirSync(dir, { recursive: true });
+                    writeLeases.runSync({ scope: 'workspace', path: fullPath }, () => fs.mkdirSync(dir, { recursive: true }));
                 }
 
-                fs.writeFileSync(fullPath, content, 'utf8');
+                writeLeases.runSync({ scope: 'workspace', path: fullPath }, () => fs.writeFileSync(fullPath, content, 'utf8'));
                 return { content: `Successfully wrote to ${file_path}` };
             } catch (error) {
-                return { isError: true, content: `Failed to write file: ${error.message}` };
+                return { isError: true, code: error.code, content: `Failed to write file: ${error.message}` };
             }
         }
     },
@@ -147,7 +150,7 @@ const tools = [
                 replace: z.string().describe("The text to replace it with")
             })).describe("Array of find/replace pairs to apply")
         }),
-        execute: async (args, { getProjectPath }) => {
+        execute: async (args, { getProjectPath, writeLeases }) => {
             try {
                 const { project_name, replacements } = args;
                 const file_path = normalizeFilePath(args);
@@ -186,12 +189,12 @@ const tools = [
                     }
                 }
 
-                fs.writeFileSync(fullPath, content, 'utf8');
+                writeLeases.runSync({ scope: 'workspace', path: fullPath }, () => fs.writeFileSync(fullPath, content, 'utf8'));
 
                 const summary = results.map(r => `${r.status}: "${r.find}"`).join('\n');
                 return { content: `Patched ${file_path}:\n${summary}` };
             } catch (error) {
-                return { isError: true, content: `Failed to patch file: ${error.message}` };
+                return { isError: true, code: error.code, content: `Failed to patch file: ${error.message}` };
             }
         }
     },
@@ -203,7 +206,7 @@ const tools = [
             path: z.string().describe("Relative path to the file"),
             content: z.string().describe("The content to append")
         }),
-        execute: async (args, { getProjectPath }) => {
+        execute: async (args, { getProjectPath, writeLeases }) => {
             try {
                 const { project_name, content } = args;
                 const file_path = normalizeFilePath(args);
@@ -220,13 +223,13 @@ const tools = [
                 // Ensure directory exists
                 const dir = path.dirname(fullPath);
                 if (!fs.existsSync(dir)) {
-                    fs.mkdirSync(dir, { recursive: true });
+                    writeLeases.runSync({ scope: 'workspace', path: fullPath }, () => fs.mkdirSync(dir, { recursive: true }));
                 }
 
-                fs.appendFileSync(fullPath, content, 'utf8');
+                writeLeases.runSync({ scope: 'workspace', path: fullPath }, () => fs.appendFileSync(fullPath, content, 'utf8'));
                 return { content: `Successfully appended to ${file_path}` };
             } catch (error) {
-                return { isError: true, content: `Failed to append to file: ${error.message}` };
+                return { isError: true, code: error.code, content: `Failed to append to file: ${error.message}` };
             }
         }
     },
@@ -258,7 +261,7 @@ const tools = [
 
                 return { content: listing || "(Empty directory)" };
             } catch (error) {
-                return { isError: true, content: `Failed to list directory: ${error.message}` };
+                return { isError: true, code: error.code, content: `Failed to list directory: ${error.message}` };
             }
         }
     },
@@ -270,7 +273,7 @@ const tools = [
             path: z.string().describe("Relative path to the file"),
             diff: z.string().describe("The diff to apply in search/replace format. Each block: <<<<<<< SEARCH\\n[original text]\\n=======\\n[replacement text]\\n>>>>>>> REPLACE")
         }),
-        execute: async (args, { getProjectPath }) => {
+        execute: async (args, { getProjectPath, writeLeases }) => {
             try {
                 const { project_name, diff } = args;
                 const file_path = normalizeFilePath(args);
@@ -323,14 +326,14 @@ const tools = [
                     };
                 }
 
-                fs.writeFileSync(fullPath, content, 'utf8');
+                writeLeases.runSync({ scope: 'workspace', path: fullPath }, () => fs.writeFileSync(fullPath, content, 'utf8'));
 
                 const tokensSaved = Math.round((originalLength - (content.length - originalLength)) * 0.25);
                 return {
                     content: `Applied ${appliedCount} diff block(s) to ${file_path}. ~${tokensSaved} tokens saved vs full rewrite.${failedBlocks.length > 0 ? ` Warning: ${failedBlocks.length} block(s) did not match.` : ''}`
                 };
             } catch (error) {
-                return { isError: true, content: `Failed to apply diff: ${error.message}` };
+                return { isError: true, code: error.code, content: `Failed to apply diff: ${error.message}` };
             }
         }
     },
@@ -344,7 +347,7 @@ const tools = [
             end_line: z.number().describe("Ending line number (1-indexed, inclusive)"),
             new_content: z.string().describe("The new content to replace lines start_line through end_line")
         }),
-        execute: async (args, { getProjectPath }) => {
+        execute: async (args, { getProjectPath, writeLeases }) => {
             try {
                 const { project_name, start_line, end_line, new_content } = args;
                 const file_path = normalizeFilePath(args);
@@ -380,16 +383,36 @@ const tools = [
                 const newLines = new_content.split('\n');
                 lines.splice(start_line - 1, actualEndLine - start_line + 1, ...newLines);
 
-                fs.writeFileSync(fullPath, lines.join('\n'), 'utf8');
+                writeLeases.runSync({ scope: 'workspace', path: fullPath }, () => fs.writeFileSync(fullPath, lines.join('\n'), 'utf8'));
 
                 return {
                     content: `Replaced lines ${start_line}-${actualEndLine} (${oldLines.length} lines) with ${newLines.length} new lines in ${file_path}`
                 };
             } catch (error) {
-                return { isError: true, content: `Failed to edit lines: ${error.message}` };
+                return { isError: true, code: error.code, content: `Failed to edit lines: ${error.message}` };
             }
         }
     }
 ];
+
+const writes = new Set(['write_file', 'patch_file', 'append_file', 'apply_diff', 'edit_lines']);
+for (const tool of tools) {
+    if (!writes.has(tool.name)) continue;
+    tool.schema = tool.schema.extend({ lease_token: z.string().optional().describe('Workspace write lease acquired before reading; omit for an automatic operation lease') });
+    const execute = tool.execute;
+    tool.execute = async (args, context) => {
+        try {
+            const projectRoot = context.getProjectPath(args.project_name);
+            if (!projectRoot) throw new Error(`Project '${args.project_name}' not found`);
+            const fullPath = validatePath(projectRoot, normalizeFilePath(args));
+            const leases = context.writeLeases || requireLeases(require('../../db'));
+            return await leases.run({ scope: 'workspace', path: fullPath },
+                () => execute(args, { ...context, writeLeases: leases }),
+                { token: args.lease_token, owner: `tool:${tool.name}` });
+        } catch (error) {
+            return { isError: true, code: error.code, content: error.message };
+        }
+    };
+}
 
 module.exports = tools;

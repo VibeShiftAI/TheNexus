@@ -51,6 +51,7 @@ const DB_PATH = process.env.NEXUS_DB_PATH
     || path.resolve(__dirname, '../nexus.db');
 
 let db;
+let writeLeases = null;
 let memberMemory;
 let memberProfileProposals;
 let memberEvidence;
@@ -783,6 +784,12 @@ async function getProjects({ includeArchived = false } = {}) {
 }
 
 async function getProject(identifier) {
+    return readProject(identifier);
+}
+
+// Shared synchronous lookup keeps context projection and public reads on the
+// same name-first / UUID-only-id rules, including best-effort lookup failure.
+function readProject(identifier) {
     if (!db) return null;
     try {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
@@ -808,7 +815,7 @@ async function getProjectByPath(projectPath) {
     }
 }
 
-async function upsertProject(project) {
+function upsertProject(project) {
     if (!db) return null;
     try {
         return db.transaction(() => {
@@ -838,7 +845,7 @@ function writeProject(projectId, updates, options) {
     return deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
 }
 
-async function updateProject(projectId, updates) {
+function updateProject(projectId, updates) {
     if (!db) return null;
     try {
         return db.transaction(() => writeProject(projectId, updates))();
@@ -927,7 +934,7 @@ function reopenProjectCheckpoint(projectId, checkpointId, input = {}) {
     }
 }
 
-async function deleteProject(projectId) {
+function deleteProject(projectId) {
     if (!db) return false;
     try {
         db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
@@ -948,7 +955,7 @@ async function deleteProject(projectId) {
  *
  * @returns {{ project: object, tasksArchived: number } | null}
  */
-async function archiveProject(projectId) {
+function archiveProject(projectId) {
     if (!db) return null;
     try {
         const ts = now();
@@ -982,7 +989,7 @@ async function archiveProject(projectId) {
  *
  * @returns {{ project: object, tasksRestored: number } | null}
  */
-async function unarchiveProject(projectId) {
+function unarchiveProject(projectId) {
     if (!db) return null;
     try {
         const ts = now();
@@ -1024,24 +1031,15 @@ async function getProjectContexts(projectId) {
     }
 }
 
-async function updateProjectContext(projectId, type, content, status) {
+function updateProjectContext(projectId, type, content, status, project) {
     if (!db) return null;
+    const filepath = project?.path ? require('./context-path')(project.path, type) : null;
 
     // Write to local file for git backup
     try {
-        const project = await getProject(projectId);
         if (project?.path) {
             const contextDir = path.join(project.path, '.context');
             if (!fs.existsSync(contextDir)) fs.mkdirSync(contextDir, { recursive: true });
-            const typeToFile = {
-                'product': 'product.md', 'tech-stack': 'tech-stack.md',
-                'product-guidelines': 'product-guidelines.md', 'workflow': 'workflow.md',
-                'database-schema': 'database-schema.md', 'context_map': 'context_map.md',
-                'project-workflow-map': 'project-workflow-map.md',
-                'task-pipeline-map': 'task-pipeline-map.md', 'function_map': 'function_map.md'
-            };
-            const filename = typeToFile[type] || `${type}.md`;
-            const filepath = path.join(contextDir, filename);
             const fileContent = [
                 '---', `context_type: ${type}`, `status: ${status || 'draft'}`,
                 `updated_at: ${now()}`, '---', '', content || ''
@@ -1194,7 +1192,7 @@ async function getTask(taskId) {
     }
 }
 
-async function createTask(task) {
+function createTask(task) {
     if (!db) return null;
     try {
         if (!task.id) task.id = uuid();
@@ -1210,7 +1208,7 @@ async function createTask(task) {
     }
 }
 
-async function updateTask(taskId, updates, expectedVersion) {
+function updateTask(taskId, updates, expectedVersion) {
     if (!db) return null;
     try {
         const normalized = normalizeTaskStatusField({ ...updates }, 'updateTask');
@@ -1234,7 +1232,7 @@ async function updateTask(taskId, updates, expectedVersion) {
     }
 }
 
-async function deleteTask(taskId) {
+function deleteTask(taskId) {
     if (!db) return false;
     try {
         db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
@@ -1258,7 +1256,7 @@ async function deleteTask(taskId) {
  * @param {Array} tasks - Array of task objects
  * @returns {Array} Created tasks with IDs
  */
-async function batchCreateTasks(tasks) {
+function batchCreateTasks(tasks) {
     if (!db) return [];
     try {
         const insertMany = db.transaction((items) => {
@@ -1382,7 +1380,7 @@ async function getBoardState(projectId) {
  * @param {Array} ordering - Array of { id: string, sort_order: number }
  * @returns {boolean} true if reorder succeeded
  */
-async function reorderTasks(ordering) {
+function reorderTasks(ordering) {
     if (!db) return false;
     try {
         const reorder = db.transaction((items) => {
@@ -3280,7 +3278,22 @@ function requireStakeholderPolicy() {
     return stakeholderPolicy;
 }
 
+// Board writes validate ownership inside the same SQLite transaction as the
+// mutation. Keep async facade signatures for existing callers; the underlying
+// implementations below are synchronous and never yield inside that transaction.
+if (db) writeLeases = require('./write-leases').createWriteLeases(db);
+function leasedBoardWrite(mutate) {
+    return (...args) => {
+        // Preserve each facade method's existing null/false/[] fallback when
+        // SQLite failed to open. An open DB without leases still fails closed.
+        if (!db) return mutate(...args);
+        if (!writeLeases) throw Object.assign(new Error('Write lease database unavailable'), { status: 503, code: 'write_leases_unavailable' });
+        return writeLeases.runSync({ scope: 'board' }, () => mutate(...args));
+    };
+}
+
 module.exports = {
+    writeLeases,
     isDatabaseEnabled,
     testConnection,
     // Calendar
@@ -3294,23 +3307,31 @@ module.exports = {
     getProjects,
     getProject,
     getProjectByPath,
-    upsertProject,
-    updateProject,
-    updateProjectNeed,
-    transitionProjectCheckpoint,
-    reopenProjectCheckpoint,
-    deleteProject,
-    archiveProject,
-    unarchiveProject,
+    upsertProject: async (...args) => leasedBoardWrite(upsertProject)(...args),
+    updateProject: async (...args) => leasedBoardWrite(updateProject)(...args),
+    updateProjectNeed: leasedBoardWrite(updateProjectNeed),
+    transitionProjectCheckpoint: leasedBoardWrite(transitionProjectCheckpoint),
+    reopenProjectCheckpoint: leasedBoardWrite(reopenProjectCheckpoint),
+    deleteProject: async (...args) => leasedBoardWrite(deleteProject)(...args),
+    archiveProject: async (...args) => leasedBoardWrite(archiveProject)(...args),
+    unarchiveProject: async (...args) => leasedBoardWrite(unarchiveProject)(...args),
     // Tasks
     getTasks,
     getTask,
-    createTask,
-    updateTask,
-    deleteTask,
+    createTask: async (...args) => leasedBoardWrite(createTask)(...args),
+    updateTask: async (...args) => leasedBoardWrite(updateTask)(...args),
+    deleteTask: async (...args) => leasedBoardWrite(deleteTask)(...args),
     // Context
     getProjectContexts,
-    updateProjectContext,
+    updateProjectContext: async (projectId, type, content, status) => {
+        if (!db) return null;
+        if (!writeLeases) throw Object.assign(new Error('Write lease database unavailable'), { status: 503, code: 'write_leases_unavailable' });
+        return writeLeases.run({ scope: 'board' }, () => {
+            const project = readProject(projectId);
+            const mutate = () => leasedBoardWrite(updateProjectContext)(projectId, type, content, status, project);
+            return project?.path ? writeLeases.runSync({ scope: 'workspace', path: project.path }, mutate) : mutate();
+        });
+    },
     getContextStats,
     // Tracks
     getTracks,
@@ -3373,12 +3394,12 @@ module.exports = {
     insertInlineComment,
     updateInlineComment,
     // Dual-Payload Task Operations (Phase 1: Executive Planning)
-    batchCreateTasks,
+    batchCreateTasks: async (...args) => leasedBoardWrite(batchCreateTasks)(...args),
     getBoardState,
     getBoardSummary: options => require('./board-summary').getBoardSummary(db, options),
     // Markdown document reviews (db/document-reviews.js); undefined when the DB failed to open
     documentReviews,
-    reorderTasks,
+    reorderTasks: async (...args) => leasedBoardWrite(reorderTasks)(...args),
     // Notes (Agent Scratchpad)
     getNotes,
     createNote,
@@ -3413,9 +3434,9 @@ module.exports = {
     getStakeholderPolicy: () => requireStakeholderPolicy().policy(),
     getStakeholderProposal: id => requireStakeholderPolicy().read(id),
     listStakeholderProposals: id => requireStakeholderPolicy().list(id),
-    proposeStakeholderAction: (id, input) => requireStakeholderPolicy().propose(id, input),
-    decideStakeholderProposal: (id, input, authority) => requireStakeholderPolicy().decide(id, input, authority),
-    recordStakeholderReceipt: (id, input) => requireStakeholderPolicy().receipt(id, input),
+    proposeStakeholderAction: leasedBoardWrite((id, input) => requireStakeholderPolicy().propose(id, input)),
+    decideStakeholderProposal: leasedBoardWrite((id, input, authority) => requireStakeholderPolicy().decide(id, input, authority)),
+    recordStakeholderReceipt: leasedBoardWrite((id, input) => requireStakeholderPolicy().receipt(id, input)),
     // Chat Conversations & Messages (persistent Praxis chat history)
     getChatConversations,
     getActiveConversation,
