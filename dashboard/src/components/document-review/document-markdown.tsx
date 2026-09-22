@@ -10,6 +10,8 @@
  * appears on hover/focus on desktop; selecting text inside a block quotes
  * the selection. Raw HTML is shown as text (never rendered) and
  * react-markdown's default URL transform drops javascript:/data: targets.
+ * A ```mermaid fence is drawn as a diagram (see mermaid-diagram.tsx); every
+ * other fence stays an ordinary code block.
  */
 
 import { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from "react";
@@ -17,6 +19,7 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MessageSquarePlus } from "lucide-react";
 import { blockElementId } from "@/lib/document-outline";
+import { MermaidDiagram } from "./mermaid-diagram";
 
 export interface BlockRef {
     start: number;
@@ -47,6 +50,27 @@ function rehypeBlockAnchors() {
 }
 
 type BlockProps = Record<string, unknown> & { children?: ReactNode; node?: unknown; "data-block-start"?: string; "data-block-end"?: string };
+
+type HastChild = { type: string; tagName?: string; value?: string; properties?: { className?: unknown }; children?: HastChild[] };
+
+/**
+ * Source text of a ```mermaid fence, read from the hast <pre><code> node so
+ * the check does not depend on how the code element is rendered. Null for
+ * every other fence.
+ */
+export function mermaidFenceSource(node: unknown): string | null {
+    const pre = node as HastChild | undefined;
+    const code = pre?.children?.find((child) => child.type === "element" && child.tagName === "code");
+    if (!code) return null;
+    const classes = code.properties?.className;
+    const list = Array.isArray(classes) ? classes.map(String) : typeof classes === "string" ? classes.split(/\s+/) : [];
+    if (!list.includes("language-mermaid")) return null;
+    const text = (code.children || [])
+        .filter((child) => child.type === "text")
+        .map((child) => child.value || "")
+        .join("");
+    return text.replace(/\n$/, "");
+}
 
 function BlockShell({ start, end, children }: { start: number; end: number; children: ReactNode }) {
     const { selected, commentCounts, interactive, onBlockSelect } = useContext(BlockContext);
@@ -89,15 +113,17 @@ function BlockShell({ start, end, children }: { start: number; end: number; chil
 
 function blockComponent(tag: string) {
     const Block = (props: BlockProps) => {
-        const { node: _node, children, ...rest } = props;
-        void _node;
+        const { node, children, ...rest } = props;
         const start = Number(rest["data-block-start"]);
         const end = Number(rest["data-block-end"]);
         delete rest["data-block-start"];
         delete rest["data-block-end"];
         const Tag = tag as keyof React.JSX.IntrinsicElements;
+        const mermaid = tag === "pre" ? mermaidFenceSource(node) : null;
         const element =
-            tag === "table" ? (
+            mermaid !== null ? (
+                <MermaidDiagram source={mermaid} />
+            ) : tag === "table" ? (
                 <div className="overflow-x-auto">
                     <Tag {...(rest as Record<string, unknown>)}>{children}</Tag>
                 </div>
