@@ -48,7 +48,8 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         if (sendLeaseError(res, error)) return;
         res.status(error.status || 500).json({ error: error.message, code: error.code || 'work_admission_unavailable' });
     }
-    const admissionResponse = task => ({ ...task,
+    const admissionResponse = task => ({ ...task, title: task.name, createdAt: task.created_at, updatedAt: task.updated_at,
+        implementationPlan: task.plan_output, researchReport: task.research_output,
         ...(task.antigravity_payload ? { antigravity_payload: guardDispatchPayload(task) } : {}) });
     router.get('/:taskId/work-admission', async (req, res) => {
         try {
