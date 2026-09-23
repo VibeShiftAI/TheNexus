@@ -71,3 +71,12 @@ history changes but invalidate on any newly relevant owner, including results
 beyond the three-item shortlist. `coverage.relevant_count` exposes truncation to
 the runtime. Admission GET joins a valid `x-nexus-board-lease` so the runtime can
 fence final inspection and launch against concurrent API mutations.
+
+Retrieval version 2 uses corpus-frequency weighted cosine and excludes recognized
+appended ingestion-report/constraint-ledger sections only from retrieval. Full
+contracts and evidence are still hashed and reviewed. A copied 1,412-task corpus
+keeps distinct reader, historical-feedback and curation controls eligible, while
+retrieving the two prior brief-quality reviews. Explicit concerns always hold
+until adjudicated, even when lexical retrieval finds no candidate. Reopening a
+terminal task through ordinary status PATCH creates a fresh evidence hold; it
+does not silently revive its prior new-work clearance.
