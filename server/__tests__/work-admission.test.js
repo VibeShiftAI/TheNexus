@@ -317,3 +317,108 @@ test('admission read joins the authoritative lease while competing API mutation 
   expect(blocked.status).toBe(409);
  }finally{db.writeLeases.release(lease.token);}
 });
+
+test('admission responses preserve the task client aliases on reads, concerns and resolutions', async () => {
+    const task = await db.createTask(proposal());
+    const read = await api('GET', `/${task.id}/work-admission`);
+    const held = await api('POST', `/${task.id}/work-admission/concerns`, {
+        expected_task_version: read.data.version, concerns: [{ reason: 'Inspect the retained implementation evidence.' }],
+    }, runtimeKey);
+    const resolved = await api('POST', `/${task.id}/work-admission/resolve`, resolution(held.data), runtimeKey);
+    for (const response of [read, held, resolved]) {
+        expect(response.status).toBe(200);
+        expect(response.data.title).toBe(response.data.name);
+        expect(response.data.createdAt).toBe(response.data.created_at);
+        expect(response.data.updatedAt).toBe(response.data.updated_at);
+        expect(response.data.implementationPlan).toBe(response.data.plan_output);
+        expect(response.data.researchReport).toBe(response.data.research_output);
+    }
+});
+
+test('shared research appendices, boilerplate and subset artifacts do not manufacture scope overlap', async () => {
+    const boilerplate = 'Read retained evidence, preserve authority, document limitations, keep current contracts and verify every change before reporting completion.';
+    const report = `\n\nEvidence (overnight ingestion 2026-09-23):\n${'Extracted claims include reader interfaces, blind gold labels, stakeholder feedback, adjudication, curation replay and stall watchdogs. '.repeat(80)}`;
+    const pairs = [
+        ['Reader with Iceberg UI', 'Build a reader screen with expandable omitted clauses at the current reading level.', 'Collect blind labels', 'Capture independent human labels for conditions, exceptions and negations.'],
+        ['Recover historical feedback and sent promises', 'Reconcile attributable historical observations and sent commitments with original dates and exact member IDs.', 'Draft the adjudication memo', 'Distinguish supplied evidence validation from claim sentence entailment in the policy memo.'],
+        ['Run a bounded curation replay', 'Compare memory curation methods on twenty pinned candidates and adjudicate false confirmations.', 'Add an ingestion stall watchdog', 'Detect stalled background embedding runs and report failed progress.'],
+    ];
+    // The same routine instructions occur across the retained corpus, not just
+    // the two candidate tasks; document frequency must reflect that history.
+    for (let n = 0; n < 12; n++) raw.prepare('INSERT INTO tasks (id,project_id,name,description) VALUES (?,?,?,?)')
+        .run(`boilerplate-${n}`, 'p', `Unrelated historical artifact ${n}`, `${boilerplate} Distinct artifact component ${n}.`);
+    for (const [name, description, oldName, oldDescription] of pairs) {
+        const old = await db.createTask({ project_id: 'p', name: oldName, description: `${oldDescription} ${boilerplate}${report}`, status: 'completed' });
+        const candidate = await db.createTask({ project_id: 'p', name, description: `${description} ${boilerplate}${report}` });
+        expect(receipt(candidate).matches.map(match => match.task_id)).not.toContain(old.id);
+        expect(receipt(candidate).decision).toBe('new_work');
+    }
+});
+
+test('short shared vocabulary is not full scope, while a renamed outcome paraphrase still finds its owner', async () => {
+    await db.createTask({ project_id: 'p', name: 'Artifact locator', description: 'Read atomic proposal executor identity evidence.' });
+    const distinct = await db.createTask({ project_id: 'p', name: 'Build a transaction journal', description: 'Build a durable transaction journal with atomic proposal executor identity reservation, SQLite locking, conflict handling, rollback, crash recovery, migration and concurrent retries.' });
+    expect(receipt(distinct).decision).toBe('new_work');
+    const owner = await db.createTask({ project_id: 'p', name: 'Reserve proposal identities', description: 'Reserve atomic proposal identities before creating executor jobs; concurrent requests reuse the same durable reservation.', status: 'completed' });
+    const paraphrase = await db.createTask({ project_id: 'p', name: 'Idempotent background admission', description: 'Concurrent executor job requests must reuse the same durable atomic reservation by proposal identity before creation.' });
+    expect(receipt(paraphrase).matches.map(match => match.task_id)).toContain(owner.id);
+    expect(receipt(paraphrase).decision).toBe('needs_evidence');
+    expect(paraphrase.id).not.toBe(owner.id);
+});
+
+test('retrieval upgrades recompute old lexical holds without clearing explicit concerns', async () => {
+    const task = await db.createTask(proposal());
+    const oldReceipt = { ...receipt(task), retrieval_version: 0, decision: 'needs_evidence', reason: 'Old boilerplate match', matches: [{ task_id: 'old-false-positive' }] };
+    raw.prepare('UPDATE work_admissions SET document=? WHERE task_id=?').run(JSON.stringify(oldReceipt), task.id);
+    expect(receipt(await db.getWorkAdmission(task.id)).decision).toBe('new_work');
+    raw.prepare('UPDATE work_admissions SET document=? WHERE task_id=?').run(JSON.stringify({ ...oldReceipt, concerns: [{ reason: 'Retained source already covers the scoring behavior.' }] }), task.id);
+    expect(receipt(await db.getWorkAdmission(task.id)).decision).toBe('needs_evidence');
+});
+
+test('reopening terminal work requires fresh admission without blocking normal execution transitions', async () => {
+    const task = await db.createTask(proposal());
+    expect(receipt(await db.updateTask(task.id, { status: 'in_progress' })).decision).toBe('new_work');
+    expect(receipt(await db.updateTask(task.id, { status: 'completed', walkthrough: 'Retained accepted delivery.' })).decision).toBe('new_work');
+    const reopened = await db.updateTask(task.id, { status: 'todo' });
+    expect(receipt(reopened).decision).toBe('needs_evidence');
+    expect(receipt(await db.getWorkAdmission(task.id)).decision).toBe('needs_evidence');
+    const resolved = await api('POST', `/${task.id}/work-admission/resolve`, resolution(reopened), runtimeKey);
+    expect(resolved.status).toBe(200);
+    expect(receipt(resolved.data).decision).toBe('new_work');
+    const legacy = await db.createTask({ project_id: 'p', name: 'Legacy finished task', description: 'An accepted historical delivery.', status: 'completed' });
+    raw.prepare('DELETE FROM work_admissions WHERE task_id=?').run(legacy.id);
+    expect(receipt(await db.updateTask(legacy.id, { status: 'idea' })).decision).toBe('needs_evidence');
+});
+
+// Optional empirical regression against a retained full-board backup. Always
+// copy it before refreshing receipts; neither the source nor a live DB is opened.
+(process.env.NEXUS_ADMISSION_CORPUS_DB ? test : test.skip)('retained September 23 corpus separates slate controls and retains known duplicate evidence', () => {
+    const copied = path.join(dir, 'historical-corpus.db');
+    fs.copyFileSync(process.env.NEXUS_ADMISSION_CORPUS_DB, copied);
+    const corpus = new Database(copied);
+    try {
+        const { initializeWorkAdmission, createWorkAdmission } = require('../../db/work-admission');
+        initializeWorkAdmission(corpus);
+        const store = createWorkAdmission(corpus);
+        const find = prefix => corpus.prepare('SELECT * FROM tasks WHERE id LIKE ?').get(`${prefix}%`);
+        const summaries = [];
+        for (const prefix of ['8984be19', '9e8a1d14', 'bd5533e6', '0e7af132', '6258e3fb', '657d3e12', '194b0068', '4c6d0a87', 'a227d868', '6f67617b']) {
+            const task = store.current(find(prefix).id), admission = receipt(task);
+            summaries.push({ id: prefix, decision: admission.decision, searched: admission.coverage.searched_count,
+                relevant: admission.coverage.relevant_count, matches: admission.matches.map(match => match.task_id.slice(0, 8)) });
+            expect(admission.lookup_failed).toBe(false);
+            if (['a227d868', '0e7af132', '6f67617b'].includes(prefix)) expect(admission.decision).toBe('new_work');
+            if (prefix === '194b0068') {
+                expect(admission.decision).toBe('needs_evidence');
+                expect(admission.matches.map(match => match.task_id)).toContain(find('28f08cc3').id);
+            }
+        }
+        for (const [prefix, prior] of [['bd5533e6', '084bc20f'], ['4c6d0a87', null]]) {
+            const task = store.current(find(prefix).id);
+            const held = store.concerns(task.id, { expected_task_version: task.version, concerns: [{ reason: 'Prior implementation exists; identify only the remaining acceptance delta.', ...(prior ? { existing_task_id: find(prior).id } : {}) }] }, 'runtime_credential');
+            expect(receipt(held).decision).toBe('needs_evidence');
+            expect(receipt(store.current(task.id)).decision).toBe('needs_evidence');
+        }
+        console.log('Admission retained-corpus replay:', JSON.stringify(summaries));
+    } finally { corpus.close(); }
+});

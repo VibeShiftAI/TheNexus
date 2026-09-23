@@ -4,6 +4,8 @@ const { canonicalPath } = require('./write-leases');
 
 const DECISIONS = new Set(['new_work', 'covered_by_open', 'already_delivered', 'partial_overlap', 'needs_evidence']);
 const RESOLUTION_WINDOW_MS = 15 * 60 * 1000;
+const RETRIEVAL_VERSION = 2;
+const TERMINAL_STATUSES = new Set(['completed', 'done', 'complete', 'cancelled', 'canceled', 'archived', 'failed']);
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const object = value => {
     if (typeof value === 'string') { try { value = JSON.parse(value); } catch { return {}; } }
@@ -70,17 +72,45 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         if (!c.proposal_id && !c.description && !c.scope && !Object.keys(c.payload).length) return null;
         return digest({ ...c, ...(c.proposal_id ? { name: null } : {}), repeat_id: repeat?.repeat_id || null });
     }
-    const tokens = text => new Set(normalized(text).toLowerCase().match(/[a-z0-9]{3,}/g)?.map(w => w.replace(/(?:ing|ions|ion|ed|s)$/, '')).filter(w => !['the', 'and', 'for', 'with', 'task', 'work', 'before', 'after', 'from', 'that', 'thi'].includes(w)) || []);
-    const overlap = (a, b) => [...a].filter(word => b.has(word)).length;
-    const scopeText = c => [c.description, JSON.stringify(c.scope), JSON.stringify(c.acceptance), c.payload.prompt || ''].join(' ');
-    function score(left, right) {
-        const a = left.scopeTokens, b = right.scopeTokens;
-        const common = overlap(a, b), fraction = common / Math.max(1, Math.min(a.size, b.size));
-        const titleA = left.titleTokens, titleB = right.titleTokens;
-        const titleScore = overlap(titleA, titleB) / Math.max(1, Math.max(titleA.size, titleB.size));
-        if (common >= 3 && fraction >= 0.45 || common >= 2 && fraction >= 0.3 && titleScore >= 0.65) return fraction + titleScore * 0.2;
+    const stopWords = new Set('the and for with task work before after from that this into only have when then been what where which must will should can could would use using does done all any how was are but its our their they them you your each through across existing current record'.split(' '));
+    const tokens = text => new Set((normalized(text).toLowerCase().match(/[a-z][a-z0-9]{2,}/g) || [])
+        .filter(word => !stopWords.has(word))
+        .map(word => word.replace(/(?:ations?|ions?|ing|ed|es|s)$/, '').replace(/e$/, '')));
+    // These generated appendices contain a whole ingestion batch or universal
+    // instructions, not the requested outcome. Only retrieval drops them: the
+    // full contract, fingerprint and evidence supplied for review stay intact.
+    const requestedText = text => normalized(text).split(/(?:Evidence \(overnight ingestion \d{4}-\d{2}-\d{2}\):|### Binding constraints — prerequisite)/)[0];
+    const scopeText = c => [requestedText(c.description), JSON.stringify(c.scope), JSON.stringify(c.acceptance),
+        requestedText(c.payload.prompt), ...['scope', 'target_files', 'declared_paths', 'commands', 'constraints'].map(key => JSON.stringify(c.payload[key]))].join(' ');
+    function corpusWeights(documents) {
+        const frequency = new Map();
+        for (const document of documents) for (const word of new Set([...document.scopeTokens, ...document.titleTokens])) {
+            frequency.set(word, (frequency.get(word) || 0) + 1);
+        }
+        return new Map([...frequency].map(([word, count]) => [word, Math.log1p((documents.length + 1) / (count + 1)) ** 2]));
+    }
+    function cosine(a, b, weights) {
+        let dot = 0, left = 0, right = 0, common = 0;
+        for (const word of a) {
+            const weight = weights.get(word) || 0;
+            left += weight;
+            if (b.has(word)) { dot += weight; common++; }
+        }
+        for (const word of b) right += weights.get(word) || 0;
+        return { similarity: left && right ? dot / Math.sqrt(left * right) : 0, common };
+    }
+    function score(left, right, weights) {
+        const scope = cosine(left.scopeTokens, right.scopeTokens, weights);
+        const title = cosine(left.titleTokens, right.titleTokens, weights);
+        // Cosine penalizes a small generic subset of a much larger contract;
+        // document frequency downweights shared boilerplate. Strong scope can
+        // retrieve a renamed/paraphrased outcome without requiring its title.
+        if (scope.common >= 3 && (scope.similarity >= 0.7 || scope.similarity >= 0.38 && title.similarity >= 0.3)) {
+            return scope.similarity + title.similarity * 0.2;
+        }
         // Legacy title-only items remain review candidates, never merges.
-        if ((!a.size || !b.size) && titleScore === 1) return 0.4;
+        if ((!left.scopeTokens.size || !right.scopeTokens.size) && left.titleTokens.size &&
+            left.titleTokens.size === right.titleTokens.size && title.common === left.titleTokens.size) return 0.4;
         return 0;
     }
     function distinctRuns(a, b) {
@@ -119,18 +149,20 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
                 evidence_hash]).sort((a, b) => a[0].localeCompare(b[0])));
             const explicit = new Set(concerns.map(x => x.existing_task_id).filter(Boolean));
             const wanted = { scopeTokens: tokens(scopeText(c)), titleTokens: tokens(c.name) };
+            const weights = corpusWeights([...candidates, wanted]);
             const relevant = candidates.filter(t => !distinctRuns(c, t.contract)).map(candidate => {
                 const t = candidate.task;
                 return { task_id: t.id, task_version: t.version, status: t.status, title: t.name,
-                    fingerprint: candidate.fingerprint, score: explicit.has(t.id) ? 2 : score(wanted, candidate),
+                    fingerprint: candidate.fingerprint, score: explicit.has(t.id) ? 2 : score(wanted, candidate, weights),
                     evidence_hash: candidate.evidence_hash };
             }).filter(t => t.score > 0).sort((a, b) => b.score - a.score || a.task_id.localeCompare(b.task_id));
-            const relevant_hash = digest(relevant.map(({task_id,fingerprint,status,evidence_hash})=>({task_id,fingerprint,status,evidence_hash})));
+            const relevant_hash = digest(relevant.map(({task_id,fingerprint,status,evidence_hash})=>({task_id,fingerprint,status,evidence_hash}))
+                .sort((left, right) => left.task_id.localeCompare(right.task_id)));
             const matches = relevant.slice(0,3);
-            return { fingerprint, matches, relevant_hash, coverage_hash, coverage: { project_id: task.project_id, workspace: c.workspace,
+            return { fingerprint, retrieval_version: RETRIEVAL_VERSION, matches, relevant_hash, coverage_hash, coverage: { project_id: task.project_id, workspace: c.workspace,
                 searched_count: candidates.length, relevant_count: relevant.length, retained_history: true, shortlist_limit: 3 }, lookup_failed: false };
         } catch (error) {
-            return { fingerprint, matches: [], coverage_hash: null, coverage: { project_id: task.project_id, workspace: c.workspace,
+            return { fingerprint, retrieval_version: RETRIEVAL_VERSION, matches: [], coverage_hash: null, coverage: { project_id: task.project_id, workspace: c.workspace,
                 retained_history: true, shortlist_limit: 3, error: 'lookup_unavailable' }, lookup_failed: true };
         }
     }
@@ -188,7 +220,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
             const task = readTask(id), previous = readReceipt(id);
             const inspected = inspect(task, previous?.concerns || []);
             const unchangedRelevantEvidence = previous?.resolved_at && previous.fingerprint === inspected.fingerprint && previous.relevant_hash && previous.relevant_hash === inspected.relevant_hash;
-            if (previous && previous.fingerprint === inspected.fingerprint && (previous.coverage_hash === inspected.coverage_hash || unchangedRelevantEvidence) && !inspected.lookup_failed) {
+            if (previous && previous.retrieval_version === inspected.retrieval_version && previous.fingerprint === inspected.fingerprint && (previous.coverage_hash === inspected.coverage_hash || unchangedRelevantEvidence) && !inspected.lookup_failed) {
                 const expired = !previous.resolved_at && now() - Date.parse(previous.checked_at) > RESOLUTION_WINDOW_MS;
                 if (!expired && previous.coverage_hash === inspected.coverage_hash && JSON.stringify(previous.matches) === JSON.stringify(inspected.matches)) return task;
                 return save(task, { ...previous, matches: inspected.matches, relevant_hash: inspected.relevant_hash, coverage_hash: inspected.coverage_hash, coverage: inspected.coverage,
@@ -199,7 +231,8 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     }
     function guardUpdate(task, updates) {
         const previous = readReceipt(task.id);
-        if (!previous) {
+        const reopening = TERMINAL_STATUSES.has(task.status) && updates.status !== undefined && !TERMINAL_STATUSES.has(updates.status);
+        if (!previous && !reopening) {
             if (updates.metadata !== undefined) {
                 updates.metadata = { ...object(updates.metadata) }; delete updates.metadata.work_admission;
             }
@@ -210,11 +243,14 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         const metadata = { ...object(updates.metadata === undefined ? task.metadata : updates.metadata) };
         const priorMetadata = object(task.metadata);
         if (priorMetadata.work_identity) metadata.work_identity = priorMetadata.work_identity;
-        if (digest(contract({ ...task, ...updates, metadata })) !== previous.fingerprint) {
-            const next = baseReceipt({ ...task, ...updates, metadata }, previous.concerns || [], previous);
-            next.decision = 'needs_evidence'; next.reason = 'Proposal contract changed; review the current scope before execution.';
+        if (reopening || digest(contract({ ...task, ...updates, metadata })) !== previous.fingerprint) {
+            const concerns = [...(previous?.concerns || [])];
+            if (reopening) concerns.push({ key: digest({ terminal_reopen: task.status, version: task.version }),
+                reason: `Task reopened from ${task.status}; retained prior work requires fresh evidence or an explicitly reasoned repeat.` });
+            const next = baseReceipt({ ...task, ...updates, metadata }, concerns, previous);
+            next.decision = 'needs_evidence'; next.reason = reopening ? concerns[concerns.length - 1].reason : 'Proposal contract changed; review the current scope before execution.';
             metadata.work_admission = next;
-            db.prepare('UPDATE work_admissions SET document = ? WHERE task_id = ?').run(JSON.stringify(next), task.id);
+            db.prepare('INSERT INTO work_admissions (task_id, document) VALUES (?, ?) ON CONFLICT(task_id) DO UPDATE SET document=excluded.document').run(task.id, JSON.stringify(next));
         } else metadata.work_admission = previous;
         return { ...updates, metadata };
     }
