@@ -22,6 +22,7 @@ const { createMemberCommitments } = require('./member-commitments');
 const { migrateUsageStats } = require('./usage-stats-migration');
 const { initializeStakeholderPolicy, createStakeholderPolicy } = require('./stakeholder-policy');
 const { initializeDocumentReviews, createDocumentReviewStore } = require('./document-reviews');
+const { initializeWorkAdmission, createWorkAdmission } = require('./work-admission');
 
 /**
  * Write-side backstop for the canonical task-status enum (@praxis/contract
@@ -58,6 +59,7 @@ let memberEvidence;
 let memberCommitments;
 let documentReviews;
 let stakeholderPolicy;
+let workAdmission;
 try {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
@@ -91,6 +93,8 @@ try {
     stakeholderPolicy = createStakeholderPolicy(db);
     initializeDocumentReviews(db);
     documentReviews = createDocumentReviewStore(db);
+    initializeWorkAdmission(db);
+    workAdmission = createWorkAdmission(db);
 
     // Canonical-status sweep (2026-07-05 unification): idempotent, runs every
     // boot. Writers normalize at createTask/updateTask, but a process still on
@@ -318,6 +322,14 @@ function deserRow(row) {
         if (key === 'is_template' || key === 'is_active' || key === 'is_enabled' || key === 'resolved' || key === 'pinned' || key === 'local_only_active' || key === 'fallback_used' || key === 'decision_maker') {
             row[key] = row[key] === 1 || row[key] === true;
         }
+    }
+    // Admission is authoritative in its receipt table. Read refreshes do not
+    // manufacture task edits; every facade task projection sees the receipt.
+    if (workAdmission && 'project_id' in row && 'name' in row && 'version' in row) {
+        const receipt = workAdmission.readReceipt(row.id);
+        row.metadata = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+        if (receipt) row.metadata.work_admission = receipt;
+        else delete row.metadata.work_admission;
     }
     return row;
 }
@@ -1192,17 +1204,18 @@ async function getTask(taskId) {
     }
 }
 
-function createTask(task) {
+function createTask(task, admissionOptions) {
     if (!db) return null;
     try {
-        if (!task.id) task.id = uuid();
-        if (!task.created_at) task.created_at = now();
-        task.updated_at = now();
-        normalizeTaskStatusField(task, 'createTask');
-        const { sql, values } = buildInsert('tasks', task);
-        db.prepare(sql).run(...values);
-        return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(task.id));
+        const prepared = normalizeTaskStatusField({ ...task, id: task.id || uuid(),
+            created_at: task.created_at || now(), updated_at: now() }, 'createTask');
+        const admitted = workAdmission.admit(prepared, row => {
+            const { sql, values } = buildInsert('tasks', row);
+            db.prepare(sql).run(...values);
+        }, admissionOptions);
+        return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(admitted.id));
     } catch (err) {
+        if (err.code === 'work_admission_conflict') throw err;
         console.error('[Database] Error creating task:', err.message);
         return null;
     }
@@ -1211,10 +1224,15 @@ function createTask(task) {
 function updateTask(taskId, updates, expectedVersion) {
     if (!db) return null;
     try {
-        const normalized = normalizeTaskStatusField({ ...updates }, 'updateTask');
-        delete normalized.version; // revisions are owned by the database trigger
-        const { sql, values } = buildUpdate('tasks', normalized, 'id', taskId);
         return db.transaction(() => {
+            const existing = deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId));
+            if (!existing) {
+                if (expectedVersion !== undefined) throw Object.assign(new Error('Task changed since it was read'), { code: 'task_version_conflict' });
+                return null;
+            }
+            const normalized = workAdmission.guardUpdate(existing, normalizeTaskStatusField({ ...updates }, 'updateTask'));
+            delete normalized.version; // revisions are owned by the database trigger
+            const { sql, values } = buildUpdate('tasks', normalized, 'id', taskId);
             const result = expectedVersion === undefined
                 ? db.prepare(sql).run(...values)
                 : db.prepare(`${sql} AND version = ?`).run(...values, expectedVersion);
@@ -1236,6 +1254,7 @@ function deleteTask(taskId) {
     if (!db) return false;
     try {
         db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
+        workAdmission.forget(taskId);
         return true;
     } catch (err) {
         console.error('[Database] Error deleting task:', err.message);
@@ -1256,33 +1275,34 @@ function deleteTask(taskId) {
  * @param {Array} tasks - Array of task objects
  * @returns {Array} Created tasks with IDs
  */
-function batchCreateTasks(tasks) {
+function batchCreateTasks(tasks, admissionOptions = []) {
     if (!db) return [];
     try {
         const insertMany = db.transaction((items) => {
             const results = [];
-            for (const task of items) {
-                if (!task.id) task.id = uuid();
-                if (!task.created_at) task.created_at = now();
-                task.updated_at = now();
-                normalizeTaskStatusField(task, 'batchCreateTasks');
-
-                // Serialize JSON fields for storage
-                if (task.antigravity_payload && typeof task.antigravity_payload === 'object') {
-                    task.antigravity_payload = JSON.stringify(task.antigravity_payload);
-                }
-                if (task.dependencies && Array.isArray(task.dependencies)) {
-                    task.dependencies = JSON.stringify(task.dependencies);
-                }
-
-                const { sql, values } = buildInsert('tasks', task);
-                db.prepare(sql).run(...values);
-                results.push(deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(task.id)));
+            const canonicalIds = new Map();
+            for (const [index, task] of items.entries()) {
+                const created = createTask(task, admissionOptions[index]);
+                if (!created) throw new Error('Task admission or insertion failed');
+                if (task.id) canonicalIds.set(task.id, created.id);
+                results.push(created);
             }
-            return results;
+            // Sibling edges must follow a reused owner, including forward
+            // references. Never rewrite an existing canonical task on retry.
+            for (let index = 0; index < results.length; index++) {
+                const task = results[index], input = items[index];
+                if (input.id && input.id !== task.id) continue;
+                const dependencies = (task.dependencies || []).map(id => canonicalIds.get(id) || id);
+                const successor_id = canonicalIds.get(task.successor_id) || task.successor_id;
+                if (JSON.stringify(dependencies) !== JSON.stringify(task.dependencies || []) || successor_id !== task.successor_id) {
+                    updateTask(task.id, { dependencies, ...(successor_id ? { successor_id } : {}) });
+                }
+            }
+            return results.map(t => deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(t.id)));
         });
         return insertMany(tasks);
     } catch (err) {
+        if (err.code === 'work_admission_conflict') throw err;
         console.error('[Database] Error batch-creating tasks:', err.message);
         return [];
     }
@@ -3318,6 +3338,18 @@ module.exports = {
     // Tasks
     getTasks,
     getTask,
+    getWorkAdmission: async (...args) => leasedBoardWrite((id) => {
+        workAdmission.current(id);
+        return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id));
+    })(...args),
+    resolveWorkAdmission: async (...args) => leasedBoardWrite((id, input, authority) => {
+        workAdmission.resolve(id, input, authority);
+        return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id));
+    })(...args),
+    recordWorkAdmissionConcerns: async (...args) => leasedBoardWrite((id, input, authority) => {
+        workAdmission.concerns(id, input, authority);
+        return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id));
+    })(...args),
     createTask: async (...args) => leasedBoardWrite(createTask)(...args),
     updateTask: async (...args) => leasedBoardWrite(updateTask)(...args),
     deleteTask: async (...args) => leasedBoardWrite(deleteTask)(...args),

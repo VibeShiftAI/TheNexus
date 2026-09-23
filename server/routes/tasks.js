@@ -12,6 +12,7 @@ const { requireValidKnowledgeMetadata } = require('../lib/task-knowledge');
 const { TaskBoardStatusSchema, normalizeTaskBoardStatus, AntigravityPayloadSchema } = require('@praxis/contract');
 const { checkPredecessorGate, triggerSuccessors } = require('../lib/task-sequence');
 const { praxisFetch } = require('../services/praxis-client');
+const { requireStakeholderAuthority } = require('../services/stakeholder-authority');
 const {
     normalizeSourceClaim, guardSourceUpdate, guardPayloadUpdate, guardDispatchPayload,
     tierOf, UNVERIFIED_OPERATOR_SOURCE,
@@ -37,6 +38,34 @@ function requireValidStatus(res, rawStatus) {
 function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, runDeepResearch, validateInitiativeRequest, pushService }) {
     const router = express.Router();
     router.use(boardRequestLease(db));
+
+    function repeatOptions(req, body = req.body) {
+        if (body.work_repeat === undefined) return undefined;
+        const authority = requireStakeholderAuthority(req, 'operator');
+        return { authority, repeat: body.work_repeat };
+    }
+    function admissionError(res, error) {
+        if (sendLeaseError(res, error)) return;
+        res.status(error.status || 500).json({ error: error.message, code: error.code || 'work_admission_unavailable' });
+    }
+    const admissionResponse = task => ({ ...task,
+        ...(task.antigravity_payload ? { antigravity_payload: guardDispatchPayload(task) } : {}) });
+    router.get('/:taskId/work-admission', async (req, res) => {
+        try { res.json(admissionResponse(await db.getWorkAdmission(req.params.taskId))); }
+        catch (error) { admissionError(res, error); }
+    });
+    router.post('/:taskId/work-admission/concerns', async (req, res) => {
+        try {
+            const authority = requireStakeholderAuthority(req, 'runtime');
+            res.json(admissionResponse(await db.recordWorkAdmissionConcerns(req.params.taskId, req.body, authority)));
+        } catch (error) { admissionError(res, error); }
+    });
+    router.post('/:taskId/work-admission/resolve', async (req, res) => {
+        try {
+            const authority = requireStakeholderAuthority(req, 'runtime');
+            res.json(admissionResponse(await db.resolveWorkAdmission(req.params.taskId, req.body, authority)));
+        } catch (error) { admissionError(res, error); }
+    });
 
     // Successor auto-start (task sequencing): the completed transition here
     // is the single choke point every completion path goes through — UI,
@@ -144,6 +173,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             payload = parsed.data;
         }
         try {
+            const admissionOptions = repeatOptions(req);
             const deps = Array.isArray(dependencies)
                 ? [...new Set(dependencies.filter(d => typeof d === 'string' && d))]
                 : [];
@@ -174,10 +204,11 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 ...(claim.source ? { source: claim.source } : {}),
                 ...(metadata !== undefined ? { metadata } : {}),
                 last_activity_at: new Date().toISOString()
-            });
+            }, ...(admissionOptions ? [admissionOptions] : []));
             res.status(201).json(result);
         } catch (error) {
             if (sendLeaseError(res, error)) return;
+            if (error.status) return admissionError(res, error);
             res.status(500).json({ error: 'Failed to create task: ' + error.message });
         }
     });
@@ -359,6 +390,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         if (!project_id || !tasks || !Array.isArray(tasks)) return res.status(400).json({ error: 'project_id and tasks array are required' });
         if (tasks.length > 50) return res.status(400).json({ error: `Batch too large (${tasks.length}). Max 50 tasks per batch.` });
         try {
+            const admissionOptions = tasks.map(task => repeatOptions(req, task));
             const project = await db.getProject(project_id);
             if (!project) return res.status(404).json({ error: `Project '${project_id}' not found.` });
             const stableIdToRealId = new Map();
@@ -398,14 +430,16 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                     }
                 }
                 delete task.stable_id;
+                delete task.work_repeat;
             }
-            const created = await db.batchCreateTasks(preparedTasks);
+            const created = await db.batchCreateTasks(preparedTasks, admissionOptions);
             res.status(201).json({
                 success: true, project: project.name, created_count: created.length,
-                tasks: created.map(t => ({ id: t.id, name: t.name, status: t.status, sort_order: t.sort_order, has_payload: !!t.antigravity_payload, dependencies: t.dependencies || [], successor_id: t.successor_id || null }))
+                tasks: created.map(t => ({ id: t.id, name: t.name, status: t.status, sort_order: t.sort_order, has_payload: !!t.antigravity_payload, dependencies: t.dependencies || [], successor_id: t.successor_id || null, metadata: t.metadata }))
             });
         } catch (error) {
             if (sendLeaseError(res, error)) return;
+            if (error.status) return admissionError(res, error);
             res.status(500).json({ error: 'Failed to batch-create tasks: ' + error.message });
         }
     });
@@ -431,8 +465,9 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
 
     // POST add task to project
     router.post('/:id/tasks', async (req, res) => {
-        const { title, description, model_assignment, dependencies, successor_id, antigravity_payload, source } = req.body;
+        const { title, description, model_assignment, dependencies, successor_id, antigravity_payload, source, metadata } = req.body;
         if (!title?.trim()) return res.status(400).json({ error: 'Task title is required' });
+        if (!requireValidKnowledgeMetadata(res, metadata)) return;
         let payload;
         if (antigravity_payload !== undefined && antigravity_payload !== null) {
             const parsed = AntigravityPayloadSchema.safeParse(antigravity_payload);
@@ -463,6 +498,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
         try {
+            const admissionOptions = repeatOptions(req);
             // This endpoint used to hardcode source: 'user' for every caller —
             // an unconditional operator-authorship grant to whoever posted
             // here, antigravity_payload included. Route it through the same
@@ -477,12 +513,13 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 ...(payload ? { antigravity_payload: payload } : {}),
                 ...(deps.length > 0 ? { dependencies: deps } : {}),
                 ...(successor_id ? { successor_id } : {}),
-                metadata: { classifiedAt: new Date().toISOString() },
+                metadata: { ...metadata, classifiedAt: new Date().toISOString() },
                 last_activity_at: new Date().toISOString()
-            });
+            }, ...(admissionOptions ? [admissionOptions] : []));
             res.json({ success: true, task: { ...created, title: created.name, createdAt: created.created_at } });
         } catch (error) {
             if (sendLeaseError(res, error)) return;
+            if (error.status) return admissionError(res, error);
             res.status(500).json({ error: 'Failed to create task' });
         }
     });

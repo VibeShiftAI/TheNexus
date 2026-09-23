@@ -5,6 +5,13 @@ const express = require('express');
 const http = require('http');
 const Database = require('better-sqlite3');
 
+// Admission adds a server-owned field; all pre-existing metadata remains exact.
+function withoutAdmission(metadata) {
+  const { work_admission, ...applicationMetadata } = metadata;
+  expect(work_admission).toMatchObject({ schema_version: 1, owner: 'work-admission' });
+  return applicationMetadata;
+}
+
 const knowledgeContext = () => ({
   version: 1,
   lookup_status: 'available',
@@ -70,9 +77,9 @@ describe('task knowledge metadata API and storage boundary', () => {
     const id = mode === 'single' ? result.body.id : result.body.tasks[0].id;
     const fetched = await request(`/${id}`);
     expect(fetched.status).toBe(200);
-    expect(fetched.body.metadata).toEqual(metadata);
-    expect((await request('?project_id=11111111-1111-4111-8111-111111111111')).body.tasks[0].metadata).toEqual(metadata);
-    expect(JSON.parse(raw.prepare('SELECT metadata FROM tasks WHERE id = ?').get(id).metadata)).toEqual(metadata);
+    expect(withoutAdmission(fetched.body.metadata)).toEqual(metadata);
+    expect(withoutAdmission((await request('?project_id=11111111-1111-4111-8111-111111111111')).body.tasks[0].metadata)).toEqual(metadata);
+    expect(withoutAdmission(JSON.parse(raw.prepare('SELECT metadata FROM tasks WHERE id = ?').get(id).metadata))).toEqual(metadata);
   });
 
   test.each([null, [], 'metadata'])('single create refuses non-object metadata %j', async metadata => {
@@ -84,7 +91,7 @@ describe('task knowledge metadata API and storage boundary', () => {
   test('single create accepts an empty metadata object', async () => {
     const result = await request('', { project_id: '11111111-1111-4111-8111-111111111111', title: 'No requirements', metadata: {} }, 'POST');
     expect(result.status).toBe(201);
-    expect((await request(`/${result.body.id}`)).body.metadata).toEqual({});
+    expect(withoutAdmission((await request(`/${result.body.id}`)).body.metadata)).toEqual({});
   });
 
   test('PATCH merges knowledge fields while preserving unrelated metadata and suspension history', async () => {
@@ -92,8 +99,8 @@ describe('task knowledge metadata API and storage boundary', () => {
     const task = await seed(metadata);
     const result = await request('/task-1', { knowledge_context: knowledgeContext(), knowledge_need_ids: ['need-1'], expected_version: task.version }, 'PATCH');
     expect(result.status).toBe(200);
-    expect(result.body.task.metadata).toEqual({ ...metadata, knowledge_context: knowledgeContext(), knowledge_need_ids: ['need-1'] });
-    expect((await request('/task-1')).body.metadata).toEqual(result.body.task.metadata);
+    expect(withoutAdmission(result.body.task.metadata)).toEqual({ ...metadata, knowledge_context: knowledgeContext(), knowledge_need_ids: ['need-1'] });
+    expect(withoutAdmission((await request('/task-1')).body.metadata)).toEqual(withoutAdmission(result.body.task.metadata));
     expect(result.body.task.version).toBe(task.version + 1);
   });
 
@@ -104,7 +111,7 @@ describe('task knowledge metadata API and storage boundary', () => {
       status: 'suspended', status_message: 'Research is paused', suspended_reason: 'Need approval',
     }, 'PATCH');
     expect(result.status).toBe(200);
-    expect(result.body.task.metadata).toEqual({
+    expect(withoutAdmission(result.body.task.metadata)).toEqual({
       planning: { revision: 'r1' }, knowledge_context: knowledgeContext(), knowledge_need_ids: ['need-1'],
       status_message: 'Research is paused', suspension: { reason: 'Need approval', suspended_at: expect.any(String) },
     });
@@ -114,11 +121,11 @@ describe('task knowledge metadata API and storage boundary', () => {
     const task = await seed({ knowledge_context: knowledgeContext(), knowledge_need_ids: ['need-1'], planning: 'keep' });
     const idsOnly = await request('/task-1', { knowledge_need_ids: [], expected_version: task.version }, 'PATCH');
     expect(idsOnly.status).toBe(200);
-    expect(idsOnly.body.task.metadata).toEqual({ knowledge_context: knowledgeContext(), knowledge_need_ids: [], planning: 'keep' });
+    expect(withoutAdmission(idsOnly.body.task.metadata)).toEqual({ knowledge_context: knowledgeContext(), knowledge_need_ids: [], planning: 'keep' });
     const context = { version: 1, lookup_status: 'unavailable', requirements: [] };
     const contextOnly = await request('/task-1', { knowledge_context: context, expected_version: idsOnly.body.task.version }, 'PATCH');
     expect(contextOnly.status).toBe(200);
-    expect(contextOnly.body.task.metadata).toEqual({ knowledge_context: context, knowledge_need_ids: [], planning: 'keep' });
+    expect(withoutAdmission(contextOnly.body.task.metadata)).toEqual({ knowledge_context: context, knowledge_need_ids: [], planning: 'keep' });
   });
 
   test('PATCH persists unresolved links with the knowledge snapshot while preserving other metadata', async () => {
@@ -129,7 +136,7 @@ describe('task knowledge metadata API and storage boundary', () => {
       knowledge_unresolved_need_ids: ['missing-need'], expected_version: task.version,
     }, 'PATCH');
     expect(result.status).toBe(200);
-    expect((await request('/task-1')).body.metadata).toEqual({
+    expect(withoutAdmission((await request('/task-1')).body.metadata)).toEqual({
       ...metadata, knowledge_context: knowledgeContext(), knowledge_need_ids: ['need-1'],
       knowledge_unresolved_need_ids: ['missing-need'],
     });
@@ -140,7 +147,7 @@ describe('task knowledge metadata API and storage boundary', () => {
     const task = await seed(metadata);
     const result = await request('/task-1', { knowledge_unresolved_need_ids: [], expected_version: task.version }, 'PATCH');
     expect(result.status).toBe(200);
-    expect((await request('/task-1')).body.metadata).toEqual({ ...metadata, knowledge_unresolved_need_ids: [] });
+    expect(withoutAdmission((await request('/task-1')).body.metadata)).toEqual({ ...metadata, knowledge_unresolved_need_ids: [] });
   });
 
   test('PATCH preserves unresolved links when their field is omitted', async () => {
@@ -148,7 +155,7 @@ describe('task knowledge metadata API and storage boundary', () => {
     const task = await seed(metadata);
     const result = await request('/task-1', { knowledge_need_ids: ['need-1'], expected_version: task.version }, 'PATCH');
     expect(result.status).toBe(200);
-    expect(result.body.task.metadata).toEqual({ ...metadata, knowledge_need_ids: ['need-1'] });
+    expect(withoutAdmission(result.body.task.metadata)).toEqual({ ...metadata, knowledge_need_ids: ['need-1'] });
   });
 
   const invalidUpdates = [
@@ -219,6 +226,6 @@ describe('task knowledge metadata API and storage boundary', () => {
     }, 'PATCH');
     expect(result.status).toBe(200);
     expect(result.body.task.source).toBe('nexus-api');
-    expect(result.body.task.metadata).toEqual({ verification: { outcome: 'uncertain' }, planning: 'keep', knowledge_context: knowledgeContext() });
+    expect(withoutAdmission(result.body.task.metadata)).toEqual({ verification: { outcome: 'uncertain' }, planning: 'keep', knowledge_context: knowledgeContext() });
   });
 });
