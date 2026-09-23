@@ -75,7 +75,7 @@ test('title alone, changed scope, project, workspace, acceptance and recurrence 
     const variants = [
         proposal({ description: 'Paint the dashboard navigation and update contrast colors.' }),
         proposal({ project_id: 'other' }),
-        proposal({ metadata: { work_identity: { ...proposal().metadata.work_identity, workspace: '/tmp/deployment-b' } } }),
+        proposal({ antigravity_payload: {workspace:'/tmp/deployment-b',prompt:'Deploy the same scoped work'}, metadata: { work_identity: { ...proposal().metadata.work_identity, workspace: '/tmp/deployment-b' } } }),
         proposal({ metadata: { work_identity: { ...proposal().metadata.work_identity, acceptance: ['Recover identities across database failover.'] } } }),
         ...['2026-09-22', '2026-09-23'].map(day => proposal({ metadata: { work_identity: {
             ...proposal().metadata.work_identity, recurrence: { run_id: day, observation_window: day } } } })),
@@ -256,4 +256,64 @@ test('operational payload repair context and status do not change the implementa
     expect(receipt(changed).decision).toBe('new_work');
     const scope = await db.updateTask(task.id, { antigravity_payload: { ...changed.antigravity_payload, acceptance_criteria: ['Atomic reservation survives journal corruption.'] } });
     expect(receipt(scope).decision).toBe('needs_evidence');
+});
+
+test('scope-edited exact reservations cannot silently substitute different work', async () => {
+    const first = await db.createTask(proposal());
+    await db.updateTask(first.id, {description:'Build a completely unrelated calendar dashboard.'});
+    await expect(db.createTask(proposal())).rejects.toThrow(/changed|different|scope/i);
+});
+test('identity workspace cannot disguise the executable workspace', async () => {
+    const first = await db.createTask(proposal({antigravity_payload:{prompt:'Implement atomic admission',workspace:'/tmp/synthetic-admission'}}));
+    await expect(db.createTask(proposal({metadata:{work_identity:{workspace:'/tmp/invented'}},antigravity_payload:{prompt:'Implement atomic admission',workspace:'/tmp/synthetic-admission'}}))).rejects.toThrow(/workspace/i);
+    expect(raw.prepare('SELECT count(*) AS n FROM tasks').get().n).toBe(1);
+});
+test('producer constraints and additional repositories remain distinct contracts', async () => {
+    const first=await db.createTask(proposal({antigravity_payload:{prompt:'Implement atomic admission',binding_constraints:[{id:'human-rule',text:'Do not modify dashboard'}],workspace_roots:['/tmp/first']}}));
+    const second=await db.createTask(proposal({antigravity_payload:{prompt:'Implement atomic admission',binding_constraints:[{id:'human-rule',text:'Modify dashboard too'}],workspace_roots:['/tmp/second']}}));
+    expect(second.id).not.toBe(first.id);
+});
+test('unrelated creation preserves adjudication but newly relevant evidence invalidates it', async () => {
+    await db.createTask(proposal({name:'Older reservation work',description:'Reserve atomic proposal identities for background jobs'}));
+    const candidate=await db.createTask(proposal({name:'Different reservation work'}));
+    const current=await api('GET',`/${candidate.id}/work-admission`);
+    expect(receipt(current.data).decision).toBe('needs_evidence');
+    const resolved=await api('POST',`/${candidate.id}/work-admission/resolve`,resolution(current.data),runtimeKey);
+    expect(resolved.status).toBe(200);
+    await db.createTask({project_id:'p',name:'Change colors',description:'Paint the homepage banner violet'});
+    const unchanged=await api('GET',`/${candidate.id}/work-admission`);
+    expect(receipt(unchanged.data).decision).toBe('new_work');
+    await db.createTask(proposal({name:'Another atomic reservation',description:'Reserve an atomic proposal identity before creating executor work, including admission conflict recovery'}));
+    expect(receipt((await api('GET',`/${candidate.id}/work-admission`)).data).decision).toBe('needs_evidence');
+});
+
+test('generated-only constraints are absent from identity, authored reserved IDs remain substantive', async () => {
+    const task=await db.createTask(proposal());
+    const generated=await db.updateTask(task.id,{antigravity_payload:{binding_constraints:[{id:'BC-SCOPE',generated:true,text:'Generated scope'}],binding_constraints_text:'Generated scope'}});
+    expect(receipt(generated).fingerprint).toBe(receipt(task).fingerprint);
+    const authored=await db.updateTask(task.id,{antigravity_payload:{binding_constraints:[{id:'BC-SCOPE',text:'Operator restricts this to the API'}]}});
+    expect(receipt(authored).fingerprint).not.toBe(receipt(task).fingerprint);
+});
+test('a fourth relevant candidate invalidates clearance even when top three stay identical', async () => {
+    for(const id of ['a','b','c']) await db.createTask(proposal({id,name:`Atomic owner ${id}`,metadata:{}}));
+    const candidate=await db.createTask(proposal({id:'candidate',name:'Atomic candidate',metadata:{}}));
+    const current=await api('GET',`/${candidate.id}/work-admission`);
+    const resolved=await api('POST',`/${candidate.id}/work-admission/resolve`,resolution(current.data),runtimeKey);
+    expect(resolved.status).toBe(200);
+    await db.createTask(proposal({id:'z',name:'Atomic owner z',metadata:{}}));
+    const updated=(await api('GET',`/${candidate.id}/work-admission`)).data;
+    expect(receipt(updated).matches.map(m=>m.task_id)).toEqual(receipt(current.data).matches.map(m=>m.task_id));
+    expect(receipt(updated).decision).toBe('needs_evidence');
+    expect(receipt(updated).coverage.relevant_count).toBe(4);
+});
+
+test('admission read joins the authoritative lease while competing API mutation is refused', async () => {
+ const task=await db.createTask(proposal());
+ const lease=db.writeLeases.acquire({scope:'board'},{owner:'test-admission'});
+ try {
+  const checked=await fetch(base+`/${task.id}/work-admission`,{headers:{'x-nexus-board-lease':lease.token}});
+  expect(checked.status).toBe(200);
+  const blocked=await api('PATCH',`/${task.id}`,{description:'Race changes the scope'});
+  expect(blocked.status).toBe(409);
+ }finally{db.writeLeases.release(lease.token);}
 });

@@ -51,7 +51,12 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     const admissionResponse = task => ({ ...task,
         ...(task.antigravity_payload ? { antigravity_payload: guardDispatchPayload(task) } : {}) });
     router.get('/:taskId/work-admission', async (req, res) => {
-        try { res.json(admissionResponse(await db.getWorkAdmission(req.params.taskId))); }
+        try {
+            const token = req.get('x-nexus-board-lease');
+            const read = () => db.getWorkAdmission(req.params.taskId);
+            const task = token && db.writeLeases ? await db.writeLeases.run({scope:'board'}, read, {token}) : await read();
+            res.json(admissionResponse(task));
+        }
         catch (error) { admissionError(res, error); }
     });
     router.post('/:taskId/work-admission/concerns', async (req, res) => {

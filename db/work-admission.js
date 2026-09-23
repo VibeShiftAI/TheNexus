@@ -45,13 +45,18 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     function contract(task, projectPath) {
         const metadata = object(task.metadata), identity = object(metadata.work_identity), payload = object(task.antigravity_payload);
         const workspacePath = projectPath === undefined ? db.prepare('SELECT path FROM projects WHERE id = ?').get(task.project_id)?.path : projectPath;
-        const requestedWorkspace = identity.workspace || payload.workspace || workspacePath || '';
+        const requestedWorkspace = payload.workspace || workspacePath || identity.workspace || '';
         let workspace = requestedWorkspace;
         if (path.isAbsolute(requestedWorkspace)) workspace = canonicalPath(requestedWorkspace);
+        if (identity.workspace && canonicalPath(identity.workspace) !== canonicalPath(requestedWorkspace)) throw fail('Declared identity workspace disagrees with executable workspace', 400);
         // Executor repair/session/routing state is operational context, not a
         // changed request. Bind only executable scope and acceptance fields.
         const scopePayload = Object.fromEntries(['prompt', 'workspace', 'acceptance_criteria', 'context_files', 'target_files',
-            'scope', 'commands', 'constraints'].filter(key => payload[key] !== undefined).map(key => [key, payload[key]]));
+            'scope', 'commands', 'constraints', 'declared_paths', 'workspace_roots', 'additional_workspaces', 'operator_rulings', 'binding_constraints', 'binding_constraints_text'].filter(key => payload[key] !== undefined).map(key => [key, payload[key]]));
+        if (Array.isArray(scopePayload.binding_constraints)) scopePayload.binding_constraints = scopePayload.binding_constraints.filter(rule => !rule?.generated);
+        if (Array.isArray(scopePayload.binding_constraints) && !scopePayload.binding_constraints.length) delete scopePayload.binding_constraints;
+        // Generated text is a redundant projection with task-local links; authored structured constraints remain authoritative.
+        if (Array.isArray(payload.binding_constraints) && payload.binding_constraints.some(rule => rule?.generated)) delete scopePayload.binding_constraints_text;
         return stable({ project_id: task.project_id, workspace, proposal_id: identity.proposal_id || null,
             name: task.name || task.title || '', description: task.description || '',
             scope: identity.scope || '', acceptance: identity.acceptance || payload.acceptance_criteria || [],
@@ -114,14 +119,16 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
                 evidence_hash]).sort((a, b) => a[0].localeCompare(b[0])));
             const explicit = new Set(concerns.map(x => x.existing_task_id).filter(Boolean));
             const wanted = { scopeTokens: tokens(scopeText(c)), titleTokens: tokens(c.name) };
-            const matches = candidates.filter(t => !distinctRuns(c, t.contract)).map(candidate => {
+            const relevant = candidates.filter(t => !distinctRuns(c, t.contract)).map(candidate => {
                 const t = candidate.task;
                 return { task_id: t.id, task_version: t.version, status: t.status, title: t.name,
                     fingerprint: candidate.fingerprint, score: explicit.has(t.id) ? 2 : score(wanted, candidate),
                     evidence_hash: candidate.evidence_hash };
-            }).filter(t => t.score > 0).sort((a, b) => b.score - a.score || a.task_id.localeCompare(b.task_id)).slice(0, 3);
-            return { fingerprint, matches, coverage_hash, coverage: { project_id: task.project_id, workspace: c.workspace,
-                searched_count: candidates.length, retained_history: true, shortlist_limit: 3 }, lookup_failed: false };
+            }).filter(t => t.score > 0).sort((a, b) => b.score - a.score || a.task_id.localeCompare(b.task_id));
+            const relevant_hash = digest(relevant.map(({task_id,fingerprint,status,evidence_hash})=>({task_id,fingerprint,status,evidence_hash})));
+            const matches = relevant.slice(0,3);
+            return { fingerprint, matches, relevant_hash, coverage_hash, coverage: { project_id: task.project_id, workspace: c.workspace,
+                searched_count: candidates.length, relevant_count: relevant.length, retained_history: true, shortlist_limit: 3 }, lookup_failed: false };
         } catch (error) {
             return { fingerprint, matches: [], coverage_hash: null, coverage: { project_id: task.project_id, workspace: c.workspace,
                 retained_history: true, shortlist_limit: 3, error: 'lookup_unavailable' }, lookup_failed: true };
@@ -156,7 +163,11 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
             delete task.metadata.work_admission;
             const identity = identityKey(task, repeat);
             const reserved = identity && db.prepare('SELECT task_id FROM work_admissions WHERE identity_key = ?').get(identity);
-            if (reserved) return readTask(reserved.task_id);
+            if (reserved) {
+                const owner = readTask(reserved.task_id);
+                if (identityKey(owner, repeat) !== identity) throw fail(`Reserved task ${owner.id} changed scope; reconcile it before retrying this proposal`);
+                return owner;
+            }
             const existing = task.id && db.prepare('SELECT id FROM tasks WHERE id = ?').get(task.id);
             if (existing) {
                 if (digest(contract(readTask(task.id))) !== digest(contract(task))) throw fail('Task id already owns a different proposal contract');
@@ -176,10 +187,11 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         return db.transaction(() => {
             const task = readTask(id), previous = readReceipt(id);
             const inspected = inspect(task, previous?.concerns || []);
-            if (previous && previous.fingerprint === inspected.fingerprint && previous.coverage_hash === inspected.coverage_hash && !inspected.lookup_failed) {
+            const unchangedRelevantEvidence = previous?.resolved_at && previous.fingerprint === inspected.fingerprint && previous.relevant_hash && previous.relevant_hash === inspected.relevant_hash;
+            if (previous && previous.fingerprint === inspected.fingerprint && (previous.coverage_hash === inspected.coverage_hash || unchangedRelevantEvidence) && !inspected.lookup_failed) {
                 const expired = !previous.resolved_at && now() - Date.parse(previous.checked_at) > RESOLUTION_WINDOW_MS;
-                if (!expired && JSON.stringify(previous.matches) === JSON.stringify(inspected.matches)) return task;
-                return save(task, { ...previous, matches: inspected.matches,
+                if (!expired && previous.coverage_hash === inspected.coverage_hash && JSON.stringify(previous.matches) === JSON.stringify(inspected.matches)) return task;
+                return save(task, { ...previous, matches: inspected.matches, relevant_hash: inspected.relevant_hash, coverage_hash: inspected.coverage_hash, coverage: inspected.coverage,
                     ...(expired ? { checked_at: new Date(now()).toISOString() } : {}) });
             }
             return save(task, baseReceipt(task, previous?.concerns || [], previous));

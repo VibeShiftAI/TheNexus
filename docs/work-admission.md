@@ -62,3 +62,12 @@ receipt binding and evidence shape, not the truth of the review or arbitrary
 external artifact contents. Changed retained task evidence invalidates reuse;
 an external artifact change must be reported by the reviewer. No model call,
 filesystem-wide scan, execution, or completion is performed by admission.
+
+Scope excludes explicitly marked generated constraint projections and operational
+repair/session metadata. Unmarked authored rules, including reserved `BC-*` IDs,
+remain substantive. A changed exact reservation returns conflict rather than
+substituting a differently scoped task. Resolved receipts survive unrelated
+history changes but invalidate on any newly relevant owner, including results
+beyond the three-item shortlist. `coverage.relevant_count` exposes truncation to
+the runtime. Admission GET joins a valid `x-nexus-board-lease` so the runtime can
+fence final inspection and launch against concurrent API mutations.
