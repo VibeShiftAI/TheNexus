@@ -467,3 +467,29 @@ html[data-nexus-shell] { -webkit-tap-highlight-color: transparent; overscroll-be
 .dispatch-map::-webkit-scrollbar, .dispatch-voices::-webkit-scrollbar, .dispatch-queue::-webkit-scrollbar { width: 4px; }
 .dispatch-map::-webkit-scrollbar-thumb, .dispatch-voices::-webkit-scrollbar-thumb, .dispatch-queue::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 .dispatch-map::-webkit-scrollbar-track, .dispatch-voices::-webkit-scrollbar-track, .dispatch-queue::-webkit-scrollbar-track { background: transparent; }
+
+/* Mermaid diagrams drawn from ```mermaid fences in the document reader
+   (components/document-review/mermaid-diagram.tsx). Mermaid emits the SVG at
+   its natural size so labels keep their font size. On a phone the figure
+   scrolls sideways when the diagram is wider than the column. From tablet
+   width up a wide diagram shrinks to fit the column, but never below the
+   floor the component sets in --nexus-mermaid-min (70% of natural size);
+   past that floor the figure scrolls instead so labels stay legible. */
+.nexus-mermaid {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.nexus-mermaid svg {
+  display: block;
+  margin: 0 auto;
+  height: auto;
+  max-width: none;
+}
+
+@media (min-width: 768px) {
+  .nexus-mermaid svg {
+    max-width: 100%;
+    min-width: var(--nexus-mermaid-min, 0);
+  }
+}
