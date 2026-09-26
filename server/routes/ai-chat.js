@@ -256,6 +256,20 @@ function createAIChatRouter({ db, io }) {
         ? operatorProvenanceHeaders(message, { surface }) : {};
     const activity = require('../services/chat-activity').createChatActivity({io});
     router.get('/activity', (_req,res) => {res.setHeader('Cache-Control','no-store');res.json(activity.snapshot());});
+    // Redacted self-check of the caller's own Access session (2026-09-25): reason
+    // codes, identity kind and presence booleans only, never claims or tokens, so
+    // Robert can see from his laptop why a session does or does not carry operator
+    // identity without sending a chat turn or signing in again. Same-origin only;
+    // it confers nothing and logs nothing.
+    router.get('/operator-identity', async (req, res) => {
+        res.setHeader('Cache-Control', 'no-store');
+        if (req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ error: 'Same-origin requests only' });
+        try {
+            return res.json(await authenticateOperator.inspect(req));
+        } catch {
+            return res.status(503).json({ error: 'Operator identity check unavailable' });
+        }
+    });
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
     const { readConversationContext } = require('../chat-conversation-context');
     const { resolveChatConversation } = require('../chat-conversation');
