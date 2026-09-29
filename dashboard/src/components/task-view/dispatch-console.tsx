@@ -3,13 +3,16 @@
 /**
  * Dispatch console for the task screen (/task/[id]).
  *
- * Three pieces in one panel:
+ * Four pieces in one panel:
  *   - Dispatch bar: worker + model dropdowns (same options as the morning-plan
  *     card, via useExecutorModelOptions) with an immediate Dispatch button that
  *     drives Praxis POST /api/dispatch/task. A Praxis refusal (duplicate run,
  *     terminal status) surfaces with a Force override.
  *   - History: every dispatch attempt with its exact prompt (input), final
  *     output, model, outcome, duration, and CLI session id.
+ *   - Council ballots: each Morning Council seat's recorded decision and cue
+ *     on this task, with dissent shown and agreement never promoted to
+ *     endorsement (./council-ballots.tsx).
  *   - Follow-up composer: on claude-code/codex rows with a saved session id,
  *     "Reply" resumes THAT conversation (claude --resume / codex exec resume);
  *     the exchange lands back in the history as a follow-up row.
@@ -73,6 +76,7 @@ import type {
   CredentialProviderLane,
 } from "@/lib/model-control";
 import { updateTaskById } from "@/lib/nexus";
+import { CouncilBallots } from "./council-ballots";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 const POLL_ACTIVE_MS = 6_000;
@@ -1242,6 +1246,8 @@ export function TaskDispatchConsole({
       )}
 
       {insight && dispatches.length > 0 && <GovernanceStrip insight={insight} />}
+      {/* Not gated on dispatch history: a task is balloted before it ever runs. */}
+      {insight && <CouncilBallots council={insight.council} />}
 
       {!loaded ? (
         <div className="flex items-center justify-center rounded-lg border border-slate-800 p-6 text-cyan-300">

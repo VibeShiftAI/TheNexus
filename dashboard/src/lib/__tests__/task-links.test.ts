@@ -147,6 +147,7 @@ test("links into this dashboard collapse to in-app paths on the current origin",
   assert.equal(internalHref(`https://NEXUS.vibeshiftai.com/task/${ID}?tab=qa#review`), `/task/${ID}?tab=qa#review`);
   assert.equal(internalHref("https://nexus.vibeshiftai.com/"), "/");
   assert.equal(internalHref("/documents"), "/documents");
+  assert.equal(internalHref("https://nexus.vibeshiftai.com/session"), "/session");
   assert.equal(internalHref(`/documents/${DOC}`), `/documents/${DOC}`);
   assert.ok(isInternalHref(`https://nexus.vibeshiftai.com/documents/${DOC}`));
   // Relative routes Praxis notices already use keep working unchanged.

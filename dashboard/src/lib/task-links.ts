@@ -56,7 +56,7 @@ const IN_APP_ROUTES = new Set([
     "academy", "activity", "agents", "calendar", "codex", "core-lab", "council",
     "dispatch-preview", "documents", "inbox", "intake-reports", "knowledge-ingestion",
     "llm-activity", "local-queue", "mail", "model-control", "module-preview", "ops",
-    "project", "studio", "system-monitor", "task", "task-board", "workflow-builder",
+    "project", "session", "studio", "system-monitor", "task", "task-board", "workflow-builder",
 ]);
 
 function isDashboardHost(host: string): boolean {

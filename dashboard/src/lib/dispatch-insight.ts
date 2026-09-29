@@ -140,6 +140,74 @@ export interface UsageRollup {
   coverage: number | null;
 }
 
+/**
+ * One council seat's recorded position on the task (server
+ * services/council-ballots.js). `voted` carries the seat's own decision and
+ * the reason it gave (`cue`) verbatim from its validated ballot row;
+ * `unavailable` (the seat errored), `no_position` (it returned no usable
+ * row) and `pending` (a registered seat whose ballot has not landed yet)
+ * carry `detail` instead and are never counted as agreement.
+ */
+export type CouncilSeatPosition = {
+  seat: string;
+  model: string | null;
+  recordedAt: string | null;
+} & (
+  | {
+      state: "voted";
+      decision: "include" | "hold";
+      rank: number | null;
+      estimatedMinutes: number | null;
+      complexity: number | null;
+      cue: string;
+    }
+  | { state: "unavailable" | "no_position" | "pending"; detail: string }
+);
+
+/**
+ * Divergence computed from recorded positions only. There is deliberately no
+ * "consensus" value: matching votes are reported as the absence of dissent,
+ * qualified by how many seats actually reported.
+ */
+export type CouncilDivergence =
+  | "dissent"
+  | "no_dissent"
+  | "no_dissent_among_reporting"
+  | "insufficient";
+
+export interface CouncilBallotSession {
+  sessionId: string;
+  topic: string | null;
+  createdAt: string | null;
+  /** Praxis's session phase; anything but "complete" is still in flight. */
+  phase: string | null;
+  morningRunId: string | null;
+  /** Where the ballots were read: Praxis store, session file, ballot field, seat roster field. */
+  source: { store: string; file: string; field: string; roster: string };
+  divergence: CouncilDivergence;
+  /**
+   * Seat counts over the registered voting roster (aggregator excluded).
+   * `pending` seats are registered but have no recorded ballot yet.
+   */
+  coverage: { seats: number; voted: number; unavailable: number; pending: number; noPosition: number };
+  /** Voting seats grouped by decision, largest group first. */
+  positions: Array<{ decision: string; seats: string[] }>;
+  seats: CouncilSeatPosition[];
+}
+
+export interface TaskCouncilBallots {
+  /** False when the session store could not be read: dissent is unknown, not absent. */
+  available: boolean;
+  reason: string | null;
+  sessionsDir: string;
+  sessionsScanned: number;
+  unreadableSessions: number;
+  totals: Record<CouncilDivergence, number> | null;
+  /** Every session with a row for this task; `sessions` is the newest page. */
+  totalSessions: number;
+  sessions: CouncilBallotSession[];
+}
+
 export interface TaskDispatchInsight {
   taskId: string;
   /**
@@ -165,6 +233,11 @@ export interface TaskDispatchInsight {
    * Computed over the COMPLETE dispatch history, same as `usageRollup`.
    */
   traceQuality: TraceQuality;
+  /**
+   * Morning Council ballots on this task with each seat's position and cue.
+   * Optional: an older API build omits it, which renders as nothing.
+   */
+  council?: TaskCouncilBallots;
   runs: RunInsight[];
 }
 

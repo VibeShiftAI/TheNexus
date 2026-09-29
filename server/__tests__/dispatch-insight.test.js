@@ -44,6 +44,30 @@ async function requestJson(url, options = {}) {
 
 const HOUR = 3600_000;
 
+// Council-session fixtures in the shape Praxis's CouncilSessionTracker writes
+// (data/council-sessions/<id>.json); `parsed` is the validated ballot
+// re-render, one VOTE row per task.
+function councilSeat(voice, rows, extra = {}) {
+    return { voice, model: voice, status: 'success', parsed: rows.join('\n'), recordedAt: Date.parse('2026-09-23T22:39:16Z'), ...extra };
+}
+// `voices` is the roster CouncilSessionTracker.convene registers before any
+// ballot lands (every reference seat plus `<model> (aggregator)`); a fixture
+// without one exercises the theses-only fallback.
+function councilVoice(name, status = 'success', model = name) {
+    return { name, model, status, registeredAt: Date.parse('2026-09-23T22:34:46Z') };
+}
+function councilSession(sessionId, createdIso, theses, kind = 'morning-council', { voices, phase = 'complete' } = {}) {
+    return [`${sessionId}.json`, {
+        sessionId,
+        topic: `Morning Council day-plan vote (${createdIso.slice(0, 10)})`,
+        phase,
+        createdAt: Date.parse(createdIso),
+        ...(voices ? { voices } : {}),
+        theses,
+        metadata: { kind, morningRunId: `run-${createdIso.slice(0, 10)}` },
+    }];
+}
+
 function seedBoard(dbPath) {
     const db = new Database(dbPath);
     db.exec(`
@@ -154,6 +178,8 @@ describe('dispatch-insight route', () => {
         praxisUp = true,
         spine = true,
         detachedRecord = null,
+        councilSessions = [],
+        councilDir = null,
     } = {}) {
         tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-insight-'));
         dbPath = path.join(tmpDir, 'test.db');
@@ -166,6 +192,18 @@ describe('dispatch-insight route', () => {
                 path.join(detachedRunsDir, `${detachedRecord.taskId}.json`),
                 JSON.stringify(detachedRecord, null, 2),
             );
+        }
+
+        // A fixture council-session store, so no test reads Praxis's live one.
+        const councilSessionsDir = councilDir || path.join(tmpDir, 'council-sessions');
+        if (!councilDir) {
+            fs.mkdirSync(councilSessionsDir);
+            for (const [name, body] of councilSessions) {
+                fs.writeFileSync(
+                    path.join(councilSessionsDir, name),
+                    typeof body === 'string' ? body : JSON.stringify(body),
+                );
+            }
         }
 
         // All spine timestamps are relative to now so run/verdict ordering is
@@ -200,6 +238,7 @@ describe('dispatch-insight route', () => {
             dbPath,
             spineDbPath: spinePath,
             detachedRunsDir,
+            councilSessionsDir,
             praxisUrl,
             killWait: { graceMs: 500, pollMs: 25 },
         }));
@@ -390,6 +429,175 @@ describe('dispatch-insight route', () => {
         expect(body.ceiling).toEqual({ ms: 3 * HOUR, source: 'default_assumed' });
         expect(body.runs[0].ceiling).toEqual({ ms: 3 * HOUR, source: 'default_assumed' });
         expect(body.runs[0].overdue).toBe(false);
+    });
+
+    test('council ballots trace each seat position and cue from the session file, with dissent kept apart from agreement and missing evidence', async () => {
+        const T = 'task-queued';
+        await boot({
+            councilSessions: [
+                // Split 2–2: dissent, both positions with their seats and cues.
+                // Carries the real roster shape, aggregator included, so the
+                // aggregator is proven absent from the seats.
+                councilSession('council-split', '2026-09-23T22:34:46Z', [
+                    councilSeat('cli:antigravity/gemini-3.1-pro', ['ASSESS|YELLOW|x', `VOTE|${T}|hold|0|45|2|Lacks formal acceptance criteria`]),
+                    councilSeat('cli:codex/gpt-6-astra', [`VOTE|${T}|include|4|45|3|Make council reasoning inspectable`]),
+                    councilSeat('cli:claude-code/claude-opus-5', [`VOTE|${T}|include|8|60|3|Cue with a | pipe inside`]),
+                    councilSeat('cli:claude-code/claude-fable-5-1', [`VOTE|${T}|hold|0|60|3|Vague one-line routing note`]),
+                ], 'morning-council', {
+                    voices: [
+                        councilVoice('cli:codex/gpt-6-astra'), councilVoice('cli:claude-code/claude-fable-5-1'),
+                        councilVoice('cli:claude-code/claude-opus-5'), councilVoice('cli:antigravity/gemini-3.1-pro'),
+                        councilVoice('cli:codex/gpt-6-astra (aggregator)', 'success', 'cli:codex/gpt-6-astra'),
+                    ],
+                }),
+                // Every seat holds: no dissent, and nothing that reads as endorsement.
+                councilSession('council-samevote', '2026-09-10T20:43:29Z', [
+                    councilSeat('seat-a', [`VOTE|${T}|hold|0|60|3|Not daily-sized`]),
+                    councilSeat('seat-b', [`VOTE|${T}|hold|0|60|3|No criteria`]),
+                    councilSeat('seat-c', [`VOTE|${T}|hold|0|45|2|Duplicate suspicion`]),
+                ]),
+                // Matching votes, one seat errored and one had no row: partial.
+                councilSession('council-partial', '2026-09-17T19:16:51Z', [
+                    councilSeat('seat-a', [`VOTE|${T}|hold|0|60|3|No criteria`]),
+                    councilSeat('seat-b', [`VOTE|${T}|hold|0|60|3|No criteria either`]),
+                    councilSeat('seat-err', [], { status: 'error', error: 'usage limit reached on this subscription', parsed: undefined }),
+                    councilSeat('seat-silent', ['VOTE|other-task|include|1|30|1|Other', '(2 malformed row(s) were rejected)']),
+                ]),
+                // One position only: cannot show dissent or its absence.
+                councilSession('council-thin', '2026-09-01T12:59:24Z', [
+                    councilSeat('seat-a', [`VOTE|${T}|hold|0|60|3|Only voice`]),
+                    councilSeat('seat-b', ['(non-substantive ballot: no valid rows)']),
+                ]),
+                // Not a Morning Council session: its rows are not ballots.
+                councilSession('council-knowledge', '2026-09-24T09:00:00Z', [
+                    councilSeat('seat-a', [`VOTE|${T}|include|1|30|1|Ignored`]),
+                ], 'knowledge-council'),
+                // A different task only.
+                councilSession('council-other', '2026-09-22T09:00:00Z', [
+                    councilSeat('seat-a', ['VOTE|task-free|include|1|30|1|Other task']),
+                ]),
+                ['council-broken.json', '{not json'],
+            ],
+        });
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/${T}`);
+        expect(status).toBe(200);
+        const c = body.council;
+        expect(c.available).toBe(true);
+        expect(c.sessionsScanned).toBe(7);
+        expect(c.unreadableSessions).toBe(1);
+        expect(c.reason).toMatch(/1 session file\(s\) could not be read/);
+        expect(c.totalSessions).toBe(4);
+        expect(c.totals).toEqual({ dissent: 1, no_dissent: 1, no_dissent_among_reporting: 1, insufficient: 1 });
+        expect(c.sessions.map((x) => x.sessionId)).toEqual(['council-split', 'council-partial', 'council-samevote', 'council-thin']);
+
+        const split = c.sessions[0];
+        expect(split.divergence).toBe('dissent');
+        expect(split.phase).toBe('complete');
+        expect(split.source).toEqual({ store: 'praxis:data/council-sessions', file: 'council-split.json', field: 'theses[].parsed', roster: 'voices[]' });
+        // Position members follow the registered roster order, not thesis arrival order.
+        expect(split.positions).toEqual([
+            { decision: 'hold', seats: ['cli:claude-code/claude-fable-5-1', 'cli:antigravity/gemini-3.1-pro'] },
+            { decision: 'include', seats: ['cli:codex/gpt-6-astra', 'cli:claude-code/claude-opus-5'] },
+        ]);
+        // Seats follow the registered roster order; the aggregator never appears.
+        expect(split.coverage).toEqual({ seats: 4, voted: 4, unavailable: 0, pending: 0, noPosition: 0 });
+        expect(split.seats.map((x) => x.seat)).toEqual(['cli:codex/gpt-6-astra', 'cli:claude-code/claude-fable-5-1', 'cli:claude-code/claude-opus-5', 'cli:antigravity/gemini-3.1-pro']);
+        expect(JSON.stringify(split)).not.toMatch(/\(aggregator\)/);
+        const antigravity = split.seats.find((x) => x.seat === 'cli:antigravity/gemini-3.1-pro');
+        expect(antigravity).toMatchObject({ state: 'voted', decision: 'hold', rank: 0, estimatedMinutes: 45, complexity: 2, cue: 'Lacks formal acceptance criteria' });
+        expect(split.seats.find((x) => x.seat === 'cli:claude-code/claude-opus-5').cue).toBe('Cue with a | pipe inside');
+
+        const same = c.sessions.find((x) => x.sessionId === 'council-samevote');
+        expect(same.divergence).toBe('no_dissent');
+        expect(same.positions).toEqual([{ decision: 'hold', seats: ['seat-a', 'seat-b', 'seat-c'] }]);
+        expect(JSON.stringify(same)).not.toMatch(/consensus|agree/i);
+
+        // No `voices` in this fixture: the theses-only fallback keeps every seat
+        // and the provenance says so instead of claiming a voices roster.
+        const partial = c.sessions.find((x) => x.sessionId === 'council-partial');
+        expect(partial.source.roster).toBe('theses[] (file has no voices roster)');
+        expect(partial.divergence).toBe('no_dissent_among_reporting');
+        expect(partial.coverage).toEqual({ seats: 4, voted: 2, unavailable: 1, pending: 0, noPosition: 1 });
+        expect(partial.seats[2]).toMatchObject({ seat: 'seat-err', state: 'unavailable' });
+        expect(partial.seats[2].detail).toMatch(/usage limit reached/);
+        expect(partial.seats[3]).toMatchObject({ seat: 'seat-silent', state: 'no_position' });
+        expect(partial.seats[3].detail).toMatch(/rejected 2 malformed row/);
+
+        const thin = c.sessions.find((x) => x.sessionId === 'council-thin');
+        expect(thin.divergence).toBe('insufficient');
+        expect(thin.seats[1]).toMatchObject({ state: 'no_position', detail: 'Ballot had no valid rows at all.' });
+    });
+
+    test('registered seats whose ballots have not landed stay counted as pending, so a session in flight never reads as no dissent among all seats', async () => {
+        const T = 'task-queued';
+        // The state QA reproduced on 2026-09-25: Praxis registers every seat at
+        // convene and writes each thesis as it lands, so a file read mid-session
+        // holds the full roster but only some theses.
+        await boot({
+            councilSessions: [
+                councilSession('council-inflight', '2026-09-26T13:00:00Z', [
+                    councilSeat('cli:codex/gpt-6-astra', [`VOTE|${T}|include|4|45|3|Make council reasoning inspectable`]),
+                    councilSeat('cli:claude-code/claude-opus-5', [`VOTE|${T}|include|8|60|3|Logging each seat's cue makes dissent visible`]),
+                ], 'morning-council', {
+                    phase: 'deliberation',
+                    voices: [
+                        councilVoice('cli:codex/gpt-6-astra'),
+                        councilVoice('cli:claude-code/claude-fable-5-1', 'running'),
+                        councilVoice('cli:claude-code/claude-opus-5'),
+                        councilVoice('cli:antigravity/gemini-3.1-pro', 'running'),
+                        councilVoice('cli:codex/gpt-6-astra (aggregator)', 'pending', 'cli:codex/gpt-6-astra'),
+                    ],
+                }),
+                // A seat that finished without any thesis on file is unavailable, not pending.
+                councilSession('council-lost-seat', '2026-09-25T13:00:00Z', [
+                    councilSeat('seat-a', [`VOTE|${T}|hold|0|60|3|No criteria`]),
+                    councilSeat('seat-b', [`VOTE|${T}|hold|0|60|3|No criteria either`]),
+                ], 'morning-council', {
+                    voices: [councilVoice('seat-a'), councilVoice('seat-b'), councilVoice('seat-c', 'timeout'), councilVoice('seat-a (aggregator)')],
+                }),
+            ],
+        });
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/${T}`);
+        expect(status).toBe(200);
+        const c = body.council;
+        expect(c.totals).toEqual({ dissent: 0, no_dissent: 0, no_dissent_among_reporting: 2, insufficient: 0 });
+
+        const inflight = c.sessions[0];
+        expect(inflight.sessionId).toBe('council-inflight');
+        expect(inflight.phase).toBe('deliberation');
+        expect(inflight.divergence).toBe('no_dissent_among_reporting');
+        expect(inflight.coverage).toEqual({ seats: 4, voted: 2, unavailable: 0, pending: 2, noPosition: 0 });
+        expect(inflight.positions).toEqual([{ decision: 'include', seats: ['cli:codex/gpt-6-astra', 'cli:claude-code/claude-opus-5'] }]);
+        expect(inflight.seats.map((x) => [x.seat, x.state])).toEqual([
+            ['cli:codex/gpt-6-astra', 'voted'],
+            ['cli:claude-code/claude-fable-5-1', 'pending'],
+            ['cli:claude-code/claude-opus-5', 'voted'],
+            ['cli:antigravity/gemini-3.1-pro', 'pending'],
+        ]);
+        expect(inflight.seats[1]).toMatchObject({ model: 'cli:claude-code/claude-fable-5-1', recordedAt: null, detail: 'Seat is running; its ballot has not been recorded yet.' });
+        expect(JSON.stringify(inflight)).not.toMatch(/\(aggregator\)|all seats|consensus/i);
+
+        const lost = c.sessions[1];
+        expect(lost.divergence).toBe('no_dissent_among_reporting');
+        expect(lost.coverage).toEqual({ seats: 3, voted: 2, unavailable: 1, pending: 0, noPosition: 0 });
+        expect(lost.seats[2]).toMatchObject({ seat: 'seat-c', state: 'unavailable', detail: 'Seat timeout with no ballot recorded.' });
+    });
+
+    test('a task no council balloted reports zero sessions, and an unreadable store reports unavailable, not no dissent', async () => {
+        await boot({ councilSessions: [councilSession('council-other', '2026-09-22T09:00:00Z', [councilSeat('seat-a', ['VOTE|task-free|include|1|30|1|x'])])] });
+        let { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-queued`);
+        expect(body.council).toMatchObject({ available: true, totalSessions: 0, sessionsScanned: 1, sessions: [] });
+        await close(handle);
+        await close(praxisHandle);
+        handle = null;
+        praxisHandle = null;
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+
+        await boot({ councilDir: path.join(os.tmpdir(), `nexus-no-council-${process.pid}-${Date.now()}`) });
+        ({ body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-queued`));
+        expect(body.council.available).toBe(false);
+        expect(body.council.totals).toBeNull();
+        expect(body.council.reason).toMatch(/unknown, not absent/);
     });
 
     test('a run on an unpriced model (gpt-6-astra) reports cost null — unknown, never a silent $0', async () => {

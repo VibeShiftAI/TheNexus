@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { X, BookOpen, Gauge, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard, ClipboardList, Send, GraduationCap, Landmark, Smartphone, FileText } from "lucide-react";
+import { X, BookOpen, Gauge, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard, ClipboardList, Send, GraduationCap, Landmark, Smartphone, FileText, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { getProjects, type Project } from "@/lib/nexus";
 import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
@@ -77,6 +77,7 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
     { href: "/task-board", label: "Task Board", icon: KanbanSquare, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/documents", label: "Documents — Reports for Review", icon: FileText, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/ops", label: "Ops — Dispatch Console", icon: Send, color: "text-cyan-400 hover:text-cyan-300" },
+    { href: "/session", label: "Session: Access and Operator Check", icon: ShieldCheck, color: "text-emerald-400 hover:text-emerald-300" },
     { href: "/academy", label: "Academy — Skill Wiki", icon: GraduationCap, color: "text-pink-400 hover:text-pink-300" },
     { href: "/council", label: "Council Chamber", icon: Landmark, color: "text-amber-400 hover:text-amber-300" },
     { href: "/model-control", label: "Model Control", icon: Route, color: "text-cyan-400 hover:text-cyan-300" },

@@ -42,6 +42,7 @@ const { execFile } = require('child_process');
 const { isTaskDone, TaskBoardStatusSchema, LEGACY_TASK_STATUS_MAP } = require('@praxis/contract');
 const { praxisFetch } = require('../services/praxis-client');
 const { buildRunTrace, summarizeTraceQuality } = require('../services/run-trace');
+const { createCouncilBallotReader, DEFAULT_COUNCIL_SESSIONS_DIR } = require('../services/council-ballots');
 const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 
 const DEFAULT_DB_PATH = resolveNexusDbPath();
@@ -324,11 +325,14 @@ function createDispatchInsightRouter({
     dbPath = DEFAULT_DB_PATH,
     spineDbPath = DEFAULT_SPINE_PATH,
     detachedRunsDir = DEFAULT_DETACHED_RUNS_DIR,
+    councilSessionsDir = DEFAULT_COUNCIL_SESSIONS_DIR,
     praxisUrl = null, // null → praxis-client resolves PRAXIS_URL per call
     fetchImpl = fetch,
     killWait = { graceMs: KILL_GRACE_MS, pollMs: KILL_POLL_MS },
 } = {}) {
     const router = express.Router();
+    // Per-seat Morning Council ballots for a task (services/council-ballots.js).
+    const councilForTask = createCouncilBallotReader({ sessionsDir: councilSessionsDir });
 
     let db;
     try {
@@ -1076,6 +1080,26 @@ function createDispatchInsightRouter({
             // measures over this task's runs, including audit-trace
             // completeness. Same complete-history rule as usageRollup.
             traceQuality,
+            // Each council seat's recorded position and stated cue on this
+            // task, with divergence computed from recorded positions only.
+            // Independent of dispatch history: a task can be balloted for
+            // weeks before its first run.
+            council: (() => {
+                try {
+                    return councilForTask(taskId);
+                } catch (err) {
+                    return {
+                        available: false,
+                        reason: `Council ballots could not be read (${err.message}); dissent is unknown, not absent.`,
+                        sessionsDir: councilSessionsDir,
+                        sessionsScanned: 0,
+                        unreadableSessions: 0,
+                        totals: null,
+                        totalSessions: 0,
+                        sessions: [],
+                    };
+                }
+            })(),
             runs,
         });
     });
