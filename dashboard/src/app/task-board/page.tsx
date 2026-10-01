@@ -19,11 +19,15 @@ import {
   Pencil,
   RefreshCw,
   Search,
+  ShieldAlert,
+  ShieldCheck,
   Table2,
 } from "lucide-react";
 import { getBoardState, updateTask, type QaHold } from "@/lib/nexus";
 import { useQaHolds } from "@/hooks/use-qa-holds";
 import { qaHoldBadge } from "@/lib/qa-hold-badge";
+import { useTaskEvidenceSummaries } from "@/hooks/use-task-evidence";
+import { EVIDENCE_TONE_CLASSES, evidenceBadge, type EvidenceSummary } from "@/lib/task-evidence";
 import {
   getDispatchEligibility,
   type DispatchEligibilityResponse,
@@ -242,6 +246,13 @@ export default function TaskBoardPage() {
         };
       });
   }, [grouped, visibleLaneIds, projectId, query, laneSort]);
+  // Verified / unverified evidence state for the completed cards on screen.
+  // Only the Complete lane is asked: the dossier is about a completion.
+  const visibleCompleteIds = useMemo(
+    () => visibleLanes.filter((lane) => lane.id === "complete").flatMap((lane) => lane.tasks.map((t) => t.id)),
+    [visibleLanes],
+  );
+  const evidenceById = useTaskEvidenceSummaries(visibleCompleteIds);
 
   const totalTasks = useMemo(() => Object.values(grouped).reduce((sum, lane) => sum + lane.tasks.length, 0), [grouped]);
   const visibleTasks = useMemo(() => visibleLanes.reduce((sum, lane) => sum + lane.tasks.length, 0), [visibleLanes]);
@@ -394,6 +405,7 @@ export default function TaskBoardPage() {
                 onQuickStatus={handleQuickStatus}
                 eligibilityById={eligibilityById}
                 holdsByTaskId={holdsByTaskId}
+                evidenceById={evidenceById}
               />
             ))}
           </section>
@@ -542,6 +554,7 @@ function LaneColumn({
   onQuickStatus,
   eligibilityById,
   holdsByTaskId,
+  evidenceById,
 }: {
   id?: string;
   lane: BoardLane;
@@ -552,6 +565,8 @@ function LaneColumn({
   eligibilityById: Map<string, TaskEligibility>;
   /** Tasks parked with a withheld QA correction, by task id. */
   holdsByTaskId: Map<string, QaHold>;
+  /** Completion evidence state for completed tasks, by task id. */
+  evidenceById: Map<string, EvidenceSummary>;
 }) {
   return (
     <div id={id} className="flex min-h-[520px] w-72 shrink-0 flex-col rounded-lg border border-slate-800 bg-slate-950 xl:w-auto xl:flex-1">
@@ -580,6 +595,7 @@ function LaneColumn({
               onQuickStatus={onQuickStatus}
               eligibility={eligibilityById.get(task.id)}
               hold={holdsByTaskId.get(task.id)}
+              evidence={evidenceById.get(task.id)}
             />
           ))
         )}
@@ -747,12 +763,39 @@ function QaHoldBadge({ hold }: { hold: QaHold }) {
   );
 }
 
+/**
+ * Completion evidence on a completed card. Amber and naming the missing
+ * gates when any of walkthrough / verify / code review / QA is absent; green
+ * only when all four are on record. Links to the task screen, where the
+ * evidence panel opens each piece.
+ */
+function EvidenceBadge({ taskId, summary }: { taskId: string; summary: EvidenceSummary }) {
+  const badge = evidenceBadge(summary);
+  if (badge.tone === "neutral") return null;
+  const Icon = badge.tone === "verified" ? ShieldCheck : ShieldAlert;
+  return (
+    <Link
+      href={`/task/${taskId}`}
+      className={`mt-3 flex items-start gap-2 rounded-md border px-2 py-1.5 text-[11px] leading-4 transition-colors hover:brightness-125 focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400 ${EVIDENCE_TONE_CLASSES[badge.tone]}`}
+      title={badge.title}
+      aria-label={badge.title}
+    >
+      <Icon size={13} className="mt-px shrink-0" />
+      <span className="min-w-0">
+        <span className="block font-semibold">{badge.label}</span>
+        {badge.missingText && <span className="block truncate opacity-80">{badge.missingText}</span>}
+      </span>
+    </Link>
+  );
+}
+
 function TaskCard({
   task,
   onManage,
   onQuickStatus,
   eligibility,
   hold,
+  evidence,
 }: {
   task: BoardTask;
   onManage: (task: BoardTask) => void;
@@ -761,6 +804,8 @@ function TaskCard({
   eligibility?: TaskEligibility;
   /** Set when this task's QA correction is being held — not an ordinary todo. */
   hold?: QaHold;
+  /** Completion evidence state (Complete lane only). */
+  evidence?: EvidenceSummary;
 }) {
   const title = task.title || task.name || "Untitled task";
   const taskProjectId = task.projectId || task.project_id;
@@ -822,6 +867,7 @@ function TaskCard({
       </div>
 
       {hold && <QaHoldBadge hold={hold} />}
+      {evidence && <EvidenceBadge taskId={task.id} summary={evidence} />}
 
       {description ? (
         <p className="mt-3 line-clamp-4 text-xs leading-5 text-slate-400">

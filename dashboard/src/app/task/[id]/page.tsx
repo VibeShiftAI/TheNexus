@@ -40,6 +40,7 @@ import { STATUS_OPTIONS } from "@/components/task-edit-modal";
 import { TaskDispatchConsole } from "@/components/task-view/dispatch-console";
 import { QaReviewPanel } from "@/components/task-view/qa-review-panel";
 import { QaHoldPanel } from "@/components/task-view/qa-hold-panel";
+import { EvidenceDossierPanel } from "@/components/task-view/evidence-dossier-panel";
 import { TaskSequencePanel } from "@/components/task-view/task-sequence";
 import { ReviewDocumentsPanel } from "@/components/task-view/review-documents-panel";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
@@ -332,6 +333,11 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 with the run history — it is a state of the task, not a log. */}
             <QaHoldPanel taskId={task.id} />
 
+            {/* Completion evidence: walkthrough, verify/code-review gates and
+                QA verdict one click deep; an incomplete record renders amber
+                and names the missing gates. Completed tasks only. */}
+            <EvidenceDossierPanel taskId={task.id} refreshKey={`${status}|${task.updatedAt || task.updated_at || ""}`} />
+
             <div className={hasSideContent ? "grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
               {/* Main column */}
               <div className="min-w-0 space-y-5">
@@ -351,7 +357,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 <ReviewDocumentsPanel taskId={task.id} />
 
                 {walkthrough?.content && (
-                  <section className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                  <section id="task-walkthrough" className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
                     <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-emerald-200">
                       <BookOpen size={15} /> Walkthrough — the worker&apos;s final report
                     </h3>

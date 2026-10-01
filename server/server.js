@@ -194,6 +194,9 @@ app.use('/api/dispatches', dispatchesRouter);
 // ceilings/cost/verdicts, and the kill relay. Mounted after dispatches so the
 // task_dispatches table exists by the time this router reads it.
 app.use('/api/dispatch-insight', require('./routes/dispatch-insight')());
+// Completion evidence dossier: walkthrough, verify/code-review gates and QA
+// verdict per task, with unverified completions named as such. Read-only.
+app.use('/api/task-evidence', authenticate, require('./routes/task-evidence')());
 // Slate lifecycle: drafted → approved → attempted → verified for the day's
 // slate, read from Praxis's schedule file so a stage that has stalled (the
 // 2026-08-24 never-approved slate) is visible on the board.
