@@ -53,7 +53,7 @@ function toModelOverride(resolved) {
  * The model Praxis's claude-code executor uses when a dispatch carries no
  * explicit override. Stored in model_control_settings; defaults to Opus 4.8.
  */
-const CLAUDE_DEFAULT_FALLBACK = 'claude-opus-5';
+const CLAUDE_DEFAULT_FALLBACK = 'claude-opus-5-5';
 async function getClaudeDefaultModel(db) {
     const setting = await db.getModelControlSetting('claude_default_model');
     const model = setting && typeof setting.model === 'string' ? setting.model.trim() : '';
@@ -284,6 +284,7 @@ const THINKING_LEVEL_SEEDS = {
     // level `claude --effort` documents below `max`... `max` exists too, but he
     // asked for very high, so xhigh).
     'claude-fable-5-1': 'low',
+    'claude-opus-5-5': 'xhigh',
     'claude-opus-5': 'xhigh',
 };
 

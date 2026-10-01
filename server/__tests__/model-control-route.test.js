@@ -67,7 +67,7 @@ describe('model control route', () => {
                     models: [{ id: 'local-llama', provider: 'local', api_model_id: 'llama3.2', apiModelId: 'llama3.2' }],
                     aliases: [{ alias: 'local_default', target: 'model:local-llama' }],
                     projectAliases: [{ alias: 'coder', target: 'model:local-llama' }],
-                    thinkingLevels: { 'claude-fable-5-1': 'low', 'claude-opus-5': 'xhigh' },
+                    thinkingLevels: { 'claude-fable-5-1': 'low', 'claude-opus-5-5': 'xhigh', 'claude-opus-5': 'xhigh' },
                     agentBackend: { backend: 'codex', fallbacks: ['claude-code', 'gemini'] },
                     chatBackend: 'claude-code',
                     chatConfig: {
@@ -75,7 +75,7 @@ describe('model control route', () => {
                         // Tiers for the effective model (the Opus 5 default).
                         thinkingTiers: ['default', 'low', 'medium', 'high', 'xhigh', 'max']
                     },
-                    claudeDefault: 'claude-opus-5',
+                    claudeDefault: 'claude-opus-5-5',
                     codexDefault: '',
                     antigravityDefault: '',
                     codexModels: expect.any(Array),
@@ -220,7 +220,7 @@ describe('model control route', () => {
         await expect(requestJson(`${handle.baseUrl}/api/model-control/thinking-levels`))
             .resolves.toEqual({
                 status: 200,
-                body: { levels: { 'claude-fable-5-1': 'low', 'claude-opus-5': 'xhigh' } }
+                body: { levels: { 'claude-fable-5-1': 'low', 'claude-opus-5-5': 'xhigh', 'claude-opus-5': 'xhigh' } }
             });
 
         // Single-model PUT.
@@ -251,6 +251,7 @@ describe('model control route', () => {
         expect(bulk.status).toBe(200);
         expect(bulk.body.levels).toEqual({
             'claude-opus-5': 'max',
+            'claude-opus-5-5': 'xhigh',
             'claude-fable-5-1': 'low',
             'gpt-5.6-sol': 'high',
         });

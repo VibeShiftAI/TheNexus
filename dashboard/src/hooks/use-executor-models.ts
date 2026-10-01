@@ -127,7 +127,7 @@ export function useExecutorModelOptions(): {
 } {
   const [claudeModels, setClaudeModels] = useState<ExecutorModelOption[]>([]);
   const [ladderClaudeModels, setLadderClaudeModels] = useState<ExecutorModelOption[]>([]);
-  const [claudeDefault, setClaudeDefault] = useState<string>("claude-opus-5");
+  const [claudeDefault, setClaudeDefault] = useState<string>("claude-opus-5-5");
   const [codexModels, setCodexModels] = useState<ExecutorModelOption[]>([]);
   const [codexDefault, setCodexDefault] = useState<string>("");
   const [antigravityModels, setAntigravityModels] = useState<ExecutorModelOption[]>([]);

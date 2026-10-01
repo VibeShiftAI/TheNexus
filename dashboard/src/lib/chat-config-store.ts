@@ -40,6 +40,7 @@ export const CHAT_MODEL_SUGGESTIONS: Record<ChatCliBackend, string[]> = {
     "claude-code": [
         "claude-fable-5-1",
         "claude-fable-5",
+        "claude-opus-5-5",
         "claude-opus-5",
         "claude-opus-4-8",
         "claude-sonnet-5",
