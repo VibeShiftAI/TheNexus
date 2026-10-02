@@ -315,6 +315,10 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
               </div>
             )}
 
+            {/* Deliverables sit under the title: what this task handed Robert
+                to read, with each document's own review status. */}
+            <ReviewDocumentsPanel taskId={task.id} projectId={projectId} />
+
             {suspendedReason && (
               <div className="flex items-start gap-3 rounded-lg border border-purple-500/40 bg-purple-500/10 p-4">
                 <PauseCircle size={18} className="mt-0.5 shrink-0 text-purple-300" />
@@ -353,8 +357,6 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 </section>
 
                 <TaskSequencePanel task={task} projectId={projectId} onChanged={load} />
-
-                <ReviewDocumentsPanel taskId={task.id} />
 
                 {walkthrough?.content && (
                   <section id="task-walkthrough" className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { X, BookOpen, Gauge, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard, ClipboardList, Send, GraduationCap, Landmark, Smartphone, FileText, ShieldCheck } from "lucide-react";
+import { X, BookOpen, Gauge, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard, ClipboardList, Send, GraduationCap, Landmark, Smartphone, FileCheck2, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { getProjects, type Project } from "@/lib/nexus";
 import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
@@ -73,9 +73,10 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
   const larsDashboardHref = "http://192.168.86.205:7878";
 
   const navItems = [
+    // First: the queue of delivered documents waiting on Robert's decision.
+    { href: "/documents", label: "Reviews: Documents for Your Decision", icon: FileCheck2, color: "text-amber-300 hover:text-amber-200" },
     { href: "/activity", label: "Activity — Live System Report", icon: BarChart3, color: "text-teal-400 hover:text-teal-300" },
     { href: "/task-board", label: "Task Board", icon: KanbanSquare, color: "text-cyan-400 hover:text-cyan-300" },
-    { href: "/documents", label: "Documents — Reports for Review", icon: FileText, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/ops", label: "Ops — Dispatch Console", icon: Send, color: "text-cyan-400 hover:text-cyan-300" },
     { href: "/session", label: "Session: Access and Operator Check", icon: ShieldCheck, color: "text-emerald-400 hover:text-emerald-300" },
     { href: "/academy", label: "Academy — Skill Wiki", icon: GraduationCap, color: "text-pink-400 hover:text-pink-300" },

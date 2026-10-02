@@ -10,6 +10,10 @@
  * creates one durable submission and shows its delivery state truthfully
  * (queued → delivered with a receipt, or failed with a retry). The document
  * itself is never changed here.
+ *
+ * The document's own decision (Approve document / Request changes on the
+ * revision on screen) is the separate DecisionCard above the text; Finish
+ * review is feedback only and never records a decision.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -21,6 +25,7 @@ import {
     CheckCircle2,
     Clock,
     Download,
+    FileCheck2,
     FileCode,
     FileText,
     ListTree,
@@ -55,6 +60,8 @@ import {
 } from "@/lib/document-review";
 import { blockElementId, excerpt, extractOutline, quoteLines } from "@/lib/document-outline";
 import { DocumentMarkdown, type BlockRef } from "./document-markdown";
+import { DecisionCard } from "./decision-card";
+import { DocumentStatusBadge } from "./deliverable-row";
 
 const SUBMISSION_POLL_MS = 3000;
 const SUMMARY_DEBOUNCE_MS = 700;
@@ -606,6 +613,9 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             <p className="text-xs text-emerald-100">
                 Finishing sends every comment verbatim, with its quoted passage and this document&apos;s revision, into your Praxis chat. Finishing with no comments is fine.
             </p>
+            <p className="mt-1 text-[11px] text-emerald-100/70" data-finish-scope="">
+                This is feedback only: it does not approve the document, and nothing goes to anyone else or gets published.
+            </p>
             <label className="mt-2 block text-[11px] font-semibold text-slate-300" htmlFor="review-summary-final">Summary (optional)</label>
             <textarea
                 id="review-summary-final"
@@ -709,19 +719,25 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     </Link>
                     {/* The Dashboard's own list of everything registered for review — the way in when the link came from chat rather than a task. */}
                     <Link href="/documents" className="flex shrink-0 items-center gap-1 text-sm text-slate-400 hover:text-white" data-all-documents-link="">
-                        <FileText size={14} /> Documents
+                        <FileCheck2 size={14} /> Reviews
                     </Link>
                     <div className="hidden h-5 w-px bg-slate-700 sm:block" />
                     <div className="order-last min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-0">
                         <h1 className="text-base font-semibold leading-snug text-white sm:truncate" title={doc?.title}>{doc?.title || "Document"}</h1>
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+                            <DocumentStatusBadge status={data?.review_status} prefix />
                             {doc?.kind && <span className="uppercase tracking-wide">{doc.kind}</span>}
                             {asOf && <span>as of {asOf}</span>}
                             {shownRevision && <span title={shownRevision.content_hash}>rev {shownRevision.content_hash.slice(0, 8)} · captured {formatWhen(shownRevision.captured_at)}</span>}
                             {task && (
                                 <span>
                                     from <Link href={`/task/${task.id}`} className="text-cyan-300 hover:underline">{task.title || task.id}</Link>
-                                    {task.status ? ` · ${task.status}` : ""}{task.status_message ? ` · ${task.status_message}` : ""}
+                                    {/* The task's execution / QA state, labelled so it never reads as the document's own decision. */}
+                                    {(task.status || task.status_message) && (
+                                        <span className="ml-1.5 rounded border border-slate-700 px-1.5 py-px text-slate-400" data-task-status="" title="Status of the task that produced this document (execution and QA), not your decision on the document">
+                                            Task: {[task.status, task.status_message].filter(Boolean).join(" · ")}
+                                        </span>
+                                    )}
                                 </span>
                             )}
                             {project && (
@@ -787,6 +803,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             </button>
                         </div>
                     )}
+                    {data && <DecisionCard data={data} viewedRevision={shownRevision} viewingCurrent={!showingPinned} onRefresh={load} />}
                     {data && showSource && (
                         <pre className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950 p-4 font-mono text-xs leading-relaxed text-slate-300" data-source-view="">{shownContent}</pre>
                     )}

@@ -21,6 +21,7 @@ import { StatusStrip } from "@/components/bridge/status-strip";
 import { BridgeFX, useBridgeCondition, conditionGlowClass } from "@/components/bridge/bridge-fx";
 import { ShellTabs } from "@/components/shell-tabs";
 import { VoiceLauncher } from "@/components/voice-launcher";
+import { ReadyForReview, ReviewsNavButton, useReviewQueue } from "@/components/ready-for-review";
 import { Activity, Plus, Settings, Menu, FolderOpen, AlertCircle } from "lucide-react";
 
 export default function Home() {
@@ -37,6 +38,10 @@ export default function Home() {
 
   // Status-report condition glow on the header (bridge-fx).
   const bridgeCondition = useBridgeCondition();
+
+  // Documents waiting on Robert: one registry query feeds the header's
+  // Reviews button and the "Ready for your review" section.
+  const reviewQueue = useReviewQueue();
 
   const loadData = useCallback(async () => {
     try {
@@ -92,6 +97,7 @@ export default function Home() {
     const bAt = Date.parse(pulses[b.id]?.lastActivityAt ?? "") || 0;
     return bAt - aAt;
   });
+  const projectNames = Object.fromEntries(projects.map((p) => [p.id, p.name]));
 
   return (
     <main className="min-h-screen bg-slate-950 hud-backdrop text-slate-200 selection:bg-cyan-500/30 flex flex-col pb-12">
@@ -123,6 +129,7 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <ReviewsNavButton pending={reviewQueue.pending} />
             <VoiceLauncher />
             <AmbientMode />
             <NotesButton />
@@ -160,6 +167,13 @@ export default function Home() {
         {/* Headline KPI strip — click a chip to warp to its station */}
         <StatusStrip />
 
+        {/* Below xl the rail stacks under every station, so the review queue
+            moves up here to stay on the first screen; at xl it sits at the top
+            of the rail instead. Both read the same queue. */}
+        <div id="panel-reviews-compact" className="mb-4 xl:hidden">
+          <ReadyForReview queue={reviewQueue} projectNames={projectNames} />
+        </div>
+
         {/* Bridge deck — the Praxis core viewer and its four stations stack in
             the left column; the inbox/schedule/activity rail falls beside the
             whole stack on the right rather than stopping under the core. */}
@@ -192,6 +206,9 @@ export default function Home() {
 
           {/* Right column — inbox / schedule / activity rail */}
           <div id="panel-inbox" className="flex flex-col gap-4 min-w-0">
+            <div id="panel-reviews" className="hidden xl:block">
+              <ReadyForReview queue={reviewQueue} projectNames={projectNames} />
+            </div>
             <HitlInbox />
             <ScheduleTimeline />
             <div id="panel-activity">
