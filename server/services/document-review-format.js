@@ -13,8 +13,13 @@ function dashboardBaseUrl() {
     return (typeof configured === 'string' && configured.trim() ? configured.trim() : DEFAULT_DASHBOARD_URL).replace(/\/+$/, '');
 }
 
+/** Relative in-app route of the shared reviewer; dashboards link with this so the app never leaves its session. */
+function reviewPathFor(documentId) {
+    return `/documents/${encodeURIComponent(documentId)}`;
+}
+
 function reviewUrlFor(documentId) {
-    return `${dashboardBaseUrl()}/documents/${encodeURIComponent(documentId)}`;
+    return `${dashboardBaseUrl()}${reviewPathFor(documentId)}`;
 }
 
 function splitLines(content) {
@@ -165,6 +170,7 @@ function formatSubmissionMessage(payload) {
 module.exports = {
     DEFAULT_DASHBOARD_URL,
     dashboardBaseUrl,
+    reviewPathFor,
     reviewUrlFor,
     splitLines,
     verifyPassageAnchor,

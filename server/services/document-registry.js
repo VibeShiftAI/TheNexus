@@ -97,6 +97,11 @@ function sha256(text) {
  * Read a resolved document. Line endings are normalized to `\n` so stored
  * line numbers and hashes are stable across editors; invalid UTF-8 is refused
  * rather than silently replaced.
+ *
+ * The exact file is reported alongside: `exactHash` is the SHA-256 of the
+ * bytes on disk and `exactContent` decodes them unchanged (BOM and CR kept),
+ * so a declared deliverable can bind its receipt, revision and decisions to
+ * the delivered bytes while the reviewer keeps the normalized text.
  */
 function readDocumentFile(canonicalPath) {
     let buffer;
@@ -116,6 +121,10 @@ function readDocumentFile(canonicalPath) {
         contentHash: sha256(content),
         byteLength: Buffer.byteLength(content, 'utf8'),
         lineCount: content.split('\n').length,
+        // Valid UTF-8 (checked above) round-trips exactly through this decode.
+        exactContent: buffer.toString('utf8'),
+        exactHash: createHash('sha256').update(buffer).digest('hex'),
+        exactByteLength: buffer.length,
     };
 }
 

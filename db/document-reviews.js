@@ -7,10 +7,51 @@
  * that carries a finished review into the Praxis conversation. Everything
  * here runs on the raw better-sqlite3 connection the facade owns; route code
  * reaches it through `db.documentReviews`.
+ *
+ * Declared deliverables and review decisions (2026-10-02 contract:
+ * docs/contracts/document-review-deliverables.md). A document carries its
+ * declared purpose, whether it requires Robert's review and the action it is
+ * intended for; legacy rows migrate as reference documents (no review
+ * required). Registration receipts record each validated declaration against
+ * the exact revision it captured; a declared deliverable's revisions are
+ * identified by the SHA-256 of the exact file bytes (legacy documents keep the
+ * line-normalized identity). Decisions (approve / request changes) are
+ * append-only rows pinned to one revision and one actor; the review status of
+ * a document is derived from its latest decision and current revision, never
+ * stored, so new bytes can never inherit an approval.
  */
 const { randomUUID } = require('crypto');
 
 function now() { return new Date().toISOString(); }
+
+/** Columns added to review_documents after the 2026-09-10 schema; legacy rows take the defaults. */
+const DELIVERABLE_COLUMNS = [
+    ['deliverable_key', 'TEXT'],
+    ['purpose', 'TEXT'],
+    ['requires_review', 'INTEGER NOT NULL DEFAULT 0'],
+    ['intended_action', "TEXT NOT NULL DEFAULT 'none'"],
+];
+
+const REVIEW_STATUSES = ['needs_review', 'changes_requested', 'approved', 'reference'];
+
+// Review status of a document row `d` joined to its latest decision `ld`.
+// An approval or change request only counts for the revision it named.
+const REVIEW_STATUS_SQL = `CASE
+        WHEN d.requires_review = 0 THEN 'reference'
+        WHEN ld.decision = 'approve' AND ld.revision_id = d.current_revision_id THEN 'approved'
+        WHEN ld.decision = 'request_changes' AND ld.revision_id = d.current_revision_id THEN 'changes_requested'
+        ELSE 'needs_review'
+    END`;
+const LATEST_DECISION_JOIN = `LEFT JOIN review_document_decisions ld ON ld.id = (
+        SELECT x.id FROM review_document_decisions x WHERE x.document_id = d.id
+        ORDER BY x.created_at DESC, x.rowid DESC LIMIT 1)`;
+
+function migrateDeliverableColumns(db) {
+    const present = new Set(db.prepare('PRAGMA table_info(review_documents)').all().map(column => column.name));
+    for (const [name, declaration] of DELIVERABLE_COLUMNS) {
+        if (!present.has(name)) db.exec(`ALTER TABLE review_documents ADD COLUMN ${name} ${declaration}`);
+    }
+}
 
 function initializeDocumentReviews(db) {
     db.exec(`CREATE TABLE IF NOT EXISTS review_documents (
@@ -96,9 +137,75 @@ function initializeDocumentReviews(db) {
     );
     CREATE INDEX IF NOT EXISTS idx_document_review_submissions_status
         ON document_review_submissions(delivery_status, next_attempt_at);`);
+
+    migrateDeliverableColumns(db);
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_review_documents_deliverable_key
+        ON review_documents(deliverable_key) WHERE deliverable_key IS NOT NULL;
+
+    CREATE TRIGGER IF NOT EXISTS review_document_revisions_immutable
+        BEFORE UPDATE ON review_document_revisions
+        BEGIN SELECT RAISE(ABORT, 'document revisions are immutable'); END;
+
+    -- The exact delivered bytes of a declared deliverable's revision, kept
+    -- only when they differ from the normalized reviewer text (a BOM or CR
+    -- line endings). For such a revision content_hash is the SHA-256 of these
+    -- bytes, so the raw route can serve exactly what was registered.
+    CREATE TABLE IF NOT EXISTS review_document_revision_exact (
+        revision_id TEXT PRIMARY KEY REFERENCES review_document_revisions(id) ON DELETE CASCADE,
+        exact_content TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    );
+    CREATE TRIGGER IF NOT EXISTS review_document_revision_exact_immutable
+        BEFORE UPDATE ON review_document_revision_exact
+        BEGIN SELECT RAISE(ABORT, 'document revisions are immutable'); END;
+
+    CREATE TABLE IF NOT EXISTS review_document_decisions (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL REFERENCES review_documents(id) ON DELETE CASCADE,
+        revision_id TEXT NOT NULL REFERENCES review_document_revisions(id),
+        content_hash TEXT NOT NULL,
+        decision TEXT NOT NULL CHECK (decision IN ('approve', 'request_changes')),
+        actor_id TEXT NOT NULL,
+        authority TEXT NOT NULL,
+        note TEXT NOT NULL DEFAULT '',
+        client_decision_id TEXT,
+        intended_action TEXT NOT NULL DEFAULT 'none',
+        created_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_review_document_decisions_client
+        ON review_document_decisions(document_id, client_decision_id) WHERE client_decision_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_review_document_decisions_document
+        ON review_document_decisions(document_id, created_at);
+    CREATE TRIGGER IF NOT EXISTS review_document_decisions_append_only
+        BEFORE UPDATE ON review_document_decisions
+        BEGIN SELECT RAISE(ABORT, 'document decisions are append-only'); END;
+
+    CREATE TABLE IF NOT EXISTS review_document_registrations (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL REFERENCES review_documents(id) ON DELETE CASCADE,
+        revision_id TEXT NOT NULL REFERENCES review_document_revisions(id),
+        content_hash TEXT NOT NULL,
+        fingerprint TEXT NOT NULL,
+        deliverable_key TEXT NOT NULL,
+        path TEXT NOT NULL,
+        root_project_id TEXT,
+        project_id TEXT NOT NULL,
+        task_id TEXT,
+        declaration TEXT NOT NULL DEFAULT '{}',
+        document_created INTEGER NOT NULL DEFAULT 0,
+        revision_created INTEGER NOT NULL DEFAULT 0,
+        registered_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE(document_id, fingerprint)
+    );
+    CREATE INDEX IF NOT EXISTS idx_review_document_registrations_task
+        ON review_document_registrations(task_id);
+    CREATE INDEX IF NOT EXISTS idx_review_document_registrations_document
+        ON review_document_registrations(document_id, created_at);`);
 }
 
-const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt']);
+const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration']);
+const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created']);
 
 function parseJson(value, fallback) {
     if (value === null || value === undefined || value === '') return fallback;
@@ -112,7 +219,35 @@ function rowOut(row) {
     for (const key of JSON_COLUMNS) {
         if (key in out) out[key] = parseJson(out[key], key === 'receipt' ? null : {});
     }
+    for (const key of BOOLEAN_COLUMNS) {
+        if (typeof out[key] === 'number') out[key] = out[key] !== 0;
+    }
     return out;
+}
+
+/** Shared FROM/WHERE for the document list, its total and the per-status counts, so all three agree. */
+function documentQuery({ id, task_id, project_id, kind, q } = {}) {
+    const where = [];
+    const params = [];
+    if (id) { where.push('d.id = ?'); params.push(id); }
+    if (task_id) {
+        // A document belongs to a task it was first registered under, or to any task whose declared registration reused it.
+        where.push('(d.task_id = ? OR d.id IN (SELECT r.document_id FROM review_document_registrations r WHERE r.task_id = ?))');
+        params.push(task_id, task_id);
+    }
+    if (project_id) {
+        // Same rule for projects: the producing project, or any project whose declared registration reused the document.
+        where.push('(d.project_id = ? OR d.id IN (SELECT r.document_id FROM review_document_registrations r WHERE r.project_id = ?))');
+        params.push(project_id, project_id);
+    }
+    if (kind) { where.push('d.kind = ?'); params.push(kind); }
+    if (q) {
+        const like = `%${q.replace(/[\\%_]/g, ch => `\\${ch}`)}%`;
+        where.push("(d.title LIKE ? ESCAPE '\\' OR COALESCE(d.purpose, '') LIKE ? ESCAPE '\\' OR d.path LIKE ? ESCAPE '\\')");
+        params.push(like, like, like);
+    }
+    const sql = `SELECT d.*, ${REVIEW_STATUS_SQL} AS review_status FROM review_documents d ${LATEST_DECISION_JOIN}${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
+    return { sql, params };
 }
 
 function rowsOut(rows) { return (rows || []).map(rowOut); }
@@ -155,6 +290,35 @@ function createDocumentReviewStore(db) {
             const sql = `SELECT * FROM review_documents${where.length ? ` WHERE ${where.join(' AND ')}` : ''} ORDER BY created_at DESC LIMIT ?`;
             return many(sql, ...params, limit);
         },
+        findDocumentByKey(key) { return one('SELECT * FROM review_documents WHERE deliverable_key = ?', key); },
+        /**
+         * One page of documents (newest first) with each row's derived
+         * `review_status`, plus the total matching the same filters. Both run
+         * in one read transaction so the page and its total agree.
+         */
+        listDocumentsPage({ status = 'all', limit = 100, offset = 0, ...filters } = {}) {
+            const { sql, params } = documentQuery(filters);
+            const statusClause = status && status !== 'all' ? ' WHERE review_status = ?' : '';
+            const all = statusClause ? [...params, status] : params;
+            return db.transaction(() => ({
+                total: db.prepare(`SELECT COUNT(*) AS n FROM (${sql})${statusClause}`).get(...all).n,
+                documents: many(`SELECT * FROM (${sql})${statusClause} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`, ...all, limit, offset),
+            }))();
+        },
+        /** Per-status counts for the same filters as listDocumentsPage; `all` is their sum. */
+        countDocumentsByStatus(filters = {}) {
+            const { sql, params } = documentQuery(filters);
+            const counts = Object.fromEntries([...REVIEW_STATUSES, 'all'].map(status => [status, 0]));
+            for (const row of db.prepare(`SELECT review_status, COUNT(*) AS n FROM (${sql}) GROUP BY review_status`).all(...params)) {
+                counts[row.review_status] = row.n;
+                counts.all += row.n;
+            }
+            return counts;
+        },
+        getReviewStatus(documentId) {
+            const { sql, params } = documentQuery({ id: documentId });
+            return db.prepare(`SELECT review_status FROM (${sql})`).get(...params)?.review_status || null;
+        },
         insertDocument(doc) {
             const ts = now();
             const row = { id: doc.id || randomUUID(), kind: 'document', metadata: {}, ...doc, created_at: ts, updated_at: ts };
@@ -178,6 +342,48 @@ function createDocumentReviewStore(db) {
         },
         setCurrentRevision(documentId, revisionId) {
             update('review_documents', documentId, { current_revision_id: revisionId });
+        },
+        insertRevisionExact(revisionId, exactContent) {
+            insert('review_document_revision_exact', { revision_id: revisionId, exact_content: exactContent, created_at: now() });
+        },
+        /** The exact delivered text of a revision, or null when its normalized content already is exact. */
+        getRevisionExact(revisionId) {
+            return db.prepare('SELECT exact_content FROM review_document_revision_exact WHERE revision_id = ?').get(revisionId)?.exact_content ?? null;
+        },
+        listRevisionMeta(documentId) {
+            return many(`SELECT id, document_id, content_hash, byte_length, line_count, file_mtime, captured_at
+                FROM review_document_revisions WHERE document_id = ? ORDER BY captured_at ASC, rowid ASC`, documentId);
+        },
+
+        // ── Decisions (append-only) ──────────────────────────────────────
+        getDecision(id) { return one('SELECT * FROM review_document_decisions WHERE id = ?', id); },
+        findDecisionByClientId(documentId, clientDecisionId) {
+            return one('SELECT * FROM review_document_decisions WHERE document_id = ? AND client_decision_id = ?', documentId, clientDecisionId);
+        },
+        latestDecision(documentId) {
+            return one('SELECT * FROM review_document_decisions WHERE document_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1', documentId);
+        },
+        listDecisions(documentId) {
+            return many('SELECT * FROM review_document_decisions WHERE document_id = ? ORDER BY created_at ASC, rowid ASC', documentId);
+        },
+        insertDecision(decision) {
+            const row = { id: decision.id || randomUUID(), note: '', ...decision, created_at: now() };
+            insert('review_document_decisions', row);
+            return this.getDecision(row.id);
+        },
+
+        // ── Registration receipts ────────────────────────────────────────
+        getRegistration(id) { return one('SELECT * FROM review_document_registrations WHERE id = ?', id); },
+        findRegistration(documentId, fingerprint) {
+            return one('SELECT * FROM review_document_registrations WHERE document_id = ? AND fingerprint = ?', documentId, fingerprint);
+        },
+        listRegistrations(documentId) {
+            return many('SELECT * FROM review_document_registrations WHERE document_id = ? ORDER BY created_at ASC, rowid ASC', documentId);
+        },
+        insertRegistration(registration) {
+            const row = { id: registration.id || randomUUID(), ...registration, created_at: now() };
+            insert('review_document_registrations', row);
+            return this.getRegistration(row.id);
         },
 
         // ── Reviews ──────────────────────────────────────────────────────
@@ -239,4 +445,4 @@ function createDocumentReviewStore(db) {
     };
 }
 
-module.exports = { initializeDocumentReviews, createDocumentReviewStore };
+module.exports = { initializeDocumentReviews, createDocumentReviewStore, REVIEW_STATUSES };
