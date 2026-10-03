@@ -178,3 +178,119 @@ test('speech distinguishes no suggestions from an unavailable answer', () => {
   assert.equal(alertFacts(event('task.qa-passed', { improvements: [], reviewerNoneOffered: true })).reviewerNoneOffered, true);
   assert.equal(alertFacts(event('task.qa-passed', { improvements: [] })).reviewerNoneOffered, false);
 });
+
+const PAIR_WAIT = 10_000;
+function pairFixture(active: () => Promise<boolean> = async () => true) {
+  localStorage.clear();
+  let now = new Date(2026, 8, 7, 12).getTime();
+  const start = now;
+  let timer: { callback: () => void; at: number } | undefined;
+  const spoken: Array<{ event: StreamEvent; facts: Record<string, unknown> }> = [];
+  const alerts = new VoiceAlerts({ mountedAt: now - 1, now: () => now, active,
+    announce: (e, blocked) => { spoken.push({ event: e, facts: alertFacts(e, () => 'Repair sync', blocked) }); return Promise.resolve(); },
+    setTimer: (callback, delay) => { timer = { callback, at: now + delay }; return 1; }, clearTimer: () => { timer = undefined; } });
+  const block = (extra = {}) => event('task.blocked', { eventId: 'block', reason: 'Connection is missing', ...extra });
+  const question = (id = 'question', extra = {}) => event('hitl.created', { eventId: id, request: { id, taskId: 'task-1', question: 'Which connection should I use?', metadata: { kind: 'task-question' } }, ...extra });
+  return { alerts, spoken, block, question, at: (offset: number) => new Date(start + offset).toISOString(),
+    advance: async (ms: number) => { now += ms; if (timer && timer.at <= now) { const cb = timer.callback; timer = undefined; cb(); } await tick(); } };
+}
+for (const questionFirst of [false, true]) test(`block and question announce once with both facts (question first: ${questionFirst})`, async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  const block = f.block(); const question = f.question();
+  f.alerts.update([questionFirst ? question : block], 'conversational'); await tick();
+  assert.equal(f.spoken.length, 0, 'wait for the related event');
+  await f.advance(300);
+  f.alerts.update(questionFirst ? [block, question] : [question, block], 'conversational'); await tick();
+  assert.equal(f.spoken.length, 1);
+  assert.equal(f.spoken[0].event.eventId, 'question');
+  assert.equal(f.spoken[0].facts.status, 'blocked');
+  assert.equal(f.spoken[0].facts.reason, 'Connection is missing');
+  assert.equal(f.spoken[0].facts.question, 'Which connection should I use?');
+  assert.equal(f.spoken[0].facts.title, 'Repair sync');
+  assert.deepEqual(new Set(JSON.parse(localStorage.getItem(ALERT_STORE_KEY)!).ids), new Set(['block', 'question']));
+  await f.advance(120000); assert.equal(f.spoken.length, 1);
+  f.alerts.dispose();
+  const replay = fixture(); replay.alerts.update([question, block], 'conversational'); await tick(); replay.advance(120000); await tick();
+  assert.equal(replay.spoken.length, 0); replay.alerts.dispose();
+});
+test('missing question falls back at the deadline and a late question remains deliverable', async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  f.alerts.update([f.block()], 'conversational'); await tick();
+  await f.advance(PAIR_WAIT - 1); assert.equal(f.spoken.length, 0);
+  await f.advance(1); assert.equal(f.spoken[0].event.type, 'task.blocked');
+  await f.advance(5000);
+  f.alerts.update([f.question('late', { at: f.at(15000) }), f.block()], 'conversational'); await tick();
+  await f.advance(120000); assert.equal(f.spoken[1].event.eventId, 'late');
+});
+test('standalone task question is delivered when no block arrives', async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  f.alerts.update([f.question()], 'attention'); await tick(); assert.equal(f.spoken.length, 0);
+  await f.advance(PAIR_WAIT); assert.equal(f.spoken[0].event.type, 'hitl.created');
+});
+test('explicit question identity outranks proximity and never matches another card', async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  f.alerts.update([f.question('other'), f.block({ blockedOnHitlId: 'correct' })], 'conversational'); await tick();
+  assert.equal(f.spoken.length, 0);
+  await f.advance(500);
+  f.alerts.update([f.question('correct'), f.question('other'), f.block({ blockedOnHitlId: 'correct' })], 'conversational'); await tick();
+  assert.equal(f.spoken[0].event.eventId, 'correct');
+  await f.advance(120000); assert.equal(f.spoken[1].event.eventId, 'other');
+  assert.equal(f.spoken[1].facts.reason, undefined);
+});
+test('a second question on the same task is never swallowed by the first pair', async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  f.alerts.update([f.question(), f.block()], 'conversational'); await tick();
+  await f.advance(1000);
+  f.alerts.update([f.question('second', { at: f.at(1000) }), f.question(), f.block()], 'conversational'); await tick();
+  await f.advance(120000);
+  assert.deepEqual(f.spoken.map(s => s.event.eventId), ['question', 'second']);
+});
+test('unrelated ready alerts are not held behind a pending pair', async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  f.alerts.update([event('task.failed', { eventId: 'unrelated', taskId: 'other-task' }), f.block()], 'conversational'); await tick();
+  assert.deepEqual(f.spoken.map(s => s.event.eventId), ['unrelated']);
+});
+test('pending block survives eviction from the incoming recent-event snapshot', async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  f.alerts.update([f.block()], 'conversational'); await tick();
+  f.alerts.update([f.question(), ...Array.from({ length: 50 }, (_, i) => event('presence.changed', { eventId: `telemetry-${i}` }))], 'conversational'); await tick();
+  assert.equal(f.spoken.length, 1); assert.equal(f.spoken[0].facts.reason, 'Connection is missing');
+});
+test('question arriving during the device lookup replaces the stale block selection', async t => {
+  let finish!: (value: boolean) => void;
+  const f = pairFixture(() => new Promise(resolve => { finish = resolve; })); t.after(() => f.alerts.dispose());
+  f.alerts.update([f.block()], 'conversational'); await tick();
+  await f.advance(PAIR_WAIT);
+  f.alerts.update([f.question('question', { at: f.at(PAIR_WAIT) }), f.block()], 'conversational');
+  finish(true); await tick();
+  assert.equal(f.spoken.length, 1); assert.equal(f.spoken[0].event.eventId, 'question');
+});
+test('a question arriving while fallback speech is prepared prevents stale block playback', async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  f.alerts.update([f.block()], 'conversational'); await tick(); await f.advance(PAIR_WAIT);
+  f.alerts.update([f.question(), f.block()], 'conversational'); await tick();
+  assert.equal(await f.alerts.canPlay(f.block(), new AbortController().signal, () => true), false);
+});
+
+test('a block arriving during question prose preparation requeues complete facts without another cooldown', async t => {
+  localStorage.clear();
+  let now = new Date(2026, 8, 7, 12).getTime();
+  const question = event('hitl.created', { eventId: 'q', request: { id: 'card', taskId: 'task-1', question: 'Which connection?', metadata: { kind: 'task-question' } } });
+  const block = event('task.blocked', { eventId: 'b', blockedOnHitlId: 'card', reason: 'Missing connection' });
+  let wake!: () => void; let finish!: () => void;
+  const spoken: Array<Record<string, unknown>> = [];
+  const alerts = new VoiceAlerts({ mountedAt: now - 1, now: () => now, active: async () => true,
+    setTimer: callback => { wake = callback; return 1; }, clearTimer: () => {},
+    announce: (e, blocked) => { spoken.push(alertFacts(e, () => 'Repair sync', blocked)); return new Promise(resolve => finish = resolve); } });
+  t.after(() => alerts.dispose());
+  alerts.update([question], 'conversational'); await tick(); now += PAIR_WAIT; wake(); await tick();
+  assert.equal(spoken.length, 1); assert.equal(spoken[0].reason, undefined);
+  alerts.update([block, question], 'conversational');
+  assert.equal(await alerts.canPlay(question, new AbortController().signal, () => true), false);
+  finish(); await tick(); await tick();
+  assert.equal(spoken.length, 2, 'recompose now rather than waiting for rate cooldown');
+  assert.equal(spoken[1].reason, 'Missing connection');
+  assert.equal(spoken[1].question, 'Which connection?');
+  assert.equal(await alerts.canPlay(question, new AbortController().signal, () => true, block as any), true);
+  finish();
+});

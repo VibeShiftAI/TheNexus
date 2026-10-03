@@ -1186,11 +1186,12 @@ export function TaskDispatchConsole({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Deep-link target from the activity feed: /task/[id]#dispatch-<id>. Open and
   // highlight that specific run so drilling down from a feed row lands on it.
-  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const match = window.location.hash.match(/^#dispatch-(.+)$/);
-    if (match) setHighlightId(decodeURIComponent(match[1]));
+    try { setHighlightId(match ? decodeURIComponent(match[1]) : null); }
+    catch { setHighlightId(null); }
   }, []);
 
   const anyRunning = useMemo(
@@ -1199,8 +1200,11 @@ export function TaskDispatchConsole({
   );
 
   const load = useCallback(async () => {
+    // Resolve the hash before fetching so a page-only response cannot race
+    // and overwrite the response that contains the older linked attempt.
+    if (highlightId === undefined) return;
     try {
-      const rows = await getTaskDispatches(taskId);
+      const rows = await getTaskDispatches(taskId, 50, highlightId);
       setDispatches(rows);
       setError(null);
     } catch (err) {
@@ -1215,7 +1219,7 @@ export function TaskDispatchConsole({
     } catch {
       setInsight(null);
     }
-  }, [taskId]);
+  }, [taskId, highlightId]);
 
   // Poll faster while a run is in flight so outputs appear without a refresh.
   useEffect(() => {

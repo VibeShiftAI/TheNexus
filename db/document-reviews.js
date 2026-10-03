@@ -200,6 +200,8 @@ function initializeDocumentReviews(db) {
     );
     CREATE INDEX IF NOT EXISTS idx_review_document_registrations_task
         ON review_document_registrations(task_id);
+    CREATE INDEX IF NOT EXISTS idx_review_document_registrations_project
+        ON review_document_registrations(project_id);
     CREATE INDEX IF NOT EXISTS idx_review_document_registrations_document
         ON review_document_registrations(document_id, created_at);`);
 }

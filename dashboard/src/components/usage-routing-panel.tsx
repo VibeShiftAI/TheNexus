@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useLiveRefetch } from "@/components/live-board-state";
 import { Activity, Gauge, Loader2, RefreshCw, Route } from "lucide-react";
 import {
@@ -208,6 +209,10 @@ export function UsageRoutingPanel() {
                     Refresh
                 </button>
             </div>
+
+            <Link href="/activity#routing-economics" className="mb-4 block text-xs text-cyan-300 hover:underline">
+                Compare measured model costs, latency, and outcomes →
+            </Link>
 
             {error && (
                 <div className="mb-3 rounded border border-red-900/50 bg-red-950/30 p-2 text-xs text-red-400">{error}</div>

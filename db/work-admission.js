@@ -18,6 +18,8 @@ function stable(value) {
     return typeof value === 'string' ? normalized(value) : value ?? null;
 }
 const fail = (message, status = 409) => Object.assign(new Error(message), { status, code: 'work_admission_conflict' });
+// Same reading as Praxis stringArray (orchestrator/acceptance-criteria.ts), so its own appends compare as appends.
+const rulingEntries = value => Array.isArray(value) ? value.filter(entry => typeof entry === 'string' && entry.trim()).map(entry => entry.trim()) : [];
 
 function initializeWorkAdmission(db) {
     // The unique key and receipt commit with the task row; no reservation can
@@ -44,7 +46,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         const row = db.prepare('SELECT document FROM work_admissions WHERE task_id = ?').get(id);
         return row ? JSON.parse(row.document) : null;
     };
-    function contract(task, projectPath) {
+    function contract(task, projectPath, { legacyRulings = false } = {}) {
         const metadata = object(task.metadata), identity = object(metadata.work_identity), payload = object(task.antigravity_payload);
         const workspacePath = projectPath === undefined ? db.prepare('SELECT path FROM projects WHERE id = ?').get(task.project_id)?.path : projectPath;
         const requestedWorkspace = payload.workspace || workspacePath || identity.workspace || '';
@@ -53,8 +55,11 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         if (identity.workspace && canonicalPath(identity.workspace) !== canonicalPath(requestedWorkspace)) throw fail('Declared identity workspace disagrees with executable workspace', 400);
         // Executor repair/session/routing state is operational context, not a
         // changed request. Bind only executable scope and acceptance fields.
+        // Operator rulings are Robert's answers delivered to executor and QA;
+        // saving one is not a scope change (2026-10-01, task 444a0be0). Only
+        // guardUpdate's append-only check and the legacy rebind read them.
         const scopePayload = Object.fromEntries(['prompt', 'workspace', 'acceptance_criteria', 'context_files', 'target_files',
-            'scope', 'commands', 'constraints', 'declared_paths', 'workspace_roots', 'additional_workspaces', 'operator_rulings', 'binding_constraints', 'binding_constraints_text'].filter(key => payload[key] !== undefined).map(key => [key, payload[key]]));
+            'scope', 'commands', 'constraints', 'declared_paths', 'workspace_roots', 'additional_workspaces', ...(legacyRulings ? ['operator_rulings'] : []), 'binding_constraints', 'binding_constraints_text'].filter(key => payload[key] !== undefined).map(key => [key, payload[key]]));
         if (Array.isArray(scopePayload.binding_constraints)) scopePayload.binding_constraints = scopePayload.binding_constraints.filter(rule => !rule?.generated);
         if (Array.isArray(scopePayload.binding_constraints) && !scopePayload.binding_constraints.length) delete scopePayload.binding_constraints;
         // Generated text is a redundant projection with task-local links; authored structured constraints remain authoritative.
@@ -64,6 +69,11 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
             scope: identity.scope || '', acceptance: identity.acceptance || payload.acceptance_criteria || [],
             payload: scopePayload, dispatch_instructions: task.dispatch_instructions || '',
             recurrence: identity.recurrence || null });
+    }
+    // Receipts written before 2026-10-01 fingerprinted rulings as scope. Such a
+    // receipt still covers exactly this task when it matches that old digest.
+    function legacyFingerprint(task) {
+        return object(task.antigravity_payload).operator_rulings === undefined ? null : digest(contract(task, undefined, { legacyRulings: true }));
     }
     function identityKey(task, repeat) {
         const c = contract(task);
@@ -173,7 +183,8 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
             reason: inspected.lookup_failed ? 'Project lookup unavailable; evidence review is required.' :
                 concerns.length ? 'A duplicate concern requires a bounded evidence comparison.' :
                     inspected.matches.length ? 'Possible scope overlap requires a bounded evidence comparison.' : 'No relevant overlap found within recorded project/workspace coverage.',
-            ...(previous ? { previous_decision: previous.decision } : {}) };
+            ...(previous ? { previous_decision: previous.decision } : {}),
+            ...(previous?.operator_answers ? { operator_answers: previous.operator_answers } : {}) };
     }
     function save(task, receipt, { mutation = false } = {}) {
         db.prepare('INSERT INTO work_admissions (task_id, document) VALUES (?, ?) ON CONFLICT(task_id) DO UPDATE SET document=excluded.document').run(task.id, JSON.stringify(receipt));
@@ -217,8 +228,12 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     }
     function current(id) {
         return db.transaction(() => {
-            const task = readTask(id), previous = readReceipt(id);
+            let task = readTask(id), previous = readReceipt(id);
             const inspected = inspect(task, previous?.concerns || []);
+            if (previous && previous.fingerprint !== inspected.fingerprint && previous.fingerprint === legacyFingerprint(task)) {
+                task = save(task, { ...previous, fingerprint: inspected.fingerprint, legacy_fingerprint: previous.fingerprint });
+                previous = task.metadata.work_admission;
+            }
             const unchangedRelevantEvidence = previous?.resolved_at && previous.fingerprint === inspected.fingerprint && previous.relevant_hash && previous.relevant_hash === inspected.relevant_hash;
             if (previous && previous.retrieval_version === inspected.retrieval_version && previous.fingerprint === inspected.fingerprint && (previous.coverage_hash === inspected.coverage_hash || unchangedRelevantEvidence) && !inspected.lookup_failed) {
                 const expired = !previous.resolved_at && now() - Date.parse(previous.checked_at) > RESOLUTION_WINDOW_MS;
@@ -243,15 +258,31 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         const metadata = { ...object(updates.metadata === undefined ? task.metadata : updates.metadata) };
         const priorMetadata = object(task.metadata);
         if (priorMetadata.work_identity) metadata.work_identity = priorMetadata.work_identity;
-        if (reopening || digest(contract({ ...task, ...updates, metadata })) !== previous.fingerprint) {
+        const fingerprint = digest(contract({ ...task, ...updates, metadata }));
+        // A legacy receipt binds the stored task; compare the edit with that task's current-form contract.
+        const baseline = previous && previous.fingerprint === legacyFingerprint(task) ? digest(contract(task)) : previous?.fingerprint;
+        // Appending an answer keeps admission; rewriting or removing a recorded
+        // ruling is an edit of what the executor and QA were told, not an answer.
+        const recorded = rulingEntries(object(task.antigravity_payload).operator_rulings);
+        const rulings = updates.antigravity_payload === undefined ? recorded : rulingEntries(object(updates.antigravity_payload).operator_rulings);
+        const rewritten = recorded.some((entry, index) => rulings[index] !== entry);
+        const answers = [...(previous?.operator_answers || []), ...(rewritten ? [] : rulings.slice(recorded.length).map((entry, offset) => ({
+            index: recorded.length + offset, sha256: createHash('sha256').update(entry).digest('hex'), recorded_at: new Date(now()).toISOString() })))];
+        const audit = answers.length ? { operator_answers: answers } : {};
+        let next;
+        if (reopening || rewritten || fingerprint !== baseline) {
             const concerns = [...(previous?.concerns || [])];
             if (reopening) concerns.push({ key: digest({ terminal_reopen: task.status, version: task.version }),
                 reason: `Task reopened from ${task.status}; retained prior work requires fresh evidence or an explicitly reasoned repeat.` });
-            const next = baseReceipt({ ...task, ...updates, metadata }, concerns, previous);
-            next.decision = 'needs_evidence'; next.reason = reopening ? concerns[concerns.length - 1].reason : 'Proposal contract changed; review the current scope before execution.';
-            metadata.work_admission = next;
-            db.prepare('INSERT INTO work_admissions (task_id, document) VALUES (?, ?) ON CONFLICT(task_id) DO UPDATE SET document=excluded.document').run(task.id, JSON.stringify(next));
-        } else metadata.work_admission = previous;
+            next = { ...baseReceipt({ ...task, ...updates, metadata }, concerns, previous), ...audit };
+            next.decision = 'needs_evidence'; next.reason = reopening ? concerns[concerns.length - 1].reason : fingerprint !== baseline
+                ? 'Proposal contract changed; review the current scope before execution.'
+                : 'Recorded operator rulings were rewritten or removed; review the current scope before execution.';
+        } else if (fingerprint !== previous.fingerprint || answers.length !== (previous.operator_answers || []).length) {
+            next = { ...previous, ...audit, ...(fingerprint !== previous.fingerprint ? { fingerprint, legacy_fingerprint: previous.fingerprint } : {}) };
+        }
+        if (next) db.prepare('INSERT INTO work_admissions (task_id, document) VALUES (?, ?) ON CONFLICT(task_id) DO UPDATE SET document=excluded.document').run(task.id, JSON.stringify(next));
+        metadata.work_admission = next || previous;
         return { ...updates, metadata };
     }
     function requireVersion(task, input) {

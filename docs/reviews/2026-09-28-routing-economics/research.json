@@ -1,0 +1,70 @@
+[
+  {
+    "question_id": "research:e51a8af7bf56efca9276",
+    "question": "Which run-trace and activity-attribution fields are actually populated today for local versus cloud executions (latency, token counts, cost, outcome), and which are absent or estimated?",
+    "outcome": "supported",
+    "answer": "Dispatch rows record model (nullable), executor, total tokens (nullable), tokens_estimated, outcome, started_at and completed_at. Wall-clock latency is derived only for terminal rows with valid ordered timestamps. Tokens may be real totals or text-volume estimates (~characters/4); there is no input/output/cache breakdown per dispatch. Standard run traces expose model, token evidence and finalOutcome; modelCalls/toolCalls are not instrumented. Current live history has 2493 cloud attempts (2484 with token records, 627 estimated) and zero local attempts, so local field population is unobserved. Schema support does not imply local observations. Costs are derived, not a recorded dispatch column; completion reflects executor outcome, not QA quality.",
+    "evidence": [
+      {
+        "source_ref": "server/routes/dispatches.js",
+        "sha256": "149fa5797916bace26525fb6dcddad16e8b331dba6a3a2a4ad8796b600e4811d",
+        "native_span": "server/routes/dispatches.js:57-87,179-197",
+        "checked_at": "2026-09-29T03:04:21.095208+00:00"
+      },
+      {
+        "source_ref": "server/services/run-trace.js",
+        "sha256": "238fda6d614dd46032e7f61630b3d1e7698eab08b67b0ded986808345cdde3d8",
+        "native_span": "server/services/run-trace.js:244-291,331-335",
+        "checked_at": "2026-09-29T03:04:21.095208+00:00"
+      },
+      {
+        "source_ref": "server/routes/routing-economics.js",
+        "sha256": "e4987aaa0ca9194e520e3e0fdbe26efdd7fc396e4a5da30179a326a813d4e05d",
+        "native_span": "server/routes/routing-economics.js:10-18",
+        "checked_at": "2026-09-29T03:04:21.095208+00:00"
+      }
+    ],
+    "limitations": [
+      "No local attempts are present in the captured production history.",
+      "No claim about all inference calls outside dispatch history.",
+      "Cortex discovery returned broad advisory hits; none were used as factual proof."
+    ]
+  },
+  {
+    "question_id": "research:5f6988d9e7849efae2bc",
+    "question": "Where does the cockpit already store or derive cloud model pricing, and is any price data metered by the provider rather than locally assumed?",
+    "outcome": "supported",
+    "answer": "The dispatch-insight static PRICE_PER_MTOK table and BLEND estimator are now shared in server/services/run-cost.js without changing rates. They assume 85% cache-read, 2% fresh input, 8% cache-write and 5% output; priceFor includes family fallbacks, and unknown models remain unpriced. Estimates are API-equivalent amounts, not subscription charges or invoices. The dispatch schema has no billed-cost field and the run-events spine is documented as having no cost column. No provider-metered cost can be attributed to these dispatch rows; meteredRuns is therefore zero. /api/usage-monitor proxies a distinct Praxis usage surface, not a joined per-dispatch billing source.",
+    "evidence": [
+      {
+        "source_ref": "server/services/run-cost.js",
+        "sha256": "b86ece44201480f3fbddc28dec8c7e5a6d6cdcf6d105a52d1ee4f1d82097b64a",
+        "native_span": "server/services/run-cost.js:1-96",
+        "checked_at": "2026-09-29T03:04:21.095208+00:00"
+      },
+      {
+        "source_ref": "server/routes/dispatch-insight.js",
+        "sha256": "2ea8c58a860a79f089e0193108e5c18ab36c81b17caf4e6005c6bf5f61c64326",
+        "native_span": "server/routes/dispatch-insight.js:49-52,115",
+        "checked_at": "2026-09-29T03:04:21.095208+00:00"
+      },
+      {
+        "source_ref": "server/routes/dispatches.js",
+        "sha256": "149fa5797916bace26525fb6dcddad16e8b331dba6a3a2a4ad8796b600e4811d",
+        "native_span": "server/routes/dispatches.js:57-87",
+        "checked_at": "2026-09-29T03:04:21.095208+00:00"
+      },
+      {
+        "source_ref": "server/routes/usage-monitor.js",
+        "sha256": "55429da673fe067015b276f81e3669ad476bb768db779d75e8a54ed70d754eed",
+        "native_span": "server/routes/usage-monitor.js:1-25",
+        "checked_at": "2026-09-29T03:04:21.095208+00:00"
+      }
+    ],
+    "limitations": [
+      "Static rates were reused, not externally revalidated; all cloud figures are visibly estimates.",
+      "This does not claim provider-metered costs are absent from every other runtime or provider system.",
+      "No billing integration was added."
+    ]
+  }
+]

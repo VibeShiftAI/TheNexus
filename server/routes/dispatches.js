@@ -331,6 +331,13 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
                 ORDER BY started_at DESC, created_at DESC
                 LIMIT ?
             `).all(taskId, limit);
+            // Economics/activity deep links may target an attempt older than
+            // this display page. Include only that task's exact requested row.
+            const includeId = str(req.query.include_id);
+            if (includeId && !rows.some(row => row.id === includeId)) {
+                const target = db.prepare('SELECT * FROM task_dispatches WHERE task_id = ? AND id = ?').get(taskId, includeId);
+                if (target) rows.push(target);
+            }
             res.json({ dispatches: rows });
         } catch (err) {
             console.error('[Dispatches] list failed:', err.message);

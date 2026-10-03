@@ -52,9 +52,9 @@ export function canFollowUp(dispatch: TaskDispatch): boolean {
     );
 }
 
-export async function getTaskDispatches(taskId: string, limit = 50): Promise<TaskDispatch[]> {
+export async function getTaskDispatches(taskId: string, limit = 50, includeId?: string | null): Promise<TaskDispatch[]> {
     const res = await fetch(
-        `/api/dispatches?task_id=${encodeURIComponent(taskId)}&limit=${limit}&_cb=${Date.now()}`,
+        `/api/dispatches?task_id=${encodeURIComponent(taskId)}&limit=${limit}${includeId ? `&include_id=${encodeURIComponent(includeId)}` : ""}&_cb=${Date.now()}`,
         { cache: 'no-store' },
     );
     if (!res.ok) throw new Error(`Failed to load dispatch history (${res.status})`);

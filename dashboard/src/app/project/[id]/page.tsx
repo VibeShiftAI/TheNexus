@@ -14,7 +14,9 @@ import { ArtifactsList } from "@/components/artifacts-list";
 import { ProjectNotes } from "@/components/project-notes";
 import { ProjectStakeholders } from "@/components/project-stakeholders";
 import { ProjectRequests } from "@/components/project-requests";
+import { ProjectClientAccess } from "@/components/project-client-access";
 import { ProjectComms } from "@/components/project-comms";
+import { ProjectDeliverables } from "@/components/project-deliverables";
 import { ProjectEndpointPanel } from "@/components/project-endpoint/endpoint-panel";
 import { ProjectNeedsPanel } from "@/components/project-endpoint/needs-panel";
 import { ProjectCheckpointsPanel } from "@/components/project-endpoint/checkpoints-panel";
@@ -266,6 +268,9 @@ export default function ProjectDetailPage() {
                     <MissionBrief project={project} brief={brief} />
                 </div>
 
+                {/* Documents this project's tasks delivered for review, from the shared registry */}
+                <ProjectDeliverables projectId={projectId} />
+
                 {/* Checkpoint sequence under the long-term goal: what the crew works toward now */}
                 <ProjectCheckpointsPanel project={project} onUpdate={setProject} />
 
@@ -356,6 +361,7 @@ export default function ProjectDetailPage() {
                         />
                         <ProjectStakeholders projectId={projectId} onChanged={onMembersChanged} />
                         <ProjectRequests projectId={projectId} onChanged={loadTasks} />
+                        <ProjectClientAccess projectId={projectId} />
                         <ProjectNotes projectId={projectId} />
                     </div>
                 </div>

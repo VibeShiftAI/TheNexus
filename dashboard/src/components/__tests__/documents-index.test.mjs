@@ -233,6 +233,41 @@ test('a page emptied by decisions steps back to the last page with documents', a
   } finally { t.cleanup(); }
 });
 
+test('a failed step-back with more than one page left shows the error, hides the pager, and Retry recovers', async () => {
+  let docs = syntheticRegistry(60);
+  let failRecovery = false;
+  const t = setup(async (url, init) => {
+    if (failRecovery && url.pathname === '/api/documents' && url.searchParams.get('offset') === '25') {
+      failRecovery = false;
+      return response({ error: 'database is locked' }, 500);
+    }
+    return registryHandler(docs)(url, init);
+  }, '?offset=50');
+  const text = selector => t.container.querySelector(selector)?.textContent ?? null;
+  try {
+    await settle();
+    assert.match(text('[data-documents-summary]'), /Showing 51–60 of 60/);
+    docs = docs.filter(d => Number(d.id.slice(4)) > 20);
+    failRecovery = true;
+    await click(t.container.querySelector('button[aria-label="Refresh documents"]'));
+    await settle();
+    assert.equal(lastList(t.calls).get('offset'), '25', 'the recovery request targets the last page that has documents');
+    assert.match(text('[data-documents-error]') ?? '', /Could not load documents: database is locked/);
+    assert.equal(text('[data-documents-empty]'), null, 'a failed recovery is never shown as an empty queue');
+    assert.equal(text('[data-documents-stepping-back]'), null, 'the error replaces the loading notice');
+    assert.equal(text('[data-documents-pager]'), null, 'no pager for a page past the end');
+    assert.doesNotMatch(text('[data-documents-summary]'), /Page \d+ of/);
+    assert.match(text('[data-documents-summary]'), /^40 documents · Needs your review/);
+
+    await click(button(t.container.querySelector('[data-documents-error]'), 'Retry'));
+    await settle();
+    assert.equal(text('[data-documents-error]'), null);
+    assert.match(text('[data-documents-summary]'), /Showing 26–40 of 40/);
+    assert.match(text('[data-documents-pager]') ?? '', /Page 2 of 2/);
+    assert.equal(t.container.querySelectorAll('[data-document-id]').length, 15);
+  } finally { t.cleanup(); }
+});
+
 test('the empty-response guard does not misreport a legitimately empty first page', async () => {
   const t = setup(() => response({ documents: [], total: 0, limit: 25, offset: 0, has_more: false, status: 'needs_review' }));
   try {

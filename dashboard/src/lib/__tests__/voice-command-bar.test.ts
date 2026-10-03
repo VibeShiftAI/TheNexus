@@ -494,3 +494,75 @@ for (const mode of ['success', 'synthesis-failure', 'blocked', 'cue-failure', 'd
     assert.equal(f.requests.filter(r => r.url.endsWith('/sync') && r.body.messages[0].metadata?.voiceDeliveryNotice).length, 1);
   }
 });
+
+test('a blocked task and its question produce one complete spoken announcement', async t => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 9, 2, 12).getTime() });
+  t.mock.method(document, 'hasFocus', () => true);
+  const originalEventSource = globalThis.EventSource;
+  Object.assign(globalThis, { EventSource: class { addEventListener() {} close() {} } });
+  t.after(() => Object.assign(globalThis, { EventSource: originalEventSource }));
+  const f = await mount(t, false, undefined, true);
+  await act(async () => {
+    t.mock.timers.tick(1);
+    __sockets.at(-1).__emit('praxis:event', { type: 'task.blocked', eventId: 'paired-block', taskId: 'task-pair', reason: 'Connection is missing', at: new Date().toISOString() });
+    await tick(); await tick();
+  });
+  assert.equal(f.requests.filter(r => r.url.endsWith('/voice-prose')).length, 0);
+  await act(async () => {
+    t.mock.timers.tick(300);
+    __sockets.at(-1).__emit('praxis:event', { type: 'hitl.created', eventId: 'paired-question', at: new Date().toISOString(),
+      request: { id: 'pair-card', taskId: 'task-pair', question: 'Which connection should I use?', metadata: { kind: 'task-question' } } });
+    await tick(); await tick();
+  });
+  const prose = f.requests.filter(r => r.url.endsWith('/voice-prose'));
+  assert.equal(prose.length, 1);
+  assert.equal(prose[0].body.facts.status, 'blocked');
+  assert.equal(prose[0].body.facts.reason, 'Connection is missing');
+  assert.equal(prose[0].body.facts.question, 'Which connection should I use?');
+  await act(async () => { FakeAudio.all[0].onended?.(); await tick(); });
+  await act(async () => { FakeAudio.all[1].onended?.(); await tick(); });
+  await act(async () => { t.mock.timers.tick(120000); await tick(); await tick(); });
+  assert.equal(f.requests.filter(r => r.url.endsWith('/voice-prose')).length, 1);
+  assert.equal(f.requests.filter(r => r.url.endsWith('/speak')).length, 1);
+});
+
+test('recomposed question uses a fresh archive identity instead of replaying question-only wording', async t => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 9, 2, 12).getTime() });
+  t.mock.method(document, 'hasFocus', () => true);
+  const originalEventSource = globalThis.EventSource;
+  Object.assign(globalThis, { EventSource: class { addEventListener() {} close() {} } });
+  t.after(() => Object.assign(globalThis, { EventSource: originalEventSource }));
+  let finish!: (response: Response) => void;
+  let proseCalls = 0;
+  const saved = new Map<string, any>();
+  const f = await mount(t, false, async (url, body) => {
+    if (url.endsWith('/voice-prose')) {
+      if (++proseCalls === 1) return new Promise(resolve => finish = resolve);
+      return Response.json({ text: `Blocked because ${body.facts.reason}. ${body.facts.question}` });
+    }
+    if (url.endsWith('/sync')) {
+      const messages = body.messages.map((m: any) => {
+        if (!saved.has(m.id)) saved.set(m.id, { ...m, conversation_id: body.conversationId });
+        return saved.get(m.id);
+      });
+      return Response.json({ ok: true, synced: messages.length, messages });
+    }
+  }, true);
+  let at!: string;
+  await act(async () => {
+    t.mock.timers.tick(1); at = new Date().toISOString();
+    __sockets.at(-1).__emit('praxis:event', { type: 'hitl.created', eventId: 'late-block-question', at,
+      request: { id: 'late-block-card', taskId: 'late-block-task', question: 'Which connection?', metadata: { kind: 'task-question' } } });
+    await tick();
+  });
+  await act(async () => { t.mock.timers.tick(10000); await tick(); });
+  assert.equal(proseCalls, 1);
+  await act(async () => {
+    __sockets.at(-1).__emit('praxis:event', { type: 'task.blocked', eventId: 'late-block-event', at, taskId: 'late-block-task', blockedOnHitlId: 'late-block-card', reason: 'Connection is missing' });
+    await tick(); finish(Response.json({ text: 'Which connection?' })); await tick(); await tick(); await tick();
+  });
+  assert.equal(proseCalls, 2);
+  const speech = f.requests.filter(r => r.url.endsWith('/speak'));
+  assert.equal(speech.length, 1);
+  assert.equal(speech[0].body.text, 'Blocked because Connection is missing. Which connection?');
+});

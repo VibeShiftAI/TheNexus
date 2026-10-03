@@ -197,6 +197,7 @@ app.use('/api/dispatch-insight', require('./routes/dispatch-insight')());
 // Completion evidence dossier: walkthrough, verify/code-review gates and QA
 // verdict per task, with unverified completions named as such. Read-only.
 app.use('/api/task-evidence', authenticate, require('./routes/task-evidence')());
+app.use('/api/routing-economics', authenticate, require('./routes/routing-economics')());
 // Slate lifecycle: drafted → approved → attempted → verified for the day's
 // slate, read from Praxis's schedule file so a stage that has stalled (the
 // 2026-08-24 never-approved slate) is visible on the board.
@@ -220,6 +221,13 @@ app.use('/api/projects', tasksRouter);   // project-scoped: GET /:id/tasks, POST
 const stakeholderRouters = require('./routes/stakeholders')({ db });
 app.use('/api/projects', stakeholderRouters.projects); // GET /:id/stakeholders, GET /:id/requests
 app.use('/api/tasks', stakeholderRouters.tasks);       // POST /:taskId/stakeholder-decision
+// Client project access (2026-10-02): explicit project-scoped entitlements for
+// external client leads and the immutable version-review ledger. The client
+// surface is runtime-credentialed only (never the local stub); grants and
+// revocations need Robert's operator credential. docs/contracts/client-project-access.md
+const clientAccessRouters = require('./routes/client-access')({ db });
+app.use('/api/client-access', clientAccessRouters.client); // GET /members/:memberId/projects..., POST .../artifacts/:artifactId/reviews
+app.use('/api/projects', clientAccessRouters.projects);    // GET/POST /:id/client-access...
 app.use('/api/projects', createProjectWorkflowsRouter({ db, getProjectById, PROJECT_ROOT }));
 
 // ─── Board State (Praxis executive planning) ───────────────────────────

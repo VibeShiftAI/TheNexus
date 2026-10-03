@@ -565,14 +565,16 @@ export function VoiceCommandBar() {
 
   const alertsRef = useRef<VoiceAlerts | null>(null);
   useEffect(() => {
-    const alerts = new VoiceAlerts({ mountedAt: mountedAtRef.current, announce: event => {
+    const alerts = new VoiceAlerts({ mountedAt: mountedAtRef.current, announce: (event, blocked) => {
       if (settingsOpenRef.current || document.hidden) return null;
       const session = speech.begin(true); if (!session) return null;
+      // Recomposition must not retrieve the earlier question-only archive row.
+      const announcementId = blocked ? `${event.eventId}:blocked:${blocked.eventId}` : event.eventId;
       const announcementConversationId = chatRef.current.conversationId;
       const facts = alertFacts(event, id => {
         const task = projectsRef.current?.flatMap(project => project.tasks ?? []).find(task => task.id === id);
         return task?.title || task?.name;
-      });
+      }, blocked);
       // Chat receives the words first. The voice panel is revealed only by audio playback.
       speech.setState(session, 'working');
       return (async () => {
@@ -587,13 +589,13 @@ export function VoiceCommandBar() {
         try {
           const text = await composeVoiceProse(session, { kind: 'alert', facts });
           if (!session.owns()) { failure = 'Voice update was canceled before playback.'; return; }
-          const saved = await archiveVoiceAnnouncement(event.eventId, text, deliveryConversationId, { signal: session.signal });
-          const archived = saved.find(message => message.id === `voice-alert:${event.eventId}`);
+          const saved = await archiveVoiceAnnouncement(announcementId, text, deliveryConversationId, { signal: session.signal });
+          const archived = saved.find(message => message.id === `voice-alert:${announcementId}`);
           if (!archived?.content) throw new Error('Announcement receipt is missing its text');
           deliveryConversationId = archived.conversation_id || deliveryConversationId;
           mergeSaved(saved);
           failure = 'Voice update was skipped or interrupted before playback finished. The update is in chat.';
-          const mayPlay = () => alerts.canPlay(event, session.signal, () => session.owns() && !settingsOpenRef.current && !document.hidden);
+          const mayPlay = () => alerts.canPlay(event, session.signal, () => session.owns() && !settingsOpenRef.current && !document.hidden, blocked);
           if (!await mayPlay()) return;
           const outcome = await speech.speak(session, archived.content, undefined, notice => {
             failure = `Voice update failed: ${notice.replace(' The full response remains in the voice panel.', '')} The update is in chat.`;
@@ -618,12 +620,12 @@ export function VoiceCommandBar() {
           if (!delivered) {
             // Speech completion releases/aborts its session. Archival needs its own lifetime.
             try {
-              mergeSaved(await archiveVoiceDeliveryNotice(event.eventId, failure, deliveryConversationId));
+              mergeSaved(await archiveVoiceDeliveryNotice(announcementId, failure, deliveryConversationId));
             } catch {
-              mergeSaved([{ id: `voice-delivery:${event.eventId}`, role: 'assistant',
+              mergeSaved([{ id: `voice-delivery:${announcementId}`, role: 'assistant',
                 content: `${failure} This notice could not be saved; it is shown locally.`,
                 conversation_id: deliveryConversationId,
-                metadata: { eventId: event.eventId, voiceDeliveryNotice: true, playbackOwner: 'voice', suppressVoice: true } }]);
+                metadata: { eventId: announcementId, voiceDeliveryNotice: true, playbackOwner: 'voice', suppressVoice: true } }]);
             }
           }
         }

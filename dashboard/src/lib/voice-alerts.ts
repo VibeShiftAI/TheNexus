@@ -1,6 +1,7 @@
 import type { StreamEvent } from '@praxis/contract';
 import { isThisClientActive } from './active-client';
 import { speechOwner } from './speech-ownership';
+import { pairVoiceAlerts, type BlockedEvent, type VoiceAlert } from './voice-alert-pairing';
 export type AlertMode = 'off' | 'attention' | 'conversational';
 export const ALERT_MODE_KEY = 'nexus.voice.alertMode';
 export const ALERT_STORE_KEY = 'nexus.voice.announcedEvents';
@@ -24,7 +25,7 @@ export function eligibleAlert(e: StreamEvent, mode: AlertMode): boolean {
   if (e.type === 'hitl.created') return !ROUTINE.has(String(e.request?.metadata?.kind));
   return e.type === 'task.failed' || (mode === 'conversational' && (e.type === 'task.qa-passed' || e.type === 'task.blocked'));
 }
-export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | undefined = () => undefined): Record<string, unknown> {
+export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | undefined = () => undefined, blocked?: BlockedEvent): Record<string, unknown> {
   const taskId = e.type === 'hitl.created' ? e.request?.taskId : 'taskId' in e ? e.taskId : undefined;
   const candidate = taskId ? titleFor(taskId)?.trim() : undefined;
   const title = candidate && candidate !== taskId && !/qa--|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i.test(candidate) ? candidate : undefined;
@@ -43,7 +44,7 @@ export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | un
     case 'task.failed': return { ...task, status: 'failed', reason: e.error };
     case 'task.completed': return { ...task, status: 'execution_finished', outcome: e.result?.outcome, summary: e.result?.summary, verification: 'not established by this event' };
     case 'task.blocked': return { ...task, status: 'blocked', reason: e.reason };
-    case 'hitl.created': return { ...task, status: 'attention', question: e.request?.question };
+    case 'hitl.created': return { ...task, status: blocked ? 'blocked' : 'attention', ...(blocked ? { reason: blocked.reason } : {}), question: e.request?.question };
     default: return task;
   }
 }
@@ -68,25 +69,40 @@ export class VoiceAlerts {
   private events: StreamEvent[] = []; private mode: AlertMode = 'off'; private disposed = false;
   private running = false; private updatedDuringCheck = false; private timer: ReturnType<typeof setTimeout> | number | null = null;
   private local: Registry = { ids: [], lastAt: 0 };
+  private reservation?: { ids: string[]; at: number; previousAt: number };
   private unsubscribe: () => void;
   constructor(private options: {
-    mountedAt: number; announce: (event: StreamEvent) => Promise<void> | null;
+    mountedAt: number; announce: (event: StreamEvent, blocked?: BlockedEvent) => Promise<void> | null;
     now?: () => number; active?: (signal?: AbortSignal) => Promise<boolean>;
     setTimer?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout> | number;
     clearTimer?: (timer: ReturnType<typeof setTimeout> | number) => void;
   }) { this.unsubscribe = speechOwner.subscribe(() => this.wake()); }
   update(events: StreamEvent[], mode: AlertMode) {
-    this.events = events; this.mode = mode; this.clear();
+    // The SSE hook only keeps 50 events; unrelated telemetry must not erase a
+    // blocked alert while it waits for its question or the speech cooldown.
+    const now = (this.options.now ?? Date.now)();
+    this.events = [...new Map([...this.events, ...events].map(e => [e.eventId, e])).values()]
+      .filter(e => e.eventId && eligibleAlert(e, 'conversational') && now - Date.parse(e.at) <= MAX_AGE_MS)
+      .sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, STORE_MAX);
+    this.mode = mode; this.clear();
     this.updatedDuringCheck = this.running;
     this.wake();
   }
   dispose() { this.disposed = true; this.clear(); this.unsubscribe(); }
   /** Recheck playback after prose generation; this event already owns its ID and rate reservation. */
-  async canPlay(event: StreamEvent, signal: AbortSignal, owns: () => boolean): Promise<boolean> {
+  async canPlay(event: StreamEvent, signal: AbortSignal, owns: () => boolean, preparedBlock?: BlockedEvent): Promise<boolean> {
     const eligible = () => {
       const now = (this.options.now ?? Date.now)();
-      return !this.disposed && !signal.aborted && owns() && eligibleAlert(event, this.mode)
-        && now - Date.parse(event.at) <= MAX_AGE_MS && alertDelay(now, 0) === 0;
+      if (this.disposed || signal.aborted || !owns() || !eligibleAlert(event, this.mode)
+        || now - Date.parse(event.at) > MAX_AGE_MS || alertDelay(now, 0) !== 0) return false;
+      const current = pairVoiceAlerts(this.events).find(a => a.ids.includes(event.eventId));
+      if (current?.blocked && (event.type === 'task.blocked' || current.blocked.eventId !== preparedBlock?.eventId)) {
+        // Prose was prepared before the incident was complete. Cancel either
+        // fallback and release only our reservation so the full pair can speak.
+        this.releaseReservation(event.eventId);
+        return false;
+      }
+      return true;
     };
     if (!eligible()) return false;
     const controller = new AbortController();
@@ -101,6 +117,18 @@ export class VoiceAlerts {
     } catch { return false; }
     finally { clearTimeout(timer); signal.removeEventListener('abort', abort); }
   }
+  private releaseReservation(eventId: string) {
+    const reservation = this.reservation;
+    if (!reservation?.ids.includes(eventId)) return;
+    const release = (registry: Registry): Registry => ({
+      ids: registry.ids.filter(id => !reservation.ids.includes(id)),
+      lastAt: registry.lastAt === reservation.at ? reservation.previousAt : registry.lastAt,
+    });
+    this.local = release(this.local);
+    try { localStorage.setItem(ALERT_STORE_KEY, JSON.stringify(release(readRegistry()))); } catch { /* session fallback */ }
+    this.reservation = undefined;
+    this.updatedDuringCheck = true;
+  }
   private clear() { if (this.timer !== null) (this.options.clearTimer ?? (id => clearTimeout(id)))(this.timer); this.timer = null; }
   private schedule(delay: number) {
     if (this.disposed || this.mode === 'off') return;
@@ -114,30 +142,48 @@ export class VoiceAlerts {
       if (this.updatedDuringCheck) { this.updatedDuringCheck = false; this.wake(); }
     });
   }
+  private nextAlert(ids: Set<string>, now: number): VoiceAlert | undefined {
+    let wait = Infinity;
+    for (const alert of pairVoiceAlerts(this.events)) {
+      const e = alert.event;
+      // A spoken question covers its block. A spoken fallback block does NOT
+      // cover a later question: that question contains new actionable detail.
+      if (ids.has(e.eventId) || !eligibleAlert(e, this.mode) || Date.parse(e.at) <= this.options.mountedAt || now - Date.parse(e.at) > MAX_AGE_MS) continue;
+      if (alert.readyAt <= now) return alert;
+      wait = Math.min(wait, alert.readyAt - now);
+    }
+    if (Number.isFinite(wait)) this.schedule(wait);
+    return undefined;
+  }
   private async check() {
     const attempt = async () => {
       const now = (this.options.now ?? Date.now)();
       const stored = readRegistry(); const ids = new Set([...stored.ids, ...this.local.ids]);
-      const event = [...this.events].reverse().find(e => eligibleAlert(e, this.mode) && e.eventId && !ids.has(e.eventId) && Date.parse(e.at) > this.options.mountedAt && now - Date.parse(e.at) <= MAX_AGE_MS);
-      if (!event || this.disposed) return;
+      if (this.disposed || !this.nextAlert(ids, now)) return;
       const delay = alertDelay(now, Math.max(stored.lastAt, this.local.lastAt));
       if (delay) { this.schedule(delay); return; }
       if (speechOwner.busy()) { this.schedule(5000); return; }
       const active = await (this.options.active ?? isThisClientActive)();
-      if (this.disposed || !eligibleAlert(event, this.mode)) return;
+      if (this.disposed || this.mode === 'off') return;
       if (!active || speechOwner.busy()) { this.schedule(5000); return; }
       // The device lookup may straddle quiet hours or another tab's start.
       const checkedAt = (this.options.now ?? Date.now)();
       const latest = readRegistry();
       latest.ids.forEach(id => ids.add(id));
-      if (ids.has(event.eventId) || checkedAt - Date.parse(event.at) > MAX_AGE_MS) return;
+      // A question can arrive while the active-device request is in flight.
+      // Select again so the prose writer receives the complete incident.
+      const alert = this.nextAlert(ids, checkedAt);
+      if (!alert) return;
       const remaining = alertDelay(checkedAt, Math.max(latest.lastAt, this.local.lastAt));
       if (remaining) { this.schedule(remaining); return; }
-      const playback = this.options.announce(event);
+      const playback = this.options.announce(alert.event, alert.blocked);
       if (!playback) { this.schedule(1000); return; }
-      ids.add(event.eventId); this.local = { ids: [...ids].slice(-STORE_MAX), lastAt: (this.options.now ?? Date.now)() };
+      const reservedAt = (this.options.now ?? Date.now)();
+      this.reservation = { ids: alert.ids, at: reservedAt, previousAt: Math.max(latest.lastAt, this.local.lastAt) };
+      alert.ids.forEach(id => ids.add(id)); this.local = { ids: [...ids].slice(-STORE_MAX), lastAt: reservedAt };
       try { localStorage.setItem(ALERT_STORE_KEY, JSON.stringify(this.local)); } catch { /* bounded session fallback */ }
       await playback;
+      this.reservation = undefined;
       if (!this.disposed) this.schedule(Math.max(1, alertDelay((this.options.now ?? Date.now)(), this.local.lastAt)));
     };
     if (typeof navigator !== 'undefined' && navigator.locks?.request) {

@@ -1,6 +1,7 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { RoutingEconomicsPanel } from "@/components/routing-economics-panel";
 import { useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -128,6 +129,7 @@ function ActivityReport() {
           </section>
         ) : (
           <>
+            <RoutingEconomicsPanel />
             <ActivityMonitor />
             <p className="text-xs leading-relaxed text-slate-400">
               Recent stream events and executor snapshots; MCP calls from the

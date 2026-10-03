@@ -64,7 +64,19 @@ an external artifact change must be reported by the reviewer. No model call,
 filesystem-wide scan, execution, or completion is performed by admission.
 
 Scope excludes explicitly marked generated constraint projections and operational
-repair/session metadata. Unmarked authored rules, including reserved `BC-*` IDs,
+repair/session metadata.
+
+Operator rulings (`antigravity_payload.operator_rulings`, Robert's answers to
+executor questions) are delivered context, not proposal scope. Appending one
+keeps the receipt, its decision and fingerprint, and records
+`operator_answers: [{index, sha256, recorded_at}]` for provenance; the ruling
+text itself stays in the payload for the executor brief and QA contract. Any
+other scope, acceptance or workspace change in the same write still holds the
+task. Rewriting, reordering or removing an already recorded ruling is not an
+answer and holds as a contract edit. An answer never clears an existing hold or
+concern. Receipts fingerprinted before 2026-10-01 (rulings then counted as
+scope) are rebound once, recorded as `legacy_fingerprint`, only when their
+stored fingerprint exactly matches the current task under the old rule. Unmarked authored rules, including reserved `BC-*` IDs,
 remain substantive. A changed exact reservation returns conflict rather than
 substituting a differently scoped task. Resolved receipts survive unrelated
 history changes but invalidate on any newly relevant owner, including results

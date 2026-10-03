@@ -1,0 +1,740 @@
+{
+  "generatedAt": "2026-09-29T03:00:18.861Z",
+  "scope": "All recorded dispatch attempts; includes failures and follow-ups. Activity commits are not additional runs.",
+  "costBasis": "Cloud costs are estimates using the cockpit static rate table and assumed token mix (85% cache read, 2% input, 8% cache write, 5% output). API-equivalent value, not subscription charges or provider bills; rates are not live. Local $0 covers provider inference fees only, excluding hardware and electricity. No metered cost telemetry is recorded.",
+  "outcomeBasis": "Completion is executor-reported success among terminal attempts, not QA acceptance or a task-difficulty-adjusted quality score. Unfinished runs are excluded. Failed attempts remain in token and cost totals.",
+  "lanes": [
+    {
+      "lane": "local",
+      "state": "no_data",
+      "runCount": 0,
+      "latency": {
+        "medianMs": null,
+        "worstMs": null,
+        "runs": 0
+      },
+      "tokens": {
+        "total": null,
+        "runs": 0,
+        "estimatedRuns": 0
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 0,
+        "failed": 0,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 0,
+        "completionRate": null
+      }
+    },
+    {
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 2493,
+      "latency": {
+        "medianMs": 205361.5,
+        "worstMs": 10800832,
+        "runs": 2484
+      },
+      "tokens": {
+        "total": 6226388894,
+        "runs": 2484,
+        "estimatedRuns": 627
+      },
+      "cost": {
+        "usd": 15454.038,
+        "provenance": "estimated",
+        "runs": 1613,
+        "estimatedRuns": 1613,
+        "meteredRuns": 0,
+        "unknownRuns": 880,
+        "unknownByReason": {
+          "no_model": 510,
+          "unpriced_model": 361,
+          "no_token_record": 9
+        }
+      },
+      "outcomes": {
+        "completed": 2245,
+        "failed": 180,
+        "needsInput": 59,
+        "cancelled": 0,
+        "unfinished": 9,
+        "runs": 2484,
+        "completionRate": 0.9037842190016103
+      }
+    }
+  ],
+  "models": [
+    {
+      "model": null,
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 510,
+      "latency": {
+        "medianMs": 152710,
+        "worstMs": 10566996,
+        "runs": 510
+      },
+      "tokens": {
+        "total": 276897921,
+        "runs": 510,
+        "estimatedRuns": 123
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 510,
+        "unknownByReason": {
+          "no_model": 510
+        }
+      },
+      "outcomes": {
+        "completed": 499,
+        "failed": 9,
+        "needsInput": 2,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 510,
+        "completionRate": 0.9784313725490196
+      }
+    },
+    {
+      "model": "claude-opus-5",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 457,
+      "latency": {
+        "medianMs": 354367.5,
+        "worstMs": 10800832,
+        "runs": 452
+      },
+      "tokens": {
+        "total": 2262454399,
+        "runs": 452,
+        "estimatedRuns": 64
+      },
+      "cost": {
+        "usd": 5147.084,
+        "provenance": "estimated",
+        "runs": 452,
+        "estimatedRuns": 452,
+        "meteredRuns": 0,
+        "unknownRuns": 5,
+        "unknownByReason": {
+          "no_token_record": 5
+        }
+      },
+      "outcomes": {
+        "completed": 412,
+        "failed": 35,
+        "needsInput": 5,
+        "cancelled": 0,
+        "unfinished": 5,
+        "runs": 452,
+        "completionRate": 0.911504424778761
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 302,
+      "latency": {
+        "medianMs": 262400,
+        "worstMs": 9636731,
+        "runs": 302
+      },
+      "tokens": {
+        "total": 616325412,
+        "runs": 302,
+        "estimatedRuns": 52
+      },
+      "cost": {
+        "usd": 1556.222,
+        "provenance": "estimated",
+        "runs": 302,
+        "estimatedRuns": 302,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 235,
+        "failed": 54,
+        "needsInput": 13,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 302,
+        "completionRate": 0.7781456953642384
+      }
+    },
+    {
+      "model": "gpt-6-astra",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 221,
+      "latency": {
+        "medianMs": 228480,
+        "worstMs": 9027676,
+        "runs": 219
+      },
+      "tokens": {
+        "total": 351682221,
+        "runs": 219,
+        "estimatedRuns": 41
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 221,
+        "unknownByReason": {
+          "unpriced_model": 219,
+          "no_token_record": 2
+        }
+      },
+      "outcomes": {
+        "completed": 202,
+        "failed": 10,
+        "needsInput": 7,
+        "cancelled": 0,
+        "unfinished": 2,
+        "runs": 219,
+        "completionRate": 0.9223744292237442
+      }
+    },
+    {
+      "model": "claude-fable-5",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 218,
+      "latency": {
+        "medianMs": 515318,
+        "worstMs": 6393595,
+        "runs": 217
+      },
+      "tokens": {
+        "total": 1173540843,
+        "runs": 217,
+        "estimatedRuns": 21
+      },
+      "cost": {
+        "usd": 4591.479,
+        "provenance": "estimated",
+        "runs": 217,
+        "estimatedRuns": 217,
+        "meteredRuns": 0,
+        "unknownRuns": 1,
+        "unknownByReason": {
+          "no_token_record": 1
+        }
+      },
+      "outcomes": {
+        "completed": 202,
+        "failed": 12,
+        "needsInput": 3,
+        "cancelled": 0,
+        "unfinished": 1,
+        "runs": 217,
+        "completionRate": 0.9308755760368663
+      }
+    },
+    {
+      "model": "claude-sonnet-5",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 213,
+      "latency": {
+        "medianMs": 88387,
+        "worstMs": 2389766,
+        "runs": 213
+      },
+      "tokens": {
+        "total": 473216981,
+        "runs": 213,
+        "estimatedRuns": 31
+      },
+      "cost": {
+        "usd": 645.941,
+        "provenance": "estimated",
+        "runs": 213,
+        "estimatedRuns": 213,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 186,
+        "failed": 14,
+        "needsInput": 13,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 213,
+        "completionRate": 0.8732394366197183
+      }
+    },
+    {
+      "model": "claude-opus-4-8",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 172,
+      "latency": {
+        "medianMs": 363989,
+        "worstMs": 1863432,
+        "runs": 172
+      },
+      "tokens": {
+        "total": 221125876,
+        "runs": 172,
+        "estimatedRuns": 86
+      },
+      "cost": {
+        "usd": 503.061,
+        "provenance": "estimated",
+        "runs": 172,
+        "estimatedRuns": 172,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 161,
+        "failed": 4,
+        "needsInput": 7,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 172,
+        "completionRate": 0.936046511627907
+      }
+    },
+    {
+      "model": "Gemini 3.1 Pro (High)",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 139,
+      "latency": {
+        "medianMs": 73738,
+        "worstMs": 1800524,
+        "runs": 138
+      },
+      "tokens": {
+        "total": 782277,
+        "runs": 138,
+        "estimatedRuns": 138
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 139,
+        "unknownByReason": {
+          "unpriced_model": 138,
+          "no_token_record": 1
+        }
+      },
+      "outcomes": {
+        "completed": 127,
+        "failed": 11,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 1,
+        "runs": 138,
+        "completionRate": 0.9202898550724637
+      }
+    },
+    {
+      "model": "claude-fable-5-1",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 121,
+      "latency": {
+        "medianMs": 1035555,
+        "worstMs": 9263682,
+        "runs": 121
+      },
+      "tokens": {
+        "total": 699819125,
+        "runs": 121,
+        "estimatedRuns": 36
+      },
+      "cost": {
+        "usd": 2738.042,
+        "provenance": "estimated",
+        "runs": 121,
+        "estimatedRuns": 121,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 114,
+        "failed": 4,
+        "needsInput": 3,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 121,
+        "completionRate": 0.9421487603305785
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 104,
+      "latency": {
+        "medianMs": 63382.5,
+        "worstMs": 443621,
+        "runs": 104
+      },
+      "tokens": {
+        "total": 63916347,
+        "runs": 104,
+        "estimatedRuns": 26
+      },
+      "cost": {
+        "usd": 80.694,
+        "provenance": "estimated",
+        "runs": 104,
+        "estimatedRuns": 104,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 78,
+        "failed": 20,
+        "needsInput": 6,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 104,
+        "completionRate": 0.75
+      }
+    },
+    {
+      "model": "claude-opus-5-5",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 32,
+      "latency": {
+        "medianMs": 155763,
+        "worstMs": 4833616,
+        "runs": 32
+      },
+      "tokens": {
+        "total": 84182160,
+        "runs": 32,
+        "estimatedRuns": 6
+      },
+      "cost": {
+        "usd": 191.514,
+        "provenance": "estimated",
+        "runs": 32,
+        "estimatedRuns": 32,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 28,
+        "failed": 4,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 32,
+        "completionRate": 0.875
+      }
+    },
+    {
+      "model": "stealth/ox-alpha",
+      "lane": "cloud",
+      "state": "observed",
+      "runCount": 4,
+      "latency": {
+        "medianMs": 4314,
+        "worstMs": 421000,
+        "runs": 4
+      },
+      "tokens": {
+        "total": 2445332,
+        "runs": 4,
+        "estimatedRuns": 3
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 4,
+        "unknownByReason": {
+          "unpriced_model": 4
+        }
+      },
+      "outcomes": {
+        "completed": 1,
+        "failed": 3,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 4,
+        "completionRate": 0.25
+      }
+    },
+    {
+      "model": "claude-haiku-4-5-20251001",
+      "lane": "cloud",
+      "state": "no_data",
+      "runCount": 0,
+      "latency": {
+        "medianMs": null,
+        "worstMs": null,
+        "runs": 0
+      },
+      "tokens": {
+        "total": null,
+        "runs": 0,
+        "estimatedRuns": 0
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 0,
+        "failed": 0,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 0,
+        "completionRate": null
+      }
+    },
+    {
+      "model": "gemini-3.1-pro-preview",
+      "lane": "cloud",
+      "state": "no_data",
+      "runCount": 0,
+      "latency": {
+        "medianMs": null,
+        "worstMs": null,
+        "runs": 0
+      },
+      "tokens": {
+        "total": null,
+        "runs": 0,
+        "estimatedRuns": 0
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 0,
+        "failed": 0,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 0,
+        "completionRate": null
+      }
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "lane": "cloud",
+      "state": "no_data",
+      "runCount": 0,
+      "latency": {
+        "medianMs": null,
+        "worstMs": null,
+        "runs": 0
+      },
+      "tokens": {
+        "total": null,
+        "runs": 0,
+        "estimatedRuns": 0
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 0,
+        "failed": 0,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 0,
+        "completionRate": null
+      }
+    },
+    {
+      "model": "google/gemma-4-31b-qat",
+      "lane": "local",
+      "state": "no_data",
+      "runCount": 0,
+      "latency": {
+        "medianMs": null,
+        "worstMs": null,
+        "runs": 0
+      },
+      "tokens": {
+        "total": null,
+        "runs": 0,
+        "estimatedRuns": 0
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 0,
+        "failed": 0,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 0,
+        "completionRate": null
+      }
+    },
+    {
+      "model": "minimax/minimax-m3:free",
+      "lane": "cloud",
+      "state": "no_data",
+      "runCount": 0,
+      "latency": {
+        "medianMs": null,
+        "worstMs": null,
+        "runs": 0
+      },
+      "tokens": {
+        "total": null,
+        "runs": 0,
+        "estimatedRuns": 0
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 0,
+        "failed": 0,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 0,
+        "completionRate": null
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "lane": "cloud",
+      "state": "no_data",
+      "runCount": 0,
+      "latency": {
+        "medianMs": null,
+        "worstMs": null,
+        "runs": 0
+      },
+      "tokens": {
+        "total": null,
+        "runs": 0,
+        "estimatedRuns": 0
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 0,
+        "failed": 0,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 0,
+        "completionRate": null
+      }
+    },
+    {
+      "model": "z-ai/glm-5.2:free",
+      "lane": "cloud",
+      "state": "no_data",
+      "runCount": 0,
+      "latency": {
+        "medianMs": null,
+        "worstMs": null,
+        "runs": 0
+      },
+      "tokens": {
+        "total": null,
+        "runs": 0,
+        "estimatedRuns": 0
+      },
+      "cost": {
+        "usd": null,
+        "provenance": "unknown",
+        "runs": 0,
+        "estimatedRuns": 0,
+        "meteredRuns": 0,
+        "unknownRuns": 0,
+        "unknownByReason": {}
+      },
+      "outcomes": {
+        "completed": 0,
+        "failed": 0,
+        "needsInput": 0,
+        "cancelled": 0,
+        "unfinished": 0,
+        "runs": 0,
+        "completionRate": null
+      }
+    }
+  ]
+}
