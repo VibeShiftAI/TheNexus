@@ -165,6 +165,90 @@ export interface QaHold {
     operatorInitiated?: boolean;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// LIVE WORK FOR TODAY'S SCHEDULE
+// ═══════════════════════════════════════════════════════════════
+//
+// Chat-dispatched (ad hoc) work has no day-plan slot and gets its calendar
+// event only after it finishes, so the schedule could not show it while it
+// was queued or running. Nexus GET /api/dispatch-insight/live-work projects
+// Praxis's runtime truth (active runs, the CLI queue in its own order,
+// reviewer runs, deferred reviews) joined with the board's links
+// (dependencies, successor_id). Every optional field may be absent on an
+// older Nexus; renderers say nothing rather than guess.
+
+/** Display lane, in priority order: running > qa > queued > finished > waiting. */
+export type LiveWorkLane = 'running' | 'qa' | 'queued' | 'finished' | 'waiting';
+
+/** One named dependency a waiting task is held on, with that dependency's own live lane. */
+export interface LiveWorkDependency {
+    taskId: string;
+    title: string;
+    lane: LiveWorkLane | null;
+    /** The dependency's queue position when it is queued. */
+    position?: number | null;
+    boardStatus?: string | null;
+}
+
+export interface LiveWorkItem {
+    taskId: string;
+    /** Board title when the task is on this board, else Praxis's copy. */
+    title: string;
+    projectId?: string | null;
+    projectName?: string | null;
+    /** The board's own status — never re-derived from the runtime. */
+    boardStatus?: string | null;
+    /** The board's status_message verbatim (e.g. "QA failed — corrections required"). */
+    statusMessage?: string | null;
+    lane: LiveWorkLane;
+    executor?: string | null;
+    /** running: the run's current phase. */
+    phase?: string | null;
+    /** running / qa / finished: when the implementation run started (real). */
+    startedAt?: string | null;
+    updatedAt?: string | null;
+    /** qa / finished: when the implementation run finished (real). */
+    finishedAt?: string | null;
+    /** finished: the run's own outcome (completed / failed / …). */
+    outcome?: string | null;
+    /** queued: when it entered the queue — the "waiting since" clock. */
+    enqueuedAt?: string | null;
+    /** queued: 1-based position in Praxis's queue, and the queue length. */
+    position?: number | null;
+    queueLength?: number | null;
+    /** queued: a QA-correction continuation rather than a first attempt. */
+    correction?: boolean;
+    queueState?: string | null;
+    /** qa: the active reviewer run. */
+    qa?: { executor?: string | null; startedAt?: string | null; status?: string | null } | null;
+    /** finished: the review is queued in degraded mode rather than running. */
+    qaDeferred?: { since?: string | null; reason?: string | null } | null;
+    /** waiting: Praxis will start this task itself when its predecessor completes. */
+    autoStart?: boolean;
+    /** waiting: the live work this task is held on. */
+    waitingOn?: LiveWorkDependency[];
+}
+
+export interface LiveWorkResponse {
+    at: string;
+    /** reachable=false means no runtime read: items is empty and must render as unavailable, never as "nothing queued". */
+    praxis: { reachable: boolean; error: string | null };
+    items: LiveWorkItem[];
+}
+
+/** Running, queued, reviewing and linked-waiting work, from runtime truth. */
+export async function getLiveWork(): Promise<LiveWorkResponse> {
+    const res = await authFetch('/api/dispatch-insight/live-work', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Live work unavailable (${res.status})`);
+    const data = (await res.json()) as Partial<LiveWorkResponse>;
+    if (!data || typeof data !== 'object' || !data.praxis) throw new Error('Live work answered with something other than a projection');
+    return {
+        at: typeof data.at === 'string' ? data.at : new Date().toISOString(),
+        praxis: { reachable: data.praxis.reachable === true, error: data.praxis.error ?? null },
+        items: Array.isArray(data.items) ? data.items : [],
+    };
+}
+
 /** Autonomy state plus the held-correction list, for the "why" surfaces. */
 export async function getAutonomyState(): Promise<AutonomyState> {
     const res = await authFetch('/api/dispatch-insight/autonomy', { cache: 'no-store' });
