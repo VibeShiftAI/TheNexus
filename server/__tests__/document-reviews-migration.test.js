@@ -126,10 +126,12 @@ function seedLegacyDatabase() {
 function snapshot() {
     const raw = new Database(dbPath, { readonly: true });
     const legacyColumns = 'id, title, path, root_project_id, project_id, task_id, kind, metadata, current_revision_id, registered_by, created_at, updated_at';
+    // The 2026-10-04 migration adds approval_delegated and submitted_authority to document_reviews (defaults covered below).
+    const legacyReviewColumns = 'id, document_id, revision_id, reviewer_id, status, summary, submitted_at, created_at, updated_at';
     const out = {
         documents: raw.prepare(`SELECT ${legacyColumns} FROM review_documents ORDER BY id`).all(),
         revisions: raw.prepare('SELECT * FROM review_document_revisions ORDER BY id').all(),
-        reviews: raw.prepare('SELECT * FROM document_reviews ORDER BY id').all(),
+        reviews: raw.prepare(`SELECT ${legacyReviewColumns} FROM document_reviews ORDER BY id`).all(),
         comments: raw.prepare('SELECT * FROM document_review_comments ORDER BY id').all(),
         submissions: raw.prepare("SELECT * FROM document_review_submissions WHERE id = 'sub-done'").all(),
     };
@@ -206,4 +208,123 @@ test('the migration is idempotent across restarts and makes revisions immutable 
     // A legacy document keeps reading as reference even with a stray decision row: requires_review stays off.
     expect(db.documentReviews.getReviewStatus('doc-legacy')).toBe('reference');
     expect(db.documentReviews.getRevision('rev-1').content).toBe('# Draft v1\n');
+});
+
+// The decisions table exactly as the 2026-10-02 contract shipped it, before executor-recorded approvals added
+// recorded_by and provenance (2026-10-04). The live database of 2026-10-04 holds decisions in this shape.
+const DECISIONS_2026_10_02 = `CREATE TABLE IF NOT EXISTS review_document_decisions (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL REFERENCES review_documents(id) ON DELETE CASCADE,
+        revision_id TEXT NOT NULL REFERENCES review_document_revisions(id),
+        content_hash TEXT NOT NULL,
+        decision TEXT NOT NULL CHECK (decision IN ('approve', 'request_changes')),
+        actor_id TEXT NOT NULL,
+        authority TEXT NOT NULL,
+        note TEXT NOT NULL DEFAULT '',
+        client_decision_id TEXT,
+        intended_action TEXT NOT NULL DEFAULT 'none',
+        created_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_review_document_decisions_client
+        ON review_document_decisions(document_id, client_decision_id) WHERE client_decision_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_review_document_decisions_document
+        ON review_document_decisions(document_id, created_at);
+    CREATE TRIGGER IF NOT EXISTS review_document_decisions_append_only
+        BEFORE UPDATE ON review_document_decisions
+        BEGIN SELECT RAISE(ABORT, 'document decisions are append-only'); END;`;
+
+test('decisions recorded before executor-recorded approvals existed read as direct operator decisions; the added columns are idempotent and stay append-only', async () => {
+    seedLegacyDatabase();
+    let raw = new Database(dbPath);
+    raw.exec(DECISIONS_2026_10_02);
+    raw.prepare("INSERT INTO review_document_decisions (id, document_id, revision_id, content_hash, decision, actor_id, authority, note, client_decision_id, intended_action, created_at) VALUES ('d-robert', 'doc-legacy', 'rev-2', 'h2', 'approve', 'local_user', 'access_device', '', 'robert-click-1', 'none', ?)").run(T1);
+    raw.close();
+
+    const db = require('../../db');
+    const store = db.documentReviews;
+    raw = new Database(dbPath);
+    try {
+        const columns = raw.prepare('PRAGMA table_info(review_document_decisions)').all().map(c => c.name);
+        expect(columns.filter(name => ['recorded_by', 'provenance'].includes(name))).toEqual(['recorded_by', 'provenance']);
+        // The row Robert recorded by hand is untouched and reads as his own decision.
+        expect(raw.prepare("SELECT id, authority, recorded_by, provenance FROM review_document_decisions WHERE id = 'd-robert'").get())
+            .toEqual({ id: 'd-robert', authority: 'access_device', recorded_by: 'operator', provenance: null });
+        expect(store.getDecision('d-robert')).toMatchObject({ decision: 'approve', authority: 'access_device', recorded_by: 'operator', provenance: null, client_decision_id: 'robert-click-1' });
+        expect(store.latestDecision('doc-legacy').id).toBe('d-robert');
+        expect(store.findDecisionBySourceReview('doc-legacy', 'rv-done')).toBeNull();
+
+        // An executor-recorded row is found through the review it cites; the trigger still refuses any rewrite, new columns included.
+        const recorded = store.insertDecision({
+            document_id: 'doc-legacy', revision_id: 'rev-2', content_hash: 'h2', decision: 'approve', actor_id: 'local_user', authority: 'operator_credential',
+            recorded_by: 'executor', provenance: { executor: { id: 'praxis-claude-code:test' }, source: { review_id: 'rv-done', submission_id: 'sub-done', instruction: 'Shorter please.' } },
+        });
+        expect(recorded).toMatchObject({ recorded_by: 'executor', provenance: { source: { review_id: 'rv-done', submission_id: 'sub-done' } } });
+        expect(store.findDecisionBySourceReview('doc-legacy', 'rv-done')).toMatchObject({ id: recorded.id });
+        expect(store.listDecisionsSince('doc-legacy', T1).map(d => d.id)).toEqual(['d-robert', recorded.id]);
+        expect(store.listDecisionsSince('doc-legacy', recorded.created_at).map(d => d.id)).toEqual([recorded.id]);
+        expect(() => raw.prepare("UPDATE review_document_decisions SET recorded_by = 'executor' WHERE id = 'd-robert'").run()).toThrow(/append-only/);
+        expect(() => raw.prepare("UPDATE review_document_decisions SET provenance = NULL WHERE id = ?").run(recorded.id)).toThrow(/append-only/);
+    } finally {
+        raw.close();
+    }
+
+    // A restart runs the migration again without error and without duplicating anything.
+    jest.resetModules();
+    const again = require('../../db');
+    raw = new Database(dbPath, { readonly: true });
+    try {
+        const columns = raw.prepare('PRAGMA table_info(review_document_decisions)').all().map(c => c.name);
+        expect(columns.filter(name => ['recorded_by', 'provenance'].includes(name))).toHaveLength(2);
+    } finally {
+        raw.close();
+    }
+    expect(again.documentReviews.listDecisions('doc-legacy')).toHaveLength(2);
+    expect(again.documentReviews.getDecision('d-robert').recorded_by).toBe('operator');
+});
+
+test('reviews finished before the delegation grant existed read as not delegated and cannot be the source of an executor-recorded approval; the review columns are idempotent', async () => {
+    seedLegacyDatabase();
+    const db = require('../../db');
+    const store = db.documentReviews;
+    let raw = new Database(dbPath, { readonly: true });
+    try {
+        const columns = raw.prepare('PRAGMA table_info(document_reviews)').all().map(c => c.name);
+        expect(columns.filter(name => ['submitted_authority', 'approval_delegated'].includes(name))).toEqual(['submitted_authority', 'approval_delegated']);
+        // Robert's legacy submitted review is untouched: no operator proof recorded, no grant.
+        expect(raw.prepare("SELECT status, summary, submitted_authority, approval_delegated FROM document_reviews WHERE id = 'rv-done'").get())
+            .toEqual({ status: 'submitted', summary: 'Shorter please.', submitted_authority: null, approval_delegated: 0 });
+    } finally {
+        raw.close();
+    }
+    expect(store.getReview('rv-done')).toMatchObject({ status: 'submitted', submitted_at: T0, approval_delegated: false, submitted_authority: null });
+
+    const { resolveSourceReview, reviewDelegatesApproval } = require('../services/document-decision-provenance');
+    const doc = store.getDocument('doc-legacy');
+    const executor = { id: 'praxis-claude-code:test', source_review_id: 'rv-done' };
+    const cite = () => resolveSourceReview({ store, doc, revision: store.getRevisionMeta('rev-2'), executor });
+    expect(reviewDelegatesApproval(store.getReview('rv-done'))).toBe(false);
+    expect(cite()).toMatchObject({ ok: false, status: 403, code: 'source_review_not_delegated', source_review_id: 'rv-done', approval_delegated: false, submitted_authority: null });
+
+    // The grant counts only together with an operator proof; the boolean survives the round trip.
+    store.updateReview('rv-done', { approval_delegated: true, submitted_authority: null });
+    expect(store.getReview('rv-done')).toMatchObject({ approval_delegated: true, submitted_authority: null });
+    expect(cite()).toMatchObject({ ok: false, code: 'source_review_not_delegated' });
+    store.updateReview('rv-done', { approval_delegated: false, submitted_authority: 'access_user' });
+    expect(cite()).toMatchObject({ ok: false, code: 'source_review_not_delegated' });
+    store.updateReview('rv-done', { approval_delegated: true, submitted_authority: 'document_executor_credential' });
+    expect(cite()).toMatchObject({ ok: false, code: 'source_review_not_delegated' });
+    store.updateReview('rv-done', { approval_delegated: true, submitted_authority: 'access_user' });
+    expect(reviewDelegatesApproval(store.getReview('rv-done'))).toBe(true);
+    expect(cite()).toMatchObject({ ok: true, review: { id: 'rv-done', approval_delegated: true, submitted_authority: 'access_user' }, pinned: { id: 'rev-1' } });
+
+    // A restart runs the migration again without error.
+    jest.resetModules();
+    require('../../db');
+    raw = new Database(dbPath, { readonly: true });
+    try {
+        const columns = raw.prepare('PRAGMA table_info(document_reviews)').all().map(c => c.name);
+        expect(columns.filter(name => ['submitted_authority', 'approval_delegated'].includes(name))).toHaveLength(2);
+    } finally {
+        raw.close();
+    }
 });

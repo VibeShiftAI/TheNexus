@@ -19,6 +19,19 @@
  * append-only rows pinned to one revision and one actor; the review status of
  * a document is derived from its latest decision and current revision, never
  * stored, so new bytes can never inherit an approval.
+ *
+ * Executor-recorded approvals (2026-10-04, task a2553798). A decision also
+ * records who entered it: `recorded_by` is `operator` for Robert's own
+ * decisions (an Access session or the operator credential used directly) and
+ * `executor` when a dispatched executor recorded his "approve with changes"
+ * instruction with the document executor credential. An executor-recorded row
+ * carries `provenance`: the executor's identity and run, and a snapshot of the
+ * submitted review (Robert's instruction and his delegation grant) it acted
+ * on. Rows written before the column existed read as direct operator
+ * decisions. A review records the operator proof it was finished with and
+ * whether Robert granted approval after changes (`submitted_authority`,
+ * `approval_delegated`); only such a review can be the source of an
+ * executor-recorded approval.
  */
 const { randomUUID } = require('crypto');
 
@@ -46,11 +59,46 @@ const LATEST_DECISION_JOIN = `LEFT JOIN review_document_decisions ld ON ld.id = 
         SELECT x.id FROM review_document_decisions x WHERE x.document_id = d.id
         ORDER BY x.created_at DESC, x.rowid DESC LIMIT 1)`;
 
-function migrateDeliverableColumns(db) {
-    const present = new Set(db.prepare('PRAGMA table_info(review_documents)').all().map(column => column.name));
-    for (const [name, declaration] of DELIVERABLE_COLUMNS) {
-        if (!present.has(name)) db.exec(`ALTER TABLE review_documents ADD COLUMN ${name} ${declaration}`);
+/**
+ * Columns added to review_document_decisions after the 2026-10-02 contract.
+ * `recorded_by` tells a direct operator decision from an executor-recorded one;
+ * `provenance` (JSON) is set only on executor-recorded rows.
+ */
+const DECISION_COLUMNS = [
+    ['recorded_by', "TEXT NOT NULL DEFAULT 'operator'"],
+    ['provenance', 'TEXT'],
+];
+
+/**
+ * Columns added to document_reviews for executor-recorded approvals (repair
+ * round, 2026-10-04). `submitted_authority` is the operator proof the finish
+ * request carried (access_user, access_device or operator_credential), NULL for
+ * an unsigned finish; `approval_delegated` is Robert's explicit
+ * approve-after-changes grant, set only together with that proof. Legacy
+ * reviews read as not delegated, so no executor can act on them.
+ */
+const REVIEW_COLUMNS = [
+    ['submitted_authority', 'TEXT'],
+    ['approval_delegated', 'INTEGER NOT NULL DEFAULT 0'],
+];
+
+function addMissingColumns(db, table, columns) {
+    const present = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(column => column.name));
+    for (const [name, declaration] of columns) {
+        if (!present.has(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${declaration}`);
     }
+}
+
+function migrateDeliverableColumns(db) {
+    addMissingColumns(db, 'review_documents', DELIVERABLE_COLUMNS);
+}
+
+function migrateDecisionColumns(db) {
+    addMissingColumns(db, 'review_document_decisions', DECISION_COLUMNS);
+}
+
+function migrateReviewColumns(db) {
+    addMissingColumns(db, 'document_reviews', REVIEW_COLUMNS);
 }
 
 function initializeDocumentReviews(db) {
@@ -204,10 +252,14 @@ function initializeDocumentReviews(db) {
         ON review_document_registrations(project_id);
     CREATE INDEX IF NOT EXISTS idx_review_document_registrations_document
         ON review_document_registrations(document_id, created_at);`);
+    migrateDecisionColumns(db);
+    migrateReviewColumns(db);
 }
 
-const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration']);
-const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created']);
+const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance']);
+/** JSON columns whose absence reads as null rather than an empty object. */
+const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance']);
+const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created', 'approval_delegated']);
 
 function parseJson(value, fallback) {
     if (value === null || value === undefined || value === '') return fallback;
@@ -219,7 +271,7 @@ function rowOut(row) {
     if (!row) return null;
     const out = { ...row };
     for (const key of JSON_COLUMNS) {
-        if (key in out) out[key] = parseJson(out[key], key === 'receipt' ? null : {});
+        if (key in out) out[key] = parseJson(out[key], NULLABLE_JSON_COLUMNS.has(key) ? null : {});
     }
     for (const key of BOOLEAN_COLUMNS) {
         if (typeof out[key] === 'number') out[key] = out[key] !== 0;
@@ -368,8 +420,18 @@ function createDocumentReviewStore(db) {
         listDecisions(documentId) {
             return many('SELECT * FROM review_document_decisions WHERE document_id = ? ORDER BY created_at ASC, rowid ASC', documentId);
         },
+        /** Decisions recorded at or after an instant (ISO 8601), oldest first: what happened since a review was submitted. */
+        listDecisionsSince(documentId, sinceIso) {
+            return many('SELECT * FROM review_document_decisions WHERE document_id = ? AND created_at >= ? ORDER BY created_at ASC, rowid ASC', documentId, sinceIso);
+        },
+        /** The executor-recorded decision that already acted on a submitted review, if any. */
+        findDecisionBySourceReview(documentId, reviewId) {
+            return one(`SELECT * FROM review_document_decisions
+                WHERE document_id = ? AND recorded_by = 'executor' AND json_extract(provenance, '$.source.review_id') = ?
+                ORDER BY created_at ASC, rowid ASC LIMIT 1`, documentId, reviewId);
+        },
         insertDecision(decision) {
-            const row = { id: decision.id || randomUUID(), note: '', ...decision, created_at: now() };
+            const row = { id: decision.id || randomUUID(), note: '', recorded_by: 'operator', provenance: null, ...decision, created_at: now() };
             insert('review_document_decisions', row);
             return this.getDecision(row.id);
         },

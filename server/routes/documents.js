@@ -15,7 +15,10 @@
  *   GET    /api/documents/:id/revisions/:revisionId        a pinned snapshot
  *   GET    /api/documents/:id/history                      revisions, decisions, registration receipts and review rounds
  *   POST   /api/documents/:id/decisions                    { decision: approve|request_changes, revision_id, ... }
- *                                                          operator only, pinned to the exact current revision
+ *                                                          operator only, pinned to the exact current revision; or
+ *                                                          executor-recorded: the document executor credential with an
+ *                                                          `executor` block citing a review Robert finished with the
+ *                                                          approve-after-changes grant
  *   GET    /api/documents/:id/decisions/:decisionId        a decision and whether it is still in force (consumer check)
  *   POST   /api/documents/:id/reviews                      open (or return) the caller's draft, pinned to the current revision
  *   GET    /api/documents/reviews/:reviewId                review + comments (+ anchor state against the current revision)
@@ -23,7 +26,8 @@
  *   POST   /api/documents/reviews/:reviewId/comments       add a passage or whole-document comment (draft only; client_id dedupes)
  *   PATCH  /api/documents/reviews/:reviewId/comments/:commentId   { body }
  *   DELETE /api/documents/reviews/:reviewId/comments/:commentId
- *   POST   /api/documents/reviews/:reviewId/finish         { summary? } → one durable submission per review, delivery queued
+ *   POST   /api/documents/reviews/:reviewId/finish         { summary?, approve_after_changes? } → one durable submission per
+ *                                                          review, delivery queued; the grant needs Robert's own operator proof
  *   GET    /api/documents/reviews/:reviewId/submission     delivery state + receipt
  *   POST   /api/documents/reviews/:reviewId/submission/retry
  *
@@ -41,6 +45,7 @@ const { randomUUID } = require('crypto');
 const { listProjectRoots, resolveDocumentPath, readDocumentFile, sha256 } = require('../services/document-registry');
 const fmt = require('../services/document-review-format');
 const { createDocumentDecisionAuthority } = require('../services/document-decision-authority');
+const { parseExecutorProvenance, resolveSourceReview, buildProvenance, DELEGATING_AUTHORITIES } = require('../services/document-decision-provenance');
 const { REVIEW_STATUSES } = require('../../db/document-reviews');
 
 const KINDS = new Set(['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other']);
@@ -69,6 +74,12 @@ function badRequest(error, code = 'invalid_deliverable') {
 
 function isPlainObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** The context an executor-provenance refusal carries beyond error and code (the competing decision or review, the reviewed revision). */
+function sourceDetails(refusal) {
+    const { ok, status, code, error, ...details } = refusal;
+    return details;
 }
 
 function validMetadata(value) {
@@ -281,6 +292,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             id: review.id, document_id: review.document_id, revision_id: review.revision_id, reviewer_id: review.reviewer_id,
             status: review.status, summary: review.summary || '', created_at: review.created_at, updated_at: review.updated_at,
             submitted_at: review.submitted_at || null,
+            submitted_authority: review.submitted_authority || null,
+            approval_delegated: Boolean(review.approval_delegated),
             comments,
             pinned_revision: revisionMeta(pinned),
             document_changed: documentChanged,
@@ -648,6 +661,13 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
     // Approve document / Request changes: an operator's editorial decision on
     // the exact revision they read. Neither sends, publishes nor changes task
     // state. A decision on bytes that are no longer current is refused.
+    //
+    // With an `executor` block (document executor credential only, which can
+    // record nothing else) the approval is executor-recorded: the executor
+    // that applied Robert's "approve with changes" review records the approval
+    // of the resulting revision, and the decision carries the review it acted
+    // on, Robert's delegation grant on that review and the executor's identity
+    // (services/document-decision-provenance.js).
     router.post('/:id/decisions', async (req, res) => {
         try {
             const doc = loadDocument(req, res);
@@ -673,8 +693,17 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 clientDecisionId = text(body.client_decision_id, LIMITS.clientId);
                 if (!clientDecisionId) return res.status(400).json({ error: 'client_decision_id must be a short string', code: 'invalid_decision' });
             }
+            const parsedExecutor = parseExecutorProvenance(body, { decision: body.decision, authority: authority.actor.authority });
+            if (!parsedExecutor.ok) return res.status(parsedExecutor.status).json({ error: parsedExecutor.error, code: parsedExecutor.code });
+            const executor = parsedExecutor.value;
+            const sameRecorder = prior => (executor
+                ? prior.recorded_by === 'executor' && prior.provenance?.executor?.id === executor.id
+                    && (!executor.source_review_id || prior.provenance?.source?.review_id === executor.source_review_id)
+                    && (!executor.source_submission_id || prior.provenance?.source?.submission_id === executor.source_submission_id)
+                : prior.recorded_by !== 'executor');
             const sameRequest = prior => prior.decision === body.decision && prior.revision_id === revisionId && prior.note === note
-                && prior.actor_id === authority.actor.id && (body.content_hash === undefined || body.content_hash === prior.content_hash);
+                && prior.actor_id === authority.actor.id && (body.content_hash === undefined || body.content_hash === prior.content_hash)
+                && sameRecorder(prior);
             const replay = prior => (sameRequest(prior)
                 ? res.status(200).json({ decision: prior, duplicate: true, review_status: store().getReviewStatus(doc.id) })
                 : res.status(409).json({ error: 'client_decision_id was already used for a different decision', code: 'idempotency_key_reused', decision: prior }));
@@ -691,6 +720,12 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (body.content_hash !== undefined && body.content_hash !== revision.content_hash) {
                 return res.status(409).json({ error: 'content_hash does not match that revision', code: 'content_mismatch' });
             }
+            // An executor-recorded approval must rest on Robert's submitted, delegating instruction for an earlier revision of this document.
+            const sourceRefusal = refusal => res.status(refusal.status).json({ error: refusal.error, code: refusal.code, ...sourceDetails(refusal) });
+            if (executor) {
+                const source = resolveSourceReview({ store: store(), doc, revision, executor });
+                if (!source.ok) return sourceRefusal(source);
+            }
             const captured = await captureRevision(doc);
             if (captured.fileState !== 'ok') {
                 return res.status(409).json({ error: `The document file cannot be confirmed right now (${captured.fileState}); no decision was recorded`, code: 'file_unavailable', file_state: captured.fileState });
@@ -701,14 +736,23 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             });
             if (captured.revision.id !== revision.id) return stale(captured.revision);
             let decision;
+            let lostSource = null;
             try {
                 decision = store().transaction(() => {
                     const fresh = store().getDocument(doc.id);
                     if (fresh.current_revision_id !== revision.id || !fresh.requires_review) return null;
+                    let provenance = null;
+                    if (executor) {
+                        // Re-resolved inside the transaction: a decision or review landing meanwhile must win.
+                        const source = resolveSourceReview({ store: store(), doc, revision, executor });
+                        if (!source.ok) { lostSource = source; return null; }
+                        provenance = buildProvenance({ executor, ...source });
+                    }
                     return store().insertDecision({
                         document_id: doc.id, revision_id: revision.id, content_hash: revision.content_hash, decision: body.decision,
                         actor_id: authority.actor.id, authority: authority.actor.authority, note, client_decision_id: clientDecisionId,
                         intended_action: fresh.intended_action,
+                        recorded_by: executor ? 'executor' : 'operator', provenance,
                     });
                 });
             } catch (err) {
@@ -716,8 +760,10 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 if (raced) return replay(raced);
                 throw err;
             }
+            if (lostSource) return sourceRefusal(lostSource);
             if (!decision) return stale(store().getRevisionMeta(store().getDocument(doc.id).current_revision_id));
-            console.log(`[Documents] ${body.decision} recorded for ${doc.id} revision ${revision.id} (authority=${authority.actor.authority})`);
+            const recorder = executor ? `, recorded_by=executor ${executor.id}, source_review=${decision.provenance.source.review_id}` : '';
+            console.log(`[Documents] ${body.decision} recorded for ${doc.id} revision ${revision.id} (authority=${authority.actor.authority}${recorder})`);
             return res.status(201).json({ decision, review_status: store().getReviewStatus(doc.id), document: store().getDocument(doc.id) });
         } catch (err) {
             console.error('[Documents] decision failed:', err);
@@ -889,17 +935,44 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 }
                 summary = body.summary;
             }
+            // Robert's explicit grant (task a2553798): finishing with
+            // approve_after_changes lets the executor that applies this review
+            // record his approval of the resulting revision. The grant needs his
+            // own operator proof on this very request (verified Access session
+            // or operator credential): the shared local_user every local process
+            // carries is not Robert, and the document executor credential cannot
+            // grant to itself. Without the flag a finish is feedback, as before.
+            if (body.approve_after_changes !== undefined && typeof body.approve_after_changes !== 'boolean') {
+                return res.status(400).json({ error: 'approve_after_changes must be true or false', code: 'invalid_grant' });
+            }
+            const delegated = body.approve_after_changes === true;
+            let submittedAuthority = null;
+            if (delegated) {
+                if (req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ error: 'Same-origin requests only', code: 'cross_site' });
+                const authority = await authorizeDecision(req);
+                if (!authority.ok) {
+                    return res.status(authority.status).json({ error: authority.error, code: authority.code, ...(authority.reason ? { reason: authority.reason } : {}) });
+                }
+                if (!DELEGATING_AUTHORITIES.has(authority.actor.authority)) {
+                    return res.status(403).json({
+                        error: "Delegating approval is Robert's own act: it needs his verified session or operator credential, not the document executor credential",
+                        code: 'operator_required',
+                    });
+                }
+                submittedAuthority = authority.actor.authority;
+            }
             const revision = store().getRevisionMeta(review.revision_id);
             const comments = store().listComments(review.id);
             const source = await sourceSummary(doc);
             const submittedAt = new Date().toISOString();
             const submissionId = randomUUID();
-            const payload = fmt.buildSubmissionPayload({ submissionId, review: { ...review, summary }, comments, document: doc, revision, source, submittedAt });
+            const finished = { ...review, summary, approval_delegated: delegated, submitted_authority: submittedAuthority };
+            const payload = fmt.buildSubmissionPayload({ submissionId, review: finished, comments, document: doc, revision, source, submittedAt });
             const messageText = fmt.formatSubmissionMessage(payload);
             let submission;
             try {
                 submission = store().transaction(() => {
-                    store().updateReview(review.id, { status: 'submitted', summary, submitted_at: submittedAt });
+                    store().updateReview(review.id, { status: 'submitted', summary, submitted_at: submittedAt, approval_delegated: delegated, submitted_authority: submittedAuthority });
                     return store().insertSubmission({ id: submissionId, review_id: review.id, document_id: doc.id, revision_id: review.revision_id, payload, message_text: messageText });
                 });
             } catch (err) {
@@ -907,6 +980,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 if (!raced) throw err;
                 return res.status(200).json({ review: reviewView(store().getReview(review.id), currentFor(doc)), submission: submissionView(raced), duplicate: true });
             }
+            if (delegated) console.log(`[Documents] review ${review.id} finished with approval delegated (authority=${submittedAuthority}, submission=${submission.id})`);
             if (delivery && typeof delivery.deliver === 'function') {
                 delivery.deliver(submission.id).catch(err => console.error(`[Documents] delivery of ${submission.id} failed:`, err?.message || err));
             }

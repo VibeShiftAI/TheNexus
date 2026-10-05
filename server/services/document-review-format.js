@@ -90,6 +90,9 @@ function buildSubmissionPayload({ submissionId, review, comments, document, revi
         reviewer_id: review.reviewer_id,
         submitted_at: submittedAt,
         summary: review.summary || '',
+        // Robert's explicit approve-after-changes grant and the operator proof it was made with (task a2553798).
+        approval_delegated: review.approval_delegated === true,
+        submitted_authority: review.submitted_authority || null,
         document: {
             id: document.id,
             title: document.title,
@@ -137,6 +140,12 @@ function formatSubmissionMessage(payload) {
         payload.summary && payload.summary.trim() ? payload.summary.trim() : '(no summary given)',
         '',
     ];
+
+    if (payload.approval_delegated) {
+        lines.push('**Approval delegated**');
+        lines.push(`Robert finished this review with the approve-after-changes grant (${payload.submitted_authority}). Once the requested change is made and the resulting revision is registered, the executor records his approval of that revision with TheNexus/scripts/record-document-approval.js, citing submission ${payload.submission_id}. Nothing else is approved by this.`);
+        lines.push('');
+    }
 
     if (notes.length > 0) {
         lines.push(`**Whole-document notes (${notes.length})**`);
