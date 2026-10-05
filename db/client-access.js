@@ -528,7 +528,11 @@ function createClientAccess(db) {
         const artifact = hydrateArtifact(row);
         let content = null;
         if (row.revision_id) {
-            const revision = db.prepare('SELECT content, content_hash, byte_length, line_count, captured_at FROM review_document_revisions WHERE id = ? AND document_id = ?').get(row.revision_id, row.document_id);
+            // Declared deliverables hash their original bytes, not normalized display text.
+            const revision = db.prepare(`SELECT COALESCE(e.exact_content, r.content) AS content,
+                r.content_hash, r.byte_length, r.line_count, r.captured_at
+                FROM review_document_revisions r LEFT JOIN review_document_revision_exact e ON e.revision_id = r.id
+                WHERE r.id = ? AND r.document_id = ?`).get(row.revision_id, row.document_id);
             if (revision) content = { content: revision.content, content_hash: revision.content_hash, byte_length: revision.byte_length, line_count: revision.line_count, captured_at: revision.captured_at };
         }
         return { artifact, content };

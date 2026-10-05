@@ -12,6 +12,7 @@
 "use client";
 
 import { activeModelName } from "@/lib/active-model";
+import { laneSupersededByRegistry } from "@/lib/crew-lanes";
 import { useEffect, useMemo, useState } from "react";
 import { useLiveBoardState } from "@/components/live-board-state";
 import { useDispatchState } from "./use-dispatch-state";
@@ -51,15 +52,17 @@ export function useCrewActivity(): {
   // Deck-wide shared dispatch-state poller — one fetch loop no matter how
   // many components call this hook (crew strip, task board, Ops console).
   const { state: dispatchState } = useDispatchState();
-  // Re-render periodically so settle timeouts expire visually.
-  const [, setTick] = useState(0);
+  // Re-render periodically so settle timeouts and orphan-lane expiry take
+  // effect visually; `tick` is a memo dependency so the fold really reruns.
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const tick = setInterval(() => setTick((n) => n + 1), 20_000);
-    return () => clearInterval(tick);
+    const t = setInterval(() => setTick((n) => n + 1), 20_000);
+    return () => clearInterval(t);
   }, []);
 
   return useMemo(() => {
+    void tick;
     const now = Date.now();
 
     // Fold stream events per executor — newest wins (same as the Ops lanes).
@@ -92,6 +95,9 @@ export function useCrewActivity(): {
     }
 
     const registryRuns = dispatchState?.executors?.runs ?? [];
+    // `null` while no dispatch-state snapshot has ever loaded: nothing
+    // authoritative to reconcile against, so the stream's word stands.
+    const registry = dispatchState ? registryRuns : null;
     const crew: CrewMember[] = [];
     const sseRuns: ExecutorRun[] = [];
 
@@ -102,7 +108,10 @@ export function useCrewActivity(): {
         registryRuns.find(r => r.taskId === taskId && r.executor === ex.id)?.model
         ?? dispatchState?.executors?.sessions?.find(s => s.taskId === taskId && s.executor === ex.id && s.status === "open")?.model,
       );
-      const laneLive = lane && !(lane.status !== "active" && now - lane.at > SETTLE_MS);
+      // An "active" lane whose closing frame we never saw (restart, sleep, a
+      // gap the relay could not replay) yields to the registry (lib/crew-lanes).
+      const superseded = lane ? laneSupersededByRegistry(lane, ex.id, registry, now) : false;
+      const laneLive = lane && !superseded && !(lane.status !== "active" && now - lane.at > SETTLE_MS);
 
       if (laneLive && lane) {
         crew.push({
@@ -149,5 +158,5 @@ export function useCrewActivity(): {
     });
 
     return { crew, sseRuns, dispatchedToday: dispatchState?.executors?.dispatchedToday };
-  }, [recentEvents, dispatchState]);
+  }, [recentEvents, dispatchState, tick]);
 }

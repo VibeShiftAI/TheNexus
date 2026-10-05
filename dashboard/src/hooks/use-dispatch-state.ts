@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from "react";
 import { useLiveRefetch } from "@/components/live-board-state";
+import { getConnectionLifecycle, looksLikeTransportFailure, responseLooksJson } from "@/lib/connection-lifecycle";
 import type { DispatchStateResponse } from "@/components/bridge/dispatch-station";
 
 const POLL_MS = 20_000;
@@ -40,15 +41,21 @@ function publish(next: DispatchStateSnapshot) {
 export function refreshDispatchState(): Promise<void> {
   if (inflight) return inflight;
   inflight = (async () => {
+    let res: Response | null = null;
     try {
-      const res = await fetch("/api/praxis/dispatch-state", { cache: "no-store" });
+      res = await fetch("/api/praxis/dispatch-state", { cache: "no-store", credentials: "same-origin" });
       if (!res.ok) throw new Error(`dispatch-state ${res.status}`);
+      // A 200 that is not JSON is a login page or a proxy error page, never telemetry.
+      if (!responseLooksJson(res)) throw new Error("dispatch-state answered with something other than JSON");
       const data = (await res.json()) as DispatchStateResponse;
       publish({ state: data, error: false, updatedAt: new Date().toISOString() });
     } catch {
       // Keep the last good snapshot — panels degrade to SSE-only rather than
       // blanking out on a single failed poll.
       publish({ ...snapshot, error: true });
+      // The connection/session layer is the shared lifecycle's concern; the
+      // API's own JSON error (Praxis down behind a healthy Nexus) is not.
+      if (looksLikeTransportFailure(res)) getConnectionLifecycle().noteTransportFailure("fetch");
     } finally {
       inflight = null;
     }

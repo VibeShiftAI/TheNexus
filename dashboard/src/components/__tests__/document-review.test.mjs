@@ -58,7 +58,7 @@ function server(options = {}) {
     if (method === 'POST' && rest === '/finish') {
       if (state.failNextFinish) { const status = state.failNextFinish; state.failNextFinish = null; return response({ error: 'database is locked', code: 'save_failed' }, status); }
       if (state.review.status === 'submitted') return response({ review: { ...state.review, comments: state.comments }, submission: state.submission, duplicate: true });
-      state.review = { ...state.review, status: 'submitted', summary: body.summary ?? state.review.summary, submitted_at: '2026-09-10T10:10:00Z' };
+      state.review = { ...state.review, status: 'submitted', summary: body.summary ?? state.review.summary, submitted_at: '2026-09-10T10:10:00Z', approval_delegated: body.approve_after_changes === true, submitted_authority: body.approve_after_changes === true ? 'access_user' : null };
       state.submission = { id: 'sub-1', review_id: state.review.id, delivery_status: 'queued', delivery_attempts: 0, next_attempt_at: null, last_error: null, delivered_at: null, receipt: null, created_at: '2026-09-10T10:10:00Z', updated_at: '2026-09-10T10:10:00Z' };
       // The server processed the finish, but the response never reached the client.
       if (state.loseFinishResponse) { state.loseFinishResponse = false; throw new TypeError('Failed to fetch'); }
@@ -198,7 +198,7 @@ test('finishing with zero comments opens a draft and submits it', async () => {
   } finally { t.cleanup(); }
 });
 
-test('a changed document shows the reviewed revision with honest anchor states and no annotation on the current file', async () => {
+test('a changed document opens on the current file with honest anchor states; the reviewed revision is an explicit click and the only one annotated', async () => {
   const pinned = CONTENT;
   const current = ['# Readiness', '', 'New intro line.', '', 'Restart survived the drill.', '', '## Gaps', '', '- alerting is automatic now'].join('\n');
   const review = makeReview({ document_changed: true, pinned_content: pinned, comments: [
@@ -210,15 +210,15 @@ test('a changed document shows the reviewed revision with honest anchor states a
   try {
     await settle();
     const c = t.container;
-    assert.match(c.querySelector('[data-changed-banner]').textContent, /viewing the revision you reviewed/);
-    assert.match(c.textContent, /no runbook/, 'pinned revision content shown');
+    assert.match(c.textContent, /alerting is automatic now/, 'current file shown on open');
+    assert.equal(c.querySelectorAll('[data-block-comment-button]').length, 0, 'current file is read-only for anchors');
+    assert.match(c.querySelector('[data-changed-banner]').textContent, /viewing the latest revision[\s\S]*not moved/);
     assert.match(c.querySelector('[data-comment-list]').textContent, /now at line 5/);
     assert.match(c.querySelector('[data-comment-list]').textContent, /passage no longer in current revision/);
+    await click(button(c, 'View reviewed revision'));
+    assert.match(c.querySelector('[data-changed-banner]').textContent, /the revision you reviewed/);
+    assert.match(c.textContent, /no runbook/, 'pinned revision content shown');
     assert.ok(c.querySelector('#L7 [data-block-comment-button]'), 'annotating the pinned revision is allowed');
-    await click(button(c, 'View current file'));
-    assert.match(c.textContent, /alerting is automatic now/);
-    assert.equal(c.querySelectorAll('[data-block-comment-button]').length, 0, 'current file is read-only for anchors');
-    assert.match(c.querySelector('[data-changed-banner]').textContent, /not moved/);
     assert.equal(srv.calls.filter(x => x.method !== 'GET').length, 0);
   } finally { t.cleanup(); }
 });
@@ -308,5 +308,51 @@ test('on the phone, adding a whole-document note closes the review drawer so the
     assert.ok(c.querySelector('[data-review-drawer]'), 'the drawer reopens after saving');
     assert.match(c.querySelector('[data-review-drawer] [data-comment-list]').textContent, /Whole document[\s\S]*Overall this reads well\./);
     assert.match(c.querySelector('[data-review-drawer]').textContent, /Comments \(1\)/);
+  } finally { t.cleanup(); }
+});
+
+// ── Executor-recorded approvals (task a2553798, repair round): Robert's explicit grant rides on Finish review ──
+
+test('"Approve once this change is made" sends the approve_after_changes grant with the finish and the finished review shows the delegation', async () => {
+  const srv = server();
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    await click(button(c, 'Finish review'));
+    const panel = c.querySelector('[data-finish-panel]');
+    assert.match(panel.querySelector('[data-finish-scope]').textContent, /feedback only/);
+    const box = panel.querySelector('[data-delegate-approval] input[type="checkbox"]');
+    assert.ok(box, 'the grant control is offered');
+    assert.equal(box.checked, false, 'off by default: a plain finish is feedback');
+    await click(box);
+    assert.equal(box.checked, true);
+    assert.match(c.querySelector('[data-finish-scope]').textContent, /Approval is delegated/);
+    await type(c.querySelector('[data-finish-panel] textarea'), 'Fix the figure in section 2, then approve.');
+    await settle(40);
+    await click(button(c.querySelector('[data-finish-panel]'), 'Send to Praxis'));
+    const finish = srv.calls.filter(x => x.path.endsWith('/finish'));
+    assert.equal(finish.length, 1);
+    assert.equal(finish[0].body.approve_after_changes, true);
+    assert.equal(finish[0].body.summary, 'Fix the figure in section 2, then approve.');
+    assert.ok(c.querySelector('[data-approval-delegated]'), 'the finished review shows the delegation');
+    assert.match(c.querySelector('[data-approval-delegated]').textContent, /records your approval of the corrected revision/);
+    await settle(40);
+  } finally { t.cleanup(); }
+});
+
+test('a plain finish carries no approve_after_changes field and shows no delegation', async () => {
+  const srv = server();
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    await click(button(c, 'Finish review'));
+    await click(button(c.querySelector('[data-finish-panel]'), 'Send to Praxis'));
+    const finish = srv.calls.filter(x => x.path.endsWith('/finish'));
+    assert.equal(finish.length, 1);
+    assert.equal('approve_after_changes' in finish[0].body, false);
+    assert.ok(!c.querySelector('[data-approval-delegated]'));
+    await settle(40);
   } finally { t.cleanup(); }
 });

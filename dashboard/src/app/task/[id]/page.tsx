@@ -40,6 +40,7 @@ import { STATUS_OPTIONS } from "@/components/task-edit-modal";
 import { TaskDispatchConsole } from "@/components/task-view/dispatch-console";
 import { QaReviewPanel } from "@/components/task-view/qa-review-panel";
 import { QaHoldPanel } from "@/components/task-view/qa-hold-panel";
+import { ContractHoldPanel } from "@/components/task-view/contract-hold-panel";
 import { EvidenceDossierPanel } from "@/components/task-view/evidence-dossier-panel";
 import { TaskSequencePanel } from "@/components/task-view/task-sequence";
 import { ReviewDocumentsPanel } from "@/components/task-view/review-documents-panel";
@@ -336,6 +337,11 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 was withheld. Sits with the suspended callout above, not down
                 with the run history — it is a state of the task, not a log. */}
             <QaHoldPanel taskId={task.id} />
+
+            {/* An executor or QA rewrote the brief while the task was running:
+                the exact diff, its source and Robert's two resolution actions.
+                His own edits never open this hold (docs/work-admission.md). */}
+            <ContractHoldPanel task={task} onChanged={load} />
 
             {/* Completion evidence: walkthrough, verify/code-review gates and
                 QA verdict one click deep; an incomplete record renders amber

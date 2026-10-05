@@ -1,0 +1,109 @@
+{
+  "base": "http://127.0.0.1:3299",
+  "api": "http://127.0.0.1:4299",
+  "doc": "1454f337-582d-4c1f-982d-0ac72f8e4241",
+  "startedAt": "2026-10-04T18:16:20.634Z",
+  "steps": {
+    "01-open": {
+      "status": "Document: review pending",
+      "card": "needs_review",
+      "revisions": 1,
+      "decisions": 0
+    },
+    "02-comment": {
+      "reviewId": "1dea3983-d46b-433f-97f4-dd685befe9b0",
+      "reviewRevision": "795a13b8-1e8d-4cd8-8060-08bea9338078",
+      "comments": 1,
+      "status": "draft"
+    },
+    "02b-empty-note": {
+      "approve": " This session carries no operator sign-in, so the request fell back to a credential this Nexus does not have configured. Nothing was recorded. Reload the app and try again; if it repeats, record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+      "request_changes": " This session carries no operator sign-in, so the request fell back to a credential this Nexus does not have configured. Nothing was recorded. Reload the app and try again; if it repeats, record the decision from the Nexus app signed in as the operator (the phone or Windows app)."
+    },
+    "03a-both-stores-unavailable": {
+      "notice": " This session carries no operator sign-in, so the request fell back to a credential this Nexus does not have configured. Nothing was recorded. Your note is only kept in this open page because device storage is unavailable. Copy your note before reloading or signing in again. Then try again from the Nexus app signed in as the operator (the phone or Windows app).",
+      "noteKept": true,
+      "persisted": null
+    },
+    "03-refused-placeholder-bearer": {
+      "notice": " This session carries no operator sign-in, so the request fell back to a credential this Nexus does not have configured. Nothing was recorded and your note is kept on this device. Reload the app and try again; if it repeats, record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+      "noteKept": true,
+      "stored": "795a13b8-1e8d-4cd8-8060-08bea9338078",
+      "decisions": 0
+    },
+    "04-refused-no-session": {
+      "notice": " Recording a document decision needs Robert’s verified operator session or operator credential; this request carries neither. Nothing was recorded. Reading and feedback still work in this session; record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+      "decisions": 0
+    },
+    "05-reload-recovers-note": {
+      "announcement": "Unsaved note from 10/4/2026, 2:16:22 PM, written for rev 0e6fdb4b, is kept on this device; open Request changes to continue.Discard note",
+      "restoredNote": true,
+      "origin": "Unsaved note restored from 10/4/2026, 2:16:22 PM, written for rev 0e6fdb4b. Discard note"
+    },
+    "06-file-changed": {
+      "rev1": "795a13b8-1e8d-4cd8-8060-08bea9338078",
+      "rev2": "b1acd0d1-dd66-4675-bca6-329944edffac",
+      "hint": "Unsaved note from 10/4/2026, 2:16:22 PM, written for rev 0e6fdb4b, is kept on this device; open Request changes to continue.Discard note",
+      "moved": "Unsaved note restored from 10/4/2026, 2:16:22 PM, written for rev 0e6fdb4b; you are now deciding on rev df59292b, so check that it still applies. Discard note",
+      "note": true
+    },
+    "07-session-records-request-changes": {
+      "okNotice": " Changes requested rev df59292b. Nothing was sent or published.",
+      "decision": {
+        "revision_id": "b1acd0d1-dd66-4675-bca6-329944edffac",
+        "authority": "access_user",
+        "note": true,
+        "decision": "request_changes"
+      },
+      "reviewRevision": "795a13b8-1e8d-4cd8-8060-08bea9338078",
+      "status": "Document: changes requested",
+      "stored": null
+    },
+    "08-device-session-approves": {
+      "notice": " Approved rev df59292b. Nothing was sent or published.",
+      "approval": {
+        "revision_id": "b1acd0d1-dd66-4675-bca6-329944edffac",
+        "authority": "access_device",
+        "decision": "approve"
+      },
+      "status": "Document: approved"
+    },
+    "09-executor-header-refused": {
+      "notice": " Executor and bridge credentials cannot record document decisions. Nothing was recorded. Reading and feedback still work in this session; record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+      "decisions": 2
+    },
+    "10-finish-review-delivers": {
+      "submission": {
+        "id": "d5d2fc34-1e64-466d-8311-687755d58e31",
+        "delivery_status": "delivered",
+        "attempts": 1,
+        "receipt": true
+      },
+      "relays": [
+        "docreview:d5d2fc34-1e64-466d-8311-687755d58e31"
+      ],
+      "card": " Delivered to PraxisFinished 10/4/2026, 2:16:25 PMReceipt: delivered 10/4/2026, 2:16:25 PM into the Praxis conversation (dd8986c7…). Praxis's reply is in the br",
+      "decisions": 2
+    }
+  },
+  "network": {
+    "apiRequests": 39,
+    "documentRequests": 17,
+    "bearerOnDocuments": [],
+    "bearerElsewhere": [
+      "GET /api/praxis/voice-status",
+      "GET /api/board-state"
+    ],
+    "otherOrigins": [
+      "http://localhost:4000"
+    ],
+    "foreignRequests": [
+      "GET http://localhost:4000/socket.io/",
+      "GET http://localhost:4000/api/chat/active",
+      "OPTIONS http://localhost:4000/socket.io/"
+    ],
+    "exceptions": []
+  },
+  "failures": [],
+  "finishedAt": "2026-10-04T18:16:29.355Z"
+}

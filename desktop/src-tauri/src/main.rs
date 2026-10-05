@@ -22,6 +22,9 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(target_os = "windows")]
+mod renewal_gate;
+
 use std::sync::Mutex;
 
 use tauri::{
@@ -182,7 +185,7 @@ fn build_bridge_window(app: &tauri::App) -> tauri::Result<()> {
 mod travel {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Mutex;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     use serde::Serialize;
     use tauri::{
@@ -361,6 +364,17 @@ mod travel {
     /// into an interactive Access login page.
     pub struct AuthGate(pub AtomicBool);
 
+    /// Serializes exchanges across every page and the schedule.
+    pub struct RenewGate(pub Mutex<crate::renewal_gate::RenewalGate>);
+
+    /// Scheduled renewal cadence: well inside the Access application session
+    /// length, so a laptop left open does not wake to an Access bounce.
+    const RENEW_EVERY: Duration = Duration::from_secs(8 * 60 * 60);
+    /// How often the renewal thread wakes to check whether a renewal is due
+    /// (short, so a sleep gap longer than `RENEW_EVERY` is caught soon after
+    /// waking rather than up to a full period later).
+    const RENEW_CHECK: Duration = Duration::from_secs(5 * 60);
+
     /// Service-token credentials, dropped by hand on the travel laptop at
     /// %APPDATA%\com.praxis.nexus-bridge\access-token.json — never bundled
     /// into the (public-repo) binary. Used both to plant Access session
@@ -432,21 +446,22 @@ mod travel {
         None
     }
 
-    /// Background startup pass: for every unique tab host, trade the service
-    /// token for a session cookie and plant it in the shared WebView2 cookie
-    /// store (any webview handle reaches the same profile). Silent no-op
-    /// when no token file exists — tabs fall back to interactive login.
-    fn exchange_and_inject(app: &tauri::AppHandle, window: &Window) {
+    /// Background pass (startup, and again on renewal): for every unique tab
+    /// host, trade the service token for a session cookie and plant it in the
+    /// shared WebView2 cookie store (any webview handle reaches the same
+    /// profile). Silent no-op when no token file exists: tabs fall back to
+    /// interactive login. Returns whether at least one cookie was planted.
+    fn exchange_and_inject(app: &tauri::AppHandle, window: &Window) -> bool {
         let Some(token) = read_service_token(app) else {
             println!("[nexus] no access-token.json — using interactive Access login");
-            return;
+            return false;
         };
         let Some(chrome) = window.webviews().into_iter().find(|w| w.label() == "chrome") else {
-            return;
+            return false;
         };
         let Ok(tls) = native_tls::TlsConnector::new() else {
             eprintln!("[nexus] could not initialize TLS for the Access exchange");
-            return;
+            return false;
         };
         let agent = ureq::AgentBuilder::new()
             .tls_connector(std::sync::Arc::new(tls))
@@ -454,6 +469,7 @@ mod travel {
             .timeout(Duration::from_secs(6))
             .build();
 
+        let mut planted = false;
         let mut seen_hosts: Vec<String> = Vec::new();
         let tabs = app.state::<Roster>().0.clone();
         for tab in &tabs {
@@ -475,8 +491,84 @@ mod travel {
                 .http_only(true)
                 .build();
             match chrome.set_cookie(cookie) {
-                Ok(()) => println!("[nexus] Access session planted for {host}"),
+                Ok(()) => {
+                    planted = true;
+                    println!("[nexus] Access session planted for {host}");
+                }
                 Err(err) => eprintln!("[nexus] could not set Access cookie for {host}: {err}"),
+            }
+        }
+        planted
+    }
+
+    /// Return a credential-free completion or admission deferral. Pages wait
+    /// for this result and do not count cooldown requests as exchanges.
+    fn renew_session(app: &tauri::AppHandle, window: &Window, reason: &str) -> serde_json::Value {
+        let gate = app.state::<RenewGate>();
+        let attempt = match crate::renewal_gate::RenewalAttempt::begin(&gate.0, Instant::now()) {
+            Ok(attempt) => attempt,
+            Err(wait) => {
+                return serde_json::json!({ "status": "deferred", "retryAfterMs": wait.as_millis() as u64 + 1 });
+            }
+        };
+        println!("[nexus] renewing Access session ({reason})");
+        let planted = exchange_and_inject(app, window);
+        drop(attempt);
+        if planted { notify_content(window, "nexus:session-renewed"); }
+        serde_json::json!({ "status": if planted { "renewed" } else { "failed" } })
+    }
+
+    fn notify_content(window: &Window, event: &str) {
+        for view in window.webviews() {
+            if view.label() != "chrome" {
+                let _ = view.eval(&format!("window.dispatchEvent(new Event({}));", serde_json::to_string(event).unwrap()));
+            }
+        }
+    }
+
+    /// A dedicated WebView2 window uses the SAME default app data directory
+    /// as the content webviews. Only the fixed roster origin is accepted;
+    /// no URL, cookie or native IPC permission is supplied by page JavaScript.
+    /// Called off the UI thread (WebView2 creation in callbacks can deadlock).
+    fn open_sign_in(app: &tauri::AppHandle, origin: &str) {
+        static OPEN_LOCK: Mutex<()> = Mutex::new(());
+        let _guard = OPEN_LOCK.lock().unwrap();
+        if let Some(existing) = app.get_webview_window("nexus-sign-in") {
+            let _ = existing.set_focus();
+            return;
+        }
+        let Ok(url) = Url::parse(origin).and_then(|url| url.join("/session/renewed")) else { return; };
+        let return_url = url.clone();
+        let result = tauri::WebviewWindowBuilder::new(app, "nexus-sign-in", WebviewUrl::External(url))
+            .title("Sign in to The Nexus")
+            .inner_size(560.0, 720.0)
+            .on_page_load(move |view, payload| {
+                if payload.event() == tauri::webview::PageLoadEvent::Finished
+                    && payload.url().origin() == return_url.origin()
+                    && payload.url().path() == return_url.path()
+                {
+                    if let Some(main) = view.app_handle().get_window("main") {
+                        notify_content(&main, "nexus:session-renewed");
+                    }
+                    let _ = view.close();
+                }
+            })
+            .build();
+        match result {
+            Ok(view) => {
+                let handle = app.clone();
+                view.on_window_event(move |event| {
+                    if matches!(event, WindowEvent::Destroyed) {
+                        if let Some(main) = handle.get_window("main") {
+                            notify_content(&main, "nexus:sign-in-closed");
+                        }
+                    }
+                });
+            }
+            Err(_) => {
+                if let Some(main) = app.get_window("main") {
+                    notify_content(&main, "nexus:sign-in-closed");
+                }
             }
         }
     }
@@ -662,7 +754,7 @@ mod travel {
         // tab clicks navigate to /__shell/switch/<id>, which we intercept
         // here and turn into a native switch — remote pages get no IPC.
         let shell_global = format!(
-            "window.__NEXUS_SHELL__ = {{ tabs: {}, active: {} }};",
+            "window.__NEXUS_SHELL__ = {{ tabs: {}, active: {}, capabilities: [\"renew-session\", \"sign-in-window\"] }};",
             serde_json::to_string(
                 &tabs
                     .iter()
@@ -679,9 +771,43 @@ mod travel {
                 .on_new_window(open_in_browser);
             if tab.hosted {
                 let nav_app = app.handle().clone();
+                let tab_id = tab.id.clone();
+                let tab_origin = tab.url.clone();
                 builder = builder
                     .initialization_script(&shell_global)
                     .on_navigation(move |url| {
+                        // The dashboard asks for a session renewal when Access
+                        // starts bouncing it (lib/session-renewal): run the
+                        // exchange off the main thread and cancel the
+                        // "navigation" so the document, and everything typed
+                        // in it, stays exactly where it is.
+                        if url.scheme() == "nexus-shell" && url.host_str() == Some("renew-session") {
+                            let request = url.query_pairs().find(|(key, _)| key == "request").map(|(_, value)| value.into_owned());
+                            let handle = nav_app.clone();
+                            let label = tab_id.clone();
+                            std::thread::spawn(move || {
+                                if let Some(window) = handle.get_window("main") {
+                                    let mut result = renew_session(&handle, &window, "page-request");
+                                    result["requestId"] = serde_json::json!(request);
+                                    if let Some(view) = handle.get_webview(&label) {
+                                        let _ = view.eval(&format!(
+                                            "window.dispatchEvent(new CustomEvent('nexus:session-renewal-result', {{ detail: {} }}));", result
+                                        ));
+                                    }
+                                }
+                            });
+                            return false;
+                        }
+                        if url.scheme() == "nexus-shell" && url.host_str() == Some("sign-in") {
+                            let handle = nav_app.clone();
+                            let origin = tab_origin.clone();
+                            std::thread::spawn(move || open_sign_in(&handle, &origin));
+                            return false;
+                        }
+                        if url.scheme() == "nexus-shell" && url.host_str() == Some("close-sign-in") {
+                            if let Some(view) = nav_app.get_webview_window("nexus-sign-in") { let _ = view.close(); }
+                            return false;
+                        }
                         let switch_target = if url.scheme() == "nexus-shell" {
                             url.host_str().map(String::from)
                         } else if let Some(rest) = url.path().strip_prefix("/__shell/switch/") {
@@ -719,15 +845,30 @@ mod travel {
         });
 
         // Trade the Access service token for session cookies off the main
-        // thread; loaders wait on the AuthGate before first contact.
+        // thread; loaders wait on the AuthGate before first contact. The same
+        // thread then keeps the session fresh on a schedule (the page also
+        // asks on demand through the navigation intercept above; the
+        // RenewGate cooldown keeps the two from doubling up).
         let app_handle = app.handle().clone();
         let window_handle = window.clone();
         std::thread::spawn(move || {
-            exchange_and_inject(&app_handle, &window_handle);
+            renew_session(&app_handle, &window_handle, "startup");
             app_handle
                 .state::<AuthGate>()
                 .0
                 .store(true, Ordering::Release);
+            loop {
+                std::thread::sleep(RENEW_CHECK);
+                let due = app_handle
+                    .state::<RenewGate>()
+                    .0
+                    .lock()
+                    .unwrap()
+                    .due(Instant::now(), RENEW_EVERY);
+                if due {
+                    renew_session(&app_handle, &window_handle, "scheduled");
+                }
+            }
         });
 
         // Look for a newer signed build on its own thread, after a short beat
@@ -790,6 +931,7 @@ fn main() {
         // ActiveTab + Roster are managed in build_travel_window, after the
         // roster is resolved (server copy or baked defaults).
         .manage(travel::AuthGate(std::sync::atomic::AtomicBool::new(false)))
+        .manage(travel::RenewGate(Mutex::new(renewal_gate::RenewalGate::default())))
         .invoke_handler(tauri::generate_handler![
             travel::switch_tab,
             travel::reload_active,

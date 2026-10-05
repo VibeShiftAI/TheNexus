@@ -2,7 +2,6 @@
 // through the dashboard's /api proxy so the same code works on the desktop,
 // the phone shell and the Cloudflare tunnel. Types mirror the server's
 // server/routes/documents.js responses.
-import { authFetch } from './nexus/shared';
 
 export type ReviewStatus = 'draft' | 'submitted';
 export type DeliveryStatus = 'queued' | 'relaying' | 'delivered' | 'failed';
@@ -100,6 +99,10 @@ export interface ReviewView {
     created_at: string;
     updated_at: string;
     submitted_at: string | null;
+    /** The operator proof the finish carried (access_user, access_device, operator_credential) or null for an unsigned finish. */
+    submitted_authority?: string | null;
+    /** Robert's explicit approve-after-changes grant: the executor applying this review may record his approval of the result. */
+    approval_delegated?: boolean;
     comments: ReviewComment[];
     pinned_revision: RevisionMeta | null;
     document_changed: boolean;
@@ -183,23 +186,37 @@ export interface NewCommentInput {
 export class DocumentApiError extends Error {
     status: number;
     code: string | null;
-    constructor(message: string, status: number, code: string | null = null) {
+    /** For a refused decision, what the operator session check found (for example `assertion-missing`). */
+    reason: string | null;
+    constructor(message: string, status: number, code: string | null = null, reason: string | null = null) {
         super(message);
         this.status = status;
         this.code = code;
+        this.reason = reason;
     }
 }
 
+/**
+ * Session-authenticated fetch. The documents API trusts the browser's session
+ * (the cookies Cloudflare Access turns into the operator assertion) and never
+ * a bearer: the shared nexus helper's placeholder `Authorization: Bearer
+ * local-dev-token` made the decision authority check a credential instead of
+ * the session and refuse Robert's Request changes (2026-10-04, task a1cc8616),
+ * so this client sends no Authorization header. Cookies ride along, and the
+ * cache-buster mirrors that helper.
+ */
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
-    const res = await authFetch(url, {
+    const target = `${url}${url.includes('?') ? '&' : '?'}_cb=${Date.now()}`;
+    const res = await fetch(target, {
         ...options,
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     });
     let data: unknown = null;
     try { data = await res.json(); } catch { data = null; }
     if (!res.ok) {
-        const body = (data && typeof data === 'object') ? data as { error?: string; code?: string } : {};
-        throw new DocumentApiError(body.error || `Request failed (${res.status})`, res.status, body.code ?? null);
+        const body = (data && typeof data === 'object') ? data as { error?: string; code?: string; reason?: string } : {};
+        throw new DocumentApiError(body.error || `Request failed (${res.status})`, res.status, body.code ?? null, typeof body.reason === 'string' ? body.reason : null);
     }
     return data as T;
 }
@@ -346,8 +363,16 @@ export async function deleteComment(reviewId: string, commentId: string): Promis
     await request(`${BASE}/reviews/${encodeURIComponent(reviewId)}/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE' });
 }
 
-export async function finishReview(reviewId: string, summary: string): Promise<{ review: ReviewView; submission: SubmissionView }> {
-    return request(`${BASE}/reviews/${encodeURIComponent(reviewId)}/finish`, { method: 'POST', body: JSON.stringify({ summary }) });
+/**
+ * Finish a review. `approveAfterChanges` sends Robert's explicit grant: the
+ * executor that applies this review may record his approval of the corrected
+ * revision. The server accepts the grant only from his verified session or
+ * operator credential, so a finish without it never carries the field.
+ */
+export async function finishReview(reviewId: string, summary: string, options: { approveAfterChanges?: boolean } = {}): Promise<{ review: ReviewView; submission: SubmissionView }> {
+    const body: { summary: string; approve_after_changes?: true } = { summary };
+    if (options.approveAfterChanges) body.approve_after_changes = true;
+    return request(`${BASE}/reviews/${encodeURIComponent(reviewId)}/finish`, { method: 'POST', body: JSON.stringify(body) });
 }
 
 export async function getSubmission(reviewId: string): Promise<SubmissionView> {

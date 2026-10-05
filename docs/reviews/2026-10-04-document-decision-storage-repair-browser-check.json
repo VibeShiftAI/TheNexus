@@ -1,0 +1,104 @@
+{
+  "base": "http://127.0.0.1:3299",
+  "api": "http://127.0.0.1:4299",
+  "doc": "7e51f3b7-33c4-4f61-83b6-5392c3b56e56",
+  "startedAt": "2026-10-04T18:06:24.512Z",
+  "steps": {
+    "01-open": {
+      "status": "Document: review pending",
+      "card": "needs_review",
+      "revisions": 1,
+      "decisions": 0
+    },
+    "02-comment": {
+      "reviewId": "3c899c6c-6479-4bc3-9178-e911f62c3c2e",
+      "reviewRevision": "f97a9480-ed5b-4253-80c7-3474a92495a4",
+      "comments": 1,
+      "status": "draft"
+    },
+    "03a-both-stores-unavailable": {
+      "notice": " This session carries no operator sign-in, so the request fell back to a credential this Nexus does not have configured. Nothing was recorded. Your note is only kept in this open page because device storage is unavailable. Copy your note before reloading or signing in again. Then try again from the Nexus app signed in as the operator (the phone or Windows app).",
+      "noteKept": true,
+      "persisted": null
+    },
+    "03-refused-placeholder-bearer": {
+      "notice": " This session carries no operator sign-in, so the request fell back to a credential this Nexus does not have configured. Nothing was recorded and your note is kept on this device. Reload the app and try again; if it repeats, record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+      "noteKept": true,
+      "stored": "f97a9480-ed5b-4253-80c7-3474a92495a4",
+      "decisions": 0
+    },
+    "04-refused-no-session": {
+      "notice": " Recording a document decision needs Robert’s verified operator session or operator credential; this request carries neither. Nothing was recorded. Reading and feedback still work in this session; record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+      "decisions": 0
+    },
+    "05-reload-recovers-note": {
+      "announcement": "Unsaved note from 10/4/2026, 2:06:25 PM, written for rev 0e6fdb4b, is kept on this device; open Request changes to continue.Discard note",
+      "restoredNote": true,
+      "origin": "Unsaved note restored from 10/4/2026, 2:06:25 PM, written for rev 0e6fdb4b. Discard note"
+    },
+    "06-file-changed": {
+      "rev1": "f97a9480-ed5b-4253-80c7-3474a92495a4",
+      "rev2": "da6f90fb-cad1-4c84-a7c4-c4ea083fd155",
+      "hint": "Unsaved note from 10/4/2026, 2:06:25 PM, written for rev 0e6fdb4b, is kept on this device; open Request changes to continue.Discard note",
+      "moved": "Unsaved note restored from 10/4/2026, 2:06:25 PM, written for rev 0e6fdb4b; you are now deciding on rev df59292b, so check that it still applies. Discard note",
+      "note": true
+    },
+    "07-session-records-request-changes": {
+      "okNotice": " Changes requested rev df59292b. Nothing was sent or published.",
+      "decision": {
+        "revision_id": "da6f90fb-cad1-4c84-a7c4-c4ea083fd155",
+        "authority": "access_user",
+        "note": true,
+        "decision": "request_changes"
+      },
+      "reviewRevision": "f97a9480-ed5b-4253-80c7-3474a92495a4",
+      "status": "Document: changes requested",
+      "stored": null
+    },
+    "08-device-session-approves": {
+      "notice": " Approved rev df59292b. Nothing was sent or published.",
+      "approval": {
+        "revision_id": "da6f90fb-cad1-4c84-a7c4-c4ea083fd155",
+        "authority": "access_device",
+        "decision": "approve"
+      },
+      "status": "Document: approved"
+    },
+    "09-executor-header-refused": {
+      "notice": " Executor and bridge credentials cannot record document decisions. Nothing was recorded. Reading and feedback still work in this session; record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+      "decisions": 2
+    },
+    "10-finish-review-delivers": {
+      "submission": {
+        "id": "62e5b93b-b099-46de-a7b4-aee0d48930ad",
+        "delivery_status": "delivered",
+        "attempts": 1,
+        "receipt": true
+      },
+      "relays": [
+        "docreview:62e5b93b-b099-46de-a7b4-aee0d48930ad"
+      ],
+      "card": " Delivered to PraxisFinished 10/4/2026, 2:06:29 PMReceipt: delivered 10/4/2026, 2:06:29 PM into the Praxis conversation (5f14be75…). Praxis's reply is in the br",
+      "decisions": 2
+    }
+  },
+  "network": {
+    "apiRequests": 37,
+    "documentRequests": 15,
+    "bearerOnDocuments": [],
+    "bearerElsewhere": [
+      "GET /api/praxis/voice-status",
+      "GET /api/board-state"
+    ],
+    "otherOrigins": [
+      "http://localhost:4000"
+    ],
+    "foreignRequests": [
+      "GET http://localhost:4000/socket.io/",
+      "GET http://localhost:4000/api/chat/active"
+    ],
+    "exceptions": []
+  },
+  "failures": [],
+  "finishedAt": "2026-10-04T18:06:32.972Z"
+}

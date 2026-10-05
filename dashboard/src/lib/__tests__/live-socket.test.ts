@@ -5,9 +5,16 @@ import assert from "node:assert/strict";
 // (test/loader-hooks.mjs → test/stubs/socket-io-client.mjs): `io()` records
 // every socket it hands out and never touches the network.
 import { __sockets, __reset } from "socket.io-client";
-import { acquireLiveSocket, peekLiveSocket } from "../live-socket";
+import { acquireLiveSocket, peekLiveSocket, reconnectLiveSocketNow } from "../live-socket";
+import { __setConnectionLifecycleForTests, createConnectionLifecycle } from "../connection-lifecycle";
 
-type FakeSocket = { disconnected: boolean };
+type FakeSocket = {
+    disconnected: boolean;
+    connected: boolean;
+    connectCalls: number;
+    __emit: (event: string, ...args: unknown[]) => void;
+    __listenerCount: (event: string) => number;
+};
 const sockets = __sockets as unknown as FakeSocket[];
 
 const LINGER_MS = 5000;
@@ -136,4 +143,86 @@ test("the local-dev target is :4000 with infinite reconnection", () => {
         assert.equal(created.opts.reconnectionAttempts, Infinity);
         drain([a]);
     });
+});
+
+test("reconnectLiveSocketNow: a no-op without a socket or while connected; disconnect+connect (the safe path through socket.io's backoff) when disconnected", () => {
+    withFreshSocketModule(() => {
+        assert.equal(reconnectLiveSocketNow(), false, "no socket yet");
+        const a = acquireLiveSocket()!;
+        const s = sockets[0];
+        s.connected = true;
+        assert.equal(reconnectLiveSocketNow(), false, "already connected: never churn a live connection");
+        assert.equal(s.connectCalls, 0);
+        s.connected = false;
+        assert.equal(reconnectLiveSocketNow(), true);
+        assert.equal(s.connectCalls, 1);
+        assert.equal(s.disconnected, false, "connect() follows the disconnect() at once");
+        drain([a]);
+    });
+});
+
+test("the socket reports to the shared lifecycle: our own disconnects are not failures, real drops probe once, and a passing recovery reconnects a disconnected socket at once", async () => {
+    mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+    let clock = 1_000_000;
+    const probes: string[] = [];
+    const lifecycle = createConnectionLifecycle({
+        now: () => clock,
+        probe: async () => {
+            probes.push("ok");
+            return "ok";
+        },
+        target: undefined,
+        isVisible: () => true,
+        currentHref: () => "/",
+        storage: null,
+    });
+    __setConnectionLifecycleForTests(lifecycle);
+    const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
+    const step = async (ms: number) => {
+        clock += ms;
+        mock.timers.tick(ms);
+        await flush();
+    };
+    try {
+        __reset();
+        const a = acquireLiveSocket()!;
+        const s = sockets[0];
+        assert.equal(s.__listenerCount("connect"), 1);
+        assert.equal(s.__listenerCount("disconnect"), 1);
+        assert.equal(s.__listenerCount("connect_error"), 1);
+
+        s.__emit("disconnect", "io client disconnect");
+        await step(500);
+        assert.equal(probes.length, 0, "teardown / forced reconnect is not a failure");
+
+        s.__emit("disconnect", "transport close");
+        s.__emit("connect_error", new Error("xhr poll error"));
+        await step(500);
+        assert.equal(probes.length, 1, "one probe for the burst");
+        assert.equal(lifecycle.getState().phase, "live");
+        assert.equal(s.connectCalls, 0, "a healthy API does not force the socket; its own backoff runs");
+
+        // A wake signal later finds the API healthy: the disconnected socket is reconnected now.
+        await step(11_000);
+        s.connected = false;
+        lifecycle.signal("visible");
+        await step(500);
+        assert.equal(probes.length, 2);
+        assert.equal(s.connectCalls, 1);
+
+        // Teardown unbinds the reporting listeners along with the socket.
+        a.release();
+        await step(LINGER_MS + 1);
+        assert.equal(s.disconnected, true);
+        assert.equal(s.__listenerCount("connect"), 0);
+        assert.equal(s.__listenerCount("disconnect"), 0);
+        assert.equal(s.__listenerCount("connect_error"), 0);
+        lifecycle.signal("manual");
+        await step(11_000);
+        assert.equal(s.connectCalls, 1, "a released socket is never reconnected by a later recovery");
+    } finally {
+        lifecycle.dispose();
+        __setConnectionLifecycleForTests(null);
+        mock.timers.reset();
+    }
 });

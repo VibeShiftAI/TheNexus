@@ -177,6 +177,91 @@ export interface TaskById extends Task {
     default_executor?: string | null;
     default_model?: string | null;
     dispatch_instructions?: string | null;
+    /** Row revision; every contract decision is CAS-protected against it. */
+    version?: number;
+    /** Machine-layer brief (prompt, acceptance criteria, operator rulings, ...). */
+    antigravity_payload?: Record<string, unknown> | null;
+}
+
+/**
+ * Work-admission receipt fields for task contract changes (docs/work-admission.md,
+ * "Contract changes: origin and timing"). Robert's own changes advance the
+ * authorized baseline; an unverified change during execution opens a
+ * `contract_drift` hold that only his decision clears.
+ */
+export interface ContractChangeField {
+    field: string;
+    before_sha256: string | null;
+    after_sha256: string | null;
+    before?: unknown;
+    after?: unknown;
+}
+export interface ContractChangeEntry {
+    id: string;
+    recorded_at: string;
+    task_version: number | null;
+    fields: ContractChangeField[];
+    origin: { kind: string; authority: string | null; requester: string; reason?: string; decision_ref?: Record<string, unknown> };
+    execution: { phase: string; status: string | null; next_status?: string; open_dispatches: Array<{ id: string; task_id: string; kind: string; executor: string }> };
+    outcome: 'authorized' | 'recorded' | 'held';
+    contract_version: number;
+    resolution?: { decision: string; recorded_at: string; authority?: string | null; reason?: string };
+}
+export interface ContractHold {
+    since: string;
+    change_ids: string[];
+    drifted_fields: string[];
+    authorized_values: Record<string, unknown>;
+    prior?: { decision?: string; reason?: string };
+}
+export interface WorkAdmissionReceipt {
+    decision: string;
+    reason?: string;
+    hold_kind?: string;
+    contract?: { version: number; hash: string; fields: Record<string, string>; authorized_at: string; authorized_by: Record<string, unknown> };
+    contract_changes?: ContractChangeEntry[];
+    contract_hold?: ContractHold;
+    [key: string]: unknown;
+}
+
+export function workAdmissionOf(task: { metadata?: { [key: string]: any } | null } | null | undefined): WorkAdmissionReceipt | null {
+    const receipt = task?.metadata?.work_admission;
+    return receipt && typeof receipt === 'object' ? (receipt as WorkAdmissionReceipt) : null;
+}
+
+export class ContractDecisionError extends Error {
+    status: number;
+    code: string;
+    reason?: string;
+    constructor(status: number, body: { error?: string; code?: string; reason?: string }) {
+        super(body.error || `Contract decision failed (${status})`);
+        this.status = status;
+        this.code = body.code || 'unknown';
+        this.reason = body.reason;
+    }
+}
+
+/**
+ * Decide a contract-drift hold: accept the changed contract, or return the task
+ * to the authorized one. The server accepts Robert's verified Access session or
+ * his operator credential; the dashboard's placeholder bearer is neither, so
+ * from the Mac app (no session) this answers 403 and the panel says why.
+ */
+export async function decideContractHold(
+    taskId: string,
+    input: { expected_task_version: number; decision: 'approve' | 'return_to_authorized'; change_ids: string[]; reason?: string },
+): Promise<TaskById> {
+    const baseUrl = API_URL.replace('/projects', '/tasks');
+    const res = await authFetch(`${baseUrl}/${encodeURIComponent(taskId)}/work-admission/contract`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new ContractDecisionError(res.status, body as { error?: string; code?: string; reason?: string });
+    }
+    return res.json();
 }
 
 /**

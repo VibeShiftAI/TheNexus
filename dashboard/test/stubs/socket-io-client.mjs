@@ -1,8 +1,8 @@
 // Test stand-in for `socket.io-client`. `io()` never opens a network
 // connection; it returns an inspectable fake and records every instance so a
 // test can assert how many sockets were created, which handlers are attached,
-// and whether/when `disconnect()` was called. Events can be injected with
-// `socket.__emit(name, ...args)`.
+// and whether/when `disconnect()` / `connect()` were called. Events can be
+// injected with `socket.__emit(name, ...args)`.
 export const __sockets = [];
 
 export function __reset() {
@@ -16,6 +16,8 @@ export function io(url, opts) {
         opts,
         connected: false,
         disconnected: false,
+        /** How many times `connect()` was called (a forced reconnect counts once). */
+        connectCalls: 0,
         on(event, fn) {
             if (!handlers.has(event)) handlers.set(event, new Set());
             handlers.get(event).add(fn);
@@ -25,9 +27,17 @@ export function io(url, opts) {
             handlers.get(event)?.delete(fn);
             return socket;
         },
+        emit() {
+            return socket;
+        },
         disconnect() {
             socket.disconnected = true;
             socket.connected = false;
+            return socket;
+        },
+        connect() {
+            socket.connectCalls += 1;
+            socket.disconnected = false;
             return socket;
         },
         __emit(event, ...args) {

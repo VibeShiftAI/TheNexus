@@ -36,9 +36,12 @@
  * here. Praxis strips both keys from the environment it hands executors; this
  * script is how an executor uses the document credential.
  *
- * Exit codes: 0 recorded (or an identical replay); 1 the API refused and the
- * refusal JSON was printed; 2 the credential is unavailable; 3 revision or
- * hash drift (nothing was recorded); 4 usage error.
+ * Exit codes: 0 recorded (or an identical replay) and confirmed in force by the
+ * consumer check; 1 the API refused and the refusal JSON was printed; 2 the
+ * credential is unavailable; 3 revision or hash drift (nothing was recorded);
+ * 4 usage error; 5 recorded but not confirmed (the readback failed or reports
+ * the approval no longer in force), so the caller reads it back before relying
+ * on it.
  */
 const fs = require('fs');
 const path = require('path');
@@ -48,7 +51,7 @@ const { fleetEnvPath } = require('../server/utils/fleet-env');
 /** Robert's standing authorization for this pathway (questionnaire answered 2026-10-04). */
 const STANDING_AUTHORIZATION = 'ask-robert-81299292-0878-4db1-a108-a14cc332f5dc';
 const DEFAULT_API = process.env.NEXUS_API_URL || 'http://127.0.0.1:4000';
-const EXIT = { ok: 0, refused: 1, credential: 2, drift: 3, usage: 4 };
+const EXIT = { ok: 0, refused: 1, credential: 2, drift: 3, usage: 4, unconfirmed: 5 };
 
 function usage(message) {
     if (message) console.error(`record-document-approval: ${message}`);
@@ -218,13 +221,27 @@ async function main() {
     const posted = await call(base, 'POST', `${route}/decisions`, { body, bearer: credential });
     if (posted.status === 201 || posted.status === 200) {
         const decision = posted.json.decision;
-        const check = await call(base, 'GET', `${route}/decisions/${encodeURIComponent(decision.id)}`);
-        finish(EXIT.ok, {
+        // Recording and confirming are two different facts: the consumer check must read the decision back as an
+        // approval still in force. When it cannot (readback failed, or the bytes moved on already) the row exists,
+        // but the caller must not treat the approval as confirmed, so the exit code says so.
+        let check;
+        try {
+            const read = await call(base, 'GET', `${route}/decisions/${encodeURIComponent(decision.id)}`);
+            check = read.status === 200
+                ? { status: 200, in_force: read.json.in_force, approved: read.json.approved, reason: read.json.reason, file_state: read.json.file_state }
+                : { status: read.status };
+        } catch (err) {
+            check = { status: null, error: err?.message || String(err) };
+        }
+        const confirmed = check.status === 200 && check.in_force === true && check.approved === true;
+        finish(confirmed ? EXIT.ok : EXIT.unconfirmed, {
             outcome: posted.json.duplicate ? 'already_recorded' : 'recorded',
+            confirmed,
             duplicate: Boolean(posted.json.duplicate),
             review_status: posted.json.review_status,
             decision,
-            check: check.status === 200 ? { in_force: check.json.in_force, approved: check.json.approved, reason: check.json.reason, file_state: check.json.file_state } : { status: check.status },
+            check,
+            ...(confirmed ? {} : { error: 'The decision was recorded but could not be confirmed as an approval in force; read it back before relying on it' }),
             history: await historyReadback(base, documentId),
         });
     }

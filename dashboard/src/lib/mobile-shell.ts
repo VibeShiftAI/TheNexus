@@ -32,7 +32,14 @@ export type ShellMessage =
   | { type: "open-settings" }
   | { type: "badge"; count: number }
   | { type: "haptic"; style: "light" | "medium" | "heavy" | "success" | "warning" | "error" }
-  | { type: "reload" };
+  | { type: "reload" }
+  /**
+   * Re-prime the Cloudflare Access session (the shell holds the token, the
+   * page only asks) and fire `nexus:session-renewed` on the window when done.
+   * Sent only when the shell lists the "renew-session" capability
+   * (lib/session-renewal); older shells never see it.
+   */
+  | { type: "renew-session" };
 
 declare global {
   interface Window {

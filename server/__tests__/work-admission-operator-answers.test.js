@@ -129,7 +129,12 @@ test('repeated and duplicate answers keep full ordered provenance without a hold
     expect(raw.prepare('SELECT count(*) AS n FROM tasks').get().n).toBe(1);
 });
 
-test('real scope, acceptance and workspace changes still require review, with or without an answer', async () => {
+// Robert's rule (task 9021f20d, 2026-10-04): an unverified scope, acceptance
+// or workspace change is held only while the task is executing. Before
+// execution it is recorded, with or without an answer, and admission compares
+// the edited contract at dispatch. The full matrix lives in
+// work-admission-contract-origin.test.js.
+test('real scope, acceptance and workspace changes are held during execution, with or without an answer', async () => {
     const edits = [
         payload => ({ antigravity_payload: { ...payload, operator_rulings: [ANSWER], prompt: 'Also launch a paid membership checkout.' } }),
         payload => ({ antigravity_payload: { ...payload, acceptance_criteria: ['Checkout accepts payments.'] } }),
@@ -138,12 +143,20 @@ test('real scope, acceptance and workspace changes still require review, with or
     ];
     for (const edit of edits) {
         raw.exec('DELETE FROM tasks');
-        const task = await approved(await db.createTask(groundrules()));
+        const task = await approved(await db.createTask(groundrules({ status: 'in_progress' })));
         const changed = await api('PATCH', `/${task.id}`, edit(task.antigravity_payload));
         expect(changed.status).toBe(200);
         expect(receipt(changed.data.task).decision).toBe('needs_evidence');
-        expect(receipt(changed.data.task).reason).toMatch(/Proposal contract changed/);
+        expect(receipt(changed.data.task).hold_kind).toBe('contract_drift');
+        expect(receipt(changed.data.task).contract_hold.drifted_fields.length).toBeGreaterThan(0);
+        // The appended answer is still recorded as an answer alongside the hold.
+        if (edit(task.antigravity_payload).antigravity_payload?.operator_rulings) expect(receipt(changed.data.task).operator_answers).toHaveLength(1);
     }
+    raw.exec('DELETE FROM tasks');
+    const pending = await approved(await db.createTask(groundrules()));
+    const recorded = await api('PATCH', `/${pending.id}`, { description: 'Build the members area instead.' });
+    expect(receipt(recorded.data.task).decision).toBe('new_work');
+    expect(receipt(recorded.data.task).contract_changes.at(-1)).toMatchObject({ outcome: 'recorded', execution: { phase: 'before_execution' } });
 });
 
 test('rewriting or removing a recorded answer is not an answer and still requires review', async () => {

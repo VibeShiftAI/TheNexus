@@ -14,6 +14,12 @@
  * The document's own decision (Approve document / Request changes on the
  * revision on screen) is the separate DecisionCard above the text; Finish
  * review is feedback only and never records a decision.
+ *
+ * The page always opens on the latest registered revision, so a link from
+ * Ready for your review or a task shows the current bytes even when the
+ * reader's last review was of an earlier one. The reviewed revision stays one
+ * explicit click away and its comments stay attached to it; nothing here
+ * switches the reader back to it on their behalf.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -166,6 +172,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const [finishOpen, setFinishOpen] = useState(false);
     const [finishing, setFinishing] = useState(false);
     const [finishError, setFinishError] = useState<string | null>(null);
+    // Robert's explicit approve-after-changes grant, sent with Finish review (task a2553798).
+    const [delegateApproval, setDelegateApproval] = useState(false);
     const [retrying, setRetrying] = useState(false);
     const [outlineOpen, setOutlineOpen] = useState(false);
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -188,7 +196,6 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 setReview(response.review);
                 setSubmission(response.review.submission);
                 if (!summaryDirty.current) setSummary(response.review.summary || "");
-                if (response.review.document_changed) setViewRevision("pinned");
             }
         } catch (err) {
             setLoadError(messageOf(err));
@@ -196,6 +203,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     }, [documentId]);
 
     useEffect(() => {
+        // Every document opens on its latest revision, also when the route reuses this page for another id.
+        setViewRevision("current");
         void load();
     }, [load]);
 
@@ -222,6 +231,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const showingPinned = documentChanged && viewRevision === "pinned" && typeof review?.pinned_content === "string";
     const shownContent = showingPinned ? (review?.pinned_content as string) : currentContent;
     const shownRevision = showingPinned ? review?.pinned_revision ?? null : data?.revision ?? null;
+    const reviewedHash = review?.pinned_revision?.content_hash.slice(0, 8) ?? "?";
+    const latestHash = data?.revision?.content_hash.slice(0, 8) ?? "?";
     const isDraft = !review || review.status === "draft";
     const canAnnotate = isDraft && (!documentChanged || showingPinned) && !showSource;
     const outline = useMemo(() => extractOutline(shownContent), [shownContent]);
@@ -244,7 +255,6 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         reviewRef.current = opened;
         setReview(opened);
         setSubmission(opened.submission);
-        if (opened.document_changed) setViewRevision("pinned");
         return opened;
     }, [documentId]);
 
@@ -378,6 +388,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     useEffect(() => () => { if (summaryTimer.current) window.clearTimeout(summaryTimer.current); }, []);
 
     const adoptFinished = (finished: ReviewView, sub: SubmissionView | null) => {
+        // The grant belongs to the round that was just finished; the next round starts without it.
+        setDelegateApproval(false);
         summaryDirty.current = false;
         reviewRef.current = finished;
         setReview(finished);
@@ -395,7 +407,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         try {
             const draft = await ensureReview();
             draftId = draft.id;
-            const result = await finishReview(draft.id, summary);
+            const result = await finishReview(draft.id, summary, { approveAfterChanges: delegateApproval });
             adoptFinished(result.review, result.submission);
         } catch (err) {
             const message = messageOf(err);
@@ -440,7 +452,6 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             setReview(opened);
             setSubmission(opened.submission);
             setSummary(opened.summary || "");
-            setViewRevision(opened.document_changed ? "pinned" : "current");
         } catch (err) {
             setLoadError(messageOf(err));
         }
@@ -585,6 +596,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 <DeliveryBadge submission={submission} />
                 <span className="text-[11px] text-slate-500">Finished {formatWhen(review?.submitted_at)}</span>
             </div>
+            {review?.approval_delegated && (
+                <p className="mt-2 text-[11px] text-emerald-200" data-approval-delegated="">
+                    Approval delegated: the executor that makes this change records your approval of the corrected revision, citing this review.
+                </p>
+            )}
             {submission.delivery_status === "delivered" && submission.receipt && (
                 <p className="mt-2 text-[11px] text-slate-400">
                     Receipt: delivered {formatWhen(submission.receipt.delivered_at)} into the Praxis conversation ({submission.receipt.conversation_id.slice(0, 8)}…). Praxis&apos;s reply is in{" "}
@@ -614,8 +630,14 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 Finishing sends every comment verbatim, with its quoted passage and this document&apos;s revision, into your Praxis chat. Finishing with no comments is fine.
             </p>
             <p className="mt-1 text-[11px] text-emerald-100/70" data-finish-scope="">
-                This is feedback only: it does not approve the document, and nothing goes to anyone else or gets published.
+                {delegateApproval
+                    ? "Approval is delegated: once the executor makes the change you ask for, it records your approval of that corrected revision only, citing this review. Nothing goes to anyone else or gets published."
+                    : "This is feedback only: it does not approve the document, and nothing goes to anyone else or gets published."}
             </p>
+            <label className="mt-2 flex items-start gap-2 text-[11px] text-emerald-100/90" data-delegate-approval="">
+                <input type="checkbox" checked={delegateApproval} onChange={(e) => setDelegateApproval(e.target.checked)} className="mt-0.5 accent-emerald-400" />
+                <span>Approve once this change is made. Needs your verified session; the executor can record only this approval.</span>
+            </label>
             <label className="mt-2 block text-[11px] font-semibold text-slate-300" htmlFor="review-summary-final">Summary (optional)</label>
             <textarea
                 id="review-summary-final"
@@ -796,7 +818,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                         <div role="status" className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100" data-changed-banner="">
                             <AlertTriangle size={14} className="shrink-0" />
                             <span className="min-w-0 flex-1">
-                                This document changed after your review started. {showingPinned ? "You are viewing the revision you reviewed; comments stay anchored to it." : "You are viewing the current file; passage comments stay pinned to the reviewed revision and are not moved."}
+                                A newer revision of this document was registered after the one your review covers.{" "}
+                                {showingPinned
+                                    ? `You are viewing rev ${reviewedHash}, the revision you reviewed; comments stay anchored to it. Decisions apply to the latest revision (rev ${latestHash}).`
+                                    : `You are viewing the latest revision (rev ${latestHash}); you reviewed rev ${reviewedHash}, and your review's passage comments stay pinned to it and are not moved.`}
                             </span>
                             <button type="button" onClick={() => setViewRevision(showingPinned ? "current" : "pinned")} className="rounded-md border border-amber-400/50 px-2 py-1 text-amber-100 hover:bg-amber-500/20">
                                 {showingPinned ? "View current file" : "View reviewed revision"}

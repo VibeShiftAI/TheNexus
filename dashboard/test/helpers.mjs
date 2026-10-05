@@ -30,6 +30,10 @@ export function loadFixtureMessages() {
  */
 export function mountTerminal(messages, props = {}) {
     cortexTestStore.reset(messages);
+    // The composer restores an unsent draft from sessionStorage on mount
+    // (lib/chat-draft, 2026-10-03). Every terminal mount in a test starts with
+    // an empty composer, as a fresh tab would.
+    globalThis.window.sessionStorage.removeItem("nexus:chat-draft");
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);

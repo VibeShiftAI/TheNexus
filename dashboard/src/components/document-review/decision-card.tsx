@@ -24,6 +24,7 @@ import {
     type DocumentResponse,
     type RevisionMeta,
 } from "@/lib/document-review";
+import { clearDecisionNoteDraft, readDecisionNoteDraft, writeDecisionNoteDraft, type DecisionNoteDraft } from "@/lib/decision-note-draft";
 import { DocumentStatusBadge } from "./deliverable-row";
 
 const DECISION_TEXT: Record<DecisionKind, { button: string; past: string; confirm: string }> = {
@@ -51,8 +52,28 @@ function sentence(text: string): string {
     return /[.!?]$/.test(text) ? text : `${text}.`;
 }
 
+type NoteState = "empty" | "persisted" | "unpersisted";
+const COPY_NOTE_WARNING = "Your note is only kept in this open page because device storage is unavailable. Copy your note before reloading or signing in again.";
+const NOTE_GUIDANCE = {
+    authentication_required: {
+        empty: "Reload the app, sign in again and try again.",
+        persisted: "Your note is kept on this device; sign in again (reload the app) and try again.",
+        unpersisted: COPY_NOTE_WARNING,
+    },
+    operator_credential_unconfigured: {
+        empty: "Nothing was recorded. Reload the app and try again; if it repeats, record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+        persisted: "Nothing was recorded and your note is kept on this device. Reload the app and try again; if it repeats, record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+        unpersisted: `Nothing was recorded. ${COPY_NOTE_WARNING} Then try again from the Nexus app signed in as the operator (the phone or Windows app).`,
+    },
+    operator_check_unavailable: {
+        empty: "Try again in a moment.",
+        persisted: "Your note is kept on this device; try again in a moment.",
+        unpersisted: COPY_NOTE_WARNING,
+    },
+} satisfies Record<string, Record<NoteState, string>>;
+
 /** Words for a refusal: what happened and that nothing was recorded. */
-function refusalMessage(err: unknown): { text: string; stale: boolean; reload: boolean } {
+function refusalMessage(err: unknown, noteState: NoteState): { text: string; stale: boolean; reload: boolean } {
     if (err instanceof DocumentApiError) {
         switch (err.code) {
             case "stale_revision":
@@ -60,7 +81,20 @@ function refusalMessage(err: unknown): { text: string; stale: boolean; reload: b
             case "operator_required":
                 return { text: `${sentence(err.message)} Nothing was recorded. Reading and feedback still work in this session; record the decision from the Nexus app signed in as the operator (the phone or Windows app).`, stale: false, reload: false };
             case "authentication_required":
-                return { text: "Your session has expired, so nothing was recorded. Reload the app and try again.", stale: false, reload: false };
+                return { text: `Your session has expired, so nothing was recorded. ${NOTE_GUIDANCE.authentication_required[noteState]}`, stale: false, reload: false };
+            case "operator_credential_unconfigured":
+                // Only a request with no verified session reaches the credential path (the
+                // 2026-10-04 refusal came from a bearer the old client attached to every call).
+                // A blank optional note needs no storage; warn only about a non-blank unsaved note.
+                return {
+                    text: `${err.reason === "assertion-missing"
+                        ? "This session carries no operator sign-in, so the request fell back to a credential this Nexus does not have configured."
+                        : "This session was not accepted as the operator, so the request fell back to a credential this Nexus does not have configured."} ${NOTE_GUIDANCE.operator_credential_unconfigured[noteState]}`,
+                    stale: false,
+                    reload: false,
+                };
+            case "operator_check_unavailable":
+                return { text: `Your operator session could not be checked just now (the Access verifier is unavailable), so nothing was recorded. ${NOTE_GUIDANCE.operator_check_unavailable[noteState]}`, stale: false, reload: false };
             case "idempotency_key_reused":
                 return { text: "An earlier attempt of this decision was already recorded with different details; the page now shows what is on record.", stale: false, reload: true };
             case "review_not_required":
@@ -133,6 +167,11 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
     const current = data.current_decision ?? null;
     const [confirm, setConfirm] = useState<{ kind: DecisionKind; clientId: string } | null>(null);
     const [note, setNote] = useState("");
+    // The unsaved note as stored on this device (see lib/decision-note-draft), and whether
+    // the note on screen came back from storage rather than being typed in this mount.
+    const [draft, setDraft] = useState<DecisionNoteDraft | null>(null);
+    const [restored, setRestored] = useState(false);
+    const [notePersisted, setNotePersisted] = useState(false);
     const [busy, setBusy] = useState(false);
     const [notice, setNotice] = useState<{ tone: "ok" | "error" | "stale"; text: string } | null>(null);
     const [historyOpen, setHistoryOpen] = useState(false);
@@ -158,6 +197,16 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
         if (historyOpen) void loadHistory();
     }, [historyOpen, historyKey, loadHistory]);
 
+    // A reload (or the sign-in round trip) remounts this card: bring back the note that was
+    // not recorded, with the revision it was written for and the id of the attempt it belongs to.
+    useEffect(() => {
+        const saved = readDecisionNoteDraft(doc.id);
+        setDraft(saved);
+        setRestored(Boolean(saved));
+        setNotePersisted(Boolean(saved));
+        setNote(saved?.note ?? "");
+    }, [doc.id]);
+
     // A pre-contract API returns no review_status: say so instead of offering decisions it cannot take.
     if (!status) {
         return (
@@ -178,10 +227,49 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
                 ? "No captured revision to decide on yet."
                 : null;
 
+    /** Keep the note on this device as it is typed, attributed to the attempt and the revision it was written for. */
+    const persist = (kind: DecisionKind, clientId: string, text: string) => {
+        if (!viewedRevision) return;
+        if (!text.trim()) {
+            clearDecisionNoteDraft(doc.id);
+            setDraft(null);
+            setNotePersisted(false);
+            setRestored(false);
+            return;
+        }
+        const next: DecisionNoteDraft = {
+            kind,
+            revision_id: viewedRevision.id,
+            content_hash: viewedRevision.content_hash,
+            // The origin never moves: a later revision is named next to the note, not substituted for it.
+            origin_revision_id: draft?.origin_revision_id ?? viewedRevision.id,
+            origin_content_hash: draft?.origin_content_hash ?? viewedRevision.content_hash,
+            note: text,
+            client_decision_id: clientId,
+            saved_at: new Date().toISOString(),
+        };
+        setNotePersisted(writeDecisionNoteDraft(doc.id, next));
+        setDraft(next);
+    };
+
+    const discardNote = () => {
+        clearDecisionNoteDraft(doc.id);
+        setDraft(null);
+        setNotePersisted(false);
+        setRestored(false);
+        setNote("");
+    };
+
     const open = (kind: DecisionKind) => {
         setNotice(null);
         // One id per attempt: a retry after a lost response is answered from the record instead of recorded twice.
-        setConfirm((prev) => (prev && prev.kind === kind ? prev : { kind, clientId: newClientId() }));
+        // The same attempt continues after a reload only for the same kind on the same revision;
+        // anything else is a new attempt with a new id.
+        setConfirm((prev) => {
+            if (prev && prev.kind === kind) return prev;
+            const resumable = draft !== null && draft.kind === kind && viewedRevision !== null && draft.revision_id === viewedRevision.id;
+            return { kind, clientId: resumable && draft ? draft.client_decision_id : newClientId() };
+        });
     };
 
     const submit = async () => {
@@ -198,10 +286,10 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
             });
             setNotice({ tone: "ok", text: `${DECISION_TEXT[result.decision.decision].past} rev ${shortHash(result.decision.content_hash)}${result.duplicate ? " (already on record)" : ""}. Nothing was sent or published.` });
             setConfirm(null);
-            setNote("");
+            discardNote();
             await onRefresh();
         } catch (err) {
-            const refusal = refusalMessage(err);
+            const refusal = refusalMessage(err, !note.trim() ? "empty" : notePersisted ? "persisted" : "unpersisted");
             setNotice({ tone: refusal.stale ? "stale" : "error", text: refusal.text });
             if (refusal.reload) {
                 // The decision was refused for good: the next attempt is a new decision with a new id; the note is kept.
@@ -212,6 +300,16 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
             setBusy(false);
         }
     };
+
+    // Where the note on screen came from, when that is not simply "typed here for this revision".
+    const noteOrigin = draft && note.trim() && viewedRevision && (restored || draft.origin_revision_id !== viewedRevision.id)
+        ? {
+            restored,
+            moved: draft.origin_revision_id !== viewedRevision.id,
+            revision: shortHash(draft.origin_content_hash),
+            savedAt: formatWhen(draft.saved_at),
+        }
+        : null;
 
     return (
         <section className="mb-4 rounded-lg border border-slate-700 bg-slate-900/50 p-3" data-decision-card={status}>
@@ -262,6 +360,13 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
                     </button>
                 </div>
             )}
+            {status !== "reference" && !confirm && draft && (
+                <p className="mt-2 flex flex-wrap items-center gap-x-1 text-[11px] text-amber-200" data-decision-draft={draft.kind}>
+                    Unsaved note from {formatWhen(draft.saved_at)}, written for rev {shortHash(draft.origin_content_hash)}, {notePersisted ? "is kept on this device" : "is only kept in this open page; copy it before reloading"}
+                    {blocked ? "." : <>; open {DECISION_TEXT[draft.kind].button} to continue.</>}
+                    <button type="button" onClick={discardNote} className="underline" data-decision-draft-discard="">Discard note</button>
+                </p>
+            )}
             {confirm && !blocked && (
                 <div className="mt-2 rounded-md border border-slate-700 bg-slate-950 p-2.5" data-decision-confirm={confirm.kind}>
                     <p className="text-[11px] text-slate-300">
@@ -273,9 +378,25 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
                     <textarea
                         id="decision-note"
                         value={note}
-                        onChange={(e) => setNote(e.target.value)}
+                        onChange={(e) => {
+                            setNotice(null);
+                            setNote(e.target.value);
+                            persist(confirm.kind, confirm.clientId, e.target.value);
+                        }}
                         className="mt-1 h-16 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-500/60"
                     />
+                    {note.trim() && !notePersisted && (
+                        <p className="mt-1 text-[11px] text-amber-200" data-decision-storage-warning="">
+                            Device storage is unavailable. Copy your note before reloading or leaving this page.
+                        </p>
+                    )}
+                    {noteOrigin && (
+                        <p className={`mt-1 text-[11px] ${noteOrigin.moved ? "text-amber-200" : "text-slate-400"}`} data-decision-note-origin={noteOrigin.moved ? "moved" : "restored"}>
+                            {noteOrigin.restored ? `Unsaved note restored from ${noteOrigin.savedAt}, written for rev ${noteOrigin.revision}` : `This note was written for rev ${noteOrigin.revision}`}
+                            {noteOrigin.moved ? `; you are now deciding on rev ${shortHash(viewedRevision?.content_hash)}, so check that it still applies.` : "."}
+                            {" "}<button type="button" onClick={discardNote} className="underline" data-decision-draft-discard="">Discard note</button>
+                        </p>
+                    )}
                     <div className="mt-2 flex justify-end gap-2">
                         <button type="button" onClick={() => setConfirm(null)} disabled={busy} className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300">Cancel</button>
                         <button type="button" onClick={() => void submit()} disabled={busy} className="inline-flex items-center gap-1 rounded-md border border-cyan-500/50 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 disabled:opacity-50" data-decision-submit="">

@@ -595,3 +595,90 @@ test('a declared identity re-registered from another project keeps its own proje
     expect(adopted.json.document).toMatchObject({ id: chat.json.document.id, project_id: OTHER_PROJECT_ID, task_id: OTHER_TASK });
     expect((await api('GET', `/api/documents?project_id=${PROJECT_ID}&q=chat.md`)).json.total).toBe(1);
 });
+
+// ── 2026-10-04 (task a1cc8616): Robert's Request changes refused as operator_credential_unconfigured ──
+// The dashboard's shared fetch helper (dashboard/src/lib/auth.ts via nexus/shared.ts)
+// sent `Authorization: Bearer local-dev-token` with every call. The authority
+// consulted that header before the Access session, so a browser decision with a
+// verified session was answered 503 (no operator key on the host) or 403 (a key
+// provisioned), and the session itself was never inspected.
+const DASHBOARD_PLACEHOLDER = { authorization: 'Bearer local-dev-token' };
+
+test('a verified Access session decides although the dashboard attaches its placeholder bearer; the review stays pinned to the older revision', async () => {
+    const file = writeDoc('brief.md', '# Brief v1\n\n| identity | documents |\n');
+    const { json: { document, revision: v1 } } = await register(file, { deliverable: { intended_action: 'send' } });
+    // Robert opened his review on v1 ...
+    const review = (await api('POST', `/api/documents/${document.id}/reviews`, {}, { headers: DASHBOARD_PLACEHOLDER })).json.review;
+    expect(review.revision_id).toBe(v1.id);
+    // ... the producer rewrote the file, and he read the current revision (v2) under the changed banner.
+    fs.writeFileSync(file, '# Brief v2\n\n| identity | documents |\n\nMore.\n');
+    const reread = await api('GET', `/api/documents/${document.id}`, undefined, { headers: DASHBOARD_PLACEHOLDER });
+    const v2 = reread.json.revision;
+    expect(v2.id).not.toBe(v1.id);
+    expect(reread.json.review).toMatchObject({ id: review.id, revision_id: v1.id, document_changed: true });
+
+    const note = 'Change the "identity" column in the table below to be a summary of the documents instead of just listing what documents are available.';
+    const session = { headers: { 'cf-access-jwt-assertion': access.token(), ...DASHBOARD_PLACEHOLDER } };
+
+    // The live condition: no operator key on the host. Before the fix this answered 503 operator_credential_unconfigured.
+    delete process.env.NEXUS_OPERATOR_APPROVAL_KEY;
+    const recorded = await decide(document.id, v2.id, 'request_changes', { content_hash: v2.content_hash, note, client_decision_id: 'robert-rc-1' }, session);
+    expect(recorded.status).toBe(201);
+    expect(recorded.json.decision).toMatchObject({ decision: 'request_changes', revision_id: v2.id, content_hash: v2.content_hash, note, authority: 'access_user', actor_id: 'local_user' });
+    expect(recorded.json.review_status).toBe('changes_requested');
+
+    // A provisioned key does not change the answer: the placeholder is not that key, and the session still decides (before the fix: 403).
+    process.env.NEXUS_OPERATOR_APPROVAL_KEY = OPERATOR_KEY;
+    const approved = await decide(document.id, v2.id, 'approve', { client_decision_id: 'robert-ap-1' }, session);
+    expect(approved).toMatchObject({ status: 201, json: { decision: { authority: 'access_user', revision_id: v2.id } } });
+    const device = await decide(document.id, v2.id, 'request_changes', { client_decision_id: 'robert-dev-1' },
+        { headers: { 'cf-access-jwt-assertion': access.serviceToken(), ...DASHBOARD_PLACEHOLDER } });
+    expect(device).toMatchObject({ status: 201, json: { decision: { authority: 'access_device', revision_id: v2.id } } });
+
+    // Every decision names v2 exactly; the review and its comments stay on v1, and v1 itself can no longer be decided.
+    const history = (await api('GET', `/api/documents/${document.id}/history`)).json;
+    expect(history.decisions.map(d => d.revision_id)).toEqual([v2.id, v2.id, v2.id]);
+    expect(history.reviews).toEqual([expect.objectContaining({ id: review.id, revision_id: v1.id })]);
+    expect((await api('GET', `/api/documents/reviews/${review.id}`)).json.review).toMatchObject({ id: review.id, revision_id: v1.id, document_changed: true });
+    expect(await decide(document.id, v1.id, 'approve', { client_decision_id: 'robert-old-1' }, session)).toMatchObject({ status: 409, json: { code: 'stale_revision', revision_id: v1.id } });
+    expect(delivery.deliver).not.toHaveBeenCalled();
+});
+
+test('the placeholder bearer confers nothing by itself, every refusal survives the session-first order, and comments and Finish review never needed it', async () => {
+    const file = writeDoc('plan.md', '# Plan\n');
+    const { json: { document, revision } } = await register(file);
+    const attempt = options => decide(document.id, revision.id, 'request_changes', { client_decision_id: 'robert-2' }, options);
+
+    // The Mac app or an unsigned local caller with the placeholder: the bearer path, failing closed and naming what the session lacked.
+    delete process.env.NEXUS_OPERATOR_APPROVAL_KEY;
+    expect(await attempt({ headers: DASHBOARD_PLACEHOLDER })).toMatchObject({ status: 503, json: { code: 'operator_credential_unconfigured', reason: 'assertion-missing' } });
+    process.env.NEXUS_OPERATOR_APPROVAL_KEY = OPERATOR_KEY;
+    expect(await attempt({ headers: DASHBOARD_PLACEHOLDER })).toMatchObject({ status: 403, json: { code: 'operator_required', reason: 'assertion-missing' } });
+
+    const deny = [
+        [{ headers: { ...DASHBOARD_PLACEHOLDER, 'x-test-service': '1' } }, 403, 'operator_required'],
+        [{ headers: { 'cf-access-jwt-assertion': access.token(), 'x-praxis-bridge-token': 'bridge' } }, 403, 'operator_required'],
+        [{ headers: { 'cf-access-jwt-assertion': access.token(), 'cf-access-client-id': 'executor' } }, 403, 'operator_required'],
+        [{ headers: { 'cf-access-jwt-assertion': access.token({ email: 'someone@example.test' }), ...DASHBOARD_PLACEHOLDER } }, 403, 'operator_required'],
+        [{ headers: { 'cf-access-jwt-assertion': access.serviceToken({ common_name: 'ffffffffffffffffffffffffffffffff.access' }), authorization: `Bearer ${RUNTIME_KEY}` } }, 403, 'operator_required'],
+        [{ headers: { 'cf-access-jwt-assertion': 'not.a.token', ...DASHBOARD_PLACEHOLDER } }, 403, 'operator_required'],
+        [{ headers: { 'cf-access-jwt-assertion': access.token(), 'sec-fetch-site': 'cross-site' } }, 403, 'cross_site'],
+    ];
+    for (const [options, status, code] of deny) {
+        const response = await attempt(options);
+        expect({ options, status: response.status, code: response.json.code }).toEqual({ options, status, code });
+    }
+    expect((await api('GET', `/api/documents/${document.id}/history`)).json.decisions).toEqual([]);
+
+    // Comments and Finish review are the reviewer's own feedback, not a decision: the same placeholder-carrying session saves them with no operator proof.
+    const review = (await api('POST', `/api/documents/${document.id}/reviews`, {}, { headers: DASHBOARD_PLACEHOLDER })).json.review;
+    const comment = await api('POST', `/api/documents/reviews/${review.id}/comments`, { client_id: 'c-1', kind: 'document', body: 'Summarise the documents in the identity column.' }, { headers: DASHBOARD_PLACEHOLDER });
+    expect(comment.status).toBe(201);
+    const finished = await api('POST', `/api/documents/reviews/${review.id}/finish`, { summary: 'See the comment.' }, { headers: DASHBOARD_PLACEHOLDER });
+    expect(finished.status).toBe(202);
+    expect(finished.json.review).toMatchObject({ status: 'submitted', revision_id: revision.id });
+    expect((await api('GET', `/api/documents/${document.id}/history`)).json.decisions).toEqual([]);
+
+    // The operator credential still works on its own for a trusted tool that has no session.
+    expect(await attempt(operator)).toMatchObject({ status: 201, json: { decision: { authority: 'operator_credential' } } });
+});

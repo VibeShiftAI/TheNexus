@@ -257,29 +257,128 @@ list with `status=s`, and `all` is the sum of the four statuses.
   "revision_id": "<the revision the operator read>",
   "content_hash": "<optional, must match that revision>",
   "note": "<optional, at most 20000 characters>",
-  "client_decision_id": "<optional idempotency key, at most 120 characters>"
+  "client_decision_id": "<optional idempotency key, at most 120 characters>",
+  "executor": {
+    "id": "<executor identity, required when the block is present>",
+    "task_id": "<optional Nexus task>", "execution_id": "<optional Praxis execution>",
+    "source_submission_id": "<the review submission that carried Robert's instruction>",
+    "source_review_id": "<or the review itself; one of the two is required>",
+    "authorization_ref": "<optional standing authorization, for example the questionnaire id>"
+  }
 }
 ```
 
+`executor` is optional and marks an executor-recorded approval (below); a
+decision without it is a direct operator decision.
+
 Authority (`server/services/document-decision-authority.js`). The
 `local_user` stub every local request carries is not a credential, so a
-decision needs one of the operator proofs Nexus already trusts:
+decision needs one of the proofs Nexus trusts:
 
-| `authority` recorded | Proof |
-|---|---|
-| `access_user` | a verified Cloudflare Access login session for `NEXUS_OPERATOR_EMAIL` (tunnel browser, phone shell) |
-| `access_device` | the Windows travel shell's verified Access device session, pinned by `NEXUS_OPERATOR_DEVICE_IDS` |
-| `operator_credential` | `Authorization: Bearer <NEXUS_OPERATOR_APPROVAL_KEY>` from a trusted operator tool |
+| `authority` recorded | Proof | Records |
+|---|---|---|
+| `access_user` | a verified Cloudflare Access login session for `NEXUS_OPERATOR_EMAIL` (tunnel browser, phone shell) | Robert's direct decisions, and the approve-after-changes grant on Finish review |
+| `access_device` | the Windows travel shell's verified Access device session, pinned by `NEXUS_OPERATOR_DEVICE_IDS` | the same |
+| `operator_credential` | `Authorization: Bearer <NEXUS_OPERATOR_APPROVAL_KEY>` from a trusted operator tool | the same; this key is also Robert's stakeholder approval authority (`docs/contracts/stakeholder-policy.md`) and no executor holds it |
+| `document_executor_credential` | `Authorization: Bearer <NEXUS_DOCUMENT_APPROVAL_KEY>` from `scripts/record-document-approval.js` | an executor-recorded approval only (below): it needs the `executor` block citing a review Robert finished with the grant, it cannot decide directly or grant, and every stakeholder endpoint refuses it |
+
+The session is checked first, whatever `Authorization` header the request
+carries; a bearer is consulted only for a request with no verified session,
+the operator key first and then the document key. Both fail closed: a key
+shorter than 32 characters, or equal to another role's key, counts as
+unconfigured for every role. The dashboard's shared fetch helper sends a
+placeholder bearer with every call, and until 2026-10-04 the authority read
+it as an operator-credential attempt before looking at the session, which
+refused every browser decision (task a1cc8616). The document review client
+now sends no `Authorization` header at all.
 
 Refused: service users, `x-praxis-bridge-token`, `cf-access-client-id` /
 `cf-access-client-secret` (service tokens), the stakeholder runtime key, a
 wrong bearer, an unsigned local request, and any request with
 `Sec-Fetch-Site: cross-site`. Dispatched executors and the QA reviewer reach
-the API as `local_user` with no operator proof, so they cannot decide. The
-Mac app on `localhost:3000` has no Access session either: it can read and
-comment but cannot decide (the same rule as the chat restart authority).
-Decisions are made from the tunnel browser, the phone shell or the Windows
-travel shell, or with the operator credential once it is provisioned.
+the API as `local_user` with no operator proof, so they cannot decide on
+their own authority and cannot grant; since 2026-10-04 an executor may
+record Robert's own "approve with changes" instruction with the document
+executor credential, and only when Robert granted it (next paragraphs). The
+Mac app on `localhost:3000` has no Access session: it can read and comment
+but cannot decide (the same rule as the chat restart authority). Decisions
+are made from the tunnel browser, the phone shell or the Windows travel
+shell, or with the operator credential.
+
+### Executor-recorded approvals (2026-10-04, task a2553798)
+
+Robert's ruling in questionnaire `ask-robert-81299292-0878-4db1-a108-a14cc332f5dc`:
+his recurring "Approve with changes" review should not need a second click.
+The flow has two halves, and each is bound to its own credential.
+
+Robert's half is the grant. He reviews a revision and finishes the review
+with his instruction (for example "just make this one change and then mark
+this document approved") and `approve_after_changes: true` on
+`POST /api/documents/reviews/:reviewId/finish`, which the dashboard offers as
+the "Approve once this change is made" checkbox on the same Finish review
+click. The grant is Robert's own act, so that finish is authorized like a
+decision: it is accepted only from his verified session or his operator
+credential. An unsigned caller (the shared `local_user` every local process
+carries), the document executor credential, the runtime key, bridge or
+service-token headers and service users get `403 operator_required`, a
+cross-site request `403 cross_site`, a non-boolean flag `400 invalid_grant`,
+and the review stays a draft. A granting review records
+`approval_delegated: true` and `submitted_authority` (`access_user`,
+`access_device` or `operator_credential`); its submission payload carries
+both and its chat message says "Approval delegated". A finish without the
+flag is feedback exactly as before: `approval_delegated: false`, no proof
+recorded, and it never authorizes an approval, whoever finished it.
+
+The executor's half is the record. The executor of the follow-up task applies
+the change, registers the resulting revision (section 1) and records the
+approval of that exact revision with the document executor credential and an
+`executor` block citing the submission. The supported way to do that is
+`scripts/record-document-approval.js` (operations:
+`docs/reviews/2026-10-04-executor-recorded-document-approvals.md`), which reads
+`NEXUS_DOCUMENT_APPROVAL_KEY` from the fleet env file inside its own process
+(it never reads the operator key), re-reads the current revision, fetches its
+exact bytes from the raw route, checks their SHA-256 against the revision, the
+file on disk and the hash the executor expects, posts the decision with a
+deterministic `client_decision_id`, and prints the receipt, the consumer check
+and the history. No credential is printed, logged or placed in a prompt.
+
+The server binds an executor-recorded approval to Robert's grant
+(`server/services/document-decision-provenance.js`):
+
+- the `executor` block is accepted only with the document executor
+  credential, and only for `approve`: on a session or operator-credential
+  decision it is `invalid_provenance` (executor and bridge headers are refused
+  before the block is read). The document executor credential without the
+  block is refused too (`executor_provenance_required`), so on its own it
+  records nothing, approves nothing and cannot request changes;
+- the cited review must be a submitted review of an earlier revision of the
+  same document that Robert finished with the approve-after-changes grant
+  from his session or operator credential; anything else, including an
+  unsigned review and a review of his finished without the flag, is
+  `source_review_not_delegated`. Approving the reviewed revision itself is
+  refused (nothing changed, so the reviewer decides directly), as is a
+  revision older than it;
+- nothing may have been decided or reviewed since the instruction: a later
+  decision or a newer submitted review supersedes it, and an approval Robert
+  already recorded on the resulting revision is answered `already_decided`
+  with that decision;
+- a review authorizes exactly one executor-recorded approval;
+- the usual freshness rules apply unchanged: the revision must be the current
+  one and `content_hash` must match it;
+- the review's summary (the instruction), its comments and the grant
+  (`delegation`: `approval_delegated`, the granting `authority`, `granted_at`)
+  are snapshotted into the decision's `provenance`, with the executor's
+  identity and run.
+
+Direct operator decisions are unchanged: an operator-credential request
+without an `executor` block, and every Access-session decision, records
+`recorded_by: "operator"` with `provenance: null`. The server log lines name
+the recorder (`recorded_by=executor <id>, source_review=<review id>`) and the
+grant (`finished with approval delegated (authority=<authority>, submission=<id>)`),
+never a credential. The document executor credential is editorial only: the
+stakeholder decision and receipt endpoints ask for the operator or runtime
+role and answer it `403`, so it cannot widen a document approval into a
+product-scope approval.
 
 The server re-reads the file before recording. It records only when the
 requested revision is still the current one, then stores an append-only row
@@ -290,7 +389,27 @@ requested revision is still the current one, then stores an append-only row
   "id": "...", "document_id": "...", "revision_id": "...", "content_hash": "...",
   "decision": "approve", "actor_id": "...", "authority": "access_user",
   "note": "", "client_decision_id": "...", "intended_action": "send",
-  "created_at": "..."
+  "created_at": "...",
+  "recorded_by": "operator | executor",
+  "provenance": null
+}
+```
+
+For an executor-recorded approval `authority` is
+`document_executor_credential`, `recorded_by` is `executor` and `provenance`
+is:
+
+```json
+{
+  "executor": { "id": "...", "task_id": "...", "execution_id": "..." },
+  "source": {
+    "review_id": "...", "submission_id": "...", "revision_id": "<the revision Robert reviewed>",
+    "revision_hash": "...", "reviewer_id": "...", "submitted_at": "...",
+    "instruction": "<the review summary, verbatim>",
+    "comments": [{ "id": "...", "kind": "passage | document", "start_line": 3, "end_line": 6, "quote": "...", "body": "..." }],
+    "delegation": { "approval_delegated": true, "authority": "access_user | access_device | operator_credential", "granted_at": "<the review's submitted_at>" }
+  },
+  "authorization_ref": "ask-robert-81299292-0878-4db1-a108-a14cc332f5dc"
 }
 ```
 
@@ -302,8 +421,8 @@ is `201 { decision, review_status, document }`.
 | 404 | (none) | document not found |
 | 403 | `cross_site` | cross-site browser request |
 | 401 | `authentication_required` | no authenticated user |
-| 403 | `operator_required` | not an operator proof (Access refusals add `reason`) |
-| 503 | `operator_credential_unconfigured` | a bearer was sent but the operator key is not configured |
+| 403 | `operator_required` | not a trusted proof: no session and a bearer that is neither the operator key nor the document executor key (`reason` names what the session check found, for example `assertion-missing`) |
+| 503 | `operator_credential_unconfigured` | no verified session, and the bearer that was sent cannot be checked because the operator key is not configured (`reason` as above) |
 | 503 | `operator_check_unavailable` | the Access verifier could not run |
 | 400 | `invalid_decision` | bad `decision`, missing `revision_id`, bad hash, note or key |
 | 200 | (`duplicate: true`) | identical replay of a `client_decision_id`: the original decision |
@@ -313,9 +432,24 @@ is `201 { decision, review_status, document }`.
 | 409 | `content_mismatch` | `content_hash` does not match that revision |
 | 409 | `file_unavailable` | the file cannot be confirmed now (`file_state` says why) |
 | 409 | `stale_revision` | the document changed; `current_revision` is returned. Reopen and decide again |
+| 403 | `executor_provenance_required` | the document executor credential without an `executor` block: it records only executor-recorded approvals, never a direct decision |
+| 400 | `invalid_provenance` | malformed `executor` block, an unknown field, no source, or an `executor` block on a session or operator-credential decision |
+| 400 | `executor_decision_not_allowed` | an `executor` block with `request_changes` |
+| 404 | `source_review_not_found` | the cited review or submission is not on this document |
+| 409 | `source_review_not_submitted` | the cited review is still a draft |
+| 403 | `source_review_not_delegated` | the cited review was not finished with the approve-after-changes grant from Robert's session or operator credential (`approval_delegated` and `submitted_authority` are returned); it is feedback, not an authorization |
+| 409 | `source_review_revision` | the revision to approve is the reviewed revision itself, or older (`source_revision_id` is returned) |
+| 409 | `source_review_consumed` | an executor already recorded an approval on this review (`decision` is returned) |
+| 409 | `already_decided` | the revision is already approved, for example by Robert himself (`decision` is returned; read it back) |
+| 409 | `source_review_superseded` | a decision or a newer submitted review came after the cited review (`decision` or `review` is returned) |
 
 Idempotent replays are answered after authorization and before freshness
-checks, so a lost response on a good decision never turns into a conflict.
+checks, so a lost response on a good decision never turns into a conflict. A
+replay compares the recorder too: the same `client_decision_id` sent with a
+different executor identity or source, or without the `executor` block, is
+`idempotency_key_reused`. The source checks run before the file is re-read
+and again inside the insert transaction, so a decision or review landing in
+between wins.
 
 ## 7. Consuming a decision: the stakeholder sender (c9658570)
 
@@ -368,7 +502,19 @@ it sends:
 - To learn the outcome, read `GET /api/documents/:id` (`review_status`,
   `current_decision`) or list with `task_id=<task>&status=...`. Feedback
   from Finish review still arrives as the existing chat turn.
-- Never record decisions; Praxis has no operator proof and is refused.
+- The Praxis runtime never records decisions; it has no operator proof and is
+  refused, and `src/config.ts` strips `NEXUS_OPERATOR_APPROVAL_KEY` and
+  `NEXUS_DOCUMENT_APPROVAL_KEY` from the environment it hands executors (like
+  `PRAXIS_OPERATOR_KEY`). A dispatched executor records only Robert's own
+  "approve with changes" instruction, and only when he finished that review
+  with the approve-after-changes grant (the submission payload says
+  `approval_delegated: true` and the chat message "Approval delegated"), on
+  the revision that resulted from it, through
+  `scripts/record-document-approval.js` (section 6) with the document-scoped
+  executor credential; it never approves on its own judgement, a review
+  without the grant is feedback to act on and report, and `request_changes`
+  stays with the reviewer. The executor credential approves nothing else:
+  stakeholder proposals still need Robert's operator credential.
 - `intended_action` describes what happens after approval; the action itself
   stays with its owner (for `send`, the stakeholder sender, section 7).
 
@@ -381,6 +527,12 @@ it sends:
   are reachable this way.
 - Link with `review_path` (`/documents/<id>`) so the app stays in-session; use
   `review_url` only for content that leaves the app.
+- `/documents/<id>` always opens on the current revision, also when the
+  reader's latest review (`review.revision_id`) is of an earlier one. That
+  reviewed revision (`review.pinned_content`) is shown only on an explicit
+  switch, read-only for decisions; its comments keep their original lines and
+  quotes, and a passage found elsewhere in the current revision is only
+  labelled ("now at line N"), never re-anchored.
 - Approve document and Request changes send the `revision_id` (and
   `content_hash`) of the revision on screen, plus a fresh
   `client_decision_id` per click. On `409 stale_revision`, reload and show the
@@ -388,10 +540,28 @@ it sends:
   `403 operator_required`, explain that decisions need the tunnel, phone or
   travel session (the Mac app cannot decide). There is no capability probe
   endpoint in v1; the 403 is the signal.
+- Send no `Authorization` header with document requests from a browser
+  session: the session is the proof, and a bearer turns a refusal into a
+  credential problem (`operator_credential_unconfigured`).
+- Keep an unrecorded decision note on the device as it is typed, with the
+  document id, the revision it was written for and its `client_decision_id`;
+  bring it back after a reload or sign-in round trip, say which revision it
+  was written for whenever that is not the revision on screen, reuse the
+  attempt id only for the same decision on the same revision, and clear it
+  once a decision is recorded. A refusal message that recommends a reload
+  must not cost the note.
 - Keep Finish review and the decision buttons separate calls. Neither implies
-  the other.
+  the other. The "Approve once this change is made" checkbox on Finish review
+  sends `approve_after_changes: true` with the same finish call; it is not a
+  decision either, it lets the executor record one approval of the corrected
+  revision (section 6). It needs the session, so on `403 operator_required`
+  explain that the grant, like a decision, needs the tunnel, phone or travel
+  session, and keep the draft. Show `approval_delegated` on the finished
+  review so the reader can see which rounds delegated.
 - Show history from `/api/documents/:id/history`: revisions, decisions
-  (with `authority`), receipts and review rounds.
+  (with `authority`, `recorded_by` and, for an executor-recorded approval,
+  `provenance` with the instruction and the grant it acted on), receipts and
+  review rounds.
 
 ## 10. Legacy documents, migration and activation
 
@@ -411,9 +581,23 @@ it sends:
 - The running API serves the code it booted with. These routes become live
   when the API restarts, which belongs to the activation task, not to this
   one.
-- `NEXUS_OPERATOR_APPROVAL_KEY` is not provisioned by this task; until it is,
-  the bearer path answers 503 and Access sessions are the working decision
-  path.
+- `NEXUS_OPERATOR_APPROVAL_KEY` was not provisioned by the contract task;
+  until 2026-10-04 the bearer path answered 503 and Access sessions were the
+  only decision path. Task a2553798 provisioned it in the fleet env file
+  `/Volumes/Projects/.fleet-env` (outside every repo, mode 600; template entry
+  in `.fleet-env.example`), loaded by `server/utils/fleet-env.js` at boot, and
+  in its QA repair round the same day provisioned the separate
+  `NEXUS_DOCUMENT_APPROVAL_KEY` there too. A wrong bearer now answers
+  `403 operator_required` instead of 503.
+- Executor-recorded approvals (2026-10-04) add two columns to
+  `review_document_decisions`: `recorded_by` (default `operator`) and
+  `provenance` (JSON, null unless executor-recorded). Rows written before the
+  columns existed read as direct operator decisions; the append-only trigger
+  covers the new columns. The repair round adds two columns to
+  `document_reviews`: `approval_delegated` (default 0) and
+  `submitted_authority` (null). Reviews finished before the columns existed
+  read as feedback and never authorize an executor-recorded approval
+  (`source_review_not_delegated`); Robert decides on them directly.
 
 ## 11. Verification
 
@@ -424,7 +608,33 @@ it sends:
   comments, Finish review and QA, the 130-document status and pagination
   consistency check, exact-byte receipts, revisions and decisions for CRLF
   and BOM files (with legacy documents keeping normalized identity), the
-  cross-project producer rule, and migration of a frozen pre-change schema.
+  cross-project producer rule, and migration of a frozen pre-change schema
+  (including the 2026-10-02 decisions table gaining `recorded_by` and
+  `provenance`).
+- `npx jest server/__tests__/document-executor-approvals.test.js` covers
+  executor-recorded approvals: the delegated approval with its provenance
+  and grant snapshot, the grant itself (an unsigned review and a signed review
+  without the flag are refused as sources; an unsigned caller, the document
+  executor credential, the runtime key, bridge, service-token, service-user
+  and cross-site requests cannot grant and the draft survives; the session,
+  the device session and the operator credential can), the refusal matrix
+  (no, wrong and unconfigured credential, the operator credential or a session
+  carrying the block, the document credential without a block, bridge and
+  service-token headers, malformed blocks, unknown and unfinished reviews,
+  equal keys), the document-scoped credential (stakeholder decisions and
+  receipts refuse it while the operator credential still approves a
+  `scope_change`; it cannot decide directly or grant), lineage and drift
+  (reviewed revision, content mismatch, stale revision, new bytes after
+  approval), supersession by Robert's later decision or newer review and
+  `already_decided`, unchanged direct operator and session decisions, and
+  `scripts/record-document-approval.js` end to end (records with the document
+  key, replays, refuses without it, refuses the operator key handed to it,
+  stops on drift, never prints a credential). In Praxis,
+  `npm test -- executor_forbidden_env` proves both keys are scrubbed from the
+  environment executors inherit. In the dashboard,
+  `document-review.test.mjs` covers the "Approve once this change is made"
+  checkbox: the finish body carries `approve_after_changes: true` only when
+  it is ticked, and the delegated badge appears on the finished round.
 - The existing document suites (`documents-route`, `document-registry`,
   `document-review-format`, `document-review-delivery`,
   `document-review-receiver` under `server/__tests__/`) still pass unchanged.

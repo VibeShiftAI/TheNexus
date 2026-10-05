@@ -102,7 +102,9 @@ describe('tasks model control integration', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model_assignment: 'model:anthropic-claude-sonnet' })
         });
-        expect(db.updateTask).toHaveBeenCalledWith('task-1', expect.objectContaining({ model_assignment: 'model:anthropic-claude-sonnet' }), undefined);
+        // The fourth argument is the write's verified origin (contract-change authority); an unauthenticated PATCH is recorded as unverified.
+        expect(db.updateTask).toHaveBeenCalledWith('task-1', expect.objectContaining({ model_assignment: 'model:anthropic-claude-sonnet' }), undefined,
+            expect.objectContaining({ origin: expect.objectContaining({ kind: 'unverified' }) }));
     });
 
     test('resume redispatch includes resolved model override', async () => {

@@ -13,6 +13,7 @@ const { TaskBoardStatusSchema, normalizeTaskBoardStatus, AntigravityPayloadSchem
 const { checkPredecessorGate, triggerSuccessors } = require('../lib/task-sequence');
 const { praxisFetch } = require('../services/praxis-client');
 const { requireStakeholderAuthority } = require('../services/stakeholder-authority');
+const { createContractChangeAuthority } = require('../services/contract-change-authority');
 const {
     normalizeSourceClaim, guardSourceUpdate, guardPayloadUpdate, guardDispatchPayload,
     tierOf, UNVERIFIED_OPERATOR_SOURCE,
@@ -46,7 +47,9 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     }
     function admissionError(res, error) {
         if (sendLeaseError(res, error)) return;
-        res.status(error.status || 500).json({ error: error.message, code: error.code || 'work_admission_unavailable' });
+        // Refusals carry their detail (reason, undeclared_fields, change_ids) so a client can act on them.
+        const { message, status, code, stack, name, ...detail } = error;
+        res.status(status || 500).json({ error: message, code: code || 'work_admission_unavailable', ...detail });
     }
     const admissionResponse = task => ({ ...task, title: task.name, createdAt: task.created_at, updatedAt: task.updated_at,
         implementationPlan: task.plan_output, researchReport: task.research_output,
@@ -70,6 +73,18 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         try {
             const authority = requireStakeholderAuthority(req, 'runtime');
             res.json(admissionResponse(await db.resolveWorkAdmission(req.params.taskId, req.body, authority)));
+        } catch (error) { admissionError(res, error); }
+    });
+    // Robert's decision on a genuine executor/QA contract drift hold:
+    // approve the drifted contract, or return the task to the authorized one.
+    // His own contract edits never reach this endpoint; the PATCH guard
+    // records them as authorized (server/services/contract-change-authority.js).
+    const contractAuthority = createContractChangeAuthority();
+    router.post('/:taskId/work-admission/contract', async (req, res) => {
+        try {
+            const origin = await contractAuthority.classifyDecision(req);
+            const { expected_task_version, decision, change_ids } = req.body || {};
+            res.json(admissionResponse(await db.resolveWorkAdmissionContract(req.params.taskId, { expected_task_version, decision, change_ids }, origin)));
         } catch (error) { admissionError(res, error); }
     });
 
@@ -375,8 +390,13 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (hasRealActivity(existing, updates, req.headers)) {
                 updates.last_activity_at = updates.updated_at;
             }
-            console.log(`[Task Sync] Updating task ${taskId}: ${Object.keys(updates).filter(k => k !== 'updated_at').join(', ')}`);
-            const updated = await db.updateTask(taskId, updates, expectedVersion ?? existing.version);
+            // Who is writing, as far as Nexus can verify: Robert's own contract
+            // changes are authorized at any phase; everyone else's are recorded,
+            // and held while an executor or QA session can be reading the brief.
+            // A claimed origin that cannot be proved refuses the whole write.
+            const origin = await contractAuthority.classifyWrite(req);
+            console.log(`[Task Sync] Updating task ${taskId}: ${Object.keys(updates).filter(k => k !== 'updated_at').join(', ')} (origin ${origin.kind})`);
+            const updated = await db.updateTask(taskId, updates, expectedVersion ?? existing.version, { origin });
             if (!updated) return res.status(500).json({ error: 'Database error' });
             maybeTriggerSuccessors(existing, updated);
             res.json({ success: true, task: updated });
@@ -384,6 +404,10 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (sendLeaseError(res, err)) return;
             if (err.code === 'task_version_conflict') {
                 return res.status(409).json({ error: err.message, code: err.code });
+            }
+            if (err.status && err.code) {
+                const { message, status, code, stack, ...detail } = err;
+                return res.status(status).json({ error: message, code, ...detail });
             }
             console.error('[Task Sync] Error updating task:', err);
             res.status(500).json({ error: 'Database error' });

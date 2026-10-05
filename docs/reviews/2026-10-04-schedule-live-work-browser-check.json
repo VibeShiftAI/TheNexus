@@ -1,0 +1,262 @@
+{
+  "base": "http://127.0.0.1:3299",
+  "api": "http://127.0.0.1:4299",
+  "praxis": "http://127.0.0.1:4300",
+  "dist": ".next-live-work-verify",
+  "ids": {
+    "project": "proj-check-nexus",
+    "running": "task-check-running-0001",
+    "queuedCorrection": "task-check-queued-correction-0002",
+    "queuedSlot": "task-check-queued-slot-0003",
+    "successor": "task-check-successor-0004",
+    "idea": "task-check-idea-0005",
+    "done": "task-check-done-0006",
+    "slotEvent": "evt-check-slot-0003",
+    "adhocEvent": "evt-check-adhoc-0006",
+    "llmEvent": "evt-check-llm",
+    "titles": {
+      "task-check-running-0001": "Synthetic: show chat-dispatched work in Today’s Schedule",
+      "task-check-queued-correction-0002": "Synthetic: executor-recorded document approvals",
+      "task-check-queued-slot-0003": "Synthetic: honor operator-originated contract changes",
+      "task-check-successor-0004": "Synthetic: carry contract decisions through dispatch",
+      "task-check-idea-0005": "Synthetic: an unscheduled board idea",
+      "task-check-done-0006": "Synthetic: open the latest document revision"
+    }
+  },
+  "startedAt": "2026-10-04T23:07:38.084Z",
+  "steps": {
+    "01-home-queue": {
+      "rows": [
+        [
+          "running",
+          "task-check-running-0001"
+        ],
+        [
+          "queued",
+          "task-check-queued-correction-0002"
+        ],
+        [
+          "waiting",
+          "task-check-successor-0004"
+        ]
+      ],
+      "links": {
+        "task-check-running-0001": "Synthetic: show chat-dispatched work in Today’s Schedule",
+        "task-check-queued-correction-0002": "Synthetic: executor-recorded document approvals",
+        "task-check-successor-0004": "Synthetic: carry contract decisions through dispatch"
+      },
+      "queuedCount": "2 queued",
+      "q1": "#1Synthetic: executor-recorded document approvalsqueued #1 of 2 · waiting since 05:07 PM · correction round",
+      "running": "07:02 PMSynthetic: show chat-dispatched work in Today’s Schedulerunning · Claude Code · testing",
+      "waiting": "afterSynthetic: carry contract decisions through dispatchwaiting on “Synthetic: honor operator-originated contract changes” (queued #2) · starts automatically when it completes",
+      "q1Clock": "#1",
+      "slotBadge": "queued #2 of 2 · waiting since 07:01 PM",
+      "adhocBadge": false,
+      "availability": null,
+      "header": "1/3 done",
+      "upNext": "up next: Synthetic: executor-recorded document approvals · queued #1, starts when the slot frees",
+      "slotTitleLink": "Slot: Synthetic: honor operator-originated contract changes"
+    },
+    "02-calendar-queue": {
+      "rows": [
+        [
+          "running",
+          "task-check-running-0001"
+        ],
+        [
+          "queued",
+          "task-check-queued-correction-0002"
+        ],
+        [
+          "waiting",
+          "task-check-successor-0004"
+        ]
+      ],
+      "queuedCount": "2 queued",
+      "badge": "queued #2 of 2 · waiting since 07:01 PM",
+      "waiting": "afterSynthetic: carry contract decisions through dispatchwaiting on “Synthetic: honor operator-originated contract changes” (queued #2) · starts automatically when it completes↳ Synthetic: honor operator-originated contract changes · queued #2",
+      "links": {
+        "running": "Synthetic: show chat-dispatched work in Today’s Schedule",
+        "waiting": "Synthetic: carry contract decisions through dispatch"
+      },
+      "blockTitleLink": "Slot: Synthetic: honor operator-originated contract changes"
+    },
+    "03-slot-freed": {
+      "followedWithoutReload": true,
+      "rows": [
+        [
+          "finished",
+          "task-check-running-0001"
+        ],
+        [
+          "running",
+          "task-check-queued-correction-0002"
+        ],
+        [
+          "waiting",
+          "task-check-successor-0004"
+        ]
+      ],
+      "queuedCount": "1 queued",
+      "slotBadge": "queued #1 of 1 · waiting since 07:01 PM",
+      "waiting": "afterSynthetic: carry contract decisions through dispatchwaiting on “Synthetic: honor operator-originated contract changes” (queued #1) · starts automatically when it completes",
+      "finished": "07:07 PMSynthetic: show chat-dispatched work in Today’s Scheduleimplementation finished · QA pending",
+      "upNext": "up next: Synthetic: honor operator-originated contract changes · queued #1, starts when the slot frees"
+    },
+    "03-slot-freed-calendar": {
+      "rows": [
+        [
+          "finished",
+          "task-check-running-0001"
+        ],
+        [
+          "running",
+          "task-check-queued-correction-0002"
+        ],
+        [
+          "waiting",
+          "task-check-successor-0004"
+        ]
+      ]
+    },
+    "04-qa": {
+      "rows": [
+        [
+          "qa",
+          "task-check-queued-correction-0002"
+        ],
+        [
+          "finished",
+          "task-check-running-0001"
+        ],
+        [
+          "waiting",
+          "task-check-successor-0004"
+        ]
+      ],
+      "qa": "07:06 PMSynthetic: executor-recorded document approvalsimplementation finished · QA running (Codex)"
+    },
+    "05-unreachable": {
+      "staleNoteAppeared": true,
+      "note": "Runtime queue stale · last read 07:08 PM · Praxis dispatch-state HTTP 503",
+      "rowsKept": [
+        [
+          "qa",
+          "task-check-queued-correction-0002"
+        ],
+        [
+          "finished",
+          "task-check-running-0001"
+        ],
+        [
+          "waiting",
+          "task-check-successor-0004"
+        ]
+      ]
+    },
+    "05-unreachable-reload": {
+      "note": "Runtime queue unavailable · Praxis dispatch-state HTTP 503 · queued and running work cannot be shown",
+      "rows": [],
+      "calendarStillThere": true,
+      "queuedCountShown": false
+    },
+    "05-unreachable-reload-calendar": {
+      "note": "Runtime queue unavailable · Praxis dispatch-state HTTP 503 · queued and running work cannot be shown",
+      "rows": []
+    },
+    "06-empty": {
+      "rows": [],
+      "queuedCountShown": false,
+      "availability": null,
+      "header": "1/3 done",
+      "slotBadge": false
+    },
+    "06-empty-calendar": {
+      "queuedCount": "0 queued",
+      "rows": []
+    }
+  },
+  "network": {
+    "apiRequests": 406,
+    "apiPaths": [
+      "GET /api/praxis/dispatch-state",
+      "GET /api/praxis/council/sessions",
+      "GET /api/dispatches/active",
+      "GET /api/token-usage",
+      "GET /api/praxis/hitl/pending",
+      "GET /api/model-control/chat-config",
+      "GET /api/ai/chat/activity",
+      "GET /api/praxis/stats",
+      "GET /api/ingestion-control/topic-map",
+      "GET /api/praxis/llm-log",
+      "GET /api/model-control/options",
+      "GET /api/calendar",
+      "GET /api/documents",
+      "GET /api/knowledge-activity",
+      "GET /api/praxis/stream/snapshot",
+      "GET /api/notes",
+      "GET /api/board-state",
+      "GET /api/dispatch-insight/autonomy",
+      "GET /api/dispatch-insight/live-work",
+      "GET /api/activity",
+      "GET /api/ag/events",
+      "GET /api/projects",
+      "GET /api/pins",
+      "GET /api/praxis/voice-status",
+      "GET /api/praxis/stream",
+      "GET /api/praxis/council/arbiter",
+      "GET /api/projects/pulse",
+      "GET /api/health"
+    ],
+    "nonGetToApi": [],
+    "apiSaw": [
+      "GET /api/praxis/dispatch-state",
+      "GET /api/praxis/council/sessions",
+      "GET /api/dispatches/active",
+      "GET /api/praxis/hitl/pending",
+      "GET /api/model-control/chat-config",
+      "GET /api/ai/chat/activity",
+      "GET /api/praxis/stats",
+      "GET /api/ingestion-control/topic-map",
+      "GET /api/praxis/llm-log",
+      "GET /api/model-control/options",
+      "GET /api/calendar",
+      "GET /api/documents",
+      "GET /api/knowledge-activity",
+      "GET /api/praxis/stream/snapshot",
+      "GET /api/notes",
+      "GET /api/board-state",
+      "GET /api/dispatch-insight/autonomy",
+      "GET /api/dispatch-insight/live-work",
+      "GET /api/activity",
+      "GET /api/ag/events",
+      "GET /api/projects",
+      "GET /api/pins",
+      "GET /api/praxis/voice-status",
+      "GET /api/praxis/stream",
+      "GET /api/praxis/council/arbiter",
+      "GET /api/projects/pulse",
+      "GET /api/health",
+      "GET /__log"
+    ],
+    "apiWrites": [],
+    "pageRequestsToPraxis": 0,
+    "otherOrigins": [
+      "http://localhost:4000"
+    ],
+    "fakePraxisSaw": [
+      "GET /api/autonomy",
+      "GET /api/dispatch/state",
+      "POST /__scenario/slot-freed",
+      "POST /__scenario/qa",
+      "POST /__scenario/unreachable",
+      "POST /__scenario/empty",
+      "GET /__log"
+    ],
+    "fakePraxisWrites": [],
+    "exceptions": []
+  },
+  "failures": [],
+  "finishedAt": "2026-10-04T23:09:51.778Z",
+  "out": "/tmp/live-work-browser-check-r2"
+}

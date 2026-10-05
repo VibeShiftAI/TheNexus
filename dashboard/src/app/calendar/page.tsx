@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Plus, X, Calendar as CalendarIcon, Save, Clock, AlignLeft, CheckCircle2 } from "lucide-react";
 import {
@@ -13,36 +13,80 @@ import {
     type CalendarEventForm,
 } from "@/lib/calendar";
 import { ModelAssignmentControl } from "@/components/model-assignment-control";
+import { LiveWorkStrip } from "@/components/schedule-live-work-strip";
+import { useLiveRefetch } from "@/components/live-board-state";
+import { getLiveWork } from "@/lib/nexus/dispatch-insight";
+import { taskHref } from "@/lib/task-links";
+import {
+    applyLiveWorkRead,
+    INITIAL_LIVE_WORK_READ,
+    liveWorkAvailability,
+    mergeLiveWork,
+    type LiveWorkReadState,
+} from "@/lib/schedule-live-work";
+
+/** Local [00:00, 24:00) of the day containing `ts`, in epoch ms. */
+function dayBounds(ts: number): { start: number; end: number } {
+    const d = new Date(ts);
+    d.setHours(0, 0, 0, 0);
+    const start = d.getTime();
+    d.setDate(d.getDate() + 1);
+    return { start, end: d.getTime() };
+}
 
 export default function CalendarPage() {
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    // Runtime truth about chat-dispatched work (running / queued / waiting):
+    // read alongside the calendar so the grid can badge the same task and the
+    // strip can list what has no event yet. Kept apart from `events` so a
+    // failed runtime read never blanks the calendar, or the reverse.
+    const [liveRead, setLiveRead] = useState<LiveWorkReadState>(INITIAL_LIVE_WORK_READ);
+    const [dayStartTs, setDayStartTs] = useState(() => dayBounds(Date.now()).start);
 
     // Form state
     const [editForm, setEditForm] = useState<CalendarEventForm>(emptyCalendarEventForm());
 
-    const loadEvents = async () => {
-        try {
-            const today = new Date();
-            const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-            const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString();
-            const res = await fetch(calendarEventsUrl(startOfDay, endOfDay), { cache: "no-store" });
-            if (!res.ok) throw new Error(`Calendar API returned ${res.status}`);
-            const data = await res.json();
-            setEvents(Array.isArray(data) ? data : []);
-        } catch (e) {
-            console.error("Failed to load events", e);
-            setEvents([]);
-        } finally {
-            setLoading(false);
+    const loadEvents = useCallback(async () => {
+        // Bounds are taken per read, so the first refetch after local
+        // midnight shows the new day; the grid never carries yesterday over.
+        const bounds = dayBounds(Date.now());
+        const startOfDay = new Date(bounds.start).toISOString();
+        const endOfDay = new Date(bounds.end - 1000).toISOString();
+        const [calendar, live] = await Promise.allSettled([
+            fetch(calendarEventsUrl(startOfDay, endOfDay), { cache: "no-store" }).then(async (res) => {
+                if (!res.ok) throw new Error(`Calendar API returned ${res.status}`);
+                const data = await res.json();
+                return (Array.isArray(data) ? data : []) as CalendarEvent[];
+            }),
+            getLiveWork(),
+        ]);
+        if (calendar.status === "fulfilled") {
+            setEvents(calendar.value);
+            setDayStartTs(bounds.start);
+        } else {
+            console.error("Failed to load events", calendar.reason);
         }
-    };
-
-    useEffect(() => {
-        loadEvents();
+        setLiveRead((prev) =>
+            applyLiveWorkRead(
+                prev,
+                live.status === "fulfilled"
+                    ? { ok: true, response: live.value }
+                    : { ok: false, error: live.reason instanceof Error ? live.reason.message : String(live.reason ?? "runtime read failed") },
+            ),
+        );
+        setLoading(false);
     }, []);
+
+    // Reload when a task starts / finishes, the queue moves, or the day plan
+    // changes, with the shared subscription's slow fallback poll behind it.
+    useLiveRefetch(["schedule", "dispatch", "board"], loadEvents);
+
+    const dayWindow = useMemo(() => dayBounds(dayStartTs), [dayStartTs]);
+    const live = useMemo(() => mergeLiveWork(events, liveRead.response, dayWindow), [events, liveRead.response, dayWindow]);
+    const availability = liveWorkAvailability(liveRead);
 
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -166,8 +210,14 @@ export default function CalendarPage() {
                 <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
                     <div className="p-4 border-b border-slate-800 bg-slate-800/50 flex justify-between items-center">
                         <h2 className="text-lg font-semibold text-slate-200">Today's Schedule</h2>
-                        <span className="text-sm text-slate-400">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                        <span className="text-sm text-slate-400">{new Date(dayStartTs).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                     </div>
+
+                    {/* Work the runtime is running, reviewing, queueing or
+                        holding for linked work; chat-dispatched tasks have no
+                        calendar event until they finish, so this is where they
+                        show up (Robert, 2026-10-04). */}
+                    <LiveWorkStrip merged={live} availability={availability} />
 
                     <div className="relative overflow-y-auto h-[70vh] bg-slate-900 hide-scrollbar" style={{ position: 'relative' }}>
                         {loading && <div className="p-8 text-center text-slate-500">Loading schedule...</div>}
@@ -200,11 +250,37 @@ export default function CalendarPage() {
                                                 onClick={() => openEditModal(event)}
                                             >
                                                 <div className="flex justify-between items-start gap-2">
-                                                    <h3 className={`font-bold text-sm line-clamp-1 ${calendarEventTone(event).title}`}>{event.title}</h3>
+                                                    {/* A task-bound block keeps its task link: the title opens
+                                                        the task, the rest of the block still opens the editor. */}
+                                                    <h3 className={`font-bold text-sm line-clamp-1 ${calendarEventTone(event).title}`}>
+                                                        {event.task_id ? (
+                                                            <Link
+                                                                href={taskHref(event.task_id)}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="hover:underline"
+                                                                title={`${event.title}: open the task`}
+                                                            >
+                                                                {event.title}
+                                                            </Link>
+                                                        ) : (
+                                                            event.title
+                                                        )}
+                                                    </h3>
                                                     <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded opacity-70 bg-black/40">
                                                         {event.status}
                                                     </span>
                                                 </div>
+                                                {/* The same task is live in the runtime: say so on this
+                                                    block rather than listing it twice in the strip. */}
+                                                {live.badges.get(event.id) && (
+                                                    <span
+                                                        data-live-badge={live.badges.get(event.id)!.lane}
+                                                        className="mt-1 w-fit max-w-full truncate rounded border border-slate-600/60 bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-200"
+                                                        title={`${live.badges.get(event.id)!.label}: from the Praxis runtime`}
+                                                    >
+                                                        {live.badges.get(event.id)!.label}
+                                                    </span>
+                                                )}
                                                 
                                                 {event.description && (
                                                     <p className="text-xs text-slate-300 mt-1 opacity-80 line-clamp-2 leading-tight">

@@ -1,0 +1,139 @@
+{
+  "task": "b07f64ad-9be5-48f0-a1d6-70dd8b3cdfb5",
+  "script": "dashboard/scripts/latest-revision-browser-check.mjs",
+  "before": {
+    "build": "dashboard/.next-verify (BUILD_ID 2026-10-04 14:22 local, pre-change document-review.tsx), API :4299",
+    "passes": 29,
+    "failures": [
+      "03-ready-for-review: timed out waiting for the document page on rev dac22c6b",
+      "03-ready-for-review: header shows the latest revision rev dac22c6b",
+      "03-ready-for-review: latest registered content on screen (\"Revision two:\")",
+      "03-ready-for-review: the decision card targets rev dac22c6b",
+      "03-ready-for-review: deciding is not blocked on the latest revision",
+      "03-ready-for-review: the banner names both revisions",
+      "04-reviewed-revision: clicked \"View reviewed revision\"",
+      "06-task-deliverables: timed out waiting for the document page on rev cb70829f",
+      "06-task-deliverables: header shows the latest revision rev cb70829f",
+      "06-task-deliverables: latest registered content on screen (\"Revision three:\")",
+      "06-task-deliverables: the decision card targets rev cb70829f",
+      "06-task-deliverables: deciding is not blocked on the latest revision",
+      "07-back-forward: timed out waiting for the document page on rev fe0e4a67",
+      "07-back-forward: header shows the latest revision rev fe0e4a67",
+      "07-back-forward: latest registered content on screen (\"Revision four:\")",
+      "07-back-forward: the decision card targets rev fe0e4a67",
+      "07-back-forward: deciding is not blocked on the latest revision",
+      "08-reload: timed out waiting for the document page on rev fe0e4a67",
+      "08-reload: header shows the latest revision rev fe0e4a67",
+      "08-reload: latest registered content on screen (\"Revision four:\")",
+      "08-reload: the decision card targets rev fe0e4a67",
+      "08-reload: deciding is not blocked on the latest revision"
+    ],
+    "steps": [
+      { "step": "03-ready-for-review", "path": "/documents/baabb019-0a78-4e3c-9278-3ab952803d15", "header_revision": "0e6fdb4b", "api_current_revision": "174040cf-94a8-41b8-bc79-a2d7e2cfbb13", "api_current_hash": "dac22c6beafafa1c9eb25fea96a1b7eb00f4eec8f8d19b708ae50e45d3260bf5" },
+      { "step": "06-task-deliverables", "path": "/documents/baabb019-0a78-4e3c-9278-3ab952803d15", "header_revision": "0e6fdb4b", "api_current_revision": "1cc1bb19-ec18-4ed5-acab-dd838f6a4a27", "api_current_hash": "cb70829fe18fa520b5ee9561d232578ee8a9fc121498d6f51f8da6f7a1966b03" },
+      { "step": "07-back-forward", "path": "/documents/baabb019-0a78-4e3c-9278-3ab952803d15", "header_revision": "0e6fdb4b", "api_current_revision": "af2c85cb-bd9f-4a1e-b130-acbed8a1695f", "api_current_hash": "fe0e4a67963c50a9df81df4f49309b622e56dcd5246a5a618426b453c6bced72" },
+      { "step": "08-reload", "path": "/documents/baabb019-0a78-4e3c-9278-3ab952803d15", "header_revision": "0e6fdb4b", "api_current_revision": "af2c85cb-bd9f-4a1e-b130-acbed8a1695f", "api_current_hash": "fe0e4a67963c50a9df81df4f49309b622e56dcd5246a5a618426b453c6bced72" }
+    ],
+    "browser_writes": [
+      { "step": "01-review-rev1", "method": "POST", "path": "/api/documents/baabb019-0a78-4e3c-9278-3ab952803d15/reviews" },
+      { "step": "01-review-rev1", "method": "POST", "path": "/api/documents/reviews/9d4e976a-ba23-41db-b498-5ab58cfc1945/comments" },
+      { "step": "01-review-rev1", "method": "POST", "path": "/api/documents/reviews/9d4e976a-ba23-41db-b498-5ab58cfc1945/finish" }
+    ]
+  },
+  "after": {
+    "build": "dashboard/.next-b07f64ad (this change), API :4399",
+    "passes": 47,
+    "failures": [],
+    "checks": [
+      "01-review-rev1: rev 1 on screen",
+      "01-review-rev1: clicked #L3 [data-block-comment-button]",
+      "01-review-rev1: typed into textarea[aria-label=\"Comment text\"]",
+      "01-review-rev1: clicked \"Save comment\"",
+      "01-review-rev1: clicked [data-finish-button]",
+      "01-review-rev1: clicked \"Send to Praxis\"",
+      "02-register-rev2: re-registration kept document 5c1b824f (no duplicate): 200",
+      "02-register-rev2: a newer revision was registered",
+      "03-ready-for-review: the row links the stable document URL",
+      "03-ready-for-review: header shows the latest revision rev dac22c6b",
+      "03-ready-for-review: latest registered content on screen (\"Revision two:\")",
+      "03-ready-for-review: the decision card targets rev dac22c6b",
+      "03-ready-for-review: deciding is not blocked on the latest revision",
+      "03-ready-for-review: the banner names both revisions",
+      "03-ready-for-review: the finished review's comment is still listed",
+      "04-reviewed-revision: clicked \"View reviewed revision\"",
+      "04-reviewed-revision: the reviewed bytes, without the later change",
+      "04-reviewed-revision: no decision while the reviewed revision is on screen",
+      "04-reviewed-revision: Download serves the reviewed revision",
+      "04-reviewed-revision: clicked \"View current file\"",
+      "05-draft-note: clicked [data-decision-button=\"approve\"]",
+      "05-draft-note: Approve document names the revision on screen",
+      "05-draft-note: typed into textarea#decision-note",
+      "05-draft-note: clicked \"View reviewed revision\"",
+      "05-draft-note: clicked \"View current file\"",
+      "05-draft-note: the typed note is intact after switching views",
+      "06-task-deliverables: clicked header a[href^=\"/task/\"]",
+      "06-task-deliverables: re-registration kept document 5c1b824f (no duplicate): 200",
+      "06-task-deliverables: header shows the latest revision rev cb70829f",
+      "06-task-deliverables: latest registered content on screen (\"Revision three:\")",
+      "06-task-deliverables: the decision card targets rev cb70829f",
+      "06-task-deliverables: deciding is not blocked on the latest revision",
+      "06-task-deliverables: the task link opened rev 3",
+      "07-back-forward: re-registration kept document 5c1b824f (no duplicate): 200",
+      "07-back-forward: header shows the latest revision rev fe0e4a67",
+      "07-back-forward: latest registered content on screen (\"Revision four:\")",
+      "07-back-forward: the decision card targets rev fe0e4a67",
+      "07-back-forward: deciding is not blocked on the latest revision",
+      "07-back-forward: returning to the document shows rev 4",
+      "08-reload: header shows the latest revision rev fe0e4a67",
+      "08-reload: latest registered content on screen (\"Revision four:\")",
+      "08-reload: the decision card targets rev fe0e4a67",
+      "08-reload: deciding is not blocked on the latest revision",
+      "09-no-decisions: no decision was recorded by this check",
+      "09-no-decisions: four revisions of one document",
+      "09-no-decisions: the browser never posted a decision",
+      "09-no-decisions: no uncaught page exceptions"
+    ],
+    "steps": [
+      { "step": "03-ready-for-review", "path": "/documents/5c1b824f-ade3-4b0a-9657-5039fbd746ff", "header_revision": "dac22c6b", "api_current_revision": "8c44c479-73a3-4ad9-bb01-affecf809e69", "api_current_hash": "dac22c6beafafa1c9eb25fea96a1b7eb00f4eec8f8d19b708ae50e45d3260bf5" },
+      { "step": "06-task-deliverables", "path": "/documents/5c1b824f-ade3-4b0a-9657-5039fbd746ff", "header_revision": "cb70829f", "api_current_revision": "f766c9d9-54a5-4542-ab7a-f8f6fb30b66a", "api_current_hash": "cb70829fe18fa520b5ee9561d232578ee8a9fc121498d6f51f8da6f7a1966b03" },
+      { "step": "07-back-forward", "path": "/documents/5c1b824f-ade3-4b0a-9657-5039fbd746ff", "header_revision": "fe0e4a67", "api_current_revision": "04339ab7-00f8-458d-8183-0a68c439bb02", "api_current_hash": "fe0e4a67963c50a9df81df4f49309b622e56dcd5246a5a618426b453c6bced72" },
+      { "step": "08-reload", "path": "/documents/5c1b824f-ade3-4b0a-9657-5039fbd746ff", "header_revision": "fe0e4a67", "api_current_revision": "04339ab7-00f8-458d-8183-0a68c439bb02", "api_current_hash": "fe0e4a67963c50a9df81df4f49309b622e56dcd5246a5a618426b453c6bced72" }
+    ],
+    "browser_writes": [
+      { "step": "01-review-rev1", "method": "POST", "path": "/api/documents/5c1b824f-ade3-4b0a-9657-5039fbd746ff/reviews" },
+      { "step": "01-review-rev1", "method": "POST", "path": "/api/documents/reviews/bb2240f0-4ac9-413b-88d6-3d4b0ee69b49/comments" },
+      { "step": "01-review-rev1", "method": "POST", "path": "/api/documents/reviews/bb2240f0-4ac9-413b-88d6-3d4b0ee69b49/finish" }
+    ],
+    "exceptions": []
+  },
+  "live_readonly_3000": {
+    "api_current": {
+      "id": "52c13935-1cbb-47ef-80c8-4ff68637cb24",
+      "hash": "512d84fa2f633164b8f0e21255a6aa32f25565969bf2a45480c8350fe5fcbaea",
+      "review_revision": "d3d4889c-4f20-4932-a3db-c6d3135194e5",
+      "document_changed": true,
+      "review_status": "approved"
+    },
+    "task_row": true,
+    "task_row_version": "rev 512d84fa · 10/4/2026, 2:30:41 PM",
+    "page_loaded": true,
+    "from_task": {
+      "path": "/documents/b27b40ae-f697-4ef4-913d-a84fb1184484",
+      "header_rev": "512d84fa",
+      "banner": "A newer revision of this document was registered after the one your review covers. You are viewing the latest revision (rev 512d84fa); you reviewed rev a96cfef1, and your review's passage comments stay pinned to it and are not moved.View reviewed revision",
+      "decision_card_rev": "512d84fa",
+      "article_tail": "get, or an approval. It does not approve or substitute a new scoring product requirement. Joey's product choices and Robert's reserved decisions remain pending.",
+      "article_matches_api_content": true
+    },
+    "back_on_task": true,
+    "after_back_forward": {
+      "path": "/documents/b27b40ae-f697-4ef4-913d-a84fb1184484",
+      "header_rev": "512d84fa",
+      "banner": "A newer revision of this document was registered after the one your review covers. You are viewing the latest revision (rev 512d84fa); you reviewed rev a96cfef1, and your review's passage comments stay pinned to it and are not moved.View reviewed revision",
+      "decision_card_rev": "512d84fa",
+      "article_tail": "get, or an approval. It does not approve or substitute a new scoring product requirement. Joey's product choices and Robert's reserved decisions remain pending.",
+      "article_matches_api_content": true
+    },
+    "non_get_api_requests": []
+  }
+}

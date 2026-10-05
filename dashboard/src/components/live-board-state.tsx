@@ -16,6 +16,13 @@
  *     deduped by `eventId`, so during Phase 1 both transports can deliver the
  *     same event and a drop on either one degrades rather than freezes the UI.
  *     Phase 2 (docs/live-transport-phase2.md) retires the SSE half.
+ *   - It owns the app's reference on the shared connection lifecycle
+ *     (`lib/connection-lifecycle`, 2026-10-03): foreground return, network
+ *     return, a sleep gap or a transport failure trigger one bounded probe of
+ *     the API, and a passing probe invalidates EVERY domain so each surface
+ *     re-fetches authoritative data. The lifecycle's phase (`live`,
+ *     `recovering`, `renewing`, `offline`, `reauth`) is exposed here so
+ *     surfaces can say truthfully when what they show is not current.
  *
  * What consumers get is a set of monotonically increasing REVISION counters,
  * one per domain. A component does not read board data from here — it keeps
@@ -24,7 +31,7 @@
  *
  * Usage:
  *   useLiveRefetch(["board"], fetchBoard);          // event-driven + 60s drift poll
- *   const { connected, transport } = useLiveBoardState();
+ *   const { connected, transport, phase } = useLiveBoardState();
  */
 "use client";
 
@@ -35,10 +42,20 @@ import {
     useMemo,
     useRef,
     useState,
+    useSyncExternalStore,
     type ReactNode,
 } from "react";
 import type { PresenceState, StreamEvent } from "@praxis/contract";
 import { acquireLiveSocket } from "@/lib/live-socket";
+import {
+    getConnectionLifecycle,
+    type ConnectionState,
+    type LivePhase,
+    type ReauthResult,
+    type RecoverySignal,
+    type RenewalBridgeKind,
+    type SignInState,
+} from "@/lib/connection-lifecycle";
 import { usePraxisStream } from "@/hooks/use-praxis-stream";
 import {
     LIVE_DOMAINS,
@@ -46,13 +63,14 @@ import {
     applyFrame as reduceFrame,
     createFrameDeduper,
     domainsForEvent,
+    invalidateAll,
     type LiveDomain,
     type LiveFrameState,
     type LiveRevisions,
 } from "./live-board-state-logic";
 
 export { LIVE_DOMAINS, domainsForEvent };
-export type { LiveDomain, LiveRevisions };
+export type { LiveDomain, LiveRevisions, LivePhase };
 
 /** Slow drift-correction poll kept behind every live subscription. */
 export const LIVE_FALLBACK_POLL_MS = 60_000;
@@ -72,6 +90,42 @@ export interface LiveBoardStateValue {
     transport: LiveTransport;
     /** Epoch ms of the last frame seen on the socket, 0 if none. */
     lastSocketEventAt: number;
+    /**
+     * The shared recovery coordinator's verdict on the API: `live`,
+     * `recovering` (a probe is running), `renewing` (the session expired and
+     * the native shell was asked to renew it; bounded attempts), `offline`
+     * (unreachable, retrying with backoff) or `reauth` (the session expired
+     * and only the operator can bring it back, see `reauthenticate`).
+     * Independent of `connected`: a socket can still be delivering frames
+     * while the API refuses fetches, and vice versa.
+     */
+    phase: LivePhase;
+    /** Epoch ms when `phase` began (for "data as of" / "offline since" copy). */
+    phaseSince: number;
+    /** Epoch ms of the last probe that passed, 0 before the first. */
+    lastLiveAt: number;
+    /** True when the operator already went to sign in from this tab and the API still refuses. */
+    reauthAttempted: boolean;
+    /** Automatic renewal attempts made in the current outage (0 outside one). */
+    renewals: number;
+    /** Which native shell can renew the session without the page leaving; null in a browser. */
+    renewalKind: RenewalBridgeKind | null;
+    /** Where the explicit sign-in action stands: idle, its window is open, or the window was blocked. */
+    signIn: SignInState;
+    /**
+     * The one explicit action for an expired session: opens the sign-in flow
+     * in a separate window so this document and everything typed in it stay
+     * put. Acts only in `reauth`, never automatically.
+     */
+    reauthenticate: () => ReauthResult;
+    /**
+     * The labelled fallback when that window is blocked: sign in in THIS tab,
+     * which replaces the document (the chat draft survives, other unsaved
+     * edits do not). Acts only in `reauth`.
+     */
+    signInHere: () => boolean;
+    /** Ask the coordinator for a recovery run now (a Retry button, a failed fetch). */
+    requestRecovery: (reason: RecoverySignal) => void;
 }
 
 const EMPTY_VALUE: LiveBoardStateValue = Object.freeze({
@@ -81,7 +135,32 @@ const EMPTY_VALUE: LiveBoardStateValue = Object.freeze({
     connected: false,
     transport: "offline",
     lastSocketEventAt: 0,
+    phase: "live",
+    phaseSince: 0,
+    lastLiveAt: 0,
+    reauthAttempted: false,
+    renewals: 0,
+    renewalKind: null,
+    signIn: "idle",
+    reauthenticate: () => "noop",
+    signInHere: () => false,
+    requestRecovery: () => {},
 });
+
+/** Stable server-render snapshot of the lifecycle (nothing has been probed). */
+const SERVER_CONNECTION_STATE: ConnectionState = Object.freeze({
+    phase: "live",
+    since: 0,
+    lastLiveAt: 0,
+    failures: 0,
+    probes: 0,
+    lastSignal: null,
+    reauthAttempted: false,
+    renewals: 0,
+    renewalKind: null,
+    signIn: "idle",
+}) as ConnectionState;
+const getServerConnectionState = () => SERVER_CONNECTION_STATE;
 
 const LiveBoardStateContext = createContext<LiveBoardStateValue | null>(null);
 
@@ -113,6 +192,23 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
     // The SSE half — already open for the root-layout event ticker, so
     // consuming it here costs no extra connection.
     const sse = usePraxisStream();
+
+    // ── The recovery coordinator: one app-wide reference ─────────────
+    const lifecycle = getConnectionLifecycle();
+    const conn = useSyncExternalStore(lifecycle.subscribe, lifecycle.getState, getServerConnectionState);
+    useEffect(() => {
+        const stop = lifecycle.start();
+        // A passing probe after an outage, a foreground return or a network
+        // return: nothing we hold is known to be current, so every domain is
+        // invalidated and each surface's own fetch re-establishes the truth.
+        const off = lifecycle.onRecovered(() => {
+            setSocketState((prev) => invalidateAll(prev));
+        });
+        return () => {
+            off();
+            stop();
+        };
+    }, [lifecycle]);
 
     // ── The socket half: ONE subscription for the whole app ──────────
     useEffect(() => {
@@ -212,8 +308,18 @@ export function LiveBoardStateProvider({ children }: { children: ReactNode }) {
             connected: transport !== "offline",
             transport,
             lastSocketEventAt: socketState.lastSocketEventAt,
+            phase: conn.phase,
+            phaseSince: conn.since,
+            lastLiveAt: conn.lastLiveAt,
+            reauthAttempted: conn.reauthAttempted,
+            renewals: conn.renewals,
+            renewalKind: conn.renewalKind,
+            signIn: conn.signIn,
+            reauthenticate: lifecycle.reauthenticate,
+            signInHere: lifecycle.signInHere,
+            requestRecovery: lifecycle.signal,
         };
-    }, [socketState, sse.connected, sse.presence, sse.recentEvents]);
+    }, [socketState, sse.connected, sse.presence, sse.recentEvents, conn, lifecycle]);
 
     return (
         <LiveBoardStateContext.Provider value={value}>{children}</LiveBoardStateContext.Provider>
@@ -245,7 +351,8 @@ export interface LiveRefetchOptions {
  * Drop-in replacement for `useEffect(() => setInterval(fetch, N))`.
  *
  * Fetches immediately, again whenever any of `domains` is invalidated by a live
- * frame, and on a slow fallback poll so a dead transport degrades gracefully.
+ * frame (or by the connection lifecycle confirming a recovery), and on a slow
+ * fallback poll so a dead transport degrades gracefully.
  */
 export function useLiveRefetch(
     domains: LiveDomain[],

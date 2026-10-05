@@ -219,8 +219,9 @@ note. Outcomes:
 
 | Exit | `outcome` | Meaning and what to report |
 |---|---|---|
-| 0 | `recorded` | the approval is recorded; report `decision.id`, `decision.revision_id`, `decision.content_hash`, `recorded_by`, `provenance.source.submission_id`, `provenance.source.delegation` and the `history.decisions` readback |
-| 0 | `already_recorded` | an identical retry; same report |
+| 0 | `recorded` | the approval is recorded and the consumer check confirms it in force (`confirmed: true`); report `decision.id`, `decision.revision_id`, `decision.content_hash`, `recorded_by`, `provenance.source.submission_id`, `provenance.source.delegation` and the `history.decisions` readback |
+| 0 | `already_recorded` | an identical retry, confirmed the same way; same report |
+| 5 | `recorded` or `already_recorded` with `confirmed: false` | the row exists but the readback failed (`check.status`) or reports the approval no longer in force (`check.in_force: false`, `check.reason`); do not report it as approved, read the decision back and report what you find |
 | 1 | `refused` | the API refused; `response.code` says why (`source_review_not_delegated`: Robert did not grant, stop and report; `already_decided` returns Robert's own decision: report it, do not record another; `source_review_superseded`, `source_review_consumed`, `stale_revision`, `content_mismatch` mean stop and report) |
 | 2 | `credential_unavailable` | `NEXUS_DOCUMENT_APPROVAL_KEY` is not in the fleet env file for this process; report the gate, do not work around it |
 | 3 | `revision_drift` | the current revision does not match the raw bytes, the file on disk or `--expect-hash`; register the bytes you wrote and run again |

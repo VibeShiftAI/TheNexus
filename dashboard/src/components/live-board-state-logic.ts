@@ -155,7 +155,13 @@ export function applyFrame<S extends LiveFrameState>(
     const recentEvents =
         event.type === "heartbeat"
             ? prev.recentEvents
-            : [event, ...prev.recentEvents].slice(0, MAX_RECENT_EVENTS);
+            : event.type === "stream.reset"
+              // Everything we held predates a gap nobody can replay. Keeping it
+              // let event-derived lanes (hooks/use-crew-activity) keep showing
+              // runs the registry had long since closed; the reset frame alone
+              // marks the boundary, and each surface's refetch is the truth.
+              ? [event]
+              : [event, ...prev.recentEvents].slice(0, MAX_RECENT_EVENTS);
     return {
         ...prev,
         revisions,
@@ -166,4 +172,17 @@ export function applyFrame<S extends LiveFrameState>(
                 : prev.presence,
         lastSocketEventAt: viaSocket ? now() : prev.lastSocketEventAt,
     };
+}
+
+/**
+ * Bump every domain without a frame. The connection lifecycle just confirmed
+ * the API is reachable again after an outage, a foreground return or a network
+ * return, and nothing a surface holds is known to be current. The ring is kept
+ * (a `praxis:resync` / `stream.reset` that follows clears it, and the registry
+ * reconciliation in hooks/use-crew-activity decides what an old lane is worth).
+ */
+export function invalidateAll<S extends LiveFrameState>(prev: S): S {
+    const revisions = { ...prev.revisions };
+    for (const d of LIVE_DOMAINS) revisions[d] = revisions[d] + 1;
+    return { ...prev, revisions };
 }

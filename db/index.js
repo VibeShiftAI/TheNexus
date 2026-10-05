@@ -1226,7 +1226,13 @@ function createTask(task, admissionOptions) {
     }
 }
 
-function updateTask(taskId, updates, expectedVersion) {
+/**
+ * `context.origin` is the route's verified reading of who writes (see
+ * server/services/contract-change-authority.js); the admission guard uses it
+ * to tell Robert's own contract changes from executor or QA drift. Guard
+ * refusals carry a status and code and surface to the caller unchanged.
+ */
+function updateTask(taskId, updates, expectedVersion, context = {}) {
     if (!db) return null;
     try {
         return db.transaction(() => {
@@ -1235,7 +1241,7 @@ function updateTask(taskId, updates, expectedVersion) {
                 if (expectedVersion !== undefined) throw Object.assign(new Error('Task changed since it was read'), { code: 'task_version_conflict' });
                 return null;
             }
-            const normalized = workAdmission.guardUpdate(existing, normalizeTaskStatusField({ ...updates }, 'updateTask'));
+            const normalized = workAdmission.guardUpdate(existing, normalizeTaskStatusField({ ...updates }, 'updateTask'), context);
             delete normalized.version; // revisions are owned by the database trigger
             const { sql, values } = buildUpdate('tasks', normalized, 'id', taskId);
             const result = expectedVersion === undefined
@@ -1249,7 +1255,7 @@ function updateTask(taskId, updates, expectedVersion) {
             return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId));
         })();
     } catch (err) {
-        if (err.code === 'task_version_conflict') throw err;
+        if (err.code === 'task_version_conflict' || (err.status && err.code)) throw err;
         console.error('[Database] Error updating task:', err.message);
         return null;
     }
@@ -1300,7 +1306,8 @@ function batchCreateTasks(tasks, admissionOptions = []) {
                 const dependencies = (task.dependencies || []).map(id => canonicalIds.get(id) || id);
                 const successor_id = canonicalIds.get(task.successor_id) || task.successor_id;
                 if (JSON.stringify(dependencies) !== JSON.stringify(task.dependencies || []) || successor_id !== task.successor_id) {
-                    updateTask(task.id, { dependencies, ...(successor_id ? { successor_id } : {}) });
+                    updateTask(task.id, { dependencies, ...(successor_id ? { successor_id } : {}) }, undefined,
+                        { origin: { kind: 'system', authority: null, requester: 'batch_create_canonical_edges' } });
                 }
             }
             return results.map(t => deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(t.id)));
@@ -3353,6 +3360,10 @@ module.exports = {
     })(...args),
     recordWorkAdmissionConcerns: async (...args) => leasedBoardWrite((id, input, authority) => {
         workAdmission.concerns(id, input, authority);
+        return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id));
+    })(...args),
+    resolveWorkAdmissionContract: async (...args) => leasedBoardWrite((id, input, origin) => {
+        workAdmission.resolveContract(id, input, origin);
         return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id));
     })(...args),
     createTask: async (...args) => leasedBoardWrite(createTask)(...args),

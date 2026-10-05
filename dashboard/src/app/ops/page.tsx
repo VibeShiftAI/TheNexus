@@ -5,7 +5,7 @@
  */
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, Clock, AlertTriangle, MessageSquare, Terminal, Landmark } from "lucide-react";
@@ -23,7 +23,9 @@ import {
   type ExecutorRun,
   type CronJob,
 } from "@/components/bridge/dispatch-station";
-import { useLiveRefetch } from "@/components/live-board-state";
+import { useLiveBoardState, useLiveRefetch } from "@/components/live-board-state";
+import { getConnectionLifecycle, looksLikeTransportFailure, responseLooksJson } from "@/lib/connection-lifecycle";
+import { OpsConnectionStatus, fmtClock } from "@/components/ops-connection-status";
 import { useCrewActivity } from "@/hooks/use-crew-activity";
 import { AutonomyControl, useAutonomyControl } from "@/components/autonomy-control";
 import { OpsLocalQueue } from "@/components/ops-local-queue";
@@ -106,8 +108,13 @@ function statusChip(status: string) {
 export default function OpsConsolePage() {
   const router = useRouter();
   const { sseRuns } = useCrewActivity();
+  // The shared connection lifecycle's verdict (live / recovering / offline /
+  // reauth) and the one explicit sign-in action, for the status line below.
+  const live = useLiveBoardState();
   const [state, setState] = useState<DispatchStateResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  /** Epoch ms of the last dispatch-state answer applied; dates the rows on screen. */
+  const [loadedAt, setLoadedAt] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [queueRefreshKey, setQueueRefreshKey] = useState(0);
   // Council sessions (deliberations) — clickable into the Chamber transcript.
@@ -117,27 +124,50 @@ export default function OpsConsolePage() {
   const autonomyControl = useAutonomyControl(setActionMsg);
   const refreshAutonomy = autonomyControl.refresh;
 
+  // Sequence number of the newest `load()`; only that call's answer may land.
+  // A reconnect (or a foreground return) runs `load()` while a request from
+  // before the outage, or simply a slower one, is still in flight. Responses
+  // arrive in any order, so without this an obsolete answer that arrives last
+  // would overwrite the recovered rows, for instance replacing the active run
+  // the recovery fetched with the empty list from before it started.
+  const loadSeq = useRef(0);
+
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
+    const current = () => seq === loadSeq.current;
     setRefreshing(true);
     setQueueRefreshKey(key => key + 1);
     const autonomyRefresh = refreshAutonomy();
+    let res: Response | null = null;
     try {
-      const res = await fetch("/api/praxis/dispatch-state", { cache: "no-store" });
+      res = await fetch("/api/praxis/dispatch-state", { cache: "no-store", credentials: "same-origin" });
       if (!res.ok) throw new Error(`dispatch-state ${res.status}`);
-      setState(await res.json());
-      setErr(null);
+      // A 200 that is not JSON is a login page or a proxy error page, never telemetry.
+      if (!responseLooksJson(res)) throw new Error("dispatch-state answered with something other than JSON");
+      const data = (await res.json()) as DispatchStateResponse;
+      if (current()) {
+        setState(data);
+        setErr(null);
+        setLoadedAt(Date.now());
+      }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Dispatch telemetry unavailable");
+      // An obsolete request's failure says nothing about the connection now.
+      if (current()) {
+        setErr(e instanceof Error ? e.message : "Dispatch telemetry unavailable");
+        // The connection/session layer is the shared lifecycle's concern; the
+        // API's own JSON error (Praxis down behind a healthy Nexus) is not.
+        if (looksLikeTransportFailure(res)) getConnectionLifecycle().noteTransportFailure("fetch");
+      }
     }
     // Best-effort: a dark council store never blanks the dispatch console.
     try {
       const council = await getCouncilSessions(8);
-      setCouncilSessions(council.sessions);
+      if (current()) setCouncilSessions(council.sessions);
     } catch {
       /* keep the last list */
     }
     await autonomyRefresh;
-    setRefreshing(false);
+    if (current()) setRefreshing(false);
   }, [refreshAutonomy]);
 
   // P3-30 phase 2: the Ops console reacts to live frames instead of a fixed
@@ -184,6 +214,21 @@ export default function OpsConsolePage() {
     (a, b) => runRank(a) - runRank(b) || (b.updatedAt || "").localeCompare(a.updatedAt || ""),
   );
   const activeRuns = runRows.filter((r) => r.status === "active").length;
+  // Rows on screen are dated, not live, whenever the connection is not live or
+  // the last telemetry fetch failed.
+  const stale = live.phase !== "live" || err !== null;
+  // The empty list has four truthful readings: nothing loaded yet, nothing
+  // loaded and telemetry unavailable, "no runs" confirmed by current
+  // telemetry, or "no runs" in the LAST telemetry received while the current
+  // telemetry is unavailable. The last one must not read like the third: a
+  // run that started during the outage is not visible yet.
+  const emptyKind = !state ? (err ? "unavailable" : "loading") : stale ? "stale-none" : "none";
+  const emptyTail =
+    live.phase === "reauth"
+      ? "Live data is paused until you sign in."
+      : live.phase === "renewing"
+        ? "Renewing the session."
+        : "Retrying automatically.";
 
   // CLI conversations: per-task sessions (open ones are resumable) and the
   // permanent chat sessions per backend.
@@ -225,9 +270,25 @@ export default function OpsConsolePage() {
       </header>
 
       <div className="container mx-auto space-y-6 p-6">
-        {err && (
-          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-xs text-red-300">{err}</div>
-        )}
+        <OpsConnectionStatus
+          phase={live.phase}
+          phaseSince={live.phaseSince}
+          loadedAt={loadedAt}
+          err={err}
+          reauthAttempted={live.reauthAttempted}
+          signIn={live.signIn}
+          renewalKind={live.renewalKind}
+          onRetry={() => {
+            live.requestRecovery("manual");
+            void load();
+          }}
+          onReauth={() => {
+            live.reauthenticate();
+          }}
+          onSignInHere={() => {
+            live.signInHere();
+          }}
+        />
         {actionMsg && (
           <div className="flex items-center justify-between rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-3 text-xs text-cyan-200">
             <span>{actionMsg}</span>
@@ -247,11 +308,23 @@ export default function OpsConsolePage() {
             </span>
           </h3>
           {runRows.length === 0 ? (
-            <div className="py-4 text-center text-xs text-slate-500">
-              No dispatch or agent runs on record yet.
+            <div
+              className="py-4 text-center text-xs text-slate-500"
+              data-ops-runs-empty={emptyKind}
+            >
+              {emptyKind === "none"
+                ? "No dispatch or agent runs on record yet."
+                : emptyKind === "stale-none"
+                  ? `No runs in the last telemetry received${loadedAt ? ` (as of ${fmtClock(loadedAt)})` : ""}; current telemetry is unavailable, so a run started since then cannot be shown yet. ${emptyTail}`
+                  : emptyKind === "unavailable"
+                    ? `Dispatch telemetry unavailable; the run list cannot be shown until it answers. ${emptyTail}`
+                    : "Loading runs…"}
             </div>
           ) : (
-            <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
+            <div
+              className={`max-h-80 space-y-1 overflow-y-auto pr-1${stale ? " opacity-60" : ""}`}
+              data-ops-stale={stale ? "true" : undefined}
+            >
               {runRows.map((r) => (
                 <div
                   key={r.taskId}

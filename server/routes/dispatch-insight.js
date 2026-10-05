@@ -12,6 +12,12 @@
  *        incomplete predecessors, dormant project, suspended executor,
  *        machine-wide slot busy — or "eligible" when nothing does. Plus the
  *        containment summary: slot holder, queue, executor health, incidents.
+ *   GET  /api/dispatch-insight/live-work → Today's Schedule's view of work
+ *        that has NO day-plan slot: what is running, what is queued behind
+ *        the CLI slot (Praxis's own order), what finished implementation but
+ *        still awaits review, and which linked board tasks wait on that work
+ *        (successor_id / dependencies). A read projection of runtime truth
+ *        plus board links — see projectLiveWork below.
  *   GET  /api/dispatch-insight/task/:taskId → per-run insight for the task
  *        screen's dispatch console: the effective wall-clock ceiling (the only
  *        ceiling Praxis enforces), elapsed vs ceiling, estimated cost,
@@ -39,7 +45,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFile } = require('child_process');
-const { isTaskDone, TaskBoardStatusSchema, LEGACY_TASK_STATUS_MAP } = require('@praxis/contract');
+const { isTaskDone, TaskBoardStatusSchema, LEGACY_TASK_STATUS_MAP, TASK_AUTO_START_STATUSES } = require('@praxis/contract');
 const { praxisFetch } = require('../services/praxis-client');
 const { buildRunTrace, summarizeTraceQuality } = require('../services/run-trace');
 const { createCouncilBallotReader, DEFAULT_COUNCIL_SESSIONS_DIR } = require('../services/council-ballots');
@@ -133,6 +139,244 @@ function toTime(iso) {
 
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ── Live work for Today's Schedule ───────────────────────────────────────
+// Robert, 2026-10-04: "when you add tasks like this, they should appear in
+// today's schedule so I know they are in the queue". Chat-dispatched (ad hoc)
+// work has no day-plan slot, and its calendar event is written by the ad-hoc
+// completion reconciler only AFTER it finishes — so while it was queued or
+// running the schedule panel could not show it at all. Praxis already
+// publishes the runtime truth (executors.runs, executors.cliQueue,
+// executors.deferredQa) and the board holds the links (dependencies,
+// successor_id). projectLiveWork is the read projection of both. It writes
+// nothing, enqueues nothing and never calls a Praxis tool.
+//
+// Lanes, in display priority:
+//   running  — an ACTIVE implementation run (kind "task"). startedAt is real.
+//   qa       — the implementation run finished and a reviewer run (kind "qa",
+//              id "qa--<taskId>") is active. Finished is NOT passed.
+//   queued   — a cliQueue entry, carrying Praxis's own position and length
+//              and the waiting-since clock. `correction` marks a queued
+//              QA-correction continuation (args.continuation / repair_context).
+//   finished — implementation run finished, no reviewer running, not queued.
+//              boardStatus says what that means (completed → done on the
+//              board; in_progress → review pending; todo → parked, with the
+//              board's own status_message verbatim).
+//   waiting  — a board task that is the successor_id of live work, or lists
+//              live work in `dependencies`, followed along the chain. Unlinked
+//              board ideas are never listed, and a board row that reads
+//              in_progress with no runtime run is NOT reported as running.
+const LIVE_LANE_RANK = { running: 0, qa: 1, queued: 2, finished: 3, waiting: 4 };
+// Board statuses that can never be "waiting" on anything.
+const NEVER_WAITING_STATUSES = new Set(['cancelled', 'canceled', 'rejected', 'archived']);
+
+function runKindOf(run) {
+    if (typeof run?.kind === 'string') return run.kind;
+    const id = String(run?.taskId || '');
+    if (id.startsWith('qa--')) return 'qa';
+    if (id.startsWith('agent-')) return 'agent';
+    return 'task';
+}
+
+function parseDependencyList(text) {
+    const parsed = parseJson(text, []);
+    return Array.isArray(parsed) ? parsed.filter((d) => typeof d === 'string' && d) : [];
+}
+
+/**
+ * Pure: a Praxis dispatch-state snapshot + the board rows → ordered live-work
+ * items. Exported on the router factory for callers that already hold both.
+ */
+function projectLiveWork(state, boardRows) {
+    const board = new Map();
+    for (const r of boardRows || []) {
+        const metadata = parseJson(r.metadata, {}) || {};
+        board.set(r.id, {
+            id: r.id,
+            projectId: r.project_id ?? null,
+            projectName: r.project_name || null,
+            title: r.name || null,
+            status: r.status ?? null,
+            normalized: normalizeStatus(r.status),
+            dependencies: parseDependencyList(r.dependencies),
+            successorId: typeof r.successor_id === 'string' && r.successor_id ? r.successor_id : null,
+            statusMessage: typeof metadata.status_message === 'string' && metadata.status_message.trim()
+                ? metadata.status_message
+                : null,
+            archived: Boolean(r.archived_at),
+        });
+    }
+
+    const executors = state?.executors || {};
+    const runs = (Array.isArray(executors.runs) ? executors.runs : []).filter((r) => r && typeof r.taskId === 'string');
+    const queue = (Array.isArray(executors.cliQueue) ? executors.cliQueue : []).filter((q) => q && typeof q.taskId === 'string');
+    const deferredQa = new Map(
+        (Array.isArray(executors.deferredQa) ? executors.deferredQa : [])
+            .filter((d) => d && typeof d.taskId === 'string')
+            .map((d) => [d.taskId, d]),
+    );
+
+    // Board truth first (fresher title, project, status); Praxis's copy of the
+    // title when the task is not on this board.
+    const base = (taskId, fallbackTitle) => {
+        const b = board.get(taskId);
+        return {
+            taskId,
+            title: b?.title || fallbackTitle || taskId,
+            projectId: b?.projectId ?? null,
+            projectName: b?.projectName ?? null,
+            boardStatus: b?.status ?? null,
+            statusMessage: b?.statusMessage ?? null,
+        };
+    };
+
+    const items = new Map();
+
+    // 1. Running: the active implementation runs.
+    for (const run of runs) {
+        if (runKindOf(run) !== 'task' || run.status !== 'active') continue;
+        items.set(run.taskId, {
+            ...base(run.taskId, run.title),
+            lane: 'running',
+            executor: run.executor || null,
+            phase: run.phase || null,
+            startedAt: run.startedAt || null,
+            updatedAt: run.updatedAt || null,
+        });
+    }
+
+    // 2. Queued, in Praxis's order. An active run outranks a stale queue echo.
+    queue.forEach((q, index) => {
+        if (items.has(q.taskId)) return;
+        const args = q.args && typeof q.args === 'object' ? q.args : {};
+        items.set(q.taskId, {
+            ...base(q.taskId, q.title),
+            lane: 'queued',
+            executor: q.executor || null,
+            enqueuedAt: q.enqueuedAt || null,
+            position: index + 1,
+            queueLength: queue.length,
+            correction: args.continuation === true || Boolean(args.repair_context),
+            queueState: typeof q.state === 'string' ? q.state : null,
+        });
+    });
+
+    // 3. Finished implementation runs (latest per task) → qa or finished.
+    const activeQa = new Map();
+    for (const run of runs) {
+        if (runKindOf(run) !== 'qa' || run.status !== 'active') continue;
+        activeQa.set(run.taskId.replace(/^qa--/, ''), run);
+    }
+    const latestFinished = new Map();
+    for (const run of runs) {
+        if (runKindOf(run) !== 'task' || run.status === 'active') continue;
+        const prev = latestFinished.get(run.taskId);
+        if (!prev || (toTime(run.updatedAt) ?? 0) > (toTime(prev.updatedAt) ?? 0)) latestFinished.set(run.taskId, run);
+    }
+    for (const [taskId, run] of latestFinished) {
+        if (items.has(taskId) || board.get(taskId)?.archived) continue;
+        const qa = activeQa.get(taskId) || null;
+        const deferred = deferredQa.get(taskId) || null;
+        items.set(taskId, {
+            ...base(taskId, run.title),
+            lane: qa ? 'qa' : 'finished',
+            executor: run.executor || null,
+            startedAt: run.startedAt || null,
+            finishedAt: run.updatedAt || null,
+            outcome: run.status || null,
+            qa: qa ? { executor: qa.executor || null, startedAt: qa.startedAt || null, status: 'active' } : null,
+            qaDeferred: deferred ? { since: deferred.deferredAt || null, reason: deferred.reason || null } : null,
+        });
+    }
+
+    // 4. Waiting: board tasks linked to live work, along the chain. "Live"
+    // for this purpose excludes finished work the board already calls done:
+    // its successor has either started (and is listed above) or is not
+    // waiting on it any more.
+    const live = new Set(
+        [...items.values()]
+            .filter((it) => it.lane !== 'finished' || !isTaskDone(it.boardStatus))
+            .map((it) => it.taskId),
+    );
+    // Who waits and what each waits on are two questions (QA round 1,
+    // 2026-10-04: answering both in one pass made a dependency list depend on
+    // the board's row order and dropped an unfinished prerequisite that was
+    // not itself linked to live work).
+    //   a. Membership follows the chain from live work until a pass adds
+    //      nothing, so row order cannot matter.
+    //   b. Each waiting task then names EVERY unfinished predecessor: the
+    //      `dependencies` the board does not call done, plus the live or
+    //      waiting task that names it as `successor_id`.
+    const canWait = (b) => !items.has(b.id) && !b.archived && !isTaskDone(b.status) && !NEVER_WAITING_STATUSES.has(b.normalized);
+    const predecessorsOf = new Map(); // successor id → ids naming it as successor_id
+    for (const b of board.values()) {
+        if (!b.successorId) continue;
+        if (!predecessorsOf.has(b.successorId)) predecessorsOf.set(b.successorId, []);
+        predecessorsOf.get(b.successorId).push(b.id);
+    }
+    const waitingIds = new Set();
+    const inChain = (id) => live.has(id) || waitingIds.has(id);
+    for (let changed = true; changed;) {
+        changed = false;
+        for (const b of board.values()) {
+            if (waitingIds.has(b.id) || !canWait(b)) continue;
+            if (!b.dependencies.some(inChain) && !(predecessorsOf.get(b.id) || []).some(inChain)) continue;
+            waitingIds.add(b.id);
+            changed = true;
+        }
+    }
+    const unfinished = (id) => {
+        if (live.has(id)) return true;
+        const dep = board.get(id);
+        return Boolean(dep) && !dep.archived && !isTaskDone(dep.status);
+    };
+    const waiting = new Map();
+    for (const id of waitingIds) {
+        const b = board.get(id);
+        const on = [];
+        for (const depId of b.dependencies) {
+            if (unfinished(depId) && !on.includes(depId)) on.push(depId);
+        }
+        const predecessors = (predecessorsOf.get(b.id) || []).filter(inChain);
+        for (const predId of predecessors) {
+            if (!on.includes(predId)) on.push(predId);
+        }
+        waiting.set(b.id, {
+            ...base(b.id),
+            lane: 'waiting',
+            // Praxis auto-dispatches THE successor when its owner completes,
+            // but only from a status a successor may be started from.
+            autoStart: predecessors.length > 0 && TASK_AUTO_START_STATUSES.includes(b.normalized),
+            waitingOnIds: on,
+        });
+    }
+    for (const w of waiting.values()) {
+        const { waitingOnIds, ...rest } = w;
+        items.set(w.taskId, {
+            ...rest,
+            waitingOn: waitingOnIds.map((id) => {
+                const dep = items.get(id) || waiting.get(id);
+                return {
+                    taskId: id,
+                    title: dep?.title || board.get(id)?.title || id,
+                    lane: dep?.lane || null,
+                    position: dep?.position ?? null,
+                    boardStatus: board.get(id)?.status ?? null,
+                };
+            }),
+        });
+    }
+
+    return [...items.values()].sort((a, b) => {
+        const rank = (LIVE_LANE_RANK[a.lane] ?? 9) - (LIVE_LANE_RANK[b.lane] ?? 9);
+        if (rank !== 0) return rank;
+        const pos = (a.position ?? 0) - (b.position ?? 0);
+        if (pos !== 0) return pos;
+        const time = (toTime(a.startedAt || a.finishedAt) ?? 0) - (toTime(b.startedAt || b.finishedAt) ?? 0);
+        if (time !== 0) return time;
+        return String(a.title).localeCompare(String(b.title));
+    });
 }
 
 /** The task's active run in a Praxis dispatch-state snapshot, if any. */
@@ -536,6 +780,55 @@ function createDispatchInsightRouter({
             praxis: { reachable: Boolean(state), error: praxisError },
             containment,
             tasks,
+        });
+    });
+
+    // ─── Live work for Today's Schedule ──────────────────────────────────
+    // See projectLiveWork (module top). The board read tolerates a pre-
+    // sequencing schema (no successor_id column) so a fixture or an old copy
+    // still projects dependency-linked waiting rows.
+    let tasksHaveSuccessorColumn = null;
+    function boardHasSuccessorColumn() {
+        if (tasksHaveSuccessorColumn === null) {
+            try {
+                tasksHaveSuccessorColumn = db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'successor_id');
+            } catch {
+                tasksHaveSuccessorColumn = false;
+            }
+        }
+        return tasksHaveSuccessorColumn;
+    }
+
+    router.get('/live-work', async (_req, res) => {
+        res.setHeader('Cache-Control', 'no-store');
+        let state = null;
+        let praxisError = null;
+        try {
+            state = await fetchDispatchState();
+        } catch (err) {
+            praxisError = err.message || 'Praxis unreachable';
+        }
+        // No runtime read → no rows. The board alone cannot say what is
+        // queued or running, and the client renders this as unavailable.
+        if (!state) {
+            return res.json({ at: new Date().toISOString(), praxis: { reachable: false, error: praxisError }, items: [] });
+        }
+        let rows;
+        try {
+            const successor = boardHasSuccessorColumn() ? 't.successor_id' : 'NULL AS successor_id';
+            rows = db.prepare(`
+                SELECT t.id, t.project_id, t.name, t.status, t.dependencies, t.metadata, t.archived_at, ${successor},
+                       p.name AS project_name
+                FROM tasks t LEFT JOIN projects p ON p.id = t.project_id
+            `).all();
+        } catch (err) {
+            console.error('[DispatchInsight] live-work board read failed:', err.message);
+            return res.status(500).json({ error: 'Failed to read board: ' + err.message });
+        }
+        res.json({
+            at: new Date().toISOString(),
+            praxis: { reachable: true, error: null },
+            items: projectLiveWork(state, rows),
         });
     });
 
@@ -1115,3 +1408,4 @@ function createDispatchInsightRouter({
 }
 
 module.exports = createDispatchInsightRouter;
+module.exports.projectLiveWork = projectLiveWork;

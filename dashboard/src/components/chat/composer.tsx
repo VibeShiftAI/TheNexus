@@ -12,6 +12,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, Loader2, Mic, Square, Paperclip, XCircle, Image } from "lucide-react";
 
 import { AttachmentChips } from "@/components/chat/attachment-chips";
+import { clearChatDraft, readChatDraft, writeChatDraft } from "@/lib/chat-draft";
 import type { AttachmentPreview } from "@/hooks/use-file-attachments";
 
 export interface ChatComposerProps {
@@ -38,6 +39,19 @@ export function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio,
     const [input, setInput] = useState("");
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const composerIcon = isInline ? 16 : 18;
+
+    // Unsent text is mirrored to sessionStorage (lib/chat-draft) so a reload,
+    // or the sign-in round trip the connection banner offers after a session
+    // expiry, brings it back instead of losing it. Written on each edit and
+    // cleared on a successful send; restored once on mount when empty.
+    const updateInput = useCallback((text: string) => {
+        setInput(text);
+        writeChatDraft(text);
+    }, []);
+    useEffect(() => {
+        const draft = readChatDraft();
+        if (draft) setInput((prev) => prev || draft);
+    }, []);
 
     const resizeInput = useCallback(() => {
         const el = inputRef.current;
@@ -71,12 +85,12 @@ export function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio,
         const onSeed = (e: Event) => {
             const text = (e as CustomEvent<{ text?: string }>).detail?.text;
             if (!text) return;
-            setInput(text);
+            updateInput(text);
             inputRef.current?.focus();
         };
         window.addEventListener("nexus:chat-seed", onSeed);
         return () => window.removeEventListener("nexus:chat-seed", onSeed);
-    }, []);
+    }, [updateInput]);
 
     const submit = () => {
         // Clicking the Send button moves focus to the button; restore it to
@@ -84,6 +98,7 @@ export function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio,
         // matching the old <input>'s Enter-to-send flow.
         if (onSend(input)) {
             setInput("");
+            clearChatDraft();
             inputRef.current?.focus();
         }
     };
@@ -105,7 +120,7 @@ export function ChatComposer({ isInline, isOpen, loading, isRecording, hasAudio,
                 ref={inputRef}
                 rows={1}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => updateInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={hasAudio ? "Add a message (optional)..." : (attachedCount > 0 ? "Add a message (optional)..." : "Message Praxis...")}
                 className={isInline

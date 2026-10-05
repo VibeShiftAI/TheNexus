@@ -649,3 +649,21 @@ test('an unavailable database fails closed with 503 on both surfaces', async () 
         await new Promise(resolve => isolated.close(resolve));
     }
 });
+
+// Declared document deliverables keep normalized display text separately from exact bytes.
+test('artifact detail preserves captured BOM and CRLF bytes covered by the immutable hash', async () => {
+    await grant(project.id, joey.id);
+    const exact = '\ufeff# Exact source\r\n\r\nClient text.\r\n';
+    const normalized = exact.slice(1).replace(/\r\n/g, '\n');
+    const doc = db.documentReviews.insertDocument({ title: 'Exact source', path: path.join(dir, 'exact.md'), project_id: project.id, kind: 'spec', registered_by: 'test' });
+    const revision = db.documentReviews.insertRevision({ document_id: doc.id, content_hash: sha256(exact), content: normalized, byte_length: Buffer.byteLength(exact), line_count: normalized.split('\n').length });
+    db.documentReviews.insertRevisionExact(revision.id, exact);
+    db.documentReviews.setCurrentRevision(doc.id, revision.id);
+    const published = await publish(project.id, { kind: 'document', title: 'Exact source', document_id: doc.id, revision_id: revision.id });
+    expect(published.status).toBe(201);
+    const result = await detail(joey.id, project.id, published.json.artifact.id);
+    expect(result.status).toBe(200);
+    expect(result.json.content.content).toBe(exact);
+    expect(sha256(result.json.content.content)).toBe(result.json.content.content_hash);
+    expect(result.json.artifact.document.content_hash).toBe(sha256(exact));
+});

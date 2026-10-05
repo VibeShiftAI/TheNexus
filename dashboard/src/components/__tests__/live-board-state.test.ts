@@ -9,6 +9,7 @@ import {
     applyFrame,
     createFrameDeduper,
     domainsForEvent,
+    invalidateAll,
     type LiveFrameState,
 } from "../live-board-state-logic";
 
@@ -111,6 +112,34 @@ test("heartbeats bump nothing and stay out of the ring; the ring is capped", () 
     for (let i = 0; i < MAX_RECENT_EVENTS + 10; i += 1) live.apply(frame("task.updated", `u${i}`), true);
     assert.equal(live.state.recentEvents.length, MAX_RECENT_EVENTS);
     assert.equal((live.state.recentEvents[0] as { eventId?: string }).eventId, `u${MAX_RECENT_EVENTS + 9}`, "newest first");
+});
+
+test("stream.reset (or a praxis:resync) clears the ring to the reset frame alone: nothing held predates a gap nobody can replay", () => {
+    const live = makeApplier();
+    live.apply(frame("task.started", "s1", { executor: "codex", taskId: "t-old" }), true);
+    live.apply(frame("executor.progress", "s2"), true);
+    live.apply(frame("task.updated", "s3"), true);
+    assert.equal(live.state.recentEvents.length, 3);
+    live.apply(frame("stream.reset", "r1"), true);
+    assert.equal(live.state.recentEvents.length, 1, "the stale lanes are gone");
+    assert.equal(live.state.recentEvents[0].type, "stream.reset");
+    // Life goes on after the boundary.
+    live.apply(frame("task.updated", "s4"), true);
+    assert.deepEqual(live.state.recentEvents.map((e) => (e as { eventId?: string }).eventId), ["s4", "r1"]);
+});
+
+test("invalidateAll bumps every domain by exactly one and keeps the ring and presence (a recovery, not a reset)", () => {
+    const live = makeApplier();
+    live.apply(frame("task.updated", "u1"), true);
+    live.apply(frame("presence.changed", "p1", { presence: { activity: "thinking" } }), false);
+    const before = live.state;
+    const after = invalidateAll(before);
+    for (const d of LIVE_DOMAINS) assert.equal(after.revisions[d], before.revisions[d] + 1, d);
+    assert.equal(after.recentEvents, before.recentEvents, "ring untouched");
+    assert.equal(after.presence, before.presence);
+    assert.equal(after.lastSocketEventAt, before.lastSocketEventAt);
+    assert.notEqual(after.revisions, before.revisions, "new revisions object so consumers re-render");
+    assert.deepEqual(before.revisions, live.state.revisions, "input not mutated");
 });
 
 test("a presence.changed frame updates the presence snapshot; the reducer never mutates its input", () => {

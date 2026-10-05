@@ -1,0 +1,99 @@
+{
+  "base": "http://127.0.0.1:3299",
+  "api": "http://127.0.0.1:4299",
+  "doc": "d7257024-0ab4-4537-a0d8-2caa90a155e8",
+  "startedAt": "2026-10-04T17:48:57.854Z",
+  "steps": {
+    "01-open": {
+      "status": "Document: review pending",
+      "card": "needs_review",
+      "revisions": 1,
+      "decisions": 0
+    },
+    "02-comment": {
+      "reviewId": "be11c219-7095-4947-ac30-4c3017bf141e",
+      "reviewRevision": "dce5b128-f75f-41b9-ab79-47f75c77c356",
+      "comments": 1,
+      "status": "draft"
+    },
+    "03-refused-placeholder-bearer": {
+      "notice": " This session carries no operator sign-in, so the request fell back to a credential this Nexus does not have configured. Nothing was recorded and your note is kept on this device. Reload the app and try again; if it repeats, record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+      "noteKept": true,
+      "stored": "dce5b128-f75f-41b9-ab79-47f75c77c356",
+      "decisions": 0
+    },
+    "04-refused-no-session": {
+      "notice": " Recording a document decision needs Robert’s verified operator session or operator credential; this request carries neither. Nothing was recorded. Reading and feedback still work in this session; record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+      "decisions": 0
+    },
+    "05-reload-recovers-note": {
+      "announcement": "Unsaved note from 10/4/2026, 1:48:58 PM, written for rev 0e6fdb4b, is kept on this device; open Request changes to continue.Discard note",
+      "restoredNote": true,
+      "origin": "Unsaved note restored from 10/4/2026, 1:48:58 PM, written for rev 0e6fdb4b. Discard note"
+    },
+    "06-file-changed": {
+      "rev1": "dce5b128-f75f-41b9-ab79-47f75c77c356",
+      "rev2": "d5d74728-e058-47bb-84ec-b65aa90fa3d1",
+      "hint": "Unsaved note from 10/4/2026, 1:48:58 PM, written for rev 0e6fdb4b, is kept on this device; open Request changes to continue.Discard note",
+      "moved": "Unsaved note restored from 10/4/2026, 1:48:58 PM, written for rev 0e6fdb4b; you are now deciding on rev df59292b, so check that it still applies. Discard note",
+      "note": true
+    },
+    "07-session-records-request-changes": {
+      "okNotice": " Changes requested rev df59292b. Nothing was sent or published.",
+      "decision": {
+        "revision_id": "d5d74728-e058-47bb-84ec-b65aa90fa3d1",
+        "authority": "access_user",
+        "note": true,
+        "decision": "request_changes"
+      },
+      "reviewRevision": "dce5b128-f75f-41b9-ab79-47f75c77c356",
+      "status": "Document: changes requested",
+      "stored": null
+    },
+    "08-device-session-approves": {
+      "notice": " Approved rev df59292b. Nothing was sent or published.",
+      "approval": {
+        "revision_id": "d5d74728-e058-47bb-84ec-b65aa90fa3d1",
+        "authority": "access_device",
+        "decision": "approve"
+      },
+      "status": "Document: approved"
+    },
+    "09-executor-header-refused": {
+      "notice": " Executor and bridge credentials cannot record document decisions. Nothing was recorded. Reading and feedback still work in this session; record the decision from the Nexus app signed in as the operator (the phone or Windows app).",
+      "decisions": 2
+    },
+    "10-finish-review-delivers": {
+      "submission": {
+        "id": "b03bb20e-2698-4f45-9a0b-f71adfa9a320",
+        "delivery_status": "delivered",
+        "attempts": 1,
+        "receipt": true
+      },
+      "relays": [
+        "docreview:b03bb20e-2698-4f45-9a0b-f71adfa9a320"
+      ],
+      "card": " Delivered to PraxisFinished 10/4/2026, 1:49:02 PMReceipt: delivered 10/4/2026, 1:49:02 PM into the Praxis conversation (8a0cee56…). Praxis's reply is in the br",
+      "decisions": 2
+    }
+  },
+  "network": {
+    "apiRequests": 35,
+    "documentRequests": 14,
+    "bearerOnDocuments": [],
+    "bearerElsewhere": [
+      "GET /api/praxis/voice-status",
+      "GET /api/board-state"
+    ],
+    "otherOrigins": [
+      "http://localhost:4000"
+    ],
+    "foreignRequests": [
+      "GET http://localhost:4000/socket.io/",
+      "GET http://localhost:4000/api/chat/active"
+    ],
+    "exceptions": []
+  },
+  "failures": [],
+  "finishedAt": "2026-10-04T17:49:05.985Z"
+}

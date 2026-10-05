@@ -7,6 +7,7 @@ import { CortexProvider } from "@/components/cortex-provider";
 import { GlobalVoiceDock } from "@/components/global-voice-dock";
 import { EventTicker } from "@/components/bridge/event-ticker";
 import { LiveBoardStateProvider } from "@/components/live-board-state";
+import { ConnectionBanner } from "@/components/connection-banner";
 import { MobileShellBridge } from "@/components/mobile-shell-bridge";
 
 const geistSans = Geist({
@@ -61,6 +62,8 @@ export default function RootLayout({
             </footer>
             {/* Live Praxis event strip — pinned to the bottom on every page */}
             <EventTicker />
+            {/* Connection truth: hidden while live; reconnecting / offline / sign-in-needed otherwise */}
+            <ConnectionBanner />
             {/* Android shell seam — renders nothing in a browser (docs/mobile-shell.md) */}
             <MobileShellBridge />
             <GlobalVoiceDock />

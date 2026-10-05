@@ -10,7 +10,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Activity, Send, Inbox, Zap, CheckCircle2, Radio } from "lucide-react";
-import { usePraxisStream } from "@/hooks/use-praxis-stream";
+import { useLiveBoardState } from "@/components/live-board-state";
 import { useCurrentFocus } from "@/hooks/use-current-focus";
 import { CurrentFocusPanel } from "@/components/bridge/current-focus";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
@@ -54,7 +54,10 @@ interface Chip {
 }
 
 export function StatusStrip() {
-  const { presence, connected } = usePraxisStream();
+  // The folded live context (socket + SSE), not the SSE store alone: the chip
+  // used to read "Offline" whenever the EventSource was dead even while the
+  // socket was delivering every frame (every backend restart, until a reload).
+  const { presence, connected } = useLiveBoardState();
   const { pendingRequests, error: inputError, refresh: refreshInput } = useHitlInbox();
   const focus = useCurrentFocus(pendingRequests, inputError, refreshInput);
   const [showFocus, setShowFocus] = useState(false);
