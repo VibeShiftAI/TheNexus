@@ -9,7 +9,7 @@
  * question, task deep links, park-without-answer, and resolved history.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -31,6 +31,8 @@ import { useHitlInbox } from "@/hooks/use-hitl-inbox";
 import { useLiveBoardState } from "@/components/live-board-state";
 import { hitlTaskMeta } from "@/lib/hitl-meta";
 import { HitlCard, timeAgo } from "@/components/hitl-card";
+import { AlertAction } from "@/components/alert-action";
+import { describeHitlAction, isAlertRequest } from "@/lib/alert-action";
 import {
   isBoardMaintenanceHitl,
   isScheduleHitl,
@@ -122,9 +124,13 @@ export default function InboxPage() {
   // decides the alert. Once the pending list is in, scroll the target into
   // view and glow it briefly; reset the filter if it would hide the target.
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [linkedRequest, setLinkedRequest] = useState<HITLRequest | null>(null);
+  const [linkedError, setLinkedError] = useState<string | null>(null);
+  const [linkedLoading, setLinkedLoading] = useState(false);
   // Arriving by hash while already mounted (the Android shell routes push
   // taps as "/inbox#<id>" on the running page) must re-run the trip below.
   const [hashTrip, setHashTrip] = useState(0);
+  const focusedTrip = useRef('');
   useEffect(() => {
     const onHashChange = () => setHashTrip((n) => n + 1);
     window.addEventListener("hashchange", onHashChange);
@@ -132,10 +138,25 @@ export default function InboxPage() {
   }, []);
   useEffect(() => {
     if (loading) return;
-    const hash = decodeURIComponent(window.location.hash.replace(/^#/, ""));
-    if (!hash) return;
+    let hash: string;
+    try { hash = decodeURIComponent(window.location.hash.replace(/^#/, "")); }
+    catch { setLinkedRequest(null); setLinkedLoading(false); setLinkedError('This request link is malformed. Open a request from the list below.'); return; }
+    if (!hash) { setLinkedRequest(null); setLinkedLoading(false); setLinkedError(null); return; }
     const target = pendingRequests.find((r) => r.id === hash);
-    if (!target) return;
+    if (!target) {
+      const controller = new AbortController();
+      setLinkedLoading(true); setLinkedError(null); setLinkedRequest(null);
+      void fetch(`/api/praxis/hitl/${encodeURIComponent(hash)}`, { cache: 'no-store', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(5000)]) })
+        .then(async response => {
+          if (!response.ok) throw new Error(response.status === 404 ? 'This request was not found. Its absence does not confirm it was resolved.' : 'The current request status is unavailable. Refresh to try again.');
+          const request = await response.json();
+          if (!isAlertRequest(request) || request.id !== hash) throw new Error('The request response could not be verified. Refresh to try again.');
+          if (!controller.signal.aborted) { setLinkedRequest(request as HITLRequest); setHighlightId(hash); }
+        }).catch(error => { if (!controller.signal.aborted) setLinkedError(error instanceof Error ? error.message : 'Unable to load this request.'); })
+        .finally(() => { if (!controller.signal.aborted) setLinkedLoading(false); });
+      return () => controller.abort();
+    }
+    setLinkedRequest(null); setLinkedError(null); setLinkedLoading(false);
     if (filter !== "all" && filterBucket(target) !== filter) {
       setFilter("all");
       return; // effect re-runs once the card is visible
@@ -149,6 +170,15 @@ export default function InboxPage() {
     window.history.replaceState(null, "", window.location.pathname);
     return () => window.clearTimeout(timer);
   }, [loading, pendingRequests, filter, hashTrip]);
+  useEffect(() => {
+    if (!linkedRequest) return;
+    const trip = `${hashTrip}:${linkedRequest.id}`;
+    if (focusedTrip.current === trip) return;
+    focusedTrip.current = trip;
+    const target = document.getElementById(`hitl-${linkedRequest.id}`);
+    target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    target?.focus({ preventScroll: true });
+  }, [linkedRequest, hashTrip]);
 
   return (
     <div
@@ -233,13 +263,22 @@ export default function InboxPage() {
             {error}
           </p>
         ) : null}
+        {linkedLoading && <p className="text-sm text-slate-400">Checking the linked request…</p>}
+        {linkedError && <div role="alert" className="rounded border border-amber-500/30 p-3 text-sm text-amber-200">{linkedError} <button className="underline" onClick={() => setHashTrip(n => n + 1)}>Retry request lookup</button></div>}
+        {linkedRequest && <section id={`hitl-${linkedRequest.id}`} tabIndex={-1} className="rounded-lg ring-2 ring-cyan-400/80 p-3">
+          <h2 className="text-sm font-semibold text-cyan-200">Linked request</h2>
+          {linkedRequest.taskId && <Link className="text-xs text-cyan-300 underline" href={`/task/${encodeURIComponent(linkedRequest.taskId)}`}>Review current task →</Link>}
+          {linkedRequest.resolution
+            ? <AlertAction action={describeHitlAction(linkedRequest)} inline />
+            : <HitlCard request={linkedRequest} resolving={resolvingId === linkedRequest.id} onResolve={async (id, input) => { await resolveRequest(id, input); setHashTrip(n => n + 1); }} />}
+        </section>}
 
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
             Scanning channels…
           </div>
-        ) : visible.length === 0 ? (
+        ) : visible.length === 0 && !error ? (
           <div className="flex flex-col items-center gap-2 py-16 text-center">
             <Sparkles className="h-6 w-6 text-emerald-400/70" />
             <p className="text-sm font-semibold uppercase tracking-widest text-emerald-300/90">
@@ -305,15 +344,15 @@ export default function InboxPage() {
 
 function HistoryRow({ request }: { request: HITLRequest }) {
   const meta = hitlTaskMeta(request);
-  const answer = request.resolution?.choice || request.resolution?.freeText || "(no answer — parked)";
+  const answer = [request.resolution?.choice, request.resolution?.freeText].filter(Boolean).join(' · ') || "(closed without an answer)";
   return (
     <div className="flex items-start gap-2 rounded-md border border-slate-900 bg-slate-950/40 px-2.5 py-2">
       <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500/60" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-400">
+        <Link href={`/inbox#${encodeURIComponent(request.id)}`} className="block truncate text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-400 underline">
           {meta.taskTitle ? <span className="text-slate-300">{meta.taskTitle} — </span> : null}
           {request.question}
-        </p>
+        </Link>
         <p className="truncate font-mono text-[length:var(--hitl-fs-10,0.625rem)] text-slate-600">
           ↳ {answer} · {request.resolution?.resolvedBy ?? "?"} ·{" "}
           {timeAgo(request.resolution?.resolvedAt)}

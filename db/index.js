@@ -24,6 +24,7 @@ const { initializeStakeholderPolicy, createStakeholderPolicy } = require('./stak
 const { initializeDocumentReviews, createDocumentReviewStore } = require('./document-reviews');
 const { initializeClientAccess, createClientAccess } = require('./client-access');
 const { initializeWorkAdmission, createWorkAdmission } = require('./work-admission');
+const { initializeActivityEvents, recordActivityEvent } = require('./activity-events');
 
 /**
  * Write-side backstop for the canonical task-status enum (@praxis/contract
@@ -100,6 +101,7 @@ try {
     clientAccess = createClientAccess(db);
     initializeWorkAdmission(db);
     workAdmission = createWorkAdmission(db);
+    initializeActivityEvents(db);
 
     // Canonical-status sweep (2026-07-05 unification): idempotent, runs every
     // boot. Writers normalize at createTask/updateTask, but a process still on
@@ -1259,6 +1261,24 @@ function updateTask(taskId, updates, expectedVersion, context = {}) {
         console.error('[Database] Error updating task:', err.message);
         return null;
     }
+}
+
+// Read and merge canonical payload inside the same transaction as admission and CAS.
+function applyTaskDelta(taskId, operation, input, context = {}) {
+    if (!db) return null;
+    return db.transaction(() => {
+        const task = deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId));
+        if (!task) throw Object.assign(new Error('Task not found'), { status: 404, code: 'task_not_found' });
+        const planner = require('./task-deltas')[operation];
+        if (!['appendRuling', 'workspaceDelta'].includes(operation)) throw new Error('Unknown task delta');
+        const payload = planner(task, input);
+        if (input.expected_version !== undefined && input.expected_version !== task.version) {
+            throw Object.assign(new Error('Task changed since it was read'), { status: 409, code: 'task_version_conflict' });
+        }
+        if (payload === null) return task;
+        const timestamp = now();
+        return updateTask(taskId, { antigravity_payload: payload, updated_at: timestamp, last_activity_at: timestamp }, task.version, context);
+    })();
 }
 
 function deleteTask(taskId) {
@@ -3119,34 +3139,11 @@ const AG_EVENT_RETENTION = 5000;
 
 async function recordAgEvent(event = {}) {
     if (!db) return null;
-    const title = typeof event.title === 'string' ? event.title.trim() : '';
-    const eventType = typeof event.event_type === 'string' ? event.event_type.trim() : '';
-    if (!title || !eventType) return null;
     try {
-        const result = db.prepare(`
-            INSERT INTO ag_events (event_type, severity, title, message, task_id, source, metadata, requires_action)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-            eventType,
-            event.severity || 'info',
-            title,
-            event.message || null,
-            event.task_id || null,
-            event.source || 'praxis',
-            JSON.stringify(event.metadata || {}),
-            event.requires_action ? 1 : 0,
-        );
-        // Bounded log: this is a feed, not an archive. Trim by id (monotonic)
-        // rather than created_at so rows sharing a timestamp cannot survive
-        // the cut arbitrarily.
-        db.prepare(`
-            DELETE FROM ag_events
-            WHERE id <= (SELECT MAX(id) FROM ag_events) - ?
-        `).run(AG_EVENT_RETENTION);
-        return { id: result.lastInsertRowid };
+        return recordActivityEvent(db, event, AG_EVENT_RETENTION);
     } catch (err) {
         console.error('[Database] Error recording ag_event:', err.message);
-        return null;
+        throw err;
     }
 }
 
@@ -3279,10 +3276,25 @@ async function createCalendarEvent(event) {
 async function updateCalendarEvent(eventId, updates) {
     if (!db) return null;
     try {
-        const { sql, values } = buildUpdate('calendar_events', { ...updates }, 'id', eventId);
-        db.prepare(sql).run(...values);
+        const { expected, ...fields } = updates;
+        if (expected !== undefined && (!expected || Array.isArray(expected)
+            || Object.keys(expected).sort().join(',') !== 'start_time,status,task_id'
+            || typeof expected.status !== 'string' || typeof expected.start_time !== 'string'
+            || !(expected.task_id === null || typeof expected.task_id === 'string'))) {
+            throw Object.assign(new Error('expected must contain status, start_time and task_id'), { code: 'CALENDAR_INVALID_EXPECTATION' });
+        }
+        const { sql, values } = buildUpdate('calendar_events', fields, 'id', eventId);
+        // Atomic admission prevents a delayed start receipt from overwriting
+        // completion or a reschedule that landed after the poller's read.
+        const guard = expected === undefined ? '' : ' AND status IS ? AND start_time IS ? AND task_id IS ?';
+        const result = db.prepare(sql + guard).run(...values, ...(expected === undefined ? [] : [expected.status, expected.start_time, expected.task_id]));
+        if (expected !== undefined && result.changes === 0) {
+            const current = deserRow(db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(eventId)) || null;
+            throw Object.assign(new Error('Calendar event changed since it was read'), { code: 'CALENDAR_STATE_CHANGED', current });
+        }
         return deserRow(db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(eventId));
     } catch (err) {
+        if (err.code === 'CALENDAR_STATE_CHANGED' || err.code === 'CALENDAR_INVALID_EXPECTATION') throw err;
         console.error('[Database] Error updating calendar event:', err.message);
         return null;
     }
@@ -3368,6 +3380,7 @@ module.exports = {
     })(...args),
     createTask: async (...args) => leasedBoardWrite(createTask)(...args),
     updateTask: async (...args) => leasedBoardWrite(updateTask)(...args),
+    applyTaskDelta: async (...args) => leasedBoardWrite(applyTaskDelta)(...args),
     deleteTask: async (...args) => leasedBoardWrite(deleteTask)(...args),
     // Context
     getProjectContexts,

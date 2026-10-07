@@ -80,6 +80,18 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     // His own contract edits never reach this endpoint; the PATCH guard
     // records them as authorized (server/services/contract-change-authority.js).
     const contractAuthority = createContractChangeAuthority();
+    // Server-owned deltas merge raw canonical storage; GET remains an executor projection.
+    for (const [suffix, operation] of [['operator-rulings', 'appendRuling'], ['workspace-delta', 'workspaceDelta']]) {
+        router.post(`/:taskId/${suffix}`, async (req, res) => {
+            try {
+                const origin = await contractAuthority.classifyWrite(req);
+                const task = await db.applyTaskDelta(req.params.taskId, operation, req.body, { origin });
+                if (!task) return res.status(500).json({ error: 'Database error' });
+                res.json({ success: true, task: admissionResponse(task) });
+            } catch (error) { admissionError(res, error); }
+        });
+    }
+
     router.post('/:taskId/work-admission/contract', async (req, res) => {
         try {
             const origin = await contractAuthority.classifyDecision(req);
@@ -314,6 +326,18 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             if (dispatch_instructions !== undefined) updates.dispatch_instructions = dispatch_instructions || null;
             // Machine-layer payload (JSON column; ser() encodes, deserRow parses back).
             if (antigravity_payload !== undefined) updates.antigravity_payload = antigravity_payload;
+            const { payload_delta, acceptance_criteria_append, payload_ledger } = req.body;
+            const deltas = require('../../db/task-deltas');
+            if (payload_delta !== undefined || acceptance_criteria_append !== undefined || payload_ledger !== undefined) {
+                if (antigravity_payload !== undefined || (payload_delta !== undefined && acceptance_criteria_append !== undefined) || expectedVersion === undefined) {
+                    return res.status(400).json({ error: 'Payload deltas require expected_version and cannot accompany a replacement or a conflicting delta', code: 'task_delta_invalid' });
+                }
+                let current = existing;
+                if (payload_delta !== undefined) current = { ...current, antigravity_payload: deltas.payloadDelta(current, payload_delta) };
+                if (acceptance_criteria_append !== undefined) current = { ...current, antigravity_payload: deltas.appendCriteria(current, acceptance_criteria_append) };
+                if (payload_ledger !== undefined) current = { ...current, antigravity_payload: deltas.ledgerPayload(current, payload_ledger) };
+                updates.antigravity_payload = current.antigravity_payload;
+            }
             // Predecessors — every listed task must complete before this one
             // starts. ser() in the db layer JSON-encodes arrays; deserRow
             // parses it back.
@@ -378,7 +402,8 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                     nextSource = guarded.source;
                 }
             }
-            const hasNewPayload = antigravity_payload !== undefined && antigravity_payload !== null;
+            const hasNewPayload = (antigravity_payload !== undefined && antigravity_payload !== null) ||
+                (payload_delta !== undefined && ['prompt', 'commands'].some(key => Object.hasOwn(payload_delta, key)));
             const payloadDowngrade = guardPayloadUpdate(existing.source, hasNewPayload);
             if (payloadDowngrade !== undefined && (nextSource === undefined || tierOf(nextSource) > tierOf(payloadDowngrade))) {
                 console.warn(`[Provenance] Payload replaced on task ${taskId} — capping provenance "${nextSource || existing.source}" -> "${payloadDowngrade}"`);

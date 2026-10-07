@@ -4,7 +4,7 @@
  */
 const express = require('express');
 const { resolveChatConversation } = require('../chat-conversation');
-const { buildChatMessageEvent, buildPraxisAssistantMetadata, formatStoredChatMessage } = require('../chat-message-format');
+const { buildChatMessageEvent, buildPraxisAssistantMetadata, formatStoredChatMessage, praxisTurnOutcome, praxisTurnFailed } = require('../chat-message-format');
 
 module.exports = function createAsyncChatRouter({ db, io, run, activity }) {
     const router = express.Router();
@@ -21,7 +21,7 @@ module.exports = function createAsyncChatRouter({ db, io, run, activity }) {
         const reply = await db.getChatMessageById(`${id}:reply`);
         if (reply) {
             const formatted = formatStoredChatMessage(reply);
-            return { ...receipt, status: 'completed', response: formatted.content, assistantMessageId: reply.id,
+            return { ...receipt, status: praxisTurnFailed(formatted) ? 'failed' : 'completed', ...praxisTurnOutcome(formatted), response: formatted.content, assistantMessageId: reply.id,
                 ...(formatted.suppressVoice === true ? { suppressVoice: true } : {}),
                 attachments: formatted.attachments, voiceData: formatted.voiceData, messages: [...receipt.messages, formatted] };
         }
@@ -38,7 +38,8 @@ module.exports = function createAsyncChatRouter({ db, io, run, activity }) {
                 metadata: { ...buildPraxisAssistantMetadata(data), replyTo: id, ...(body.voiceConversation === true ? { voiceConversation: true, playbackOwner: 'voice' } : {}) } });
             if (!saved) throw new Error('The response could not be saved. Check the server before resending.');
             emit(saved);
-            activity?.update(id,'completed');
+            const failed = praxisTurnFailed(data);
+            activity?.update(id, failed ? 'failed' : 'completed', failed ? data.error || data.state : undefined);
         } catch (error) {
             activity?.update(id,'failed',error.message);
             const content = `Message received, but the final result could not be confirmed. Check saved chat before resending: ${error.message || 'Unknown error'}`;

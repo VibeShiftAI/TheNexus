@@ -12,6 +12,7 @@
  */
 
 import Link from "next/link";
+import { BlockingTasks } from "./blocking-tasks";
 import { ArrowRight } from "lucide-react";
 import {
     documentHref,
@@ -97,6 +98,7 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
                     )}
                     {!compact && <span className={`rounded-full border px-2 py-0.5 ${feedback.tone}`} data-feedback-state="">{feedback.text}</span>}
                 </div>
+                <BlockingTasks tasks={entry.blocking_tasks} />
             </div>
             <Link
                 href={href}

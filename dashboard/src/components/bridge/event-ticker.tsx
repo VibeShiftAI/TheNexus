@@ -16,6 +16,8 @@ import { AlertTriangle, Siren, Rss, ChevronUp, ScrollText } from "lucide-react";
 import { useLiveBoardState } from "@/components/live-board-state";
 import { HudModal } from "@/components/bridge/hud";
 import type { StreamEvent } from "@praxis/contract";
+import { useHitlInbox } from "@/hooks/use-hitl-inbox";
+import { describeHitlAction, selectPendingAlert } from "@/lib/alert-action";
 
 const FAILURE_ALERT_WINDOW_MS = 10 * 60 * 1000;
 
@@ -40,7 +42,7 @@ function describeEvent(e: StreamEvent): string | null {
     case "task.blocked":
       return `task ${e.taskId} blocked — ${truncate(e.reason, 60)}`;
     case "hitl.created":
-      return `input needed — ${truncate(e.request?.question ?? "approval required", 70)}`;
+      return `input requested — ${truncate(e.request?.question ?? "approval requested", 70)}`;
     case "hitl.resolved":
       return `input resolved (${e.requestId})`;
     case "thinking.trace":
@@ -86,6 +88,7 @@ function eventTone(e: StreamEvent): string {
 export function EventTicker() {
   const { recentEvents, connected } = useLiveBoardState();
   const { items: activityItems } = useBridgeActivity();
+  const { pendingRequests, refreshing: inboxLoading, error: inboxError } = useHitlInbox();
   const [logOpen, setLogOpen] = useState(false);
   // Re-render every 30s so time-windowed alerts (task.failed) expire visually.
   const [, setClockTick] = useState(0);
@@ -94,23 +97,28 @@ export function EventTicker() {
     return () => clearInterval(t);
   }, []);
 
-  // Alert derivation: newest failure inside the window → red;
-  // hitl.created with no later hitl.resolved → amber.
+  // The bounded event ring cannot prove a request is still open. The inbox
+  // snapshot is authoritative; transport errors must not resurrect old asks.
   let alert: AlertLevel = "none";
   let alertText: string | null = null;
-  const resolvedIds = new Set(
-    recentEvents.filter((e) => e.type === "hitl.resolved").map((e) => (e.type === "hitl.resolved" ? e.requestId : ""))
-  );
+  let alertHref = '/activity';
+  let alertLinkLabel = 'Review event details';
   for (const e of recentEvents) {
     if (e.type === "task.failed" && Date.now() - new Date(e.at).getTime() < FAILURE_ALERT_WINDOW_MS) {
       alert = "red";
       alertText = describeEvent(e);
+      alertHref = taskActivityHref(e.taskId);
+      alertLinkLabel = 'Review current task status';
       break;
     }
-    if (alert === "none" && e.type === "hitl.created" && e.request?.id && !resolvedIds.has(e.request.id)) {
-      alert = "amber";
-      alertText = describeEvent(e);
-    }
+  }
+  const pendingRequest = !inboxLoading && !inboxError ? selectPendingAlert(pendingRequests, alert === 'red') : undefined;
+  if (pendingRequest) {
+    const action = describeHitlAction(pendingRequest);
+    alert = pendingRequest.priority === 'critical' ? 'red' : 'amber';
+    alertText = `${action.label}: ${action.instruction}`;
+    alertHref = action.href;
+    alertLinkLabel = action.linkLabel;
   }
 
   const lines = recentEvents
@@ -148,7 +156,7 @@ export function EventTicker() {
       >
         {alert === "red" ? (
           <span className="flex shrink-0 items-center gap-1.5 rounded border border-red-500/60 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-300 motion-safe:animate-pulse">
-            <Siren size={11} /> red alert
+            <Siren size={11} /> {pendingRequest ? 'request pending' : 'recent failure'}
           </span>
         ) : alert === "amber" ? (
           <span className="flex shrink-0 items-center gap-1.5 rounded border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
@@ -180,6 +188,9 @@ export function EventTicker() {
         <ChevronUp size={13} className="shrink-0 text-slate-600" aria-hidden />
       </div>
 
+      {alert !== 'none' && <Link href={alertHref} className="shrink-0 max-w-48 whitespace-normal text-xs font-semibold text-cyan-200 underline">{alertLinkLabel} →</Link>}
+      {!pendingRequest && !inboxLoading && !inboxError && pendingRequests.length > 0 && <Link href={`/inbox#${encodeURIComponent(pendingRequests[0].id)}`} className="text-xs text-amber-200 underline">Review pending input →</Link>}
+      {inboxError && <Link href="/inbox" className="text-xs text-amber-200 underline">Request status unavailable — check Inbox</Link>}
       <DisplayScaleControl />
       </div>
 
@@ -206,7 +217,7 @@ export function EventTicker() {
                   <span className="w-[118px] shrink-0 truncate text-[10px] uppercase tracking-wide text-slate-500">
                     {e.type}
                   </span>
-                  <Link href={activityFromStream(e)?.href ?? (e.type === "thinking.trace" && e.taskId ? taskActivityHref(e.taskId) : e.type === "council.update" ? `/council?session=${encodeURIComponent(e.council.sessionId)}` : e.type.startsWith("hitl.") ? "/inbox" : "/activity")} className={`min-w-0 flex-1 break-words underline decoration-slate-700 underline-offset-4 hover:text-white ${eventTone(e)}`}>{text}</Link>
+                  <Link href={e.type === 'hitl.created' ? `/inbox#${encodeURIComponent(e.request.id)}` : e.type === 'hitl.resolved' ? `/inbox#${encodeURIComponent(e.requestId)}` : activityFromStream(e)?.href ?? (e.type === "thinking.trace" && e.taskId ? taskActivityHref(e.taskId) : e.type === "council.update" ? `/council?session=${encodeURIComponent(e.council.sessionId)}` : "/activity")} className={`min-w-0 flex-1 break-words underline decoration-slate-700 underline-offset-4 hover:text-white ${eventTone(e)}`}>{e.type === 'hitl.created' ? `Input requested: ${e.request.question}` : text}</Link>
                 </div>
               ))}
             </div>

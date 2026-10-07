@@ -1079,3 +1079,321 @@ test('QA repair: Robert’s restoration clears the rulings concern but not an in
     expect([approve.status, receipt(approve.data).decision, receipt(approve.data).contract.version]).toEqual([200, 'new_work', 2]);
     expect(receipt(approve.data).contract_hold).toBeUndefined();
 });
+
+test('QA repair: an answer Robert appended and later replaced himself does not become his again because an executor put it back; restoring his current words clears the concern', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const appended = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...task.antigravity_payload, operator_rulings: [RULING, NEW_RULING] } }, { key: operatorKey });
+    expect(appended.status).toBe(200);
+    expect(receipt(appended.data.task).operator_answers.at(-1)).toMatchObject({ index: 1, sha256: sha(NEW_RULING), origin: 'operator' });
+    const AMENDED = `${NEW_RULING}\nAmended by Robert: record the receipt id and the revision hash.`;
+    const amended = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...appended.data.task.antigravity_payload, operator_rulings: [RULING, AMENDED] } }, { key: operatorKey });
+    expect([amended.status, receipt(amended.data.task).decision]).toEqual([200, 'new_work']);
+    expect(rulingsConcerns(receipt(amended.data.task))).toHaveLength(0);
+    // The executor puts the superseded text back: a rewrite of his current words, held.
+    const resurrected = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...amended.data.task.antigravity_payload, operator_rulings: [RULING, NEW_RULING] } });
+    expect(resurrected.status).toBe(200);
+    const concern = rulingsConcerns(receipt(resurrected.data.task))[0];
+    expect(concern).toMatchObject({ recorded: [sha(RULING), sha(AMENDED)], rewritten: [sha(RULING), sha(NEW_RULING)] });
+    expect(receipt(resurrected.data.task).decision).toBe('needs_evidence');
+    // The stale answer entry for that text predates the review: it vouches for nothing.
+    const forged = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...resurrected.data.task.antigravity_payload, prompt: 'Relayed from the resurrected text.' },
+        contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(resurrected.data.task, 1), fields: ['payload.prompt'] } }, { key: runtimeKey });
+    expect([forged.status, forged.data.code, forged.data.concern_key]).toEqual([409, 'decision_ref_under_review', concern.key]);
+    // Robert restores his current words: cleared as a restoration, and his amended ruling grounds a relay again.
+    const restored = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...resurrected.data.task.antigravity_payload, operator_rulings: [RULING, AMENDED] } }, { key: operatorKey });
+    expect(restored.status).toBe(200);
+    expect(rulingsConcerns(receipt(restored.data.task))).toHaveLength(0);
+    expect(receipt(restored.data.task).rulings_changes.map(e => [e.outcome, e.restores_recorded === true])).toEqual([['held', false], ['authorized', true]]);
+    const relay = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...restored.data.task.antigravity_payload, prompt: RULED_PROMPT },
+        contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(restored.data.task, 1), fields: ['payload.prompt'] } }, { key: runtimeKey });
+    expect([relay.status, receipt(relay.data.task).contract.version, receipt(relay.data.task).decision]).toEqual([200, 2, 'new_work']);
+});
+
+test('QA repair: an executor putting Robert’s words back onto the row it emptied is recorded as the restore, appends nothing of its own, and clears nothing', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const removed = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...task.antigravity_payload, operator_rulings: [] } });
+    expect(removed.status).toBe(200);
+    const concernKey = rulingsConcerns(receipt(removed.data.task))[0].key;
+    const putBack = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...removed.data.task.antigravity_payload, operator_rulings: [RULING] } });
+    expect(putBack.status).toBe(200);
+    const after = receipt(putBack.data.task);
+    expect([after.decision, after.reason]).toEqual(['needs_evidence', expect.stringMatching(RULINGS_REASON)]);
+    expect(rulingsConcerns(after)).toHaveLength(1);
+    expect(after.rulings_changes.map(e => [e.outcome, e.restores_recorded === true, e.concern_key])).toEqual([['held', false, concernKey], ['held', true, concernKey]]);
+    expect(after.operator_answers).toBeUndefined();
+    expect(receipt(await admission(task.id)).decision).toBe('needs_evidence');
+    // Evidence adjudicates it; a relay grounded in his recorded words then verifies, with no answer provenance to echo.
+    const resolved = await api('POST', `/${task.id}/work-admission/resolve`, resolution(await admission(task.id), { reason: 'Reviewed the removal and restoration; scope unchanged.' }), { key: runtimeKey });
+    expect([resolved.status, receipt(resolved.data).decision]).toEqual([200, 'new_work']);
+    const relay = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...resolved.data.antigravity_payload, prompt: RULED_PROMPT },
+        contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(resolved.data, 0), fields: ['payload.prompt'] } }, { key: runtimeKey });
+    expect([relay.status, receipt(relay.data.task).decision, receipt(relay.data.task).contract.version]).toEqual([200, 'new_work', 2]);
+    expect(receipt(relay.data.task).contract_changes.at(-1).origin.decision_ref.recorded_by).toBeUndefined();
+});
+
+test('QA repair: Robert deleting only his own later answer leaves the executor’s text and its concern in place; changing that text himself clears it', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const rewritten = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...task.antigravity_payload, operator_rulings: [REWRITTEN_RULING] } });
+    expect(rewritten.status).toBe(200);
+    const concernKey = rulingsConcerns(receipt(rewritten.data.task))[0].key;
+    const appended = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...rewritten.data.task.antigravity_payload, operator_rulings: [REWRITTEN_RULING, NEW_RULING] } }, { key: operatorKey });
+    expect(appended.status).toBe(200);
+    const deleted = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...appended.data.task.antigravity_payload, operator_rulings: [REWRITTEN_RULING] } }, { key: operatorKey });
+    expect(deleted.status).toBe(200);
+    const still = receipt(deleted.data.task);
+    expect([still.decision, rulingsConcerns(still).length, still.rulings_changes.length]).toEqual(['needs_evidence', 1, 1]);
+    expect(still.reason).toMatch(RULINGS_REASON);
+    expect(receipt(await admission(task.id)).decision).toBe('needs_evidence');
+    const his = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...deleted.data.task.antigravity_payload, operator_rulings: [`${RULING}\nClarified by Robert.`] } }, { key: operatorKey });
+    expect(his.status).toBe(200);
+    expect(rulingsConcerns(receipt(his.data.task))).toHaveLength(0);
+    expect(receipt(his.data.task).rulings_changes.map(e => e.outcome)).toEqual(['held', 'authorized']);
+    expect(receipt(his.data.task).rulings_changes.at(-1)).toMatchObject({ cleared_concern_keys: [concernKey] });
+    expect(receipt(his.data.task).rulings_changes.at(-1).restores_recorded).toBeUndefined();
+    expect(receipt(his.data.task).decision).toBe('new_work');
+});
+
+test('QA lifecycle: an authenticated amendment during an unrelated rewrite concern supersedes the old answer without approving the rewrite', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    let row = task;
+    async function edit(rulings, key) {
+        const result = await api('PATCH', `/${task.id}`, { expected_version: row.version,
+            antigravity_payload: { ...row.antigravity_payload, operator_rulings: rulings } }, { key });
+        expect(result.status).toBe(200);
+        row = result.data.task;
+    }
+    async function relay(prompt) {
+        return api('PATCH', `/${task.id}`, { expected_version: row.version,
+            antigravity_payload: { ...row.antigravity_payload, prompt },
+            contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(row, 1), fields: ['payload.prompt'] } }, { key: runtimeKey });
+    }
+    await edit([REWRITTEN_RULING]);
+    const originalConcern = rulingsConcerns(receipt(row))[0];
+    await edit([REWRITTEN_RULING, NEW_RULING], operatorKey);
+    const originalAnswers = receipt(row).operator_answers;
+    const amended = `${NEW_RULING}\nAmended by Robert: use the new scope.`;
+    await edit([REWRITTEN_RULING, amended], operatorKey);
+    const amendmentVersion = row.version;
+    const current = await relay('Scope from the current amended instruction');
+    expect([current.status, current.data.code]).toEqual([200, undefined]);
+    row = current.data.task;
+    expect(receipt(row).contract.version).toBe(2);
+    expect(receipt(row).contract_hold).toBeUndefined();
+    expect(receipt(row).decision).toBe('needs_evidence');
+    expect(rulingsConcerns(receipt(row))).toEqual([originalConcern]);
+    expect(receipt(row).operator_answers.slice(0, originalAnswers.length)).toEqual(originalAnswers);
+    expect(receipt(row).operator_answers.at(-1)).toMatchObject({ index: 1, sha256: sha(amended),
+        previous_sha256: sha(NEW_RULING), origin: 'operator', authority: 'operator_credential', task_version: amendmentVersion - 1 });
+    expect(receipt(row).contract_changes.at(-1).origin.decision_ref).toMatchObject({ sha256: sha(amended), recorded_by: 'operator' });
+    const replay = await relay(row.antigravity_payload.prompt);
+    expect([replay.status, receipt(replay.data.task).contract.version]).toEqual([200, 2]);
+    row = replay.data.task;
+    await edit([REWRITTEN_RULING, NEW_RULING]);
+    const beforeRefusal = await read(task.id);
+    const stale = await relay('Scope from the superseded instruction');
+    expect([stale.status, stale.data.code]).toEqual([409, 'decision_ref_under_review']);
+    expect(await read(task.id)).toEqual(beforeRefusal);
+    expect(receipt(await admission(task.id)).contract.version).toBe(2);
+    // A later authenticated amendment must not clear the older concern about E.
+    await edit([REWRITTEN_RULING, `${amended}\nFurther clarified.`], operatorKey);
+    expect(rulingsConcerns(receipt(row))).toContainEqual(originalConcern);
+    expect(receipt(row).decision).toBe('needs_evidence');
+    const clarified = await relay('Scope from the further clarification');
+    expect([clarified.status, receipt(clarified.data.task).contract.version]).toEqual([200, 3]);
+    expect(rulingsConcerns(receipt(clarified.data.task))).toContainEqual(originalConcern);
+});
+
+test('QA lifecycle: an authenticated deletion supersedes an answer even if an executor appends its old text again', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const rewritten = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...task.antigravity_payload, operator_rulings: [REWRITTEN_RULING] } });
+    const appended = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...rewritten.data.task.antigravity_payload,
+        operator_rulings: [REWRITTEN_RULING, NEW_RULING] } }, { key: operatorKey });
+    const deleted = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...appended.data.task.antigravity_payload,
+        operator_rulings: [REWRITTEN_RULING] } }, { key: operatorKey });
+    expect(deleted.status).toBe(200);
+    expect(receipt(deleted.data.task).operator_answers.at(-1)).toMatchObject({ index: 1, sha256: null,
+        previous_sha256: sha(NEW_RULING), origin: 'operator' });
+    const restored = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...deleted.data.task.antigravity_payload,
+        operator_rulings: [REWRITTEN_RULING, NEW_RULING] } });
+    expect(restored.status).toBe(200);
+    const relay = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...restored.data.task.antigravity_payload, prompt: RULED_PROMPT },
+        contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(restored.data.task, 1), fields: ['payload.prompt'] } }, { key: runtimeKey });
+    expect([relay.status, relay.data.code]).toEqual([409, 'decision_ref_under_review']);
+    expect(receipt(await admission(task.id)).contract.version).toBe(1);
+});
+
+test('QA lifecycle: resume preserves an amended authorization, while executor drift in the resume write is held', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const suspended = await api('PATCH', `/${task.id}`, { status: 'suspended' });
+    expect(suspended.status).toBe(200);
+    const amendment = `${RULING}\nRobert: use the amended scope on resume.`;
+    const amended = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...suspended.data.task.antigravity_payload,
+        operator_rulings: [amendment] } }, { key: operatorKey });
+    expect(amended.status).toBe(200);
+    const body = { antigravity_payload: { ...amended.data.task.antigravity_payload, prompt: RULED_PROMPT },
+        contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(amended.data.task), fields: ['payload.prompt'] } };
+    const relayed = await api('PATCH', `/${task.id}`, body, { key: runtimeKey });
+    expect([relayed.status, receipt(relayed.data.task).contract.version]).toEqual([200, 2]);
+    const resumed = await api('PATCH', `/${task.id}`, { status: 'in_progress' });
+    expect([resumed.status, receipt(resumed.data.task).decision]).toEqual([200, 'new_work']);
+    const replay = await api('PATCH', `/${task.id}`, body, { key: runtimeKey });
+    expect([replay.status, receipt(replay.data.task).contract.version]).toEqual([200, 2]);
+    expect(receipt(replay.data.task).operator_answers).toEqual(receipt(amended.data.task).operator_answers);
+    expect(receipt(replay.data.task).contract_changes).toHaveLength(1);
+    await api('PATCH', `/${task.id}`, { status: 'suspended' });
+    const drift = await api('PATCH', `/${task.id}`, { status: 'in_progress',
+        antigravity_payload: { ...replay.data.task.antigravity_payload, prompt: 'Executor scope change on resume.' } });
+    expect(drift.status).toBe(200);
+    expect(receipt(drift.data.task)).toMatchObject({ hold_kind: 'contract_drift', contract: { version: 2 } });
+    expect(receipt(drift.data.task).contract_changes.at(-1).execution).toMatchObject({ phase: 'executing', status: 'suspended', next_status: 'in_progress' });
+});
+
+test('QA lifecycle: amending an answer already present before the executor rewrite leaves the unrelated concern intact', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const appended = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...task.antigravity_payload,
+        operator_rulings: [RULING, NEW_RULING] } }, { key: operatorKey });
+    const rewritten = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...appended.data.task.antigravity_payload,
+        operator_rulings: [REWRITTEN_RULING, NEW_RULING] } });
+    expect(rewritten.status).toBe(200);
+    const amended = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...rewritten.data.task.antigravity_payload,
+        operator_rulings: [REWRITTEN_RULING, `${NEW_RULING}\nAmended by Robert.`] } }, { key: operatorKey });
+    expect(amended.status).toBe(200);
+    expect(rulingsConcerns(receipt(amended.data.task))).toEqual(rulingsConcerns(receipt(rewritten.data.task)));
+    expect(receipt(amended.data.task).decision).toBe('needs_evidence');
+    const relay = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...amended.data.task.antigravity_payload, prompt: RULED_PROMPT },
+        contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(amended.data.task, 1), fields: ['payload.prompt'] } }, { key: runtimeKey });
+    expect([relay.status, receipt(relay.data.task).contract.version, receipt(relay.data.task).decision]).toEqual([200, 2, 'needs_evidence']);
+});
+
+test('QA lifecycle: partially correcting a multi-index rewrite preserves the remaining concern until Robert addresses every affected index', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const appended = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...task.antigravity_payload,
+        operator_rulings: [RULING, NEW_RULING] } }, { key: operatorKey });
+    const rewritten = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...appended.data.task.antigravity_payload,
+        operator_rulings: [REWRITTEN_RULING, 'Executor second rewrite.'] } });
+    expect(rewritten.status).toBe(200);
+    const partial = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...rewritten.data.task.antigravity_payload,
+        operator_rulings: [`${RULING}\nRobert clarified it.`, 'Executor second rewrite.'] } }, { key: operatorKey });
+    expect(partial.status).toBe(200);
+    expect(rulingsConcerns(receipt(partial.data.task))).toEqual(rulingsConcerns(receipt(rewritten.data.task)));
+    expect(receipt(partial.data.task).decision).toBe('needs_evidence');
+    // His first correction remains authorized; he need not edit it again to resolve the rest.
+    const finished = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...partial.data.task.antigravity_payload,
+        operator_rulings: [`${RULING}\nRobert clarified it.`] } }, { key: operatorKey });
+    expect(finished.status).toBe(200);
+    expect(rulingsConcerns(receipt(finished.data.task))).toEqual([]);
+    expect(receipt(finished.data.task).decision).toBe('new_work');
+    expect(receipt(finished.data.task).rulings_changes.at(-1).cleared_concern_keys).toEqual(rulingsConcerns(receipt(rewritten.data.task)).map(c => c.key));
+});
+
+async function checkIndependentRulingConcerns(restoreOriginal) {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    let row = task;
+    async function edit(rulings, key) {
+        const result = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...row.antigravity_payload, operator_rulings: rulings } }, { key });
+        expect(result.status).toBe(200);
+        row = result.data.task;
+    }
+    if (!restoreOriginal) await edit([RULING, NEW_RULING, SECOND_RULING], operatorKey);
+    await edit(restoreOriginal ? [REWRITTEN_RULING] : [REWRITTEN_RULING, NEW_RULING, SECOND_RULING]);
+    if (restoreOriginal) await edit([REWRITTEN_RULING, NEW_RULING, SECOND_RULING], operatorKey);
+    const amendment = `${NEW_RULING}\nRobert's current amendment.`;
+    await edit([REWRITTEN_RULING, amendment, SECOND_RULING], operatorKey);
+    const answers = receipt(row).operator_answers;
+    // Ensure a distinct timestamp so a time-based check cannot pass by accident.
+    await new Promise(resolve => setTimeout(resolve, 5));
+    await edit([REWRITTEN_RULING, amendment, 'Executor unrelated third rewrite.']);
+    const laterConcern = rulingsConcerns(receipt(row)).at(-1);
+    await edit([restoreOriginal ? RULING : `${RULING}\nRobert's clarification.`, amendment, 'Executor unrelated third rewrite.'], operatorKey);
+    expect(rulingsConcerns(receipt(row))).toEqual([laterConcern]);
+    expect(receipt(row).decision).toBe('needs_evidence');
+    expect(receipt(row).operator_answers.filter(a => a.index === 1)).toEqual(answers.filter(a => a.index === 1));
+    const relay = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...row.antigravity_payload, prompt: RULED_PROMPT },
+        contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(row, 1), fields: ['payload.prompt'] } }, { key: runtimeKey });
+    expect([relay.status, relay.data.code]).toEqual([200, undefined]);
+    expect(receipt(relay.data.task).contract.version).toBe(2);
+    expect(rulingsConcerns(receipt(await admission(task.id)))).toEqual([laterConcern]);
+}
+
+test('QA lifecycle: clearing an older concern never invalidates an unchanged authenticated amendment', () => checkIndependentRulingConcerns(false));
+test('QA lifecycle: restoring the original prefix never authorizes a later unrelated executor rewrite', () => checkIndependentRulingConcerns(true));
+
+test('optional review: refusals distinguish executor text from authenticated amendments and removal tombstones', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    let row = task;
+    async function edit(rulings, key) {
+        const result = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...row.antigravity_payload, operator_rulings: rulings } }, { key });
+        expect(result.status).toBe(200);
+        row = result.data.task;
+    }
+    async function refusal() {
+        const result = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...row.antigravity_payload, prompt: RULED_PROMPT },
+            contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(row, 1), fields: ['payload.prompt'] } }, { key: runtimeKey });
+        expect([result.status, result.data.code]).toEqual([409, 'decision_ref_under_review']);
+        return result.data.error;
+    }
+    await edit([RULING, NEW_RULING], operatorKey);
+    await edit([RULING, REWRITTEN_RULING]);
+    expect(await refusal()).toMatch(/written by an unverified source and is under review/);
+    await edit([RULING, `${NEW_RULING}\nAmended by Robert.`], operatorKey);
+    await edit([RULING, NEW_RULING]);
+    expect(await refusal()).toMatch(/superseded by an authenticated amendment or removal/);
+    await edit([RULING], operatorKey);
+    // Reordering into the removed slot is not an authenticated append.
+    await edit([SECOND_RULING, NEW_RULING]);
+    expect(await refusal()).toMatch(/superseded by an authenticated amendment or removal/);
+    // An unverified append is the latest audit entry: report that source instead.
+    await edit([SECOND_RULING]);
+    await edit([SECOND_RULING, NEW_RULING]);
+    expect(await refusal()).toMatch(/written by an unverified source and is under review/);
+});
+
+test('optional review: a legacy unaudited amendment is refused until an actual authenticated edit records its provenance', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const appended = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...task.antigravity_payload,
+        operator_rulings: [RULING, NEW_RULING] } }, { key: operatorKey });
+    expect(appended.status).toBe(200);
+    const legacyText = `${NEW_RULING}\nLegacy amendment by Robert.`;
+    // Synthetic pre-upgrade state: the append was audited, but the amendment was not.
+    const legacyReceipt = receipt(appended.data.task);
+    legacyReceipt.operator_answers = legacyReceipt.operator_answers.map(({ task_version, previous_sha256, authority, ...entry }) => entry);
+    raw.prepare('UPDATE work_admissions SET document = ? WHERE task_id = ?').run(JSON.stringify(legacyReceipt), task.id);
+    raw.prepare('UPDATE tasks SET antigravity_payload = ? WHERE id = ?').run(JSON.stringify({ ...appended.data.task.antigravity_payload,
+        operator_rulings: [RULING, legacyText] }), task.id);
+    async function relay(row) {
+        return api('PATCH', `/${task.id}`, { antigravity_payload: { ...row.antigravity_payload, prompt: RULED_PROMPT },
+            contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(row, 1), fields: ['payload.prompt'] } }, { key: runtimeKey });
+    }
+    const before = await read(task.id);
+    const refused = await relay(before);
+    expect([refused.status, refused.data.code]).toEqual([409, 'decision_ref_under_review']);
+    expect(await read(task.id)).toEqual(before);
+    const unchanged = await api('PATCH', `/${task.id}`, { antigravity_payload: before.antigravity_payload }, { key: operatorKey });
+    expect(unchanged.status).toBe(200);
+    expect(receipt(unchanged.data.task).operator_answers).toEqual(legacyReceipt.operator_answers);
+    expect((await relay(unchanged.data.task)).status).toBe(409);
+    const edited = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...before.antigravity_payload,
+        operator_rulings: [RULING, `${legacyText}\nClarification: include the revision hash.`] } }, { key: operatorKey });
+    expect(edited.status).toBe(200);
+    const accepted = await relay(edited.data.task);
+    expect([accepted.status, receipt(accepted.data.task).contract.version]).toEqual([200, 2]);
+    expect(receipt(accepted.data.task).operator_answers.at(-1)).toMatchObject({ origin: 'operator', previous_sha256: sha(legacyText) });
+});
+
+test('optional review: executor reordering cannot move answer authority to either index', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const appended = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...task.antigravity_payload,
+        operator_rulings: [RULING, NEW_RULING] } }, { key: operatorKey });
+    expect(appended.status).toBe(200);
+    const reordered = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...appended.data.task.antigravity_payload,
+        operator_rulings: [NEW_RULING, REWRITTEN_RULING] } });
+    expect(reordered.status).toBe(200);
+    const before = await read(task.id);
+    for (const index of [0, 1]) {
+        const relay = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...before.antigravity_payload, prompt: RULED_PROMPT },
+            contract_change: { origin: 'operator_relayed', decision_ref: rulingRef(before, index), fields: ['payload.prompt'] } }, { key: runtimeKey });
+        expect([relay.status, relay.data.code]).toEqual([409, 'decision_ref_under_review']);
+        expect(relay.data.error).toMatch(/written by an unverified source and is under review/);
+        expect(await read(task.id)).toEqual(before);
+    }
+});

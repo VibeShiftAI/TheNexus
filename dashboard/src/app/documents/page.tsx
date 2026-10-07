@@ -9,7 +9,7 @@
  * filtered by the server, which also returns the truthful total and the
  * per-status counts (contract docs/contracts/document-review-deliverables.md
  * §4), so the queue pages through any number of documents. Reference
- * documents never count as pending and stay listed under All and Reference.
+ * documents can be promoted in the reader; explicit waiting tasks rank first.
  *
  * Reached from the bridge header's Reviews button, the navigation menu, the
  * reviewer's crumb and task/project Deliverables; everything here is a
@@ -333,6 +333,7 @@ export default function DocumentsPage() {
                                         : stepBack !== null
                                             ? `${total} documents · ${statusLabel}`
                                             : `Showing ${firstShown}–${lastShown} of ${total} · ${statusLabel}`}
+                                {filters.status === "needs_review" && !legacy && " · Blocking reviews first"}
                                 {loading && <Loader2 size={11} className="ml-1.5 inline animate-spin text-cyan-300" />}
                             </span>
                             {!legacy && total > PAGE_SIZE && stepBack === null && <span>Page {pageNumber} of {pageCount}</span>}

@@ -65,12 +65,21 @@ function createClientMessageId(): string {
     return `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function noteReplyOutcome(clientMessageId: string, reply: { state?: string; error?: string; historySaved?: boolean }) {
+    const failed = ['rejected', 'uncertain', 'failed'].includes(reply.state ?? '') || !!reply.error;
+    noteChatSend(clientMessageId, failed || reply.historySaved === false ? 'failed' : 'completed', {
+        detail: failed ? reply.error || reply.state : reply.historySaved === false
+            ? 'Praxis replied, but Nexus could not save the reply to conversation history.' : undefined,
+    });
+}
+
 export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function AITerminal({ isOpen = true, onClose, mode = 'modal', hideHeader = false }, ref) {
     const isInline = mode === 'inline';
     const { messages, setMessages, readyForReview, conversationId, conversations, startNewConversation, switchConversation, loadConversations, deleteConversation, isLoadingHistory, hasMoreMessages, isLoadingMore, loadMoreMessages, chatAudio, playChatAudio, toggleChatAudio, pauseChatAudio } = useCortex();
     // NOTE: the composer's draft text deliberately does NOT live here — it is
     // ChatComposer's own state, so keystrokes can't re-render the transcript.
     const [loading, setLoading] = useState(false);
+    const [turnStatus, setTurnStatus] = useState('');
 
     // Scrollback + DOM render window + the history panel toggle.
     const {
@@ -212,6 +221,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         clearAttachments(); // detaches the files and revokes their preview URLs
         const currentAudioBlob = audioBlob;
         clearAudio(); // Reset recording UI
+        setTurnStatus('Sending your message…');
         setLoading(true);
         void runSend(text, clientMessageId, filesToUpload, currentAudioBlob);
         return true;
@@ -398,13 +408,14 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 }]);
 
                 const finalEvent = await readPraxisEventStream(response, (delta) => {
+                    setTurnStatus('Receiving the reply…');
                     noteChatSend(clientMessageId,'replying');
                     setMessages(prev => prev.map(message =>
                         message.id === streamingAssistantId
                             ? { ...message, content: `${message.content}${delta}` }
                             : message
                     ));
-                });
+                }, status => setTurnStatus(status.message));
 
                 const finalMessage: Message = {
                     id: finalEvent?.assistantMessageId || streamingAssistantId,
@@ -423,7 +434,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     return [...withoutStreaming, finalMessage];
                 });
                 if (finalEvent?.morningKickoff) dispatchMorningKickoff();
-                noteChatSend(clientMessageId,finalEvent.historySaved===false?'failed':'completed',{detail:finalEvent.historySaved===false?'Praxis replied, but Nexus could not save the reply to conversation history.':undefined});
+                noteReplyOutcome(clientMessageId, finalEvent);
                 return;
             }
 
@@ -445,7 +456,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 return [...prev, assistantMessage];
             });
             if (data.morningKickoff) dispatchMorningKickoff();
-            noteChatSend(clientMessageId,data.historySaved===false?'failed':'completed',{detail:data.historySaved===false?'Praxis replied, but Nexus could not save the reply to conversation history.':undefined});
+            noteReplyOutcome(clientMessageId, data);
         } catch (error: any) {
             noteChatSend(clientMessageId,'failed',{detail:error?.message || 'Reply could not be confirmed'});
             console.error('AI Chat error:', error);
@@ -454,10 +465,10 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             const isNetworkError = errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('Failed to fetch') || error?.name === 'TypeError';
             const isRateLimit = errMsg.includes('429') || errMsg.includes('Too many');
             const userMessage = isRateLimit
-                ? 'Rate limit exceeded (429). Your API quota may be exhausted — try again in a few minutes.'
+                ? `The request reached a rate limit (429).\n\n[Check this saved turn](/chat/turns/${encodeURIComponent(clientMessageId)}) before sending it again.`
                 : isNetworkError
-                ? 'Connection lost — the server may be restarting. Please try again in a moment.'
-                : `Error: ${errMsg}`;
+                ? `Connection lost while waiting for Praxis.\n\n[Check this saved turn](/chat/turns/${encodeURIComponent(clientMessageId)}) before resending; its work may still be running.`
+                : `Reply could not be confirmed: ${errMsg}\n\n[Check this saved turn](/chat/turns/${encodeURIComponent(clientMessageId)}) before sending it again.`;
             setMessages(prev => [...prev, {
                 role: 'system',
                 content: userMessage,
@@ -465,6 +476,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             }]);
         } finally {
             setLoading(false);
+            setTurnStatus('');
         }
     };
 
@@ -631,6 +643,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                             <Loader2 size={16} className="animate-spin" />
                         </div>
                         <div className="bg-slate-800 rounded-lg px-4 py-2">
+                            {turnStatus && <p role="status" className="text-sm text-slate-300 mb-2">{turnStatus}</p>}
                             <div className="flex gap-1">
                                 <span className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '0ms' }} />
                                 <span className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '150ms' }} />

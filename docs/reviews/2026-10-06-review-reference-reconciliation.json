@@ -1,0 +1,188 @@
+{
+  "at": "2026-10-06T22:13:18.277619+00:00",
+  "authorization": "Robert approved review-priorities design and instructed proceed in this Codex chat, 2026-10-06",
+  "before_counts": {
+    "needs_review": 5,
+    "changes_requested": 0,
+    "approved": 5,
+    "reference": 15,
+    "all": 25
+  },
+  "changes": [
+    {
+      "before": {
+        "id": "282926af-f480-4969-b653-0b0e05d304a1",
+        "title": "Praxis: series introduction and Chapter 1 \u2014 private editorial draft",
+        "path": "/Volumes/Projects/Get Noticed at Anthropic/docs/praxis-series-introduction-and-chapter-1-draft-2026-09-15.md",
+        "root_project_id": "80dbfafb-0c0c-4caf-bc22-4a1c39bd4eba",
+        "project_id": "80dbfafb-0c0c-4caf-bc22-4a1c39bd4eba",
+        "task_id": "6cf9604a-39bb-48ea-987d-8215241de9f8",
+        "kind": "document",
+        "metadata": {
+          "editorial_status": "draft awaiting Robert editorial review, not publication",
+          "author": "GPT-6 Astra via Codex",
+          "private_notes_registered": false
+        },
+        "current_revision_id": "78d0ba0c-b931-4e8c-b820-4c1576da85c3",
+        "registered_by": "local_user",
+        "created_at": "2026-09-15T14:56:50.500Z",
+        "updated_at": "2026-09-22T12:46:42.637Z",
+        "deliverable_key": null,
+        "purpose": null,
+        "requires_review": false,
+        "intended_action": "none",
+        "blocking_task_ids": [],
+        "review_status": "reference",
+        "blocking_task_count": 0,
+        "blocking_tasks": [],
+        "current_revision": {
+          "id": "78d0ba0c-b931-4e8c-b820-4c1576da85c3",
+          "document_id": "282926af-f480-4969-b653-0b0e05d304a1",
+          "content_hash": "b2cd9edff77cbf0b7c60dfb54644c67681376feee74f4578e6a00099ce7f00d4",
+          "byte_length": 15011,
+          "line_count": 209,
+          "file_mtime": "2026-09-21T02:46:12.074Z",
+          "captured_at": "2026-09-22T12:46:42.635Z"
+        },
+        "review_url": "https://nexus.vibeshiftai.com/documents/282926af-f480-4969-b653-0b0e05d304a1",
+        "review_path": "/documents/282926af-f480-4969-b653-0b0e05d304a1",
+        "review_state": {
+          "review_id": "7c0f5eed-8138-4353-be15-9cef2679593f",
+          "status": "draft",
+          "updated_at": "2026-10-04T17:10:05.302Z",
+          "comment_count": 16,
+          "delivery_status": null
+        }
+      },
+      "history_counts": {
+        "revisions": 3,
+        "decisions": 0,
+        "reviews": 1,
+        "registrations": 0
+      },
+      "after": {
+        "document": {
+          "id": "282926af-f480-4969-b653-0b0e05d304a1",
+          "title": "Praxis: series introduction and Chapter 1 \u2014 private editorial draft",
+          "path": "/Volumes/Projects/Get Noticed at Anthropic/docs/praxis-series-introduction-and-chapter-1-draft-2026-09-15.md",
+          "root_project_id": "80dbfafb-0c0c-4caf-bc22-4a1c39bd4eba",
+          "project_id": "80dbfafb-0c0c-4caf-bc22-4a1c39bd4eba",
+          "task_id": "6cf9604a-39bb-48ea-987d-8215241de9f8",
+          "kind": "document",
+          "metadata": {
+            "editorial_status": "draft awaiting Robert editorial review, not publication",
+            "author": "GPT-6 Astra via Codex",
+            "private_notes_registered": false
+          },
+          "current_revision_id": "78d0ba0c-b931-4e8c-b820-4c1576da85c3",
+          "registered_by": "local_user",
+          "created_at": "2026-09-15T14:56:50.500Z",
+          "updated_at": "2026-10-06T22:13:18.293Z",
+          "deliverable_key": null,
+          "purpose": null,
+          "requires_review": true,
+          "intended_action": "none",
+          "blocking_task_ids": []
+        },
+        "review_status": "needs_review",
+        "blocking_tasks": [],
+        "history_counts": {
+          "revisions": 3,
+          "decisions": 0,
+          "reviews": 1,
+          "registrations": 0
+        }
+      }
+    },
+    {
+      "before": {
+        "id": "01be14ff-c054-40be-8a92-272167d5fc3d",
+        "title": "Elizabeth Linnetz \u2014 Meeple Magnate update (draft)",
+        "path": "/Volumes/Projects/Praxis/docs/stakeholder-drafts/2026-09-22-elizabeth-linnetz-meeple-magnate.md",
+        "root_project_id": "c11f3f92-0645-4746-a7d3-0b0722e5a2d3",
+        "project_id": "14477ec1-0860-47d1-bb38-67621262872e",
+        "task_id": "c9658570-4fec-45b1-8626-2f3298b0f819",
+        "kind": "document",
+        "metadata": {
+          "deliverable_type": "stakeholder_email_draft",
+          "member_id": "8262e27e-58c2-4e64-ba44-8c435e1fa767",
+          "source_query_id": "hq_prep_e97c21d7eee91af011f64b954f97f9ae4ed82c855e7d9105904be72610cb8c83",
+          "operator_instruction": "Use document review; do not send without Robert\u2019s explicit approval of the final message and recipient.",
+          "delivery_status": "not_sent"
+        },
+        "current_revision_id": "53e3b6d2-6d89-43f8-84cd-4260dc5c4d01",
+        "registered_by": "local_user",
+        "created_at": "2026-09-22T19:18:04.952Z",
+        "updated_at": "2026-09-22T19:18:04.968Z",
+        "deliverable_key": null,
+        "purpose": null,
+        "requires_review": false,
+        "intended_action": "none",
+        "blocking_task_ids": [],
+        "review_status": "reference",
+        "blocking_task_count": 0,
+        "blocking_tasks": [],
+        "current_revision": {
+          "id": "53e3b6d2-6d89-43f8-84cd-4260dc5c4d01",
+          "document_id": "01be14ff-c054-40be-8a92-272167d5fc3d",
+          "content_hash": "1755d70653ed5cad019523f9edcaeb225d4bc7c99b395147284dc786074353d9",
+          "byte_length": 3958,
+          "line_count": 51,
+          "file_mtime": "2026-09-22T19:18:04.936Z",
+          "captured_at": "2026-09-22T19:18:04.967Z"
+        },
+        "review_url": "https://nexus.vibeshiftai.com/documents/01be14ff-c054-40be-8a92-272167d5fc3d",
+        "review_path": "/documents/01be14ff-c054-40be-8a92-272167d5fc3d",
+        "review_state": null
+      },
+      "history_counts": {
+        "revisions": 1,
+        "decisions": 0,
+        "reviews": 0,
+        "registrations": 0
+      },
+      "after": {
+        "document": {
+          "id": "01be14ff-c054-40be-8a92-272167d5fc3d",
+          "title": "Elizabeth Linnetz \u2014 Meeple Magnate update (draft)",
+          "path": "/Volumes/Projects/Praxis/docs/stakeholder-drafts/2026-09-22-elizabeth-linnetz-meeple-magnate.md",
+          "root_project_id": "c11f3f92-0645-4746-a7d3-0b0722e5a2d3",
+          "project_id": "14477ec1-0860-47d1-bb38-67621262872e",
+          "task_id": "c9658570-4fec-45b1-8626-2f3298b0f819",
+          "kind": "document",
+          "metadata": {
+            "deliverable_type": "stakeholder_email_draft",
+            "member_id": "8262e27e-58c2-4e64-ba44-8c435e1fa767",
+            "source_query_id": "hq_prep_e97c21d7eee91af011f64b954f97f9ae4ed82c855e7d9105904be72610cb8c83",
+            "operator_instruction": "Use document review; do not send without Robert\u2019s explicit approval of the final message and recipient.",
+            "delivery_status": "not_sent"
+          },
+          "current_revision_id": "53e3b6d2-6d89-43f8-84cd-4260dc5c4d01",
+          "registered_by": "local_user",
+          "created_at": "2026-09-22T19:18:04.952Z",
+          "updated_at": "2026-10-06T22:13:18.302Z",
+          "deliverable_key": null,
+          "purpose": null,
+          "requires_review": true,
+          "intended_action": "none",
+          "blocking_task_ids": []
+        },
+        "review_status": "needs_review",
+        "blocking_tasks": [],
+        "history_counts": {
+          "revisions": 1,
+          "decisions": 0,
+          "reviews": 0,
+          "registrations": 0
+        }
+      }
+    }
+  ],
+  "after_counts": {
+    "needs_review": 7,
+    "changes_requested": 0,
+    "approved": 5,
+    "reference": 13,
+    "all": 25
+  }
+}

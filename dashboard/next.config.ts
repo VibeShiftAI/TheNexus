@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { config as dotenvConfig } from "dotenv";
 import path from "path";
+import { resolveEndpoints } from "@praxis/contract";
 
 // ═══════════════════════════════════════════════════════════════
 // ENVIRONMENT VARIABLE LOADING
@@ -44,7 +45,7 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     // API proxy configuration
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+    const apiUrl = resolveEndpoints({ NEXUS_API_URL: process.env.NEXT_PUBLIC_API_URL }).nexus;
 
     return [
       // Socket.IO is routed directly by Cloudflare Tunnel to port 4000

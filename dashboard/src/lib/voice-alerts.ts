@@ -2,6 +2,7 @@ import type { StreamEvent } from '@praxis/contract';
 import { isThisClientActive } from './active-client';
 import { speechOwner } from './speech-ownership';
 import { pairVoiceAlerts, type BlockedEvent, type VoiceAlert } from './voice-alert-pairing';
+import { describeHitlAction, isAlertRequest, isAlertRequestExpired, safeAlertHref } from './alert-action';
 export type AlertMode = 'off' | 'attention' | 'conversational';
 export const ALERT_MODE_KEY = 'nexus.voice.alertMode';
 export const ALERT_STORE_KEY = 'nexus.voice.announcedEvents';
@@ -22,7 +23,7 @@ export function eligibleAlert(e: StreamEvent, mode: AlertMode): boolean {
   // Review worker lifecycle is presence telemetry, not the parent task verdict.
   if ('taskId' in e && e.taskId?.startsWith('qa--')) return false;
   if (e.type === 'task.completed' && e.result?.summary?.trimStart().startsWith('⏸️')) return false;
-  if (e.type === 'hitl.created') return !ROUTINE.has(String(e.request?.metadata?.kind));
+  if (e.type === 'hitl.created') return !e.request.resolution && !isAlertRequestExpired(e.request) && !ROUTINE.has(String(e.request?.metadata?.kind));
   return e.type === 'task.failed' || (mode === 'conversational' && (e.type === 'task.qa-passed' || e.type === 'task.blocked'));
 }
 export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | undefined = () => undefined, blocked?: BlockedEvent): Record<string, unknown> {
@@ -41,12 +42,57 @@ export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | un
         reviewerNoneOffered: e.reviewerNoneOffered === true,
         enhancementStatus: 'Optional QA suggestions; not established as implemented. Mention what QA found. If abridged, full details are in chat. Say QA offered none only when reviewerNoneOffered is true; otherwise an empty list means no enhancement answer was recorded.' };
     }
-    case 'task.failed': return { ...task, status: 'failed', reason: e.error };
+    case 'task.failed': return { ...task, status: 'failed', reason: e.error, action: 'Review the current task status and failure details before deciding what to do. This failure event alone does not establish that human action is still needed.', actionHref: `/task/${encodeURIComponent(e.taskId)}`, actionLabel: 'Review current task' };
     case 'task.completed': return { ...task, status: 'execution_finished', outcome: e.result?.outcome, summary: e.result?.summary, verification: 'not established by this event' };
-    case 'task.blocked': return { ...task, status: 'blocked', reason: e.reason };
-    case 'hitl.created': return { ...task, status: blocked ? 'blocked' : 'attention', ...(blocked ? { reason: blocked.reason } : {}), question: e.request?.question };
+    case 'task.blocked': return { ...task, status: 'blocked', reason: e.reason, action: 'Review the current task and its open input request before acting.', actionHref: e.blockedOnHitlId ? `/inbox#${encodeURIComponent(e.blockedOnHitlId)}` : `/task/${encodeURIComponent(e.taskId)}`, actionLabel: e.blockedOnHitlId ? 'Review request in Inbox' : 'Review current task' };
+    case 'hitl.created': {
+      const action = isAlertRequest(e.request) ? describeHitlAction(e.request) : undefined;
+      return { ...task, status: blocked ? 'blocked' : 'attention', ...(blocked ? { reason: blocked.reason } : {}), question: e.request?.question,
+        ...(action ? { action: action.instruction, actionHref: action.href, actionLabel: action.linkLabel, owner: action.owner,
+          actionStatus: action.state, deliveryInstruction: 'State the exact question or decision and where to answer it. Do not imply acknowledgment repairs an issue or a saved answer was delivered.' } : {}) };
+    }
     default: return task;
   }
+}
+
+/** Verify the current request immediately before composing/archiving speech. */
+export async function currentVoiceAlert(event: StreamEvent, fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch, signal?: AbortSignal): Promise<StreamEvent | null> {
+  if (event.type !== 'hitl.created' && event.type !== 'task.blocked' && event.type !== 'task.failed') return event;
+  const hitlId = event.type === 'hitl.created' ? event.request.id : event.type === 'task.blocked' ? event.blockedOnHitlId : undefined;
+  const taskId = 'taskId' in event ? event.taskId : undefined;
+  const url = hitlId ? `/api/praxis/hitl/${encodeURIComponent(hitlId)}` : taskId ? `/api/tasks/${encodeURIComponent(taskId)}` : undefined;
+  if (!url) return null;
+  try {
+    const timeout = AbortSignal.timeout(5000);
+    const response = await fetcher(url, { cache: 'no-store', signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
+    if (!response.ok) return null;
+    const value = await response.json();
+    if (hitlId) {
+      if (!isAlertRequest(value) || value.id !== hitlId || value.resolution || isAlertRequestExpired(value)) return null;
+      return event.type === 'hitl.created' ? { ...event, request: { ...event.request, question: value.question, options: value.options, metadata: value.metadata, resolution: null } } : event;
+    }
+    const heldStates = event.type === 'task.blocked' ? ['blocked', 'suspended', 'needs_input'] : ['failed', 'blocked', 'suspended', 'needs_input', 'todo'];
+    return typeof value?.status === 'string' && heldStates.includes(value.status) ? event : null;
+  } catch { return null; }
+}
+
+export function voiceAlertSpeech(text: string, facts: Record<string, unknown>): string {
+  const parts = [text];
+  if (typeof facts.question === 'string' && !text.includes(facts.question)) {
+    parts.push(facts.question.length <= 1600 ? facts.question : 'The full question and diagnostic details are in Inbox.');
+  }
+  if (typeof facts.action === 'string' && !text.includes(facts.action)) parts.push(facts.action);
+  return parts.join('\n\n');
+}
+/** Keep the full exact ask and deterministic link alongside generated prose. */
+export function voiceAlertArchive(text: string, facts: Record<string, unknown>): string {
+  const parts = [voiceAlertSpeech(text, facts)];
+  if (typeof facts.question === 'string' && facts.question.length > 1600) parts.push(facts.question);
+  if (typeof facts.actionHref === 'string' && safeAlertHref(facts.actionHref)) {
+    const label = typeof facts.actionLabel === 'string' ? facts.actionLabel : 'Review request';
+    parts.push(`[${label.replace(/[\[\]\\]/g, '')}](${facts.actionHref})`);
+  }
+  return parts.join('\n\n');
 }
 export function alertDelay(now: number, lastAt: number): number {
   const date = new Date(now); const hour = date.getHours();

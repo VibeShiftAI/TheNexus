@@ -682,3 +682,97 @@ test('the placeholder bearer confers nothing by itself, every refusal survives t
     // The operator credential still works on its own for a trusted tool that has no session.
     expect(await attempt(operator)).toMatchObject({ status: 201, json: { decision: { authority: 'operator_credential' } } });
 });
+
+// Explicit waiting tasks are distinct from the document's producer.
+test('waiting-task links prioritize reviews before pagination and are discoverable from the waiting task', async () => {
+    const first = await register(writeDoc('blocking.md', '# Blocking'), { deliverable: { blocking_task_ids: [TASK_B, TASK_B] } });
+    expect(first.status).toBe(201);
+    expect(first.json.document.blocking_task_ids).toEqual([TASK_B]);
+    await register(writeDoc('newer.md', '# Newer'));
+    const page = await api('GET', '/api/documents?status=needs_review&limit=1');
+    expect(page.json.total).toBe(2);
+    expect(page.json.documents[0].id).toBe(first.json.document.id);
+    expect(page.json.documents[0].blocking_task_count).toBe(1);
+    expect(page.json.documents[0].blocking_tasks).toEqual([expect.objectContaining({ id: TASK_B, title: 'Revise the launch plan' })]);
+    const byTask = await api('GET', `/api/documents?task_id=${TASK_B}`);
+    expect(byTask.json.documents.map(d => d.id)).toEqual([first.json.document.id]);
+    const detail = await api('GET', `/api/documents/${first.json.document.id}`);
+    expect(detail.json.blocking_tasks.map(t => t.id)).toEqual([TASK_B]);
+});
+
+test('approval clears blockers and changed bytes restore them without changing task state', async () => {
+    const file = writeDoc('versions.md', '# One');
+    const { json: first } = await register(file, { deliverable: { blocking_task_ids: [TASK_B] } });
+    expect(first.document).toBeDefined();
+    expect((await decide(first.document.id, first.revision.id)).status).toBe(201);
+    expect((await api('GET', `/api/documents/${first.document.id}`)).json.blocking_tasks).toEqual([]);
+    fs.writeFileSync(file, '# Two');
+    const second = await api('GET', `/api/documents/${first.document.id}`);
+    expect(second.json.blocking_tasks.map(t => t.id)).toEqual([TASK_B]);
+    expect((await db.getTask(TASK_B)).status).toBe('in_progress');
+});
+
+test('completed, cancelled, archived and deleted waiting tasks are excluded; producer task alone never counts', async () => {
+    const { json: first } = await register(writeDoc('lifecycle.md', '# One'), { deliverable: { blocking_task_ids: [TASK_B] } });
+    expect(first.document).toBeDefined();
+    const raw = new (require('better-sqlite3'))(process.env.NEXUS_DB_PATH);
+    try {
+        for (const status of ['completed', 'cancelled', 'archived', 'rejected']) {
+            raw.prepare('UPDATE tasks SET status = ? WHERE id = ?').run(status, TASK_B);
+            const page = await api('GET', '/api/documents');
+            expect(page.json.documents[0].blocking_task_count).toBe(0);
+            expect(page.json.documents[0].blocking_tasks).toEqual([]);
+        }
+        raw.prepare("UPDATE tasks SET status = 'planning', archived_at = '2026-10-01' WHERE id = ?").run(TASK_B);
+        expect((await api('GET', '/api/documents')).json.documents[0].blocking_task_count).toBe(0);
+        raw.prepare('DELETE FROM tasks WHERE id = ?').run(TASK_B);
+        expect((await api('GET', '/api/documents')).json.documents[0].blocking_tasks).toEqual([]);
+    } finally { raw.close(); }
+});
+
+test('review promotion keeps the same document and history and can replace waiting-task links', async () => {
+    const { json: legacy } = await api('POST', '/api/documents', { path: writeDoc('legacy.md', '# Reference'), title: 'Reference', project_id: PROJECT_ID, task_id: TASK_A });
+    const id = legacy.document.id;
+    const before = await api('GET', `/api/documents/${id}/history`);
+    const promoted = await api('POST', `/api/documents/${id}/request-review`, { blocking_task_ids: [TASK_B] });
+    expect(promoted.status).toBe(200);
+    expect(promoted.json.document.id).toBe(id);
+    expect(promoted.json.review_status).toBe('needs_review');
+    expect(promoted.json.document.task_id).toBe(TASK_A);
+    expect(promoted.json.blocking_tasks.map(t => t.id)).toEqual([TASK_B]);
+    expect((await api('GET', '/api/documents/counts')).json.counts).toMatchObject({ needs_review: 1, reference: 0 });
+    expect((await api('GET', `/api/documents/${id}/history`)).json.revisions).toEqual(before.json.revisions);
+    const clear = await api('POST', `/api/documents/${id}/request-review`, { blocking_task_ids: [] });
+    expect(clear.json.blocking_tasks).toEqual([]);
+    expect(clear.json.review_status).toBe('needs_review');
+});
+
+test('invalid or unknown waiting tasks and reference declarations with blockers are refused without writes', async () => {
+    const file = writeDoc('invalid-blockers.md', '# Test');
+    for (const ids of ['bad', ['missing-task'], [null], [''], Array(101).fill(TASK_B)]) {
+        const result = await register(file, { deliverable: { blocking_task_ids: ids } });
+        expect([400, 404]).toContain(result.status);
+    }
+    expect((await register(file, { deliverable: { requires_review: false, intended_action: 'none', blocking_task_ids: [TASK_B] } })).status).toBe(400);
+    expect((await api('GET', '/api/documents')).json.total).toBe(0);
+    const legacy = await api('POST', '/api/documents', { path: file, title: 'Reference', project_id: PROJECT_ID });
+    const id = legacy.json.document.id;
+    expect((await api('POST', `/api/documents/${id}/request-review`, { blocking_task_ids: ['missing-task'] })).status).toBe(404);
+    expect((await api('GET', `/api/documents/${id}`)).json.review_status).toBe('reference');
+    expect((await api('POST', `/api/documents/${id}/request-review`, {}, { headers: { 'sec-fetch-site': 'cross-site' } })).status).toBe(403);
+});
+
+test('waiting tasks remain discoverable through their own project, including idea tasks held for review', async () => {
+    const raw = new (require('better-sqlite3'))(process.env.NEXUS_DB_PATH);
+    raw.prepare("UPDATE tasks SET status = 'idea' WHERE id = ?").run(OTHER_TASK);
+    raw.close();
+    const first = await register(writeDoc('cross-project.md', '# Shared review'), { deliverable: { blocking_task_ids: [OTHER_TASK] } });
+    expect(first.status).toBe(201);
+    const filtered = await api('GET', `/api/documents?task_id=${OTHER_TASK}&project_id=${OTHER_PROJECT_ID}`);
+    expect(filtered.json.total).toBe(1);
+    expect(filtered.json.documents[0].blocking_task_count).toBe(1);
+    expect((await api('GET', `/api/documents/counts?project_id=${OTHER_PROJECT_ID}`)).json.counts.needs_review).toBe(1);
+    const options = await api('GET', '/api/documents/review-task-options');
+    expect(options.json.tasks.find(t => t.id === OTHER_TASK)).toMatchObject({ status: 'idea', project_name: 'Other' });
+    expect((await api('POST', `/api/documents/${first.json.document.id}/request-review`, { blocking_task_ids: null })).status).toBe(400);
+});

@@ -4,6 +4,7 @@
  * Centralizes configuration values used across route modules.
  */
 const path = require('path');
+const { resolveEndpoints } = require('@praxis/contract');
 
 const PROJECT_ROOT = process.env.PROJECT_ROOT || path.resolve(process.env.USERPROFILE || process.env.HOME, 'Projects');
 
@@ -17,9 +18,10 @@ const SCAN_CACHE_TTL = 5000;   // 5 seconds
 const MODELS_CACHE_TTL = 60000; // 1 minute
 
 // ─── Canonical service endpoints ─────────────────────────────────────────
-// Single source of truth for the localhost services Nexus calls. Mirrors
-// @praxis/contract's DEFAULT_ENDPOINTS (Nexus can't import the ESM package).
-const PRAXIS_URL = process.env.PRAXIS_URL || 'http://127.0.0.1:54322';
+// The contract supplies both CJS and ESM builds. Resolve local service calls
+// through the same loopback normalization as Praxis.
+const serviceEndpoints = resolveEndpoints(process.env);
+const PRAXIS_URL = serviceEndpoints.praxis;
 // Praxis's full-scope tool-bridge token (agent-bridge-policy.ts mints it on
 // first use and persists it at <praxis data>/agent-bridge-token). The Nexus
 // relay presents it on /agent-tool calls made on the operator's behalf
@@ -29,7 +31,7 @@ const PRAXIS_URL = process.env.PRAXIS_URL || 'http://127.0.0.1:54322';
 // bridge hardening).
 const PRAXIS_BRIDGE_TOKEN_FILE = process.env.PRAXIS_BRIDGE_TOKEN_FILE
     || path.resolve(PROJECT_ROOT, 'Praxis', 'data', 'agent-bridge-token');
-const CORTEX_URL = process.env.CORTEX_API_URL || 'http://localhost:8100';
+const CORTEX_URL = serviceEndpoints.cortex;
 const DASHBOARD_URL = process.env.DASHBOARD_URL || 'http://localhost:3000';
 
 module.exports = {

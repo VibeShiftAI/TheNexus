@@ -320,6 +320,7 @@ export interface ActivityEvent {
     source: string;
     metadata: Record<string, unknown> | string;
     requires_action: number;
+    action_taken?: number;
     created_at: string;
 }
 

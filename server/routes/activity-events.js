@@ -23,6 +23,7 @@ function createActivityEventsRouter({ db, io }) {
         try {
             const saved = await db.recordAgEvent(req.body || {});
             if (!saved) return res.status(400).json({ error: 'event_type and title are required' });
+            if (saved.duplicate) return res.status(200).json({ success: true, id: saved.id, duplicate: true });
 
             // Live-push so the feed updates without a poll. Best-effort: a
             // socket failure must not fail the write that already landed.
@@ -45,7 +46,7 @@ function createActivityEventsRouter({ db, io }) {
 
             res.status(201).json({ success: true, id: saved.id });
         } catch (error) {
-            res.status(500).json({ error: 'Failed to record event: ' + error.message });
+            res.status(error.status === 400 || error.status === 409 ? error.status : 500).json({ error: 'Failed to record event: ' + error.message });
         }
     });
 

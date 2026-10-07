@@ -11,6 +11,7 @@
  */
 const express = require('express');
 const { praxisFetch, operatorProvenanceHeaders } = require('../services/praxis-client');
+const { praxisTurnOutcome, praxisTurnFailed } = require('../chat-message-format');
 
 const DEFAULT_PRAXIS_CHAT_TIMEOUT_MS = 20 * 60 * 1000;
 
@@ -47,7 +48,25 @@ function wantsEventStream(req) {
     return /\btext\/event-stream\b/i.test(req.get('accept') || '');
 }
 
-async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversationId, metadata = {}, onReply = () => {} }) {
+const validTurnKey = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,160}$/.test(value);
+
+/** Same exact user turn, same archived reply across stream reconnects/restarts. */
+async function saveRelayReply(db, message, clientMessageId) {
+    if (!validTurnKey(clientMessageId)) return { row: await db.saveChatMessage(message), inserted: true };
+    const id = `${clientMessageId}:reply`;
+    const matches = row => row?.role === 'assistant' && row.conversation_id === message.conversation_id && row.content === message.content;
+    const existing = await db.getChatMessageById?.(id);
+    if (existing) {
+        if (!matches(existing)) throw new Error('Saved reply identity conflicts with this turn');
+        return { row: existing, inserted: false };
+    }
+    const row = await db.saveChatMessage({ ...message, id, metadata: { ...message.metadata, replyTo: clientMessageId } });
+    if (row) return { row, inserted: true };
+    const raced = await db.getChatMessageById?.(id);
+    return { row: matches(raced) ? raced : null, inserted: false };
+}
+
+async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversationId, clientMessageId, metadata = {}, onReply = () => {} }) {
     const { buildChatMessageEvent, buildPraxisAssistantMetadata } = require('../chat-message-format');
     const decoder = new TextDecoder();
     const reader = praxisResponse.body?.getReader?.();
@@ -62,6 +81,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
     let suppressVoice = false;
     let morningKickoff = false;
     let finalized = false;
+    let outcome = {};
 
     async function handleFrame(frame) {
         const dataLines = frame
@@ -80,6 +100,12 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         }
 
         if (event.type === 'error') throw new Error(event.error || 'Praxis stream failed');
+        if (event.type === 'status' && typeof event.message === 'string') {
+            res.write(`data: ${JSON.stringify({ type: 'status', state: event.state,
+                message: event.message.slice(0, 1000), turn_id: event.turn_id,
+                ...(validTurnKey(event.turn_id) ? { status_url: `/api/ai/chat/turns/${encodeURIComponent(event.turn_id)}` } : {}) })}\n\n`);
+            return false;
+        }
         const delta = event.delta ?? event.choices?.[0]?.delta?.content ?? '';
         if (delta) {
             onReply();
@@ -93,6 +119,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
             voiceData = Array.isArray(event.voiceData) ? event.voiceData : [];
             suppressVoice = event.suppressVoice === true;
             morningKickoff = event.morningKickoff === true;
+            outcome = praxisTurnOutcome(event);
         }
 
         return false;
@@ -123,15 +150,15 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
 
     if (conversationId) {
         try {
-            const savedAssistantMessage = await db.saveChatMessage({
+            const { row: savedAssistantMessage, inserted } = await saveRelayReply(db, {
                 conversation_id: conversationId,
                 role: 'assistant',
                 content: fullResponse,
                 mode: 'praxis',
-                metadata: buildPraxisAssistantMetadata({ ...metadata, voiceData, suppressVoice }),
-            });
+                metadata: buildPraxisAssistantMetadata({ ...metadata, ...outcome, voiceData, suppressVoice }),
+            }, clientMessageId);
             assistantMessageId = savedAssistantMessage?.id || null;
-            if (savedAssistantMessage && io) {
+            if (savedAssistantMessage && io && inserted) {
                 io.emit('chat-message', buildChatMessageEvent(savedAssistantMessage));
             }
         } catch (dbErr) {
@@ -139,7 +166,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         }
     }
 
-    res.write(`data: ${JSON.stringify({
+    const payload = {
         type: 'final',
         response: fullResponse,
         model: 'praxis-agent',
@@ -148,15 +175,17 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         conversationId,
         assistantMessageId,
         historySaved: !!assistantMessageId,
+        ...outcome,
         isThinking: false,
         tokenUsage: { total: 0 },
         artifacts: [],
         voiceData,
         ...(suppressVoice ? { suppressVoice: true } : {}),
         morningKickoff,
-    })}\n\n`);
+    };
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
     res.write('data: [DONE]\n\n');
-    return !!assistantMessageId;
+    return payload;
 }
 
 /** Inline attached text-file contents into the message Praxis receives.
@@ -200,9 +229,9 @@ function rememberChatRun(clientMessageId, runPromise) {
 // clock is not: its backoff timers freeze while the app is backgrounded, so
 // a re-POST can arrive arbitrarily late (46 minutes in the incident) — past
 // the TTL, or after a server restart emptied the map — and would run the
-// agent a second time. The chat_messages table already holds the truth: if
-// the clientMessageId row exists AND an assistant reply follows it in that
-// conversation, the send was answered and the stored reply is the answer.
+// agent a second time. A saved reply is authoritative only when its identity
+// explicitly links it to this clientMessageId. Chronological position alone
+// cannot establish which turn an assistant message answered.
 // The lookup is id-scoped — clientMessageId IS the row's PRIMARY KEY — so it
 // stays exact however many messages have landed since and whichever
 // conversation is active now. It deliberately does NOT scan a window of recent
@@ -214,10 +243,27 @@ async function findStoredReplyForClientMessage(db, clientMessageId) {
         const userMessage = await db.getChatMessageById(clientMessageId);
         // Only a user row can be a re-POSTed send; anything else is not ours.
         if (!userMessage || userMessage.role !== 'user') return null;
-        const reply = await db.getNextAssistantMessage(userMessage);
-        if (!reply) return null;
-
         const { formatStoredChatMessage } = require('../chat-message-format');
+        const uncertain = () => ({
+            response: 'This saved turn has no confirmed, exactly linked reply. Its outcome is uncertain. Inspect the existing conversation before continuing; it will not be replayed automatically.',
+            state: 'uncertain', error: 'outcome_uncertain', retryable: false, historySaved: false,
+            clientMessageId, conversationId: userMessage.conversation_id || null,
+            model: 'system-error', provider: 'System', mode: 'praxis', voiceData: [], suppressVoice: true,
+        });
+        const exact = await db.getChatMessageById(`${clientMessageId}:reply`);
+        // Older replies may have random IDs but an explicit replyTo link. Never
+        // infer a link merely because this is the next assistant row.
+        const reply = exact || await db.getNextAssistantMessage?.(userMessage);
+        const replyTo = reply && formatStoredChatMessage(reply).metadata?.replyTo;
+        const linked = reply?.role === 'assistant' && reply.conversation_id === userMessage.conversation_id
+            && (replyTo === clientMessageId || (exact && replyTo === undefined));
+        if (!linked) {
+            if (exact) return uncertain(); // conflicting exact identity is not a cache miss
+            // Only newly marked turns are known to have reached Praxis with
+            // this durable key. Its ledger can safely answer a missing local
+            // receipt; old unkeyed history cannot prove that rerunning is safe.
+            return formatStoredChatMessage(userMessage).metadata?.praxisTurnKey === clientMessageId ? null : uncertain();
+        }
         const stored = formatStoredChatMessage(reply);
         return {
             response: stored.content || '',
@@ -229,6 +275,7 @@ async function findStoredReplyForClientMessage(db, clientMessageId) {
             isThinking: false,
             tokenUsage: { total: 0 },
             artifacts: [],
+            ...praxisTurnOutcome(stored),
             ...(stored.voiceData ? { voiceData: stored.voiceData } : {}),
             ...(stored.suppressVoice === true ? { suppressVoice: true } : {}),
             replayedFromStore: true,
@@ -256,6 +303,14 @@ function createAIChatRouter({ db, io }) {
         ? operatorProvenanceHeaders(message, { surface }) : {};
     const activity = require('../services/chat-activity').createChatActivity({io});
     router.get('/activity', (_req,res) => {res.setHeader('Cache-Control','no-store');res.json(activity.snapshot());});
+    router.get('/turns/:key', async (req, res) => {
+        res.setHeader('Cache-Control', 'no-store');
+        if (!validTurnKey(req.params.key)) return res.status(400).json({ error: 'Invalid turn identity' });
+        try {
+            const response = await praxisFetch(`/api/chat/turns/${encodeURIComponent(req.params.key)}`, { method: 'GET', timeoutMs: 3000 });
+            return res.status(response.status).json(await response.json());
+        } catch { return res.status(503).json({ error: 'Saved turn status is temporarily unavailable. Do not resend work whose outcome is uncertain.' }); }
+    });
     // Redacted self-check of the caller's own Access session (2026-09-25): reason
     // codes, identity kind and presence booleans only, never claims or tokens, so
     // Robert can see from his laptop why a session does or does not carry operator
@@ -280,8 +335,9 @@ function createAIChatRouter({ db, io }) {
         // (praxis-client.js), so inline the files first and sign that.
         const relayMessage = inlineFilesIntoMessage(body.message, body.files);
         const response = await praxisFetch('/api/chat', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', ...provenanceFor(body, relayMessage, 'nexus-chat-async') },
+            method: 'POST', headers: { 'Content-Type': 'application/json', ...provenanceFor(body, relayMessage, 'nexus-chat-async-turn') },
             body: JSON.stringify({ message: relayMessage,
+                idempotency_key: body.clientMessageId,
                 history: body.history, projectId: body.projectId, audio: body.audio, voiceConversation: body.voiceConversation === true,
                 attachments: body.attachments, conversationContext }),
             timeoutMs: getPraxisChatTimeoutMs(), dispatcher: getPraxisChatDispatcher(),
@@ -348,6 +404,7 @@ function createAIChatRouter({ db, io }) {
                     conversation_id: conversationId, role: 'user', content: message, mode: 'praxis',
                     metadata: {
                         projectId, hasAudio: !!audio,
+                        ...(validTurnKey(clientMessageId) ? { praxisTurnKey: clientMessageId } : {}),
                         ...(attachments?.length > 0 ? { attachments: attachments.map(a => ({ type: a.mimeType?.startsWith('image/') ? 'image' : a.mimeType?.startsWith('audio/') ? 'audio' : 'file', url: a.url, name: a.originalName || a.name, mimeType: a.mimeType })) } : {})
                     }
                 });
@@ -372,6 +429,7 @@ function createAIChatRouter({ db, io }) {
             const canStream = wantsEventStream(req) && !audio && !(attachments?.length > 0) && !isAgentMode;
             const praxisPayload = {
                 message: inlineFilesIntoMessage(message, files),
+                ...(validTurnKey(clientMessageId) ? { idempotency_key: clientMessageId } : {}),
                 history,
                 conversationContext,
                 projectId,
@@ -384,7 +442,7 @@ function createAIChatRouter({ db, io }) {
                 const praxisResponse = await praxisFetch('/api/chat', {
                     method: 'POST', headers: { 'Content-Type': 'application/json', ...(canStream ? { Accept: 'text/event-stream' } : {}),
                         // Operator provenance: signed over the exact message in the payload (praxis-client.js).
-                        ...provenanceFor(req.body, praxisPayload.message, 'nexus-chat') },
+                        ...provenanceFor(req.body, praxisPayload.message, 'nexus-chat-turn') },
                     body: JSON.stringify(praxisPayload), timeoutMs: getPraxisChatTimeoutMs(), // local agent loops can be long
                     dispatcher: getPraxisChatDispatcher(),
                 });
@@ -406,15 +464,18 @@ function createAIChatRouter({ db, io }) {
                 res.flushHeaders?.();
                 res.socket?.setNoDelay(true);
                 try {
-                    const historySaved = await writePraxisStreamToClient({
+                    const result = await writePraxisStreamToClient({
                         praxisResponse,
                         res,
                         db,
                         io,
                         conversationId,
+                        clientMessageId,
                         onReply: () => activity.update(activityId,'replying',undefined,activityAttempt),
                     });
-                    activity.update(activityId,historySaved?'completed':'failed',historySaved?undefined:'Praxis replied, but Nexus could not save the reply to conversation history.',activityAttempt);
+                    const failed = praxisTurnFailed(result);
+                    activity.update(activityId,failed || !result.historySaved ? 'failed' : 'completed',
+                        failed ? result.error || result.state : result.historySaved ? undefined : 'Praxis replied, but Nexus could not save the reply to conversation history.',activityAttempt);
                 } catch (streamErr) {
                     activity.update(activityId,'failed',streamErr.message,activityAttempt);
                     console.error(`[AI Chat] Praxis stream relay error:`, streamErr);
@@ -441,9 +502,9 @@ function createAIChatRouter({ db, io }) {
 
                 if (conversationId) {
                     try {
-                        const savedAssistantMessage = await db.saveChatMessage({ conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata(data) });
+                        const { row: savedAssistantMessage, inserted } = await saveRelayReply(db, { conversation_id: conversationId, role: 'assistant', content: fullResponse, mode: 'praxis', metadata: buildPraxisAssistantMetadata(data) }, clientMessageId);
                         assistantMessageId = savedAssistantMessage?.id || null;
-                        if (savedAssistantMessage && io) {
+                        if (savedAssistantMessage && io && inserted) {
                             io.emit('chat-message', buildChatMessageEvent(savedAssistantMessage));
                         }
                     } catch (dbErr) {
@@ -451,8 +512,10 @@ function createAIChatRouter({ db, io }) {
                     }
                 }
 
-                activity.update(activityId,assistantMessageId?'completed':'failed',assistantMessageId?undefined:'Praxis replied, but Nexus could not save the reply to conversation history.',activityAttempt);
-                return { response: fullResponse, model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, historySaved: !!assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData, ...(data.suppressVoice === true ? { suppressVoice: true } : {}), morningKickoff: data.morningKickoff === true };
+                const failed = praxisTurnFailed(data);
+                activity.update(activityId,failed || !assistantMessageId ? 'failed' : 'completed',
+                    failed ? data.error || data.state : assistantMessageId ? undefined : 'Praxis replied, but Nexus could not save the reply to conversation history.',activityAttempt);
+                return { response: fullResponse, ...praxisTurnOutcome(data), model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, historySaved: !!assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData, ...(data.suppressVoice === true ? { suppressVoice: true } : {}), morningKickoff: data.morningKickoff === true };
             })();
 
             if (joinable) rememberChatRun(clientMessageId, runPromise);

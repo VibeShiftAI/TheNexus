@@ -54,3 +54,25 @@ test('an interrupted response never leaves the center working or claims completi
     assert.match(status.latest.detail,/before completion/);
   } finally {terminal.unmount();status.unmount();globalThis.fetch=original;}
 });
+
+for (const outcome of [
+  {state:'rejected',error:'cli_model_incompatible',retryable:false},
+  {state:'uncertain',error:'outcome_uncertain',retryable:false},
+  {error:'provider_failed',retryable:false},
+]) for (const stream of [false,true]) {
+  test(`${outcome.error} remains failed in the composer when history is saved (stream=${stream})`,async()=>{
+    const original=globalThis.fetch;
+    const payload={response:'The request did not complete.',historySaved:true,assistantMessageId:'failed-reply',...outcome};
+    globalThis.fetch=async url=>String(url).endsWith('/activity')
+      ?Response.json({at:new Date().toISOString(),turns:[]})
+      :stream?new Response(`data: ${JSON.stringify({type:'final',...payload})}\n\n`,{headers:{'Content-Type':'text/event-stream'}})
+      :Response.json(payload);
+    const terminal=mountTerminal([]);const status=probe();
+    try {
+      await settle();typeCharacter(findComposerInput(terminal.container),'x');
+      await act(async()=>terminal.container.querySelector('[aria-label="Send message"]').click());await settle();
+      assert.equal(status.latest.phase,'failed');assert.equal(status.latest.active,false);
+      assert.equal(status.latest.detail,outcome.error);
+    } finally {terminal.unmount();status.unmount();globalThis.fetch=original;}
+  });
+}

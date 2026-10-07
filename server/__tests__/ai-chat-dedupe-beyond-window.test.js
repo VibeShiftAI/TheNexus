@@ -183,19 +183,20 @@ describe('AI chat durable dedupe — answered message beyond the 200-row window'
         expect(relayCount).toBe(relaysBefore + 1);
     }, 30000);
 
-    test('an unanswered message in the store still relays — the lookup needs a REPLY, not just the row', async () => {
+    test('an unanswered keyed message consults its durable Praxis receipt', async () => {
         const conversation = await db.getActiveConversation('praxis');
         const clientMessageId = 'local-probe-unanswered-0003';
         const relaysBefore = relayCount;
 
-        // A user row with no assistant reply after it: the previous run died
-        // before answering, so the retry MUST reach the agent.
+        // A new keyed user row may recover the original Praxis result without
+        // authorizing a second execution of that key.
         await db.saveChatMessage({
             id: clientMessageId,
             conversation_id: conversation.id,
             role: 'user',
             content: 'never answered',
             mode: 'praxis',
+            metadata: { praxisTurnKey: clientMessageId },
         });
 
         const router = await mountFreshRouter();

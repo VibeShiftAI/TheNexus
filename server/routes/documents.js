@@ -35,12 +35,14 @@
  * to the authenticated reviewer. The router never touches task status.
  *
  * Comments, Finish review and task QA never approve anything and nothing here
- * sends or publishes: an approval is a recorded editorial decision on one
- * revision, which a separate sender must verify before acting
+ * sends or publishes. Editorial approval never authorizes sending. The separate
+ * outgoing API records an exact operator send grant for Praxis to claim once
  * (docs/contracts/document-review-deliverables.md).
  */
 const express = require('express');
+const { createDocumentOutgoingRouter } = require('./document-outgoing');
 const path = require('path');
+const fs = require('fs');
 const { randomUUID } = require('crypto');
 const { listProjectRoots, resolveDocumentPath, readDocumentFile, sha256 } = require('../services/document-registry');
 const fmt = require('../services/document-review-format');
@@ -52,7 +54,8 @@ const KINDS = new Set(['document', 'report', 'spec', 'plan', 'research', 'walkth
 const LIMITS = { title: 300, body: 20000, summary: 20000, selection: 2000, metadataJson: 8000, clientId: 120, purpose: 500, key: 300, sourceId: 200, query: 200 };
 /** What the deliverable is for once approved. Approval records the decision; it never performs the action. */
 const INTENDED_ACTIONS = new Set(['none', 'implement', 'send', 'publish']);
-const DELIVERABLE_FIELDS = new Set(['key', 'purpose', 'requires_review', 'intended_action', 'source']);
+const { parseBlockingTaskIds } = require('../../db/document-review-blockers');
+const DELIVERABLE_FIELDS = new Set(['key', 'purpose', 'requires_review', 'intended_action', 'source', 'blocking_task_ids']);
 const SOURCE_TYPES = new Set(['task', 'chat']);
 const SOURCE_ID_FIELDS = ['conversation_id', 'message_id', 'execution_id'];
 const DECISIONS = new Set(['approve', 'request_changes']);
@@ -105,6 +108,13 @@ function parseDeclaration(body) {
     if (declared.intended_action !== 'none' && !declared.requires_review) {
         return badRequest('A deliverable intended for an action must require review: approval comes before the action');
     }
+    let blockingTaskIds;
+    if (declared.blocking_task_ids !== undefined) {
+        const parsed = parseBlockingTaskIds(declared.blocking_task_ids);
+        if (!parsed.ok) return badRequest(parsed.error);
+        blockingTaskIds = parsed.value;
+        if (blockingTaskIds.length && !declared.requires_review) return badRequest('Waiting tasks require a reviewable document');
+    }
     let key = null;
     if (declared.key !== undefined) {
         key = text(declared.key, LIMITS.key);
@@ -153,7 +163,7 @@ function parseDeclaration(body) {
     return {
         ok: true,
         value: {
-            key, purpose, title, projectId, taskId, kind, source, expectedHash,
+            key, purpose, title, projectId, taskId, kind, source, expectedHash, blockingTaskIds,
             requiresReview: declared.requires_review, intendedAction: declared.intended_action,
             metadata: body.metadata || null,
         },
@@ -197,6 +207,25 @@ function parseListQuery(query, { paging = true } = {}) {
     const offset = read.offset === undefined ? 0 : (/^\d+$/.test(read.offset) ? Number(read.offset) : NaN);
     if (!Number.isSafeInteger(offset) || offset < 0) return { ok: false, error: 'offset must be a non-negative integer' };
     return { ok: true, value: { status, limit, offset, filters } };
+}
+
+/** Resolve aliases for identity lookup even when a registered file is missing.
+ * This grants no path access: only a matching stored document is subsequently
+ * read through the normal project-root boundary. */
+function registrationIdentityPath(value, seen = new Set()) {
+    if (typeof value !== 'string' || !path.isAbsolute(value) || value.includes('\0')) return null;
+    const normalized = path.normalize(value);
+    if (seen.has(normalized)) return normalized;
+    seen.add(normalized);
+    try { return fs.realpathSync.native(normalized); } catch { /* missing bytes still have an identity */ }
+    try {
+        const target = fs.readlinkSync(normalized);
+        return registrationIdentityPath(path.resolve(path.dirname(normalized), target), seen);
+    } catch { /* not a symlink; resolve the existing ancestor instead */ }
+    const parent = path.dirname(normalized);
+    if (parent === normalized) return normalized;
+    const resolvedParent = registrationIdentityPath(parent, seen);
+    return resolvedParent ? path.join(resolvedParent, path.basename(normalized)) : normalized;
 }
 
 function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumentDecisionAuthority() }) {
@@ -243,13 +272,48 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         const stored = doc.current_revision_id ? store().getRevision(doc.current_revision_id) : null;
         const roots = await listProjectRoots(db);
         const resolved = resolveDocumentPath(doc.path, roots);
-        if (!resolved.ok) return { revision: stored, fileState: resolved.code, fileError: resolved.error };
-        if (resolved.canonicalPath !== doc.path) return { revision: stored, fileState: 'path_changed', fileError: 'Registered path no longer resolves to the same file' };
+        const unavailable = (code, error) => {
+            store().invalidateOutgoing(doc.id, code);
+            return { revision: stored, fileState: code, fileError: error };
+        };
+        if (!resolved.ok) return unavailable(resolved.code, resolved.error);
+        if (resolved.canonicalPath !== doc.path) return unavailable('path_changed', 'Registered path no longer resolves to the same file');
         const read = readDocumentFile(resolved.canonicalPath);
-        if (!read.ok) return { revision: stored, fileState: read.code, fileError: read.error };
+        if (!read.ok) return unavailable(read.code, read.error);
         const { revision } = recordRevision(doc, read, resolved.mtime);
-        if (doc.current_revision_id !== revision.id) store().setCurrentRevision(doc.id, revision.id);
+        if (store().getDocument(doc.id).current_revision_id !== revision.id) store().setCurrentRevision(doc.id, revision.id);
         return { revision, fileState: 'ok', fileError: null };
+    }
+
+    /** A rejected re-registration still revokes a grant when it observes changed or missing bytes.
+     * It must not create a registration/revision for rejected producer input. */
+    async function observeOutgoingRegistration(body) {
+        const key = text(body.deliverable?.key, LIMITS.key);
+        const candidate = registrationIdentityPath(body.path);
+        const taskId = body.task_id == null ? null : text(String(body.task_id), 120);
+        const doc = (key && store().findDocumentByKey(key))
+            || (candidate && (store().findDocumentByPath(candidate, taskId)
+                || store().findDocumentByKey(`path:${candidate}`)
+                || store().findDocumentByPath(candidate, null)));
+        if (!doc) return;
+        const outgoing = store().getOutgoing(doc.id);
+        if (!outgoing || outgoing.invalidated_at || !['draft', 'approved'].includes(outgoing.status)) return;
+        const resolved = resolveDocumentPath(doc.path, await listProjectRoots(db));
+        if (!resolved.ok || resolved.canonicalPath !== doc.path) {
+            store().invalidateOutgoing(doc.id, 'file_unavailable');
+            return;
+        }
+        const read = readDocumentFile(resolved.canonicalPath);
+        if (!read.ok || read.exactHash !== outgoing.content_hash) {
+            store().invalidateOutgoing(doc.id, read.ok ? 'document_changed' : 'file_unavailable');
+        }
+    }
+
+    async function validateWaitingTasks(ids) {
+        for (const id of ids || []) {
+            if (!await db.getTask(id)) return { error: `Waiting task not found: ${id}`, code: 'task_not_found' };
+        }
+        return null;
     }
 
     async function sourceSummary(doc) {
@@ -330,6 +394,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         const submission = review ? store().getSubmissionForReview(review.id) : null;
         return {
             ...doc,
+            blocking_tasks: store().getBlockingTasks(doc.id),
             current_revision: revisionMeta(doc.current_revision_id ? store().getRevisionMeta(doc.current_revision_id) : null),
             review_url: fmt.reviewUrlFor(doc.id),
             review_path: fmt.reviewPathFor(doc.id),
@@ -361,6 +426,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             requires_review: declaration.requires_review === true,
             intended_action: declaration.intended_action ?? 'none',
             source: declaration.source ?? null,
+            blocking_task_ids: declaration.blocking_task_ids || [],
             document_created: registration.document_created,
             revision_created: registration.revision_created,
             registered_by: registration.registered_by,
@@ -403,6 +469,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             }
             const declared = {
                 title: v.title, purpose: v.purpose, requires_review: v.requiresReview, intended_action: v.intendedAction,
+                ...(!v.requiresReview ? { blocking_task_ids: [] } : v.blockingTaskIds !== undefined ? { blocking_task_ids: v.blockingTaskIds } : {}),
                 deliverable_key: key, root_project_id: resolved.root.projectId, path: resolved.canonicalPath,
             };
             let documentCreated = false;
@@ -430,6 +497,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const declaration = {
                 title: v.title, purpose: v.purpose, kind: v.kind || doc.kind, requires_review: v.requiresReview,
                 intended_action: v.intendedAction, source: v.source,
+                blocking_task_ids: doc.blocking_task_ids || [],
             };
             // A byte-identical retry of the same declaration returns its first receipt.
             const fingerprint = sha256(JSON.stringify({
@@ -462,6 +530,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 return res.status(422).json({ error: 'The task does not belong to the declared project', code: 'association_mismatch' });
             }
         }
+        const invalidWaitingTask = await validateWaitingTasks(v.blockingTaskIds);
+        if (invalidWaitingTask) return res.status(404).json(invalidWaitingTask);
         const roots = await listProjectRoots(db);
         const resolved = resolveDocumentPath(body.path, roots);
         if (!resolved.ok) return res.status(resolved.status).json({ error: resolved.error, code: resolved.code });
@@ -491,10 +561,13 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         });
     }
 
+    router.use('/:id/outgoing', createDocumentOutgoingRouter({ store, captureRevision, authorizeDecision }));
+
     // ── Registry ──────────────────────────────────────────────────────────
     router.post('/', async (req, res) => {
         try {
             const body = req.body || {};
+            await observeOutgoingRegistration(body);
             if (body.deliverable !== undefined) return await registerDeclared(req, res, body);
             const roots = await listProjectRoots(db);
             const resolved = resolveDocumentPath(body.path, roots);
@@ -573,6 +646,14 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         }
     });
 
+    router.get('/review-task-options', (_req, res) => {
+        try { return res.json({ tasks: store().listReviewTaskOptions() }); }
+        catch (err) {
+            console.error('[Documents] waiting tasks failed:', err);
+            return res.status(500).json({ error: 'Failed to load waiting tasks' });
+        }
+    });
+
     router.get('/:id', async (req, res) => {
         try {
             const doc = loadDocument(req, res);
@@ -584,11 +665,13 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const latest = store().latestDecision(doc.id);
             return res.json({
                 document: fresh,
+                blocking_tasks: store().getBlockingTasks(doc.id),
                 revision: revisionMeta(captured.revision),
                 content: captured.revision ? captured.revision.content : null,
                 file_state: captured.fileState,
                 file_error: captured.fileError,
                 source,
+                outgoing: store().getOutgoing(doc.id),
                 review: review ? reviewView(review, { revision: captured.revision }) : null,
                 review_status: store().getReviewStatus(doc.id),
                 current_decision: latest ? { ...latest, applies_to_current_revision: latest.revision_id === fresh.current_revision_id } : null,
@@ -597,6 +680,30 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         } catch (err) {
             console.error('[Documents] read failed:', err);
             return res.status(500).json({ error: 'Failed to read document' });
+        }
+    });
+
+    // Review requirements are registration metadata, never an approval or dispatch.
+    router.post('/:id/request-review', async (req, res) => {
+        try {
+            const doc = loadDocument(req, res);
+            if (!doc) return;
+            if (req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ error: 'Same-origin requests only', code: 'cross_site' });
+            const body = req.body;
+            if (!isPlainObject(body) || Object.keys(body).some(key => key !== 'blocking_task_ids')) {
+                return res.status(400).json({ error: 'Only blocking_task_ids may be supplied', code: 'invalid_review_requirements' });
+            }
+            const parsed = parseBlockingTaskIds(body.blocking_task_ids === undefined ? (doc.blocking_task_ids ?? []) : body.blocking_task_ids);
+            if (!parsed.ok) return res.status(400).json({ error: parsed.error, code: 'invalid_review_requirements' });
+            const invalid = await validateWaitingTasks(parsed.value);
+            if (invalid) return res.status(404).json(invalid);
+            const captured = await captureRevision(doc);
+            if (captured.fileState !== 'ok') return res.status(409).json({ error: 'The document file must be available before requesting review', code: 'file_unavailable' });
+            const document = store().updateDocument(doc.id, { requires_review: true, blocking_task_ids: parsed.value });
+            return res.json({ document, review_status: store().getReviewStatus(doc.id), blocking_tasks: store().getBlockingTasks(doc.id) });
+        } catch (err) {
+            console.error('[Documents] review requirements failed:', err);
+            return res.status(500).json({ error: 'Failed to update review requirements' });
         }
     });
 

@@ -167,24 +167,49 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
             if (rulings[index] === undefined || sha256(rulings[index]) !== given.sha256.toLowerCase()) {
                 throw fail('Referenced operator ruling is not recorded on this task', 409, 'decision_ref_mismatch');
             }
-            const cited = given.sha256.toLowerCase(), answers = previous?.operator_answers || [];
-            const answer = answers.find(entry => entry.index === index && entry.sha256 === cited) || answers.find(entry => entry.index === index);
+            const cited = given.sha256.toLowerCase();
+            // Follow the index's lifecycle, not the last historical match for
+            // this hash. An authenticated amendment or deletion supersedes
+            // earlier text even if an executor later puts that text back.
+            const answers = (previous?.operator_answers || []).filter(entry => entry.index === index);
+            const latest = answers.at(-1);
+            const answer = latest?.sha256 === cited ? latest : undefined;
+            const authorization = answers.filter(entry => VOUCHED_ANSWER_ORIGINS.has(entry.origin)).at(-1);
             // While a rewrite of the rulings is on record, adjudicated or not, a
             // relayed decision is grounded only in what Robert recorded: the
-            // words the concern recorded, or an answer appended since under his
-            // credential or the runtime's. The text an executor put on the row
-            // is not his decision, whichever index it sits at.
+            // words the concern recorded, or a current authenticated answer
+            // under his credential or the runtime's. The text an
+            // executor put on the row is not his decision, whichever index it
+            // sits at, and an entry he had replaced before the review does not
+            // become his again because an executor put it back.
+            // Legacy amendments left no audit entry. A differing current hash
+            // cannot prove who wrote it; an actual authenticated edit records
+            // that provenance now (an unchanged save records nothing).
             const review = (previous?.concerns || []).filter(concern => concern.kind === 'rulings_rewrite');
-            if (review.length) {
-                const recordedWords = review.some(concern => (Array.isArray(concern.recorded) ? concern.recorded : []).includes(cited));
-                const vouched = answers.some(entry => entry.index === index && entry.sha256 === cited && VOUCHED_ANSWER_ORIGINS.has(entry.origin));
-                if (!recordedWords && !vouched) {
+            const superseded = authorization && authorization.sha256 !== cited;
+            if (superseded || review.length) {
+                const since = typeof review[0]?.recorded_at === 'string' ? review[0].recorded_at : '';
+                const recordedWords = review.some(concern => concern.recorded?.[index] === cited);
+                // Lifecycle entries record amendments/deletions, so the latest
+                // authorization remains valid when an unrelated concern opens
+                // or closes. Older append-only audits retain their time bound.
+                const lifecycle = Number.isSafeInteger(answer?.task_version) && answer.previous_sha256 !== undefined;
+                const vouched = Boolean(answer && VOUCHED_ANSWER_ORIGINS.has(answer.origin)
+                    && (lifecycle || (typeof answer.recorded_at === 'string' && answer.recorded_at >= since)));
+                if (superseded || (!recordedWords && !vouched)) {
                     const concern = review.find(item => (Array.isArray(item.rewritten) ? item.rewritten : []).includes(cited)) || review[review.length - 1];
-                    throw fail('Referenced operator ruling was written by an unverified source and is under review; it is not a decision Robert recorded', 409, 'decision_ref_under_review', { concern_key: concern.key });
+                    // A different authorized hash does not prove this cited
+                    // text was ever Robert's. Reserve supersession wording for
+                    // a known prior instruction or the text an authenticated
+                    // amendment/removal replaced, with no later unverified entry.
+                    const knownSupersession = superseded && VOUCHED_ANSWER_ORIGINS.has(latest?.origin)
+                        && (latest.previous_sha256 === cited || answers.some(entry => entry.sha256 === cited && VOUCHED_ANSWER_ORIGINS.has(entry.origin)));
+                    throw fail(knownSupersession ? 'Referenced operator ruling was superseded by an authenticated amendment or removal' : 'Referenced operator ruling was written by an unverified source and is under review; it is not a decision Robert recorded',
+                        409, 'decision_ref_under_review', concern ? { concern_key: concern.key } : {});
                 }
             }
             return { kind: 'operator_ruling', index, sha256: cited, verified: true, verification: 'operator_ruling_sha256',
-                ...(answer?.recorded_at ? { recorded_at: answer.recorded_at } : {}), ...(answer?.origin && answer.sha256 === cited ? { recorded_by: answer.origin } : {}) };
+                ...(answer?.recorded_at ? { recorded_at: answer.recorded_at } : {}), ...(answer?.origin ? { recorded_by: answer.origin } : {}) };
         }
         if (given.kind === 'document_decision') {
             if (!normalized(given.id)) throw fail('document_decision reference needs id', 400, 'contract_change_invalid');
@@ -218,6 +243,8 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     const priorDecision = receipt => Object.fromEntries(['decision', 'reason', 'resolved_at', 'authority', 'evidence', 'remaining_scope', 'repeat_id']
         .filter(key => receipt?.[key] !== undefined).map(key => [key, receipt[key]]));
     const sameEntries = (left, right) => Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((entry, index) => entry === right[index]);
+    const changedRulingIndices = (before, after) => Array.from({ length: Math.max(before.length, after.length) }, (_, index) => index)
+        .filter(index => before[index] !== after[index]);
     function appendRulingsChange(previous, entry) {
         const history = [...(previous?.rulings_changes || []), entry];
         let dropped = previous?.rulings_changes_dropped || 0;
@@ -243,6 +270,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         if (sameEntries(recorded, rulings)) return unchanged;
         const before = recorded.map(sha256), after = rulings.map(sha256), recordedAt = new Date(now()).toISOString();
         const open = concerns.filter(concern => concern.kind === 'rulings_rewrite');
+        const startsWith = (list, prefix) => list.length >= prefix.length && prefix.every((sha, index) => list[index] === sha);
         // Robert's words are what the earliest open concern recorded. A chained
         // rewrite is measured against them, never against the executor's own
         // earlier text, and only his words coming back is a restore.
@@ -250,20 +278,39 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         const entry = { recorded_at: recordedAt, task_version: task.version ?? null, before, after,
             origin: { kind: origin.kind, authority: origin.authority, requester: origin.requester } };
         if (origin.kind === 'operator') {
+            if (!open.length) return unchanged;
             // His recorded words back at the front of the row, whatever the
-            // executor had left there, possibly followed by his new answers.
-            const restores = open.length > 0 && after.length >= authorized.length && authorized.every((sha, index) => after[index] === sha);
-            if (!open.length || (!rewritten && !restores)) return unchanged;
-            return { concerns: concerns.filter(concern => concern.kind !== 'rulings_rewrite'), cleared: true, restores,
-                history: appendRulingsChange(previous, { ...entry, outcome: 'authorized', cleared_concern_keys: open.map(concern => concern.key), ...(restores ? { restores_recorded: true } : {}) }) };
+            // executor had left there, possibly followed by his new answers...
+            const restores = startsWith(after, authorized);
+            // ...or the executor's recorded text changed or removed by him. An
+            // answer of his appended after that text, or deleted again, leaves
+            // the text in place and decides nothing about it.
+            // Decide each concern separately: editing a later answer does not
+            // adopt an older executor rewrite that is still on the row.
+            const clearedKeys = open.filter(concern => {
+                const affected = concern.changed_indices || changedRulingIndices(concern.recorded || [], concern.rewritten || []);
+                return (rewritten || restores) && affected.length > 0 && affected.every(index => {
+                    if (before[index] !== after[index]) return true;
+                    // A previous partial correction by Robert still counts;
+                    // unchanged executor text and pre-concern authorizations do not.
+                    const answer = (previous?.operator_answers || []).filter(item => item.index === index).at(-1);
+                    return answer?.origin === 'operator' && answer.sha256 === (after[index] ?? null)
+                        && Number.isSafeInteger(answer.task_version) && Number.isSafeInteger(concern.task_version) && answer.task_version > concern.task_version;
+                });
+            }).map(concern => concern.key);
+            if (!clearedKeys.length) return unchanged;
+            return { concerns: concerns.filter(concern => !clearedKeys.includes(concern.key)), cleared: true, restores,
+                history: appendRulingsChange(previous, { ...entry, outcome: 'authorized', cleared_concern_keys: clearedKeys, ...(restores ? { restores_recorded: true } : {}) }) };
         }
-        if (!rewritten) return unchanged;
+        // Anyone else putting his words back exactly, onto an emptied row too,
+        // is recorded as the restore and clears nothing.
         if (open.length && sameEntries(authorized, after)) {
             return { concerns, cleared: false, restores: true,
                 history: appendRulingsChange(previous, { ...entry, outcome: 'held', concern_key: open[0].key, restores_recorded: true }) };
         }
+        if (!rewritten) return unchanged;
         const concern = { key: digest({ rulings_rewrite: { task: task.id ?? null, before: authorized, after } }), kind: 'rulings_rewrite', reason: RULINGS_REWRITE_REASON,
-            recorded: authorized, rewritten: after, recorded_at: recordedAt, task_version: task.version ?? null,
+            recorded: authorized, rewritten: after, changed_indices: changedRulingIndices(before, after), recorded_at: recordedAt, task_version: task.version ?? null,
             origin: origin.kind, requester: origin.requester, phase: executionPhase(task, updates).phase };
         return { concerns: concerns.some(item => item.key === concern.key) ? concerns : [...concerns, concern], cleared: false, restores: false,
             history: appendRulingsChange(previous, { ...entry, outcome: 'held', concern_key: concern.key }) };
@@ -615,19 +662,28 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         const recorded = rulingEntries(object(task.antigravity_payload).operator_rulings);
         const rulings = updates.antigravity_payload === undefined ? recorded : rulingEntries(object(updates.antigravity_payload).operator_rulings);
         const rewritten = recorded.some((entry, index) => rulings[index] !== entry);
-        // Each appended answer records who appended it: an entry Robert or the
-        // runtime recorded is an authenticated addition a relay may cite; an
-        // executor's is recorded as such and grounds nothing (verifyDecisionRef).
-        const answers = [...(previous?.operator_answers || []), ...(rewritten ? [] : rulings.slice(recorded.length).map((entry, offset) => ({
-            index: recorded.length + offset, sha256: sha256(entry), recorded_at: new Date(now()).toISOString(), origin: origin.kind, requester: origin.requester })))];
-        const audit = answers.length ? { operator_answers: answers } : {};
         // A rewrite by anyone but Robert joins the receipt as a durable concern
-        // (rulingsConcernsFor); his own rewrite clears an open one.
+        // (rulingsConcernsFor); his own edit of that text, or restore of his
+        // words, clears an open one.
         const rulingsNow = rulingsConcernsFor({ previous, task, updates, origin, recorded, rulings, rewritten });
+        // Keep append provenance, and record every changed index in Robert's
+        // own edits, including deletion tombstones. Never mutate the old audit
+        // entries or vouch for unchanged executor text in the same payload.
+        // An executor restore still appends no answer of its own.
+        const appended = rewritten || (rulingsNow.restores && origin.kind !== 'operator') ? [] : rulings.slice(recorded.length);
+        const indices = origin.kind === 'operator'
+            ? changedRulingIndices(recorded, rulings)
+            : appended.map((_, offset) => recorded.length + offset);
+        const answers = [...(previous?.operator_answers || []), ...indices.map(index => ({
+            index, sha256: rulings[index] === undefined ? null : sha256(rulings[index]),
+            previous_sha256: recorded[index] === undefined ? null : sha256(recorded[index]), task_version: task.version ?? null,
+            recorded_at: new Date(now()).toISOString(), origin: origin.kind, authority: origin.authority, requester: origin.requester }))];
+        const audit = answers.length ? { operator_answers: answers } : {};
         let next;
         // Only Robert himself may rewrite a recorded ruling without a hold; a
         // relayed decision is about contract fields, not about what he said.
-        if (reopening || (rewritten && origin.kind !== 'operator')) {
+        // Anyone else's restore of his words is recorded on the same path.
+        if (reopening || (origin.kind !== 'operator' && (rewritten || rulingsNow.restores))) {
             const concerns = [...rulingsNow.concerns];
             if (reopening) concerns.push({ key: digest({ terminal_reopen: task.status, version: task.version }),
                 reason: `Task reopened from ${task.status}; retained prior work requires fresh evidence or an explicitly reasoned repeat.` });

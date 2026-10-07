@@ -64,8 +64,11 @@ module.exports = function createCalendarRouter({ db }) {
     router.put('/:id', async (req, res) => {
         try {
             const event = await db.updateCalendarEvent(req.params.id, req.body);
+            if (!event) return res.status(500).json({ error: 'Failed to update calendar event' });
             res.json(event);
         } catch (error) {
+            if (error.code === 'CALENDAR_STATE_CHANGED') return res.status(409).json({ error: error.message, current: error.current });
+            if (error.code === 'CALENDAR_INVALID_EXPECTATION') return res.status(400).json({ error: error.message });
             res.status(500).json({ error: error.message });
         }
     });
@@ -79,7 +82,8 @@ module.exports = function createCalendarRouter({ db }) {
                 const events = await db.getCalendarEvents(); // Basic fetch, we can filter in JS for now or write a SQL DB method
                 const event = events.reverse().find(e => e.task_id === task_id); // Get latest
                 if (event) {
-                    await db.updateCalendarEvent(event.id, req.body);
+                    const updated = await db.updateCalendarEvent(event.id, req.body);
+                    if (!updated) return res.status(500).json({ error: 'Failed to update calendar event' });
                     res.json({ status: 'ok' });
                     return;
                 }

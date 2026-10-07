@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HITLRequest, HITLResolution } from "@praxis/contract";
 import { useLiveBoardState, useLiveRefetch } from "@/components/live-board-state";
+import { isAlertRequestExpired } from "@/lib/alert-action";
 
 type ResolveInput = {
   choice?: string;
@@ -37,27 +38,45 @@ export function useHitlInbox() {
   const { recentEvents } = useLiveBoardState();
   const [requests, setRequests] = useState<HITLRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(true);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const readGeneration = useRef(0);
+  const readController = useRef<AbortController | null>(null);
+  const resolvedIds = useRef(new Set<string>());
+  const invalidateReads = useCallback(() => {
+    readGeneration.current += 1;
+    readController.current?.abort();
+  }, []);
+  const rememberResolution = useCallback((id: string) => {
+    resolvedIds.current.add(id);
+    if (resolvedIds.current.size > 1000) resolvedIds.current.delete(resolvedIds.current.values().next().value!);
+  }, []);
+  useEffect(() => () => invalidateReads(), [invalidateReads]);
 
   const pendingRequests = useMemo(
-    () => requests.filter((request) => !request.resolution),
+    () => requests.filter((request) => !request.resolution && !isAlertRequestExpired(request)),
     [requests],
   );
 
   const refresh = useCallback(async () => {
+    invalidateReads();
+    const generation = readGeneration.current;
+    const controller = new AbortController(); readController.current = controller;
+    const current = () => generation === readGeneration.current && !controller.signal.aborted;
+    setRefreshing(true);
     try {
       setError(null);
-      const response = await fetch("/api/praxis/hitl/pending", { cache: "no-store" });
+      const response = await fetch("/api/praxis/hitl/pending", { cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(5000)]) });
       if (!response.ok) throw new Error(`HITL inbox returned ${response.status}`);
       const data = await response.json();
-      setRequests(Array.isArray(data.requests) ? data.requests : []);
+      if (current()) setRequests(Array.isArray(data.requests) ? data.requests.filter((request: HITLRequest) => !resolvedIds.current.has(request.id)) : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load HITL inbox");
+      if (current()) setError(err instanceof Error ? err.message : "Unable to load HITL inbox");
     } finally {
-      setLoading(false);
+      if (current()) { setLoading(false); setRefreshing(false); }
     }
-  }, []);
+  }, [invalidateReads]);
 
   // The optimistic list below is applied straight from the frame, which is
   // what makes the inbox feel instant; this refetch is the correctness half.
@@ -71,20 +90,27 @@ export function useHitlInbox() {
     const event = recentEvents[0];
     if (event.type === "hitl.created" && "request" in event) {
       const request = event.request as HITLRequest;
+      if (resolvedIds.current.has(request.id)) return;
       setRequests((current) => [request, ...current.filter((item) => item.id !== request.id)]);
+      void refresh();
     }
     if (event.type === "hitl.resolved" && "requestId" in event) {
       const requestId = event.requestId as string;
+      rememberResolution(requestId);
       const resolution = event.resolution as HITLResolution | undefined;
       setRequests((current) =>
         current.map((item) =>
           item.id === requestId ? { ...item, resolution: resolution ?? item.resolution } : item,
         ),
       );
+      // A retained frame can be present on first mount. Replace the canceled
+      // snapshot immediately so unrelated requests are not hidden until polling.
+      void refresh();
     }
-  }, [recentEvents]);
+  }, [recentEvents, refresh, rememberResolution]);
 
   const resolveRequest = useCallback(async (requestId: string, input: ResolveInput) => {
+    invalidateReads(); setLoading(false); setRefreshing(false);
     setResolvingId(requestId);
     setError(null);
     try {
@@ -96,6 +122,8 @@ export function useHitlInbox() {
       if (!response.ok) throw new Error(await describeResolveFailure(response));
       const data = await response.json();
       if (data.request) {
+        invalidateReads(); setLoading(false); setRefreshing(false);
+        if (data.request.resolution) rememberResolution(requestId);
         setRequests((current) =>
           current.map((item) => (item.id === requestId ? data.request : item)),
         );
@@ -106,11 +134,12 @@ export function useHitlInbox() {
     } finally {
       setResolvingId(null);
     }
-  }, []);
+  }, [invalidateReads, rememberResolution]);
 
   return {
     error,
     loading,
+    refreshing,
     pendingRequests,
     refresh,
     resolvingId,

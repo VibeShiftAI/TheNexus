@@ -62,7 +62,7 @@ never silently register a reference document in place of a review request):
 
 | Field | Rule |
 |---|---|
-| `deliverable` | object with only `key`, `purpose`, `requires_review`, `intended_action`, `source` |
+| `deliverable` | object with only `key`, `purpose`, `requires_review`, `intended_action`, `source`, `blocking_task_ids` |
 | `requires_review` | boolean, required. `false` means a reference document: discoverable, never awaiting a decision |
 | `purpose` | required, 1-500 characters |
 | `intended_action` | required, one of `none`, `implement`, `send`, `publish`. Anything but `none` requires `requires_review: true` (approval comes before the action) |
@@ -76,7 +76,9 @@ never silently register a reference document in place of a review request):
 | `expected_content_hash` | optional lowercase hex SHA-256 of the exact bytes on disk (BOM and line endings included); if given, the file must hold exactly those bytes |
 
 The server then checks, in this order, and stops at the first failure. No
-failure writes anything.
+failure creates a registration or revision. Observing changed or missing
+bytes may still revoke an existing outgoing send grant, as required by the
+[exact outgoing contract](document-outgoing.md).
 
 | Status | `code` | Meaning |
 |---|---|---|
@@ -451,37 +453,18 @@ different executor identity or source, or without the `executor` block, is
 and again inside the insert transaction, so a decision or review landing in
 between wins.
 
-## 7. Consuming a decision: the stakeholder sender (c9658570)
+## 7. Sending a reviewed document (c9658570)
 
-The sender owns sending. This task does not implement it. A sender that wants
-to send a document Robert approved does this, every time, immediately before
-it sends:
+Approve document remains an editorial decision, including when its intended
+action is `send`. It is never a send grant. Comments, Finish review, delegated
+executor approvals, and task QA cannot authorize sending either.
 
-1. Hold a specific decision id (handed over by the operator or the UI, or
-   read from `history.decisions`). Never infer approval from
-   `review_status` alone and never from comments, Finish review or task QA.
-2. `GET /api/documents/:id/decisions/:decisionId`. The response is
-   `{ decision, in_force, reason, approved, file_state, revision,
-   current_revision, links: { review_path, raw_path } }`. Proceed only when
-   `approved === true`. Otherwise stop and surface `reason`:
-   `superseded` (a later decision exists), `document_changed` (the file now
-   holds different bytes, even if only a BOM or line endings changed),
-   `file_unavailable`, or `review_not_required`.
-3. Require `decision.intended_action === "send"`. An approval recorded for
-   `implement`, `publish` or `none` is not an approval to send.
-4. Fetch `links.raw_path` (`/api/documents/<id>/raw?revision=<revision_id>`)
-   as bytes and check that both `X-Document-Revision` and the SHA-256 of the
-   body equal `decision.content_hash`. Read the body as bytes (for example
-   `arrayBuffer()`); a text decoder can silently drop a BOM. Send exactly
-   those bytes. Revisions are immutable, so these bytes cannot change after
-   the check.
-5. Apply the sender's own envelope approval as before
-   (`docs/contracts/stakeholder-policy.md`): recipients, CC, subject and
-   attachments are not covered by a document approval. Approve document is an
-   editorial decision, not a send grant.
-6. Record `document_id`, `decision.id` and `decision.content_hash` in the
-   sender's own receipt so the outbound message is traceable to the approved
-   revision.
+The stakeholder sender uses the separate [exact outgoing document grant
+contract](document-outgoing.md): runtime preparation of the complete envelope,
+a direct operator `approve_send` pinned to its revision and opaque version,
+an atomic one-shot claim, then a durable sent/uncertain receipt. The sender
+must use the exact reviewed envelope and preserve its recipient/copy policy.
+Nexus records authority and state; Praxis owns the delivery operation.
 
 ## 8. Handoff notes for Praxis (e95e1af1)
 
@@ -638,3 +621,43 @@ it sends:
 - The existing document suites (`documents-route`, `document-registry`,
   `document-review-format`, `document-review-delivery`,
   `document-review-receiver` under `server/__tests__/`) still pass unchanged.
+
+## 9. Review priorities and waiting tasks (2026-10-06)
+
+`deliverable.blocking_task_ids` is an optional array of up to 100 task IDs whose
+work requires this document's editorial approval. IDs must exist; duplicates
+are normalized. Nonempty IDs require `requires_review: true`. These are explicit
+consumer relationships, separate from the producing `task_id`. Omission retains
+existing links on a reviewable document; `[]` clears them. Re-declaring a reference
+clears the links. Receipts carry the effective IDs accepted for that declaration.
+
+List rows expose `blocking_task_count` and `blocking_tasks` (id, title, status,
+project_id). Document detail exposes `blocking_tasks`. Only an unresolved review
+(`needs_review` or `changes_requested`) counts. Completed, cancelled, rejected,
+deleted and archived tasks are excluded, including a task with `archived_at` set.
+Explicitly linked idea-stage tasks are included. A current-revision approval clears
+the count; capturing a later revision restores it. This projection does not change
+task state or scheduling, and approval is not a promise that no other blockers exist.
+
+Ordering is blocking-task count descending, then creation time and ID descending,
+**before** pagination. Counts, task filters and project filters include consumer
+relationships, so a cross-project waiting task's Deliverables link remains usable.
+Lists reflect the latest captured revision, as with existing review status; opening
+or re-registering a document captures newly changed bytes.
+
+`GET /api/documents/review-task-options` returns `{tasks:[...]}` with active task
+IDs, titles, status, project_id and project_name for the reader's searchable picker.
+
+`POST /api/documents/:id/request-review` accepts `{blocking_task_ids:[...]}` (or
+`{}` to retain existing links). It requires the same authenticated registration
+access as declaring a deliverable and refuses browser cross-site requests. The
+file must be readable. It captures current bytes, sets `requires_review: true`,
+updates only the explicit waiting-task IDs, and returns document, review_status,
+and blocking_tasks. It preserves identity, producer, feedback and decision history;
+it never records an approval, dispatches, sends, publishes, or changes intended_action.
+Existing valid approval remains valid when editing links on an approved document.
+
+The reader exposes **Move to review queue** for reference documents and
+**Edit waiting tasks** for reviewable documents. Saving no selected tasks still
+requests review. An explicit requirement is not inferred from a shared project,
+a producer task's status, or an ordinary task dependency.

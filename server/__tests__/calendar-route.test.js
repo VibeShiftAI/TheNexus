@@ -10,6 +10,21 @@ function listen(app) {
 }
 
 describe('calendar route', () => {
+    test('task completion does not acknowledge a failed calendar write', async () => {
+        const app = express(); app.use(express.json());
+        app.use('/api/calendar', createCalendarRouter({ db: {
+            getCalendarEvents: async () => [{ id: 'event', task_id: 'task' }],
+            updateCalendarEvent: async () => null,
+        } }));
+        const server = await listen(app);
+        try {
+            const response = await fetch(`http://127.0.0.1:${server.address().port}/api/calendar?task_id=task`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'completed' }),
+            });
+            expect(response.status).toBe(500);
+            expect((await response.json()).error).toMatch(/Failed to update/);
+        } finally { server.closeAllConnections(); server.close(); }
+    });
     test('returns 500 when database insert fails without an event', async () => {
         const app = express();
         app.use(express.json());

@@ -1,7 +1,16 @@
-/** Decode the chat relay stream; partial text alone never confirms completion. */
+export interface PraxisTurnStatus {
+    type: 'status';
+    state: string;
+    message: string;
+    turn_id?: string;
+    status_url?: string;
+}
+
+/** Decode the chat relay stream; progress and partial text never confirm completion. */
 export async function readPraxisEventStream(
     response: Response,
     onDelta: (delta: string) => void,
+    onStatus?: (status: PraxisTurnStatus) => void,
 ): Promise<any> {
     const reader = response.body?.getReader();
     if (!reader) throw new Error('Streaming response did not include a readable body');
@@ -20,7 +29,9 @@ export async function readPraxisEventStream(
 
         const event = JSON.parse(data);
         if (event.type === 'error') throw new Error(event.error || 'Praxis response interrupted');
-        if (event.type === 'delta' && typeof event.delta === 'string') {
+        if (event.type === 'status' && typeof event.message === 'string') {
+            onStatus?.(event);
+        } else if (event.type === 'delta' && typeof event.delta === 'string') {
             onDelta(event.delta);
         } else if (event.type === 'final') {
             finalEvent = event;

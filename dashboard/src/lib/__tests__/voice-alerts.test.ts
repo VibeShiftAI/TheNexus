@@ -91,7 +91,8 @@ test('quiet hours are checked again after a delayed active-device response', asy
 test('alert composition receives event facts instead of stock spoken lines', async () => {
   const alerts = await import('../voice-alerts');
   assert.equal(typeof alerts.alertFacts, 'function');
-  assert.deepEqual(alerts.alertFacts(event('task.failed', { error: 'Compiler failed' }), () => 'Build the ship'), { taskId: 'task-1', title: 'Build the ship', status: 'failed', reason: 'Compiler failed' });
+  const failed = alerts.alertFacts(event('task.failed', { error: 'Compiler failed' }), () => 'Build the ship');
+  assert.equal(failed.reason, 'Compiler failed'); assert.equal(failed.title, 'Build the ship'); assert.equal(failed.actionHref, '/task/task-1');
   assert.deepEqual(alerts.alertFacts(event('hitl.created', { request: { taskId: 'task-1', question: 'Approve the release?' } }), () => 'Release'), { taskId: 'task-1', title: 'Release', status: 'attention', question: 'Approve the release?' });
 });
 

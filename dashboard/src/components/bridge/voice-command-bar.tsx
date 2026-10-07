@@ -34,7 +34,8 @@ import { useBoardState } from "@/hooks/use-board-state";
 import { VoiceSpeech, type VoiceSession, type VoiceState } from "@/lib/voice-speech";
 import { composeVoiceProse, type VoiceProseInput } from "@/lib/voice-prose";
 import { VoiceConversation } from "@/lib/voice-conversation";
-import { VoiceAlerts, alertFacts, readAlertMode, ALERT_MODE_KEY, type AlertMode } from "@/lib/voice-alerts";
+import { VoiceAlerts, alertFacts, currentVoiceAlert, voiceAlertArchive, voiceAlertSpeech, readAlertMode, ALERT_MODE_KEY, type AlertMode } from "@/lib/voice-alerts";
+import { authFetch } from "@/lib/nexus/shared";
 import { checkMicrophone, INITIAL_MICROPHONE_CHECK, microphoneCapability, microphoneConstraints, microphoneError, MISSING_MICROPHONE, readMicrophonePreference, saveMicrophonePreference, VOICE_SETUP_EVENT, type MicrophoneCheck } from "@/lib/voice-input";
 
 const WAKE_PATTERN = /\bpraxis\b|\bpraxus\b/i;
@@ -571,7 +572,7 @@ export function VoiceCommandBar() {
       // Recomposition must not retrieve the earlier question-only archive row.
       const announcementId = blocked ? `${event.eventId}:blocked:${blocked.eventId}` : event.eventId;
       const announcementConversationId = chatRef.current.conversationId;
-      const facts = alertFacts(event, id => {
+      const factsFor = (current: typeof event) => alertFacts(current, id => {
         const task = projectsRef.current?.flatMap(project => project.tasks ?? []).find(task => task.id === id);
         return task?.title || task?.name;
       }, blocked);
@@ -581,23 +582,33 @@ export function VoiceCommandBar() {
         let deliveryConversationId = announcementConversationId || undefined;
         let failure = 'Voice update could not be prepared or saved to chat.';
         let delivered = false;
+        let noCurrentRequest = false;
         const mergeSaved = (saved: SavedVoiceMessage[]) => {
           if (mountedRef.current && chatRef.current.conversationId === deliveryConversationId) {
             setMessages(previous => mergeVoiceMessages(previous, saved.filter(message => !message.conversation_id || message.conversation_id === deliveryConversationId)));
           }
         };
         try {
+          const current = await currentVoiceAlert(event, authFetch, session.signal);
+          if (!current) { noCurrentRequest = true; return; }
+          const facts = factsFor(current);
           const text = await composeVoiceProse(session, { kind: 'alert', facts });
           if (!session.owns()) { failure = 'Voice update was canceled before playback.'; return; }
-          const saved = await archiveVoiceAnnouncement(announcementId, text, deliveryConversationId, { signal: session.signal });
+          const rechecked = await currentVoiceAlert(current, authFetch, session.signal);
+          if (!rechecked || (current.type === 'hitl.created' && rechecked.type === 'hitl.created' && rechecked.request.question !== current.request.question)) { noCurrentRequest = true; return; }
+          const saved = await archiveVoiceAnnouncement(announcementId, voiceAlertArchive(text, facts), deliveryConversationId, { signal: session.signal });
           const archived = saved.find(message => message.id === `voice-alert:${announcementId}`);
           if (!archived?.content) throw new Error('Announcement receipt is missing its text');
           deliveryConversationId = archived.conversation_id || deliveryConversationId;
           mergeSaved(saved);
           failure = 'Voice update was skipped or interrupted before playback finished. The update is in chat.';
-          const mayPlay = () => alerts.canPlay(event, session.signal, () => session.owns() && !settingsOpenRef.current && !document.hidden, blocked);
+          const mayPlay = async () => {
+            const latest = await currentVoiceAlert(current, authFetch, session.signal);
+            if (!latest || (current.type === 'hitl.created' && latest.type === 'hitl.created' && latest.request.question !== current.request.question)) return false;
+            return alerts.canPlay(event, session.signal, () => session.owns() && !settingsOpenRef.current && !document.hidden, blocked);
+          };
           if (!await mayPlay()) return;
-          const outcome = await speech.speak(session, archived.content, undefined, notice => {
+          const outcome = await speech.speak(session, voiceAlertSpeech(text, facts), undefined, notice => {
             failure = `Voice update failed: ${notice.replace(' The full response remains in the voice panel.', '')} The update is in chat.`;
           }, false, async () => {
             if (!await mayPlay()) return false;
@@ -617,7 +628,7 @@ export function VoiceCommandBar() {
           if (session.signal.aborted) failure = 'Voice update was canceled before playback finished.';
         } finally {
           speech.finish(session);
-          if (!delivered) {
+          if (!delivered && !noCurrentRequest) {
             // Speech completion releases/aborts its session. Archival needs its own lifetime.
             try {
               mergeSaved(await archiveVoiceDeliveryNotice(announcementId, failure, deliveryConversationId));

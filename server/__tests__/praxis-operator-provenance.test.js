@@ -289,7 +289,7 @@ describe('the chat relay signs what it forwards', () => {
             // Real bootstrap: construct a fresh router after loading the trusted pins.
             app.use('/api/ai/restored', require('../routes/ai-chat')({ db, io: { emit: jest.fn() } }));
             await send(base.replace('/chat', '/restored'), 'after-reload');
-            expectVerifiable(relayed(2), asyncMode ? 'nexus-chat-async' : 'nexus-chat');
+            expectVerifiable(relayed(2), asyncMode ? 'nexus-chat-async-turn' : 'nexus-chat-turn');
             expect(relayed(2).payload.message).toContain('[Attached file: notes.txt]');
             expect(JSON.stringify([...rows.values()])).not.toContain(token);
             expect(JSON.stringify(relayed(2).init)).not.toContain(token);
@@ -309,7 +309,7 @@ describe('the chat relay signs what it forwards', () => {
         const call = relayed(0);
         expect(call.url).toBe('http://127.0.0.1:54322/api/chat');
         expect(call.payload.message).toContain('[Attached file: notes.txt]');
-        expectVerifiable(call, 'nexus-chat');
+        expectVerifiable(call, 'nexus-chat-turn');
     });
 
     test('the async (acknowledged mobile) path signs too', async () => {
@@ -327,7 +327,7 @@ describe('the chat relay signs what it forwards', () => {
         expect(global.fetch.mock.calls.filter(([url]) => String(url).endsWith('/api/chat'))).toHaveLength(1);
         const call = relayed(0);
         expect(call.payload.message).toBe('please restart yourself');
-        expectVerifiable(call, 'nexus-chat-async');
+        expectVerifiable(call, 'nexus-chat-async-turn');
         gate.resolve();
     });
 
@@ -353,7 +353,7 @@ describe('the chat relay signs what it forwards', () => {
         const call = relayed();
         expect(call.payload.stream).toBe(true);
         expect(call.payload.message).toContain('[Attached file: notes.txt]\nline one\nline two');
-        expectVerifiable(call, 'nexus-chat');
+        expectVerifiable(call, 'nexus-chat-turn');
         expect(JSON.stringify([...rows.values()])).not.toContain(token);
         expect(JSON.stringify(call.init)).not.toContain(token);
     });
@@ -373,7 +373,7 @@ describe('the chat relay signs what it forwards', () => {
                 await new Promise(r => setTimeout(r, 5));
             }
         }
-        expectVerifiable(relayed(0), asyncMode ? 'nexus-chat-async' : 'nexus-chat');
+        expectVerifiable(relayed(0), asyncMode ? 'nexus-chat-async-turn' : 'nexus-chat-turn');
         expect(relayed(1).header).toBeUndefined();
     });
 
@@ -498,7 +498,7 @@ describe('the chat relay signs what it forwards', () => {
             app.use('/api/ai/restored', require('../routes/ai-chat')({ db, io: { emit: jest.fn() } }));
             expect(log.mock.calls).toContainEqual(['[OperatorAccess] configured: operator user pinned; trusted devices=1']);
             await send(base.replace('/chat', '/restored'), 'laptop-after-reload');
-            expectVerifiable(relayed(2), asyncMode ? 'nexus-chat-async' : 'nexus-chat');
+            expectVerifiable(relayed(2), asyncMode ? 'nexus-chat-async-turn' : 'nexus-chat-turn');
             expect(log.mock.calls).toContainEqual(['[OperatorAccess] operator verified (identity=device)']);
             expect(JSON.stringify([...rows.values()])).not.toContain(session);
             expect(JSON.stringify(relayed(2).init)).not.toContain(session);
@@ -543,7 +543,7 @@ describe('the chat relay signs what it forwards', () => {
             process.env.NEXUS_OPERATOR_EMAIL = access.email;
             app.use('/api/ai/restored', require('../routes/ai-chat')({ db, io: { emit: jest.fn() } }));
             await send(base.replace('/chat', '/restored'), 'email-after-reload');
-            expectVerifiable(relayed(1), asyncMode ? 'nexus-chat-async' : 'nexus-chat');
+            expectVerifiable(relayed(1), asyncMode ? 'nexus-chat-async-turn' : 'nexus-chat-turn');
             expect(log.mock.calls).toContainEqual(['[OperatorAccess] operator verified (identity=user)']);
             expect(JSON.stringify([...rows.values()])).not.toContain(session);
             expect(JSON.stringify(relayed(1).init)).not.toContain(session);
@@ -572,7 +572,7 @@ describe('the chat relay signs what it forwards', () => {
         const call = relayed();
         expect(call.payload.stream).toBe(true);
         expect(call.payload.message).toContain('[Attached file: notes.txt]\nline one\nline two');
-        expectVerifiable(call, 'nexus-chat');
+        expectVerifiable(call, 'nexus-chat-turn');
         expect(JSON.stringify([...rows.values()])).not.toContain(session);
         expect(JSON.stringify(call.init)).not.toContain(session);
         expect(JSON.stringify(call.init)).not.toContain(access.deviceId);
@@ -726,10 +726,10 @@ describe('the chat relay signs what it forwards', () => {
             };
             const device = access.serviceToken({ aud: access.audience });
             await send(device, 'string-aud-device');
-            expectVerifiable(relayed(0), asyncMode ? 'nexus-chat-async' : 'nexus-chat');
+            expectVerifiable(relayed(0), asyncMode ? 'nexus-chat-async-turn' : 'nexus-chat-turn');
             expect(log.mock.calls).toContainEqual(['[OperatorAccess] operator verified (identity=device)']);
             await send(access.token({ aud: access.audience }), 'string-aud-user');
-            expectVerifiable(relayed(1), asyncMode ? 'nexus-chat-async' : 'nexus-chat');
+            expectVerifiable(relayed(1), asyncMode ? 'nexus-chat-async-turn' : 'nexus-chat-turn');
             expect(log.mock.calls).toContainEqual(['[OperatorAccess] operator verified (identity=user)']);
             await send(access.serviceToken({ aud: 'other-app' }), 'string-aud-other');
             expect(relayed(2).header).toBeUndefined();

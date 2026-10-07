@@ -67,6 +67,7 @@ import {
 import { blockElementId, excerpt, extractOutline, quoteLines } from "@/lib/document-outline";
 import { DocumentMarkdown, type BlockRef } from "./document-markdown";
 import { DecisionCard } from "./decision-card";
+import { OutgoingCard } from "./outgoing-card";
 import { DocumentStatusBadge } from "./deliverable-row";
 
 const SUBMISSION_POLL_MS = 3000;
@@ -828,6 +829,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             </button>
                         </div>
                     )}
+                    {data && <OutgoingCard data={data} viewingCurrent={!showingPinned} onRefresh={load} />}
                     {data && <DecisionCard data={data} viewedRevision={shownRevision} viewingCurrent={!showingPinned} onRefresh={load} />}
                     {data && showSource && (
                         <pre className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950 p-4 font-mono text-xs leading-relaxed text-slate-300" data-source-view="">{shownContent}</pre>

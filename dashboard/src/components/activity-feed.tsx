@@ -8,6 +8,9 @@ import { getActivity, getActivityEvents, Activity, ActivityEvent } from "@/lib/n
 import { useLiveRefetch } from "@/components/live-board-state";
 import { GitCommit, Clock, Cpu, Coins, ChevronRight, FileX2, User, Radio, AlertTriangle, Siren, ChevronDown, ListChecks } from "lucide-react";
 import { formatTraceCompleteness, describeTraceGaps } from "@/lib/run-trace";
+import { useAlertActionState } from "@/hooks/use-alert-action-state";
+import { describeAlertAction, type AlertEvidence } from "@/lib/alert-action";
+import { AlertAction, SafeAlertMarkdown } from "@/components/alert-action";
 
 // Compact token count: 12345 → "12.3k", 2_000_000 → "2M".
 function formatTokens(n: number) {
@@ -97,7 +100,7 @@ function humanizeEventType(eventType: string) {
     return eventType.replace(/[._]/g, ' ');
 }
 
-function EventRow({ event, onOpenTask }: { event: ActivityEvent; onOpenTask: (taskId: string) => void }) {
+export function EventRow({ event, onOpenTask, evidence }: { event: ActivityEvent; onOpenTask: (taskId: string) => void; evidence?: AlertEvidence }) {
     const [expanded, setExpanded] = useState(false);
     const tone = SEVERITY[event.severity] ?? SEVERITY.info;
     const Icon = tone.icon;
@@ -114,13 +117,9 @@ function EventRow({ event, onOpenTask }: { event: ActivityEvent; onOpenTask: (ta
                 <div className="flex items-center gap-2 mb-0.5">
                     <span className={`text-xs font-medium ${tone.text}`}>{humanizeEventType(event.event_type)}</span>
                     <span className="text-xs text-slate-600">{formatRelativeTime(event.created_at)}</span>
-                    {Boolean(event.requires_action) && (
-                        <span className="rounded bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
-                            needs you
-                        </span>
-                    )}
                 </div>
                 <p className="text-sm text-slate-300 break-words" title={event.title}>{event.title}</p>
+                {Boolean(event.requires_action) && <AlertAction action={describeAlertAction(event, evidence)} />}
                 <div className="mt-1 flex items-center gap-1.5">
                     <span className="text-[10px] text-slate-600 font-mono truncate max-w-[10rem]" title={event.source}>
                         {event.source}
@@ -149,9 +148,9 @@ function EventRow({ event, onOpenTask }: { event: ActivityEvent; onOpenTask: (ta
                     )}
                 </div>
                 {expanded && detail && (
-                    <pre className="custom-scrollbar mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded border border-slate-800 bg-slate-950/60 p-2 text-[11px] leading-relaxed text-slate-400">
-                        {detail}
-                    </pre>
+                    <div className="custom-scrollbar mt-2 max-h-64 overflow-auto rounded border border-slate-800 bg-slate-950/60 p-2 text-[11px] leading-relaxed text-slate-400">
+                        <SafeAlertMarkdown>{detail}</SafeAlertMarkdown>
+                    </div>
                 )}
             </div>
         </div>
@@ -297,6 +296,7 @@ export function ActivityFeed() {
     const [events, setEvents] = useState<ActivityEvent[]>([]);
     const [filter, setFilter] = useState<Filter>('all');
     const [loading, setLoading] = useState(true);
+    const { evidence, refresh: refreshActionState } = useAlertActionState(events);
 
     // Navigate to the run's logs: the task Dispatch Console is the drill-down Log
     // Viewer. The #dispatch-<id> hash tells it which run this activity came from,
@@ -354,6 +354,7 @@ export function ActivityFeed() {
                     <Link href="/activity" className="hover:text-cyan-200" title="Open the full system activity report">Recent Activity</Link>
                 </h3>
                 <div className="flex items-center gap-1">
+                    <button type="button" onClick={refreshActionState} className="text-[10px] text-cyan-300 underline" title="Check current action status">Refresh actions</button>
                     {tab('all', 'All', activities.length + events.length)}
                     {tab('events', 'Events', events.length)}
                     {tab('commits', 'Commits', activities.length)}
@@ -369,7 +370,7 @@ export function ActivityFeed() {
                         {row.kind === 'commit' ? (
                             <CommitRow key={row.key} commit={row.commit} onOpenLogs={openLogs} />
                         ) : (
-                            <EventRow key={row.key} event={row.event} onOpenTask={(taskId) => router.push(`/task/${taskId}`)} />
+                            <EventRow key={row.key} event={row.event} evidence={evidence} onOpenTask={(taskId) => router.push(`/task/${taskId}`)} />
                         )}</div>
                     )}
                 </div>

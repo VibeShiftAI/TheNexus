@@ -25,6 +25,8 @@ import {
     type RevisionMeta,
 } from "@/lib/document-review";
 import { clearDecisionNoteDraft, readDecisionNoteDraft, writeDecisionNoteDraft, type DecisionNoteDraft } from "@/lib/decision-note-draft";
+import { BlockingTasks } from "./blocking-tasks";
+import { ReviewRequirements } from "./review-requirements";
 import { DocumentStatusBadge } from "./deliverable-row";
 
 const DECISION_TEXT: Record<DecisionKind, { button: string; past: string; confirm: string }> = {
@@ -323,10 +325,12 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
                     </span>
                 )}
             </div>
+            <BlockingTasks tasks={data.blocking_tasks} />
+            <ReviewRequirements key={doc.id} document={doc} onRefresh={onRefresh} />
             {purpose && <p className="mt-1.5 text-xs text-slate-300" data-decision-purpose="">Purpose: {purpose}</p>}
             {status !== "reference" && (
                 <p className="mt-1 text-[11px] text-slate-500">
-                    Records your decision on rev {shortHash(viewedRevision?.content_hash)}.{action ? ` Approval is what allows ${action}, by its owner, separately.` : ""}{" "}
+                    Records your decision on rev {shortHash(viewedRevision?.content_hash)}.{doc.intended_action === "send" ? " Sending requires a separate Approve and send decision on the exact outgoing message." : action ? ` Approval is what allows ${action}, by its owner, separately.` : ""}{" "}
                     Nothing is sent or published from here, and the task&apos;s own status and QA verdict are not changed.
                 </p>
             )}

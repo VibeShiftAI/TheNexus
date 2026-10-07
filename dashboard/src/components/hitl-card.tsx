@@ -23,6 +23,8 @@ import { Archive, ChevronDown, ChevronRight, Loader2, Send } from "lucide-react"
 import type { HITLRequest } from "@praxis/contract";
 
 import { hitlTaskMeta, parseResumeContext, PRIORITY_TONES, REASON_LABELS } from "@/lib/hitl-meta";
+import { describeHitlAction } from "@/lib/alert-action";
+import { AlertAction, SafeAlertMarkdown } from "./alert-action";
 import {
   BoardMaintenanceHitlCard,
   ScheduleHitlCard,
@@ -62,6 +64,7 @@ export function HitlCard({
   onResolve: HitlResolver;
   onResolveSchedule?: HitlResolver;
 }) {
+  if (describeHitlAction(request).state !== 'pending') return <AlertAction action={describeHitlAction(request)} inline />;
   if (isScheduleHitl(request)) {
     return (
       <ScheduleHitlCard
@@ -105,6 +108,7 @@ export function HitlRequestCard({
   // (Praxis parks the task, dispatches nothing). Other kinds fall through to
   // the agent-mediated resume, so don't offer "park" there.
   const canPark = meta.kind === "task-question";
+  const action = describeHitlAction(request, true);
 
   async function submit(choice?: string) {
     const freeText = reply.trim();
@@ -121,6 +125,7 @@ export function HitlRequestCard({
     setReply("");
   }
 
+  if (action.state !== 'pending') return <AlertAction action={action} inline />;
   return (
     <article className="relative overflow-hidden rounded-lg border border-slate-800 bg-slate-900/60">
       <div className={`absolute inset-y-0 left-0 w-0.5 ${tone.rail}`} />
@@ -167,9 +172,10 @@ export function HitlRequestCard({
         {/* the question — pre-wrap so multi-paragraph questions (red alerts,
             EOD summaries) keep their structure instead of welding into one
             line (2026-08-30: the inbox item is the informed-decision surface) */}
-        <p className="mb-3 whitespace-pre-wrap text-[length:var(--hitl-fs-sm,0.875rem)] leading-relaxed text-slate-100">
-          {request.question}
-        </p>
+        <AlertAction action={describeHitlAction(request, true)} inline showQuestion={false} />
+        <div className="mb-3 text-[length:var(--hitl-fs-sm,0.875rem)] leading-relaxed text-slate-100">
+          <SafeAlertMarkdown>{request.question}</SafeAlertMarkdown>
+        </div>
 
         {/* full plan / detail block, when the producer shipped one on the item
             (e.g. the EOD commit card's per-workspace survey). This is the rest

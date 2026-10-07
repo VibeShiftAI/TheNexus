@@ -6,7 +6,7 @@
  * re-POST arrived 46 minutes after the send, missed the map, and ran the
  * Praxis agent a second time. These tests pin the durable fallback: when the
  * map misses but the clientMessageId row is already persisted AND an
- * assistant reply follows it, the route returns THAT reply and never relays.
+ * explicitly linked assistant reply exists, the route returns THAT reply and never relays.
  *
  * Every test here mounts a fresh router via jest.resetModules, so the
  * in-memory map is deliberately empty — simulating both TTL expiry and a
@@ -87,6 +87,60 @@ describe('AI chat durable dedupe fallback', () => {
         return { status: res.status, body: await res.json() };
     }
 
+    test('interleaved turns recover the exact reply even when another assistant answered first', async () => {
+        global.fetch = jest.fn(async () => { throw new Error('No relay for a saved exact reply'); });
+        const db = createDb([
+            { id: CLIENT_MESSAGE_ID, conversation_id: 'conversation-1', role: 'user', content: 'Question A', metadata: { praxisTurnKey: CLIENT_MESSAGE_ID } },
+            { id: 'turn-b', conversation_id: 'conversation-1', role: 'user', content: 'Question B' },
+            { id: 'turn-b:reply', conversation_id: 'conversation-1', role: 'assistant', content: 'Answer B', metadata: { replyTo: 'turn-b' } },
+            { id: `${CLIENT_MESSAGE_ID}:reply`, conversation_id: 'conversation-1', role: 'assistant', content: 'Answer A', metadata: { replyTo: CLIENT_MESSAGE_ID } },
+        ]);
+        await mount(db);
+        const response = await post({ message: 'Question A', clientMessageId: CLIENT_MESSAGE_ID });
+        expect(response.body.response).toBe('Answer A');
+        expect(response.body.assistantMessageId).toBe(`${CLIENT_MESSAGE_ID}:reply`);
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    test('a keyed turn without a local reply consults its Praxis receipt instead of a neighboring answer', async () => {
+        global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ response: 'Original Praxis receipt' }) }));
+        const db = createDb([
+            { id: CLIENT_MESSAGE_ID, conversation_id: 'conversation-1', role: 'user', content: 'Question A', metadata: JSON.stringify({ praxisTurnKey: CLIENT_MESSAGE_ID }) },
+            { id: 'turn-b:reply', conversation_id: 'conversation-1', role: 'assistant', content: 'Unrelated answer', metadata: { replyTo: 'turn-b' } },
+        ]);
+        await mount(db);
+        const response = await post({ message: 'Question A', clientMessageId: CLIENT_MESSAGE_ID });
+        expect(response.body.response).toBe('Original Praxis receipt');
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(JSON.parse(global.fetch.mock.calls[0][1].body).idempotency_key).toBe(CLIENT_MESSAGE_ID);
+    });
+
+    test('old unlinked history is uncertain and cannot guess a neighboring answer or rerun work', async () => {
+        global.fetch = jest.fn(async () => { throw new Error('Do not replay an unkeyed historical turn'); });
+        const db = createDb([
+            { id: CLIENT_MESSAGE_ID, conversation_id: 'conversation-1', role: 'user', content: 'Old work' },
+            { id: 'unrelated', conversation_id: 'conversation-1', role: 'assistant', content: 'Another answer' },
+        ]);
+        await mount(db);
+        const response = await post({ message: 'Old work', clientMessageId: CLIENT_MESSAGE_ID });
+        expect(response.body).toMatchObject({ error: 'outcome_uncertain', retryable: false, historySaved: false });
+        expect(response.body.response).not.toContain('Another answer');
+        expect(global.fetch).not.toHaveBeenCalled();
+        expect(db.saveChatMessage).not.toHaveBeenCalled();
+    });
+
+    test('an exact reply identity cannot recover a row belonging to another conversation', async () => {
+        global.fetch = jest.fn(async () => { throw new Error('Conflicting identity must fail closed'); });
+        const db = createDb([
+            { id: CLIENT_MESSAGE_ID, conversation_id: 'conversation-1', role: 'user', content: 'Question A', metadata: { praxisTurnKey: CLIENT_MESSAGE_ID } },
+            { id: `${CLIENT_MESSAGE_ID}:reply`, conversation_id: 'other-conversation', role: 'assistant', content: 'Other conversation answer' },
+        ]);
+        await mount(db);
+        const response = await post({ message: 'Question A', clientMessageId: CLIENT_MESSAGE_ID });
+        expect(response.body).toMatchObject({ error: 'outcome_uncertain', retryable: false });
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
     test('a late retry of an already-answered message returns the stored reply and does NOT relay to Praxis', async () => {
         // The join map is empty (fresh module) — the only defense is the store.
         global.fetch = jest.fn(async () => {
@@ -101,7 +155,7 @@ describe('AI chat durable dedupe fallback', () => {
                 conversation_id: 'conversation-1',
                 role: 'assistant',
                 content: 'Both come from the same failure, two lines apart.',
-                metadata: { suppressVoice: true, voiceData: [{ audio: 'YWJj', mimeType: 'audio/mpeg' }] },
+                metadata: { replyTo: CLIENT_MESSAGE_ID, suppressVoice: true, voiceData: [{ audio: 'YWJj', mimeType: 'audio/mpeg' }] },
             },
         ]);
         await mount(db);
@@ -121,14 +175,14 @@ describe('AI chat durable dedupe fallback', () => {
         expect(db.saveChatMessage).not.toHaveBeenCalled();
     });
 
-    test('a retry whose message is persisted but NOT yet answered still relays (the original run died with the server)', async () => {
+    test('a known keyed turn without a local reply consults the original Praxis turn', async () => {
         global.fetch = jest.fn(async () => ({
             ok: true,
             json: async () => ({ response: 'fresh run answer' }),
         }));
         const db = createDb([
             { id: 'older-1', conversation_id: 'conversation-1', role: 'assistant', content: 'answer to something older' },
-            { id: CLIENT_MESSAGE_ID, conversation_id: 'conversation-1', role: 'user', content: 'still waiting' },
+            { id: CLIENT_MESSAGE_ID, conversation_id: 'conversation-1', role: 'user', content: 'still waiting', metadata: { praxisTurnKey: CLIENT_MESSAGE_ID } },
             { id: 'system-1', conversation_id: 'conversation-1', role: 'system', content: '[PRAXIS EVENT] unrelated card' },
         ]);
         await mount(db);
@@ -147,7 +201,7 @@ describe('AI chat durable dedupe fallback', () => {
         }));
         const db = createDb([
             { id: 'assistant-0', conversation_id: 'conversation-1', role: 'assistant', content: 'reply to a previous send' },
-            { id: CLIENT_MESSAGE_ID, conversation_id: 'conversation-1', role: 'user', content: 'new question' },
+            { id: CLIENT_MESSAGE_ID, conversation_id: 'conversation-1', role: 'user', content: 'new question', metadata: { praxisTurnKey: CLIENT_MESSAGE_ID } },
         ]);
         await mount(db);
 

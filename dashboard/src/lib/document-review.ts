@@ -14,6 +14,14 @@ export type DecisionKind = 'approve' | 'request_changes';
 
 export const DOCUMENT_KINDS = ['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other'] as const;
 
+export interface DocumentBlockingTask {
+    id: string;
+    title: string;
+    status: string;
+    project_id: string | null;
+    project_name?: string;
+}
+
 export interface DocumentRecord {
     id: string;
     title: string;
@@ -31,6 +39,7 @@ export interface DocumentRecord {
     deliverable_key?: string | null;
     purpose?: string | null;
     requires_review?: boolean;
+    blocking_task_ids?: string[];
     intended_action?: IntendedAction;
 }
 
@@ -115,7 +124,27 @@ export interface DocumentSource {
     project: { id: string; name: string | null; path: string | null } | null;
 }
 
+/** Sending authority is separate from the document's editorial decision. */
+export interface DocumentOutgoing {
+    document_id: string;
+    revision_id: string;
+    content_hash: string;
+    envelope_hash: string;
+    delivery_id: string;
+    status: 'draft' | 'approved' | 'delivering' | 'sent' | 'uncertain' | 'cancelled';
+    envelope: { to: string; cc: string[]; subject: string; text: string; attachments: never[] };
+    provenance: { member_id: string; project_id: string; task_id: string; source_refs: string[]; commitment_id?: string };
+    grant: { decision: 'approve_send'; authority: string; actor_id: string; approved_at: string } | null;
+    invalidated_at?: string | null;
+    invalidation_reason?: string | null;
+    claimed_at?: string | null;
+    receipt?: { delivery_id: string; status: 'sent' | 'uncertain'; message_id?: string } | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface DocumentResponse {
+    blocking_tasks?: DocumentBlockingTask[];
     document: DocumentRecord;
     revision: RevisionMeta | null;
     content: string | null;
@@ -124,11 +153,14 @@ export interface DocumentResponse {
     source: DocumentSource;
     review: ReviewView | null;
     review_status?: DocumentReviewStatus;
+    outgoing?: DocumentOutgoing | null;
     current_decision?: (DocumentDecision & { applies_to_current_revision: boolean }) | null;
     links: { review_url: string; raw_url: string; review_path?: string };
 }
 
 export interface DocumentListEntry extends DocumentRecord {
+    blocking_tasks?: DocumentBlockingTask[];
+    blocking_task_count?: number;
     current_revision: RevisionMeta | null;
     review_url: string;
     review_path?: string;
@@ -222,6 +254,18 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 }
 
 const BASE = '/api/documents';
+
+export function getReviewTaskOptions(): Promise<{ tasks: DocumentBlockingTask[] }> {
+    return request(`${BASE}/review-task-options`, { cache: 'no-store' });
+}
+
+export function requestDocumentReview(documentId: string, blockingTaskIds: string[]): Promise<{
+    document: DocumentRecord; review_status: DocumentReviewStatus; blocking_tasks: DocumentBlockingTask[];
+}> {
+    return request(`${BASE}/${encodeURIComponent(documentId)}/request-review`, {
+        method: 'POST', body: JSON.stringify({ blocking_task_ids: blockingTaskIds }),
+    });
+}
 
 export function getDocument(documentId: string): Promise<DocumentResponse> {
     return request<DocumentResponse>(`${BASE}/${encodeURIComponent(documentId)}`, { cache: 'no-store' });
@@ -398,4 +442,9 @@ export function newClientId(): string {
     const cryptoApi = typeof globalThis.crypto !== 'undefined' ? globalThis.crypto : undefined;
     if (cryptoApi && typeof cryptoApi.randomUUID === 'function') return cryptoApi.randomUUID();
     return `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** An explicit operator grant or permanent cancellation for the exact envelope on screen. */
+export function recordOutgoingDecision(documentId: string, input: { decision: 'approve_send' | 'cancel'; revision_id: string; envelope_hash: string }): Promise<{ outgoing: DocumentOutgoing }> {
+    return request(`${BASE}/${encodeURIComponent(documentId)}/outgoing/decision`, { method: 'POST', body: JSON.stringify(input) });
 }

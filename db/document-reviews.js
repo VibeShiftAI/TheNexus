@@ -34,6 +34,8 @@
  * executor-recorded approval.
  */
 const { randomUUID } = require('crypto');
+const { ACTIVE_TASK_SQL, WAITING_TASKS_FROM_SQL } = require('./document-review-blockers');
+const { initializeDocumentOutgoing, createDocumentOutgoingStore } = require('./document-outgoing');
 
 function now() { return new Date().toISOString(); }
 
@@ -41,6 +43,7 @@ function now() { return new Date().toISOString(); }
 const DELIVERABLE_COLUMNS = [
     ['deliverable_key', 'TEXT'],
     ['purpose', 'TEXT'],
+    ['blocking_task_ids', "TEXT NOT NULL DEFAULT '[]'"],
     ['requires_review', 'INTEGER NOT NULL DEFAULT 0'],
     ['intended_action', "TEXT NOT NULL DEFAULT 'none'"],
 ];
@@ -254,9 +257,10 @@ function initializeDocumentReviews(db) {
         ON review_document_registrations(document_id, created_at);`);
     migrateDecisionColumns(db);
     migrateReviewColumns(db);
+    initializeDocumentOutgoing(db);
 }
 
-const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance']);
+const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids']);
 /** JSON columns whose absence reads as null rather than an empty object. */
 const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance']);
 const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created', 'approval_delegated']);
@@ -271,7 +275,7 @@ function rowOut(row) {
     if (!row) return null;
     const out = { ...row };
     for (const key of JSON_COLUMNS) {
-        if (key in out) out[key] = parseJson(out[key], NULLABLE_JSON_COLUMNS.has(key) ? null : {});
+        if (key in out) out[key] = parseJson(out[key], key === 'blocking_task_ids' ? [] : NULLABLE_JSON_COLUMNS.has(key) ? null : {});
     }
     for (const key of BOOLEAN_COLUMNS) {
         if (typeof out[key] === 'number') out[key] = out[key] !== 0;
@@ -280,19 +284,23 @@ function rowOut(row) {
 }
 
 /** Shared FROM/WHERE for the document list, its total and the per-status counts, so all three agree. */
-function documentQuery({ id, task_id, project_id, kind, q } = {}) {
+function documentQuery({ id, task_id, project_id, kind, q } = {}, blockingCountSql = '0') {
     const where = [];
     const params = [];
     if (id) { where.push('d.id = ?'); params.push(id); }
     if (task_id) {
         // A document belongs to a task it was first registered under, or to any task whose declared registration reused it.
-        where.push('(d.task_id = ? OR d.id IN (SELECT r.document_id FROM review_document_registrations r WHERE r.task_id = ?))');
-        params.push(task_id, task_id);
+        where.push('(d.task_id = ? OR d.id IN (SELECT r.document_id FROM review_document_registrations r WHERE r.task_id = ?) OR EXISTS (SELECT 1 FROM json_each(d.blocking_task_ids) WHERE value = ?))');
+        params.push(task_id, task_id, task_id);
     }
     if (project_id) {
-        // Same rule for projects: the producing project, or any project whose declared registration reused the document.
-        where.push('(d.project_id = ? OR d.id IN (SELECT r.document_id FROM review_document_registrations r WHERE r.project_id = ?))');
+        // Include consumer projects too, so task links using both filters remain truthful.
+        const consumer = blockingCountSql !== '0'
+            ? ' OR EXISTS (SELECT 1 FROM json_each(d.blocking_task_ids) required JOIN tasks t ON t.id = required.value WHERE t.project_id = ?)'
+            : '';
+        where.push(`(d.project_id = ? OR d.id IN (SELECT r.document_id FROM review_document_registrations r WHERE r.project_id = ?)${consumer})`);
         params.push(project_id, project_id);
+        if (consumer) params.push(project_id);
     }
     if (kind) { where.push('d.kind = ?'); params.push(kind); }
     if (q) {
@@ -300,7 +308,7 @@ function documentQuery({ id, task_id, project_id, kind, q } = {}) {
         where.push("(d.title LIKE ? ESCAPE '\\' OR COALESCE(d.purpose, '') LIKE ? ESCAPE '\\' OR d.path LIKE ? ESCAPE '\\')");
         params.push(like, like, like);
     }
-    const sql = `SELECT d.*, ${REVIEW_STATUS_SQL} AS review_status FROM review_documents d ${LATEST_DECISION_JOIN}${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
+    const sql = `SELECT d.*, ${REVIEW_STATUS_SQL} AS review_status, ${blockingCountSql} AS blocking_task_count FROM review_documents d ${LATEST_DECISION_JOIN}${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
     return { sql, params };
 }
 
@@ -314,6 +322,12 @@ function serialize(value) {
 }
 
 function createDocumentReviewStore(db) {
+    const outgoing = createDocumentOutgoingStore(db);
+    const hasTasks = () => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'tasks'").get());
+    const queryDocuments = (filters) => documentQuery(filters, hasTasks()
+        ? `CASE WHEN (${REVIEW_STATUS_SQL}) IN ('needs_review', 'changes_requested')
+            THEN (SELECT COUNT(DISTINCT t.id) FROM ${WAITING_TASKS_FROM_SQL}) ELSE 0 END`
+        : '0');
     function insert(table, row) {
         const keys = Object.keys(row);
         db.prepare(`INSERT INTO ${table} (${keys.map(k => `"${k}"`).join(', ')}) VALUES (${keys.map(() => '?').join(', ')})`)
@@ -329,6 +343,7 @@ function createDocumentReviewStore(db) {
     const many = (sql, ...params) => rowsOut(db.prepare(sql).all(...params));
 
     return {
+        ...outgoing,
         transaction(fn) { return db.transaction(fn)(); },
 
         // ── Documents ────────────────────────────────────────────────────
@@ -351,17 +366,17 @@ function createDocumentReviewStore(db) {
          * in one read transaction so the page and its total agree.
          */
         listDocumentsPage({ status = 'all', limit = 100, offset = 0, ...filters } = {}) {
-            const { sql, params } = documentQuery(filters);
+            const { sql, params } = queryDocuments(filters);
             const statusClause = status && status !== 'all' ? ' WHERE review_status = ?' : '';
             const all = statusClause ? [...params, status] : params;
             return db.transaction(() => ({
                 total: db.prepare(`SELECT COUNT(*) AS n FROM (${sql})${statusClause}`).get(...all).n,
-                documents: many(`SELECT * FROM (${sql})${statusClause} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`, ...all, limit, offset),
+                documents: many(`SELECT * FROM (${sql})${statusClause} ORDER BY blocking_task_count DESC, created_at DESC, id DESC LIMIT ? OFFSET ?`, ...all, limit, offset),
             }))();
         },
         /** Per-status counts for the same filters as listDocumentsPage; `all` is their sum. */
         countDocumentsByStatus(filters = {}) {
-            const { sql, params } = documentQuery(filters);
+            const { sql, params } = queryDocuments(filters);
             const counts = Object.fromEntries([...REVIEW_STATUSES, 'all'].map(status => [status, 0]));
             for (const row of db.prepare(`SELECT review_status, COUNT(*) AS n FROM (${sql}) GROUP BY review_status`).all(...params)) {
                 counts[row.review_status] = row.n;
@@ -370,8 +385,20 @@ function createDocumentReviewStore(db) {
             return counts;
         },
         getReviewStatus(documentId) {
-            const { sql, params } = documentQuery({ id: documentId });
+            const { sql, params } = queryDocuments({ id: documentId });
             return db.prepare(`SELECT review_status FROM (${sql})`).get(...params)?.review_status || null;
+        },
+        listReviewTaskOptions() {
+            if (!hasTasks()) return [];
+            return many(`SELECT t.id, t.name AS title, t.status, t.project_id, p.name AS project_name
+                FROM tasks t LEFT JOIN projects p ON p.id = t.project_id
+                WHERE ${ACTIVE_TASK_SQL} ORDER BY p.name COLLATE NOCASE, t.name COLLATE NOCASE, t.id`);
+        },
+        getBlockingTasks(documentId) {
+            if (!hasTasks() || !['needs_review', 'changes_requested'].includes(this.getReviewStatus(documentId))) return [];
+            return many(`SELECT DISTINCT t.id, t.name AS title, t.status, t.project_id
+                FROM review_documents d, ${WAITING_TASKS_FROM_SQL} AND d.id = ?
+                ORDER BY t.name COLLATE NOCASE, t.id`, documentId);
         },
         insertDocument(doc) {
             const ts = now();
@@ -379,7 +406,19 @@ function createDocumentReviewStore(db) {
             insert('review_documents', row);
             return this.getDocument(row.id);
         },
-        updateDocument(id, updates) { update('review_documents', id, updates); return this.getDocument(id); },
+        updateDocument(id, updates) {
+            return db.transaction(() => {
+                const before = this.getDocument(id);
+                const bindingFields = ['path', 'project_id', 'task_id', 'requires_review', 'intended_action', 'deliverable_key', 'current_revision_id'];
+                if (before && (bindingFields.some(key => key in updates && updates[key] !== before[key])
+                    || ('metadata' in updates && ['member_id', 'stakeholder_project_id', 'commitment_id', 'source_refs'].some(key =>
+                        JSON.stringify(updates.metadata?.[key] ?? null) !== JSON.stringify(before.metadata?.[key] ?? null))))) {
+                    outgoing.invalidateOutgoing(id, 'document_binding_changed');
+                }
+                update('review_documents', id, updates);
+                return this.getDocument(id);
+            })();
+        },
 
         // ── Revisions ────────────────────────────────────────────────────
         getRevision(id) { return one('SELECT * FROM review_document_revisions WHERE id = ?', id); },
@@ -395,7 +434,7 @@ function createDocumentReviewStore(db) {
             return this.getRevision(row.id);
         },
         setCurrentRevision(documentId, revisionId) {
-            update('review_documents', documentId, { current_revision_id: revisionId });
+            this.updateDocument(documentId, { current_revision_id: revisionId });
         },
         insertRevisionExact(revisionId, exactContent) {
             insert('review_document_revision_exact', { revision_id: revisionId, exact_content: exactContent, created_at: now() });

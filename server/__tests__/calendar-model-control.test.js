@@ -1,5 +1,8 @@
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 const nativeFetch = global.fetch;
 
@@ -60,12 +63,15 @@ function createDb(overrides = {}) {
 
 describe('calendar model control integration', () => {
     const originalEnv = process.env;
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-calendar-model-'));
     let handle;
 
     beforeEach(() => {
         jest.resetModules();
-        process.env = { ...originalEnv, ANTHROPIC_API_KEY: 'anthropic-key' };
+        process.env = { ...originalEnv, NEXUS_DB_PATH: path.join(directory, 'test.db'), ANTHROPIC_API_KEY: 'anthropic-key' };
     });
+
+    afterAll(() => fs.rmSync(directory, { recursive: true, force: true }));
 
     afterEach(async () => {
         if (handle) await close(handle);

@@ -69,15 +69,23 @@ repair/session metadata.
 Operator rulings (`antigravity_payload.operator_rulings`, Robert's answers to
 executor questions) are delivered context, not proposal scope. Appending one
 keeps the receipt, its decision and fingerprint, and records
-`operator_answers: [{index, sha256, recorded_at, origin, requester}]` for
-provenance (`origin` is the checked origin of the write that appended it:
-`operator`, `runtime`, `operator_relayed` or `unverified`; entries recorded
-before 2026-10-04 carry neither field); the ruling text itself stays in the
-payload for the executor brief and QA contract. Any
-other scope, acceptance or workspace change in the same write still holds the
-task. Rewriting, reordering or removing an already recorded ruling is not an
-answer and holds as a contract edit. An answer never clears an existing hold or
-concern. Receipts fingerprinted before 2026-10-01 (rulings then counted as
+`operator_answers: [{index, sha256, previous_sha256, task_version, recorded_at,
+origin, authority, requester}]` for provenance. Robert's authenticated amendments
+and removals append an entry for each changed index too; `sha256: null` records
+a removal, `previous_sha256` records the replaced text (null for an addition),
+and `task_version` is the row version before the write. Unchanged entries in the
+same payload acquire no new authority. Prior audit entries are never rewritten.
+Older entries may lack these additional fields. `origin` is the checked origin
+of the write: `operator`, `runtime`, `operator_relayed`, `system` or `unverified`;
+entries recorded before 2026-10-04 lack `origin` and `requester`. The ruling text stays in the
+payload for the executor brief and QA contract. Other scope, acceptance or
+workspace changes in the same write follow the origin and timing rules below.
+Rewriting, reordering or removing an already recorded ruling is not an
+answer; by anyone but Robert it is a hold of its own (the `rulings_rewrite`
+concern under governed fields below), never contract drift. An answer never
+clears an existing hold or concern, with the one exception described there:
+Robert's own credential putting his recorded words back onto a row an
+executor emptied or truncated. Receipts fingerprinted before 2026-10-01 (rulings then counted as
 scope) are rebound once, recorded as `legacy_fingerprint`, only when their
 stored fingerprint exactly matches the current task under the old rule. Unmarked authored rules, including reserved `BC-*` IDs,
 remain substantive. A changed exact reservation returns conflict rather than
@@ -119,6 +127,7 @@ constraint projections and repair/session state stay excluded. Rewriting or
 removing a recorded ruling by anyone but Robert himself (`operator` origin) is a
 hold of its own, not contract drift: `concerns[]` gains a `kind: rulings_rewrite`
 entry (`key`, `reason`, `recorded` and `rewritten` as per-entry sha256 lists,
+`changed_indices` naming positions changed by that write,
 `origin`, `requester`, `phase`, `task_version`, `recorded_at`) and
 `rulings_changes[]` records the event (`outcome: held`, `concern_key`; capped at
 30 with `rulings_changes_dropped`). Rulings are not contract fields, so approving
@@ -127,27 +136,59 @@ the drift all leave that concern in place: the receipt stays `needs_evidence`
 with the rulings reason, on write and on read. It ends only by its own
 resolution: `/work-admission/resolve` with evidence adjudicates it (a later
 authorized edit carries that resolution, the concern being among the keys it
-adjudicated), or Robert himself, under his credential, rewrites the rulings or
-puts his recorded words back, exactly or followed by new answers, whether the
-executor rewrote them or removed them all (`rulings_changes` entry `outcome:
-authorized` with `cleared_concern_keys`, plus `restores_recorded: true` for a
-restoration; an open drift hold is a separate matter and stays). An answer he
-appends on top of the executor's text decides nothing about that text: the
+adjudicated), or Robert himself, under his credential, changes or removes the
+executor's recorded text, or puts his recorded words back, exactly or followed
+by new answers, whether the executor rewrote them or removed them all
+(`rulings_changes` entry `outcome: authorized` with `cleared_concern_keys`,
+plus `restores_recorded: true` for a restoration; an open drift hold is a
+separate matter and stays). Concerns are evaluated individually using the
+affected indices, not the entire snapshot of rulings. Every affected position
+must be changed by his authenticated edit or match a correction he already
+recorded after that concern (ordered by task version). Partial corrections
+stay authorized while the remaining positions stay under review. Legacy
+concerns without `changed_indices` conservatively compare their `recorded`
+and `rewritten` arrays. An answer he
+appends on top of the executor's text, or his amendment or deletion of only
+such an answer, decides nothing about that text: the
 concern stays, and his answer is an authenticated addition
-(`operator_answers[].origin: operator`). A chained rewrite is measured
+(`operator_answers[].origin: operator`, `recorded_at` after the concern's). He
+cannot adopt the executor's text by writing the same text again: a write that
+leaves the rulings unchanged records nothing. A chained rewrite is measured
 against his recorded words (the earliest open concern's `recorded`), never
 against the executor's own earlier text. Putting his recorded words back without
-his credential is recorded (`restores_recorded: true`), adds no second concern
-and clears nothing; a resolution already recorded for that concern stays in
-force. While drift is also held, `reason` names both holds, on write and on
+his credential, onto an emptied row too, is recorded (`restores_recorded: true`),
+appends no answer of its own, adds no second concern and clears nothing; a
+resolution already recorded for that concern stays in force. While drift is also
+held, `reason` names both holds, on write and on
 read. A relayed decision authorizes contract fields, not a change to what he
 said, so a relayed rewrite is held like any other, its `decision_ref` is checked
 even when the write changes no governed field, and while a rulings-rewrite
 concern is on record, adjudicated or not, an `operator_ruling` reference may
-cite only the words the concern recorded or an answer appended since under his
-credential or the runtime's (`operator_answers[].origin` of `operator`,
-`operator_relayed` or `runtime`); the executor's text, and an answer an
-unverified source appended, are refused (`409 decision_ref_under_review`).
+cite only the words the concern recorded at that index or a current authenticated
+answer (`origin` of `operator`, `operator_relayed` or `runtime`). New lifecycle
+entries carrying `task_version` and `previous_sha256` remain authoritative when
+unrelated concerns open or close. Legacy append-only entries without those
+fields must have been recorded at or after the earliest remaining concern.
+The executor's text, an answer an unverified
+source appended, and a superseded answer that an executor put back are refused
+(`409 decision_ref_under_review`). Verification uses the latest audit entry at
+the index and the latest authenticated authorization, never a historical entry
+selected because its hash matches. Authenticated amendments and removal
+tombstones supersede the old instruction even during an existing concern;
+an unverified re-append cannot undo that supersession. This also applies after
+a concern is resolved. Repeated delivery of unchanged rulings adds no audit
+entries. Legacy rulings without an answer audit retain the recorded-word
+fallback; missing historical amendment provenance is not reconstructed or
+claimed as verified operator authorship.
+
+A legacy operator amendment made before amendment auditing may differ from
+the last authenticated append even though Robert wrote it. A relay citing that
+unaudited text is refused with `409 decision_ref_under_review`; Nexus cannot
+recover its source from the stored hash alone. Robert can record its provenance
+by making and saving an actual amendment under his operator credential (for
+example, a clarification of the ruling), then relaying that current instruction.
+Simply re-saving unchanged text records no audit entry and does not resolve the
+refusal. This repairs missing provenance; it is not a second contract approval.
 
 Origin is a checked credential, never a label in the payload. The route
 (`server/services/contract-change-authority.js`) classifies every PATCH:
@@ -187,9 +228,10 @@ Authorization: Bearer <runtime key>
 ```
 
 `decision_ref` kinds: `operator_ruling` `{index, sha256}` (checked against the
-ruling already recorded in `antigravity_payload.operator_rulings` and its
-`operator_answers` entry, whose `recorded_at` and `origin` are echoed as
-`recorded_at` and `recorded_by`; this proves the relay matches the recorded
+ruling already recorded in `antigravity_payload.operator_rulings` and the latest
+`operator_answers` lifecycle at that index, including authenticated supersession;
+the current matching entry's `recorded_at` and
+`origin` are echoed as `recorded_at` and `recorded_by`; this proves the relay matches the recorded
 ruling, the runtime credential is what vouches that the ruling is Robert's),
 `document_decision` `{id}` (checked against `review_document_decisions`, which
 only an operator decision can write), and `chat_instruction` / `inbox_answer` /
@@ -220,8 +262,10 @@ for it.
   marks the entry that brought the fields back. History keeps the last 30
   entries, never dropping an open hold; `contract_changes_dropped` counts the
   rest.
-- `rulings_changes[]`: one entry per rewrite or removal of a recorded operator
-  ruling that was not a plain append. `{recorded_at, task_version, before:
+- `rulings_changes[]`: one entry per rewrite, removal or exact restore of the
+  recorded operator rulings while a `rulings_rewrite` concern is open or being
+  opened; Robert's own edits with nothing under review record nothing, they
+  are his words. `{recorded_at, task_version, before:
   [sha256...], after: [sha256...], origin: {kind, authority, requester},
   outcome: held | authorized, concern_key?, restores_recorded?,
   cleared_concern_keys?}`. `held` entries point at the `kind: rulings_rewrite`

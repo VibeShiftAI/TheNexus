@@ -68,6 +68,21 @@ function normalizePraxisAttachments(attachments) {
         });
 }
 
+// A saved reply confirms archival, not successful execution. Keep the terminal
+// outcome alongside its text so reconnects and restarts retain that distinction.
+function praxisTurnOutcome(data = {}) {
+    return {
+        ...(typeof data.state === 'string' ? { state: data.state } : {}),
+        ...(typeof data.error === 'string' ? { error: data.error } : {}),
+        ...(typeof data.retryable === 'boolean' ? { retryable: data.retryable } : {}),
+    };
+}
+
+function praxisTurnFailed(data = {}) {
+    return ['rejected', 'uncertain', 'failed'].includes(data.state)
+        || (typeof data.error === 'string' && data.error.length > 0);
+}
+
 function buildPraxisAssistantMetadata(data = {}) {
     const normalizedVoiceData = normalizePraxisVoiceData(data.voiceData);
     const persistedAttachments = normalizePraxisAttachments(data.attachments);
@@ -77,6 +92,7 @@ function buildPraxisAssistantMetadata(data = {}) {
     return {
         model: 'praxis-agent',
         provider: 'Praxis',
+        ...praxisTurnOutcome(data),
         hasVoice: normalizedVoiceData.length > 0,
         ...(data.suppressVoice === true ? { suppressVoice: true } : {}),
         ...(normalizedVoiceData.length > 0 ? { voiceData: normalizedVoiceData } : {}),
@@ -95,6 +111,7 @@ function formatStoredChatMessage(message) {
     return {
         ...message,
         metadata,
+        ...praxisTurnOutcome(metadata),
         ...(metadata.suppressVoice === true ? { suppressVoice: true } : {}),
         ...(attachments.length > 0 ? { attachments } : {}),
         ...(voiceData.length > 0 ? { voiceData } : {}),
@@ -117,4 +134,6 @@ module.exports = {
     formatStoredChatMessage,
     normalizePraxisAttachments,
     normalizePraxisVoiceData,
+    praxisTurnOutcome,
+    praxisTurnFailed,
 };

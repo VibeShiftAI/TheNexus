@@ -170,11 +170,11 @@ describe('AI chat Praxis relay', () => {
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         try {
             const db=createDb();let savedUser;
-            db.getChatMessageById=jest.fn(async()=>savedUser);
+            db.getChatMessageById=jest.fn(async id=>savedUser?.id===id?savedUser:null);
             db.getNextAssistantMessage=jest.fn(async()=>null);
             db.saveChatMessage.mockImplementation(async message=>{
                 if(message.role==='user') {if(savedUser)return null;savedUser={...message};return savedUser;}
-                return {...message,id:'retry-reply'};
+                return {...message,id:message.id||'retry-reply'};
             });
             await mount(db);
 
