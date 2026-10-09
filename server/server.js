@@ -202,6 +202,11 @@ app.use('/api/routing-economics', authenticate, require('./routes/routing-econom
 // slate, read from Praxis's schedule file so a stage that has stalled (the
 // 2026-08-24 never-approved slate) is visible on the board.
 app.use('/api/slate', require('./routes/slate')());
+// Guided blind labelling for the Groundrules gold-set packet (2026-10-09):
+// stage-gated reads, operator-only writes, hash-bound sessions and the
+// export adapter into Groundrules.club/data/ledger/gold-set. Reads the packet
+// from its fixed path; docs/contracts/groundrules-blind-labeling.md.
+app.use('/api/groundrules-labeling', authenticate, require('./routes/groundrules-labeling')({ db }));
 
 // Projects & tasks
 // Pulse first: the projects router's GET /:id would otherwise swallow /pulse.

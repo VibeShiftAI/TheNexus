@@ -44,6 +44,7 @@ import { ContractHoldPanel } from "@/components/task-view/contract-hold-panel";
 import { EvidenceDossierPanel } from "@/components/task-view/evidence-dossier-panel";
 import { TaskSequencePanel } from "@/components/task-view/task-sequence";
 import { ReviewDocumentsPanel } from "@/components/task-view/review-documents-panel";
+import { LabelingEntryPanel } from "@/components/task-view/labeling-entry-panel";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
 const TASK_POLL_MS = 20_000;
@@ -133,6 +134,10 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
   const [error, setError] = useState<string | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const [dispatchCopied, setDispatchCopied] = useState(false);
+  // A task that carries the Groundrules labelling packet leads with its entry
+  // card; its description (a 90k-character source inventory) folds away.
+  const [labelingLinked, setLabelingLinked] = useState(false);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
 
   const projectId = task?.project_id ?? null;
 
@@ -316,6 +321,10 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
               </div>
             )}
 
+            {/* Human-input tasks lead with the place to put the input: the
+                guided blind-labelling entry sits ahead of everything else. */}
+            <LabelingEntryPanel taskId={task.id} onLinked={setLabelingLinked} />
+
             {/* Deliverables sit under the title: what this task handed Robert
                 to read, with each document's own review status. */}
             <ReviewDocumentsPanel taskId={task.id} projectId={projectId} />
@@ -351,11 +360,25 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
             <div className={hasSideContent ? "grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
               {/* Main column */}
               <div className="min-w-0 space-y-5">
-                <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-                  <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200">
-                    <FileText size={15} className="text-cyan-400" /> Description
-                  </h3>
-                  {description ? (
+                <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4" data-description={labelingLinked ? (descriptionOpen ? "open" : "collapsed") : "open"}>
+                  {labelingLinked ? (
+                    <button
+                      type="button"
+                      onClick={() => setDescriptionOpen((v) => !v)}
+                      aria-expanded={descriptionOpen}
+                      className="mb-2 flex w-full items-center gap-2 text-left text-sm font-semibold text-slate-200 transition-colors hover:text-cyan-200"
+                    >
+                      <FileText size={15} className="text-cyan-400" /> Description and source inventory
+                      <span className="ml-auto text-xs font-normal text-slate-500">{descriptionOpen ? "hide" : "show"}</span>
+                    </button>
+                  ) : (
+                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200">
+                      <FileText size={15} className="text-cyan-400" /> Description
+                    </h3>
+                  )}
+                  {labelingLinked && !descriptionOpen ? (
+                    <p className="text-xs text-slate-500">The full source inventory is folded away; the labeling form above is where the work happens.</p>
+                  ) : description ? (
                     <Markdown content={description} />
                   ) : (
                     <p className="text-sm italic text-slate-500">No description provided.</p>
