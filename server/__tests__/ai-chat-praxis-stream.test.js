@@ -97,7 +97,7 @@ describe('AI chat Praxis token streaming', () => {
     const body = await res.text();
 
     expect(res.status).toBe(200);
-    expect(JSON.parse(global.fetch.mock.calls[0][1].body).conversationContext).toMatchObject({ conversationId: 'conv-1', messages: [expect.objectContaining({ id: 'previous', voiceAnnouncement: true })] });
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body).conversationContext).toMatchObject({ conversationId: 'conv-1', messages: [] });
     expect(res.headers.get('content-type')).toContain('text/event-stream');
     expect(body).toContain('data: {"type":"delta","delta":"hello "}');
     expect(body).toContain('data: {"type":"delta","delta":"Robert"}');

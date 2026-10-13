@@ -10,6 +10,7 @@ import { GitCommit, Clock, Cpu, Coins, ChevronRight, FileX2, User, Radio, AlertT
 import { formatTraceCompleteness, describeTraceGaps } from "@/lib/run-trace";
 import { useAlertActionState } from "@/hooks/use-alert-action-state";
 import { describeAlertAction, type AlertEvidence } from "@/lib/alert-action";
+import { readChatDraft, writeChatDraft } from "@/lib/chat-draft";
 import { AlertAction, SafeAlertMarkdown } from "@/components/alert-action";
 
 // Compact token count: 12345 → "12.3k", 2_000_000 → "2M".
@@ -45,7 +46,7 @@ function formatRelativeTime(dateStr: string) {
 /** One row of the merged feed: a git commit or a Praxis operational event. */
 export type FeedRow =
     | { kind: 'commit'; at: number; key: string; commit: Activity }
-    | { kind: 'event'; at: number; key: string; event: ActivityEvent };
+    | { kind: 'event'; at: number; key: string; event: ActivityEvent; history?: ActivityEvent[] };
 
 export type Filter = 'all' | 'events' | 'commits';
 
@@ -86,7 +87,23 @@ export function mergeActivityRows(
             });
         }
     }
-    return merged.sort((a, b) => b.at - a.at).slice(0, FEED_LIMIT);
+    const grouped: FeedRow[] = [];
+    const groups = new Map<string, Extract<FeedRow, { kind: 'event' }>>();
+    for (const row of merged.sort((a, b) => b.at - a.at)) {
+        const event = row.kind === 'event' ? row.event : null;
+        const day = event ? parseFeedDate(event.created_at).toISOString().slice(0, 10) : '';
+        const documents = event?.event_type === 'document_delivery'
+            ? [...new Set(Array.from(event.message?.matchAll(/\/documents\/([a-zA-Z0-9-]+)/g) ?? [], match => match[1]))].sort().join(',') : '';
+        const family = documents ? `documents:${documents}` : event?.task_id &&
+            ['task_qa_passed', 'task_qa_exempt', 'task_correction_redispatch', 'task_resumed_with_answer', 'feedback.answers_actioned'].includes(event.event_type)
+            ? `task:${event.task_id}` : null;
+        const key = event && !event.requires_action && event.severity !== 'critical' && family ? `${day}:${family}` : null;
+        const previous = key ? groups.get(key) : undefined;
+        if (previous && event) { previous.history!.push(event); continue; }
+        if (key && row.kind === 'event') { row.history = [row.event]; groups.set(key, row); }
+        grouped.push(row);
+    }
+    return grouped.slice(0, FEED_LIMIT);
 }
 
 const SEVERITY = {
@@ -100,13 +117,23 @@ function humanizeEventType(eventType: string) {
     return eventType.replace(/[._]/g, ' ');
 }
 
-export function EventRow({ event, onOpenTask, evidence }: { event: ActivityEvent; onOpenTask: (taskId: string) => void; evidence?: AlertEvidence }) {
+export function EventRow({ event, onOpenTask, evidence, history = [] }: { event: ActivityEvent; onOpenTask: (taskId: string) => void; evidence?: AlertEvidence; history?: ActivityEvent[] }) {
     const [expanded, setExpanded] = useState(false);
     const tone = SEVERITY[event.severity] ?? SEVERITY.info;
     const Icon = tone.icon;
     // The full card is what the chat used to carry; keep it one click away
     // rather than on screen by default.
     const detail = event.message?.trim();
+    const router = useRouter();
+    const askPraxis = () => {
+        const text = `Please explain this Recent Activity item and whether I need to do anything:\n\n${event.title}\nEvent ${event.id} (${event.event_type}), ${event.created_at}${event.task_id ? `\nTask: /task/${event.task_id}` : ''}\n\n${event.message ?? ''}`;
+        const draft = [readChatDraft(), text].filter(Boolean).join('\n\n');
+        writeChatDraft(draft);
+        window.dispatchEvent(new window.CustomEvent('nexus:chat-seed', { detail: { text: draft } }));
+        const terminal = document.getElementById('station-core');
+        if (terminal) terminal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        else router.push('/#station-core');
+    };
 
     return (
         <div className="flex items-start gap-3 group rounded-lg -mx-2 px-2 py-1">
@@ -135,7 +162,9 @@ export function EventRow({ event, onOpenTask, evidence }: { event: ActivityEvent
                             <ChevronRight size={10} className="shrink-0" />
                         </button>
                     )}
-                    {detail && (
+                    <button type="button" onClick={askPraxis} className="text-[10px] text-cyan-300 hover:underline">Ask Praxis</button>
+                    {history.length > 1 && <span className="text-[10px] text-slate-500">{history.length} updates</span>}
+                    {(detail || history.length > 1) && (
                         <button
                             type="button"
                             onClick={() => setExpanded(v => !v)}
@@ -147,9 +176,14 @@ export function EventRow({ event, onOpenTask, evidence }: { event: ActivityEvent
                         </button>
                     )}
                 </div>
-                {expanded && detail && (
+                {expanded && (detail || history.length > 1) && (
                     <div className="custom-scrollbar mt-2 max-h-64 overflow-auto rounded border border-slate-800 bg-slate-950/60 p-2 text-[11px] leading-relaxed text-slate-400">
-                        <SafeAlertMarkdown>{detail}</SafeAlertMarkdown>
+                        {(history.length > 1 ? history : [event]).map(item => (
+                            <div key={item.id} className="mb-3 last:mb-0">
+                                {history.length > 1 && <p className="mb-1 text-slate-300">{item.title} · {formatRelativeTime(item.created_at)}</p>}
+                                <SafeAlertMarkdown>{item.message || item.title}</SafeAlertMarkdown>
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>
@@ -370,7 +404,7 @@ export function ActivityFeed() {
                         {row.kind === 'commit' ? (
                             <CommitRow key={row.key} commit={row.commit} onOpenLogs={openLogs} />
                         ) : (
-                            <EventRow key={row.key} event={row.event} evidence={evidence} onOpenTask={(taskId) => router.push(`/task/${taskId}`)} />
+                            <EventRow key={row.key} event={row.event} history={row.history} evidence={evidence} onOpenTask={(taskId) => router.push(`/task/${taskId}`)} />
                         )}</div>
                     )}
                 </div>

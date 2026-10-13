@@ -127,7 +127,7 @@ export function archiveVoiceAnnouncement(eventId: string, text: string, conversa
     metadata: { eventId, voiceAnnouncement: true, playbackOwner: 'voice', suppressVoice: true } }], conversationId, options);
 }
 
-/** Delivery notices are durable chat rows, and must never trigger speech themselves. */
+/** Delivery diagnostics are durable Activity receipts and never trigger speech. */
 export function archiveVoiceDeliveryNotice(eventId: string, text: string, conversationId?: string, options: RequestOptions = {}) {
   return archiveVoiceRows([{ id: `voice-delivery:${eventId}`, role: 'assistant', content: text,
     metadata: { eventId, voiceDeliveryNotice: true, playbackOwner: 'voice', suppressVoice: true } }], conversationId, options);
@@ -156,6 +156,7 @@ async function archiveVoiceRows(messages: unknown[], conversationId: string | un
 export function mergeVoiceMessages(previous: Message[], saved: SavedVoiceMessage[]): Message[] {
   const ids = new Set(previous.map(message => message.id));
   const missing = saved.filter(message => {
+    if (message.metadata?.voiceAnnouncement || message.metadata?.voiceDeliveryNotice || message.metadata?.activityOnly) return false;
     if (ids.has(message.id)) return false;
     ids.add(message.id); return true;
   });

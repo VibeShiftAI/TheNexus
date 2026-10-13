@@ -576,11 +576,11 @@ export function VoiceCommandBar() {
         const task = projectsRef.current?.flatMap(project => project.tasks ?? []).find(task => task.id === id);
         return task?.title || task?.name;
       }, blocked);
-      // Chat receives the words first. The voice panel is revealed only by audio playback.
+      // Archive the words in Recent Activity before playback reveals the voice panel.
       speech.setState(session, 'working');
       return (async () => {
         let deliveryConversationId = announcementConversationId || undefined;
-        let failure = 'Voice update could not be prepared or saved to chat.';
+        let failure = 'Voice update could not be prepared or saved to Recent Activity.';
         let delivered = false;
         let noCurrentRequest = false;
         const mergeSaved = (saved: SavedVoiceMessage[]) => {
@@ -601,7 +601,7 @@ export function VoiceCommandBar() {
           if (!archived?.content) throw new Error('Announcement receipt is missing its text');
           deliveryConversationId = archived.conversation_id || deliveryConversationId;
           mergeSaved(saved);
-          failure = 'Voice update was skipped or interrupted before playback finished. The update is in chat.';
+          failure = 'Voice update was skipped or interrupted before playback finished. The update is in Recent Activity.';
           const mayPlay = async () => {
             const latest = await currentVoiceAlert(current, authFetch, session.signal);
             if (!latest || (current.type === 'hitl.created' && latest.type === 'hitl.created' && latest.request.question !== current.request.question)) return false;
@@ -609,11 +609,11 @@ export function VoiceCommandBar() {
           };
           if (!await mayPlay()) return;
           const outcome = await speech.speak(session, voiceAlertSpeech(text, facts), undefined, notice => {
-            failure = `Voice update failed: ${notice.replace(' The full response remains in the voice panel.', '')} The update is in chat.`;
+            failure = `Voice update failed: ${notice.replace(' The full response remains in the voice panel.', '')} The update is in Recent Activity.`;
           }, false, async () => {
             if (!await mayPlay()) return false;
             if (!await playAnnouncementCue(session.signal)) {
-              failure = 'Voice update could not play its announcement sound. The update is in chat.';
+              failure = 'Voice update could not play its announcement sound. The update is in Recent Activity.';
               return false;
             }
             return mayPlay();
@@ -629,6 +629,7 @@ export function VoiceCommandBar() {
         } finally {
           speech.finish(session);
           if (!delivered && !noCurrentRequest) {
+            if (mountedRef.current) setSpeechNotice(failure);
             // Speech completion releases/aborts its session. Archival needs its own lifetime.
             try {
               mergeSaved(await archiveVoiceDeliveryNotice(announcementId, failure, deliveryConversationId));

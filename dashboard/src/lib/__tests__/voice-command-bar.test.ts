@@ -470,7 +470,8 @@ for (const mode of ['success', 'synthesis-failure', 'blocked', 'cue-failure', 'd
     __sockets.at(-1).__emit('praxis:event', { type: 'task.failed', eventId: `delivery-${mode}`, taskId: 'task-1', error: 'Build failed', at: new Date().toISOString() });
     await tick(); await tick();
   });
-  assert.ok(cortexTestStore.messages.some(m => m.content === 'Fresh spoken response 1.'));
+  assert.equal(cortexTestStore.messages.some(m => m.metadata?.voiceAnnouncement), false);
+  assert.ok(f.requests.some(r => r.url.endsWith('/sync') && r.body.messages[0].metadata?.voiceAnnouncement));
   assert.doesNotMatch(f.host.textContent ?? '', /Fresh spoken response|voice channel/);
   if (mode !== 'device-skip') {
     await act(async () => { finish(mode === 'synthesis-failure' ? Response.json({}, { status: 503 }) : Response.json({ audio: 'synthetic' })); await tick(); });
@@ -487,7 +488,8 @@ for (const mode of ['success', 'synthesis-failure', 'blocked', 'cue-failure', 'd
     assert.equal(cortexTestStore.messages.filter(m => m.metadata?.voiceDeliveryNotice).length, 0);
   } else {
     assert.doesNotMatch(f.host.textContent ?? '', /Fresh spoken response|voice channel/);
-    const notices = cortexTestStore.messages.filter(m => m.metadata?.voiceDeliveryNotice);
+    assert.equal(cortexTestStore.messages.filter(m => m.metadata?.voiceDeliveryNotice).length, 0);
+    const notices = f.requests.filter(r => r.url.endsWith('/sync') && r.body.messages[0].metadata?.voiceDeliveryNotice).map(r => r.body.messages[0]);
     assert.equal(notices.length, 1);
     assert.match(notices[0].content, /Voice update/);
     assert.equal(notices[0].metadata?.suppressVoice, true);

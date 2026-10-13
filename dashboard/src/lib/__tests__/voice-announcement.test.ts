@@ -35,3 +35,12 @@ test('delivery failure is archived idempotently with speech suppressed', async (
   assert.equal(rows[0].metadata.suppressVoice, true);
   assert.equal(rows[0].metadata.voiceDeliveryNotice, true);
 });
+
+test('automatic announcements and playback diagnostics do not reenter conversation through receipt merging', () => {
+  const rows: any[] = [
+    {id:'voice-alert:1',role:'assistant',content:'QA passed',metadata:{voiceAnnouncement:true}},
+    {id:'voice-delivery:1',role:'assistant',content:'Audio stopped',metadata:{voiceDeliveryNotice:true}},
+    {id:'reply:1',role:'assistant',content:'Your answer',metadata:{voiceConversation:true}},
+  ];
+  assert.deepEqual(api.mergeVoiceMessages([],rows).map(row=>row.id),['reply:1']);
+});

@@ -25,6 +25,7 @@ const { initializeDocumentReviews, createDocumentReviewStore } = require('./docu
 const { initializeClientAccess, createClientAccess } = require('./client-access');
 const { initializeWorkAdmission, createWorkAdmission } = require('./work-admission');
 const { initializeActivityEvents, recordActivityEvent } = require('./activity-events');
+const { isActivityOnlyChatMessage, chatMessageActivityEvent } = require('./chat-message-policy');
 
 /**
  * Write-side backstop for the canonical task-status enum (@praxis/contract
@@ -67,6 +68,7 @@ try {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
+    db.function('chat_activity_only', { deterministic: true }, (role, metadata) => Number(isActivityOnlyChatMessage({ role, metadata })));
 
     // Auto-create tables if the DB is brand new
     const schemaPath = path.resolve(__dirname, 'schema-sqlite.sql');
@@ -102,6 +104,8 @@ try {
     initializeWorkAdmission(db);
     workAdmission = createWorkAdmission(db);
     initializeActivityEvents(db);
+    // Archive legacy operational receipts before conversation-only reads hide them.
+    archiveBackgroundChatMessages();
 
     // Canonical-status sweep (2026-07-05 unification): idempotent, runs every
     // boot. Writers normalize at createTask/updateTask, but a process still on
@@ -2966,20 +2970,43 @@ async function getChatMessages(conversationId, options = {}) {
             params.push(before);
         }
         
-        sql += ' ORDER BY created_at DESC LIMIT ?';
+        if (options.conversationalOnly) sql += " AND role IN ('user', 'assistant')";
+        if (options.conversationalOnly || options.chatVisibleOnly) sql += ' AND chat_activity_only(role, metadata) = 0';
+        sql += ' ORDER BY created_at DESC, rowid DESC LIMIT ?';
         params.push(limit);
         
         const rows = db.prepare(sql).all(...params);
         
         // Reverse to return in chronological order (ASC)
-        return rows.reverse().map(row => {
-            row.metadata = deser(row.metadata);
-            return row;
-        });
+        return rows.reverse().map(row => ({ ...row, metadata: deser(row.metadata) }));
     } catch (err) {
         console.error('[Database] Error fetching chat messages:', err.message);
         return [];
     }
+}
+
+/** Count the same policy-filtered transcript without materializing its content. */
+async function countChatMessages(conversationId, options = {}) {
+    if (!db) return 0;
+    let sql = 'SELECT COUNT(*) AS count FROM chat_messages WHERE conversation_id = ?';
+    if (options.conversationalOnly) sql += " AND role IN ('user', 'assistant')";
+    if (options.conversationalOnly || options.chatVisibleOnly) sql += ' AND chat_activity_only(role, metadata) = 0';
+    return db.prepare(sql).get(conversationId).count;
+}
+
+/** Idempotent startup migration; preserves canonical receipts and all original rows. */
+function archiveBackgroundChatMessages() {
+    if (!db) return 0;
+    return db.transaction(() => {
+        let inserted = 0;
+        for (const row of db.prepare("SELECT m.* FROM chat_messages m LEFT JOIN ag_event_receipts r ON r.idempotency_key = 'chat-message:' || m.id WHERE r.idempotency_key IS NULL ORDER BY m.created_at, m.rowid").all()) {
+            if (!isActivityOnlyChatMessage(row)) continue;
+            const result = recordActivityEvent(db, chatMessageActivityEvent(row), null);
+            if (!result) throw new Error(`Could not archive chat message ${row.id}`);
+            if (!result.duplicate) inserted++;
+        }
+        return inserted;
+    })();
 }
 
 /**
@@ -3065,7 +3092,12 @@ async function saveChatMessage(msg) {
         };
 
         const { sql, values } = buildInsert('chat_messages', row);
-        db.prepare(sql).run(...values);
+        db.transaction(() => {
+            db.prepare(sql).run(...values);
+            if (isActivityOnlyChatMessage(row) && !recordActivityEvent(db, chatMessageActivityEvent(row))) {
+                throw new Error('Could not persist chat Activity receipt');
+            }
+        })();
 
         // Auto-title: if this is the first user message, derive title from it
         if (msg.role === 'user') {
@@ -3119,7 +3151,7 @@ async function getAgEvents({ limit = 50, since = null, severity = null } = {}) {
     try {
         const where = [];
         const params = [];
-        if (since) { where.push('created_at > ?'); params.push(since); }
+        if (since) { where.push('julianday(created_at) > julianday(?)'); params.push(since); }
         if (severity) { where.push('severity = ?'); params.push(severity); }
         const sql = `SELECT * FROM ag_events${where.length ? ' WHERE ' + where.join(' AND ') : ''}`
             + ' ORDER BY datetime(created_at) DESC, id DESC LIMIT ?';
@@ -3515,6 +3547,8 @@ module.exports = {
     // Activity Event Stream (ag_events)
     getAgEvents,
     recordAgEvent,
+    archiveBackgroundChatMessages,
+    countChatMessages,
     // Push Notification Tokens
     registerPushToken,
     unregisterPushToken,

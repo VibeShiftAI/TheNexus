@@ -38,11 +38,15 @@ function recordActivityEvent(db, event = {}, retention = 5000) {
             }
         }
         const result = db.prepare(`INSERT INTO ag_events
-          (event_type, severity, title, message, task_id, source, metadata, requires_action)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(...fields);
+          (event_type, severity, title, message, task_id, source, metadata, requires_action, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))`).run(...fields, event.created_at || null);
         const id = Number(result.lastInsertRowid);
         if (key !== undefined) db.prepare('INSERT INTO ag_event_receipts (idempotency_key, payload_hash, event_id) VALUES (?, ?, ?)').run(key, hash, id);
-        db.prepare('DELETE FROM ag_events WHERE id <= (SELECT MAX(id) FROM ag_events) - ?').run(retention);
+        // Historical imports receive new IDs but must not evict newer activity.
+        // Hidden chat receipts must remain retrievable after ordinary feed retention.
+        if (retention !== null) db.prepare(`DELETE FROM ag_events WHERE id IN (SELECT id FROM ag_events
+          WHERE json_extract(CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END, '$.chatMessageId') IS NULL
+          ORDER BY datetime(created_at) DESC, id DESC LIMIT -1 OFFSET ?)`).run(retention);
         return { id, duplicate: false };
     })();
 }

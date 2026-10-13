@@ -63,3 +63,18 @@ test("rows carry stable keys and the feed is bounded", () => {
     // Newest kept, oldest dropped.
     assert.equal(rows[0].key, "e-79");
 });
+
+test('routine task updates group together while actionable events remain independent', () => {
+    const rows = mergeActivityRows([], [
+      event(1,'2026-10-13T10:00:00Z',{event_type:'task_correction_redispatch',task_id:'t1'}),
+      event(2,'2026-10-13T11:00:00Z',{event_type:'task_qa_passed',task_id:'t1'}),
+      event(3,'2026-10-13T11:30:00Z',{event_type:'task_blocked',task_id:'t1',requires_action:1}),
+      event(4,'2026-10-13T12:00:00Z',{event_type:'document_delivery',task_id:'t1',message:'[Brief](/documents/d1) revision 1'}),
+      event(5,'2026-10-13T12:01:00Z',{event_type:'document_delivery',task_id:'t1',message:'[Brief](/documents/d1) revision 2'}),
+    ], 'events');
+    assert.equal(rows.length,3);
+    const groups=rows.filter(row=>row.kind==='event');
+    assert.deepEqual(groups.map(row=>row.event.id),[5,3,2]);
+    assert.deepEqual(groups[0].history?.map(e=>e.id),[5,4]);
+    assert.deepEqual(groups[2].history?.map(e=>e.id),[2,1]);
+});

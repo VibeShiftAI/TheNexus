@@ -10,6 +10,7 @@ describe('voice exchange archival', () => {
             getActiveConversation: jest.fn(async () => ({ id: 'active', mode: 'praxis' })),
             getChatConversations: async () => [{ id: 'selected', mode: 'praxis' }, { id: 'wrong', mode: 'other' }],
             getChatMessageById: async id => rows.get(id),
+            recordAgEvent: jest.fn(async () => ({ id: 1, duplicate: true })),
             saveChatMessage: jest.fn(async row => { if (rows.has(row.id)) return null; rows.set(row.id, row); return row; }),
         };
         io = { emit: jest.fn() };
@@ -58,6 +59,8 @@ describe('voice exchange archival', () => {
         expect(retry.status).toBe(200);
         expect(retry.body.messages[0].content).toBe('Original announcement.');
         expect(rows.size).toBe(1); expect(io.emit).toHaveBeenCalledTimes(1);
+        expect(io.emit).toHaveBeenCalledWith('activity:event', expect.objectContaining({ event_type: 'voice_announcement' }));
+        expect(db.recordAgEvent.mock.calls[0][0]).toEqual(db.recordAgEvent.mock.calls[1][0]);
     });
     test('voice event reuse from a different conversation returns the existing row in its original conversation', async () => {
         const announcement = { id: 'voice-alert:event-42', role: 'assistant', content: 'Original announcement.', metadata: { voiceAnnouncement: true, eventId: 'event-42', playbackOwner: 'voice', suppressVoice: true } };
@@ -66,6 +69,16 @@ describe('voice exchange archival', () => {
         expect(retry.status).toBe(200);
         expect(retry.body.messages[0]).toMatchObject({ content: 'Original announcement.', conversation_id: 'selected' });
         expect(rows.size).toBe(1); expect(io.emit).toHaveBeenCalledTimes(1);
+        expect(io.emit).toHaveBeenCalledWith('activity:event', expect.objectContaining({ event_type: 'voice_announcement' }));
+        expect(db.recordAgEvent.mock.calls[0][0]).toEqual(db.recordAgEvent.mock.calls[1][0]);
+    });
+    test('Activity persistence failure does not acknowledge sync, and retry repairs it', async () => {
+        db.recordAgEvent.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 1, duplicate: false });
+        const delivery = { id: 'doc', role: 'assistant', content: 'Document delivered.', metadata: { eventType: 'document_delivery' } };
+        expect((await post({ messages: [delivery] })).status).toBe(503);
+        expect((await post({ messages: [delivery] })).status).toBe(200);
+        expect(io.emit).toHaveBeenCalledWith('activity:event', expect.objectContaining({ event_type: 'document_delivery' }));
+        expect(io.emit).not.toHaveBeenCalledWith('chat-message', expect.anything());
     });
     test('voice retry cannot adopt an unrelated colliding row', async () => {
         rows.set('voice-alert:event-42', { id: 'voice-alert:event-42', role: 'assistant', content: 'Unrelated.', mode: 'praxis', conversation_id: 'selected', metadata: {} });

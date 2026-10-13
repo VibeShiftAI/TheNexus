@@ -3,6 +3,7 @@
  * Conversation management, message history, and cross-platform sync.
  */
 const express = require('express');
+const { isActivityOnlyChatMessage, chatMessageActivityEvent } = require('../../db/chat-message-policy');
 const { resolveChatConversation } = require('../chat-conversation');
 
 function createChatHistoryRouter({ db, io }) {
@@ -24,10 +25,9 @@ function createChatHistoryRouter({ db, io }) {
             const conversation = await db.getActiveConversation(req.query.mode || 'praxis');
             if (!conversation) return res.json({ conversation: null, messages: [], hasMore: false, total_count: 0 });
             const limit = Math.min(parseInt(req.query.limit) || 10, 200);
-            const messages = (await db.getChatMessages(conversation.id, { limit })).map(formatStoredChatMessage);
+            const messages = (await db.getChatMessages(conversation.id, { limit, chatVisibleOnly: true })).map(formatStoredChatMessage);
             // Get total count to determine if there are older messages
-            const allMessages = await db.getChatMessages(conversation.id);
-            const total_count = allMessages.length;
+            const total_count = await db.countChatMessages(conversation.id, { chatVisibleOnly: true });
             res.json({ conversation, messages, hasMore: total_count > messages.length, total_count });
         } catch (error) {
             res.status(500).json({ error: 'Failed to get active conversation' });
@@ -50,9 +50,8 @@ function createChatHistoryRouter({ db, io }) {
             const conversation = await db.switchConversation(req.params.id);
             if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
             const limit = Math.min(parseInt(req.query.limit) || 10, 200);
-            const messages = (await db.getChatMessages(conversation.id, { limit })).map(formatStoredChatMessage);
-            const allMessages = await db.getChatMessages(conversation.id);
-            const total_count = allMessages.length;
+            const messages = (await db.getChatMessages(conversation.id, { limit, chatVisibleOnly: true })).map(formatStoredChatMessage);
+            const total_count = await db.countChatMessages(conversation.id, { chatVisibleOnly: true });
             res.json({ conversation, messages, hasMore: total_count > messages.length, total_count });
         } catch (error) {
             res.status(500).json({ error: 'Failed to switch conversation' });
@@ -89,7 +88,7 @@ function createChatHistoryRouter({ db, io }) {
             const { conversationId, before } = req.query;
             if (!conversationId) return res.status(400).json({ error: 'conversationId is required' });
             const limit = Math.min(parseInt(req.query.limit) || 10, 200);
-            const messages = (await db.getChatMessages(conversationId, { limit, before })).map(formatStoredChatMessage);
+            const messages = (await db.getChatMessages(conversationId, { limit, before, chatVisibleOnly: true })).map(formatStoredChatMessage);
             // Check if there are even older messages beyond what we returned
             const hasMore = messages.length === limit;
             res.json({ messages, hasMore });
@@ -150,8 +149,22 @@ function createChatHistoryRouter({ db, io }) {
                         && formatted.metadata.eventId === msg.metadata.eventId && formatted.metadata.playbackOwner === 'voice'
                         && formatted.metadata.suppressVoice === true;
                     if (!canonicalAnnouncement && (savedMessage.conversation_id !== conversationId || savedMessage.content !== msg.content)) continue;
+                    const activityOnly = isActivityOnlyChatMessage(savedMessage);
+                    if (activityOnly) {
+                        // Persist from the canonical receipt, not retry-generated wording.
+                        const event = chatMessageActivityEvent(savedMessage);
+                        const activity = await db.recordAgEvent(event);
+                        if (!activity) continue;
+                        if (inserted || !activity.duplicate) {
+                            try {
+                                io?.emit('activity:event', { ...event, id: activity.id,
+                                    requires_action: event.requires_action ? 1 : 0,
+                                    created_at: event.created_at || new Date().toISOString() });
+                            } catch (error) { console.warn('[Chat Sync] Activity broadcast failed:', error.message); }
+                        }
+                    }
                     stored.push(formatted);
-                    if (inserted && io) {
+                    if (inserted && !activityOnly && io) {
                         io.emit('chat-message', buildChatMessageEvent(savedMessage));
                         if (msg.role === 'assistant' && formatted.metadata?.attachments?.length > 0) {
                             io.emit('cortex-artifact', { type: 'CHAT_RESPONSE', data: { content: msg.content, attachments: formatted.metadata.attachments } });

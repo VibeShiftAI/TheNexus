@@ -50,8 +50,8 @@ describe('short acknowledged mobile chat requests', () => {
         expect(accepted.body.conversationId).toBe('selected');
         expect(accepted.body.messages[0]).toMatchObject({ id: 'voice-turn', role: 'user', metadata: { voiceConversation: true } });
         expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toMatchObject({ voiceConversation: true, history: request.history, projectId: 'project-1' });
-        expect(JSON.parse(global.fetch.mock.calls[0][1].body).conversationContext).toMatchObject({ conversationId: 'selected', messages: [expect.objectContaining({ id: 'voice-alert:decision', voiceAnnouncement: true })] });
-        expect(db.getChatMessages).toHaveBeenCalledWith('selected', { limit: 12, before: rows.get('voice-turn').created_at });
+        expect(JSON.parse(global.fetch.mock.calls[0][1].body).conversationContext).toMatchObject({ conversationId: 'selected', messages: [] });
+        expect(db.getChatMessages).toHaveBeenCalledWith('selected', { limit: 12, before: rows.get('voice-turn').created_at, conversationalOnly: true });
         db.getActiveConversation = async () => ({ id: 'different' });
         gate.resolve();
         for (let i = 0; i < 30 && (await status('voice-turn')).body.status === 'pending'; i++) await new Promise(r => setTimeout(r, 5));
