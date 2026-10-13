@@ -230,6 +230,15 @@ export function PraxisCore() {
             </div>
           </div>
 
+          {!!presence?.backgroundActivities?.length && (
+            <div className="mt-2.5 rounded-md border border-slate-800/60 px-2.5 py-1.5" aria-label="Background activity">
+              <div className="text-[10px] uppercase tracking-wide text-slate-500">Background</div>
+              {presence.backgroundActivities.map((activity) => (
+                <p key={activity.id} className="text-xs text-slate-400">{activity.summary}</p>
+              ))}
+            </div>
+          )}
+
           {traceText && (core.activity === "thinking" || core.activity === "executing") && (
             <button type="button" onClick={() => setTraceOpen(true)} aria-label="Read full thought trace" className="text-left hover:border-cyan-400/40 mt-2.5 max-h-16 w-full overflow-hidden rounded-md border border-slate-800/60 bg-slate-950/60 px-2.5 py-1.5">
               <div className="text-[10px] uppercase tracking-wide text-slate-600">thought stream</div>
