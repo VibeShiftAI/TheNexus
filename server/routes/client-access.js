@@ -81,6 +81,7 @@ function createClientAccessRouters({ db }) {
     // ── Client surface ────────────────────────────────────────────────────
     const client = express.Router();
     client.use((req, res, next) => {
+        res.setHeader('Cache-Control', 'private, no-store');
         try {
             req.clientAccessAuthority = requireStakeholderAuthority(req, 'runtime');
             next();
@@ -103,6 +104,19 @@ function createClientAccessRouters({ db }) {
         try {
             sessionAssertion(req, { required: false });
             res.json(store().artifactForMember(req.params.memberId, req.params.projectId, req.params.artifactId));
+        } catch (error) { respondError(res, error); }
+    });
+    client.get('/members/:memberId/projects/:projectId/artifacts/:artifactId/assets/:assetKey', (req, res) => {
+        res.setHeader('Cache-Control', 'private, no-store');
+        try {
+            sessionAssertion(req, { required: true });
+            const asset = store().assetForMember(req.params.memberId, req.params.projectId, req.params.artifactId, req.params.assetKey, req.query.version_hash);
+            res.setHeader('Content-Type', asset.mime_type);
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('X-Asset-Hash', asset.content_hash);
+            res.setHeader('X-Document-Revision', asset.revision_hash);
+            res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; font-src data:; frame-ancestors 'none'");
+            res.send(asset.bytes);
         } catch (error) { respondError(res, error); }
     });
     client.post('/members/:memberId/projects/:projectId/artifacts/:artifactId/reviews', (req, res) => {

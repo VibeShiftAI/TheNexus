@@ -667,3 +667,88 @@ test('artifact detail preserves captured BOM and CRLF bytes covered by the immut
     expect(sha256(result.json.content.content)).toBe(result.json.content.content_hash);
     expect(result.json.artifact.document.content_hash).toBe(sha256(exact));
 });
+
+async function publishDesign() {
+    const store = db.documentReviews;
+    const doc = store.insertDocument({ title: 'Design options', path: path.join(dir, 'review.design.json'), project_id: project.id, kind: 'design', registered_by: 'test', media_type: 'design' });
+    const bytes = Buffer.from('synthetic image bytes');
+    const assetPath = path.join(dir, 'screen.png'); fs.writeFileSync(assetPath, bytes);
+    const manifest = { format: 'nexus-design-package/1', title: 'Design', directions: [{ id: 'a', title: 'A' }, { id: 'b', title: 'B' }], source: { secret: 'INTERNAL' }, screens: [{ id: 's', title: 'Statement', file: assetPath }] };
+    const revision = store.insertRevision({ document_id: doc.id, content_hash: sha256('package identity'), content: JSON.stringify(manifest), byte_length: 100, line_count: 1, media_type: 'design', manifest });
+    store.setCurrentRevision(doc.id, revision.id);
+    store.insertRevisionAssets(revision.id, doc.id, [
+        { asset_key: 'screen:s', role: 'screen', path: assetPath, media_type: 'image', mime_type: 'image/png', content_hash: sha256(bytes), byte_length: bytes.length, label: 'Statement', direction: 'a', order: 0 },
+        { asset_key: 'evidence:internal', role: 'evidence', path: assetPath, media_type: 'text', mime_type: 'text/plain', content_hash: sha256(bytes), byte_length: bytes.length, order: 1 },
+    ]);
+    const result = await publish(project.id, { kind: 'document', title: 'Design options', document_id: doc.id });
+    expect(result.status).toBe(201);
+    return { artifact: result.json.artifact, bytes, assetPath };
+}
+
+test('published designs expose only safe media descriptors and protected version-bound assets', async () => {
+    const grantResult = await grant(project.id, joey.id);
+    const { artifact, bytes } = await publishDesign();
+    const result = await detail(joey.id, project.id, artifact.id);
+    expect(result.json.content).toBeNull();
+    expect(result.json.media.directions.map(d => d.id)).toEqual(['a', 'b']);
+    expect(result.json.media.assets.map(a => a.asset_key)).toEqual(['screen:s']);
+    expect(JSON.stringify(result.json)).not.toContain(dir);
+    expect(JSON.stringify(result.json)).not.toContain('INTERNAL');
+    expect((await read(joey.id, project.id)).json.artifacts[0].media.media_type).toBe('design');
+    const url = `/api/client-access/members/${joey.id}/projects/${project.id}/artifacts/${artifact.id}/assets/screen:s?version_hash=${artifact.version_hash}`;
+    expect((await api('GET', url, undefined, { key: runtimeKey })).status).toBe(401);
+    const options = { key: runtimeKey, session: liveSession() };
+    const asset = await api('GET', url, undefined, options);
+    expect(asset.status).toBe(200); expect(asset.text).toBe(bytes.toString());
+    expect((await api('GET', url.replace(artifact.version_hash, '0'.repeat(64)), undefined, options)).status).toBe(409);
+    expect((await api('GET', url.replace('screen:s', 'evidence:internal'), undefined, options)).status).toBe(404);
+    expect((await api('GET', url.replace(project.id, other.id), undefined, options)).status).toBe(403);
+    await revoke(project.id, grantResult.json.entitlement.id, 'test');
+    expect((await api('GET', url, undefined, options)).status).toBe(403);
+});
+
+test('design direction is required, recorded and bound to review idempotency', async () => {
+    await grant(project.id, joey.id);
+    const { artifact } = await publishDesign();
+    const body = { client_decision_id: 'choose-design', decision: 'accept', version_hash: artifact.version_hash };
+    expect((await review(joey.id, project.id, artifact.id, body)).status).toBe(400);
+    expect((await review(joey.id, project.id, artifact.id, { ...body, selection: { direction: 'missing' } })).status).toBe(400);
+    const selected = { ...body, selection: { direction: 'a' } };
+    const accepted = await review(joey.id, project.id, artifact.id, selected);
+    expect(accepted.status).toBe(201); expect(accepted.json.review.selection).toEqual({ direction: 'a' });
+    expect((await review(joey.id, project.id, artifact.id, selected)).status).toBe(200);
+    expect((await review(joey.id, project.id, artifact.id, { ...selected, selection: { direction: 'b' } })).status).toBe(409);
+    expect((await review(joey.id, project.id, artifact.id, { ...selected, client_decision_id: 'new-key', selection: { direction: 'b' } })).status).toBe(409);
+});
+
+test('legacy design acceptances without selection remain replayable after the media upgrade', async () => {
+    await grant(project.id, joey.id);
+    const { artifact } = await publishDesign();
+    const raw = new (require('better-sqlite3'))(process.env.NEXUS_DB_PATH);
+    const requestHash = sha256(JSON.stringify({ artifact_id: artifact.id, body: '', decision: 'accept', version_hash: artifact.version_hash }));
+    const session = liveSession();
+    raw.prepare(`INSERT INTO client_reviews(id,client_decision_id,member_id,project_id,artifact_id,version_hash,decision,body,request_hash,session_sha256,session_expires_at,authority,member_snapshot,created_at)
+        VALUES (?,?,?,?,?,?,'accept','',?,?,?,'runtime_credential','{}',?)`).run('legacy-review','legacy-design',joey.id,project.id,artifact.id,artifact.version_hash,requestHash,session.sha256,session.expires,new Date().toISOString());
+    raw.prepare('INSERT INTO client_review_keys VALUES (?,?,?,?,?,?)').run(joey.id,project.id,'legacy-design',requestHash,'legacy-review',new Date().toISOString());
+    raw.close();
+    const replay = await review(joey.id,project.id,artifact.id,{client_decision_id:'legacy-design',decision:'accept',version_hash:artifact.version_hash});
+    expect(replay.status).toBe(200);expect(replay.json.review.id).toBe('legacy-review');
+});
+
+test('asset reads reject corrupt bytes, expired sessions, withdrawal and supersession', async () => {
+    await grant(project.id, joey.id);
+    const { artifact, assetPath, bytes } = await publishDesign();
+    const url = `/api/client-access/members/${joey.id}/projects/${project.id}/artifacts/${artifact.id}/assets/screen:s?version_hash=${artifact.version_hash}`;
+    const options={key:runtimeKey,session:liveSession()};
+    expect((await api('GET',url,undefined,{key:runtimeKey,session:{...liveSession(),expires:'2000-01-01'}})).status).toBe(401);
+    fs.writeFileSync(assetPath,'tampered');
+    expect((await api('GET',url,undefined,options)).json.code).toBe('asset_changed');
+    fs.writeFileSync(assetPath,bytes);
+    const contract=require('@praxis/contract');
+    const parsed=contract.ClientArtifactDetailSchema.parse((await detail(joey.id,project.id,artifact.id)).json);
+    expect(parsed.media.assets[0].asset_key).toBe('screen:s');
+    await publish(project.id,{kind:'preview',title:'Next design',url:'https://example.test/design',version:'v2',supersedes_id:artifact.id});
+    expect((await api('GET',url,undefined,options)).json.code).toBe('artifact_not_current');
+    await withdraw(project.id,artifact.id,'retired');
+    expect((await api('GET',url,undefined,options)).json.code).toBe('artifact_not_current');
+});

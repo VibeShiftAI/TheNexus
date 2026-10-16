@@ -47,6 +47,7 @@
  * would otherwise block those deletes.
  */
 const { createHash, randomUUID } = require('crypto');
+const clientMedia = require('./client-review-media');
 
 const SCOPE = 'client_project';
 const ARTIFACT_KINDS = ['document', 'preview', 'code', 'deliverable'];
@@ -153,6 +154,7 @@ function initializeClientAccess(db) {
             request_hash TEXT NOT NULL, review_id TEXT NOT NULL, recorded_at TEXT NOT NULL,
             PRIMARY KEY (member_id, project_id, client_decision_id)
         );`);
+        if (!db.prepare('PRAGMA table_info(client_reviews)').all().some(c => c.name === 'selection_json')) db.exec('ALTER TABLE client_reviews ADD COLUMN selection_json TEXT');
         // Every acknowledged client_decision_id is reserved against the payload it was acknowledged
         // for, including keys that resolved to an existing acceptance without a new review row
         // (QA repair 2026-10-02). Rows written before this table existed are reserved here too.
@@ -172,6 +174,7 @@ function createClientAccess(db) {
     const publicReview = row => ({
         id: row.id, client_decision_id: row.client_decision_id, member: parse(row.member_snapshot, {}),
         artifact_id: row.artifact_id, version_hash: row.version_hash, decision: row.decision, body: row.body,
+        ...(row.selection_json ? { selection: parse(row.selection_json, null) } : {}),
         created_at: row.created_at, evidence_ref: evidenceRef(row.id),
     });
     const fullReview = row => ({
@@ -297,6 +300,7 @@ function createClientAccess(db) {
             // Re-checked on every read so a stored row can never project an unsafe link, whatever wrote it.
             url: safeHttpUrl(row.url),
             document: row.document_id ? { id: row.document_id, title: documentTitle(row.document_id), revision_id: row.revision_id, content_hash: row.content_hash } : null,
+            ...(clientMedia.revisionMedia(db, row) ? { media: clientMedia.revisionMedia(db, row).descriptor } : {}),
             checkpoint_id: row.checkpoint_id ?? null, task_id: row.task_id ?? null, notes: row.notes ?? null,
             supersedes_id: row.supersedes_id ?? null, superseded_by: successor ? successor.id : null,
             state: withdrawn ? 'withdrawn' : successor ? 'superseded' : 'current',
@@ -409,7 +413,11 @@ function createClientAccess(db) {
             const versionHash = text(input?.version_hash, 'version_hash', { required: true, max: 64 });
             if (!SHA256_HEX.test(versionHash)) throw fail(400, 'version_hash must be the artifact sha256 version hash');
             const body = text(input?.body, 'body', { required: decision !== 'accept', max: MAX_BODY }) || '';
-            const requestHash = hash({ artifact_id: row.id, decision, version_hash: versionHash, body });
+            const descriptor = clientMedia.revisionMedia(db, row)?.descriptor;
+            // Validate the supplied value now; require a choice only for new decisions,
+            // so historical no-selection requests retain their original replay hash.
+            const selection = clientMedia.reviewSelection(input, descriptor, 'comment');
+            const requestHash = hash({ artifact_id: row.id, decision, version_hash: versionHash, body, ...(selection ? { selection } : {}) });
             // Every acknowledged key is reserved against its payload in client_review_keys, including a
             // key that resolved to an existing acceptance, so reuse with a different payload is always
             // 409 `decision_conflict` and an identical replay always returns the same review.
@@ -425,24 +433,28 @@ function createClientAccess(db) {
                 if (!stored) throw fail(409, 'client_decision_id was already used for a different review', 'decision_conflict');
                 return acknowledge(stored, true);
             }
+            clientMedia.reviewSelection(input, descriptor, decision);
             const artifact = hydrateArtifact(row);
             if (versionHash !== artifact.version_hash) throw fail(409, 'version_hash does not name the published version of this artifact', 'version_mismatch');
             if (artifact.state !== 'current') throw fail(409, `Artifact is ${artifact.state}; review the current version`, 'artifact_not_current');
             const priorAccept = reviewsForArtifact(row.id).find(r => r.member_id === memberId && r.decision === 'accept');
             if (priorAccept) {
-                if (decision === 'accept') return acknowledge(priorAccept, true);
+                if (decision === 'accept') {
+                    if (JSON.stringify(parse(priorAccept.selection_json, null)) !== JSON.stringify(selection)) throw fail(409, 'This version already has an accepted direction', 'already_accepted');
+                    return acknowledge(priorAccept, true);
+                }
                 if (decision === 'request_changes') throw fail(409, 'This version is already accepted by this member; publish a new version to reopen review', 'already_accepted');
             }
             const review = {
                 id: randomUUID(), client_decision_id: decisionId, member_id: memberId, project_id: projectId, artifact_id: row.id,
-                version_hash: versionHash, decision, body, request_hash: requestHash, session_sha256: session.sha256,
+                version_hash: versionHash, decision, body, selection_json: selection ? JSON.stringify(selection) : null, request_hash: requestHash, session_sha256: session.sha256,
                 session_expires_at: new Date(expiresAt).toISOString(), authority: authority.trim(),
                 member_snapshot: JSON.stringify(identityOf(access.member)), created_at: now(),
             };
             db.prepare(`INSERT INTO client_reviews(id, client_decision_id, member_id, project_id, artifact_id, version_hash, decision, body, request_hash,
-                session_sha256, session_expires_at, authority, member_snapshot, created_at)
+                session_sha256, session_expires_at, authority, member_snapshot, created_at, selection_json)
                 VALUES (@id, @client_decision_id, @member_id, @project_id, @artifact_id, @version_hash, @decision, @body, @request_hash,
-                @session_sha256, @session_expires_at, @authority, @member_snapshot, @created_at)`).run(review);
+                @session_sha256, @session_expires_at, @authority, @member_snapshot, @created_at, @selection_json)`).run(review);
             return acknowledge(db.prepare('SELECT * FROM client_reviews WHERE id = ?').get(review.id), false);
         }).immediate();
     }
@@ -526,8 +538,9 @@ function createClientAccess(db) {
         const row = artifactRow(projectId, artifactId);
         if (!row) throw fail(404, 'Artifact not found', 'artifact_not_found');
         const artifact = hydrateArtifact(row);
+        const media = clientMedia.revisionMedia(db, row)?.descriptor;
         let content = null;
-        if (row.revision_id) {
+        if (row.revision_id && !media) {
             // Declared deliverables hash their original bytes, not normalized display text.
             const revision = db.prepare(`SELECT COALESCE(e.exact_content, r.content) AS content,
                 r.content_hash, r.byte_length, r.line_count, r.captured_at
@@ -535,7 +548,16 @@ function createClientAccess(db) {
                 WHERE r.id = ? AND r.document_id = ?`).get(row.revision_id, row.document_id);
             if (revision) content = { content: revision.content, content_hash: revision.content_hash, byte_length: revision.byte_length, line_count: revision.line_count, captured_at: revision.captured_at };
         }
-        return { artifact, content };
+        return { artifact, content, ...(media ? { media } : {}) };
+    }
+    function assetForMember(memberId, projectId, artifactId, assetKey, versionHash) {
+        requireAccess(memberId, projectId);
+        const row = artifactRow(projectId, artifactId);
+        if (!row) throw fail(404, 'Artifact not found', 'artifact_not_found');
+        const artifact = hydrateArtifact(row);
+        if (artifact.state !== 'current') throw fail(409, 'Review the current artifact', 'artifact_not_current');
+        if (versionHash !== artifact.version_hash) throw fail(409, 'Exact published version required', 'version_mismatch');
+        return clientMedia.assetBytes(db, row, assetKey);
     }
     function listMemberProjects(memberId) {
         if (typeof memberId !== 'string' || !memberId) return [];
@@ -569,7 +591,7 @@ function createClientAccess(db) {
     return {
         SCOPE, ARTIFACT_KINDS, REVIEW_DECISIONS, evidenceRef,
         resolveAccess, grant, revoke, publishArtifact, withdrawArtifact, recordReview,
-        workspace, artifactForMember, listMemberProjects, listForProject,
+        workspace, artifactForMember, assetForMember, listMemberProjects, listForProject,
     };
 }
 

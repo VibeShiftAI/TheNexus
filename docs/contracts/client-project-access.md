@@ -331,3 +331,27 @@ mounted on `:4000`; the Praxis consumer, the portal view and email integration
 do not exist yet; no member session has exercised any of this. Live portal
 access is pending, not verified, and must be reported that way until the
 successor's real member-session round trip succeeds.
+
+## Rich design review extension (October 16, 2026)
+
+The published `document` artifact can now refer to an immutable media/design
+revision. Workspace artifacts and detail responses carry an optional `media`
+descriptor: media type, client-safe assets, and named design directions. Rich
+revision detail has `content: null`; the raw manifest is never sent to clients.
+Filesystem paths, source/editor account links and internal evidence are omitted.
+
+`GET /api/client-access/members/:memberId/projects/:projectId/artifacts/:artifactId/assets/:assetKey?version_hash=...`
+requires the runtime credential AND an unexpired session assertion. It rechecks
+entitlement, current publication state and exact artifact version before reading
+only a member asset of that captured revision. Design primary manifests and
+evidence cannot be read. The bytes are length/hash checked and sent with
+`private, no-store`, nosniff, `X-Asset-Hash`, and `X-Document-Revision`. The initial
+client viewer caps each asset at 40 MiB; larger media need a streaming extension.
+
+Reviews may carry `selection: { direction }`. A multi-direction design acceptance
+requires a declared direction. The value is persisted in the append-only client
+review and participates in idempotency; an already accepted direction cannot
+silently be changed. Historical no-selection request hashes remain replayable.
+This is a client decision only, never an operator editorial or release decision.
+The portal queues selection and Praxis forwards it with the existing verified
+session assertion. No grant/revoke authority or operator route is added.
