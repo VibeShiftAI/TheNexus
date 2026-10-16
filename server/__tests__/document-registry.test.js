@@ -59,14 +59,14 @@ test('traversal out of the root is refused before touching the filesystem', () =
 test('symlinks that escape the root or hide a non-Markdown file are refused; in-root aliases canonicalize', () => {
     expect(resolveDocumentPath(path.join(projectRoot, 'docs', 'escape.md'), roots)).toMatchObject({ ok: false, status: 403, code: 'symlink_escape' });
     expect(resolveDocumentPath(path.join(projectRoot, 'docs', 'linked-dir', 'private.md'), roots)).toMatchObject({ ok: false, status: 403, code: 'symlink_escape' });
-    expect(resolveDocumentPath(path.join(projectRoot, 'docs', 'masked.md'), roots)).toMatchObject({ ok: false, status: 415, code: 'not_markdown' });
+    expect(resolveDocumentPath(path.join(projectRoot, 'docs', 'masked.md'), roots)).toMatchObject({ ok: false, status: 415, code: 'unsupported_media' });
     const alias = resolveDocumentPath(path.join(projectRoot, 'docs', 'alias.md'), roots);
     expect(alias.ok).toBe(true);
     expect(alias.canonicalPath).toBe(path.join(projectRoot, 'docs', 'reports', 'report.md'));
 });
 
 test('non-Markdown, vendored, missing and oversized files are refused with distinct codes', () => {
-    expect(resolveDocumentPath(path.join(projectRoot, 'docs', 'secret.env'), roots)).toMatchObject({ ok: false, status: 415, code: 'not_markdown' });
+    expect(resolveDocumentPath(path.join(projectRoot, 'docs', 'secret.env'), roots)).toMatchObject({ ok: false, status: 415, code: 'unsupported_media' });
     expect(resolveDocumentPath(path.join(projectRoot, '.git', 'HEAD.md'), roots)).toMatchObject({ ok: false, status: 403, code: 'forbidden_path' });
     expect(resolveDocumentPath(path.join(projectRoot, 'node_modules', 'pkg', 'README.md'), roots)).toMatchObject({ ok: false, status: 403, code: 'forbidden_path' });
     expect(resolveDocumentPath(path.join(projectRoot, 'docs', 'nope.md'), roots)).toMatchObject({ ok: false, status: 404, code: 'not_found' });

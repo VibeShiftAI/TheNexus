@@ -15,12 +15,16 @@ import Link from "next/link";
 import { BlockingTasks } from "./blocking-tasks";
 import { ArrowRight } from "lucide-react";
 import {
+    assetUrl,
     documentHref,
     documentStatusLabel,
+    mediaLabel,
     reviewStateLabel,
     type DocumentListEntry,
     type DocumentReviewStatus,
+    type MediaType,
 } from "@/lib/document-review";
+import { MediaIcon, mediaTone } from "./viewers/media-icon";
 
 export function DocumentStatusBadge({ status, prefix = false }: { status: DocumentReviewStatus | undefined; prefix?: boolean }) {
     const label = documentStatusLabel(status);
@@ -64,9 +68,14 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
     const captured = formatWhen(entry.current_revision?.captured_at);
     const action = entry.requires_review && entry.intended_action && entry.intended_action !== "none" ? entry.intended_action : null;
     const projectName = entry.project_id ? projectNames?.[entry.project_id] : null;
+    const mediaType: MediaType = entry.media_type ?? entry.current_revision?.media_type ?? "markdown";
+    const thumbnail = entry.preview_asset_key && entry.current_revision ? assetUrl(entry.id, entry.preview_asset_key, { revision: entry.current_revision.id }) : null;
 
     return (
-        <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2.5" data-document-id={entry.id}>
+        <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2.5" data-document-id={entry.id} data-media-type={mediaType}>
+            <Link href={href} aria-hidden tabIndex={-1} className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border ${thumbnail ? "border-slate-700 bg-slate-950" : mediaTone(mediaType)}`} data-document-thumbnail={thumbnail ? "image" : "icon"}>
+                {thumbnail ? <img src={thumbnail} alt="" className="h-full w-full object-cover object-top" loading="lazy" /> : <MediaIcon type={mediaType} size={compact ? 16 : 20} />}
+            </Link>
             <div className="min-w-0 flex-1 basis-56">
                 <Link href={href} className="block truncate text-sm font-medium text-slate-100 hover:text-cyan-200" title={entry.title}>
                     {entry.title}
@@ -78,7 +87,8 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
                 )}
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
                     <DocumentStatusBadge status={entry.review_status} />
-                    {!compact && <span className="uppercase tracking-wide">{entry.kind}</span>}
+                    <span className={`rounded border px-1.5 py-px text-[10px] ${mediaTone(mediaType)}`} data-document-media="">{mediaLabel(mediaType)}{mediaType === "design" && entry.asset_count ? ` · ${entry.asset_count - 1} assets` : ""}</span>
+                    {!compact && entry.kind !== mediaType && <span className="uppercase tracking-wide">{entry.kind}</span>}
                     {!compact && <span className="max-w-[16rem] truncate font-mono" title={entry.path}>{fileName(entry.path)}</span>}
                     {entry.current_revision && (
                         <span title={entry.current_revision.content_hash} data-document-version="">

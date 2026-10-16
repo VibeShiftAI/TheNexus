@@ -124,7 +124,7 @@ test('a declared deliverable needs a real readable Markdown file inside a projec
     const badUtf8 = writeDoc('bad.md', Buffer.from([0x23, 0x20, 0xff, 0xfe, 0x0a]));
     const locked = writeDoc('locked.md', '# locked');
     fs.chmodSync(locked, 0o000);
-    writeDoc('notes.txt', 'plain');
+    writeDoc('secret.env', 'TOKEN=abc');
 
     const refusals = [
         [{ path: path.join(projectRoot, 'docs', 'missing.md') }, 404, 'not_found'],
@@ -132,7 +132,7 @@ test('a declared deliverable needs a real readable Markdown file inside a projec
         [{ path: locked }, 500, 'unreadable'],
         [{ path: outside }, 403, 'outside_roots'],
         [{ path: path.join(projectRoot, 'docs', 'escape.md') }, 403, 'symlink_escape'],
-        [{ path: path.join(projectRoot, 'docs', 'notes.txt') }, 415, 'not_markdown'],
+        [{ path: path.join(projectRoot, 'docs', 'secret.env') }, 415, 'unsupported_media'],
         [{ path: good, task_id: OTHER_TASK }, 422, 'association_mismatch'],
         [{ path: good, project_id: OTHER_PROJECT_ID }, 422, 'association_mismatch'],
         [{ path: good, task_id: 'no-such-task' }, 404, 'task_not_found'],
@@ -144,7 +144,7 @@ test('a declared deliverable needs a real readable Markdown file inside a projec
         [{ path: good, expected_content_hash: 'f'.repeat(64) }, 409, 'content_mismatch'],
         [{ path: good, deliverable: { requiresReview: true } }, 400, 'invalid_deliverable'],
         [{ path: good, deliverable: { requires_review: 'yes' } }, 400, 'invalid_deliverable'],
-        [{ path: good, deliverable: { purpose: '   ' } }, 400, 'invalid_deliverable'],
+        [{ path: good, deliverable: { purpose: 42 } }, 400, 'invalid_deliverable'],
         [{ path: good, deliverable: { intended_action: 'email' } }, 400, 'invalid_deliverable'],
         [{ path: good, deliverable: { requires_review: false, intended_action: 'send' } }, 400, 'invalid_deliverable'],
         [{ path: good, deliverable: { key: 'path:/forged' } }, 400, 'invalid_deliverable'],
@@ -775,4 +775,13 @@ test('waiting tasks remain discoverable through their own project, including ide
     const options = await api('GET', '/api/documents/review-task-options');
     expect(options.json.tasks.find(t => t.id === OTHER_TASK)).toMatchObject({ status: 'idea', project_name: 'Other' });
     expect((await api('POST', `/api/documents/${first.json.document.id}/request-review`, { blocking_task_ids: null })).status).toBe(400);
+});
+
+test.each([undefined, null, '', '   '])('missing purpose %p never blocks a valid document registration', async purpose => {
+ const file = writeDoc('optional-purpose.md', '# A real document\n');
+ const response = await register(file, {deliverable: {purpose}});
+ expect(response.status).toBe(201);
+ expect(response.json.receipt.purpose).toBe('Purpose not provided.');
+ expect(response.json.receipt.requires_review).toBe(true);
+ expect(response.json.receipt.intended_action).toBe('implement');
 });

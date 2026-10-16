@@ -18,7 +18,9 @@ import {
     getDocumentHistory,
     newClientId,
     recordDecision,
+    rawDocumentUrl,
     type DecisionKind,
+    type DesignDirection,
     type DocumentDecision,
     type DocumentHistory,
     type DocumentResponse,
@@ -133,12 +135,19 @@ function HistoryList({ history, currentRevisionId }: { history: DocumentHistory;
                         <span className="font-mono text-slate-200" title={revision.content_hash}>rev {shortHash(revision.content_hash)}</span>
                         <span>captured {formatWhen(revision.captured_at)}</span>
                         {revision.id === currentRevisionId && <span className="rounded-full border border-cyan-500/40 px-1.5 text-cyan-200">current</span>}
+                        <a href={rawDocumentUrl(history.document_id, { revision: revision.id, download: true })} className="text-cyan-300 hover:underline">Download this revision</a>
                     </div>
                     {(decisionsByRevision.get(revision.id) ?? []).map((decision) => (
                         <p key={decision.id} className="mt-1" data-history-decision={decision.decision}>
                             <span className={decision.decision === "approve" ? "text-sky-200" : "text-orange-200"}>{DECISION_TEXT[decision.decision].past}</span>
+                            {decision.selection?.direction ? <span className="text-sky-100"> · direction {decision.selection.direction}</span> : null}
                             {" "}{formatWhen(decision.created_at)} · {decision.authority.replace(/_/g, " ")}
                             {decision.note ? <span className="text-slate-300">: {decision.note}</span> : null}
+                        </p>
+                    ))}
+                    {(history.edits ?? []).filter((edit) => edit.result_revision_id === revision.id).map((edit) => (
+                        <p key={edit.id} className="mt-1 text-cyan-200/80" data-history-edit="">
+                            Edited in Nexus {formatWhen(edit.created_at)}{edit.summary ? <span className="text-slate-300">: {edit.summary}</span> : null}
                         </p>
                     ))}
                     {(reviewsByRevision.get(revision.id) ?? []).map((review) => (
@@ -161,9 +170,13 @@ export interface DecisionCardProps {
     viewingCurrent: boolean;
     /** Reload the reader (document, revision, review) after a decision or a conflict. */
     onRefresh: () => Promise<void> | void;
+    /** A design package's directions: approving one with two or more means choosing a direction (contract §3.3). */
+    directions?: DesignDirection[];
+    /** Compact layout for the review rail. */
+    compact?: boolean;
 }
 
-export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }: DecisionCardProps) {
+export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, directions = [], compact = false }: DecisionCardProps) {
     const doc = data.document;
     const status = data.review_status;
     const current = data.current_decision ?? null;
@@ -180,6 +193,9 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
     const [history, setHistory] = useState<DocumentHistory | null>(null);
     const [historyError, setHistoryError] = useState<string | null>(null);
     const historySeq = useRef(0);
+    const selectsDirection = directions.length >= 2;
+    const [direction, setDirection] = useState<string | null>(() => directions.find((d) => d.recommended)?.id ?? null);
+    useEffect(() => { setDirection(directions.find((d) => d.recommended)?.id ?? null); }, [doc.id, directions]);
 
     const loadHistory = useCallback(async () => {
         const mine = ++historySeq.current;
@@ -279,14 +295,21 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
         setBusy(true);
         setNotice(null);
         try {
+            if (confirm.kind === "approve" && selectsDirection && !direction) {
+                setNotice({ tone: "error", text: "Choose the direction you are approving first; the approval records that choice." });
+                setBusy(false);
+                return;
+            }
             const result = await recordDecision(doc.id, {
                 decision: confirm.kind,
                 revision_id: viewedRevision.id,
                 content_hash: viewedRevision.content_hash,
                 note: note.trim() || undefined,
                 client_decision_id: confirm.clientId,
+                ...(confirm.kind === "approve" && selectsDirection && direction ? { selection: { direction } } : {}),
             });
-            setNotice({ tone: "ok", text: `${DECISION_TEXT[result.decision.decision].past} rev ${shortHash(result.decision.content_hash)}${result.duplicate ? " (already on record)" : ""}. Nothing was sent or published.` });
+            const chosen = result.decision.selection?.direction;
+            setNotice({ tone: "ok", text: `${DECISION_TEXT[result.decision.decision].past} rev ${shortHash(result.decision.content_hash)}${chosen ? `, direction ${chosen}` : ""}${result.duplicate ? " (already on record)" : ""}. Nothing was sent or published.` });
             setConfirm(null);
             discardNote();
             await onRefresh();
@@ -314,13 +337,13 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
         : null;
 
     return (
-        <section className="mb-4 rounded-lg border border-slate-700 bg-slate-900/50 p-3" data-decision-card={status}>
+        <section className={`${compact ? "" : "mb-4"} rounded-lg border border-slate-700 bg-slate-900/50 p-3`} data-decision-card={status}>
             <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="font-semibold text-slate-200">Your decision</span>
                 <DocumentStatusBadge status={status} prefix />
                 {current && (
                     <span className="text-[11px] text-slate-400" data-current-decision={current.decision}>
-                        {DECISION_TEXT[current.decision].past} rev {shortHash(current.content_hash)} {formatWhen(current.created_at)}
+                        {DECISION_TEXT[current.decision].past}{current.selection?.direction ? ` (direction ${current.selection.direction})` : ""} rev {shortHash(current.content_hash)} {formatWhen(current.created_at)}
                         {appliesNow ? "" : "; the document has changed since, so its current revision needs a fresh decision"}
                     </span>
                 )}
@@ -378,6 +401,19 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh }
                             ? `Approve rev ${shortHash(viewedRevision?.content_hash)} exactly as shown.`
                             : `Request changes on rev ${shortHash(viewedRevision?.content_hash)}. To tell Praxis what to change, add comments and use Finish review.`}
                     </p>
+                    {confirm.kind === "approve" && selectsDirection && (
+                        <fieldset className="mt-2" data-decision-directions="">
+                            <legend className="text-[11px] font-semibold text-slate-300">Which direction? Approval records this choice against this exact revision.</legend>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                                {directions.map((d) => (
+                                    <label key={d.id} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] ${direction === d.id ? "border-sky-400/60 bg-sky-400/10 text-sky-100" : "border-slate-700 text-slate-300"}`}>
+                                        <input type="radio" name="decision-direction" value={d.id} checked={direction === d.id} onChange={() => setDirection(d.id)} className="accent-sky-400" />
+                                        <span className="font-mono text-[10px] text-slate-400">{d.id}</span> {d.title}{d.recommended ? <span className="text-amber-200"> · recommended</span> : null}
+                                    </label>
+                                ))}
+                            </div>
+                        </fieldset>
+                    )}
                     <label className="mt-2 block text-[11px] font-semibold text-slate-300" htmlFor="decision-note">Note (optional, kept with the decision)</label>
                     <textarea
                         id="decision-note"

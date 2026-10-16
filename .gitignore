@@ -108,3 +108,4 @@ dashboard/public/*.apk
 # Travel-shell tab roster — runtime settings, edited from the dashboard
 data/travel-tabs.json
 .nexus-shared-src/
+data/review-blobs/

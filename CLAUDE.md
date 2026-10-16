@@ -88,3 +88,10 @@ cockpit surface.
   in this repo is praxis-mind; `server/mcp.js` was retired 2026-09-04 (M-1).
 - Follow `docs/verification-protocol.md` for task evidence and quality gates;
   point to deeper documentation instead of copying it into this preload map.
+- The review surface (`server/routes/documents.js`, `db/document-reviews.js`,
+  `dashboard/src/components/document-review/`) accepts Markdown, text, code,
+  JSON, HTML prototypes, SVG, images, video, audio, PDF and `.design.json`
+  design packages; media rules, asset routes, readiness and direct editing are
+  in `docs/contracts/review-media-and-design-packages.md`, the media model in
+  `server/services/review-media.js`. Binary revisions are copied into
+  `data/review-blobs/` (`NEXUS_REVIEW_BLOB_DIR`).

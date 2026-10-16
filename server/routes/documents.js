@@ -44,14 +44,15 @@ const { createDocumentOutgoingRouter } = require('./document-outgoing');
 const path = require('path');
 const fs = require('fs');
 const { randomUUID } = require('crypto');
-const { listProjectRoots, resolveDocumentPath, readDocumentFile, sha256 } = require('../services/document-registry');
+const { listProjectRoots, resolveDocumentPath, readDocumentFile, readArtifactFile, sha256 } = require('../services/document-registry');
+const media = require('../services/review-media');
 const fmt = require('../services/document-review-format');
 const { createDocumentDecisionAuthority } = require('../services/document-decision-authority');
 const { parseExecutorProvenance, resolveSourceReview, buildProvenance, DELEGATING_AUTHORITIES } = require('../services/document-decision-provenance');
 const { REVIEW_STATUSES } = require('../../db/document-reviews');
 
-const KINDS = new Set(['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other']);
-const LIMITS = { title: 300, body: 20000, summary: 20000, selection: 2000, metadataJson: 8000, clientId: 120, purpose: 500, key: 300, sourceId: 200, query: 200 };
+const KINDS = new Set(['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other', 'design', 'image', 'video', 'audio', 'prototype', 'pdf', 'data']);
+const LIMITS = { title: 300, body: 20000, summary: 20000, selection: 2000, metadataJson: 8000, clientId: 120, purpose: 500, key: 300, sourceId: 200, query: 200, selectionJson: 2048, editSummary: 2000 };
 /** What the deliverable is for once approved. Approval records the decision; it never performs the action. */
 const INTENDED_ACTIONS = new Set(['none', 'implement', 'send', 'publish']);
 const { parseBlockingTaskIds } = require('../../db/document-review-blockers');
@@ -90,7 +91,7 @@ function validMetadata(value) {
 }
 
 /**
- * Validate a declared deliverable registration body. Strict on purpose: an
+ * Validate a declared deliverable registration body. Strict about review authority: an
  * unknown or misspelled field is refused rather than silently registering a
  * reference document in place of a review request.
  */
@@ -100,7 +101,8 @@ function parseDeclaration(body) {
     const unknown = Object.keys(declared).filter(key => !DELIVERABLE_FIELDS.has(key));
     if (unknown.length) return badRequest(`Unknown deliverable field(s): ${unknown.join(', ')}`);
     if (typeof declared.requires_review !== 'boolean') return badRequest('deliverable.requires_review must be true or false');
-    const purpose = text(declared.purpose, LIMITS.purpose);
+    const purpose = declared.purpose == null || (typeof declared.purpose === 'string' && !declared.purpose.trim())
+        ? 'Purpose not provided.' : text(declared.purpose, LIMITS.purpose);
     if (!purpose) return badRequest(`deliverable.purpose must be 1-${LIMITS.purpose} characters`);
     if (!INTENDED_ACTIONS.has(declared.intended_action)) {
         return badRequest(`deliverable.intended_action must be one of ${[...INTENDED_ACTIONS].join(', ')}`);
@@ -252,19 +254,76 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
      * normalized reviewer text cannot reproduce are kept for the raw route. A
      * legacy document keeps the line-normalized identity it always had.
      */
-    function recordRevision(doc, read, mtime) {
-        const exact = Boolean(doc.deliverable_key);
+    function recordRevision(doc, read, mtime, { source = 'capture', editedBy = null } = {}) {
+        // Binary and design revisions are always identified by their exact bytes (contract §1).
+        const exact = Boolean(doc.deliverable_key) || read.binary || read.mediaType === 'design';
         const hash = exact ? read.exactHash : read.contentHash;
         const existing = store().findRevisionByHash(doc.id, hash);
         if (existing) return { revision: existing, created: false };
+        // Copy bytes a decision may be recorded against before the row exists, so a crash leaves a blob, never a dangling row.
+        if (read.binary) media.storeBlob(read.exactHash, fs.readFileSync(doc.path));
+        if (read.assets) media.storeAssets(read.assets);
         return store().transaction(() => {
             const revision = store().insertRevision({
                 document_id: doc.id, content_hash: hash, content: read.content,
                 byte_length: exact ? read.exactByteLength : read.byteLength, line_count: read.lineCount, file_mtime: mtime,
+                media_type: read.mediaType, mime_type: read.mimeType, source, edited_by: editedBy,
+                asset_count: (read.assets ? read.assets.length : 0) + 1, width: read.width ?? null, height: read.height ?? null,
+                manifest: read.manifest ? JSON.stringify(read.manifest) : null,
             });
-            if (exact && read.exactContent !== read.content) store().insertRevisionExact(revision.id, read.exactContent);
+            if (exact && !read.binary && read.exactContent !== read.content && read.mediaType !== 'design') store().insertRevisionExact(revision.id, read.exactContent);
+            const primary = {
+                asset_key: 'primary', role: 'primary', path: doc.path, media_type: read.mediaType, mime_type: read.mimeType,
+                byte_length: exact ? read.exactByteLength : read.byteLength,
+                content_hash: read.mediaType === 'design' ? read.manifestHash : hash,
+                label: path.basename(doc.path), order: -1, width: read.width ?? null, height: read.height ?? null,
+            };
+            store().insertRevisionAssets(revision.id, doc.id, [primary, ...(read.assets || [])]);
             return { revision, created: true };
         });
+    }
+
+    /** The assets of a revision, with the primary first; a pre-media revision answers a synthesized Markdown primary. */
+    function revisionAssets(revision) {
+        if (!revision) return [];
+        const rows = store().listRevisionAssets(revision.id);
+        if (rows.length) return rows.map(assetView);
+        const doc = store().getDocument(revision.document_id);
+        return [assetView({
+            asset_key: 'primary', role: 'primary', path: doc?.path ?? '', media_type: revision.media_type || 'markdown', mime_type: revision.mime_type || 'text/markdown',
+            byte_length: revision.byte_length, content_hash: revision.content_hash, label: doc ? path.basename(doc.path) : 'primary', order: -1,
+        })];
+    }
+
+    function assetView(asset) {
+        const { id: _id, document_id: _doc, revision_id: _rev, created_at: _at, ...rest } = asset;
+        return { ...rest, order: asset.order ?? 0 };
+    }
+
+    function previewAssetKey(revision, assets) {
+        if (!revision) return null;
+        if (revision.media_type === 'image' || revision.media_type === 'svg') return 'primary';
+        if (revision.media_type === 'design') return assets.find(a => a.role === 'screen')?.asset_key ?? null;
+        return null;
+    }
+
+    /** Document-level media fields derived from the current revision, for lists, receipts and the reader. */
+    function mediaSummary(doc, revision) {
+        const assets = revisionAssets(revision);
+        return {
+            media_type: revision?.media_type || doc.media_type || 'markdown',
+            mime_type: revision?.mime_type || doc.mime_type || 'text/markdown',
+            asset_count: revision?.asset_count ?? 1,
+            editable: media.isEditableMedia(revision?.media_type || doc.media_type || 'markdown'),
+            preview_asset_key: previewAssetKey(revision, assets),
+            readiness_path: revision ? `/api/documents/${encodeURIComponent(doc.id)}/readiness?revision=${encodeURIComponent(revision.id)}` : null,
+        };
+    }
+
+    function readinessView(doc, revision) {
+        const assets = revisionAssets(revision).filter(a => a.role !== 'primary' || revision.media_type !== 'design');
+        const result = media.readinessOf(revision.media_type === 'design' ? assets.filter(a => a.role !== 'primary') : assets);
+        return { document_id: doc.id, revision_id: revision.id, content_hash: revision.content_hash, media_type: revision.media_type || 'markdown', ...result };
     }
 
     /** Re-check the boundary, read the file and record a new revision when the content changed. */
@@ -278,10 +337,14 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         };
         if (!resolved.ok) return unavailable(resolved.code, resolved.error);
         if (resolved.canonicalPath !== doc.path) return unavailable('path_changed', 'Registered path no longer resolves to the same file');
-        const read = readDocumentFile(resolved.canonicalPath);
+        const read = readArtifactFile(resolved.canonicalPath, { mediaType: resolved.mediaType, root: resolved.root.root });
         if (!read.ok) return unavailable(read.code, read.error);
         const { revision } = recordRevision(doc, read, resolved.mtime);
-        if (store().getDocument(doc.id).current_revision_id !== revision.id) store().setCurrentRevision(doc.id, revision.id);
+        const fresh = store().getDocument(doc.id);
+        const patch = {};
+        if (fresh.current_revision_id !== revision.id) patch.current_revision_id = revision.id;
+        if (fresh.media_type !== read.mediaType) { patch.media_type = read.mediaType; patch.mime_type = read.mimeType; }
+        if (Object.keys(patch).length) store().updateDocument(doc.id, patch);
         return { revision, fileState: 'ok', fileError: null };
     }
 
@@ -348,9 +411,12 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         const pinned = store().getRevision(review.revision_id);
         const currentRevision = current?.revision || pinned;
         const documentChanged = Boolean(pinned && currentRevision && pinned.id !== currentRevision.id);
+        const currentAssets = documentChanged ? revisionAssets(currentRevision) : null;
         const comments = store().listComments(review.id).map(comment => ({
             ...fmt.publicComment(comment),
-            anchor: fmt.anchorState(comment, currentRevision?.content, pinned?.content_hash, currentRevision?.content_hash),
+            anchor: fmt.MEDIA_COMMENT_KINDS.has(comment.kind)
+                ? (documentChanged ? fmt.mediaAnchorState(comment, currentAssets) : { state: 'intact', current_asset_key: comment.anchor?.asset_key ?? null })
+                : fmt.anchorState(comment, currentRevision?.content, pinned?.content_hash, currentRevision?.content_hash),
         }));
         return {
             id: review.id, document_id: review.document_id, revision_id: review.revision_id, reviewer_id: review.reviewer_id,
@@ -392,10 +458,12 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
     function listEntry(doc, userId) {
         const review = store().findLatestReview(doc.id, userId);
         const submission = review ? store().getSubmissionForReview(review.id) : null;
+        const currentMeta = doc.current_revision_id ? store().getRevisionMeta(doc.current_revision_id) : null;
         return {
             ...doc,
+            ...mediaSummary(doc, currentMeta),
             blocking_tasks: store().getBlockingTasks(doc.id),
-            current_revision: revisionMeta(doc.current_revision_id ? store().getRevisionMeta(doc.current_revision_id) : null),
+            current_revision: revisionMeta(currentMeta),
             review_url: fmt.reviewUrlFor(doc.id),
             review_path: fmt.reviewPathFor(doc.id),
             review_state: review ? {
@@ -435,6 +503,11 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             review_path: fmt.reviewPathFor(registration.document_id),
             review_url: fmt.reviewUrlFor(registration.document_id),
             raw_path: `/api/documents/${encodeURIComponent(registration.document_id)}/raw?revision=${encodeURIComponent(registration.revision_id)}`,
+            media_type: revision?.media_type || 'markdown',
+            mime_type: revision?.mime_type || 'text/markdown',
+            asset_count: revision?.asset_count ?? 1,
+            preview_asset_key: revision ? previewAssetKey(revision, revisionAssets(revision)) : null,
+            readiness_path: `/api/documents/${encodeURIComponent(registration.document_id)}/readiness?revision=${encodeURIComponent(registration.revision_id)}`,
         };
     }
 
@@ -471,6 +544,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 title: v.title, purpose: v.purpose, requires_review: v.requiresReview, intended_action: v.intendedAction,
                 ...(!v.requiresReview ? { blocking_task_ids: [] } : v.blockingTaskIds !== undefined ? { blocking_task_ids: v.blockingTaskIds } : {}),
                 deliverable_key: key, root_project_id: resolved.root.projectId, path: resolved.canonicalPath,
+                media_type: read.mediaType, mime_type: read.mimeType,
             };
             let documentCreated = false;
             if (doc) {
@@ -535,9 +609,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         const roots = await listProjectRoots(db);
         const resolved = resolveDocumentPath(body.path, roots);
         if (!resolved.ok) return res.status(resolved.status).json({ error: resolved.error, code: resolved.code });
-        const read = readDocumentFile(resolved.canonicalPath);
+        const read = readArtifactFile(resolved.canonicalPath, { mediaType: resolved.mediaType, root: resolved.root.root });
         if (!read.ok) return res.status(read.status).json({ error: read.error, code: read.code });
-        // The producer's hash is checked against the exact bytes on disk, never the normalized reviewer text.
+        // The producer's hash is checked against the exact bytes on disk (the package hash for a design package), never the normalized reviewer text.
         if (v.expectedHash && v.expectedHash !== read.exactHash) {
             return res.status(409).json({ error: 'The file no longer holds the content the producer declared', code: 'content_mismatch', content_hash: read.exactHash });
         }
@@ -572,7 +646,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const roots = await listProjectRoots(db);
             const resolved = resolveDocumentPath(body.path, roots);
             if (!resolved.ok) return res.status(resolved.status).json({ error: resolved.error, code: resolved.code });
-            const read = readDocumentFile(resolved.canonicalPath);
+            const read = readArtifactFile(resolved.canonicalPath, { mediaType: resolved.mediaType, root: resolved.root.root });
             if (!read.ok) return res.status(read.status).json({ error: read.error, code: read.code });
 
             const taskId = body.task_id === undefined || body.task_id === null ? null : text(String(body.task_id), 120);
@@ -602,9 +676,10 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 });
             } else {
                 doc = store().insertDocument({
-                    title: title || path.basename(resolved.canonicalPath, path.extname(resolved.canonicalPath)),
+                    title: title || (read.manifest?.title) || path.basename(resolved.canonicalPath, path.extname(resolved.canonicalPath)),
                     path: resolved.canonicalPath, root_project_id: resolved.root.projectId, project_id: projectId,
                     task_id: taskId, kind, metadata: body.metadata || {}, registered_by: req.user.id,
+                    media_type: read.mediaType, mime_type: read.mimeType,
                 });
             }
             const captured = await captureRevision(doc);
@@ -663,11 +738,16 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const review = store().findLatestReview(doc.id, req.user.id);
             const source = await sourceSummary(fresh);
             const latest = store().latestDecision(doc.id);
+            const assets = revisionAssets(captured.revision);
             return res.json({
                 document: fresh,
+                ...mediaSummary(fresh, captured.revision),
                 blocking_tasks: store().getBlockingTasks(doc.id),
                 revision: revisionMeta(captured.revision),
                 content: captured.revision ? captured.revision.content : null,
+                assets,
+                manifest: captured.revision?.manifest ?? null,
+                readiness: captured.revision && media.isVisualMedia(captured.revision.media_type) ? readinessView(fresh, captured.revision) : null,
                 file_state: captured.fileState,
                 file_error: captured.fileError,
                 source,
@@ -719,9 +799,12 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 revision = (await captureRevision(doc)).revision;
             }
             if (!revision) return res.status(404).json({ error: 'No captured revision for this document' });
-            res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+            const primary = revisionAssets(revision).find(a => a.asset_key === 'primary');
+            if (primary && !media.isTextMedia(primary.media_type)) return streamAsset(req, res, primary, revision);
+            res.setHeader('Content-Type', primary && primary.media_type !== 'markdown' ? `${primary.mime_type}; charset=utf-8` : 'text/markdown; charset=utf-8');
             res.setHeader('X-Content-Type-Options', 'nosniff');
             res.setHeader('X-Document-Revision', revision.content_hash);
+            if (media.MEDIA_TYPES[primary?.media_type]?.sandboxed) sandboxHeaders(res);
             const filename = path.basename(doc.path).replace(/["\r\n]/g, '');
             res.setHeader('Content-Disposition', `${req.query.download === '1' ? 'attachment' : 'inline'}; filename="${filename}"`);
             // A declared revision whose bytes differ from the normalized text is served exactly as registered.
@@ -737,7 +820,197 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         if (!doc) return;
         const revision = store().getRevision(req.params.revisionId);
         if (!revision || revision.document_id !== doc.id) return res.status(404).json({ error: 'Revision not found' });
-        return res.json({ revision: revisionMeta(revision), content: revision.content });
+        return res.json({ revision: revisionMeta(revision), content: revision.content, assets: revisionAssets(revision), manifest: revision.manifest ?? null });
+    });
+
+    // ── Assets, readiness and editing (contract docs/contracts/review-media-and-design-packages.md) ──
+
+    /** The revision named by ?revision=, or the current one after a fresh capture. */
+    async function revisionForQuery(doc, req, res) {
+        if (typeof req.query.revision === 'string' && req.query.revision) {
+            const revision = store().getRevision(req.query.revision);
+            if (!revision || revision.document_id !== doc.id) { res.status(404).json({ error: 'Revision not found', code: 'revision_not_found' }); return null; }
+            return revision;
+        }
+        const revision = (await captureRevision(doc)).revision;
+        if (!revision) { res.status(404).json({ error: 'No captured revision for this document', code: 'no_revision' }); return null; }
+        return revision;
+    }
+
+    /**
+     * A prototype runs, but never with the dashboard's session: the CSP
+     * sandbox gives it an opaque origin (no cookies, no same-origin reads).
+     * It may only be framed by the dashboard itself; the global
+     * X-Frame-Options would refuse the opaque-origin document outright, so
+     * frame-ancestors carries that rule for these responses instead.
+     */
+    function sandboxHeaders(res) {
+        res.removeHeader('X-Frame-Options');
+        res.setHeader('Content-Security-Policy', "sandbox allow-scripts allow-forms; frame-ancestors 'self'; default-src 'self' data: blob:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' blob:; connect-src 'none'");
+    }
+
+    function assetHeaders(res, asset, revision, { download = false } = {}) {
+        res.setHeader('Content-Type', asset.media_type === 'markdown' ? 'text/markdown; charset=utf-8' : asset.mime_type);
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Document-Revision', revision.content_hash);
+        res.setHeader('X-Asset-Hash', asset.content_hash);
+        res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+        if (media.MEDIA_TYPES[asset.media_type]?.sandboxed) sandboxHeaders(res);
+        const filename = path.basename(asset.path || 'asset').replace(/["\r\n]/g, '');
+        res.setHeader('Content-Disposition', `${download ? 'attachment' : 'inline'}; filename="${filename}"`);
+    }
+
+    /**
+     * Stream one asset of a revision: the blob copy when there is one,
+     * otherwise the registered file while it still hashes to the revision.
+     * Range requests are honoured so video and audio can seek.
+     */
+    function streamAsset(req, res, asset, revision) {
+        const located = media.locateAssetBytes(asset);
+        if (!located) return res.status(409).json({ error: 'The bytes of this asset are no longer available as registered', code: 'asset_changed', asset_key: asset.asset_key });
+        assetHeaders(res, asset, revision, { download: req.query.download === '1' });
+        const size = asset.byte_length;
+        res.setHeader('Accept-Ranges', 'bytes');
+        const range = typeof req.headers.range === 'string' ? /^bytes=(\d*)-(\d*)$/.exec(req.headers.range) : null;
+        if (range && (range[1] || range[2])) {
+            let start = range[1] ? Number(range[1]) : null;
+            let end = range[2] ? Number(range[2]) : null;
+            if (start === null) { start = Math.max(0, size - end); end = size - 1; }
+            else if (end === null || end >= size) end = size - 1;
+            if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || start >= size) {
+                res.setHeader('Content-Range', `bytes */${size}`);
+                return res.status(416).end();
+            }
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${size}`);
+            res.setHeader('Content-Length', String(end - start + 1));
+            return fs.createReadStream(located.path, { start, end }).on('error', () => res.destroy()).pipe(res);
+        }
+        res.setHeader('Content-Length', String(size));
+        if (req.method === 'HEAD') return res.end();
+        return fs.createReadStream(located.path).on('error', () => res.destroy()).pipe(res);
+    }
+
+    router.get('/:id/assets/:assetKey', async (req, res) => {
+        try {
+            const doc = loadDocument(req, res);
+            if (!doc) return;
+            if (!media.ASSET_KEY_PATTERN.test(req.params.assetKey)) return res.status(400).json({ error: 'Invalid asset key', code: 'invalid_asset_key' });
+            const revision = await revisionForQuery(doc, req, res);
+            if (!revision) return;
+            const asset = revisionAssets(revision).find(a => a.asset_key === req.params.assetKey);
+            if (!asset) return res.status(404).json({ error: 'Asset not found in this revision', code: 'asset_not_found' });
+            // The primary of a text revision is the stored text itself (exact bytes for a declared deliverable).
+            if (asset.role === 'primary' && media.isTextMedia(asset.media_type)) {
+                assetHeaders(res, asset, revision, { download: req.query.download === '1' });
+                return res.send(store().getRevisionExact(revision.id) ?? revision.content);
+            }
+            return streamAsset(req, res, asset, revision);
+        } catch (err) {
+            console.error('[Documents] asset failed:', err);
+            return res.status(500).json({ error: 'Failed to read asset' });
+        }
+    });
+
+    router.get('/:id/readiness', async (req, res) => {
+        try {
+            const doc = loadDocument(req, res);
+            if (!doc) return;
+            const revision = await revisionForQuery(doc, req, res);
+            if (!revision) return;
+            return res.json(readinessView(doc, revision));
+        } catch (err) {
+            console.error('[Documents] readiness failed:', err);
+            return res.status(500).json({ error: 'Failed to check readiness' });
+        }
+    });
+
+    /**
+     * Direct edit (contract §4): the operator writes new text for an editable
+     * document from the reviewer. Pinned to the revision they edited, written
+     * atomically, captured as a new `nexus_edit` revision; decisions never
+     * carry over to it.
+     */
+    router.put('/:id/content', async (req, res) => {
+        try {
+            const doc = loadDocument(req, res);
+            if (!doc) return;
+            if (req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ error: 'Same-origin requests only', code: 'cross_site' });
+            const authority = await authorizeDecision(req);
+            if (!authority.ok) return res.status(authority.status).json({ error: authority.error, code: authority.code, ...(authority.reason ? { reason: authority.reason } : {}) });
+            if (authority.actor.authority === 'document_executor_credential') return res.status(403).json({ error: 'Executors cannot edit through the reviewer; register a new revision instead', code: 'operator_required' });
+            const body = isPlainObject(req.body) ? req.body : {};
+            const baseRevisionId = text(body.base_revision_id, 120);
+            if (!baseRevisionId) return res.status(400).json({ error: 'base_revision_id is required: an edit is pinned to the revision you edited', code: 'invalid_edit' });
+            if (typeof body.content !== 'string') return res.status(400).json({ error: 'content must be a string', code: 'invalid_edit' });
+            let clientEditId = null;
+            if (body.client_edit_id !== undefined) {
+                clientEditId = text(body.client_edit_id, LIMITS.clientId);
+                if (!clientEditId) return res.status(400).json({ error: 'client_edit_id must be a short string', code: 'invalid_edit' });
+            }
+            const summary = body.summary === undefined ? '' : typeof body.summary === 'string' && body.summary.length <= LIMITS.editSummary ? body.summary.trim() : null;
+            if (summary === null) return res.status(400).json({ error: `summary must be at most ${LIMITS.editSummary} characters`, code: 'invalid_edit' });
+            if (clientEditId) {
+                const prior = store().findEditByClientId(doc.id, clientEditId);
+                if (prior) {
+                    const revision = store().getRevision(prior.result_revision_id);
+                    return res.status(200).json({ edit: prior, revision: revisionMeta(revision), content: revision?.content ?? null, duplicate: true });
+                }
+            }
+            const mediaType = doc.media_type || 'markdown';
+            if (!media.isEditableMedia(mediaType)) return res.status(409).json({ error: `${mediaType} files cannot be edited here; deliver a new file instead`, code: 'not_editable' });
+            const maxBytes = media.maxBytesFor(mediaType);
+            const bytes = Buffer.from(body.content, 'utf8');
+            if (bytes.length === 0) return res.status(400).json({ error: 'content must not be empty', code: 'invalid_edit' });
+            if (bytes.length > maxBytes) return res.status(413).json({ error: `content exceeds ${maxBytes} bytes`, code: 'too_large' });
+            const roots = await listProjectRoots(db);
+            const resolved = resolveDocumentPath(doc.path, roots);
+            if (!resolved.ok || resolved.canonicalPath !== doc.path) return res.status(409).json({ error: 'The registered file is not available for editing', code: resolved.ok ? 'path_changed' : resolved.code });
+            if (mediaType === 'design') {
+                let parsed;
+                try { parsed = JSON.parse(body.content); } catch { return res.status(400).json({ error: 'The manifest is not valid JSON', code: 'invalid_manifest' }); }
+                const validated = media.validateDesignManifest(parsed);
+                if (!validated.ok) return res.status(400).json({ error: validated.error, code: validated.code });
+                const members = media.resolveDesignMembers(resolved.canonicalPath, resolved.root.root, validated.members);
+                if (!members.ok) return res.status(members.status).json({ error: members.error, code: members.code });
+            }
+            const captured = await captureRevision(doc);
+            if (captured.fileState !== 'ok') return res.status(409).json({ error: `The file cannot be confirmed right now (${captured.fileState}); nothing was written`, code: 'file_unavailable', file_state: captured.fileState });
+            if (captured.revision.id !== baseRevisionId) {
+                return res.status(409).json({ error: 'The document changed after the revision you edited; reload and edit the current revision', code: 'stale_revision', revision_id: baseRevisionId, current_revision: revisionMeta(captured.revision) });
+            }
+            const newHash = sha256(bytes);
+            if (newHash === captured.revision.content_hash || newHash === sha256(Buffer.from(captured.revision.content, 'utf8'))) {
+                return res.status(200).json({ edit: null, revision: revisionMeta(captured.revision), content: captured.revision.content, unchanged: true });
+            }
+            // Atomic write beside the file, then one capture of exactly those bytes.
+            const tmp = `${resolved.canonicalPath}.nexus-edit-${process.pid}-${Date.now()}.tmp`;
+            fs.writeFileSync(tmp, bytes);
+            try { fs.renameSync(tmp, resolved.canonicalPath); } catch (err) { try { fs.unlinkSync(tmp); } catch { /* best effort */ } throw err; }
+            const read = readArtifactFile(resolved.canonicalPath, { mediaType, root: resolved.root.root });
+            if (!read.ok) return res.status(read.status).json({ error: read.error, code: read.code });
+            const stat = fs.statSync(resolved.canonicalPath);
+            const { revision } = recordRevision(doc, read, stat.mtime.toISOString(), { source: 'nexus_edit', editedBy: authority.actor.id });
+            let edit;
+            try {
+                edit = store().transaction(() => {
+                    store().updateDocument(doc.id, { current_revision_id: revision.id });
+                    return store().insertEdit({
+                        document_id: doc.id, base_revision_id: baseRevisionId, result_revision_id: revision.id,
+                        actor_id: authority.actor.id, authority: authority.actor.authority, summary, client_edit_id: clientEditId, byte_length: bytes.length,
+                    });
+                });
+            } catch (err) {
+                const raced = clientEditId && /UNIQUE/i.test(err.message || '') ? store().findEditByClientId(doc.id, clientEditId) : null;
+                if (raced) return res.status(200).json({ edit: raced, revision: revisionMeta(revision), content: revision.content, duplicate: true });
+                throw err;
+            }
+            console.log(`[Documents] edit recorded for ${doc.id}: ${baseRevisionId} → ${revision.id} (authority=${authority.actor.authority})`);
+            return res.status(201).json({ edit, revision: revisionMeta(revision), content: revision.content, assets: revisionAssets(revision), review_status: store().getReviewStatus(doc.id) });
+        } catch (err) {
+            console.error('[Documents] edit failed:', err);
+            return res.status(500).json({ error: 'Failed to save edit' });
+        }
     });
 
     router.get('/:id/history', (req, res) => {
@@ -750,6 +1023,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 review_status: store().getReviewStatus(doc.id),
                 revisions: store().listRevisionMeta(doc.id),
                 decisions: store().listDecisions(doc.id),
+                edits: store().listEdits(doc.id),
                 registrations: store().listRegistrations(doc.id).map(registration => receiptView(registration, store().getRevisionMeta(registration.revision_id))),
                 reviews: store().listReviews(doc.id).map(review => ({
                     id: review.id, revision_id: review.revision_id, reviewer_id: review.reviewer_id, status: review.status,
@@ -795,6 +1069,13 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 return res.status(400).json({ error: `note must be a string of at most ${LIMITS.summary} characters`, code: 'invalid_decision' });
             }
             const note = typeof body.note === 'string' ? body.note.trim() : '';
+            let selection = null;
+            if (body.selection !== undefined && body.selection !== null) {
+                if (!isPlainObject(body.selection) || JSON.stringify(body.selection).length > LIMITS.selectionJson) {
+                    return res.status(400).json({ error: `selection must be a small JSON object (at most ${LIMITS.selectionJson} characters)`, code: 'invalid_decision' });
+                }
+                selection = body.selection;
+            }
             let clientDecisionId = null;
             if (body.client_decision_id !== undefined) {
                 clientDecisionId = text(body.client_decision_id, LIMITS.clientId);
@@ -810,7 +1091,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 : prior.recorded_by !== 'executor');
             const sameRequest = prior => prior.decision === body.decision && prior.revision_id === revisionId && prior.note === note
                 && prior.actor_id === authority.actor.id && (body.content_hash === undefined || body.content_hash === prior.content_hash)
-                && sameRecorder(prior);
+                && JSON.stringify(prior.selection ?? null) === JSON.stringify(selection) && sameRecorder(prior);
             const replay = prior => (sameRequest(prior)
                 ? res.status(200).json({ decision: prior, duplicate: true, review_status: store().getReviewStatus(doc.id) })
                 : res.status(409).json({ error: 'client_decision_id was already used for a different decision', code: 'idempotency_key_reused', decision: prior }));
@@ -826,6 +1107,17 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (!revision || revision.document_id !== doc.id) return res.status(404).json({ error: 'Revision not found', code: 'revision_not_found' });
             if (body.content_hash !== undefined && body.content_hash !== revision.content_hash) {
                 return res.status(409).json({ error: 'content_hash does not match that revision', code: 'content_mismatch' });
+            }
+            // A direction-selection design package: approving it is choosing a direction (contract §3.3).
+            const manifest = store().getRevision(revision.id)?.manifest ?? null;
+            const directions = Array.isArray(manifest?.directions) ? manifest.directions.map(d => d.id) : [];
+            if (directions.length >= 2 && body.decision === 'approve') {
+                const chosen = selection?.direction;
+                if (typeof chosen !== 'string' || !directions.includes(chosen)) {
+                    return res.status(400).json({ error: 'Approving this design package means selecting a direction: send selection.direction with one of its direction ids', code: 'selection_required', directions });
+                }
+            } else if (selection?.direction !== undefined && !directions.includes(selection.direction)) {
+                return res.status(400).json({ error: 'selection.direction does not name a direction of this revision', code: 'invalid_decision', directions });
             }
             // An executor-recorded approval must rest on Robert's submitted, delegating instruction for an earlier revision of this document.
             const sourceRefusal = refusal => res.status(refusal.status).json({ error: refusal.error, code: refusal.code, ...sourceDetails(refusal) });
@@ -858,7 +1150,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                     return store().insertDecision({
                         document_id: doc.id, revision_id: revision.id, content_hash: revision.content_hash, decision: body.decision,
                         actor_id: authority.actor.id, authority: authority.actor.authority, note, client_decision_id: clientDecisionId,
-                        intended_action: fresh.intended_action,
+                        intended_action: fresh.intended_action, selection,
                         recorded_by: executor ? 'executor' : 'operator', provenance,
                     });
                 });
@@ -973,10 +1265,24 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         }
         const commentBody = text(body.body, LIMITS.body);
         if (!commentBody) return res.status(400).json({ error: `body must be 1-${LIMITS.body} characters` });
-        const kind = body.kind === 'document' ? 'document' : body.kind === 'passage' ? 'passage' : null;
-        if (!kind) return res.status(400).json({ error: "kind must be 'passage' or 'document'" });
+        const kind = body.kind === 'document' ? 'document' : body.kind === 'passage' ? 'passage' : fmt.MEDIA_COMMENT_KINDS.has(body.kind) ? body.kind : null;
+        if (!kind) return res.status(400).json({ error: "kind must be 'passage', 'document', 'region', 'point', 'time', 'page' or 'screen'" });
 
-        const row = { review_id: review.id, client_id: clientId, kind, body: commentBody, start_line: null, end_line: null, block_hash: null, quote: null, selection: null };
+        const row = { review_id: review.id, client_id: clientId, kind, body: commentBody, start_line: null, end_line: null, block_hash: null, quote: null, selection: null, anchor: null, target_label: null, parent_id: null };
+        if (body.parent_id !== undefined && body.parent_id !== null) {
+            const parentId = text(String(body.parent_id), 120);
+            const parent = parentId ? store().getComment(parentId) : null;
+            if (!parent || parent.review_id !== review.id) return res.status(404).json({ error: 'parent_id does not name a comment of this review', code: 'parent_not_found' });
+            if (parent.parent_id) return res.status(400).json({ error: 'Replies are one level deep; reply to the root comment', code: 'invalid_parent' });
+            row.parent_id = parent.id;
+        }
+        if (fmt.MEDIA_COMMENT_KINDS.has(kind)) {
+            const pinned = store().getRevision(review.revision_id);
+            const verified = fmt.verifyMediaAnchor(kind, body.anchor, revisionAssets(pinned));
+            if (!verified.ok) return res.status(verified.code === 'anchor_mismatch' ? 409 : 400).json({ error: verified.error, code: verified.code });
+            row.anchor = verified.anchor;
+            row.target_label = verified.target_label;
+        }
         if (kind === 'passage') {
             const pinned = store().getRevision(review.revision_id);
             const verified = fmt.verifyPassageAnchor(body, pinned?.content);
@@ -991,7 +1297,10 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         try {
             const comment = store().insertComment(row);
             store().updateReview(review.id, {});
-            return res.status(201).json({ comment: { ...fmt.publicComment(comment), anchor: { state: kind === 'passage' ? 'intact' : 'document', current_start_line: comment.start_line } } });
+            const anchor = fmt.MEDIA_COMMENT_KINDS.has(kind)
+                ? { state: 'intact', current_asset_key: row.anchor.asset_key }
+                : { state: kind === 'passage' ? 'intact' : 'document', current_start_line: comment.start_line };
+            return res.status(201).json({ comment: { ...fmt.publicComment(comment), anchor } });
         } catch (err) {
             if (clientId && /UNIQUE/i.test(err.message || '')) {
                 const existing = store().findCommentByClientId(review.id, clientId);
@@ -1007,9 +1316,18 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         if (!review || !requireDraft(review, res)) return;
         const comment = store().getComment(req.params.commentId);
         if (!comment || comment.review_id !== review.id) return res.status(404).json({ error: 'Comment not found' });
-        const commentBody = text(req.body?.body, LIMITS.body);
-        if (!commentBody) return res.status(400).json({ error: `body must be 1-${LIMITS.body} characters` });
-        const updated = store().updateComment(comment.id, { body: commentBody });
+        const patch = {};
+        if (req.body?.body !== undefined) {
+            const commentBody = text(req.body.body, LIMITS.body);
+            if (!commentBody) return res.status(400).json({ error: `body must be 1-${LIMITS.body} characters` });
+            patch.body = commentBody;
+        }
+        if (req.body?.resolved !== undefined) {
+            if (typeof req.body.resolved !== 'boolean') return res.status(400).json({ error: 'resolved must be true or false' });
+            patch.resolved_at = req.body.resolved ? new Date().toISOString() : null;
+        }
+        if (!Object.keys(patch).length) return res.status(400).json({ error: 'Nothing to update: send body and/or resolved' });
+        const updated = store().updateComment(comment.id, patch);
         store().updateReview(review.id, {});
         return res.json({ comment: fmt.publicComment(updated) });
     });
@@ -1074,7 +1392,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const submittedAt = new Date().toISOString();
             const submissionId = randomUUID();
             const finished = { ...review, summary, approval_delegated: delegated, submitted_authority: submittedAuthority };
-            const payload = fmt.buildSubmissionPayload({ submissionId, review: finished, comments, document: doc, revision, source, submittedAt });
+            const latestDecision = store().latestDecision(doc.id);
+            const selectedDirection = latestDecision?.decision === 'approve' && latestDecision.revision_id === review.revision_id ? latestDecision.selection?.direction ?? null : null;
+            const payload = fmt.buildSubmissionPayload({ submissionId, review: finished, comments, document: doc, revision, source, submittedAt, selectedDirection });
             const messageText = fmt.formatSubmissionMessage(payload);
             let submission;
             try {

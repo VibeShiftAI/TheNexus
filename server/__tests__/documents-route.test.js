@@ -82,7 +82,8 @@ test('registration is bounded to project roots and Markdown files, and is idempo
     fs.symlinkSync(outside, path.join(projectRoot, 'docs', 'escape.md'));
     expect((await api('POST', '/api/documents', { path: path.join(projectRoot, 'docs', 'escape.md') }))).toMatchObject({ status: 403, json: { code: 'symlink_escape' } });
     fs.writeFileSync(path.join(projectRoot, 'docs', 'notes.txt'), 'plain');
-    expect((await api('POST', '/api/documents', { path: path.join(projectRoot, 'docs', 'notes.txt') })).status).toBe(415);
+    fs.writeFileSync(path.join(projectRoot, 'docs', 'secret.env'), 'TOKEN=abc');
+    expect((await api('POST', '/api/documents', { path: path.join(projectRoot, 'docs', 'secret.env') })).status).toBe(415);
     expect((await api('POST', '/api/documents', { path: path.join(projectRoot, 'docs', 'missing.md') })).status).toBe(404);
     expect((await api('POST', '/api/documents', { path: reportPath, task_id: 'no-such-task' })).status).toBe(404);
     expect((await api('POST', '/api/documents', { path: reportPath, project_id: 'no-such-project' })).status).toBe(404);

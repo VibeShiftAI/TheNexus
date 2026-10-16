@@ -1,17 +1,21 @@
 /**
- * Document registry boundary: which local Markdown files may be registered
- * for review and how their content is captured.
+ * Document registry boundary: which local files may be registered for review
+ * and how their content is captured.
  *
  * A document is only ever served by a server-issued id, and only when its
  * REAL path (symlinks resolved) sits inside the real path of a registered
- * project. Both the path as given and the resolved path must be Markdown, so
- * a `.md` symlink to `.env` is refused, and a link that resolves outside every
- * project root is refused as a symlink escape. Nothing here serves arbitrary
- * local files.
+ * project. Both the path as given and the resolved path must be of the same
+ * allowed media type (services/review-media.js; contract
+ * docs/contracts/review-media-and-design-packages.md), so a `.md` or `.png`
+ * symlink to `.env` is refused, and a link that resolves outside every project
+ * root is refused as a symlink escape. Nothing here serves arbitrary local
+ * files. Markdown was the only type until 2026-10-16; `isMarkdownPath` and
+ * `MAX_DOCUMENT_BYTES` keep their meaning for the text-only callers.
  */
 const fs = require('fs');
 const path = require('path');
 const { createHash } = require('crypto');
+const media = require('./review-media');
 
 const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown']);
 const FORBIDDEN_SEGMENTS = new Set(['.git', 'node_modules']);
@@ -65,7 +69,8 @@ function resolveDocumentPath(inputPath, roots) {
     }
     if (!path.isAbsolute(inputPath)) return failure(400, 'invalid_path', 'Document path must be absolute');
     const normalized = path.normalize(inputPath);
-    if (!isMarkdownPath(normalized)) return failure(415, 'not_markdown', 'Only Markdown (.md, .markdown) documents can be registered');
+    const mediaType = media.classifyPath(normalized);
+    if (!mediaType) return failure(415, 'unsupported_media', 'Only allowed review media types can be registered (Markdown, text, code, JSON, HTML, SVG, images, video, audio, PDF, .design.json packages)');
     if (hasForbiddenSegment(normalized)) return failure(403, 'forbidden_path', 'Documents inside .git or node_modules cannot be registered');
     const lexicalRoot = roots.find(entry => insideRoot(normalized, entry.root));
     if (!lexicalRoot) return failure(403, 'outside_roots', 'Document path is outside every registered project');
@@ -77,7 +82,7 @@ function resolveDocumentPath(inputPath, roots) {
         if (err && err.code === 'ENOENT') return failure(404, 'not_found', 'Document file does not exist');
         return failure(403, 'unresolvable', 'Document path could not be resolved');
     }
-    if (!isMarkdownPath(canonicalPath)) return failure(415, 'not_markdown', 'Document resolves to a non-Markdown file');
+    if (media.classifyPath(canonicalPath) !== mediaType) return failure(415, 'unsupported_media', 'Document resolves to a file of a different type');
     if (hasForbiddenSegment(canonicalPath)) return failure(403, 'forbidden_path', 'Document resolves into .git or node_modules');
     const root = roots.find(entry => insideRoot(canonicalPath, entry.root));
     if (!root) return failure(403, 'symlink_escape', 'Document resolves outside every registered project');
@@ -85,8 +90,9 @@ function resolveDocumentPath(inputPath, roots) {
     let stat;
     try { stat = fs.statSync(canonicalPath); } catch { return failure(404, 'not_found', 'Document file does not exist'); }
     if (!stat.isFile()) return failure(400, 'not_a_file', 'Document path is not a regular file');
-    if (stat.size > MAX_DOCUMENT_BYTES) return failure(413, 'too_large', `Document exceeds ${MAX_DOCUMENT_BYTES} bytes`);
-    return { ok: true, canonicalPath, root, size: stat.size, mtime: stat.mtime.toISOString() };
+    const maxBytes = media.maxBytesFor(mediaType);
+    if (stat.size > maxBytes) return failure(413, 'too_large', `Document exceeds ${maxBytes} bytes`);
+    return { ok: true, canonicalPath, root, size: stat.size, mtime: stat.mtime.toISOString(), mediaType, mimeType: media.mimeFor(canonicalPath, mediaType) };
 }
 
 function sha256(text) {
@@ -103,12 +109,12 @@ function sha256(text) {
  * so a declared deliverable can bind its receipt, revision and decisions to
  * the delivered bytes while the reviewer keeps the normalized text.
  */
-function readDocumentFile(canonicalPath) {
+function readDocumentFile(canonicalPath, { maxBytes = MAX_DOCUMENT_BYTES } = {}) {
     let buffer;
     try { buffer = fs.readFileSync(canonicalPath); } catch (err) {
         return failure(err && err.code === 'ENOENT' ? 404 : 500, 'unreadable', 'Document file could not be read');
     }
-    if (buffer.length > MAX_DOCUMENT_BYTES) return failure(413, 'too_large', `Document exceeds ${MAX_DOCUMENT_BYTES} bytes`);
+    if (buffer.length > maxBytes) return failure(413, 'too_large', `Document exceeds ${maxBytes} bytes`);
     let text;
     try { text = new TextDecoder('utf-8', { fatal: true }).decode(buffer); } catch {
         return failure(422, 'invalid_encoding', 'Document is not valid UTF-8');
@@ -128,11 +134,68 @@ function readDocumentFile(canonicalPath) {
     };
 }
 
+/**
+ * Read a resolved file of any allowed media type into the uniform capture
+ * shape the registry stores. Text types go through `readDocumentFile` (and
+ * keep both identities). Binary types carry no reviewer text: `content` is
+ * empty, `lineCount` 0 and both hashes are the SHA-256 of the bytes on disk,
+ * which are copied into the blob store so the revision survives the file.
+ * A design package parses and validates its manifest and resolves every
+ * member; its hash is the package hash (contract §2.3) and `assets` lists the
+ * members with their own hashes.
+ */
+function readArtifactFile(canonicalPath, { mediaType = media.classifyPath(canonicalPath), root } = {}) {
+    if (!mediaType) return failure(415, 'unsupported_media', 'Unsupported review media type');
+    const mimeType = media.mimeFor(canonicalPath, mediaType);
+    if (media.isTextMedia(mediaType)) {
+        const read = readDocumentFile(canonicalPath, { maxBytes: media.maxBytesFor(mediaType) });
+        if (!read.ok) return read;
+        const base = { ...read, mediaType, mimeType, binary: false, assets: null, manifest: null };
+        if (mediaType !== 'design') return base;
+        let parsed;
+        try { parsed = JSON.parse(read.exactContent.charCodeAt(0) === 0xfeff ? read.exactContent.slice(1) : read.exactContent); }
+        catch { return failure(400, 'invalid_manifest', 'Design package manifest is not valid JSON'); }
+        const validated = media.validateDesignManifest(parsed);
+        if (!validated.ok) return failure(400, validated.code, validated.error);
+        const rootPath = root && typeof root === 'object' ? root.root : root;
+        if (!rootPath) return failure(500, 'root_required', 'A project root is required to resolve a design package');
+        const resolved = media.resolveDesignMembers(canonicalPath, rootPath, validated.members);
+        if (!resolved.ok) return resolved;
+        const hash = media.packageHash(read.exactHash, resolved.assets);
+        return {
+            ...base, manifest: validated.manifest, assets: resolved.assets, selectsDirection: validated.selectsDirection,
+            manifestHash: read.exactHash, contentHash: hash, exactHash: hash,
+        };
+    }
+    let stat;
+    try { stat = fs.statSync(canonicalPath); } catch (err) {
+        return failure(err && err.code === 'ENOENT' ? 404 : 500, 'unreadable', 'Document file could not be read');
+    }
+    const maxBytes = media.maxBytesFor(mediaType);
+    if (stat.size > maxBytes) return failure(413, 'too_large', `Document exceeds ${maxBytes} bytes`);
+    const { hash, byteLength } = media.hashFile(canonicalPath);
+    let width = null;
+    let height = null;
+    if (mediaType === 'image') {
+        const header = Buffer.alloc(Math.min(stat.size, 64 * 1024));
+        const fd = fs.openSync(canonicalPath, 'r');
+        try { fs.readSync(fd, header, 0, header.length, 0); } finally { fs.closeSync(fd); }
+        const dims = media.imageDimensions(header);
+        if (dims) { width = dims.width; height = dims.height; }
+    }
+    return {
+        ok: true, content: '', contentHash: hash, byteLength, lineCount: 0,
+        exactContent: null, exactHash: hash, exactByteLength: byteLength,
+        mediaType, mimeType, binary: true, width, height, assets: null, manifest: null,
+    };
+}
+
 module.exports = {
     MAX_DOCUMENT_BYTES,
     listProjectRoots,
     resolveDocumentPath,
     readDocumentFile,
+    readArtifactFile,
     sha256,
     isMarkdownPath,
 };

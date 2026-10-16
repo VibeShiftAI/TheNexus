@@ -128,11 +128,15 @@ function snapshot() {
     const legacyColumns = 'id, title, path, root_project_id, project_id, task_id, kind, metadata, current_revision_id, registered_by, created_at, updated_at';
     // The 2026-10-04 migration adds approval_delegated and submitted_authority to document_reviews (defaults covered below).
     const legacyReviewColumns = 'id, document_id, revision_id, reviewer_id, status, summary, submitted_at, created_at, updated_at';
+    // The 2026-10-16 media model adds media_type, mime_type, source, edited_by, asset_count, width, height and manifest to revisions
+    // and anchor, target_label, parent_id and resolved_at to comments (defaults covered below).
+    const legacyRevisionColumns = 'id, document_id, content_hash, content, byte_length, line_count, file_mtime, captured_at';
+    const legacyCommentColumns = 'id, review_id, client_id, kind, start_line, end_line, block_hash, quote, selection, body, created_at, updated_at';
     const out = {
         documents: raw.prepare(`SELECT ${legacyColumns} FROM review_documents ORDER BY id`).all(),
-        revisions: raw.prepare('SELECT * FROM review_document_revisions ORDER BY id').all(),
+        revisions: raw.prepare(`SELECT ${legacyRevisionColumns} FROM review_document_revisions ORDER BY id`).all(),
         reviews: raw.prepare(`SELECT ${legacyReviewColumns} FROM document_reviews ORDER BY id`).all(),
-        comments: raw.prepare('SELECT * FROM document_review_comments ORDER BY id').all(),
+        comments: raw.prepare(`SELECT ${legacyCommentColumns} FROM document_review_comments ORDER BY id`).all(),
         submissions: raw.prepare("SELECT * FROM document_review_submissions WHERE id = 'sub-done'").all(),
     };
     raw.close();

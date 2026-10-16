@@ -1,35 +1,38 @@
 "use client";
 
 /**
- * Shared document reviewer (desktop: document + comment sidebar; phone:
- * responsive drawers with explicit tap-to-comment block controls).
+ * Shared reviewer for every registered deliverable: Markdown and text, code,
+ * JSON, HTML prototypes, SVG, images, video, audio, PDF and design packages
+ * (contract docs/contracts/review-media-and-design-packages.md).
+ *
+ * Layout (desktop): a compact header with the document's identity, status,
+ * revision and actions; a navigator rail (headings for text, comment markers
+ * for media); the stage, which is the viewer for the media type or the editor
+ * when editing; and the review rail with the decision, the comment thread and
+ * Finish review. On the phone the rails become drawers and the composer a
+ * bottom sheet.
  *
  * Every piece of review state lives on the server: comments and the summary
  * save as they are entered (with a visible saving / saved / failed state and
  * retry), so a draft survives refresh and other devices. "Finish review"
- * creates one durable submission and shows its delivery state truthfully
- * (queued → delivered with a receipt, or failed with a retry). The document
- * itself is never changed here.
+ * creates one durable submission and shows its delivery state truthfully.
+ * Editing (text media only) writes a new revision through the server; it is
+ * the one way this page changes the document, and it never changes a
+ * decision: the new revision needs its own.
  *
- * The document's own decision (Approve document / Request changes on the
- * revision on screen) is the separate DecisionCard above the text; Finish
- * review is feedback only and never records a decision.
- *
- * The page always opens on the latest registered revision, so a link from
- * Ready for your review or a task shows the current bytes even when the
- * reader's last review was of an earlier one. The reviewed revision stays one
- * explicit click away and its comments stay attached to it; nothing here
- * switches the reader back to it on their behalf.
+ * The page always opens on the latest registered revision. The reviewed
+ * revision stays one explicit click away and its comments stay attached to it.
  */
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
     AlertTriangle,
-    ArrowLeft,
     Check,
     CheckCircle2,
     Clock,
+    CornerDownRight,
     Download,
     FileCheck2,
     FileCode,
@@ -41,27 +44,40 @@ import {
     Pencil,
     RefreshCw,
     Send,
+    ShieldCheck,
     Trash2,
     X,
     XCircle,
 } from "lucide-react";
 import {
     addComment,
+    assetUrl,
     deleteComment,
     finishReview,
+    formatSeconds,
     getDocument,
     getReview,
     getSubmission,
+    mediaLabel,
+    mediaTypeOf,
     newClientId,
     openReview,
     rawDocumentUrl,
     retryDelivery,
+    saveEdit,
     saveSummary,
+    setCommentResolved,
     updateComment,
     DocumentApiError,
+    MEDIA_COMMENT_KINDS,
+    type CommentKind,
     type DocumentResponse,
+    type MediaAnchor,
+    type MediaType,
+    type Region,
     type ReviewComment,
     type ReviewView,
+    type RevisionAsset,
     type SubmissionView,
 } from "@/lib/document-review";
 import { blockElementId, excerpt, extractOutline, quoteLines } from "@/lib/document-outline";
@@ -69,6 +85,14 @@ import { DocumentMarkdown, type BlockRef } from "./document-markdown";
 import { DecisionCard } from "./decision-card";
 import { OutgoingCard } from "./outgoing-card";
 import { DocumentStatusBadge } from "./deliverable-row";
+import { EvidenceDrawer, type LoadStates } from "./evidence-drawer";
+import { MediaIcon, mediaTone } from "./viewers/media-icon";
+import { ImageViewer, type ImagePin } from "./viewers/image-viewer";
+import { VideoViewer, type TimeMarker } from "./viewers/video-viewer";
+import { PdfViewer, type PageMarker } from "./viewers/pdf-viewer";
+import { PrototypeViewer, type PointPin } from "./viewers/prototype-viewer";
+import { DesignPackageViewer } from "./viewers/design-package-viewer";
+import { TextEditor } from "./viewers/text-editor";
 
 const SUBMISSION_POLL_MS = 3000;
 const SUMMARY_DEBOUNCE_MS = 700;
@@ -77,10 +101,14 @@ type SaveStatus = { state: "idle" | "saving" | "saved" | "error"; message?: stri
 
 interface Composer {
     clientId: string;
-    kind: "passage" | "document";
+    kind: CommentKind;
     block?: BlockRef;
     quote?: string;
     selection?: string;
+    anchor?: MediaAnchor;
+    /** Human label for a media anchor ("S1 Statement · 1a · light", "0:42"). */
+    label?: string;
+    parentId?: string;
     text: string;
     error?: string;
     saving: boolean;
@@ -98,18 +126,19 @@ function messageOf(err: unknown): string {
 }
 
 function commentLabel(comment: ReviewComment): string {
+    if (MEDIA_COMMENT_KINDS.has(comment.kind)) return comment.target_label || comment.anchor_target?.asset_key || comment.kind;
     if (comment.kind !== "passage" || !comment.start_line) return "Whole document";
     return comment.start_line === comment.end_line ? `Line ${comment.start_line}` : `Lines ${comment.start_line}–${comment.end_line}`;
 }
 
 function AnchorChip({ comment, changed }: { comment: ReviewComment; changed: boolean }) {
-    if (!changed || comment.kind !== "passage") return null;
+    if (!changed || comment.kind === "document") return null;
     const state = comment.anchor?.state;
     if (state === "orphaned") {
-        return <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-200">passage no longer in current revision</span>;
+        return <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-200">{comment.kind === "passage" ? "passage no longer in current revision" : "asset no longer in current revision"}</span>;
     }
     if (state === "moved") {
-        return <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-200">now at line {comment.anchor?.current_start_line}</span>;
+        return <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-200">{comment.kind === "passage" ? `now at line ${comment.anchor?.current_start_line}` : `now ${comment.anchor?.current_asset_key}`}</span>;
     }
     return null;
 }
@@ -123,30 +152,61 @@ function deliveryPending(submission: SubmissionView): boolean {
 function DeliveryBadge({ submission }: { submission: SubmissionView }) {
     const status = submission.delivery_status;
     if (status === "delivered") {
-        return (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
-                <CheckCircle2 size={12} /> Delivered to Praxis
-            </span>
-        );
+        return <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200"><CheckCircle2 size={12} /> Delivered to Praxis</span>;
     }
     if (status === "failed") {
-        if (submission.next_attempt_at) {
-            return (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
-                    <RefreshCw size={12} /> Delivery failed · retry scheduled
-                </span>
-            );
-        }
-        return (
-            <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-200">
-                <XCircle size={12} /> Delivery failed
-            </span>
-        );
+        if (submission.next_attempt_at) return <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200"><RefreshCw size={12} /> Delivery failed · retry scheduled</span>;
+        return <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-200"><XCircle size={12} /> Delivery failed</span>;
     }
+    return <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-semibold text-cyan-200"><Clock size={12} /> {status === "relaying" ? "Delivering to Praxis…" : "Queued for delivery"}</span>;
+}
+
+/** Numbered pins per asset for the media viewers, from the comments that carry a media anchor. */
+function pinsFor(comments: ReviewComment[]) {
+    const byAsset: Record<string, (ImagePin & { point?: { x: number; y: number } | null; viewport?: string | null })[]> = {};
+    const time: Record<string, TimeMarker[]> = {};
+    const pages: Record<string, PageMarker[]> = {};
+    let index = 0;
+    for (const comment of comments) {
+        if (comment.parent_id || !MEDIA_COMMENT_KINDS.has(comment.kind) || !comment.anchor_target) continue;
+        index += 1;
+        const anchor = comment.anchor_target as Record<string, unknown> & { asset_key: string };
+        const key = anchor.asset_key;
+        const base = { id: comment.id, index, label: comment.body, resolved: comment.resolved };
+        if (comment.kind === "time") {
+            (time[key] ||= []).push({ ...base, t_start: Number(anchor.t_start), t_end: typeof anchor.t_end === "number" ? anchor.t_end : null });
+        } else if (comment.kind === "page") {
+            (pages[key] ||= []).push({ ...base, page: Number(anchor.page) });
+        } else if (comment.kind === "point") {
+            (byAsset[key] ||= []).push({ ...base, point: { x: Number(anchor.x), y: Number(anchor.y) }, viewport: typeof anchor.viewport === "string" ? anchor.viewport : null });
+        } else if (comment.kind === "screen") {
+            (byAsset[key] ||= []).push({ ...base, region: (anchor.region as Region | undefined) ?? null, point: anchor.region ? null : { x: 0.02, y: 0.02 } });
+        } else {
+            (byAsset[key] ||= []).push({ ...base, region: { x: Number(anchor.x), y: Number(anchor.y), w: Number(anchor.w), h: Number(anchor.h) } });
+        }
+    }
+    const indexOf: Record<string, number> = {};
+    for (const list of [...Object.values(byAsset), ...Object.values(time), ...Object.values(pages)]) for (const pin of list) indexOf[pin.id] = pin.index;
+    return { byAsset, time, pages, indexOf };
+}
+
+function PlainText({ content, mono, onLine, counts, selected }: { content: string; mono: boolean; onLine?: (line: number) => void; counts: Record<number, number>; selected: BlockRef | null }) {
+    const lines = content.split("\n");
     return (
-        <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-semibold text-cyan-200">
-            <Clock size={12} /> {status === "relaying" ? "Delivering to Praxis…" : "Queued for delivery"}
-        </span>
+        <div className={`overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 ${mono ? "font-mono text-xs leading-6" : "text-sm leading-7"} text-slate-200`} data-plain-text="">
+            {lines.map((line, i) => {
+                const n = i + 1;
+                const count = counts[n] || 0;
+                return (
+                    <div key={n} id={blockElementId(n)} data-review-block="" data-block-start={n} data-block-end={n} className={`group flex ${selected?.start === n ? "bg-cyan-500/10" : count ? "bg-amber-500/5" : ""}`}>
+                        <button type="button" onClick={() => onLine?.(n)} disabled={!onLine} aria-label={`Comment on line ${n}`} data-block-comment-button="" className={`w-12 shrink-0 select-none border-r border-slate-800 pr-2 text-right text-[11px] ${count ? "text-amber-200" : "text-slate-600"} ${onLine ? "hover:text-cyan-200" : ""}`}>
+                            {count ? `${n} ·${count}` : n}
+                        </button>
+                        <pre className="min-w-0 flex-1 whitespace-pre-wrap break-words px-3">{line || " "}</pre>
+                    </div>
+                );
+            })}
+        </div>
     );
 }
 
@@ -165,11 +225,14 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const [submission, setSubmission] = useState<SubmissionView | null>(null);
     const [viewRevision, setViewRevision] = useState<"current" | "pinned">("current");
     const [showSource, setShowSource] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [evidenceOpen, setEvidenceOpen] = useState(false);
+    const [loadStates, setLoadStates] = useState<LoadStates>({});
     const [composer, setComposer] = useState<Composer | null>(null);
     const [summary, setSummary] = useState("");
     const [summaryStatus, setSummaryStatus] = useState<SaveStatus>({ state: "idle" });
     const [commentStatus, setCommentStatus] = useState<SaveStatus>({ state: "idle" });
-    const [editing, setEditing] = useState<{ id: string; text: string; saving: boolean; error?: string } | null>(null);
+    const [editingComment, setEditingComment] = useState<{ id: string; text: string; saving: boolean; error?: string } | null>(null);
     const [finishOpen, setFinishOpen] = useState(false);
     const [finishing, setFinishing] = useState(false);
     const [finishError, setFinishError] = useState<string | null>(null);
@@ -179,6 +242,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const [outlineOpen, setOutlineOpen] = useState(false);
     const [reviewOpen, setReviewOpen] = useState(false);
     const [selected, setSelected] = useState<BlockRef | null>(null);
+    const [selectedComment, setSelectedComment] = useState<string | null>(null);
+    const [focusAsset, setFocusAsset] = useState<string | null>(null);
+    const [seekTo, setSeekTo] = useState<number | null>(null);
+    const [requestedPage, setRequestedPage] = useState<number | null>(null);
     const [linkCopied, setLinkCopied] = useState(false);
     const summaryTimer = useRef<number | null>(null);
     const summaryDirty = useRef(false);
@@ -187,9 +254,17 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const reviewRef = useRef<ReviewView | null>(null);
     reviewRef.current = review;
 
-    const load = useCallback(async () => {
+    const dataRef = useRef(data);
+    dataRef.current = data;
+    const documentIdRef = useRef(documentId);
+    documentIdRef.current = documentId;
+    const loadSequence = useRef(0);
+    const load = useCallback(async (onlyNewRevision = false) => {
+        const sequence = ++loadSequence.current;
         try {
             const response = await getDocument(documentId);
+            if (documentId !== documentIdRef.current || sequence !== loadSequence.current) return;
+            if (onlyNewRevision && response.revision?.id === dataRef.current?.revision?.id) return;
             setData(response);
             setLoadError(null);
             const current = reviewRef.current;
@@ -199,34 +274,40 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 if (!summaryDirty.current) setSummary(response.review.summary || "");
             }
         } catch (err) {
-            setLoadError(messageOf(err));
+            if (documentId === documentIdRef.current && sequence === loadSequence.current) setLoadError(messageOf(err));
         }
     }, [documentId]);
 
     useEffect(() => {
         // Every document opens on its latest revision, also when the route reuses this page for another id.
         setViewRevision("current");
+        setEditing(false);
+        setLoadStates({});
         void load();
     }, [load]);
 
-    // Delivery state polling while the outcome is still open, including a
-    // failure whose automatic retry is scheduled: the page keeps observing
-    // until the retry has delivered or failed for good.
+    // Delivery state polling while the outcome is still open.
     useEffect(() => {
         if (!review || review.status !== "submitted" || !submission) return;
         if (!deliveryPending(submission)) return;
         const timer = window.setInterval(async () => {
-            try {
-                const next = await getSubmission(review.id);
-                setSubmission(next);
-            } catch {
-                /* keep the last known state; the next tick retries */
-            }
+            try { setSubmission(await getSubmission(review.id)); } catch { /* keep the last known state; the next tick retries */ }
         }, pollMs);
         return () => window.clearInterval(timer);
     }, [review, submission, pollMs]);
 
+    // Keep discovering new revisions, without replacing an unfinished review.
+    useEffect(() => {
+        if (review && review.status !== "submitted") return;
+        if (editing) return;
+        const refresh = () => { if (!summaryDirty.current) void load(true); };
+        const timer = window.setInterval(refresh, timings?.pollMs ?? 15_000);
+        window.addEventListener("focus", refresh);
+        return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+    }, [load, review?.status, timings?.pollMs, editing]);
+
     const doc = data?.document ?? null;
+    const mediaType: MediaType = mediaTypeOf(data);
     const currentContent = data?.content ?? "";
     const documentChanged = Boolean(review?.document_changed);
     const showingPinned = documentChanged && viewRevision === "pinned" && typeof review?.pinned_content === "string";
@@ -235,11 +316,21 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const reviewedHash = review?.pinned_revision?.content_hash.slice(0, 8) ?? "?";
     const latestHash = data?.revision?.content_hash.slice(0, 8) ?? "?";
     const isDraft = !review || review.status === "draft";
-    const canAnnotate = isDraft && (!documentChanged || showingPinned) && !showSource;
-    const outline = useMemo(() => extractOutline(shownContent), [shownContent]);
+    const canAnnotate = isDraft && (!documentChanged || showingPinned) && !showSource && !editing;
+    const textual = ["markdown", "text", "code", "json", "html", "svg", "design"].includes(mediaType);
+    const assets: RevisionAsset[] = useMemo(() => {
+        const list = data?.assets ?? [];
+        if (list.length) return list;
+        return doc && data?.revision ? [{ asset_key: "primary", role: "primary", path: doc.path, media_type: mediaType, mime_type: data.mime_type ?? "text/markdown", byte_length: data.revision.byte_length, content_hash: data.revision.content_hash, label: doc.path.split("/").pop() ?? "primary", direction: null, appearance: null, viewport: null, state: null, before_asset_key: null, order: -1, width: data.revision.width ?? null, height: data.revision.height ?? null }] : [];
+    }, [data, doc, mediaType]);
+    const primary = assets.find((a) => a.asset_key === "primary") ?? null;
+    const outline = useMemo(() => (mediaType === "markdown" ? extractOutline(shownContent) : []), [shownContent, mediaType]);
     const comments = review?.comments ?? [];
+    const roots = comments.filter((c) => !c.parent_id);
+    const repliesOf = (id: string) => comments.filter((c) => c.parent_id === id);
     const passageComments = comments.filter((c) => c.kind === "passage");
-    const documentNotes = comments.filter((c) => c.kind !== "passage");
+    const mediaComments = comments.filter((c) => MEDIA_COMMENT_KINDS.has(c.kind) && !c.parent_id);
+    const documentNotes = comments.filter((c) => c.kind === "document" && !c.parent_id);
     const commentCounts = useMemo(() => {
         const counts: Record<number, number> = {};
         for (const comment of passageComments) {
@@ -248,6 +339,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         }
         return counts;
     }, [passageComments, showingPinned, documentChanged]);
+    const pins = useMemo(() => pinsFor(comments), [comments]);
+    const directions = data?.manifest?.directions ?? [];
+    const selectedDirection = data?.current_decision?.applies_to_current_revision && data.current_decision.decision === "approve" ? data.current_decision.selection?.direction ?? null : null;
+    const mediaLoad = useCallback((assetKey: string, state: "loaded" | "failed") => setLoadStates((prev) => (prev[assetKey] === state ? prev : { ...prev, [assetKey]: state })), []);
 
     const ensureReview = useCallback(async (): Promise<ReviewView> => {
         const current = reviewRef.current;
@@ -263,14 +358,20 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         setReview((prev) => {
             if (!prev) return prev;
             const exists = prev.comments.some((c) => c.id === comment.id);
-            return { ...prev, comments: exists ? prev.comments.map((c) => (c.id === comment.id ? comment : c)) : [...prev.comments, comment] };
+            return { ...prev, comments: exists ? prev.comments.map((c) => (c.id === comment.id ? { ...c, ...comment, anchor: comment.anchor ?? c.anchor } : c)) : [...prev.comments, comment] };
         });
+    };
+
+    const openComposer = (next: Omit<Composer, "clientId" | "text" | "saving"> & { text?: string }) => {
+        setComposer(() => ({ clientId: newClientId(), saving: false, ...next, text: next.text ?? "" }));
+        if (reviewOpen) { reopenDrawer.current = true; setReviewOpen(false); }
     };
 
     const startPassageComment = useCallback(
         (block: BlockRef, extra?: { selection?: string }) => {
             if (!canAnnotate) return;
             setSelected(block);
+            setSelectedComment(null);
             setComposer((prev) => {
                 const sameBlock = prev && prev.kind === "passage" && prev.block?.start === block.start;
                 return {
@@ -290,14 +391,44 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
 
     const startDocumentNote = () => {
         setSelected(null);
-        setComposer({ clientId: newClientId(), kind: "document", text: "", saving: false });
-        // On the phone the note control lives inside the review drawer, which
-        // stacks above the composer sheet; close it so the composer is the
-        // thing under the reviewer's finger, and return to it afterwards.
-        if (reviewOpen) {
-            reopenDrawer.current = true;
-            setReviewOpen(false);
-        }
+        setSelectedComment(null);
+        openComposer({ kind: "document" });
+    };
+
+    const startReply = (parent: ReviewComment) => {
+        setSelectedComment(parent.id);
+        openComposer({ kind: "document", parentId: parent.id, label: `Reply to ${commentLabel(parent)}` });
+    };
+
+    const assetLabel = (key: string) => {
+        const asset = assets.find((a) => a.asset_key === key);
+        if (!asset) return key;
+        if (asset.role === "primary") return asset.label ?? key;
+        return [asset.label, asset.direction, asset.appearance].filter(Boolean).join(" · ");
+    };
+
+    const startRegion = (assetKey: string, region: Region) => {
+        if (!canAnnotate) return;
+        const asset = assets.find((a) => a.asset_key === assetKey);
+        const kind: CommentKind = asset?.role === "screen" ? "screen" : "region";
+        const anchor: MediaAnchor = kind === "screen" ? { asset_key: assetKey, region } : { asset_key: assetKey, ...region };
+        setSelectedComment(null);
+        openComposer({ kind, anchor, label: `${assetLabel(assetKey)} at (${Math.round(region.x * 100)}%, ${Math.round(region.y * 100)}%) ${Math.round(region.w * 100)}×${Math.round(region.h * 100)}%` });
+    };
+    const startPoint = (assetKey: string, point: { x: number; y: number; viewport: string }) => {
+        if (!canAnnotate) return;
+        setSelectedComment(null);
+        openComposer({ kind: "point", anchor: { asset_key: assetKey, x: point.x, y: point.y, viewport: point.viewport }, label: `${assetLabel(assetKey)} at (${Math.round(point.x * 100)}%, ${Math.round(point.y * 100)}%) on ${point.viewport}` });
+    };
+    const startTimestamp = (range: { t_start: number; t_end?: number }) => {
+        if (!canAnnotate || !primary) return;
+        setSelectedComment(null);
+        openComposer({ kind: "time", anchor: { asset_key: primary.asset_key, t_start: range.t_start, ...(range.t_end !== undefined ? { t_end: range.t_end } : {}) }, label: range.t_end !== undefined ? `${formatSeconds(range.t_start)}–${formatSeconds(range.t_end)}` : formatSeconds(range.t_start) });
+    };
+    const startPage = (page: number) => {
+        if (!canAnnotate || !primary) return;
+        setSelectedComment(null);
+        openComposer({ kind: "page", anchor: { asset_key: primary.asset_key, page }, label: `page ${page}` });
     };
 
     const closeComposer = () => {
@@ -319,9 +450,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 client_id: composer.clientId,
                 kind: composer.kind,
                 body: composer.text.trim(),
+                ...(composer.parentId ? { parent_id: composer.parentId } : {}),
                 ...(composer.kind === "passage" && composer.block
                     ? { start_line: composer.block.start, end_line: composer.block.end, quote: composer.quote, selection: composer.selection ?? null }
                     : {}),
+                ...(composer.anchor ? { anchor: composer.anchor } : {}),
             });
             applyComment(created);
             setCommentStatus({ state: "saved" });
@@ -333,19 +466,19 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         }
     };
 
-    const saveEdit = async () => {
-        if (!editing || !review || !editing.text.trim()) return;
-        setEditing({ ...editing, saving: true, error: undefined });
+    const saveCommentEdit = async () => {
+        if (!editingComment || !review || !editingComment.text.trim()) return;
+        setEditingComment({ ...editingComment, saving: true, error: undefined });
         setCommentStatus({ state: "saving" });
         try {
-            const updated = await updateComment(review.id, editing.id, editing.text.trim());
+            const updated = await updateComment(review.id, editingComment.id, editingComment.text.trim());
             applyComment({ ...updated, anchor: review.comments.find((c) => c.id === updated.id)?.anchor });
             setCommentStatus({ state: "saved" });
-            setEditing(null);
+            setEditingComment(null);
         } catch (err) {
             const message = messageOf(err);
-            setEditing((prev) => (prev ? { ...prev, saving: false, error: message } : prev));
-            setCommentStatus({ state: "error", message, retry: () => void saveEdit() });
+            setEditingComment((prev) => (prev ? { ...prev, saving: false, error: message } : prev));
+            setCommentStatus({ state: "error", message, retry: () => void saveCommentEdit() });
         }
     };
 
@@ -354,11 +487,21 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         setCommentStatus({ state: "saving" });
         try {
             await deleteComment(review.id, comment.id);
-            setReview((prev) => (prev ? { ...prev, comments: prev.comments.filter((c) => c.id !== comment.id) } : prev));
+            setReview((prev) => (prev ? { ...prev, comments: prev.comments.filter((c) => c.id !== comment.id && c.parent_id !== comment.id) } : prev));
             setCommentStatus({ state: "saved" });
         } catch (err) {
             const message = messageOf(err);
             setCommentStatus({ state: "error", message, retry: () => void removeComment(comment) });
+        }
+    };
+
+    const toggleResolved = async (comment: ReviewComment) => {
+        if (!review) return;
+        try {
+            const updated = await setCommentResolved(review.id, comment.id, !comment.resolved);
+            applyComment({ ...updated, anchor: comment.anchor });
+        } catch (err) {
+            setCommentStatus({ state: "error", message: messageOf(err), retry: () => void toggleResolved(comment) });
         }
     };
 
@@ -389,7 +532,6 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     useEffect(() => () => { if (summaryTimer.current) window.clearTimeout(summaryTimer.current); }, []);
 
     const adoptFinished = (finished: ReviewView, sub: SubmissionView | null) => {
-        // The grant belongs to the round that was just finished; the next round starts without it.
         setDelegateApproval(false);
         summaryDirty.current = false;
         reviewRef.current = finished;
@@ -416,15 +558,9 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 setFinishError(`${message} — nothing was sent; your draft is intact.`);
                 return;
             }
-            // The request failed after it left: the server may have finished
-            // the review and queued delivery even though the response was
-            // lost. Ask it before telling the reviewer anything.
             try {
                 const current = await getReview(draftId);
-                if (current.status === "submitted") {
-                    adoptFinished(current, current.submission);
-                    return;
-                }
+                if (current.status === "submitted") { adoptFinished(current, current.submission); return; }
                 setFinishError(`${message} — nothing was sent; your draft is intact.`);
             } catch {
                 setFinishError(`${message} — could not confirm whether the review was sent; reload this page before sending again.`);
@@ -437,22 +573,22 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const retry = async () => {
         if (!review) return;
         setRetrying(true);
-        try {
-            setSubmission(await retryDelivery(review.id));
-        } catch (err) {
-            setSubmission((prev) => (prev ? { ...prev, last_error: messageOf(err) } : prev));
-        } finally {
-            setRetrying(false);
-        }
+        try { setSubmission(await retryDelivery(review.id)); }
+        catch (err) { setSubmission((prev) => (prev ? { ...prev, last_error: messageOf(err) } : prev)); }
+        finally { setRetrying(false); }
     };
 
     const startNewReview = async () => {
+        ++loadSequence.current;
         try {
             const opened = await openReview(documentId);
+            ++loadSequence.current;
             reviewRef.current = opened;
             setReview(opened);
             setSubmission(opened.submission);
             setSummary(opened.summary || "");
+            setViewRevision("current");
+            await load();
         } catch (err) {
             setLoadError(messageOf(err));
         }
@@ -470,21 +606,40 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         setReviewOpen(false);
     };
 
+    /** A comment tapped in the rail: show its spot on the stage. */
+    const jumpToComment = (comment: ReviewComment) => {
+        setSelectedComment(comment.id);
+        if (comment.kind === "passage") { jumpTo(showingPinned || !documentChanged ? comment.start_line : comment.anchor?.current_start_line ?? comment.start_line); return; }
+        const anchor = comment.anchor_target as (Record<string, unknown> & { asset_key: string }) | null | undefined;
+        if (!anchor) return;
+        setFocusAsset(anchor.asset_key);
+        if (comment.kind === "time") setSeekTo(Number(anchor.t_start));
+        if (comment.kind === "page") setRequestedPage(Number(anchor.page));
+        setOutlineOpen(false);
+        setReviewOpen(false);
+        if (typeof window !== "undefined") window.document.querySelector("[data-stage]")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
     const copyLink = async () => {
         const url = data?.links.review_url || window.location.href;
         try {
             await navigator.clipboard.writeText(url);
             setLinkCopied(true);
             window.setTimeout(() => setLinkCopied(false), 1500);
-        } catch {
-            /* clipboard blocked; the URL is in the address bar */
-        }
+        } catch { /* clipboard blocked; the URL is in the address bar */ }
     };
 
-    const backHref = doc?.task_id ? `/task/${doc.task_id}` : doc?.project_id ? `/project/${doc.project_id}` : "/task-board";
+    const onEditSave = async (content: string, editSummary: string) => {
+        if (!data?.revision) return;
+        await saveEdit(documentId, { base_revision_id: data.revision.id, content, client_edit_id: newClientId(), summary: editSummary || undefined });
+        setEditing(false);
+        await load();
+    };
+
     const task = data?.source.task ?? null;
     const project = data?.source.project ?? null;
     const asOf = typeof doc?.metadata?.as_of === "string" ? (doc.metadata.as_of as string) : null;
+    const canEdit = Boolean(data?.editable) && !showingPinned && data?.file_state === "ok" && !editing;
 
     const saveIndicator = (() => {
         const states = [summaryStatus, commentStatus];
@@ -502,14 +657,17 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         return <span className="text-[11px] text-slate-500">{review ? "Draft saved on the server" : "Nothing saved yet"}</span>;
     })();
 
+    const composerTitle = (c: Composer) => {
+        if (c.parentId) return c.label ?? "Reply";
+        if (c.kind === "passage" && c.block) return c.block.start === c.block.end ? `Comment on line ${c.block.start}` : `Comment on lines ${c.block.start}–${c.block.end}`;
+        if (c.kind === "document") return "Note about the whole document";
+        return `Comment on ${c.label ?? c.kind}`;
+    };
+
     const composerPanel = composer && (
-        <div className="rounded-lg border border-cyan-500/40 bg-slate-950 p-3" data-composer="">
+        <div className="rounded-lg border border-cyan-500/40 bg-slate-950 p-3" data-composer="" data-composer-kind={composer.kind}>
             <div className="mb-2 flex items-center justify-between gap-2 text-xs text-cyan-100">
-                <span className="font-semibold">
-                    {composer.kind === "passage" && composer.block
-                        ? composer.block.start === composer.block.end ? `Comment on line ${composer.block.start}` : `Comment on lines ${composer.block.start}–${composer.block.end}`
-                        : "Note about the whole document"}
-                </span>
+                <span className="font-semibold">{composerTitle(composer)}</span>
                 <button type="button" onClick={closeComposer} aria-label="Cancel comment" className="rounded p-1 text-slate-400 hover:text-white"><X size={14} /></button>
             </div>
             {composer.kind === "passage" && (
@@ -520,7 +678,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             <textarea
                 value={composer.text}
                 onChange={(e) => setComposer((prev) => (prev ? { ...prev, text: e.target.value } : prev))}
-                placeholder={composer.kind === "passage" ? "What should change here?" : "Your note about the document as a whole"}
+                placeholder={composer.parentId ? "Your reply" : composer.kind === "document" ? "Your note about the document as a whole" : "What should change here?"}
                 autoFocus
                 aria-label="Comment text"
                 className="h-24 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/60"
@@ -530,64 +688,87 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             )}
             <div className="mt-2 flex justify-end gap-2">
                 <button type="button" onClick={closeComposer} className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500">Cancel</button>
-                <button
-                    type="button"
-                    onClick={() => void submitComposer()}
-                    disabled={composer.saving || !composer.text.trim()}
-                    className="inline-flex items-center gap-1 rounded-md border border-cyan-500/50 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 disabled:opacity-50"
-                >
+                <button type="button" onClick={() => void submitComposer()} disabled={composer.saving || !composer.text.trim()} className="inline-flex items-center gap-1 rounded-md border border-cyan-500/50 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 disabled:opacity-50">
                     {composer.saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Save comment
                 </button>
             </div>
         </div>
     );
 
+    const commentBody = (comment: ReviewComment) => (
+        editingComment?.id === comment.id ? (
+            <div>
+                <textarea value={editingComment.text} onChange={(e) => setEditingComment((prev) => (prev ? { ...prev, text: e.target.value } : prev))} aria-label="Edit comment" className="h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-500/60" />
+                {editingComment.error && <p role="alert" className="mt-1 text-[11px] text-rose-200">{editingComment.error}</p>}
+                <div className="mt-1 flex justify-end gap-2">
+                    <button type="button" onClick={() => setEditingComment(null)} className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-300">Cancel</button>
+                    <button type="button" onClick={() => void saveCommentEdit()} disabled={editingComment.saving || !editingComment.text.trim()} className="rounded border border-cyan-500/50 bg-cyan-500/20 px-2 py-1 text-[11px] text-cyan-100 disabled:opacity-50">Save</button>
+                </div>
+            </div>
+        ) : (
+            <p className={`whitespace-pre-wrap text-sm ${comment.resolved ? "text-slate-400 line-through decoration-slate-600" : "text-slate-200"}`}>{comment.body}</p>
+        )
+    );
+
+    const commentActions = (comment: ReviewComment, root: boolean) => (
+        isDraft && editingComment?.id !== comment.id && (
+            <div className="mt-1.5 flex flex-wrap justify-end gap-2 text-[11px] text-slate-400">
+                {root && <button type="button" onClick={() => startReply(comment)} className="inline-flex items-center gap-1 hover:text-white" data-comment-reply=""><CornerDownRight size={11} /> Reply</button>}
+                {root && <button type="button" onClick={() => void toggleResolved(comment)} className={`inline-flex items-center gap-1 hover:text-white ${comment.resolved ? "text-emerald-300" : ""}`} data-comment-resolve="" aria-pressed={Boolean(comment.resolved)}><Check size={11} /> {comment.resolved ? "Resolved" : "Resolve"}</button>}
+                <button type="button" onClick={() => setEditingComment({ id: comment.id, text: comment.body, saving: false })} className="inline-flex items-center gap-1 hover:text-white"><Pencil size={11} /> Edit</button>
+                <button type="button" onClick={() => void removeComment(comment)} className="inline-flex items-center gap-1 hover:text-rose-200"><Trash2 size={11} /> Delete</button>
+            </div>
+        )
+    );
+
     const commentList = (
         <ul className="space-y-2" data-comment-list="">
-            {comments.length === 0 && <li className="text-xs italic text-slate-500">No comments yet. Tap a passage's comment control, select text, or add a note about the whole document.</li>}
-            {comments.map((comment) => (
-                <li key={comment.id} className="rounded-md border border-slate-800 bg-slate-950/70 p-2.5" data-comment-id={comment.id}>
-                    <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
-                        {comment.kind === "passage" ? (
-                            <button type="button" onClick={() => jumpTo(showingPinned || !documentChanged ? comment.start_line : comment.anchor?.current_start_line ?? comment.start_line)} className="font-semibold text-cyan-200 hover:underline">
-                                {commentLabel(comment)}
-                            </button>
-                        ) : (
-                            <span className="font-semibold text-slate-200">{commentLabel(comment)}</span>
-                        )}
-                        <AnchorChip comment={comment} changed={documentChanged} />
-                        <span className="ml-auto">{formatWhen(comment.created_at)}</span>
-                    </div>
-                    {comment.kind === "passage" && (
-                        <blockquote className="mb-1.5 whitespace-pre-wrap border-l-2 border-slate-700 pl-2 font-mono text-[11px] text-slate-500">
-                            {comment.selection ? comment.selection : excerpt(comment.quote, 200)}
-                        </blockquote>
-                    )}
-                    {editing?.id === comment.id ? (
-                        <div>
-                            <textarea
-                                value={editing.text}
-                                onChange={(e) => setEditing((prev) => (prev ? { ...prev, text: e.target.value } : prev))}
-                                aria-label="Edit comment"
-                                className="h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-500/60"
-                            />
-                            {editing.error && <p role="alert" className="mt-1 text-[11px] text-rose-200">{editing.error}</p>}
-                            <div className="mt-1 flex justify-end gap-2">
-                                <button type="button" onClick={() => setEditing(null)} className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-300">Cancel</button>
-                                <button type="button" onClick={() => void saveEdit()} disabled={editing.saving || !editing.text.trim()} className="rounded border border-cyan-500/50 bg-cyan-500/20 px-2 py-1 text-[11px] text-cyan-100 disabled:opacity-50">Save</button>
-                            </div>
-                        </div>
-                    ) : (
-                        <p className="whitespace-pre-wrap text-sm text-slate-200">{comment.body}</p>
-                    )}
-                    {isDraft && editing?.id !== comment.id && (
-                        <div className="mt-1.5 flex justify-end gap-2 text-[11px] text-slate-400">
-                            <button type="button" onClick={() => setEditing({ id: comment.id, text: comment.body, saving: false })} className="inline-flex items-center gap-1 hover:text-white"><Pencil size={11} /> Edit</button>
-                            <button type="button" onClick={() => void removeComment(comment)} className="inline-flex items-center gap-1 hover:text-rose-200"><Trash2 size={11} /> Delete</button>
-                        </div>
-                    )}
+            {comments.length === 0 && (
+                <li className="text-xs italic text-slate-500">
+                    {mediaType === "markdown" || mediaType === "text" || mediaType === "code" || mediaType === "json"
+                        ? "No comments yet. Tap a passage's comment control, select text, or add a note about the whole document."
+                        : mediaType === "video" || mediaType === "audio" ? "No comments yet. Pause at a moment (or mark in/out) and use Comment at this time, or add a note about the whole file."
+                            : mediaType === "pdf" ? "No comments yet. Use Comment on page, or add a note about the whole file."
+                                : "No comments yet. Drag on an image to comment on a region, or add a note about the whole deliverable."}
                 </li>
-            ))}
+            )}
+            {roots.map((comment) => {
+                const index = pins.indexOf[comment.id];
+                const isSelected = selectedComment === comment.id;
+                return (
+                    <li key={comment.id} className={`rounded-md border p-2.5 ${isSelected ? "border-cyan-500/60 bg-cyan-500/5" : "border-slate-800 bg-slate-950/70"}`} data-comment-id={comment.id} data-comment-kind={comment.kind}>
+                        <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+                            {index && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-slate-950">{index}</span>}
+                            {comment.kind === "document" ? (
+                                <span className="font-semibold text-slate-200">{commentLabel(comment)}</span>
+                            ) : (
+                                <button type="button" onClick={() => jumpToComment(comment)} className="font-semibold text-cyan-200 hover:underline" data-comment-jump="">{commentLabel(comment)}</button>
+                            )}
+                            <AnchorChip comment={comment} changed={documentChanged} />
+                            {comment.resolved && <span className="rounded-full border border-emerald-500/40 px-1.5 text-[10px] text-emerald-200">resolved</span>}
+                            <span className="ml-auto">{formatWhen(comment.created_at)}</span>
+                        </div>
+                        {comment.kind === "passage" && (
+                            <blockquote className="mb-1.5 whitespace-pre-wrap border-l-2 border-slate-700 pl-2 font-mono text-[11px] text-slate-500">
+                                {comment.selection ? comment.selection : excerpt(comment.quote, 200)}
+                            </blockquote>
+                        )}
+                        {commentBody(comment)}
+                        {commentActions(comment, true)}
+                        {repliesOf(comment.id).length > 0 && (
+                            <ul className="mt-2 space-y-1.5 border-l-2 border-slate-800 pl-2.5" data-comment-replies="">
+                                {repliesOf(comment.id).map((reply) => (
+                                    <li key={reply.id} data-comment-id={reply.id}>
+                                        <div className="mb-0.5 flex items-center gap-1.5 text-[10px] text-slate-500"><CornerDownRight size={10} /> reply · {formatWhen(reply.created_at)}</div>
+                                        {commentBody(reply)}
+                                        {commentActions(reply, false)}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </li>
+                );
+            })}
         </ul>
     );
 
@@ -628,7 +809,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const finishPanel = finishOpen && isDraft && (
         <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3" data-finish-panel="">
             <p className="text-xs text-emerald-100">
-                Finishing sends every comment verbatim, with its quoted passage and this document&apos;s revision, into your Praxis chat. Finishing with no comments is fine.
+                Finishing sends every comment verbatim, with its {textual ? "quoted passage" : "exact spot (screen, region, moment or page)"} and this {mediaLabel(mediaType).toLowerCase()}&apos;s revision, into your Praxis chat. Finishing with no comments is fine.
             </p>
             <p className="mt-1 text-[11px] text-emerald-100/70" data-finish-scope="">
                 {delegateApproval
@@ -640,12 +821,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 <span>Approve once this change is made. Needs your verified session; the executor can record only this approval.</span>
             </label>
             <label className="mt-2 block text-[11px] font-semibold text-slate-300" htmlFor="review-summary-final">Summary (optional)</label>
-            <textarea
-                id="review-summary-final"
-                value={summary}
-                onChange={(e) => onSummaryChange(e.target.value)}
-                className="mt-1 h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-emerald-500/60"
-            />
+            <textarea id="review-summary-final" value={summary} onChange={(e) => onSummaryChange(e.target.value)} className="mt-1 h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-emerald-500/60" />
             {finishError && <p role="alert" className="mt-1 text-[11px] text-rose-200">{finishError}</p>}
             <div className="mt-2 flex justify-end gap-2">
                 <button type="button" onClick={() => setFinishOpen(false)} className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300">Keep reviewing</button>
@@ -656,40 +832,30 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         </div>
     );
 
+    const noteButtonLabel = textual && mediaType !== "design" ? "Add a note about the whole document" : "Add a note about the whole deliverable";
+
     const reviewPanel = (
         <div className="space-y-3" data-review-panel="">
+            {data && <DecisionCard data={data} viewedRevision={shownRevision} viewingCurrent={!showingPinned} onRefresh={load} directions={directions} compact />}
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100"><MessageSquare size={15} className="text-cyan-300" /> Your review</h2>
-                <span className={`rounded-full border px-2 py-0.5 text-[11px] ${isDraft ? "border-amber-500/40 bg-amber-500/10 text-amber-200" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"}`}>
-                    {isDraft ? "Draft" : "Finished"}
-                </span>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100"><MessageSquare size={15} className="text-cyan-300" /> {documentChanged && !isDraft ? "Previous review" : "Your review"}</h2>
+                <span className={`rounded-full border px-2 py-0.5 text-[11px] ${isDraft ? "border-amber-500/40 bg-amber-500/10 text-amber-200" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"}`}>{isDraft ? "Draft" : "Finished"}</span>
             </div>
             <div>{saveIndicator}</div>
             {submissionCard}
             {!isDraft && (
-                <button type="button" onClick={() => void startNewReview()} className="text-[11px] text-cyan-300 hover:underline">Start a new review of this document</button>
+                <button type="button" onClick={() => void startNewReview()} className="text-[11px] text-cyan-300 hover:underline">Start a new review of this {mediaLabel(mediaType).toLowerCase()}</button>
             )}
-            {isDraft && !documentChanged && !showSource && (
+            {isDraft && (!documentChanged || showingPinned) && !showSource && !editing && (
                 <button type="button" onClick={startDocumentNote} className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 hover:border-cyan-500/50">
-                    <MessageSquarePlus size={13} /> Add a note about the whole document
-                </button>
-            )}
-            {isDraft && documentChanged && showingPinned && !showSource && (
-                <button type="button" onClick={startDocumentNote} className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 hover:border-cyan-500/50">
-                    <MessageSquarePlus size={13} /> Add a note about the whole document
+                    <MessageSquarePlus size={13} /> {noteButtonLabel}
                 </button>
             )}
             <div className="hidden lg:block">{composerPanel}</div>
             {isDraft && (
                 <div>
                     <label className="block text-[11px] font-semibold text-slate-300" htmlFor="review-summary">Summary (optional, saved as you type)</label>
-                    <textarea
-                        id="review-summary"
-                        value={summary}
-                        onChange={(e) => onSummaryChange(e.target.value)}
-                        placeholder="Overall impression, decisions, what to do next…"
-                        className="mt-1 h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-500/60"
-                    />
+                    <textarea id="review-summary" value={summary} onChange={(e) => onSummaryChange(e.target.value)} placeholder="Overall impression, decisions, what to do next…" className="mt-1 h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-500/60" />
                 </div>
             )}
             {!isDraft && review?.summary && (
@@ -700,7 +866,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             )}
             <div>
                 <div className="mb-1.5 text-[11px] font-semibold text-slate-300">
-                    Comments ({comments.length}){passageComments.length > 0 && documentNotes.length > 0 ? ` · ${passageComments.length} passage, ${documentNotes.length} whole-document` : ""}
+                    Comments ({comments.length})
+                    {[passageComments.length > 0 && `${passageComments.length} passage`, mediaComments.length > 0 && `${mediaComments.length} on media`, documentNotes.length > 0 && `${documentNotes.length} whole-document`].filter(Boolean).length > 1
+                        ? ` · ${[passageComments.length > 0 && `${passageComments.length} passage`, mediaComments.length > 0 && `${mediaComments.length} on media`, documentNotes.length > 0 && `${documentNotes.length} whole-document`].filter(Boolean).join(", ")}`
+                        : ""}
                 </div>
                 {commentList}
             </div>
@@ -713,17 +882,39 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         </div>
     );
 
+    const navigatorTitle = mediaType === "markdown" ? "Contents" : mediaType === "design" ? "Screens" : "Markers";
     const outlinePanel = (
-        <nav aria-label="Document outline" className="text-xs" data-outline="">
-            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500"><ListTree size={12} /> Contents</div>
-            {outline.length === 0 ? (
-                <p className="text-slate-500">No headings.</p>
+        <nav aria-label={navigatorTitle} className="text-xs" data-outline="">
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500"><ListTree size={12} /> {navigatorTitle}</div>
+            {mediaType === "markdown" ? (
+                outline.length === 0 ? <p className="text-slate-500">No headings.</p> : (
+                    <ul className="space-y-1">
+                        {outline.map((entry) => (
+                            <li key={entry.id} style={{ paddingLeft: `${Math.max(0, entry.level - 1) * 10}px` }}>
+                                <button type="button" onClick={() => jumpTo(entry.line)} className="w-full truncate text-left text-slate-300 hover:text-cyan-200" title={entry.text}>{entry.text}</button>
+                            </li>
+                        ))}
+                    </ul>
+                )
+            ) : mediaType === "design" ? (
+                <ul className="space-y-1" data-navigator-screens="">
+                    {assets.filter((a) => a.role === "screen").map((a) => (
+                        <li key={a.asset_key}>
+                            <button type="button" onClick={() => { setFocusAsset(a.asset_key); setOutlineOpen(false); }} className={`w-full truncate text-left hover:text-cyan-200 ${focusAsset === a.asset_key ? "text-cyan-200" : "text-slate-300"}`} title={a.label ?? a.asset_key}>
+                                {a.label} <span className="text-slate-500">{[a.direction, a.appearance].filter(Boolean).join(" · ")}</span>
+                                {pins.byAsset[a.asset_key]?.length ? <span className="ml-1 rounded-full bg-amber-400/20 px-1 text-[10px] text-amber-200">{pins.byAsset[a.asset_key].length}</span> : null}
+                            </button>
+                        </li>
+                    ))}
+                </ul>
             ) : (
-                <ul className="space-y-1">
-                    {outline.map((entry) => (
-                        <li key={entry.id} style={{ paddingLeft: `${Math.max(0, entry.level - 1) * 10}px` }}>
-                            <button type="button" onClick={() => jumpTo(entry.line)} className="w-full truncate text-left text-slate-300 hover:text-cyan-200" title={entry.text}>
-                                {entry.text}
+                <ul className="space-y-1" data-navigator-markers="">
+                    {mediaComments.length === 0 && <li className="text-slate-500">No markers yet.</li>}
+                    {mediaComments.map((c) => (
+                        <li key={c.id}>
+                            <button type="button" onClick={() => jumpToComment(c)} className="flex w-full items-center gap-1.5 text-left text-slate-300 hover:text-cyan-200">
+                                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-slate-950">{pins.indexOf[c.id]}</span>
+                                <span className="truncate">{commentLabel(c)}</span>
                             </button>
                         </li>
                     ))}
@@ -732,87 +923,164 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         </nav>
     );
 
+    /** The stage for the current media type and revision. */
+    const stage = (() => {
+        if (!data || !doc) return null;
+        if (editing && data.revision) {
+            return <TextEditor content={currentContent} mediaType={mediaType} baseRevisionHash={data.revision.content_hash} onSave={onEditSave} onCancel={() => setEditing(false)} onReload={() => { setEditing(false); void load(); }} />;
+        }
+        const revisionId = shownRevision?.id ?? null;
+        const src = primary ? assetUrl(doc.id, primary.asset_key, { revision: revisionId }) : rawDocumentUrl(doc.id, { revision: revisionId });
+        if (showSource && textual) {
+            return <PlainText content={shownContent} mono counts={commentCounts} selected={selected} />;
+        }
+        switch (mediaType) {
+            case "markdown":
+                return <DocumentMarkdown content={shownContent} selected={selected} commentCounts={commentCounts} interactive={canAnnotate} onBlockSelect={startPassageComment} />;
+            case "text":
+            case "code":
+            case "json":
+                return <PlainText content={shownContent} mono={mediaType !== "text"} counts={commentCounts} selected={selected} onLine={canAnnotate ? (n) => startPassageComment({ start: n, end: n }) : undefined} />;
+            case "html":
+                return primary ? <PrototypeViewer src={src} assetKey={primary.asset_key} title={doc.title} pins={(pins.byAsset[primary.asset_key] ?? []).filter((p) => p.point).map((p) => ({ id: p.id, index: p.index, x: p.point!.x, y: p.point!.y, viewport: p.viewport, label: p.label, resolved: p.resolved }) as PointPin)} selectedPinId={selectedComment} onSelectPin={setSelectedComment} annotate={canAnnotate} onPoint={(point) => startPoint(primary.asset_key, point)} onLoadState={mediaLoad} /> : null;
+            case "image":
+            case "svg":
+                return primary ? <ImageViewer src={src} alt={doc.title} assetKey={primary.asset_key} width={primary.width} height={primary.height} pins={pins.byAsset[primary.asset_key] ?? []} selectedPinId={selectedComment} onSelectPin={setSelectedComment} annotate={canAnnotate} onRegion={(region) => startRegion(primary.asset_key, region)} onLoadState={mediaLoad} /> : null;
+            case "video":
+            case "audio":
+                return primary ? <VideoViewer src={src} assetKey={primary.asset_key} kind={mediaType} mimeType={primary.mime_type} markers={pins.time[primary.asset_key] ?? []} selectedMarkerId={selectedComment} onSelectMarker={setSelectedComment} annotate={canAnnotate} onTimestamp={startTimestamp} onLoadState={mediaLoad} seekTo={seekTo} /> : null;
+            case "pdf":
+                return primary ? <PdfViewer src={src} assetKey={primary.asset_key} markers={pins.pages[primary.asset_key] ?? []} selectedMarkerId={selectedComment} onSelectMarker={setSelectedComment} annotate={canAnnotate} onPage={startPage} onLoadState={mediaLoad} requestedPage={requestedPage} /> : null;
+            case "design":
+                return data.manifest ? (
+                    <DesignPackageViewer
+                        documentId={doc.id}
+                        revisionId={revisionId}
+                        manifest={data.manifest}
+                        assets={assets}
+                        pins={{ byAsset: pins.byAsset, selectedId: selectedComment, onSelect: setSelectedComment }}
+                        annotate={canAnnotate}
+                        onScreenRegion={startRegion}
+                        onPreviewPoint={startPoint}
+                        onLoadState={mediaLoad}
+                        requestedAssetKey={focusAsset}
+                        selectedDirection={selectedDirection}
+                    />
+                ) : <PlainText content={shownContent} mono counts={commentCounts} selected={selected} />;
+            default:
+                return <DocumentMarkdown content={shownContent} selected={selected} commentCounts={commentCounts} interactive={canAnnotate} onBlockSelect={startPassageComment} />;
+        }
+    })();
+
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30" data-document-review-page="">
+        <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30" data-document-review-page="" data-media-type={mediaType}>
             <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
-                {/* Phone: back link + actions on the first row, the title block on its own full-width row below. */}
-                <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-                    <Link href={backHref} className="flex shrink-0 items-center gap-1.5 text-sm text-slate-400 hover:text-white">
-                        <ArrowLeft size={16} /> {doc?.task_id ? "Task" : "Back"}
+                {/* Row 1: where you are and what you can do. Row 2: what this is. */}
+                <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-2">
+                    <div className="hidden min-w-0 sm:block">
+                        <Breadcrumbs
+                            parents={doc?.task_id
+                                ? [{ label: "Task Board", href: "/task-board" }, { label: task?.title || "Task", href: `/task/${doc.task_id}` }]
+                                : doc?.project_id
+                                    ? [{ label: project?.name || "Project", href: `/project/${doc.project_id}` }]
+                                    : [{ label: "Reviews", href: "/documents" }]}
+                            current={doc?.title || "Document"}
+                        />
+                    </div>
+                    {/* Phone: one step back instead of the full trail. */}
+                    <Link href={doc?.task_id ? `/task/${doc.task_id}` : doc?.project_id ? `/project/${doc.project_id}` : "/documents"} className="max-w-[55%] truncate text-sm text-slate-400 hover:text-white sm:hidden" data-back-link="">
+                        ← {doc?.task_id ? task?.title || "Task" : doc?.project_id ? project?.name || "Project" : "Reviews"}
                     </Link>
-                    {/* The Dashboard's own list of everything registered for review — the way in when the link came from chat rather than a task. */}
                     <Link href="/documents" className="flex shrink-0 items-center gap-1 text-sm text-slate-400 hover:text-white" data-all-documents-link="">
                         <FileCheck2 size={14} /> Reviews
                     </Link>
-                    <div className="hidden h-5 w-px bg-slate-700 sm:block" />
-                    <div className="order-last min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-0">
-                        <h1 className="text-base font-semibold leading-snug text-white sm:truncate" title={doc?.title}>{doc?.title || "Document"}</h1>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
-                            <DocumentStatusBadge status={data?.review_status} prefix />
-                            {doc?.kind && <span className="uppercase tracking-wide">{doc.kind}</span>}
-                            {asOf && <span>as of {asOf}</span>}
-                            {shownRevision && <span title={shownRevision.content_hash}>rev {shownRevision.content_hash.slice(0, 8)} · captured {formatWhen(shownRevision.captured_at)}</span>}
-                            {task && (
-                                <span>
-                                    from <Link href={`/task/${task.id}`} className="text-cyan-300 hover:underline">{task.title || task.id}</Link>
-                                    {/* The task's execution / QA state, labelled so it never reads as the document's own decision. */}
-                                    {(task.status || task.status_message) && (
-                                        <span className="ml-1.5 rounded border border-slate-700 px-1.5 py-px text-slate-400" data-task-status="" title="Status of the task that produced this document (execution and QA), not your decision on the document">
-                                            Task: {[task.status, task.status_message].filter(Boolean).join(" · ")}
-                                        </span>
-                                    )}
-                                </span>
-                            )}
-                            {project && (
-                                <span>
-                                    in <Link href={`/project/${project.id}`} className="text-cyan-300 hover:underline">{project.name || project.id}</Link>
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2 text-xs">
-                        <button type="button" onClick={() => setShowSource((v) => !v)} className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 ${showSource ? "border-cyan-500/60 text-cyan-200" : "border-slate-700 text-slate-300 hover:border-slate-500"}`} aria-pressed={showSource}>
-                            {showSource ? <FileText size={13} /> : <FileCode size={13} />} {showSource ? "Rendered" : "Source"}
-                        </button>
+                    <div className="ml-auto flex max-w-full shrink-0 items-center gap-1.5 overflow-x-auto text-xs [scrollbar-width:none] sm:flex-wrap sm:overflow-visible" data-header-actions="">
+                        {canEdit && (
+                            <button type="button" onClick={() => { setEditing(true); setShowSource(false); setComposer(null); }} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-cyan-500/50 bg-cyan-500/10 px-2.5 py-1.5 text-cyan-100 hover:bg-cyan-500/20" data-edit-button="">
+                                <Pencil size={13} /> Edit
+                            </button>
+                        )}
+                        {textual && !editing && (
+                            <button type="button" onClick={() => setShowSource((v) => !v)} className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-2.5 py-1.5 ${showSource ? "border-cyan-500/60 text-cyan-200" : "border-slate-700 text-slate-300 hover:border-slate-500"}`} aria-pressed={showSource}>
+                                {showSource ? <FileText size={13} /> : <FileCode size={13} />} {showSource ? "Rendered" : "Source"}
+                            </button>
+                        )}
+                        {data && (
+                            <button type="button" onClick={() => setEvidenceOpen(true)} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500" data-evidence-button="">
+                                <ShieldCheck size={13} /> Evidence
+                            </button>
+                        )}
                         {doc && (
-                            <a href={rawDocumentUrl(doc.id, { revision: showingPinned ? review?.revision_id : null, download: true })} className="inline-flex items-center gap-1 rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
+                            <a href={rawDocumentUrl(doc.id, { revision: showingPinned ? review?.revision_id : null, download: true })} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
                                 <Download size={13} /> Download
                             </a>
                         )}
-                        <button type="button" onClick={() => void copyLink()} className="inline-flex items-center gap-1 rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
+                        <button type="button" onClick={() => void copyLink()} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
                             {linkCopied ? <Check size={13} className="text-emerald-300" /> : null} {linkCopied ? "Link copied" : "Copy link"}
                         </button>
+                    </div>
+                </div>
+                <div className="mx-auto max-w-[1600px] px-4 pb-2.5 pt-1.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${mediaTone(mediaType)}`} data-media-chip="">
+                            <MediaIcon type={mediaType} size={12} /> {mediaLabel(mediaType)}
+                        </span>
+                        <h1 className="min-w-0 truncate text-base font-semibold leading-snug text-white" title={doc?.title}>{doc?.title || "Document"}</h1>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+                        <DocumentStatusBadge status={data?.review_status} prefix />
+                        {doc?.kind && doc.kind !== mediaType && <span className="uppercase tracking-wide">{doc.kind}</span>}
+                        {asOf && <span>as of {asOf}</span>}
+                        {shownRevision && (
+                            <span title={shownRevision.content_hash} data-revision-chip="">
+                                rev {shownRevision.content_hash.slice(0, 8)} · captured {formatWhen(shownRevision.captured_at)}{shownRevision.source === "nexus_edit" ? " · edited in Nexus" : ""}
+                            </span>
+                        )}
+                        {data?.readiness && (
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-px ${data.readiness.ready ? "border-emerald-500/40 text-emerald-200" : "border-rose-500/40 text-rose-200"}`} data-readiness-chip={data.readiness.ready ? "ready" : "not-ready"} title="Whether every required visual of this revision is servable">
+                                {data.readiness.ready ? <CheckCircle2 size={10} /> : <AlertTriangle size={10} />} visuals {data.readiness.required_ok}/{data.readiness.required_total}
+                            </span>
+                        )}
+                        {task && (
+                            <span>
+                                from <Link href={`/task/${task.id}`} className="text-cyan-300 hover:underline">{task.title || task.id}</Link>
+                                {(task.status || task.status_message) && (
+                                    <span className="ml-1.5 rounded border border-slate-700 px-1.5 py-px text-slate-400" data-task-status="" title="Status of the task that produced this document (execution and QA), not your decision on the document">
+                                        Task: {[task.status, task.status_message].filter(Boolean).join(" · ")}
+                                    </span>
+                                )}
+                            </span>
+                        )}
+                        {project && <span>in <Link href={`/project/${project.id}`} className="text-cyan-300 hover:underline">{project.name || project.id}</Link></span>}
                     </div>
                 </div>
                 {/* Phone controls: explicit buttons, no hover required. */}
                 <div className="flex gap-2 border-t border-slate-800/80 px-4 py-2 lg:hidden">
                     <button type="button" onClick={() => setOutlineOpen(true)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 py-2 text-xs text-slate-200">
-                        <ListTree size={13} /> Contents
+                        <ListTree size={13} /> {navigatorTitle}
                     </button>
                     <button type="button" onClick={() => setReviewOpen(true)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 py-2 text-xs text-cyan-100" data-open-review="">
-                        <MessageSquare size={13} /> Review ({comments.length})
+                        <MessageSquare size={13} /> Review &amp; decide ({comments.length})
                     </button>
                 </div>
             </header>
 
-            <div className="mx-auto max-w-[1400px] px-4 py-5 lg:grid lg:grid-cols-[210px_minmax(0,1fr)_360px] lg:gap-6">
+            <div className="mx-auto max-w-[1600px] px-4 py-5 lg:grid lg:grid-cols-[200px_minmax(0,1fr)_380px] lg:gap-6">
                 <aside className="hidden lg:block">
                     <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pr-2">{outlinePanel}</div>
                 </aside>
 
-                <article className="min-w-0">
+                <article className="min-w-0" data-stage="">
                     {loadError && (
                         <div role="alert" className="mb-4 flex items-start gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-200">
                             <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {loadError}
                             <button type="button" onClick={() => void load()} className="ml-auto underline">Retry</button>
                         </div>
                     )}
-                    {!data && !loadError && (
-                        <div className="flex min-h-[320px] items-center justify-center text-cyan-300"><Loader2 className="animate-spin" size={28} /></div>
-                    )}
+                    {!data && !loadError && <div className="flex min-h-[320px] items-center justify-center text-cyan-300"><Loader2 className="animate-spin" size={28} /></div>}
                     {data && data.file_state !== "ok" && (
                         <div role="status" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100">
-                            The file on disk is currently unavailable ({data.file_error || data.file_state}). Showing the last captured revision.
+                            The file on disk is currently unavailable ({data.file_error || data.file_state}). Showing the last captured revision{VISUAL_NOTE(mediaType)}.
                         </div>
                     )}
                     {data && documentChanged && (
@@ -827,20 +1095,18 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             <button type="button" onClick={() => setViewRevision(showingPinned ? "current" : "pinned")} className="rounded-md border border-amber-400/50 px-2 py-1 text-amber-100 hover:bg-amber-500/20">
                                 {showingPinned ? "View current file" : "View reviewed revision"}
                             </button>
+                            {!isDraft && !showingPinned && (
+                                <button type="button" onClick={() => void startNewReview()} className="rounded-md border border-cyan-400/50 px-2 py-1 text-cyan-100 hover:bg-cyan-500/20">Review this revision</button>
+                            )}
                         </div>
                     )}
                     {data && <OutgoingCard data={data} viewingCurrent={!showingPinned} onRefresh={load} />}
-                    {data && <DecisionCard data={data} viewedRevision={shownRevision} viewingCurrent={!showingPinned} onRefresh={load} />}
-                    {data && showSource && (
-                        <pre className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950 p-4 font-mono text-xs leading-relaxed text-slate-300" data-source-view="">{shownContent}</pre>
-                    )}
-                    {data && !showSource && (
-                        <DocumentMarkdown content={shownContent} selected={selected} commentCounts={commentCounts} interactive={canAnnotate} onBlockSelect={startPassageComment} />
-                    )}
+                    {/* The decision heads the review rail (desktop) and the Review & decide drawer (phone), so the stage stays the visual. */}
+                    {stage}
                 </article>
 
                 <aside className="hidden lg:block">
-                    <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-lg border border-slate-800 bg-slate-900/40 p-3">{reviewPanel}</div>
+                    <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-slate-800 bg-slate-900/40 p-3">{reviewPanel}</div>
                 </aside>
             </div>
 
@@ -851,10 +1117,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 </div>
             )}
 
-            {/* Phone: outline drawer */}
+            {/* Phone: navigator drawer */}
             {outlineOpen && (
-                <div className="fixed inset-0 z-[80] lg:hidden" role="dialog" aria-label="Contents">
-                    <button type="button" aria-label="Close contents" onClick={() => setOutlineOpen(false)} className="absolute inset-0 bg-black/60" />
+                <div className="fixed inset-0 z-[80] lg:hidden" role="dialog" aria-label={navigatorTitle}>
+                    <button type="button" aria-label={`Close ${navigatorTitle.toLowerCase()}`} onClick={() => setOutlineOpen(false)} className="absolute inset-0 bg-black/60" />
                     <div className="absolute inset-x-0 bottom-0 max-h-[75vh] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-8">
                         <div className="mb-2 flex justify-end"><button type="button" onClick={() => setOutlineOpen(false)} aria-label="Close" className="rounded p-1 text-slate-400"><X size={16} /></button></div>
                         {outlinePanel}
@@ -872,6 +1138,12 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     </div>
                 </div>
             )}
+
+            {data && <EvidenceDrawer data={data} assets={assets} loadStates={loadStates} open={evidenceOpen} onClose={() => setEvidenceOpen(false)} />}
         </main>
     );
+}
+
+function VISUAL_NOTE(mediaType: MediaType): string {
+    return ["markdown", "text", "code", "json"].includes(mediaType) ? "" : "; its assets still serve from the review store";
 }

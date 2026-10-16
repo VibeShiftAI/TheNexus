@@ -46,6 +46,40 @@ const DELIVERABLE_COLUMNS = [
     ['blocking_task_ids', "TEXT NOT NULL DEFAULT '[]'"],
     ['requires_review', 'INTEGER NOT NULL DEFAULT 0'],
     ['intended_action', "TEXT NOT NULL DEFAULT 'none'"],
+    // Media model (2026-10-16, docs/contracts/review-media-and-design-packages.md). Legacy rows are Markdown.
+    ['media_type', "TEXT NOT NULL DEFAULT 'markdown'"],
+    ['mime_type', "TEXT NOT NULL DEFAULT 'text/markdown'"],
+];
+
+/**
+ * Columns added to review_document_revisions for the media model. `source` is
+ * `capture` for bytes read from the producer's file and `nexus_edit` for a
+ * revision written by the reviewer's own edit; `asset_count` is 1 for a single
+ * file and members + 1 for a design package, whose parsed `manifest` is kept
+ * with the revision so the viewer never depends on the file on disk.
+ */
+const REVISION_MEDIA_COLUMNS = [
+    ['media_type', "TEXT NOT NULL DEFAULT 'markdown'"],
+    ['mime_type', "TEXT NOT NULL DEFAULT 'text/markdown'"],
+    ['source', "TEXT NOT NULL DEFAULT 'capture'"],
+    ['edited_by', 'TEXT'],
+    ['asset_count', 'INTEGER NOT NULL DEFAULT 1'],
+    ['width', 'INTEGER'],
+    ['height', 'INTEGER'],
+    ['manifest', 'TEXT'],
+];
+
+/**
+ * Columns added to document_review_comments for media anchors and threads
+ * (contract §3). `anchor` is the JSON region/time/page/screen anchor,
+ * `target_label` the human label the reviewer saw, `parent_id` a reply's root
+ * in the same review, `resolved_at` the reviewer's own bookkeeping.
+ */
+const COMMENT_MEDIA_COLUMNS = [
+    ['anchor', 'TEXT'],
+    ['target_label', 'TEXT'],
+    ['parent_id', 'TEXT'],
+    ['resolved_at', 'TEXT'],
 ];
 
 const REVIEW_STATUSES = ['needs_review', 'changes_requested', 'approved', 'reference'];
@@ -70,6 +104,9 @@ const LATEST_DECISION_JOIN = `LEFT JOIN review_document_decisions ld ON ld.id = 
 const DECISION_COLUMNS = [
     ['recorded_by', "TEXT NOT NULL DEFAULT 'operator'"],
     ['provenance', 'TEXT'],
+    // What the decision chose, when the deliverable offered a choice (a design package's direction). JSON, contract §3.3.
+    // Stored as selection_json (the comments table already has a free-text `selection`); read back as `selection`.
+    ['selection_json', 'TEXT'],
 ];
 
 /**
@@ -102,6 +139,60 @@ function migrateDecisionColumns(db) {
 
 function migrateReviewColumns(db) {
     addMissingColumns(db, 'document_reviews', REVIEW_COLUMNS);
+}
+
+function migrateMediaColumns(db) {
+    addMissingColumns(db, 'review_document_revisions', REVISION_MEDIA_COLUMNS);
+    addMissingColumns(db, 'document_review_comments', COMMENT_MEDIA_COLUMNS);
+    db.exec(`CREATE TABLE IF NOT EXISTS review_document_revision_assets (
+        id TEXT PRIMARY KEY,
+        revision_id TEXT NOT NULL REFERENCES review_document_revisions(id) ON DELETE CASCADE,
+        document_id TEXT NOT NULL REFERENCES review_documents(id) ON DELETE CASCADE,
+        asset_key TEXT NOT NULL,
+        role TEXT NOT NULL,
+        path TEXT NOT NULL,
+        media_type TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        byte_length INTEGER NOT NULL,
+        content_hash TEXT NOT NULL,
+        label TEXT,
+        direction TEXT,
+        appearance TEXT,
+        viewport TEXT,
+        state TEXT,
+        before_asset_key TEXT,
+        "order" INTEGER NOT NULL DEFAULT 0,
+        width INTEGER,
+        height INTEGER,
+        created_at TEXT NOT NULL,
+        UNIQUE(revision_id, asset_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_review_document_revision_assets_revision
+        ON review_document_revision_assets(revision_id, "order");
+    CREATE TRIGGER IF NOT EXISTS review_document_revision_assets_immutable
+        BEFORE UPDATE ON review_document_revision_assets
+        BEGIN SELECT RAISE(ABORT, 'revision assets are immutable'); END;
+
+    -- A reviewer edit: which revision it started from, which it produced, who made it (contract §4). Append-only.
+    CREATE TABLE IF NOT EXISTS review_document_edits (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL REFERENCES review_documents(id) ON DELETE CASCADE,
+        base_revision_id TEXT NOT NULL REFERENCES review_document_revisions(id),
+        result_revision_id TEXT NOT NULL REFERENCES review_document_revisions(id),
+        actor_id TEXT NOT NULL,
+        authority TEXT NOT NULL,
+        summary TEXT NOT NULL DEFAULT '',
+        client_edit_id TEXT,
+        byte_length INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_review_document_edits_client
+        ON review_document_edits(document_id, client_edit_id) WHERE client_edit_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_review_document_edits_document
+        ON review_document_edits(document_id, created_at);
+    CREATE TRIGGER IF NOT EXISTS review_document_edits_append_only
+        BEFORE UPDATE ON review_document_edits
+        BEGIN SELECT RAISE(ABORT, 'document edits are append-only'); END;`);
 }
 
 function initializeDocumentReviews(db) {
@@ -257,12 +348,13 @@ function initializeDocumentReviews(db) {
         ON review_document_registrations(document_id, created_at);`);
     migrateDecisionColumns(db);
     migrateReviewColumns(db);
+    migrateMediaColumns(db);
     initializeDocumentOutgoing(db);
 }
 
-const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids']);
+const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest']);
 /** JSON columns whose absence reads as null rather than an empty object. */
-const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance']);
+const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance', 'anchor', 'selection_json', 'manifest']);
 const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created', 'approval_delegated']);
 
 function parseJson(value, fallback) {
@@ -280,6 +372,7 @@ function rowOut(row) {
     for (const key of BOOLEAN_COLUMNS) {
         if (typeof out[key] === 'number') out[key] = out[key] !== 0;
     }
+    if ('selection_json' in out) { out.selection = out.selection_json; delete out.selection_json; }
     return out;
 }
 
@@ -409,7 +502,7 @@ function createDocumentReviewStore(db) {
         updateDocument(id, updates) {
             return db.transaction(() => {
                 const before = this.getDocument(id);
-                const bindingFields = ['path', 'project_id', 'task_id', 'requires_review', 'intended_action', 'deliverable_key', 'current_revision_id'];
+                const bindingFields = ['path', 'project_id', 'task_id', 'requires_review', 'intended_action', 'deliverable_key', 'current_revision_id', 'media_type'];
                 if (before && (bindingFields.some(key => key in updates && updates[key] !== before[key])
                     || ('metadata' in updates && ['member_id', 'stakeholder_project_id', 'commitment_id', 'source_refs'].some(key =>
                         JSON.stringify(updates.metadata?.[key] ?? null) !== JSON.stringify(before.metadata?.[key] ?? null))))) {
@@ -423,13 +516,14 @@ function createDocumentReviewStore(db) {
         // ── Revisions ────────────────────────────────────────────────────
         getRevision(id) { return one('SELECT * FROM review_document_revisions WHERE id = ?', id); },
         getRevisionMeta(id) {
-            return one('SELECT id, document_id, content_hash, byte_length, line_count, file_mtime, captured_at FROM review_document_revisions WHERE id = ?', id);
+            return one(`SELECT id, document_id, content_hash, byte_length, line_count, file_mtime, captured_at,
+                media_type, mime_type, source, edited_by, asset_count, width, height FROM review_document_revisions WHERE id = ?`, id);
         },
         findRevisionByHash(documentId, hash) {
             return one('SELECT * FROM review_document_revisions WHERE document_id = ? AND content_hash = ?', documentId, hash);
         },
         insertRevision(rev) {
-            const row = { id: rev.id || randomUUID(), captured_at: now(), ...rev };
+            const row = { id: rev.id || randomUUID(), captured_at: now(), media_type: 'markdown', mime_type: 'text/markdown', source: 'capture', asset_count: 1, ...rev };
             insert('review_document_revisions', row);
             return this.getRevision(row.id);
         },
@@ -444,8 +538,43 @@ function createDocumentReviewStore(db) {
             return db.prepare('SELECT exact_content FROM review_document_revision_exact WHERE revision_id = ?').get(revisionId)?.exact_content ?? null;
         },
         listRevisionMeta(documentId) {
-            return many(`SELECT id, document_id, content_hash, byte_length, line_count, file_mtime, captured_at
+            return many(`SELECT id, document_id, content_hash, byte_length, line_count, file_mtime, captured_at,
+                media_type, mime_type, source, edited_by, asset_count, width, height
                 FROM review_document_revisions WHERE document_id = ? ORDER BY captured_at ASC, rowid ASC`, documentId);
+        },
+
+        // ── Revision assets (design package members and the primary asset) ─
+        insertRevisionAssets(revisionId, documentId, assets) {
+            const ts = now();
+            for (const asset of assets) {
+                insert('review_document_revision_assets', {
+                    id: randomUUID(), revision_id: revisionId, document_id: documentId,
+                    asset_key: asset.asset_key, role: asset.role, path: asset.path, media_type: asset.media_type, mime_type: asset.mime_type,
+                    byte_length: asset.byte_length, content_hash: asset.content_hash, label: asset.label ?? null,
+                    direction: asset.direction ?? null, appearance: asset.appearance ?? null, viewport: asset.viewport ?? null, state: asset.state ?? null,
+                    before_asset_key: asset.before_asset_key ?? null, order: asset.order ?? 0, width: asset.width ?? null, height: asset.height ?? null,
+                    created_at: ts,
+                });
+            }
+        },
+        listRevisionAssets(revisionId) {
+            return many('SELECT * FROM review_document_revision_assets WHERE revision_id = ? ORDER BY "order" ASC, rowid ASC', revisionId);
+        },
+        getRevisionAsset(revisionId, assetKey) {
+            return one('SELECT * FROM review_document_revision_assets WHERE revision_id = ? AND asset_key = ?', revisionId, assetKey);
+        },
+
+        // ── Edits (append-only) ─────────────────────────────────────────
+        insertEdit(edit) {
+            const row = { id: edit.id || randomUUID(), summary: '', client_edit_id: null, ...edit, created_at: now() };
+            insert('review_document_edits', row);
+            return one('SELECT * FROM review_document_edits WHERE id = ?', row.id);
+        },
+        findEditByClientId(documentId, clientEditId) {
+            return one('SELECT * FROM review_document_edits WHERE document_id = ? AND client_edit_id = ?', documentId, clientEditId);
+        },
+        listEdits(documentId) {
+            return many('SELECT * FROM review_document_edits WHERE document_id = ? ORDER BY created_at ASC, rowid ASC', documentId);
         },
 
         // ── Decisions (append-only) ──────────────────────────────────────
@@ -470,7 +599,8 @@ function createDocumentReviewStore(db) {
                 ORDER BY created_at ASC, rowid ASC LIMIT 1`, documentId, reviewId);
         },
         insertDecision(decision) {
-            const row = { id: decision.id || randomUUID(), note: '', recorded_by: 'operator', provenance: null, ...decision, created_at: now() };
+            const { selection, ...rest } = decision;
+            const row = { id: decision.id || randomUUID(), note: '', recorded_by: 'operator', provenance: null, selection_json: selection ?? null, ...rest, created_at: now() };
             insert('review_document_decisions', row);
             return this.getDecision(row.id);
         },
@@ -524,7 +654,12 @@ function createDocumentReviewStore(db) {
             return this.getComment(row.id);
         },
         updateComment(id, updates) { update('document_review_comments', id, updates); return this.getComment(id); },
-        deleteComment(id) { return db.prepare('DELETE FROM document_review_comments WHERE id = ?').run(id).changes; },
+        deleteComment(id) {
+            return db.transaction(() => {
+                db.prepare('DELETE FROM document_review_comments WHERE parent_id = ?').run(id);
+                return db.prepare('DELETE FROM document_review_comments WHERE id = ?').run(id).changes;
+            })();
+        },
 
         // ── Submissions (delivery outbox) ────────────────────────────────
         getSubmission(id) { return one('SELECT * FROM document_review_submissions WHERE id = ?', id); },

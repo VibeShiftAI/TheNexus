@@ -12,7 +12,76 @@ export type DocumentStatusFilter = DocumentReviewStatus | 'all';
 export type IntendedAction = 'none' | 'implement' | 'send' | 'publish';
 export type DecisionKind = 'approve' | 'request_changes';
 
-export const DOCUMENT_KINDS = ['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other'] as const;
+export const DOCUMENT_KINDS = ['document', 'report', 'spec', 'plan', 'research', 'walkthrough', 'other', 'design', 'image', 'video', 'audio', 'prototype', 'pdf', 'data'] as const;
+
+/** Media model (contract docs/contracts/review-media-and-design-packages.md §1). */
+export type MediaType = 'markdown' | 'text' | 'code' | 'json' | 'html' | 'svg' | 'image' | 'video' | 'audio' | 'pdf' | 'design';
+export const MEDIA_TYPES: readonly MediaType[] = ['markdown', 'text', 'code', 'json', 'html', 'svg', 'image', 'video', 'audio', 'pdf', 'design'];
+export const EDITABLE_MEDIA: ReadonlySet<MediaType> = new Set<MediaType>(['markdown', 'text', 'code', 'json', 'html', 'svg', 'design']);
+export const VISUAL_MEDIA: ReadonlySet<MediaType> = new Set<MediaType>(['design', 'image', 'video', 'audio', 'pdf', 'html', 'svg']);
+
+export type AssetRole = 'primary' | 'screen' | 'before' | 'tokens' | 'preview' | 'evidence';
+
+/** One asset of a revision: the file itself (`primary`) or a design package member, addressed by asset key. */
+export interface RevisionAsset {
+    asset_key: string;
+    role: AssetRole;
+    path: string;
+    media_type: MediaType;
+    mime_type: string;
+    byte_length: number;
+    content_hash: string;
+    label: string | null;
+    direction: string | null;
+    appearance: 'light' | 'dark' | null;
+    viewport: string | null;
+    state: string | null;
+    before_asset_key: string | null;
+    order: number;
+    width: number | null;
+    height: number | null;
+}
+
+export interface DesignDirection { id: string; title: string; summary?: string | null; recommended?: boolean }
+export interface DesignScreen {
+    id: string; title: string; file: string; before: string | null;
+    direction: string | null; appearance: 'light' | 'dark' | null; viewport: string | null; state: string | null; notes: string | null;
+}
+export interface DesignManifest {
+    format: 'nexus-design-package/1';
+    title: string;
+    summary: string | null;
+    directions: DesignDirection[];
+    screens: DesignScreen[];
+    tokens: string | null;
+    previews: { id: string; title: string; file: string; viewport: string | null }[];
+    evidence: { id: string; label: string; file: string }[];
+    source: { provider?: string; project_id?: string; project_url?: string; session_id?: string; stage?: string } | null;
+}
+
+export interface ReadinessCheck {
+    asset_key: string; role: AssetRole; required: boolean; ok: boolean;
+    status: 'servable' | 'missing' | 'changed' | 'undecodable' | 'too_large';
+    byte_length: number; content_hash: string; mime_type: string; media_type: MediaType; source?: 'blob' | 'disk';
+}
+export interface Readiness {
+    document_id: string; revision_id: string; content_hash: string; media_type: MediaType;
+    ready: boolean; checked_at: string; checks: ReadinessCheck[]; required_total: number; required_ok: number;
+}
+
+/** Comment kinds beyond Markdown passages, each with the anchor it carries (contract §3.1). */
+export type MediaCommentKind = 'region' | 'point' | 'time' | 'page' | 'screen';
+export type CommentKind = 'passage' | 'document' | MediaCommentKind;
+export const MEDIA_COMMENT_KINDS: ReadonlySet<string> = new Set(['region', 'point', 'time', 'page', 'screen']);
+export interface Region { x: number; y: number; w: number; h: number }
+export type MediaAnchor =
+    | ({ asset_key: string } & Region)
+    | { asset_key: string; x: number; y: number; viewport?: string }
+    | { asset_key: string; t_start: number; t_end?: number }
+    | ({ asset_key: string; page: number } & Partial<Region>)
+    | { asset_key: string; region?: Region };
+/** The stored anchor as the server returns it (with the asset hash it was pinned to). */
+export type StoredAnchor = MediaAnchor & { asset_hash?: string };
 
 export interface DocumentBlockingTask {
     id: string;
@@ -41,6 +110,9 @@ export interface DocumentRecord {
     requires_review?: boolean;
     blocking_task_ids?: string[];
     intended_action?: IntendedAction;
+    /** Media model; absent on an API that predates it (then Markdown). */
+    media_type?: MediaType;
+    mime_type?: string;
 }
 
 export interface DocumentDecision {
@@ -54,6 +126,8 @@ export interface DocumentDecision {
     note: string;
     client_decision_id: string | null;
     intended_action: IntendedAction;
+    /** What the decision chose when the deliverable offered a choice (a design package's direction). */
+    selection?: { direction?: string } & Record<string, unknown> | null;
     created_at: string;
 }
 
@@ -65,20 +139,35 @@ export interface RevisionMeta {
     line_count: number;
     file_mtime: string | null;
     captured_at: string;
+    media_type?: MediaType;
+    mime_type?: string;
+    /** `capture` for the producer's bytes, `nexus_edit` for a revision written from the reviewer. */
+    source?: 'capture' | 'nexus_edit';
+    edited_by?: string | null;
+    asset_count?: number;
+    width?: number | null;
+    height?: number | null;
 }
 
 export interface ReviewComment {
     id: string;
-    kind: 'passage' | 'document';
+    kind: CommentKind;
     start_line: number | null;
     end_line: number | null;
     block_hash: string | null;
     quote: string | null;
     selection: string | null;
     body: string;
+    /** Media anchor (region, point, time, page, screen) and the label the reviewer saw. */
+    anchor_target?: StoredAnchor | null;
+    target_label?: string | null;
+    /** A reply's root comment in the same review; null for a root. */
+    parent_id?: string | null;
+    resolved?: boolean;
+    resolved_at?: string | null;
     created_at: string;
     updated_at: string;
-    anchor?: { state: AnchorStateName; current_start_line?: number | null };
+    anchor?: { state: AnchorStateName; current_start_line?: number | null; current_asset_key?: string | null };
 }
 
 export interface SubmissionView {
@@ -148,6 +237,16 @@ export interface DocumentResponse {
     document: DocumentRecord;
     revision: RevisionMeta | null;
     content: string | null;
+    /** Media model; absent on an API that predates it (then a Markdown document with one text asset). */
+    media_type?: MediaType;
+    mime_type?: string;
+    asset_count?: number;
+    editable?: boolean;
+    preview_asset_key?: string | null;
+    readiness_path?: string | null;
+    assets?: RevisionAsset[];
+    manifest?: DesignManifest | null;
+    readiness?: Readiness | null;
     file_state: string;
     file_error: string | null;
     source: DocumentSource;
@@ -161,6 +260,9 @@ export interface DocumentResponse {
 export interface DocumentListEntry extends DocumentRecord {
     blocking_tasks?: DocumentBlockingTask[];
     blocking_task_count?: number;
+    asset_count?: number;
+    editable?: boolean;
+    preview_asset_key?: string | null;
     current_revision: RevisionMeta | null;
     review_url: string;
     review_path?: string;
@@ -201,18 +303,21 @@ export interface DocumentHistory {
     review_status: DocumentReviewStatus;
     revisions: RevisionMeta[];
     decisions: DocumentDecision[];
-    registrations: { id: string; revision_id: string; content_hash: string; task_id: string | null; project_id: string | null; registered_at: string; registered_by: string | null }[];
+    registrations: { id: string; revision_id: string; content_hash: string; task_id: string | null; project_id: string | null; registered_at: string; registered_by: string | null; media_type?: MediaType; asset_count?: number }[];
+    edits?: { id: string; base_revision_id: string; result_revision_id: string; actor_id: string; authority: string; summary: string; created_at: string }[];
     reviews: { id: string; revision_id: string; reviewer_id: string; status: ReviewStatus; created_at: string; submitted_at: string | null; comment_count: number; delivery_status: DeliveryStatus | null }[];
 }
 
 export interface NewCommentInput {
     client_id: string;
-    kind: 'passage' | 'document';
+    kind: CommentKind;
     body: string;
     start_line?: number;
     end_line?: number;
     quote?: string;
     selection?: string | null;
+    anchor?: MediaAnchor;
+    parent_id?: string;
 }
 
 export class DocumentApiError extends Error {
@@ -342,7 +447,7 @@ export function getDocumentHistory(documentId: string): Promise<DocumentHistory>
  * stale_revision) and anyone without an operator session (403
  * operator_required). Recording a decision never sends or publishes anything.
  */
-export function recordDecision(documentId: string, input: { decision: DecisionKind; revision_id: string; content_hash?: string; note?: string; client_decision_id: string }): Promise<{ decision: DocumentDecision; review_status: DocumentReviewStatus; duplicate?: boolean }> {
+export function recordDecision(documentId: string, input: { decision: DecisionKind; revision_id: string; content_hash?: string; note?: string; client_decision_id: string; selection?: { direction: string } }): Promise<{ decision: DocumentDecision; review_status: DocumentReviewStatus; duplicate?: boolean }> {
     return request(`${BASE}/${encodeURIComponent(documentId)}/decisions`, { method: 'POST', body: JSON.stringify(input) });
 }
 
@@ -401,6 +506,77 @@ export async function addComment(reviewId: string, input: NewCommentInput): Prom
 export async function updateComment(reviewId: string, commentId: string, body: string): Promise<ReviewComment> {
     const data = await request<{ comment: ReviewComment }>(`${BASE}/reviews/${encodeURIComponent(reviewId)}/comments/${encodeURIComponent(commentId)}`, { method: 'PATCH', body: JSON.stringify({ body }) });
     return data.comment;
+}
+
+/** Mark a comment resolved (or not); the reviewer's own bookkeeping, carried into the feedback payload. */
+export async function setCommentResolved(reviewId: string, commentId: string, resolved: boolean): Promise<ReviewComment> {
+    const data = await request<{ comment: ReviewComment }>(`${BASE}/reviews/${encodeURIComponent(reviewId)}/comments/${encodeURIComponent(commentId)}`, { method: 'PATCH', body: JSON.stringify({ resolved }) });
+    return data.comment;
+}
+
+/** Same-origin URL of one asset of a revision (image, video, PDF, prototype, design member); never an external host. */
+export function assetUrl(documentId: string, assetKey: string, options: { revision?: string | null; download?: boolean } = {}): string {
+    const params = new URLSearchParams();
+    if (options.revision) params.set('revision', options.revision);
+    if (options.download) params.set('download', '1');
+    const query = params.toString();
+    return `${BASE}/${encodeURIComponent(documentId)}/assets/${encodeURIComponent(assetKey)}${query ? `?${query}` : ''}`;
+}
+
+export function getReadiness(documentId: string, revisionId?: string | null): Promise<Readiness> {
+    const query = revisionId ? `?revision=${encodeURIComponent(revisionId)}` : '';
+    return request<Readiness>(`${BASE}/${encodeURIComponent(documentId)}/readiness${query}`, { cache: 'no-store' });
+}
+
+export interface EditResult {
+    edit: { id: string; base_revision_id: string; result_revision_id: string; summary: string; created_at: string } | null;
+    revision: RevisionMeta;
+    content: string | null;
+    assets?: RevisionAsset[];
+    review_status?: DocumentReviewStatus;
+    duplicate?: boolean;
+    unchanged?: boolean;
+}
+
+/**
+ * Direct edit (contract §4): writes the text as a new `nexus_edit` revision,
+ * pinned to the revision the operator edited. The server refuses a revision
+ * that is no longer current (409 stale_revision) and anyone without an
+ * operator session; a decision never carries over to the new revision.
+ */
+export function saveEdit(documentId: string, input: { base_revision_id: string; content: string; client_edit_id: string; summary?: string }): Promise<EditResult> {
+    return request<EditResult>(`${BASE}/${encodeURIComponent(documentId)}/content`, { method: 'PUT', body: JSON.stringify(input) });
+}
+
+/** The media type of a response, defaulting to Markdown for an API that predates the media model. */
+export function mediaTypeOf(data: Pick<DocumentResponse, 'media_type' | 'document' | 'revision'> | null | undefined): MediaType {
+    return data?.media_type ?? data?.revision?.media_type ?? data?.document?.media_type ?? 'markdown';
+}
+
+/** Human label for a media type. */
+export function mediaLabel(type: MediaType | undefined): string {
+    switch (type) {
+        case 'design': return 'Design package';
+        case 'image': return 'Image';
+        case 'video': return 'Video';
+        case 'audio': return 'Audio';
+        case 'pdf': return 'PDF';
+        case 'html': return 'Prototype';
+        case 'svg': return 'SVG';
+        case 'code': return 'Code';
+        case 'json': return 'JSON';
+        case 'text': return 'Text';
+        default: return 'Document';
+    }
+}
+
+/** m:ss(.t) for a timestamp anchor. */
+export function formatSeconds(seconds: number): string {
+    const total = Math.max(0, Math.round(seconds * 10) / 10);
+    const minutes = Math.floor(total / 60);
+    const rest = total - minutes * 60;
+    const secs = Number.isInteger(rest) ? String(rest).padStart(2, '0') : rest.toFixed(1).padStart(4, '0');
+    return `${minutes}:${secs}`;
 }
 
 export async function deleteComment(reviewId: string, commentId: string): Promise<void> {
