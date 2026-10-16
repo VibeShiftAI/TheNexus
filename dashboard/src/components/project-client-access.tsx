@@ -120,6 +120,17 @@ function ReviewRow({ review, artifacts }: { review: ClientReviewRow; artifacts: 
         <span className="text-slate-600">{stamp(review.created_at)}</span>
       </div>
       {review.body ? <p className="mt-1 whitespace-pre-wrap text-slate-300">{review.body}</p> : null}
+      {Array.isArray(review.comments) && review.comments.length ? (
+        <ol className="mt-1.5 space-y-1 border-l border-slate-700 pl-2" data-pinned-notes={review.comments.length}>
+          {review.comments.map((note, i) => (
+            <li key={i} className="text-slate-300">
+              <span className="mr-1 inline-block min-w-[1.25rem] rounded-full bg-amber-900/60 px-1 text-center text-[10px] font-semibold text-amber-200">{i + 1}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-200/90">{note.target_label || note.anchor.kind}</span>
+              <span className="whitespace-pre-wrap"> {note.body}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
       {review.decision === "accept" ? <div className="mt-1 text-[11px] text-slate-500">evidence <code className="text-slate-400">{review.evidence_ref}</code></div> : null}
     </li>
   );

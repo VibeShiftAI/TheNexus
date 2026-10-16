@@ -50,4 +50,72 @@ function reviewSelection(input, descriptor, decision) {
     if (typeof selection !== 'object' || Array.isArray(selection) || Object.keys(selection).some(k => k !== 'direction') || typeof selection.direction !== 'string' || !directions.some(d => d.id === selection.direction)) throw fail(400, 'Choose a direction in this published revision', 'invalid_selection');
     return { direction: selection.direction };
 }
-module.exports = { revisionMedia, assetBytes, reviewSelection };
+/**
+ * Pinned notes from the review room: each anchored to a place in THIS
+ * published revision. Mirrors the portal's validation so a note that names a
+ * foreign asset, or a kind that does not suit the asset, refuses the review
+ * (400 invalid_comment) rather than being stored half-right. Returns the
+ * clean list (possibly empty).
+ */
+const COMMENT_LIMITS = { count: 50, body: 4000, label: 120 };
+const ASSET_KEY_RE = /^[A-Za-z0-9._:-]{1,160}$/;
+function reviewComments(input, descriptor) {
+    const raw = input?.comments;
+    if (raw === undefined || raw === null) return [];
+    if (!Array.isArray(raw)) throw fail(400, 'comments must be a list', 'invalid_comment');
+    if (raw.length > COMMENT_LIMITS.count) throw fail(400, `at most ${COMMENT_LIMITS.count} notes per review`, 'invalid_comment');
+    const assets = Array.isArray(descriptor?.assets) ? descriptor.assets : [];
+    const unit = v => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1;
+    const bad = message => fail(400, message, 'invalid_comment');
+    return raw.map(c => {
+        if (!c || typeof c !== 'object') throw bad('each note must be an object');
+        const body = typeof c.body === 'string' ? c.body.trim() : '';
+        if (!body) throw bad('each note needs text');
+        if (body.length > COMMENT_LIMITS.body) throw bad(`a note exceeds ${COMMENT_LIMITS.body} characters`);
+        const label = typeof c.target_label === 'string' ? c.target_label.trim().slice(0, COMMENT_LIMITS.label) : '';
+        const a = c.anchor;
+        if (!a || typeof a !== 'object' || typeof a.kind !== 'string') throw bad('each note needs an anchor');
+        const asset = typeof a.asset_key === 'string' && ASSET_KEY_RE.test(a.asset_key) ? assets.find(x => x.asset_key === a.asset_key) : null;
+        if (['region', 'point', 'time', 'page', 'screen'].includes(a.kind) && !asset) throw bad('note anchor names an asset that is not in this revision');
+        let anchor;
+        switch (a.kind) {
+            case 'region':
+                if (!['image', 'svg', 'html', 'pdf'].includes(asset.media_type) || ![a.x, a.y, a.w, a.h].every(unit) || a.w <= 0 || a.h <= 0) throw bad('a region note needs x, y, w, h within the image');
+                anchor = { kind: 'region', asset_key: asset.asset_key, x: a.x, y: a.y, w: a.w, h: a.h };
+                break;
+            case 'screen': {
+                const r = a.region;
+                if (!String(asset.asset_key).startsWith('screen:') || !r || ![r.x, r.y, r.w, r.h].every(unit) || r.w <= 0 || r.h <= 0) throw bad('a screen note needs a region on a design screen');
+                anchor = { kind: 'screen', asset_key: asset.asset_key, region: { x: r.x, y: r.y, w: r.w, h: r.h } };
+                break;
+            }
+            case 'point':
+                if (!['html', 'svg', 'image'].includes(asset.media_type) || !unit(a.x) || !unit(a.y)) throw bad('a point note needs x and y on the preview');
+                anchor = { kind: 'point', asset_key: asset.asset_key, x: a.x, y: a.y, ...(typeof a.viewport === 'string' ? { viewport: a.viewport.slice(0, 40) } : {}) };
+                break;
+            case 'time': {
+                const t = a.t_start, end = a.t_end;
+                if (!['video', 'audio'].includes(asset.media_type) || typeof t !== 'number' || !Number.isFinite(t) || t < 0 || t > 360000) throw bad('a moment note needs a time within the recording');
+                if (end !== undefined && (typeof end !== 'number' || !Number.isFinite(end) || end < t)) throw bad("a moment note's end must follow its start");
+                anchor = { kind: 'time', asset_key: asset.asset_key, t_start: t, ...(end !== undefined ? { t_end: end } : {}) };
+                break;
+            }
+            case 'page':
+                if (asset.media_type !== 'pdf' || !Number.isInteger(a.page) || a.page < 1 || a.page > 100000) throw bad('a page note needs a page number');
+                anchor = { kind: 'page', asset_key: asset.asset_key, page: a.page };
+                break;
+            case 'passage':
+                if (descriptor) throw bad('a passage note belongs to a written document');
+                if (!Number.isInteger(a.block) || a.block < 0 || a.block > 100000) throw bad('a passage note needs a paragraph number');
+                anchor = { kind: 'passage', block: a.block, ...(typeof a.quote === 'string' ? { quote: a.quote.slice(0, 120) } : {}) };
+                break;
+            case 'document':
+                anchor = { kind: 'document' };
+                break;
+            default:
+                throw bad('unknown note anchor');
+        }
+        return { anchor, ...(label ? { target_label: label } : {}), body };
+    });
+}
+module.exports = { revisionMedia, assetBytes, reviewSelection, reviewComments };

@@ -721,6 +721,35 @@ test('design direction is required, recorded and bound to review idempotency', a
     expect((await review(joey.id, project.id, artifact.id, { ...selected, client_decision_id: 'new-key', selection: { direction: 'b' } })).status).toBe(409);
 });
 
+test('review room: pinned notes are validated against the published revision, recorded beside the decision and bound into idempotency', async () => {
+    await grant(project.id, joey.id);
+    const { artifact } = await publishDesign();
+    const pin = { anchor: { kind: 'screen', asset_key: 'screen:s', region: { x: 0.2, y: 0.5, w: 0.04, h: 0.04 } }, target_label: 'S1 · a', body: 'Tighten the rule under the balance.' };
+    const body = { client_decision_id: 'pins-1', decision: 'comment', version_hash: artifact.version_hash, comments: [pin] };
+    // Notes alone carry a comment decision; no body is required.
+    const recorded = await review(joey.id, project.id, artifact.id, body);
+    expect(recorded.status).toBe(201);
+    expect(recorded.json.review.comments).toEqual([pin]);
+    expect(recorded.json.review.body).toBe('');
+    expect((await read(joey.id, project.id)).json.artifacts[0].reviews[0].comments).toEqual([pin]);
+    // Identical replay is the same review; different pins under the same key conflict.
+    expect((await review(joey.id, project.id, artifact.id, body)).status).toBe(200);
+    expect((await review(joey.id, project.id, artifact.id, { ...body, comments: [{ ...pin, body: 'changed' }] })).status).toBe(409);
+    // A note that names an asset outside this revision, a kind that does not suit the asset, or a passage on a design package is refused whole.
+    for (const comments of [
+        [{ anchor: { kind: 'screen', asset_key: 'screen:other', region: { x: 0, y: 0, w: 0.1, h: 0.1 } }, body: 'x' }],
+        [{ anchor: { kind: 'time', asset_key: 'screen:s', t_start: 1 }, body: 'x' }],
+        [{ anchor: { kind: 'passage', block: 1 }, body: 'x' }],
+        [{ anchor: { kind: 'screen', asset_key: 'screen:s', region: { x: 0, y: 0, w: 0, h: 0.1 } }, body: 'x' }],
+        [pin, { anchor: { kind: 'document' }, body: '' }],
+    ]) {
+        const refused = await review(joey.id, project.id, artifact.id, { ...body, client_decision_id: 'pins-bad', comments });
+        expect(refused.status).toBe(400);
+        expect(refused.json.code).toBe('invalid_comment');
+    }
+    expect((await read(joey.id, project.id)).json.artifacts[0].reviews).toHaveLength(1);
+});
+
 test('legacy design acceptances without selection remain replayable after the media upgrade', async () => {
     await grant(project.id, joey.id);
     const { artifact } = await publishDesign();

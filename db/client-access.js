@@ -155,6 +155,8 @@ function initializeClientAccess(db) {
             PRIMARY KEY (member_id, project_id, client_decision_id)
         );`);
         if (!db.prepare('PRAGMA table_info(client_reviews)').all().some(c => c.name === 'selection_json')) db.exec('ALTER TABLE client_reviews ADD COLUMN selection_json TEXT');
+        // Review room (2026-10-16): pinned notes recorded beside the decision.
+        if (!db.prepare('PRAGMA table_info(client_reviews)').all().some(c => c.name === 'comments_json')) db.exec('ALTER TABLE client_reviews ADD COLUMN comments_json TEXT');
         // Every acknowledged client_decision_id is reserved against the payload it was acknowledged
         // for, including keys that resolved to an existing acceptance without a new review row
         // (QA repair 2026-10-02). Rows written before this table existed are reserved here too.
@@ -175,6 +177,7 @@ function createClientAccess(db) {
         id: row.id, client_decision_id: row.client_decision_id, member: parse(row.member_snapshot, {}),
         artifact_id: row.artifact_id, version_hash: row.version_hash, decision: row.decision, body: row.body,
         ...(row.selection_json ? { selection: parse(row.selection_json, null) } : {}),
+        ...(row.comments_json ? { comments: parse(row.comments_json, []) } : {}),
         created_at: row.created_at, evidence_ref: evidenceRef(row.id),
     });
     const fullReview = row => ({
@@ -412,12 +415,13 @@ function createClientAccess(db) {
             if (!REVIEW_DECISIONS.includes(decision)) throw fail(400, `decision must be one of: ${REVIEW_DECISIONS.join(', ')}`);
             const versionHash = text(input?.version_hash, 'version_hash', { required: true, max: 64 });
             if (!SHA256_HEX.test(versionHash)) throw fail(400, 'version_hash must be the artifact sha256 version hash');
-            const body = text(input?.body, 'body', { required: decision !== 'accept', max: MAX_BODY }) || '';
             const descriptor = clientMedia.revisionMedia(db, row)?.descriptor;
+            const comments = clientMedia.reviewComments(input, descriptor);
+            const body = text(input?.body, 'body', { required: decision !== 'accept' && comments.length === 0, max: MAX_BODY }) || '';
             // Validate the supplied value now; require a choice only for new decisions,
             // so historical no-selection requests retain their original replay hash.
             const selection = clientMedia.reviewSelection(input, descriptor, 'comment');
-            const requestHash = hash({ artifact_id: row.id, decision, version_hash: versionHash, body, ...(selection ? { selection } : {}) });
+            const requestHash = hash({ artifact_id: row.id, decision, version_hash: versionHash, body, ...(selection ? { selection } : {}), ...(comments.length ? { comments } : {}) });
             // Every acknowledged key is reserved against its payload in client_review_keys, including a
             // key that resolved to an existing acceptance, so reuse with a different payload is always
             // 409 `decision_conflict` and an identical replay always returns the same review.
@@ -447,14 +451,15 @@ function createClientAccess(db) {
             }
             const review = {
                 id: randomUUID(), client_decision_id: decisionId, member_id: memberId, project_id: projectId, artifact_id: row.id,
-                version_hash: versionHash, decision, body, selection_json: selection ? JSON.stringify(selection) : null, request_hash: requestHash, session_sha256: session.sha256,
+                version_hash: versionHash, decision, body, selection_json: selection ? JSON.stringify(selection) : null,
+                comments_json: comments.length ? JSON.stringify(comments) : null, request_hash: requestHash, session_sha256: session.sha256,
                 session_expires_at: new Date(expiresAt).toISOString(), authority: authority.trim(),
                 member_snapshot: JSON.stringify(identityOf(access.member)), created_at: now(),
             };
             db.prepare(`INSERT INTO client_reviews(id, client_decision_id, member_id, project_id, artifact_id, version_hash, decision, body, request_hash,
-                session_sha256, session_expires_at, authority, member_snapshot, created_at, selection_json)
+                session_sha256, session_expires_at, authority, member_snapshot, created_at, selection_json, comments_json)
                 VALUES (@id, @client_decision_id, @member_id, @project_id, @artifact_id, @version_hash, @decision, @body, @request_hash,
-                @session_sha256, @session_expires_at, @authority, @member_snapshot, @created_at, @selection_json)`).run(review);
+                @session_sha256, @session_expires_at, @authority, @member_snapshot, @created_at, @selection_json, @comments_json)`).run(review);
             return acknowledge(db.prepare('SELECT * FROM client_reviews WHERE id = ?').get(review.id), false);
         }).immediate();
     }
