@@ -228,6 +228,75 @@ export function mergeLiveWork(
   return { badges, timed, untimed, queue, queuedCount, runningCount, workCount: timed.length + untimed.length + badgedTasks };
 }
 
+// ── Chained successors ───────────────────────────────────────────────────
+
+/**
+ * A follow-up Praxis will start itself when its predecessor finishes: a
+ * saved automatic-start request, a legacy successor link, or the runtime's
+ * own autoStart flag. QA improvement suggestions never start anything.
+ */
+export function startsAutomatically(item: LiveWorkItem): boolean {
+  if (item.improvement) return false;
+  if (item.autoStart || item.legacyAutoStart) return true;
+  const request = item.automaticStart;
+  return Boolean(request && request.state !== "cancelled");
+}
+
+export interface ChainedFollowUps {
+  /**
+   * Waiting rows that start automatically, keyed by the schedule row they
+   * follow: a calendar event id, or a live row key (`live:<taskId>`). Both
+   * surfaces render these directly under that row (Robert, 2026-10-17).
+   */
+  byAnchor: Map<string, LiveScheduleRow[]>;
+  /** Waiting rows with no predecessor on this schedule, or no automatic start: the follow-ups section. */
+  loose: LiveScheduleRow[];
+}
+
+/**
+ * Split the waiting lane into successors chained to a row on the schedule
+ * and loose follow-ups. A chained successor hangs off the predecessor it is
+ * waiting on; with several unfinished predecessors it hangs off the one
+ * furthest along (running before reviewing before queued), since that is
+ * the one whose completion the operator is watching. A predecessor that is
+ * neither a calendar event nor a live row today gives no anchor, so the
+ * successor stays loose rather than vanishing.
+ */
+export function chainFollowUps(events: CalendarEvent[], merged: MergedLiveWork): ChainedFollowUps {
+  const eventByTask = new Map<string, CalendarEvent>();
+  for (const event of events) {
+    if (!event.task_id || event.status === "skipped") continue;
+    // The live (or latest) event for the task wins when it has several.
+    const prev = eventByTask.get(event.task_id);
+    if (!prev || prev.status === "completed") eventByTask.set(event.task_id, event);
+  }
+  const liveByTask = new Map<string, LiveScheduleRow>();
+  for (const row of [...merged.timed, ...merged.untimed]) {
+    if (row.lane !== "waiting" && !row.item.improvement) liveByTask.set(row.taskId, row);
+  }
+  const byAnchor = new Map<string, LiveScheduleRow[]>();
+  const loose: LiveScheduleRow[] = [];
+  for (const row of merged.untimed) {
+    if (row.lane !== "waiting") continue;
+    if (!startsAutomatically(row.item)) { loose.push(row); continue; }
+    const deps = [...(row.item.waitingOn ?? [])]
+      .filter((dep) => !dep.missing && !dep.unavailable && dep.lane !== "finished")
+      .sort((a, b) => LANE_RANK[a.lane ?? "waiting"] - LANE_RANK[b.lane ?? "waiting"]);
+    let anchor: string | null = null;
+    for (const dep of deps) {
+      const event = eventByTask.get(dep.taskId);
+      if (event) { anchor = event.id; break; }
+      const live = liveByTask.get(dep.taskId);
+      if (live) { anchor = live.key; break; }
+    }
+    if (anchor === null) { loose.push(row); continue; }
+    const list = byAnchor.get(anchor) ?? [];
+    list.push(row);
+    byAnchor.set(anchor, list);
+  }
+  return { byAnchor, loose };
+}
+
 function timeOfDay(iso: string | null | undefined): string | null {
   const t = toTime(iso);
   if (t === null) return null;

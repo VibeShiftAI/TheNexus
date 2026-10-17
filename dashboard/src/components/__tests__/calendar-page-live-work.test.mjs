@@ -100,22 +100,30 @@ async function mount(plan) {
     };
 }
 
-test("calendar page: the runtime strip lists running and queued work in queue order; follow-ups render in their own section under the grid", async () => {
-    const view = await mount({ calendar: [], live: liveResponse([RUNNING, QUEUED_1, QUEUED_2, WAITING]) });
+const PREPARED = { ...WAITING, taskId: "prepared-successor", title: "Prepared successor", autoStart: false };
+
+test("calendar page: the strip lists running and queued work in queue order with chained successors under their predecessor; loose follow-ups render in their own section under the grid", async () => {
+    const view = await mount({ calendar: [], live: liveResponse([RUNNING, QUEUED_1, QUEUED_2, WAITING, PREPARED]) });
     try {
         assert.ok(view.strip(), "the strip renders above the grid");
-        assert.equal(view.strip().querySelectorAll('[data-live-row="waiting"]').length, 0, "the strip holds no follow-up rows");
+        const chainedRow = view.strip().querySelector(`[data-live-row="waiting"][data-task-id="${WAITING.taskId}"]`);
+        assert.ok(chainedRow, "the automatic-start successor is in the strip");
+        assert.equal(chainedRow.getAttribute("data-chained-after"), `live:${QUEUED_2.taskId}`);
+        assert.equal(chainedRow.previousElementSibling.getAttribute("data-task-id"), QUEUED_2.taskId, "directly under the task it waits on");
+        assert.equal(view.strip().querySelector(`[data-task-id="${PREPARED.taskId}"]`), null, "the manual-start follow-up is not in the strip");
         assert.match(view.strip().querySelector("[data-live-followups-link]").textContent, /1 follow-up below/);
         assert.equal(view.strip().querySelector("[data-live-followups-link]").getAttribute("href"), "#followups");
         const section = view.container.querySelector("#followups[data-live-followups]");
         assert.ok(section, "the follow-ups section is on the page");
         assert.ok(section.compareDocumentPosition(view.strip()) & Node.DOCUMENT_POSITION_PRECEDING, "the section comes after the strip and grid");
-        assert.ok(section.querySelector(`[data-live-row="waiting"][data-task-id="${WAITING.taskId}"]`), "the follow-up is in the section");
+        assert.ok(section.querySelector(`[data-live-row="waiting"][data-task-id="${PREPARED.taskId}"]`), "the loose follow-up is in the section");
+        assert.equal(section.querySelector(`[data-task-id="${WAITING.taskId}"]`), null, "the chained successor is not repeated there");
         assert.deepEqual(view.rows(), [
             ["running", RUNNING.taskId],
             ["queued", QUEUED_1.taskId],
             ["queued", QUEUED_2.taskId],
             ["waiting", WAITING.taskId],
+            ["waiting", PREPARED.taskId],
         ]);
         for (const item of [RUNNING, QUEUED_1, QUEUED_2, WAITING]) {
             const link = view.row(item.taskId).querySelector(`a[href="/task/${item.taskId}"]`);
@@ -125,7 +133,7 @@ test("calendar page: the runtime strip lists running and queued work in queue or
         assert.match(view.row(QUEUED_1.taskId).textContent, /queued #1 of 2/);
         assert.match(view.row(QUEUED_1.taskId).querySelector("[data-live-clock]").textContent, /^#1$/);
         assert.match(view.row(WAITING.taskId).textContent, /waiting on “Honor Robert-originated task contract changes” \(queued #2\)/);
-        assert.ok(view.row(WAITING.taskId).querySelector(`a[href="/task/${QUEUED_2.taskId}"]`), "the dependency itself links to its task");
+        assert.ok(view.row(WAITING.taskId).previousElementSibling.querySelector(`a[href="/task/${QUEUED_2.taskId}"]`), "the predecessor it hangs under links to its task");
         assert.match(view.container.querySelector("[data-live-queued-count]").textContent, /^2 queued$/);
         assert.equal(view.container.querySelector("[data-live-availability]"), null);
         assert.ok(view.calls.every((c) => c.method === "GET"), "display never writes");
@@ -248,5 +256,22 @@ test("calendar page: adding a prepared follow-up to the calendar posts once, the
         assert.deepEqual(posts, [{ method:"POST", body:{ taskId:"canva" } }]);
         assert.equal(view.row("canva"), null, "the task left the follow-ups once it had a slot");
         assert.ok([...view.container.querySelectorAll("a")].some((a) => a.textContent === "Follow-up: Canva export"), "the new slot is on the grid");
+    } finally { view.cleanup(); }
+});
+
+test("calendar page: a successor with automatic start is drawn right under its predecessor's grid block", async () => {
+    const slot = calendarEvent({ id: "slot-contract", title: "Slot: contract fix", task_id: QUEUED_2.taskId });
+    const view = await mount({ calendar: [slot], live: liveResponse([RUNNING, QUEUED_1, QUEUED_2, WAITING]) });
+    try {
+        const chainedRow = view.row(WAITING.taskId);
+        assert.equal(chainedRow.getAttribute("data-chained-after"), "slot-contract");
+        assert.equal(chainedRow.closest("[data-live-work-strip]"), null, "it is on the grid, not in the strip");
+        const block = view.container.querySelector('input, [data-live-badge="queued"]').closest(".cursor-pointer");
+        assert.ok(block, "the predecessor block is on the grid");
+        assert.equal(block.nextElementSibling, chainedRow, "the successor strip is the element right after the block");
+        const blockBottom = parseFloat(block.style.top) + parseFloat(block.style.height);
+        assert.ok(parseFloat(chainedRow.style.top) >= blockBottom, "it sits below the block, not over it");
+        assert.ok(chainedRow.querySelector(`a[href="/task/${WAITING.taskId}"]`), "and links to its task");
+        assert.equal(view.container.querySelector("[data-live-followups]"), null, "nothing loose remains for the section");
     } finally { view.cleanup(); }
 });

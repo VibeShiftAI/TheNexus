@@ -14,6 +14,8 @@ import assert from "node:assert/strict";
 import type { CalendarEvent } from "../calendar";
 import type { LiveWorkItem, LiveWorkResponse } from "../nexus/dispatch-insight";
 import {
+  chainFollowUps,
+  startsAutomatically,
   applyLiveWorkRead,
   INITIAL_LIVE_WORK_READ,
   liveItemLabel,
@@ -285,4 +287,25 @@ test('unresolved QA improvements persist across dates, terminal outcomes remain 
  const terminal={...item,lane:'finished' as const,finishedAt:at(-24),improvement:{...item.improvement!,status:'declined'}};
  assert.equal(mergeLiveWork([],{...response,items:[terminal]},WINDOW).timed.length,0);
  assert.match(liveItemLabel({...terminal,improvement:{...terminal.improvement,status:'verified'}}),/verified/i);
+});
+
+test("chainFollowUps: an automatic-start successor anchors to its predecessor's event, else its live row, else stays loose; manual follow-ups are always loose", () => {
+  const merged = mergeLiveWork([], response([RUNNING, QUEUED_1, QUEUED_2, WAITING]), WINDOW);
+  const viaLive = chainFollowUps([], merged);
+  assert.deepEqual([...viaLive.byAnchor.keys()], ["live:contract-fix"]);
+  assert.equal(viaLive.loose.length, 0);
+
+  const slot = { id: "slot-contract", title: "Slot", task_id: "contract-fix", status: "scheduled", start_time: new Date().toISOString(),
+    end_time: null, description: null, result: null, event_type: "praxis_task", project_id: null, model_assignment: null, created_at: null, updated_at: null } as const;
+  const withEvent = mergeLiveWork([slot], response([RUNNING, QUEUED_1, QUEUED_2, WAITING]), WINDOW);
+  assert.deepEqual([...chainFollowUps([slot], withEvent).byAnchor.keys()], ["slot-contract"]);
+
+  const orphan = mergeLiveWork([], response([RUNNING, WAITING]), WINDOW);
+  assert.equal(chainFollowUps([], orphan).loose.length, 1, "no predecessor on the schedule: loose, not hidden");
+
+  const manual = mergeLiveWork([], response([RUNNING, QUEUED_1, QUEUED_2, { ...WAITING, autoStart: false }]), WINDOW);
+  assert.equal(chainFollowUps([], manual).loose.length, 1);
+  assert.equal(startsAutomatically({ ...WAITING, autoStart: false }), false);
+  assert.equal(startsAutomatically({ ...WAITING, autoStart: false, automaticStart: { taskId: WAITING.taskId, state: "waiting", requestedAt: "2026-10-17T00:00:00Z" } }), true);
+  assert.equal(startsAutomatically({ ...WAITING, autoStart: false, automaticStart: { taskId: WAITING.taskId, state: "cancelled", requestedAt: "2026-10-17T00:00:00Z" } }), false);
 });

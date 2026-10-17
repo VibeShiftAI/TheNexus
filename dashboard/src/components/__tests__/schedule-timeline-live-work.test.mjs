@@ -148,6 +148,9 @@ test("no day plan + a queue: running and queued work appear at once, in Praxis's
         const waiting = view.row(WAITING.taskId).textContent;
         assert.match(waiting, /waiting on “Honor Robert-originated task contract changes” \(queued #2\)/);
         assert.match(waiting, /starts automatically/);
+        // A successor Praxis starts itself hangs directly under the row it waits on.
+        assert.equal(view.row(WAITING.taskId).getAttribute("data-chained-after"), `live:${QUEUED_2.taskId}`);
+        assert.equal(view.container.querySelector("[data-live-followups]"), null, "a chained successor is not a loose follow-up");
         // Header: the queue is counted; the done counter still counts calendar items only.
         assert.match(view.container.querySelector("[data-live-queued-count]").textContent, /^2 queued$/);
         assert.match(view.text, /0\/0 done/);
@@ -331,4 +334,22 @@ test('a prepared follow-up can be added to the calendar after the last planned t
   assert.equal(view.row('canva'), null, 'after the refetch the task has a slot and leaves the follow-ups');
   assert.ok(view.container.querySelector('#sched-followup-1'), 'the new calendar event is on the timeline');
  } finally { globalThis.fetch = realFetch; view.cleanup(); }
+});
+
+test('a successor with automatic start hangs under its predecessor’s calendar slot; without automatic start it stays a loose follow-up', async () => {
+ const slot = calendarEvent({id:'slot-contract',title:'Slot: contract fix',task_id:QUEUED_2.taskId,start_time:new Date(now + HOUR).toISOString()});
+ const prepared = {...WAITING, taskId:'prepared-successor', title:'Prepared successor', autoStart:false};
+ const view = await mount({calendar:[slot],live:liveResponse([RUNNING,QUEUED_1,QUEUED_2,WAITING,prepared])});
+ try {
+  const chainedRow = view.row(WAITING.taskId);
+  assert.equal(chainedRow.getAttribute('data-chained-after'), 'slot-contract');
+  const slotRow = view.container.querySelector('#sched-slot-contract');
+  assert.ok(slotRow.compareDocumentPosition(chainedRow) & Node.DOCUMENT_POSITION_FOLLOWING, 'the successor comes right after its predecessor');
+  assert.equal(slotRow.nextElementSibling.getAttribute('data-chained-successors'), 'slot-contract');
+  assert.match(chainedRow.textContent, /then/);
+  assert.doesNotMatch(chainedRow.textContent, /Add to calendar/, 'a chained successor already has its start');
+  const looseRow = view.row('prepared-successor');
+  assert.ok(looseRow.closest('[data-live-followups]'), 'the manual-start successor stays in the follow-ups section');
+  assert.match(view.container.querySelector('[data-live-followups-count]').textContent, /^1 prepared$/);
+ } finally {view.cleanup();}
 });

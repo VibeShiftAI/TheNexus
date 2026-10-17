@@ -1,12 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { FollowUpsSection } from "./schedule-followups";
 import { calendarEventsUrl, calendarEventTone, type CalendarEvent, type CalendarEventStatus } from "@/lib/calendar";
 import { getLiveWork, type LiveWorkItem, type LiveWorkLane } from "@/lib/nexus/dispatch-insight";
+import { AutomaticStartControl } from "./automatic-start-control";
 import {
   applyLiveWorkRead,
+  chainFollowUps,
   executorLabel,
   INITIAL_LIVE_WORK_READ,
   laneWord,
@@ -384,6 +386,9 @@ export function ScheduleTimeline() {
   const availability = liveWorkAvailability(liveRead);
   const availabilityText = liveWorkAvailabilityText(availability);
   const runtimeLive = availability.state === "live";
+  // Successors Praxis will start itself hang under the row they wait on;
+  // only loose follow-ups go to the section (Robert, 2026-10-17).
+  const chained = useMemo(() => chainFollowUps(events, live), [events, live]);
 
   const transitions = useArrivalPulse(
     [...events.map(e => `${e.id}:${e.status}`), ...live.timed.concat(live.untimed).map((r) => `${r.key}:${r.lane}`)],
@@ -762,7 +767,39 @@ export function ScheduleTimeline() {
     );
   };
 
-  const renderEntry = (entry: TimedEntry) => (entry.kind === "event" ? renderEvent(entry.event) : renderLiveRow(entry.row));
+  /**
+   * Successors chained to a schedule row: Praxis starts them itself when
+   * that row's task finishes, so they read as the next link under it rather
+   * than as a loose follow-up. The control here can only cancel.
+   */
+  const renderChained = (anchorKey: string) => {
+    const rows = chained.byAnchor.get(anchorKey);
+    if (!rows || rows.length === 0) return null;
+    return (
+      <div data-chained-successors={anchorKey} className="ml-[5px] border-l border-dashed border-cyan-500/40 pl-3">
+        {rows.map((row) => (
+          <div key={row.key} id={`sched-${row.key}`} data-live-row={row.lane} data-task-id={row.taskId} data-chained-after={anchorKey} className="py-0.5">
+            <div className="flex min-w-0 items-center gap-2 px-1">
+              <span className="shrink-0 text-[9px] font-semibold uppercase tracking-widest text-cyan-300/80" title="Praxis starts this task itself when the task above finishes">then</span>
+              <Link href={taskHref(row.taskId)} className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-300 hover:underline" title={`${row.title} — open the task`}>
+                {row.title}
+              </Link>
+              <span className="shrink-0 rounded border border-cyan-700/60 px-1 text-[9px] font-semibold uppercase tracking-wider text-cyan-200/90">auto start</span>
+            </div>
+            <p data-live-label className="truncate px-1 text-[10px] text-slate-500" title={liveItemLabel(row.item)}>{liveItemLabel(row.item)}</p>
+            <div className="px-1"><AutomaticStartControl item={row.item} onChanged={fetchSchedule} disabled={!runtimeLive} /></div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderEntry = (entry: TimedEntry) => (
+    <Fragment key={entry.id}>
+      {entry.kind === "event" ? renderEvent(entry.event) : renderLiveRow(entry.row)}
+      {renderChained(entry.kind === "event" ? entry.event.id : entry.row.key)}
+    </Fragment>
+  );
 
   return (
     <HudPanel
@@ -821,7 +858,9 @@ export function ScheduleTimeline() {
                 in Praxis's own order, and it has no clock of its own. */}
             {live.untimed.some(row => row.lane === "queued") && <>
               <div data-live-queue-header className="py-1 pl-5 text-[9px] font-semibold uppercase tracking-widest text-cyan-300">Execution queue · {live.queuedCount} queued</div>
-              {live.untimed.filter(row => row.lane === "queued").map(renderLiveRow)}
+              {live.untimed.filter(row => row.lane === "queued").map((row) => (
+                <Fragment key={row.key}>{renderLiveRow(row)}{renderChained(row.key)}</Fragment>
+              ))}
             </>}
             {todayEntries.slice(nowAt).map(renderEntry)}
             {spillEntries.length > 0 && (
@@ -852,7 +891,7 @@ export function ScheduleTimeline() {
               it: they are successors without a slot, and interleaving them
               buried the running work on a phone (Robert, 2026-10-17). */}
           <FollowUpsSection
-            rows={live.untimed}
+            rows={chained.loose}
             availability={availability}
             onChanged={fetchSchedule}
             followupError={liveRead.response?.followupError}

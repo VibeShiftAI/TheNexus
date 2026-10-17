@@ -1,7 +1,7 @@
 "use client"
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { Plus, X, Calendar as CalendarIcon, Save, Clock, AlignLeft, CheckCircle2 } from "lucide-react";
 import {
@@ -14,6 +14,7 @@ import {
     type CalendarEventForm,
 } from "@/lib/calendar";
 import { ModelAssignmentControl } from "@/components/model-assignment-control";
+import { liveItemLabel } from "@/lib/schedule-live-work";
 import { LiveWorkStrip } from "@/components/schedule-live-work-strip";
 import { FollowUpsSection } from "@/components/schedule-followups";
 import { useLiveRefetch } from "@/components/live-board-state";
@@ -21,6 +22,7 @@ import { getLiveWork } from "@/lib/nexus/dispatch-insight";
 import { taskHref } from "@/lib/task-links";
 import {
     applyLiveWorkRead,
+    chainFollowUps,
     INITIAL_LIVE_WORK_READ,
     liveWorkAvailability,
     mergeLiveWork,
@@ -89,6 +91,9 @@ export default function CalendarPage() {
     const dayWindow = useMemo(() => dayBounds(dayStartTs), [dayStartTs]);
     const live = useMemo(() => mergeLiveWork(events, liveRead.response, dayWindow), [events, liveRead.response, dayWindow]);
     const availability = liveWorkAvailability(liveRead);
+    // Successors Praxis starts itself hang under the block or row they wait
+    // on; only loose follow-ups go to the section under the grid.
+    const chained = useMemo(() => chainFollowUps(events, live), [events, live]);
 
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -158,6 +163,13 @@ export default function CalendarPage() {
         }
     };
 
+    /** A chained successor's strip, stacked right under its predecessor's block. */
+    const chainedStyle = (event: CalendarEvent, index: number) => {
+        const block = getEventStyle(event);
+        const top = parseFloat(block.top) + parseFloat(block.height) + 2 + index * 26;
+        return { top: `${top}px`, height: '24px', position: 'absolute' as const, left: '12px', right: '0' };
+    };
+
     // Helper to calculate top and height of an event block visually
     const getEventStyle = (event: CalendarEvent) => {
         const start = new Date(event.start_time);
@@ -217,7 +229,7 @@ export default function CalendarPage() {
                         holding for linked work; chat-dispatched tasks have no
                         calendar event until they finish, so this is where they
                         show up (Robert, 2026-10-04). */}
-                    <LiveWorkStrip merged={live} availability={availability} followUpsHref="#followups" />
+                    <LiveWorkStrip merged={live} availability={availability} chained={chained} onChanged={loadEvents} followUpsHref="#followups" />
 
                     <div className="relative overflow-y-auto h-[70vh] bg-slate-900 hide-scrollbar" style={{ position: 'relative' }}>
                         {loading && <div className="p-8 text-center text-slate-500">Loading schedule...</div>}
@@ -243,8 +255,8 @@ export default function CalendarPage() {
                                 <div className="absolute top-4 left-20 right-4 bottom-0 pointer-events-none">
                                     <div className="relative w-full h-full">
                                         {events.map((event, i) => (
+                                            <Fragment key={event.id || i}>
                                             <div
-                                                key={event.id || i}
                                                 className={`pointer-events-auto rounded-md shadow-lg border p-3 flex flex-col transition-transform hover:scale-[1.01] hover:z-10 cursor-pointer overflow-hidden ${calendarEventTone(event).block}`}
                                                 style={getEventStyle(event)}
                                                 onClick={() => openEditModal(event)}
@@ -293,6 +305,25 @@ export default function CalendarPage() {
                                                     </span>
                                                 )}
                                             </div>
+                                            {/* Successors Praxis starts itself when this block's task
+                                                finishes: drawn as the next link right under the block,
+                                                with no time of their own (Robert, 2026-10-17). */}
+                                            {(chained.byAnchor.get(event.id) ?? []).map((row, n) => (
+                                                <div
+                                                    key={row.key}
+                                                    data-live-row={row.lane}
+                                                    data-task-id={row.taskId}
+                                                    data-chained-after={event.id}
+                                                    className="pointer-events-auto flex items-center gap-2 rounded-md border border-dashed border-cyan-500/50 bg-slate-950/90 px-3 text-xs text-slate-300 shadow-lg"
+                                                    style={chainedStyle(event, n)}
+                                                    title={`${row.title}: ${liveItemLabel(row.item)}`}
+                                                >
+                                                    <span className="shrink-0 text-[9px] font-semibold uppercase tracking-widest text-cyan-300/80">then</span>
+                                                    <Link href={taskHref(row.taskId)} className="min-w-0 flex-1 truncate font-semibold hover:underline">{row.title}</Link>
+                                                    <span className="shrink-0 rounded border border-cyan-700/60 px-1 text-[9px] font-semibold uppercase tracking-wider text-cyan-200/90">auto start</span>
+                                                </div>
+                                            ))}
+                                            </Fragment>
                                         ))}
                                     </div>
                                 </div>
@@ -307,7 +338,7 @@ export default function CalendarPage() {
                     task (Robert, 2026-10-17). */}
                 <FollowUpsSection
                     id="followups"
-                    rows={live.untimed}
+                    rows={chained.loose}
                     availability={availability}
                     onChanged={loadEvents}
                     followupError={liveRead.response?.followupError}

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { Activity } from "lucide-react";
+import { AutomaticStartControl } from "./automatic-start-control";
 import {
   liveItemLabel,
   liveWorkAvailabilityText,
+  type ChainedFollowUps,
   type LiveScheduleRow,
   type LiveWorkAvailability,
   type MergedLiveWork,
@@ -78,6 +80,9 @@ function clockFor(row: LiveScheduleRow): { text: string; title: string } {
 export interface LiveWorkStripProps {
   merged: MergedLiveWork;
   availability: LiveWorkAvailability;
+  /** Successors chained to live rows (nested here) and the loose rest (counted). */
+  chained: ChainedFollowUps;
+  onChanged?: () => void | Promise<void>;
   /** Anchor of the page's FollowUpsSection, so the follow-up count links to it. */
   followUpsHref?: string;
 }
@@ -92,10 +97,10 @@ export interface LiveWorkStripProps {
  * below the grid, and the strip only counts them. Display only: nothing
  * here dispatches or re-orders anything.
  */
-export function LiveWorkStrip({ merged, availability, followUpsHref = "#followups" }: LiveWorkStripProps) {
+export function LiveWorkStrip({ merged, availability, chained, onChanged, followUpsHref = "#followups" }: LiveWorkStripProps) {
   const rows = [...merged.timed, ...merged.untimed.filter((row) => row.lane !== "waiting")];
   const note = liveWorkAvailabilityText(availability);
-  const waitingCount = merged.untimed.filter((r) => r.lane === "waiting").length;
+  const waitingCount = chained.loose.length;
 
   return (
     <section data-live-work-strip className="border-b border-slate-800 bg-slate-900/60 px-4 py-3">
@@ -157,6 +162,28 @@ export function LiveWorkStrip({ merged, availability, followUpsHref = "#followup
                 {row.item.improvement && <p className="w-full whitespace-pre-wrap pl-[3.75rem] text-[11px] text-slate-400">{row.item.improvement.updatedAt && <span>Updated {new Date(row.item.improvement.updatedAt).toLocaleString()} · </span>}{row.item.improvement.reason} <Link href={`${taskHref(row.taskId)}#qa-improvements`} className="text-cyan-300 underline">View suggestions and QA</Link></p>}
               </li>
             );
+          }).flatMap((li, index) => {
+            // A successor Praxis starts itself when this row's task finishes
+            // sits right under it, as the next link of the chain.
+            const successors = chained.byAnchor.get(rows[index].key) ?? [];
+            return [li, ...successors.map((row) => (
+              <li
+                key={row.key}
+                data-live-row={row.lane}
+                data-task-id={row.taskId}
+                data-chained-after={rows[index].key}
+                className="ml-6 flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-md border border-dashed border-cyan-500/40 bg-slate-900/40 px-2.5 py-1.5 text-xs text-slate-300"
+              >
+                <span className="shrink-0 text-[9px] font-semibold uppercase tracking-widest text-cyan-300/80" title="Praxis starts this task itself when the task above finishes">then</span>
+                <Link href={taskHref(row.taskId)} className="min-w-0 flex-1 truncate font-semibold hover:underline" title={`${row.title}: open the task`}>
+                  {row.title}
+                </Link>
+                <span data-live-label className="max-w-full truncate text-[11px] text-slate-400" title={liveItemLabel(row.item)}>
+                  {liveItemLabel(row.item)}
+                </span>
+                <AutomaticStartControl item={row.item} onChanged={onChanged} disabled={availability.state !== "live"} />
+              </li>
+            ))];
           })}
         </ul>
       )}
