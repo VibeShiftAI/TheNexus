@@ -53,7 +53,7 @@ const DASHBOARD_HOSTS = new Set(["nexus.vibeshiftai.com", "localhost:3000", "127
  * page this client renders and keeps the plain-anchor behaviour.
  */
 const IN_APP_ROUTES = new Set([
-    "academy", "activity", "agents", "calendar", "codex", "core-lab", "council",
+    "academy", "activity", "agents", "calendar", "chat", "codex", "core-lab", "council",
     "dispatch-preview", "documents", "inbox", "intake-reports", "knowledge-ingestion",
     "llm-activity", "local-queue", "mail", "model-control", "module-preview", "ops",
     "project", "session", "studio", "system-monitor", "task", "task-board", "workflow-builder",

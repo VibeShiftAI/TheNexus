@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Activity } from "lucide-react";
 import {
-  laneWord,
   liveItemLabel,
   liveWorkAvailabilityText,
   type LiveScheduleRow,
@@ -54,6 +53,10 @@ function laneDot(lane: LiveWorkLane): string {
  */
 function clockFor(row: LiveScheduleRow): { text: string; title: string } {
   const { item } = row;
+  if (item.improvement) {
+    const updated = item.improvement.updatedAt;
+    return { text: updated ? formatTime(updated) : "—", title: updated ? `Improvement status updated ${new Date(updated).toLocaleString()}` : "Improvement update time unavailable" };
+  }
   if (row.whenIso) {
     return {
       text: formatTime(row.whenIso),
@@ -67,7 +70,7 @@ function clockFor(row: LiveScheduleRow): { text: string; title: string } {
     };
   }
   if (row.lane === "waiting") {
-    return { text: "after", title: "Starts after the work it waits on; no planned time" };
+    return { text: item.autoStart ? "auto" : "prep", title: item.autoStart ? "Automatic start requested; no planned time" : "Prepared follow-up; not scheduled" };
   }
   return { text: "—", title: "No time reported" };
 }
@@ -75,18 +78,22 @@ function clockFor(row: LiveScheduleRow): { text: string; title: string } {
 export interface LiveWorkStripProps {
   merged: MergedLiveWork;
   availability: LiveWorkAvailability;
+  /** Anchor of the page's FollowUpsSection, so the follow-up count links to it. */
+  followUpsHref?: string;
 }
 
 /**
  * LiveWorkStrip — the runtime's view of today's work for the /calendar page:
- * what is running, under review, queued (in Praxis's order) and waiting on
- * that work. The same merge feeds the home panel, so both surfaces list the
+ * what is running, under review, queued (in Praxis's order) and finished
+ * today. The same merge feeds the home panel, so both surfaces list the
  * same tasks; a task that also has a calendar event is badged on that event
- * instead of appearing here. Display only: nothing here dispatches or
- * re-orders anything.
+ * instead of appearing here. Follow-ups (the waiting lane) are not listed
+ * here: they have no slot, so they render in the page's FollowUpsSection
+ * below the grid, and the strip only counts them. Display only: nothing
+ * here dispatches or re-orders anything.
  */
-export function LiveWorkStrip({ merged, availability }: LiveWorkStripProps) {
-  const rows = [...merged.timed, ...merged.untimed];
+export function LiveWorkStrip({ merged, availability, followUpsHref = "#followups" }: LiveWorkStripProps) {
+  const rows = [...merged.timed, ...merged.untimed.filter((row) => row.lane !== "waiting")];
   const note = liveWorkAvailabilityText(availability);
   const waitingCount = merged.untimed.filter((r) => r.lane === "waiting").length;
 
@@ -95,18 +102,25 @@ export function LiveWorkStrip({ merged, availability }: LiveWorkStripProps) {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <span className="flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-300">
           <Activity size={14} className={merged.runningCount > 0 && availability.state === "live" ? "text-amber-400" : "text-slate-500"} />
-          Runtime work
+          Live work
         </span>
         {availability.state === "live" && (
           <span className="text-slate-500">
             {merged.runningCount} running
             {" · "}
             <span data-live-queued-count>{merged.queuedCount} queued</span>
-            {waitingCount > 0 && ` · ${waitingCount} waiting on linked work`}
+            {waitingCount > 0 && (
+              <>
+                {" · "}
+                <a data-live-followups-link href={followUpsHref} className="text-slate-400 underline decoration-slate-600 hover:text-slate-200">
+                  {waitingCount} follow-up{waitingCount === 1 ? "" : "s"} below
+                </a>
+              </>
+            )}
           </span>
         )}
         <span className="ml-auto text-[10px] text-slate-600" title="Read from the Praxis runtime through Nexus. The calendar alone cannot show work queued from chat until it finishes.">
-          from the Praxis runtime · display only
+          runtime status · explicit start controls
         </span>
       </div>
 
@@ -140,15 +154,7 @@ export function LiveWorkStrip({ merged, availability }: LiveWorkStripProps) {
                 <span data-live-label className="max-w-full truncate text-[11px] text-slate-400" title={label}>
                   {label}
                 </span>
-                {row.lane === "waiting" && (row.item.waitingOn ?? []).length > 0 && (
-                  <span className="flex w-full flex-wrap gap-x-2 pl-[3.75rem] text-[11px] text-slate-500">
-                    {(row.item.waitingOn ?? []).map((dep) => (
-                      <Link key={dep.taskId} href={taskHref(dep.taskId)} className="truncate hover:text-slate-300" title={`${dep.title} (${laneWord(dep)})`}>
-                        ↳ {dep.title} · {laneWord(dep)}
-                      </Link>
-                    ))}
-                  </span>
-                )}
+                {row.item.improvement && <p className="w-full whitespace-pre-wrap pl-[3.75rem] text-[11px] text-slate-400">{row.item.improvement.updatedAt && <span>Updated {new Date(row.item.improvement.updatedAt).toLocaleString()} · </span>}{row.item.improvement.reason} <Link href={`${taskHref(row.taskId)}#qa-improvements`} className="text-cyan-300 underline">View suggestions and QA</Link></p>}
               </li>
             );
           })}

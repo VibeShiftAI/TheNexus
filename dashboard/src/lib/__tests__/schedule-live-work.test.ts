@@ -95,7 +95,7 @@ test("no day plan + a queue: running work is placed at its real start, queued wo
   assert.doesNotMatch(liveItemLabel(QUEUED_2), /correction/);
   assert.equal(
     liveItemLabel(WAITING),
-    "waiting on “Honor Robert-originated task contract changes” (queued #2) · starts automatically when it completes",
+    "automatic start saved · waiting on “Honor Robert-originated task contract changes” (queued #2) · starts automatically when it completes",
   );
 });
 
@@ -235,7 +235,7 @@ test("unscheduled board work never reads as queued: only queued-lane items count
   const merged = mergeLiveWork([], response([idea, { taskId: "x", title: "bad", lane: "nope" as never }]), WINDOW);
   assert.equal(merged.queuedCount, 0);
   assert.deepEqual(merged.untimed.map((r) => r.taskId), ["plain-idea"]);
-  assert.equal(liveItemLabel(idea), "waiting on linked work");
+  assert.equal(liveItemLabel(idea), "prepared · not scheduled · predecessors complete");
 });
 
 test("the queue is reported whole: a head that also has a calendar slot still leads it, and badged work still counts as work", () => {
@@ -250,4 +250,39 @@ test("the queue is reported whole: a head that also has a calendar slot still le
   assert.equal(onlyBadged.queuedCount, 1);
   assert.equal(onlyBadged.workCount, 1, "work shown only as a badge is still work");
   assert.equal(mergeLiveWork([], response([]), WINDOW).workCount, 0);
+});
+
+test('prepared follow-ups never promise dispatch and explicit automatic requests do', () => {
+  const item: LiveWorkItem = { taskId:'canva',title:'Canva',lane:'waiting',waitingOn:[] };
+  assert.match(liveItemLabel(item), /prepared.*not scheduled/i);
+  assert.match(liveItemLabel({...item,automaticStart:{taskId:'canva',state:'waiting',requestedAt:'2026-10-08T23:00:00Z'},autoStart:true}), /automatic start/i);
+  assert.match(liveItemLabel({...item,automaticStart:{taskId:'canva',state:'held',requestedAt:'2026-10-08T23:00:00Z',detail:'Autonomy paused'},autoStart:true}), /held.*Autonomy paused/i);
+});
+
+test('background evidence hold is waiting on the schedule with no running count', () => {
+ const item = { taskId: 'held', title: 'Held task', lane: 'waiting', backgroundObligation: { executionId: 'current', state: 'held', detail: 'Artifact is not fresh' } } as any;
+ const merged = mergeLiveWork([], { items: [item] } as any, { start: 0, end: Date.now() });
+ assert.equal(merged.runningCount, 0);
+ assert.equal(merged.untimed[0].taskId, 'held');
+ assert.equal(liveItemLabel(item), 'held for background evidence');
+});
+
+
+test('QA improvements remain separate from completed calendar blocks and each other', () => {
+ const improvement = (id: string, status: string, lane: LiveWorkItem['lane']): LiveWorkItem => ({taskId:'parent', title:'QA improvements — Parent', lane, boardStatus:'completed', updatedAt:at(9), startedAt:at(8), finishedAt:at(9), improvement:{id,status,reason:'Approved work takes precedence.'}});
+ const result=mergeLiveWork([event({id:'parent-event',task_id:'parent',title:'Parent',status:'completed',start_time:at(7)})],
+ {at:at(9),praxis:{reachable:true,error:null},items:[improvement('a','waiting','waiting'),improvement('b','reviewing','qa')]},WINDOW);
+ assert.equal(result.untimed.length,1); assert.equal(result.timed.length,1); assert.equal(result.badges.size,0);
+ assert.notEqual(result.untimed[0].key,result.timed[0].key);
+ assert.match(liveItemLabel(result.untimed[0].item),/QA improvements.*waiting/i);
+ assert.match(liveItemLabel(result.timed[0].item),/independent QA/i);
+});
+test('unresolved QA improvements persist across dates, terminal outcomes remain dated', () => {
+ const item:LiveWorkItem={taskId:'parent',title:'QA improvements',lane:'waiting',boardStatus:'completed',updatedAt:at(-24),improvement:{id:'a',status:'needs_attention',reason:'QA found issues'}};
+ const response={at:at(9),praxis:{reachable:true,error:null},items:[item]};
+ assert.equal(mergeLiveWork([],response,WINDOW).untimed.length,1);
+ assert.match(liveItemLabel(item),/needs attention/i);
+ const terminal={...item,lane:'finished' as const,finishedAt:at(-24),improvement:{...item.improvement!,status:'declined'}};
+ assert.equal(mergeLiveWork([],{...response,items:[terminal]},WINDOW).timed.length,0);
+ assert.match(liveItemLabel({...terminal,improvement:{...terminal.improvement,status:'verified'}}),/verified/i);
 });

@@ -55,6 +55,8 @@ function installFetch(plan) {
     globalThis.fetch = async (url, init) => {
         const u = String(url);
         calls.push({ url: u, method: init?.method ?? "GET" });
+        if (u.includes("/api/praxis/dispatch/automatic-start") && plan.mutate) return plan.mutate(JSON.parse(init.body), init.method);
+        if (u.includes("/api/calendar/follow-ups") && plan.schedule) return plan.schedule(JSON.parse(init.body), init.method);
         if (u.includes("/api/calendar")) {
             return new Response(JSON.stringify(plan.calendar), { status: 200, headers: { "Content-Type": "application/json" } });
         }
@@ -98,10 +100,17 @@ async function mount(plan) {
     };
 }
 
-test("calendar page: the runtime strip lists running, queued and waiting work with task links, in queue order", async () => {
+test("calendar page: the runtime strip lists running and queued work in queue order; follow-ups render in their own section under the grid", async () => {
     const view = await mount({ calendar: [], live: liveResponse([RUNNING, QUEUED_1, QUEUED_2, WAITING]) });
     try {
         assert.ok(view.strip(), "the strip renders above the grid");
+        assert.equal(view.strip().querySelectorAll('[data-live-row="waiting"]').length, 0, "the strip holds no follow-up rows");
+        assert.match(view.strip().querySelector("[data-live-followups-link]").textContent, /1 follow-up below/);
+        assert.equal(view.strip().querySelector("[data-live-followups-link]").getAttribute("href"), "#followups");
+        const section = view.container.querySelector("#followups[data-live-followups]");
+        assert.ok(section, "the follow-ups section is on the page");
+        assert.ok(section.compareDocumentPosition(view.strip()) & Node.DOCUMENT_POSITION_PRECEDING, "the section comes after the strip and grid");
+        assert.ok(section.querySelector(`[data-live-row="waiting"][data-task-id="${WAITING.taskId}"]`), "the follow-up is in the section");
         assert.deepEqual(view.rows(), [
             ["running", RUNNING.taskId],
             ["queued", QUEUED_1.taskId],
@@ -198,4 +207,46 @@ test("calendar page: queued work shown only as a badge is still reported as work
     } finally {
         view.cleanup();
     }
+});
+
+
+test("prepared Canva follow-up stays distinct and the calendar button explicitly saves automatic start", async () => {
+    const prepared = { taskId:"canva",title:"Canva export",taskVersion:7,lane:"waiting",boardStatus:"planning",autoStart:false,waitingOn:[] };
+    const plan = { calendar:[],live:liveResponse([prepared]),mutate(body,method) {
+        assert.equal(method,"POST"); assert.deepEqual(body,{taskId:"canva",expectedVersion:7});
+        const request = {taskId:"canva",state:"waiting",requestedAt:new Date().toISOString(),detail:"Predecessors complete; checking dispatch readiness."};
+        plan.live = liveResponse([{...prepared,autoStart:true,automaticStart:request}]);
+        return new Response(JSON.stringify({request}),{status:200});
+    }};
+    const view = await mount(plan);
+    try {
+        assert.match(view.container.textContent,/prepared · not scheduled/);
+        assert.match(view.container.querySelector("[data-live-queued-count]").textContent,/0 queued/);
+        const button = [...view.container.querySelectorAll("button")].find(b=>b.textContent==="Queue to start now");
+        assert.ok(button);
+        await act(async()=>button.click()); await settle();
+        assert.match(view.container.textContent,/Cancel automatic start/);
+        assert.doesNotMatch(view.container.textContent,/prepared · not scheduled/);
+    } finally { view.cleanup(); }
+});
+
+test("calendar page: adding a prepared follow-up to the calendar posts once, then the refetch shows it as a slot", async () => {
+    const prepared = { taskId:"canva",title:"Canva export",taskVersion:7,lane:"waiting",boardStatus:"planning",autoStart:false,waitingOn:[] };
+    const posts = [];
+    const plan = { calendar:[calendarEvent({ id:"last", task_id:"final", title:"[Slot 6] Final planned task" })], live:liveResponse([prepared]), schedule(body, method) {
+        posts.push({ body, method });
+        const event = { ...calendarEvent({ id:"followup-1", task_id:"canva", title:"Follow-up: Canva export" }), start_time: new Date(now + 2 * HOUR).toISOString() };
+        plan.calendar = [...plan.calendar, event];
+        plan.live = liveResponse([]);
+        return new Response(JSON.stringify({ event, after:{ id:"last", title:"[Slot 6] Final planned task" } }), { status: 201 });
+    } };
+    const view = await mount(plan);
+    try {
+        const button = [...view.container.querySelectorAll("button")].find((b) => /Add to calendar after today’s last task/.test(b.textContent));
+        assert.ok(button, "the prepared follow-up offers the calendar slot");
+        await act(async () => button.click()); await settle();
+        assert.deepEqual(posts, [{ method:"POST", body:{ taskId:"canva" } }]);
+        assert.equal(view.row("canva"), null, "the task left the follow-ups once it had a slot");
+        assert.ok([...view.container.querySelectorAll("a")].some((a) => a.textContent === "Follow-up: Canva export"), "the new slot is on the grid");
+    } finally { view.cleanup(); }
 });

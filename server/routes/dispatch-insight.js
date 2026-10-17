@@ -1,3 +1,4 @@
+const { readCalendarImprovements } = require('../services/task-improvements');
 /**
  * Dispatch eligibility + containment state (the "why isn't it running" surface).
  *
@@ -50,6 +51,8 @@ const { praxisFetch } = require('../services/praxis-client');
 const { buildRunTrace, summarizeTraceQuality } = require('../services/run-trace');
 const { createCouncilBallotReader, DEFAULT_COUNCIL_SESSIONS_DIR } = require('../services/council-ballots');
 const { openRaw, resolveNexusDbPath } = require('../../db/raw');
+const { readSlateLifecycle } = require('../services/slate-lifecycle');
+const { buildApprovedPlanFollowupScope } = require('../services/approved-plan-followups');
 
 const DEFAULT_DB_PATH = resolveNexusDbPath();
 // Praxis's durable run-lifecycle spine (run_events: dispatched/phase/finished/
@@ -164,7 +167,8 @@ function sleep(ms) {
 //              board; in_progress → review pending; todo → parked, with the
 //              board's own status_message verbatim).
 //   waiting  — a board task that is the successor_id of live work, or lists
-//              live work in `dependencies`, followed along the chain. Unlinked
+//              live or completed work in `dependencies`, followed along the chain,
+//              or has an explicit pending automatic-start request. Unlinked
 //              board ideas are never listed, and a board row that reads
 //              in_progress with no runtime run is NOT reported as running.
 const LIVE_LANE_RANK = { running: 0, qa: 1, queued: 2, finished: 3, waiting: 4 };
@@ -188,7 +192,7 @@ function parseDependencyList(text) {
  * Pure: a Praxis dispatch-state snapshot + the board rows → ordered live-work
  * items. Exported on the router factory for callers that already hold both.
  */
-function projectLiveWork(state, boardRows) {
+function projectLiveWork(state, boardRows, followupScope) {
     const board = new Map();
     for (const r of boardRows || []) {
         const metadata = parseJson(r.metadata, {}) || {};
@@ -198,6 +202,7 @@ function projectLiveWork(state, boardRows) {
             projectName: r.project_name || null,
             title: r.name || null,
             status: r.status ?? null,
+            taskVersion: Number.isInteger(r.version) ? r.version : null,
             normalized: normalizeStatus(r.status),
             dependencies: parseDependencyList(r.dependencies),
             successorId: typeof r.successor_id === 'string' && r.successor_id ? r.successor_id : null,
@@ -209,6 +214,16 @@ function projectLiveWork(state, boardRows) {
     }
 
     const executors = state?.executors || {};
+    const automaticStarts = new Map(
+        (Array.isArray(executors.automaticStarts) ? executors.automaticStarts : [])
+            .filter((entry) => entry && typeof entry.taskId === 'string'
+                && ['waiting', 'held', 'starting', 'uncertain', 'accepted'].includes(entry.state))
+            .filter((entry) => {
+                const task = board.get(entry.taskId);
+                return !task || (!task.archived && !isTaskDone(task.status) && !NEVER_WAITING_STATUSES.has(task.normalized));
+            })
+            .map((entry) => [entry.taskId, entry]),
+    );
     const runs = (Array.isArray(executors.runs) ? executors.runs : []).filter((r) => r && typeof r.taskId === 'string');
     const queue = (Array.isArray(executors.cliQueue) ? executors.cliQueue : []).filter((q) => q && typeof q.taskId === 'string');
     const deferredQa = new Map(
@@ -217,16 +232,32 @@ function projectLiveWork(state, boardRows) {
             .map((d) => [d.taskId, d]),
     );
 
+    const predecessorsOf = new Map(); // successor id → ids naming it as successor_id
+    for (const b of board.values()) {
+        if (!b.successorId) continue;
+        if (!predecessorsOf.has(b.successorId)) predecessorsOf.set(b.successorId, []);
+        predecessorsOf.get(b.successorId).push(b.id);
+    }
+
     // Board truth first (fresher title, project, status); Praxis's copy of the
     // title when the task is not on this board.
     const base = (taskId, fallbackTitle) => {
         const b = board.get(taskId);
+        // successor_id still authorizes the existing completion-triggered
+        // dispatcher; cancelling a registry request does not remove that link.
+        const legacyAutoStart = Boolean(b && !b.archived && TASK_AUTO_START_STATUSES.includes(b.normalized)
+            && predecessorsOf.has(taskId));
         return {
             taskId,
             title: b?.title || fallbackTitle || taskId,
             projectId: b?.projectId ?? null,
             projectName: b?.projectName ?? null,
             boardStatus: b?.status ?? null,
+            taskVersion: b?.taskVersion ?? null,
+            automaticStartError: typeof executors.automaticStartError === 'string' ? executors.automaticStartError : null,
+            legacyAutoStart,
+            autoStart: automaticStarts.has(taskId) || legacyAutoStart,
+            automaticStart: automaticStarts.get(taskId) || null,
             statusMessage: b?.statusMessage ?? null,
         };
     };
@@ -277,7 +308,17 @@ function projectLiveWork(state, boardRows) {
     for (const [taskId, run] of latestFinished) {
         if (items.has(taskId) || board.get(taskId)?.archived) continue;
         const qa = activeQa.get(taskId) || null;
+        const automaticStart = automaticStarts.get(taskId);
+        // A newly requested retry is prepared work, not the older attempt's
+        // finished row. Active QA and attempts newer than the request still win.
+        if (!qa && automaticStart && !isTaskDone(board.get(taskId)?.status)
+            && (toTime(automaticStart.requestedAt) ?? 0) >= (toTime(run.updatedAt) ?? 0)) continue;
         const deferred = deferredQa.get(taskId) || null;
+        // An unfinished task returned to the board's planning/ready lane is
+        // still a follow-up, even if yesterday's failed attempt remains in
+        // runtime history. Actual running, queued and QA work keep precedence.
+        if (!qa && !deferred && followupScope?.has(taskId)
+            && WAITING_STATUSES.has(board.get(taskId)?.normalized)) continue;
         items.set(taskId, {
             ...base(taskId, run.title),
             lane: qa ? 'qa' : 'finished',
@@ -290,10 +331,31 @@ function projectLiveWork(state, boardRows) {
         });
     }
 
-    // 4. Waiting: board tasks linked to live work, along the chain. "Live"
-    // for this purpose excludes finished work the board already calls done:
-    // its successor has either started (and is listed above) or is not
-    // waiting on it any more.
+    // Completion can remain active in the run registry while background evidence
+    // blocks its callback. Only Praxis can attribute an obligation to the current
+    // execution; task ids alone must never let an earlier attempt override it.
+    for (const obligation of Array.isArray(executors.backgroundObligations) ? executors.backgroundObligations : []) {
+        if (obligation?.currentExecution !== true || !['held', 'waiting'].includes(obligation.state)) continue;
+        const task = board.get(obligation.taskId);
+        if (task && (task.archived || isTaskDone(task.status) || NEVER_WAITING_STATUSES.has(task.normalized))) continue;
+        const item = items.get(obligation.taskId);
+        if (item && (item.lane === 'queued' || item.lane === 'qa' || (item.lane === 'running' && item.phase !== 'completing'))) continue;
+        items.set(obligation.taskId, {
+            ...(item || base(obligation.taskId)),
+            lane: 'waiting',
+            updatedAt: obligation.updatedAt || null,
+            statusMessage: obligation.detail || 'Waiting for background evidence.',
+            backgroundObligation: {
+                executionId: obligation.executionId,
+                state: obligation.state,
+                detail: obligation.detail || 'Waiting for background evidence.',
+            },
+        });
+    }
+
+    // 4. Prepared follow-ups survive their predecessor finishing and leaving
+    // runtime history. Membership follows actual board links or an explicit
+    // automatic-start request; neither source claims a CLI queue entry.
     const live = new Set(
         [...items.values()]
             .filter((it) => it.lane !== 'finished' || !isTaskDone(it.boardStatus))
@@ -303,25 +365,24 @@ function projectLiveWork(state, boardRows) {
     // 2026-10-04: answering both in one pass made a dependency list depend on
     // the board's row order and dropped an unfinished prerequisite that was
     // not itself linked to live work).
-    //   a. Membership follows the chain from live work until a pass adds
+    //   a. Membership follows live/completed links or explicit requests until a pass adds
     //      nothing, so row order cannot matter.
     //   b. Each waiting task then names EVERY unfinished predecessor: the
-    //      `dependencies` the board does not call done, plus the live or
-    //      waiting task that names it as `successor_id`.
+    //      `dependencies` the board does not call done, plus unfinished tasks
+    //      that name it as `successor_id`.
     const canWait = (b) => !items.has(b.id) && !b.archived && !isTaskDone(b.status) && !NEVER_WAITING_STATUSES.has(b.normalized);
-    const predecessorsOf = new Map(); // successor id → ids naming it as successor_id
-    for (const b of board.values()) {
-        if (!b.successorId) continue;
-        if (!predecessorsOf.has(b.successorId)) predecessorsOf.set(b.successorId, []);
-        predecessorsOf.get(b.successorId).push(b.id);
-    }
     const waitingIds = new Set();
-    const inChain = (id) => live.has(id) || waitingIds.has(id);
+    const inChain = (id) => live.has(id) || waitingIds.has(id) || isTaskDone(board.get(id)?.status);
     for (let changed = true; changed;) {
         changed = false;
         for (const b of board.values()) {
             if (waitingIds.has(b.id) || !canWait(b)) continue;
-            if (!b.dependencies.some(inChain) && !(predecessorsOf.get(b.id) || []).some(inChain)) continue;
+            // The calendar route supplies a daily approved-plan scope. Other
+            // callers can still inspect the full runtime/board projection.
+            if (followupScope !== undefined) {
+                if (!followupScope.has(b.id)) continue;
+            } else if (!automaticStarts.has(b.id) && !b.dependencies.some(inChain)
+                && !(predecessorsOf.get(b.id) || []).some(inChain)) continue;
             waitingIds.add(b.id);
             changed = true;
         }
@@ -329,7 +390,9 @@ function projectLiveWork(state, boardRows) {
     const unfinished = (id) => {
         if (live.has(id)) return true;
         const dep = board.get(id);
-        return Boolean(dep) && !dep.archived && !isTaskDone(dep.status);
+        // Missing and archived prerequisites are unknown/incomplete, never
+        // evidence that all prerequisites completed.
+        return !dep || !isTaskDone(dep.status);
     };
     const waiting = new Map();
     for (const id of waitingIds) {
@@ -338,16 +401,14 @@ function projectLiveWork(state, boardRows) {
         for (const depId of b.dependencies) {
             if (unfinished(depId) && !on.includes(depId)) on.push(depId);
         }
-        const predecessors = (predecessorsOf.get(b.id) || []).filter(inChain);
+        const predecessors = (predecessorsOf.get(b.id) || []).filter(unfinished);
         for (const predId of predecessors) {
             if (!on.includes(predId)) on.push(predId);
         }
         waiting.set(b.id, {
             ...base(b.id),
             lane: 'waiting',
-            // Praxis auto-dispatches THE successor when its owner completes,
-            // but only from a status a successor may be started from.
-            autoStart: predecessors.length > 0 && TASK_AUTO_START_STATUSES.includes(b.normalized),
+            ...(followupScope ? { followsToday: followupScope.get(b.id) || [] } : {}),
             waitingOnIds: on,
         });
     }
@@ -357,9 +418,12 @@ function projectLiveWork(state, boardRows) {
             ...rest,
             waitingOn: waitingOnIds.map((id) => {
                 const dep = items.get(id) || waiting.get(id);
+                const boardDep = board.get(id);
                 return {
                     taskId: id,
-                    title: dep?.title || board.get(id)?.title || id,
+                    title: dep?.title || boardDep?.title || `Missing predecessor (${id})`,
+                    missing: !boardDep,
+                    unavailable: !boardDep || boardDep.archived,
                     lane: dep?.lane || null,
                     position: dep?.position ?? null,
                     boardStatus: board.get(id)?.status ?? null,
@@ -439,6 +503,8 @@ function createDispatchInsightRouter({
     councilSessionsDir = DEFAULT_COUNCIL_SESSIONS_DIR,
     praxisUrl = null, // null → praxis-client resolves PRAXIS_URL per call
     fetchImpl = fetch,
+    readImprovements = readCalendarImprovements,
+    readFollowupSlate = () => readSlateLifecycle({ qaEvidenceReader: () => null }),
     killWait = { graceMs: KILL_GRACE_MS, pollMs: KILL_POLL_MS },
 } = {}) {
     const router = express.Router();
@@ -787,16 +853,12 @@ function createDispatchInsightRouter({
     // See projectLiveWork (module top). The board read tolerates a pre-
     // sequencing schema (no successor_id column) so a fixture or an old copy
     // still projects dependency-linked waiting rows.
-    let tasksHaveSuccessorColumn = null;
-    function boardHasSuccessorColumn() {
-        if (tasksHaveSuccessorColumn === null) {
-            try {
-                tasksHaveSuccessorColumn = db.prepare('PRAGMA table_info(tasks)').all().some((c) => c.name === 'successor_id');
-            } catch {
-                tasksHaveSuccessorColumn = false;
-            }
+    let taskColumns = null;
+    function boardHasColumn(name) {
+        if (taskColumns === null) {
+            taskColumns = new Set(db.prepare('PRAGMA table_info(tasks)').all().map((column) => column.name));
         }
-        return tasksHaveSuccessorColumn;
+        return taskColumns.has(name);
     }
 
     router.get('/live-work', async (_req, res) => {
@@ -815,9 +877,10 @@ function createDispatchInsightRouter({
         }
         let rows;
         try {
-            const successor = boardHasSuccessorColumn() ? 't.successor_id' : 'NULL AS successor_id';
+            const successor = boardHasColumn('successor_id') ? 't.successor_id' : 'NULL AS successor_id';
+            const version = boardHasColumn('version') ? 't.version' : 'NULL AS version';
             rows = db.prepare(`
-                SELECT t.id, t.project_id, t.name, t.status, t.dependencies, t.metadata, t.archived_at, ${successor},
+                SELECT t.id, t.project_id, t.name, t.status, t.dependencies, t.metadata, t.archived_at, ${successor}, ${version},
                        p.name AS project_name
                 FROM tasks t LEFT JOIN projects p ON p.id = t.project_id
             `).all();
@@ -825,10 +888,27 @@ function createDispatchInsightRouter({
             console.error('[DispatchInsight] live-work board read failed:', err.message);
             return res.status(500).json({ error: 'Failed to read board: ' + err.message });
         }
+        // Use the same authoritative schedule reader as the slate status
+        // surface. An unavailable plan/calendar hides suggestions, not real work.
+        let followupScope = new Map();
+        let followupError = null;
+        try {
+            const slate = readFollowupSlate();
+            if (!slate?.available) followupError = slate?.reason || 'Approved plan unavailable';
+            const events = db.prepare(`SELECT task_id, start_time, end_time, status
+                FROM calendar_events WHERE task_id IS NOT NULL AND event_type = 'praxis_task'`).all();
+            followupScope = buildApprovedPlanFollowupScope(slate, events, rows);
+        } catch (err) {
+            followupError = `Follow-ups unavailable: ${err.message}`;
+        }
+        let improvements = { available: false, items: [] };
+        try { improvements = readImprovements(rows); } catch { /* Keep regular work visible. */ }
+        if (!improvements.available) followupError = [followupError, 'QA improvement records are unavailable or incomplete; their activity cannot be fully confirmed.'].filter(Boolean).join(' ');
         res.json({
             at: new Date().toISOString(),
             praxis: { reachable: true, error: null },
-            items: projectLiveWork(state, rows),
+            followupError,
+            items: [...projectLiveWork(state, rows, followupScope), ...improvements.items],
         });
     });
 

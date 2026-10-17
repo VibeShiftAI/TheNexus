@@ -182,6 +182,8 @@ export type LiveWorkLane = 'running' | 'qa' | 'queued' | 'finished' | 'waiting';
 
 /** One named dependency a waiting task is held on, with that dependency's own live lane. */
 export interface LiveWorkDependency {
+    missing?: boolean;
+    unavailable?: boolean;
     taskId: string;
     title: string;
     lane: LiveWorkLane | null;
@@ -190,7 +192,25 @@ export interface LiveWorkDependency {
     boardStatus?: string | null;
 }
 
+export interface AutomaticStartRequest {
+    taskId: string;
+    state: 'waiting' | 'held' | 'starting' | 'accepted' | 'cancelled' | 'uncertain';
+    requestedAt: string;
+    updatedAt?: string;
+    detail?: string;
+}
+
 export interface LiveWorkItem {
+    improvement?: { id: string; status: string; reason: string; updatedAt?: string | null };
+    /** Current-execution completion gate, attributed by Praxis. */
+    backgroundObligation?: { executionId: string; state: 'held' | 'waiting'; detail: string };
+
+    /** Approved calendar roots connecting this prepared follow-up to today. */
+    followsToday?: { taskId: string; title: string }[];
+    automaticStartError?: string | null;
+    legacyAutoStart?: boolean;
+    taskVersion?: number | null;
+    automaticStart?: AutomaticStartRequest | null;
     taskId: string;
     /** Board title when the task is on this board, else Praxis's copy. */
     title: string;
@@ -230,6 +250,7 @@ export interface LiveWorkItem {
 }
 
 export interface LiveWorkResponse {
+    followupError?: string | null;
     at: string;
     /** reachable=false means no runtime read: items is empty and must render as unavailable, never as "nothing queued". */
     praxis: { reachable: boolean; error: string | null };
@@ -246,6 +267,7 @@ export async function getLiveWork(): Promise<LiveWorkResponse> {
         at: typeof data.at === 'string' ? data.at : new Date().toISOString(),
         praxis: { reachable: data.praxis.reachable === true, error: data.praxis.error ?? null },
         items: Array.isArray(data.items) ? data.items : [],
+        followupError: data.followupError ?? null,
     };
 }
 

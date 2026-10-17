@@ -1,3 +1,5 @@
+import { authFetch } from "@/lib/nexus/shared";
+
 export type CalendarEventStatus = "scheduled" | "in_progress" | "completed" | "skipped";
 
 export interface CalendarEvent {
@@ -40,6 +42,32 @@ const CALENDAR_EVENT_STATUSES = new Set<string>([
 
 export function calendarEventsUrl(start: string, end: string): string {
   return `/api/calendar?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+}
+
+/** The slot a follow-up was given, and the planned task it now follows. */
+export interface ScheduledFollowUp {
+  event: CalendarEvent;
+  after: { id: string; title: string; task_id: string | null; end: string } | null;
+}
+
+/**
+ * Put a prepared follow-up on today's calendar right after the last planned
+ * task (POST /api/calendar/follow-ups). The event is an ordinary
+ * `praxis_task` slot that Praxis fires through its normal dispatch gates;
+ * a task that already has a pending event answers 409 and is not doubled.
+ */
+export async function scheduleFollowUp(taskId: string): Promise<ScheduledFollowUp> {
+  const res = await authFetch("/api/calendar/follow-ups", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ taskId }),
+  });
+  const data = (await res.json().catch(() => ({}))) as Partial<ScheduledFollowUp> & { error?: string };
+  if (!res.ok) throw new Error(data.error || `Scheduling failed (${res.status}). Refresh before trying again.`);
+  if (!data.event?.id || data.event.task_id !== taskId) {
+    throw new Error("The calendar did not confirm the new event. Refresh before trying again.");
+  }
+  return { event: data.event, after: data.after ?? null };
 }
 
 export function parseCalendarEventStatus(value: string): CalendarEventStatus {

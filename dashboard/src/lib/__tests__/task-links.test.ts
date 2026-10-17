@@ -15,6 +15,15 @@ import {
 const ID = "fd648080-df4b-4bfb-8596-9eecc8b96cb6";
 const OTHER_ID = "d367be53-744b-423c-901c-6e2d43ee06fc";
 
+test("saved chat turns open inside the current dashboard session", () => {
+  const path = `/chat/turns/${ID}`;
+  assert.equal(internalHref(path), path);
+  assert.equal(internalHref(`https://nexus.vibeshiftai.com${path}`), path);
+  assert.equal(internalHref(`http://localhost:3000${path}?check=1#reply`), `${path}?check=1#reply`);
+  assert.equal(internalHref(`https://example.com${path}`), null);
+  assert.equal(internalHref(`/api/ai/chat/turns/${ID}`), null);
+});
+
 test("task ids route to the task screen", () => {
   assert.equal(taskHref(ID), `/task/${ID}`);
   assert.ok(isTaskHref(taskHref(ID)));

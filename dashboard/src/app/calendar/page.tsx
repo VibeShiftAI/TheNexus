@@ -1,8 +1,9 @@
 "use client"
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Plus, X, Calendar as CalendarIcon, Save, Clock, AlignLeft, CheckCircle2 } from "lucide-react";
+import { Plus, X, Calendar as CalendarIcon, Save, Clock, AlignLeft, CheckCircle2 } from "lucide-react";
 import {
     calendarEventsUrl,
     calendarEventTone,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/calendar";
 import { ModelAssignmentControl } from "@/components/model-assignment-control";
 import { LiveWorkStrip } from "@/components/schedule-live-work-strip";
+import { FollowUpsSection } from "@/components/schedule-followups";
 import { useLiveRefetch } from "@/components/live-board-state";
 import { getLiveWork } from "@/lib/nexus/dispatch-insight";
 import { taskHref } from "@/lib/task-links";
@@ -184,11 +186,9 @@ export default function CalendarPage() {
         <main className="min-h-screen bg-slate-950 text-slate-200">
             {/* Header HUD */}
             <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-                <div className="container mx-auto flex h-16 items-center justify-between px-6">
-                    <div className="flex items-center gap-4">
-                        <Link href="/" className="p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
-                            <ChevronLeft size={20} />
-                        </Link>
+                <div className="container mx-auto flex min-h-16 flex-wrap gap-y-2 py-3 items-center justify-between px-6">
+                    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+                        <Breadcrumbs current="Calendar" />
                         <div className="flex items-center gap-2">
                             <CalendarIcon size={20} className="text-cyan-500" />
                             <h1 className="text-xl font-bold tracking-tight text-white">
@@ -217,7 +217,7 @@ export default function CalendarPage() {
                         holding for linked work; chat-dispatched tasks have no
                         calendar event until they finish, so this is where they
                         show up (Robert, 2026-10-04). */}
-                    <LiveWorkStrip merged={live} availability={availability} />
+                    <LiveWorkStrip merged={live} availability={availability} followUpsHref="#followups" />
 
                     <div className="relative overflow-y-auto h-[70vh] bg-slate-900 hide-scrollbar" style={{ position: 'relative' }}>
                         {loading && <div className="p-8 text-center text-slate-500">Loading schedule...</div>}
@@ -300,6 +300,19 @@ export default function CalendarPage() {
                         )}
                     </div>
                 </div>
+
+                {/* Follow-ups of today's plan: successors without a slot. They
+                    sit under the grid so the schedule itself comes first, and
+                    each can be started or given a slot after the last planned
+                    task (Robert, 2026-10-17). */}
+                <FollowUpsSection
+                    id="followups"
+                    rows={live.untimed}
+                    availability={availability}
+                    onChanged={loadEvents}
+                    followupError={liveRead.response?.followupError}
+                    className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-2xl"
+                />
             </div>
 
             {/* Edit / Detail Modal */}

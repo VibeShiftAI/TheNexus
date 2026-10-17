@@ -634,6 +634,8 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     // refused HERE, before the CLI slot is taken and the 402 is discovered.
     // Same 409 refusal shape as a Praxis refusal, so every caller's existing
     // "Force dispatch" override works unchanged.
+    router.use('/dispatch/automatic-start', require('./automatic-start')());
+
     router.post('/dispatch/task', async (req, res) => {
         const body = req.body || {};
         if (!body.force) {

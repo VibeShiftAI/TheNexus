@@ -1,7 +1,50 @@
 const express = require('express');
+const followUps = require('../services/followup-schedule');
 
-module.exports = function createCalendarRouter({ db }) {
+module.exports = function createCalendarRouter({ db, now = () => new Date() }) {
     const router = express.Router();
+    const validId = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,160}$/.test(value);
+
+    /**
+     * Put a prepared follow-up on today's calendar after the last planned
+     * task. The event is what Praxis's calendar poller fires, through the
+     * ordinary dispatch and QA gates; this route only writes the row. One
+     * pending event per task: a second request answers 409 with the existing
+     * event rather than scheduling the task twice.
+     */
+    router.post('/follow-ups', async (req, res) => {
+        if (req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ error: 'Use the follow-up control from your Nexus session.' });
+        const body = req.body || {};
+        const taskId = body.taskId;
+        if (!validId(taskId) || Object.keys(body).some(key => key !== 'taskId')) {
+            return res.status(400).json({ error: 'Refresh the follow-up list and submit its current task.' });
+        }
+        try {
+            const task = await db.getTask(taskId);
+            if (!task) return res.status(404).json({ error: 'Task not found on the board; nothing was scheduled.' });
+            if (followUps.taskClosed(task)) {
+                return res.status(409).json({ error: `Task is ${task.status || 'closed'}; create a separate follow-up task instead of rescheduling finished work.` });
+            }
+            const project = task.project_id ? await db.getProject(task.project_id) : null;
+            const workspace = typeof project?.path === 'string' ? project.path.trim() : '';
+            if (!workspace || /[\r\n]/.test(workspace)) {
+                return res.status(422).json({ error: 'This task’s project has no workspace path, so Praxis could not run it from the calendar. Set the project path first.' });
+            }
+            const events = await db.getCalendarEvents(undefined, undefined, { eventType: 'praxis_task' });
+            const pending = followUps.pendingEventFor(events, taskId);
+            if (pending) {
+                return res.status(409).json({ error: 'This task already has a pending calendar event; it is on the schedule.', event: pending });
+            }
+            const slot = followUps.planFollowUpSlot(events, now());
+            const event = await db.createCalendarEvent(followUps.followUpEvent({ task, workspace, slot }));
+            if (!event || event.status !== 'scheduled') {
+                return res.status(500).json({ error: 'The calendar did not confirm the new event. Refresh before trying again.' });
+            }
+            res.status(201).json({ event, after: slot.anchor });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
 
     router.get('/', async (req, res) => {
         try {

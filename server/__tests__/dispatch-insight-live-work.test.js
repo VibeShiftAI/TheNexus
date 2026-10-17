@@ -51,11 +51,11 @@ function seedBoard(dbPath, { successorColumn = true } = {}) {
         CREATE TABLE projects (id TEXT PRIMARY KEY, name TEXT, status TEXT);
         CREATE TABLE tasks (
             id TEXT PRIMARY KEY, project_id TEXT, name TEXT, status TEXT,
-            priority INTEGER DEFAULT 0, dependencies TEXT DEFAULT '[]',
+            priority INTEGER DEFAULT 0, version INTEGER DEFAULT 7, dependencies TEXT DEFAULT '[]',
             ${successorColumn ? 'successor_id TEXT,' : ''}
             default_executor TEXT, metadata TEXT DEFAULT '{}', archived_at TEXT
         );
-        CREATE TABLE calendar_events (id TEXT PRIMARY KEY, title TEXT, task_id TEXT, status TEXT);
+        CREATE TABLE calendar_events (id TEXT PRIMARY KEY, title TEXT, task_id TEXT, status TEXT, start_time TEXT, end_time TEXT, event_type TEXT);
     `);
     db.prepare('INSERT INTO projects (id, name, status) VALUES (?, ?, ?)').run('nexus', 'TheNexus', 'active');
     db.prepare('INSERT INTO projects (id, name, status) VALUES (?, ?, ?)').run('praxis', 'Praxis', 'active');
@@ -144,10 +144,18 @@ describe('dispatch-insight live-work projection', () => {
     let praxisRequests;
     let dbPath;
 
-    async function boot({ state = STATE_NO_PLAN_WITH_QUEUE, praxisUp = true, successorColumn = true } = {}) {
+    async function boot({ state = STATE_NO_PLAN_WITH_QUEUE, praxisUp = true, successorColumn = true, approved = true, slateError = false, improvements = { available: true, items: [] } } = {}) {
         tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-live-work-'));
         dbPath = path.join(tmpDir, 'board.db');
         seedBoard(dbPath, { successorColumn });
+        const date = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+        const calendarDb = new Database(dbPath);
+        for (const id of ['visibility', 'approvals', 'contract-fix']) {
+            calendarDb.prepare("INSERT INTO calendar_events VALUES (?, ?, ?, 'scheduled', ?, NULL, 'praxis_task')").run(id, id, id, new Date().toISOString());
+        }
+        calendarDb.close();
+        const slate = { available: true, date, stages: [{ stage: 'approved', reached: approved }],
+            slots: ['visibility', 'approvals', 'contract-fix'].map(taskId => ({ taskId, withdrawn: false })) };
 
         let praxisUrl = 'http://127.0.0.1:9';
         praxisRequests = [];
@@ -167,6 +175,8 @@ describe('dispatch-insight live-work projection', () => {
             detachedRunsDir: path.join(tmpDir, 'detached-runs'),
             councilSessionsDir: path.join(tmpDir, 'council-sessions'),
             praxisUrl,
+            readImprovements: () => improvements,
+            readFollowupSlate: () => { if (slateError) throw Error('Schedule read failed'); return slate; },
         }));
         handle = await listen(app);
     }
@@ -180,11 +190,20 @@ describe('dispatch-insight live-work projection', () => {
         tmpDir = null;
     });
 
+    test('live route includes distinct improvement rows and exposes incomplete reads', async () => {
+        const improvement = { taskId: 'visibility', title: 'QA improvements — Visibility', lane: 'waiting', improvement: {id:'r1',status:'waiting',reason:'Approved work runs first'} };
+        await boot({improvements:{available:false,items:[improvement]}});
+        const {body} = await getJson(`${handle.baseUrl}/api/dispatch-insight/live-work`);
+        expect(body.items.filter(i=>i.taskId==='visibility')).toHaveLength(2);
+        expect(body.items).toContainEqual(improvement);
+        expect(body.followupError).toMatch(/QA improvement records are unavailable/);
+    });
+
     function byId(body) {
         return Object.fromEntries(body.items.map((i) => [i.taskId, i]));
     }
 
-    test('no day plan + a queue: running, queued (in order), QA-pending and waiting rows, from runtime truth', async () => {
+    test('approved day plan + a queue: running, queued, QA-pending and related waiting rows', async () => {
         await boot();
         const { status, body } = await getJson(`${handle.baseUrl}/api/dispatch-insight/live-work`);
         expect(status).toBe(200);
@@ -197,7 +216,7 @@ describe('dispatch-insight live-work projection', () => {
         expect(body.items.filter((i) => i.taskId === 'visibility')).toHaveLength(1);
         expect(items.visibility).toMatchObject({
             lane: 'running', executor: 'claude-code', phase: 'testing',
-            startedAt: '2026-10-04T21:32:34.763Z', boardStatus: 'in_progress',
+            startedAt: '2026-10-04T21:32:34.763Z', boardStatus: 'in_progress', taskVersion: 7,
             title: 'Show chat-dispatched work in Today’s Schedule', projectId: 'nexus', projectName: 'TheNexus',
         });
 
@@ -220,31 +239,30 @@ describe('dispatch-insight live-work projection', () => {
         });
 
         // Linked successors wait on their NAMED dependencies, with each
-        // dependency's live lane, and auto-start is only claimed for the
-        // successor_id link. The chain follows one more hop.
+        // dependency's live lane; designated successors retain legacy automatic start. Later chain steps stay off the calendar.
         expect(items['contract-successor']).toMatchObject({
-            lane: 'waiting', boardStatus: 'idea', autoStart: true, projectName: 'Praxis',
+            lane: 'waiting', boardStatus: 'idea', autoStart: true, legacyAutoStart: true, projectName: 'Praxis',
             waitingOn: [{ taskId: 'contract-fix', title: 'Honor Robert-originated task contract changes', lane: 'queued', position: 2 }],
         });
         expect(items.vitality).toMatchObject({
-            lane: 'waiting', autoStart: true,
+            lane: 'waiting', autoStart: true, legacyAutoStart: true,
             waitingOn: [{ taskId: 'approvals', lane: 'queued', position: 1 }],
         });
-        expect(items.grandchild).toMatchObject({
-            lane: 'waiting', autoStart: false,
-            waitingOn: [{ taskId: 'vitality', lane: 'waiting' }],
-        });
+        expect(items.grandchild).toBeUndefined();
 
-        // Never listed: unlinked ideas, tasks waiting only on finished work,
+        expect(items['waits-on-done']).toBeUndefined();
+        expect(items.vitality.followsToday).toEqual([{ taskId: 'approvals', title: 'Enable executor-recorded document approvals' }]);
+
+        // Never listed: unlinked ideas,
         // archived or cancelled successors, a board row with no runtime run,
         // and the agent run.
-        for (const absent of ['plain-idea', 'waits-on-done', 'archived', 'cancelled-successor', 'stale-board', 'done-dep', 'agent-eod-review-1791075600432']) {
+        for (const absent of ['plain-idea', 'archived', 'cancelled-successor', 'stale-board', 'done-dep', 'agent-eod-review-1791075600432']) {
             expect(items[absent]).toBeUndefined();
         }
         expect(body.items.every((i) => i.lane !== 'queued' || ['approvals', 'contract-fix'].includes(i.taskId))).toBe(true);
     });
 
-    test('transitions: the queue head becomes the running task, QA pass turns the QA row into a finished-done row, and a successor whose predecessor completed stops waiting', async () => {
+    test('transitions: the queue head becomes the running task, QA pass turns the QA row into a finished-done row, and successors stay linked to running predecessors', async () => {
         await boot();
         // Slot freed: approvals dequeued and running; contract-fix now head of the queue.
         praxisState.current = {
@@ -278,6 +296,23 @@ describe('dispatch-insight live-work projection', () => {
         // and no reviewer is running: finished, QA pending — never "done".
         expect(items.visibility).toMatchObject({ lane: 'finished', boardStatus: 'in_progress', finishedAt: '2026-10-04T22:00:00.000Z' });
         expect(items.vitality).toMatchObject({ lane: 'waiting', waitingOn: [{ taskId: 'approvals', lane: 'running' }] });
+    });
+
+    test('before approval only actual execution is visible, not prepared successors', async () => {
+        await boot({ approved: false });
+        const { body } = await getJson(`${handle.baseUrl}/api/dispatch-insight/live-work`);
+        expect(body.items.filter(i => i.lane === 'waiting')).toEqual([]);
+        expect(byId(body).visibility.lane).toBe('running');
+        expect(byId(body).approvals.lane).toBe('queued');
+    });
+
+    test('schedule read failure hides suggestions but preserves running/queued work with an explicit error', async () => {
+        await boot({ slateError: true });
+        const { body } = await getJson(`${handle.baseUrl}/api/dispatch-insight/live-work`);
+        expect(body.items.filter(i => i.lane === 'waiting')).toEqual([]);
+        expect(byId(body).visibility.lane).toBe('running');
+        expect(byId(body).approvals.lane).toBe('queued');
+        expect(body.followupError).toMatch(/Schedule read failed/);
     });
 
     test('Praxis unreachable: explicit unavailable state, no rows invented from the board', async () => {
@@ -344,7 +379,7 @@ describe('projectLiveWork dependency resolution', () => {
         expect(cDeps.find((d) => d.taskId === 'B').lane).toBe('waiting');
     });
 
-    test('an authorized successor names its blocked prerequisite as well as the live predecessor', () => {
+    test('a linked successor names its blocked prerequisite as well as the live predecessor', () => {
         const A = row('A', 'todo', { successor: 'C' });
         const B = row('B', 'todo');
         const C = row('C', 'idea', { deps: ['B'] });
@@ -352,6 +387,7 @@ describe('projectLiveWork dependency resolution', () => {
         const c = items.find((i) => i.taskId === 'C');
         expect(c.lane).toBe('waiting');
         expect(c.autoStart).toBe(true);
+        expect(c.legacyAutoStart).toBe(true);
         expect(waitingOnIds(items, 'C')).toEqual(['A', 'B']);
         const b = c.waitingOn.find((d) => d.taskId === 'B');
         expect(b.lane).toBeNull();
@@ -362,5 +398,136 @@ describe('projectLiveWork dependency resolution', () => {
         const D = row('D', 'completed');
         const C2 = row('C', 'idea', { deps: ['B', 'D'] });
         expect(waitingOnIds(projectLiveWork(stateQueued('A'), [A, B, C2, D]), 'C')).toEqual(['A', 'B']);
+    });
+});
+
+
+describe('projectLiveWork prepared follow-ups and automatic starts', () => {
+    const { projectLiveWork } = createDispatchInsightRouter;
+    const row = (id, status, deps = [], extra = {}) => ({
+        id, name: id, status, version: 12, dependencies: JSON.stringify(deps), ...extra,
+    });
+    const project = (rows, executors = {}) => projectLiveWork({ executors: { runs: [], cliQueue: [], ...executors } }, rows);
+    const request = (state, taskId = 'follow') => ({
+        taskId, state, requestedAt: '2026-10-08T10:00:00Z', updatedAt: '2026-10-08T11:00:00Z',
+        detail: 'Waiting for dependencies', dependencies: ['before'], taskVersion: 12, contractHash: 'hash',
+    });
+
+    test.each(['completed', 'done'])('keeps a prepared follow-up after predecessor is %s and run history is gone', (status) => {
+        const rows = [row('before', status), row('follow', 'planning', ['before']), row('unlinked', 'idea')];
+        expect(project(rows)).toEqual([expect.objectContaining({
+            taskId: 'follow', lane: 'waiting', waitingOn: [], autoStart: false, taskVersion: 12,
+        })]);
+    });
+
+    test('keeps cross-project successor links after completion with no unfinished dependency claim', () => {
+        const rows = [row('before', 'completed', [], { successor_id: 'follow', project_id: 'one' }),
+            row('follow', 'planning', [], { project_id: 'two' })];
+        expect(project(rows)).toEqual([expect.objectContaining({ taskId: 'follow', lane: 'waiting', waitingOn: [], autoStart: true, legacyAutoStart: true })]);
+    });
+
+    test.each(['waiting', 'held', 'starting', 'uncertain'])('an explicit %s automatic-start request is visible without a CLI queue claim', (state) => {
+        const automaticStart = request(state);
+        const items = project([row('follow', 'planning')], { automaticStarts: [automaticStart] });
+        expect(items).toEqual([expect.objectContaining({
+            taskId: 'follow', lane: 'waiting', autoStart: true, automaticStart, taskVersion: 12,
+        })]);
+        expect(items[0].position).toBeUndefined();
+        expect(items[0].startedAt).toBeUndefined();
+    });
+
+    test.each(['cancelled'])('%s registry history does not expose unrelated backlog or claim auto-start', (state) => {
+        expect(project([row('follow', 'planning')], { automaticStarts: [request(state)] })).toEqual([]);
+        const linked = project([row('before', 'completed'), row('follow', 'planning', ['before'])], {
+            automaticStarts: [request(state)],
+        });
+        expect(linked[0]).toMatchObject({ lane: 'waiting', autoStart: false, automaticStart: null });
+    });
+
+    test('accepted ownership stays visible without inventing an active run until the board becomes terminal', () => {
+        const automaticStart = request('accepted');
+        expect(project([row('follow', 'planning')], { automaticStarts: [automaticStart] })).toEqual([
+            expect.objectContaining({ lane: 'waiting', autoStart: true, automaticStart }),
+        ]);
+        for (const status of ['completed', 'done', 'cancelled']) {
+            expect(project([row('follow', status)], { automaticStarts: [automaticStart] })).toEqual([]);
+        }
+    });
+
+    test('legacy ownership survives a cancelled registry request and obeys legacy status rules', () => {
+        const rows = [row('before', 'completed', [], { successor_id: 'follow' }), row('follow', 'planning')];
+        expect(project(rows, { automaticStarts: [request('cancelled')] })[0]).toMatchObject({
+            autoStart: true, legacyAutoStart: true, automaticStart: null,
+        });
+        rows[1].status = 'active';
+        expect(project(rows)[0]).toMatchObject({ autoStart: false, legacyAutoStart: false });
+    });
+
+    test('missing and archived incomplete prerequisites remain explicit rather than appearing completed', () => {
+        const items = project([
+            row('before', 'completed'), row('archived', 'planning', [], { archived_at: '2026-10-08' }),
+            row('follow', 'planning', ['before', 'missing', 'archived']),
+        ]);
+        expect(items[0]).toMatchObject({ taskId: 'follow', lane: 'waiting', waitingOn: [
+            { taskId: 'missing', title: 'Missing predecessor (missing)', missing: true, unavailable: true, boardStatus: null },
+            { taskId: 'archived', missing: false, unavailable: true, boardStatus: 'planning' },
+        ] });
+    });
+
+    test('a held retry is prepared despite an older finished attempt, while active QA stays authoritative', () => {
+        const rows = [row('follow', 'planning')];
+        const executors = {
+            automaticStarts: [request('held')],
+            runs: [{ taskId: 'follow', kind: 'task', status: 'failed', updatedAt: '2026-10-07T10:00:00Z' }],
+        };
+        expect(project(rows, executors)[0]).toMatchObject({ lane: 'waiting', automaticStart: { state: 'held' } });
+        executors.runs.push({ taskId: 'qa--follow', kind: 'qa', status: 'active' });
+        expect(project(rows, executors)[0]).toMatchObject({ lane: 'qa' });
+    });
+
+    test('real queue and running lanes win over automatic-start waiting state', () => {
+        const items = project([row('follow', 'planning'), row('running', 'active')], {
+            automaticStarts: [request('waiting'), request('starting', 'running')],
+            cliQueue: [{ taskId: 'follow' }, { taskId: 'running' }],
+            runs: [{ taskId: 'running', kind: 'task', status: 'active', executor: 'codex' }],
+        });
+        expect(items.find(i => i.taskId === 'follow')).toMatchObject({ lane: 'queued', position: 1, autoStart: true });
+        expect(items.find(i => i.taskId === 'running')).toMatchObject({ lane: 'running', autoStart: true });
+    });
+
+    test('completed, cancelled and archived follow-ups remain excluded even with automatic-start records', () => {
+        const rows = [row('before', 'completed'), row('done', 'completed', ['before']),
+            row('cancelled', 'cancelled', ['before']), row('archived', 'planning', ['before'], { archived_at: '2026-10-08' })];
+        expect(project(rows, { automaticStarts: rows.slice(1).map(r => request('held', r.id)) })).toEqual([]);
+    });
+});
+
+test('approved-plan retryable successor survives an old failed run while live QA retains precedence', () => {
+    const rows = [{ id: 'retry', name: 'Retry follow-up', status: 'todo', dependencies: '["today"]' },
+        { id: 'today', name: 'Today', status: 'completed', dependencies: '[]' }];
+    const scope = new Map([['retry', [{ taskId: 'today', title: 'Today' }]]]);
+    const state = { executors: { runs: [{ taskId: 'retry', kind: 'task', status: 'failed', updatedAt: '2026-10-08T12:00:00Z' }] } };
+    const items = createDispatchInsightRouter.projectLiveWork(state, rows, scope);
+    expect(items[0]).toMatchObject({ taskId: 'retry', lane: 'waiting', followsToday: [{ taskId: 'today', title: 'Today' }] });
+    expect(items[0].finishedAt).toBeUndefined();
+    state.executors.runs.push({ taskId: 'qa--retry', kind: 'qa', status: 'active' });
+    expect(createDispatchInsightRouter.projectLiveWork(state, rows, scope)[0].lane).toBe('qa');
+});
+
+describe('background evidence holds', () => {
+    const project = createDispatchInsightRouter.projectLiveWork;
+    const run = { taskId: 'held', kind: 'task', status: 'active', phase: 'completing', attemptId: 'attempt-new', startedAt: '2026-10-10T18:53:00Z', updatedAt: '2026-10-10T19:44:40Z' };
+    const hold = { taskId: 'held', executionId: 'execution-new', currentExecution: true, state: 'held', detail: 'Held for background evidence: Artifact is not fresh: /tmp/gr-browser-1.txt', updatedAt: '2026-10-10T19:45:00Z' };
+    test('a current execution evidence hold replaces the completing run with waiting and its reason', () => {
+        const [item] = project({ executors: { runs: [run], backgroundObligations: [hold] } }, [{ id: 'held', status: 'in_progress' }]);
+        expect(item).toMatchObject({ lane: 'waiting', statusMessage: hold.detail, updatedAt: hold.updatedAt, backgroundObligation: { state: 'held', executionId: hold.executionId, detail: hold.detail } });
+    });
+    test.each([{ currentExecution: false }, { currentExecution: undefined }, { state: 'continued' }, { state: 'abandoned' }])('ignores stale or settled obligations: %j', (change) => {
+        const [item] = project({ executors: { runs: [run], backgroundObligations: [{ ...hold, ...change }] } }, [{ id: 'held', status: 'in_progress' }]);
+        expect(item.lane).toBe('running');
+    });
+    test('an obligation registered while the parent still executes does not hide its active work', () => {
+        const [item] = project({ executors: { runs: [{ ...run, phase: 'executing' }], backgroundObligations: [{ ...hold, state: 'waiting' }] } }, [{ id: 'held', status: 'in_progress' }]);
+        expect(item.lane).toBe('running');
     });
 });

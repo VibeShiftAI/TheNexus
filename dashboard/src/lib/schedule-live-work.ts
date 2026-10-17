@@ -150,8 +150,9 @@ export function mergeLiveWork(
   const byTask = new Map<string, LiveWorkItem>();
   for (const item of live.items) {
     if (!item || typeof item.taskId !== "string" || !item.lane || !(item.lane in LANE_RANK)) continue;
-    const prev = byTask.get(item.taskId);
-    if (!prev || LANE_RANK[item.lane] < LANE_RANK[prev.lane]) byTask.set(item.taskId, item);
+    const identity = item.improvement ? `improvement:${item.taskId}:${item.improvement.id}` : item.taskId;
+    const prev = byTask.get(identity);
+    if (!prev || LANE_RANK[item.lane] < LANE_RANK[prev.lane]) byTask.set(identity, item);
   }
 
   const badges = new Map<string, LiveBadge>();
@@ -169,7 +170,7 @@ export function mergeLiveWork(
     }
     if (item.lane === "running") runningCount += 1;
 
-    const sameTask = eventsByTask.get(item.taskId);
+    const sameTask = item.improvement ? undefined : eventsByTask.get(item.taskId);
     if (sameTask && sameTask.length > 0) {
       // Dedupe: the calendar row IS this task. A completed event needs no
       // "finished" badge; every other live state adds information.
@@ -184,7 +185,7 @@ export function mergeLiveWork(
     }
 
     const row: LiveScheduleRow = {
-      key: `live:${item.taskId}`,
+      key: item.improvement ? `improvement:${item.taskId}:${item.improvement.id}` : `live:${item.taskId}`,
       taskId: item.taskId,
       title: item.title || item.taskId,
       lane: item.lane,
@@ -234,7 +235,9 @@ function timeOfDay(iso: string | null | undefined): string | null {
 }
 
 /** Short lane word for the dependency list and badges. */
-export function laneWord(dep: { lane: LiveWorkLane | null; position?: number | null }): string {
+export function laneWord(dep: { lane: LiveWorkLane | null; position?: number | null; missing?: boolean; unavailable?: boolean }): string {
+  if (dep.missing) return "missing";
+  if (dep.unavailable) return "unavailable";
   switch (dep.lane) {
     case "running":
       return "running";
@@ -257,6 +260,11 @@ export function laneWord(dep: { lane: LiveWorkLane | null; position?: number | n
  * no planned time for queued work, no "passed" for a finished implementation.
  */
 export function liveItemLabel(item: LiveWorkItem): string {
+  if (item.improvement) {
+    const labels: Record<string, string> = { waiting: "waiting — approved work runs first", running: "running", reviewing: "independent QA reviewing", verified: "verified", declined: "declined", needs_attention: "needs attention", unknown: "status unknown" };
+    return `QA improvements · ${labels[item.improvement.status] ?? "status unknown"}`;
+  }
+  if (item.backgroundObligation) return `${item.backgroundObligation.state === "held" ? "held" : "waiting"} for background evidence`;
   switch (item.lane) {
     case "running": {
       const parts = ["running"];
@@ -295,7 +303,14 @@ export function liveItemLabel(item: LiveWorkItem): string {
     case "waiting": {
       const deps = item.waitingOn ?? [];
       const named = deps.map((d) => `“${d.title}” (${laneWord(d)})`).join(", ");
-      const parts = [named ? `waiting on ${named}` : "waiting on linked work"];
+      const request = item.automaticStart;
+      if (request && request.state !== "cancelled") {
+        const state = request.state === "waiting" ? "automatic start saved" : `automatic start ${request.state}`;
+        return [state, request.detail || (named ? `waiting on ${named}` : "predecessors complete; checking dispatch readiness")].join(" · ");
+      }
+      const parts = [item.autoStart ? "automatic start saved" : "prepared · not scheduled"];
+      if (named) parts.push(`waiting on ${named}`);
+      else parts.push("predecessors complete");
       if (item.autoStart) parts.push("starts automatically when it completes");
       return parts.join(" · ");
     }

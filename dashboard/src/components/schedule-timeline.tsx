@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { FollowUpsSection } from "./schedule-followups";
 import { calendarEventsUrl, calendarEventTone, type CalendarEvent, type CalendarEventStatus } from "@/lib/calendar";
 import { getLiveWork, type LiveWorkItem, type LiveWorkLane } from "@/lib/nexus/dispatch-insight";
 import {
@@ -383,7 +384,6 @@ export function ScheduleTimeline() {
   const availability = liveWorkAvailability(liveRead);
   const availabilityText = liveWorkAvailabilityText(availability);
   const runtimeLive = availability.state === "live";
-  const waitingCount = live.untimed.filter((r) => r.lane === "waiting").length;
 
   const transitions = useArrivalPulse(
     [...events.map(e => `${e.id}:${e.status}`), ...live.timed.concat(live.untimed).map((r) => `${r.key}:${r.lane}`)],
@@ -625,18 +625,18 @@ export function ScheduleTimeline() {
   const renderLiveRow = (row: LiveScheduleRow) => {
     const { item } = row;
     const isExpanded = expandedEventId === row.key;
-    const clock = row.whenIso
+    const clock = item.improvement ? (item.improvement.updatedAt ? formatTime(item.improvement.updatedAt) : "—") : row.whenIso
       ? formatTime(row.whenIso)
       : row.lane === "queued"
         ? `#${item.position ?? "·"}`
         : row.lane === "waiting"
-          ? "after"
+          ? (item.autoStart ? "auto" : "prep")
           : "—";
-    const clockTitle = row.whenIso
+    const clockTitle = item.improvement ? (item.improvement.updatedAt ? `Improvement status updated ${new Date(item.improvement.updatedAt).toLocaleString()}` : "Improvement update time unavailable") : row.whenIso
       ? `${row.lane === "running" ? "started" : "implementation finished"} ${formatWhen(row.whenIso, spanStart)}`
       : row.lane === "queued"
         ? `Queue position ${item.position ?? "?"}${item.queueLength != null ? ` of ${item.queueLength}` : ""} — starts when the CLI slot frees; no planned time`
-        : "Starts after the work it waits on — no planned time";
+        : (item.autoStart ? "Automatic start requested; no planned time" : "Prepared follow-up; not scheduled");
 
     return (
       <div
@@ -677,7 +677,7 @@ export function ScheduleTimeline() {
         {isExpanded && (
           <div className="ml-1 mt-1 space-y-1.5 rounded-md border border-slate-800/60 bg-slate-950/50 p-2.5 text-xs text-slate-400">
             <div className="text-[10px] text-slate-500">
-              From the Praxis runtime — not a day-plan slot. Shown here so queued work is visible; nothing on this panel dispatches or re-orders it.
+              Runtime work and successors of today’s approved plan. Start controls authorize execution; viewing this list does not.
             </div>
             {item.projectName && (
               <div>
@@ -741,7 +741,7 @@ export function ScheduleTimeline() {
                 <div className="mt-1 text-[10px] text-slate-500">
                   {item.autoStart
                     ? "Praxis starts this task itself when its predecessor completes."
-                    : "Needs its predecessors complete before it can be dispatched."}
+                    : "Prepared only. Use the automatic-start action to authorize execution."}
                 </div>
               </div>
             )}
@@ -803,6 +803,7 @@ export function ScheduleTimeline() {
       ) : !hasRows ? (
         <div className="rounded border border-dashed border-slate-800 px-2 py-6 text-center text-xs text-slate-600">
           No events scheduled for today.
+          {liveRead.response?.followupError && <p className="mt-2 text-amber-300">{liveRead.response.followupError}</p>}
           {availabilityNote && <div className="mt-2 text-left">{availabilityNote}</div>}
         </div>
       ) : (
@@ -817,20 +818,11 @@ export function ScheduleTimeline() {
             {todayEntries.slice(0, nowAt).map(renderEntry)}
             {nowDivider}
             {/* The runtime queue sits right after NOW: it is what runs next,
-                in Praxis's own order, and it has no clock of its own. Linked
-                work waiting on it follows. */}
-            {live.untimed.length > 0 && (
-              <>
-                <div data-live-queue-header className="relative flex items-center gap-2 py-1 pl-5">
-                  <span className="absolute left-0 h-2 w-2 rounded-full border border-cyan-400/70 bg-slate-950" />
-                  <span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-widest text-cyan-300">
-                    queue · {live.queuedCount} queued{waitingCount > 0 ? ` · ${waitingCount} linked` : ""}
-                  </span>
-                  <span className="h-px flex-1 bg-gradient-to-r from-cyan-500/50 to-transparent" />
-                </div>
-                {live.untimed.map(renderLiveRow)}
-              </>
-            )}
+                in Praxis's own order, and it has no clock of its own. */}
+            {live.untimed.some(row => row.lane === "queued") && <>
+              <div data-live-queue-header className="py-1 pl-5 text-[9px] font-semibold uppercase tracking-widest text-cyan-300">Execution queue · {live.queuedCount} queued</div>
+              {live.untimed.filter(row => row.lane === "queued").map(renderLiveRow)}
+            </>}
             {todayEntries.slice(nowAt).map(renderEntry)}
             {spillEntries.length > 0 && (
               <>
@@ -855,6 +847,17 @@ export function ScheduleTimeline() {
               up next: <span className="text-purple-300">{nextScheduled.title}</span> · {formatWhen(nextScheduled.start_time, spanStart)}
             </div>
           ) : null}
+
+          {/* Follow-ups of today's plan live under the schedule, not inside
+              it: they are successors without a slot, and interleaving them
+              buried the running work on a phone (Robert, 2026-10-17). */}
+          <FollowUpsSection
+            rows={live.untimed}
+            availability={availability}
+            onChanged={fetchSchedule}
+            followupError={liveRead.response?.followupError}
+            className="mt-2 border-t border-slate-800/60 pt-1.5"
+          />
         </>
       )}
     </HudPanel>

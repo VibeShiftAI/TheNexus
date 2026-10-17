@@ -261,3 +261,74 @@ test("queue head on the calendar: 'up next' still names the head, and the badged
         view.cleanup();
     }
 });
+
+
+test('renders optional improvements beside the completed parent with reason and task detail link', async () => {
+ const item={taskId:DONE_TODAY.taskId,title:'QA improvements — Completed parent',lane:'waiting',boardStatus:'completed',improvement:{id:'r1',status:'needs_attention',reason:'Independent review needs repair.',updatedAt:ago(60000)}};
+ const view=await mount({calendar:[calendarEvent({task_id:item.taskId,title:'Completed parent',status:'completed'})],live:liveResponse([DONE_TODAY,item])});
+ try {
+  const row=view.row(item.taskId);
+  assert.ok(row); assert.match(row.textContent,/QA improvements.*needs attention/);
+  assert.match(row.textContent,/Independent review needs repair/);
+  assert.ok(row.querySelector(`a[href="/task/${item.taskId}#qa-improvements"]`));
+  assert.doesNotMatch(row.textContent,/Queue to start now|Start automatically/);
+  assert.match(row.querySelector('[data-live-clock]').title,/Improvement status updated/);
+ } finally {view.cleanup();}
+});
+
+for (const spill of [false, true]) {
+ test(`follow-ups sit in their own section after the whole timeline${spill ? ' even when the plan spills past midnight' : ''}, never between its rows`, async () => {
+  const at = (day, hour, minute = 0) => { const d = new Date(now); d.setHours(hour, minute, 0, 0); d.setDate(d.getDate() + day); return d.toISOString(); };
+  const improvement = {taskId:'parent',title:'QA improvements — parent',lane:'waiting',boardStatus:'completed',improvement:{id:'review',status:'deferred',reason:'Approved work runs first.',updatedAt:ago(60000)}};
+  // The plan's last task finished early this morning; work is running now;
+  // system jobs and unrelated work follow later. On 2026-10-17 this exact
+  // shape put seven follow-up rows between the morning and the running task.
+  const final = calendarEvent({id:'last-work',task_id:'final',title:'[Slot 6] Final planned task',status:'completed',start_time:at(spill ? 1 : 0, spill ? 0 : 4,20)});
+  const system = calendarEvent({id:'system-after',title:'Knowledge summaries',event_type:'local_llm:knowledge',start_time:at(1,3)});
+  const tomorrow = calendarEvent({id:'tomorrow-work',task_id:'tomorrow',title:'Tomorrow follow-up',start_time:at(1,10)});
+  const view = await mount({calendar:[final,system,tomorrow],live:liveResponse([RUNNING,WAITING,improvement])});
+  try {
+   const ordered = [...view.container.querySelectorAll('[id^="sched-"], [data-live-followups-header]')].map(el => el.id || 'followups');
+   assert.equal(ordered.at(-1), 'followups', 'the follow-ups header comes after every timeline row, running work included');
+   assert.ok(ordered.indexOf(`sched-live:${RUNNING.taskId}`) < ordered.indexOf('followups'), 'the running task is not behind the follow-ups');
+   // The scrolling list holds only timed and queued work; waiting rows live in the section.
+   const list = view.container.querySelector('[data-live-row="running"]').closest('.overflow-y-auto');
+   assert.ok(list, 'the running row sits in the scroll list');
+   assert.equal(list.querySelectorAll('[data-live-row="waiting"]').length, 0, 'no follow-up row inside the timeline list');
+   const section = view.container.querySelector('[data-live-followups]');
+   assert.equal(section.querySelectorAll('[data-live-row="waiting"]').length, 2, 'both follow-ups are in the section');
+   assert.match(section.querySelector('[data-live-followups-count]').textContent, /1 prepared · 1 QA suggestion/);
+   assert.match(view.row(WAITING.taskId).textContent, /starts automatically/);
+   assert.ok(view.row(WAITING.taskId).querySelector(`a[href="/task/${WAITING.taskId}"]`), 'the follow-up title links to its task');
+   assert.ok(view.calls.every(call => call.method === 'GET'), 'display placement never writes a timed dispatch');
+  } finally {view.cleanup();}
+ });
+}
+
+test('a prepared follow-up can be added to the calendar after the last planned task; a saved automatic start hides that button', async () => {
+ const prepared = {taskId:'canva',title:'Canva export',taskVersion:7,lane:'waiting',boardStatus:'planning',autoStart:false,waitingOn:[]};
+ const plan = {calendar:[calendarEvent({id:'last-work',task_id:'final',title:'[Slot 6] Final planned task'})],live:liveResponse([WAITING,prepared])};
+ const realFetch = globalThis.fetch;
+ const posts = [];
+ const view = await mount(plan);
+ const inner = globalThis.fetch;
+ globalThis.fetch = async (url, init) => {
+  const u = String(url);
+  if (u.includes('/api/calendar/follow-ups')) {
+   posts.push({method:init.method, body:JSON.parse(init.body)});
+   plan.calendar = [...plan.calendar, calendarEvent({id:'followup-1',task_id:'canva',title:'Follow-up: Canva export',start_time:ago(-2*HOUR)})];
+   plan.live = liveResponse([WAITING]);
+   return new Response(JSON.stringify({event:{id:'followup-1',task_id:'canva',title:'Follow-up: Canva export',start_time:ago(-2*HOUR),status:'scheduled'},after:{id:'last-work',title:'[Slot 6] Final planned task'}}),{status:201});
+  }
+  return inner(url, init);
+ };
+ try {
+  assert.equal(view.row(WAITING.taskId).querySelector('[data-add-to-schedule]'), null, 'a follow-up with automatic start saved is not offered a second start');
+  const button = [...view.row('canva').querySelectorAll('button')].find(b => /Add to calendar after today’s last task/.test(b.textContent));
+  assert.ok(button, 'the prepared follow-up offers the calendar slot');
+  await act(async () => button.click()); await settle();
+  assert.deepEqual(posts, [{method:'POST', body:{taskId:'canva'}}], 'one POST naming the task, nothing else');
+  assert.equal(view.row('canva'), null, 'after the refetch the task has a slot and leaves the follow-ups');
+  assert.ok(view.container.querySelector('#sched-followup-1'), 'the new calendar event is on the timeline');
+ } finally { globalThis.fetch = realFetch; view.cleanup(); }
+});
