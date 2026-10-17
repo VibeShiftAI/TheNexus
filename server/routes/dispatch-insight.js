@@ -373,14 +373,22 @@ function projectLiveWork(state, boardRows, followupScope) {
     const canWait = (b) => !items.has(b.id) && !b.archived && !isTaskDone(b.status) && !NEVER_WAITING_STATUSES.has(b.normalized);
     const waitingIds = new Set();
     const inChain = (id) => live.has(id) || waitingIds.has(id) || isTaskDone(board.get(id)?.status);
+    const executing = (id) => ['running', 'qa'].includes(items.get(id)?.lane);
     for (let changed = true; changed;) {
         changed = false;
         for (const b of board.values()) {
             if (waitingIds.has(b.id) || !canWait(b)) continue;
-            // The calendar route supplies a daily approved-plan scope. Other
-            // callers can still inspect the full runtime/board projection.
+            // The calendar route supplies a daily approved-plan scope: before
+            // approval, prepared follow-ups are suggestions and stay hidden.
+            // A successor of work that is EXECUTING right now (a running run
+            // or its QA) is not a suggestion: Praxis starts it when that run
+            // finishes whatever the plan says, so an ad-hoc run's successor_id
+            // shows under it (Robert, 2026-10-17). A successor of merely
+            // queued work still waits for approval or for the run to start.
+            // Other callers inspect the full runtime/board projection.
             if (followupScope !== undefined) {
-                if (!followupScope.has(b.id)) continue;
+                if (!followupScope.has(b.id) && !b.dependencies.some(executing)
+                    && !(predecessorsOf.get(b.id) || []).some(executing)) continue;
             } else if (!automaticStarts.has(b.id) && !b.dependencies.some(inChain)
                 && !(predecessorsOf.get(b.id) || []).some(inChain)) continue;
             waitingIds.add(b.id);

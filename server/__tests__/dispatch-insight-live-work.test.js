@@ -502,6 +502,37 @@ describe('projectLiveWork prepared follow-ups and automatic starts', () => {
     });
 });
 
+test('the successor of an ad-hoc running task is reported under the approved-plan scope, as waiting on that run with its legacy automatic start', () => {
+    // 2026-10-17: "Apply Joey's October 16 Statement" ran from chat, so it was
+    // never an approved-slate root; its successor_id vanished from the
+    // schedule even though Praxis would start it on completion.
+    const rows = [
+        { id: 'apply', name: 'Apply Joey’s October 16 Statement', status: 'in_progress', dependencies: '[]', successor_id: 'deploy' },
+        { id: 'deploy', name: 'Build and deploy Joey’s updated iPhone app', status: 'idea', dependencies: '["apply"]' },
+        { id: 'unrelated', name: 'Unrelated idea', status: 'idea', dependencies: '[]' },
+        { id: 'old-root', name: 'Finished weeks ago', status: 'completed', dependencies: '[]' },
+        { id: 'old-child', name: 'Child of old work', status: 'idea', dependencies: '["old-root"]' },
+    ];
+    const state = { executors: { runs: [{ taskId: 'apply', kind: 'task', status: 'active', executor: 'claude-code', startedAt: '2026-10-17T16:03:00Z' }], cliQueue: [] } };
+    const items = createDispatchInsightRouter.projectLiveWork(state, rows, new Map());
+    expect(items.map((i) => [i.taskId, i.lane])).toEqual([['apply', 'running'], ['deploy', 'waiting']]);
+    expect(items[1]).toMatchObject({
+        legacyAutoStart: true, autoStart: true, followsToday: [],
+        waitingOn: [{ taskId: 'apply', title: 'Apply Joey’s October 16 Statement', lane: 'running' }],
+    });
+    // Only executing work carries its successor past the scope: a predecessor
+    // that is merely queued, or has no run at all, leaves the scope to decide.
+    const queued = { executors: { runs: [], cliQueue: [{ taskId: 'apply' }] } };
+    expect(createDispatchInsightRouter.projectLiveWork(queued, rows, new Map()).map((i) => i.lane)).toEqual(['queued']);
+    expect(createDispatchInsightRouter.projectLiveWork({ executors: { runs: [], cliQueue: [] } }, rows, new Map())).toEqual([]);
+    // A predecessor in QA is still executing.
+    const inQa = { executors: { runs: [
+        { taskId: 'apply', kind: 'task', status: 'completed', startedAt: '2026-10-17T16:03:00Z', updatedAt: '2026-10-17T16:40:00Z' },
+        { taskId: 'qa--apply', kind: 'qa', status: 'active', startedAt: '2026-10-17T16:41:00Z' },
+    ], cliQueue: [] } };
+    expect(createDispatchInsightRouter.projectLiveWork(inQa, rows, new Map()).map((i) => [i.taskId, i.lane])).toEqual([['apply', 'qa'], ['deploy', 'waiting']]);
+});
+
 test('approved-plan retryable successor survives an old failed run while live QA retains precedence', () => {
     const rows = [{ id: 'retry', name: 'Retry follow-up', status: 'todo', dependencies: '["today"]' },
         { id: 'today', name: 'Today', status: 'completed', dependencies: '[]' }];
