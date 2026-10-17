@@ -348,6 +348,8 @@ test('a successor with automatic start hangs under its predecessor’s calendar 
   assert.equal(slotRow.nextElementSibling.getAttribute('data-chained-successors'), 'slot-contract');
   assert.match(chainedRow.textContent, /then/);
   assert.doesNotMatch(chainedRow.textContent, /Add to calendar/, 'a chained successor already has its start');
+  assert.doesNotMatch(chainedRow.textContent, /Automatic start is set|Review sequence/, 'a successor link needs no label under its predecessor');
+  assert.equal(chainedRow.querySelector('button'), null, 'nothing to cancel on a legacy successor link');
   const looseRow = view.row('prepared-successor');
   assert.ok(looseRow.closest('[data-live-followups]'), 'the manual-start successor stays in the follow-ups section');
   assert.match(view.container.querySelector('[data-live-followups-count]').textContent, /^1 prepared$/);

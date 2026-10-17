@@ -242,6 +242,12 @@ export function startsAutomatically(item: LiveWorkItem): boolean {
   return Boolean(request && request.state !== "cancelled");
 }
 
+/** An explicit automatic-start request that is still alive (and so cancellable). */
+export function hasAutomaticStartRequest(item: LiveWorkItem): boolean {
+  const request = item.automaticStart;
+  return Boolean(request && request.state !== "cancelled");
+}
+
 export interface ChainedFollowUps {
   /**
    * Waiting rows that start automatically, keyed by the schedule row they

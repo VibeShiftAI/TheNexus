@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Activity } from "lucide-react";
 import { AutomaticStartControl } from "./automatic-start-control";
 import {
+  hasAutomaticStartRequest,
   liveItemLabel,
   liveWorkAvailabilityText,
   type ChainedFollowUps,
@@ -181,7 +182,7 @@ export function LiveWorkStrip({ merged, availability, chained, onChanged, follow
                 <span data-live-label className="max-w-full truncate text-[11px] text-slate-400" title={liveItemLabel(row.item)}>
                   {liveItemLabel(row.item)}
                 </span>
-                <AutomaticStartControl item={row.item} onChanged={onChanged} disabled={availability.state !== "live"} />
+                {hasAutomaticStartRequest(row.item) && <AutomaticStartControl item={row.item} onChanged={onChanged} disabled={availability.state !== "live"} />}
               </li>
             ))];
           })}

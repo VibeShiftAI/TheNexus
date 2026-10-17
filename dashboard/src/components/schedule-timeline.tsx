@@ -10,6 +10,7 @@ import {
   applyLiveWorkRead,
   chainFollowUps,
   executorLabel,
+  hasAutomaticStartRequest,
   INITIAL_LIVE_WORK_READ,
   laneWord,
   liveItemLabel,
@@ -787,7 +788,9 @@ export function ScheduleTimeline() {
               <span className="shrink-0 rounded border border-cyan-700/60 px-1 text-[9px] font-semibold uppercase tracking-wider text-cyan-200/90">auto start</span>
             </div>
             <p data-live-label className="truncate px-1 text-[10px] text-slate-500" title={liveItemLabel(row.item)}>{liveItemLabel(row.item)}</p>
-            <div className="px-1"><AutomaticStartControl item={row.item} onChanged={fetchSchedule} disabled={!runtimeLive} /></div>
+            {/* Only an explicit request has anything to cancel; a successor
+                link needs no label here, the row under its predecessor says it. */}
+            {hasAutomaticStartRequest(row.item) && <div className="px-1"><AutomaticStartControl item={row.item} onChanged={fetchSchedule} disabled={!runtimeLive} /></div>}
           </div>
         ))}
       </div>
