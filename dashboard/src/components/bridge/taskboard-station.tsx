@@ -8,8 +8,9 @@
  */
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ClipboardList, ArrowUpRight, AlertTriangle, Play, CircleDashed, Radio, CheckCheck, ShieldCheck } from "lucide-react";
+import { ClipboardList, ArrowUpRight, AlertTriangle, Play, CircleDashed, Radio, CheckCheck, ShieldCheck, ChevronRight } from "lucide-react";
 import { HudPanel } from "@/components/bridge/hud";
 import { groupBoardTasks, type BoardTask } from "@/lib/task-board";
 import { useBoardState } from "@/hooks/use-board-state";
@@ -134,6 +135,9 @@ export function TaskBoardStation() {
   const active = grouped.in_progress.tasks;
   const queued = [...grouped.ready.tasks, ...grouped.new.tasks];
   const onBoard = attention.length + active.length + queued.length;
+  // Collapsed by default (Robert, 2026-10-18): the count stays visible in the
+  // header so held work is never hidden, but the rows open only on request.
+  const [attentionOpen, setAttentionOpen] = useState(false);
 
   // A clear board (nothing queued, nothing active) reads the same whether the
   // fleet is genuinely idle or the dispatch pipeline has silently stalled —
@@ -180,10 +184,26 @@ export function TaskBoardStation() {
         <div className="flex min-h-0 flex-1 flex-col gap-2.5">
           {attention.length > 0 && (
             <div className="space-y-1.5">
-              <SectionLabel tone="text-rose-400">needs your attention</SectionLabel>
-              {attention.map((t) => (
-                <AttentionRow key={t.id} task={t} />
-              ))}
+              <button
+                type="button"
+                onClick={() => setAttentionOpen((open) => !open)}
+                aria-expanded={attentionOpen}
+                aria-controls="tactical-attention-rows"
+                className="flex w-full items-center gap-1 text-left"
+                title={attentionOpen ? "Collapse" : "Expand to view"}
+              >
+                <ChevronRight size={11} className={`shrink-0 text-rose-400 transition-transform ${attentionOpen ? "rotate-90" : ""}`} />
+                <span className="min-w-0 flex-1">
+                  <SectionLabel tone="text-rose-400">needs your attention · {attention.length}</SectionLabel>
+                </span>
+              </button>
+              {attentionOpen && (
+                <div id="tactical-attention-rows" className="space-y-1.5">
+                  {attention.map((t) => (
+                    <AttentionRow key={t.id} task={t} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
