@@ -114,6 +114,7 @@ export function VoiceCommandBar() {
   const [response, setResponse] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [setupFocusRequest, setSetupFocusRequest] = useState(0);
   const [wakeEnabled, setWakeEnabled] = useState(false);
   const [alertMode, setAlertMode] = useState<AlertMode>('off');
   const [conversationActive, setConversationActive] = useState(false);
@@ -208,10 +209,11 @@ export function VoiceCommandBar() {
   const missingMicrophone = Boolean(microphone && devicesKnown && !microphones.some(device => device.deviceId === microphone));
   const openSetup = useCallback(() => {
     suspendWake(); setSettingsOpen(true); setPanelOpen(false);
-    settingsRef.current?.focus();
+    // Focus after the commit, not now: a collapsed global dock is still hidden here and expands in the same render.
+    setSetupFocusRequest(request => request + 1);
     void refreshMicrophones();
   }, [refreshMicrophones, suspendWake]);
-  useEffect(() => { if (settingsOpen) settingsRef.current?.focus(); }, [settingsOpen]);
+  useEffect(() => { if (settingsOpen) settingsRef.current?.focus(); }, [settingsOpen, setupFocusRequest]);
   useEffect(() => {
     window.addEventListener(VOICE_SETUP_EVENT, openSetup);
     return () => window.removeEventListener(VOICE_SETUP_EVENT, openSetup);
@@ -661,12 +663,13 @@ export function VoiceCommandBar() {
         setPanelOpen(false);
         setSettingsOpen(false);
       } else if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'v' && !e.repeat) {
-        e.preventDefault(); openSetup();
+        // The launcher's event, so a collapsed global dock expands too; this bar opens setup from its own listener.
+        e.preventDefault(); window.dispatchEvent(new window.Event(VOICE_SETUP_EVENT));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cancelAll, openSetup]);
+  }, [cancelAll]);
   useEffect(() => {
     const onVisibility = () => {
       setTabHidden(document.hidden);
