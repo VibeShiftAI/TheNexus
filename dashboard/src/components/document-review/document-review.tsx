@@ -80,6 +80,7 @@ import {
     type RevisionAsset,
     type SubmissionView,
 } from "@/lib/document-review";
+import { readReviewDraft, reconcileReviewDraft, writeReviewDraft, REVIEW_DRAFT_MAX_RECOVERED, type ComposerDraft, type RecoveredDraft, type RecoveredReason, type ReviewDraft } from "@/lib/review-drafts";
 import { blockElementId, excerpt, extractOutline, quoteLines } from "@/lib/document-outline";
 import { DocumentMarkdown, type BlockRef } from "./document-markdown";
 import { DecisionCard } from "./decision-card";
@@ -112,6 +113,15 @@ interface Composer {
     text: string;
     error?: string;
     saving: boolean;
+    /** The revision whose content the anchor refers to, captured when the composer opened. */
+    revisionId: string | null;
+    /** Put back from this browser's storage after a reload; nothing is saved until "Save comment". */
+    restored?: boolean;
+    /**
+     * A saved comment with this text at this place, found on an API that reports no client ids, so the server
+     * could not confirm it is this draft's own save: the reader decides whether to cancel or save.
+     */
+    sameAs?: string;
 }
 
 function formatWhen(iso: string | null | undefined): string {
@@ -123,6 +133,23 @@ function formatWhen(iso: string | null | undefined): string {
 function messageOf(err: unknown): string {
     if (err instanceof DocumentApiError) return err.message;
     return err instanceof Error ? err.message : "Request failed";
+}
+
+/** What a stored composer draft was written for, in the words the composer header used. */
+function draftLabel(c: ComposerDraft): string {
+    if (c.parent_id) return c.label ?? "Reply";
+    if (c.kind === "passage" && c.block) return c.block.start === c.block.end ? `Comment on line ${c.block.start}` : `Comment on lines ${c.block.start}–${c.block.end}`;
+    if (c.kind === "document") return "Note about the whole document";
+    return `Comment on ${c.label ?? c.kind}`;
+}
+
+function recoveredReasonText(reason: RecoveredReason): string {
+    switch (reason) {
+        case "revision": return "written for an earlier revision of this document and not moved to the current one";
+        case "review": return "written for a review that has since been finished";
+        case "parent": return "a reply to a comment that is no longer in this review";
+        default: return "an edit of a comment that has since changed or been removed";
+    }
 }
 
 function commentLabel(comment: ReviewComment): string {
@@ -232,7 +259,12 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const [summary, setSummary] = useState("");
     const [summaryStatus, setSummaryStatus] = useState<SaveStatus>({ state: "idle" });
     const [commentStatus, setCommentStatus] = useState<SaveStatus>({ state: "idle" });
-    const [editingComment, setEditingComment] = useState<{ id: string; text: string; saving: boolean; error?: string } | null>(null);
+    const [editingComment, setEditingComment] = useState<{ id: string; text: string; base: string; saving: boolean; error?: string } | null>(null);
+    /** Unsaved text from before a reload whose binding no longer holds; shown until the reader places or discards it. */
+    const [recovered, setRecovered] = useState<RecoveredDraft[]>([]);
+    const [summaryRestored, setSummaryRestored] = useState(false);
+    /** Drafts are written to storage only once the stored draft for this document has been reconciled, so the empty initial state never wipes it. */
+    const [draftPhase, setDraftPhase] = useState<"pending" | "ready">("pending");
     const [finishOpen, setFinishOpen] = useState(false);
     const [finishing, setFinishing] = useState(false);
     const [finishError, setFinishError] = useState<string | null>(null);
@@ -259,14 +291,23 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const documentIdRef = useRef(documentId);
     documentIdRef.current = documentId;
     const loadSequence = useRef(0);
+    /** The document whose stored draft has been reconciled; a composer left over from another id is never written under this one. */
+    const draftRestoredFor = useRef<string | null>(null);
+    /** Whether this page owns the stored draft (it wrote one, or reconciled its own); only then may an empty state clear storage. */
+    const ownsDraft = useRef(false);
+    /** Bumps when a comment or summary write is applied locally; a read that started before it must not replace the review with its older copy. */
+    const writeSequence = useRef(0);
     const load = useCallback(async (onlyNewRevision = false) => {
         const sequence = ++loadSequence.current;
+        const writesBefore = writeSequence.current;
         try {
             const response = await getDocument(documentId);
             if (documentId !== documentIdRef.current || sequence !== loadSequence.current) return;
             if (onlyNewRevision && response.revision?.id === dataRef.current?.revision?.id) return;
             setData(response);
             setLoadError(null);
+            // A comment or summary write landed while this read was in flight: the read's copy of the review predates it.
+            if (writeSequence.current !== writesBefore) return;
             const current = reviewRef.current;
             if (response.review && (!current || current.id === response.review.id || current.status === "submitted")) {
                 setReview(response.review);
@@ -283,6 +324,26 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         setViewRevision("current");
         setEditing(false);
         setLoadStates({});
+        // Nothing of a previous document may carry over: its review, submission, unsaved text, selection or pending summary save.
+        if (summaryTimer.current) { window.clearTimeout(summaryTimer.current); summaryTimer.current = null; }
+        reviewRef.current = null;
+        summaryDirty.current = false;
+        // The stored draft is reconciled again once this document's own read lands, also on a quick return to it.
+        draftRestoredFor.current = null;
+        setReview(null);
+        setSubmission(null);
+        setComposer(null);
+        setEditingComment(null);
+        setSummary("");
+        setSummaryStatus({ state: "idle" });
+        setCommentStatus({ state: "idle" });
+        setSelected(null);
+        setSelectedComment(null);
+        setFinishOpen(false);
+        setFinishError(null);
+        setRecovered([]);
+        setSummaryRestored(false);
+        setDraftPhase("pending");
         void load();
     }, [load]);
 
@@ -344,10 +405,86 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const selectedDirection = data?.current_decision?.applies_to_current_revision && data.current_decision.decision === "approve" ? data.current_decision.selection?.direction ?? null : null;
     const mediaLoad = useCallback((assetKey: string, state: "loaded" | "failed") => setLoadStates((prev) => (prev[assetKey] === state ? prev : { ...prev, [assetKey]: state })), []);
 
+    // Once per document, after its first read: put back the text this browser was holding when the page last went
+    // away (a full reload of the dev server, a crash, a closed tab), but only where its binding still holds. Anything
+    // written for another revision, a finished review or a vanished comment is kept as recovered text for the reader
+    // to place; nothing is saved by restoring (task 1390fc34).
+    useEffect(() => {
+        if (!data || data.document.id !== documentId || draftRestoredFor.current === documentId) return;
+        draftRestoredFor.current = documentId;
+        const stored = readReviewDraft(documentId);
+        const kept: RecoveredDraft[] = [];
+        if (stored) {
+            const plan = reconcileReviewDraft(stored, {
+                document_id: documentId,
+                revision_id: data.revision?.id ?? null,
+                reviewer_id: data.viewer?.id ?? null,
+                review: review ? { id: review.id, status: review.status, summary: review.summary || "", comments: review.comments } : null,
+            });
+            if (!plan.foreign) {
+                ownsDraft.current = true;
+                const now = new Date().toISOString();
+                kept.push(...stored.recovered);
+                const keep = (item: RecoveredDraft) => { if (!kept.some((r) => r.id === item.id)) kept.push(item); };
+                if (plan.composer && "restore" in plan.composer) {
+                    const c = plan.composer.restore;
+                    const sameAs = plan.composer.same_as;
+                    setComposer((prev) => (prev && prev.text.trim() ? prev : { clientId: c.client_id, kind: c.kind, block: c.block, quote: c.quote, selection: c.selection, anchor: c.anchor, label: c.label, parentId: c.parent_id, text: c.text, saving: false, revisionId: stored.revision_id, restored: true, ...(sameAs ? { sameAs } : {}) }));
+                    if (c.kind === "passage" && c.block) setSelected(c.block);
+                    if (c.parent_id) setSelectedComment(c.parent_id);
+                } else if (plan.composer && "recovered" in plan.composer) {
+                    const c = plan.composer.recovered;
+                    keep({ id: `draft-${c.client_id}`, text: c.text, label: draftLabel(c), reason: plan.composer.reason, revision_id: stored.revision_id, saved_at: now });
+                }
+                if (plan.edit && "restore" in plan.edit) {
+                    const e = plan.edit.restore;
+                    setEditingComment({ id: e.comment_id, text: e.text, base: e.base_body, saving: false });
+                } else if (plan.edit && "recovered" in plan.edit) {
+                    const e = plan.edit.recovered;
+                    keep({ id: `edit-${e.comment_id}`, text: e.text, label: "Edit of a comment", reason: plan.edit.reason, revision_id: stored.revision_id, saved_at: now });
+                }
+                if (plan.summary) {
+                    summaryDirty.current = true;
+                    setSummary(plan.summary.restore);
+                    setSummaryRestored(true);
+                }
+            }
+        }
+        setRecovered(kept.slice(-REVIEW_DRAFT_MAX_RECOVERED));
+        setDraftPhase("ready");
+    }, [data, documentId, review]);
+
+    // Every keystroke in a composer, a comment edit or the summary lands in this browser's storage, bound to this
+    // document, revision and reviewer, until the server acknowledges it or the reader discards it.
+    useEffect(() => {
+        if (draftPhase !== "ready" || draftRestoredFor.current !== documentId || !data || data.document.id !== documentId) return;
+        const record: ReviewDraft = {
+            document_id: documentId,
+            revision_id: composer?.revisionId ?? data.revision?.id ?? null,
+            content_hash: data.revision?.content_hash ?? null,
+            reviewer_id: data.viewer?.id ?? null,
+            review_id: review?.id ?? null,
+            composer: composer && composer.text.trim()
+                ? { client_id: composer.clientId, kind: composer.kind, text: composer.text, block: composer.block, quote: composer.quote, selection: composer.selection, anchor: composer.anchor, label: composer.label, parent_id: composer.parentId }
+                : null,
+            edit: editingComment && editingComment.text.trim() && editingComment.text !== editingComment.base
+                ? { comment_id: editingComment.id, base_body: editingComment.base, text: editingComment.text }
+                : null,
+            summary: summaryDirty.current ? { text: summary, base: review?.summary ?? "" } : null,
+            recovered,
+            saved_at: new Date().toISOString(),
+        };
+        const empty = !record.composer && !record.edit && !record.summary && recovered.length === 0;
+        // An empty state clears storage only when this page put the draft there; another reviewer's draft in a shared browser is left alone.
+        if (empty && !ownsDraft.current) return;
+        if (writeReviewDraft(documentId, record)) ownsDraft.current = !empty;
+    }, [draftPhase, documentId, data, review, composer, editingComment, summary, summaryStatus.state, recovered]);
+
     const ensureReview = useCallback(async (): Promise<ReviewView> => {
         const current = reviewRef.current;
         if (current && current.status === "draft") return current;
         const opened = await openReview(documentId);
+        writeSequence.current += 1;
         reviewRef.current = opened;
         setReview(opened);
         setSubmission(opened.submission);
@@ -355,6 +492,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     }, [documentId]);
 
     const applyComment = (comment: ReviewComment) => {
+        writeSequence.current += 1;
         setReview((prev) => {
             if (!prev) return prev;
             const exists = prev.comments.some((c) => c.id === comment.id);
@@ -362,8 +500,9 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         });
     };
 
-    const openComposer = (next: Omit<Composer, "clientId" | "text" | "saving"> & { text?: string }) => {
-        setComposer(() => ({ clientId: newClientId(), saving: false, ...next, text: next.text ?? "" }));
+    const shownRevisionId = shownRevision?.id ?? null;
+    const openComposer = (next: Omit<Composer, "clientId" | "text" | "saving" | "revisionId"> & { text?: string }) => {
+        setComposer(() => ({ clientId: newClientId(), saving: false, revisionId: shownRevisionId, ...next, text: next.text ?? "" }));
         if (reviewOpen) { reopenDrawer.current = true; setReviewOpen(false); }
     };
 
@@ -382,12 +521,25 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     selection: extra?.selection ?? (sameBlock ? prev.selection : undefined),
                     text: sameBlock ? prev.text : "",
                     saving: false,
+                    revisionId: shownRevisionId,
                 };
             });
             setReviewOpen(false);
         },
-        [canAnnotate, shownContent],
+        [canAnnotate, shownContent, shownRevisionId],
     );
+
+    /** Recovered text the reader wants as a note about the whole document: it opens a composer, it is not saved. */
+    const placeRecovered = (item: RecoveredDraft) => {
+        setRecovered((list) => list.filter((r) => r.id !== item.id));
+        setSelected(null);
+        setSelectedComment(null);
+        openComposer({ kind: "document", text: item.text, restored: true });
+    };
+    const discardRecovered = (item: RecoveredDraft) => setRecovered((list) => list.filter((r) => r.id !== item.id));
+    const copyRecovered = async (item: RecoveredDraft) => {
+        try { await navigator.clipboard.writeText(item.text); } catch { /* clipboard blocked; the text stays on screen */ }
+    };
 
     const startDocumentNote = () => {
         setSelected(null);
@@ -487,6 +639,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         setCommentStatus({ state: "saving" });
         try {
             await deleteComment(review.id, comment.id);
+            writeSequence.current += 1;
             setReview((prev) => (prev ? { ...prev, comments: prev.comments.filter((c) => c.id !== comment.id && c.parent_id !== comment.id) } : prev));
             setCommentStatus({ state: "saved" });
         } catch (err) {
@@ -512,7 +665,9 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 const draft = await ensureReview();
                 const updated = await saveSummary(draft.id, value);
                 summaryDirty.current = false;
+                writeSequence.current += 1;
                 setReview((prev) => (prev ? { ...prev, summary: updated.summary, updated_at: updated.updated_at } : updated));
+                setSummaryRestored(false);
                 setSummaryStatus({ state: "saved" });
             } catch (err) {
                 const message = messageOf(err);
@@ -534,6 +689,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const adoptFinished = (finished: ReviewView, sub: SubmissionView | null) => {
         setDelegateApproval(false);
         summaryDirty.current = false;
+        writeSequence.current += 1;
+        setSummaryRestored(false);
         reviewRef.current = finished;
         setReview(finished);
         setSubmission(sub ?? finished.submission);
@@ -686,6 +843,12 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             {composer.error && (
                 <p role="alert" className="mt-1 flex items-start gap-1 text-[11px] text-rose-200"><AlertTriangle size={12} className="mt-0.5 shrink-0" /> {composer.error} — your text is kept; try again.</p>
             )}
+            {composer.restored && !composer.error && (
+                <p role="status" data-composer-restored="" {...(composer.sameAs ? { "data-composer-same-as": composer.sameAs } : {})} className="mt-1 text-[11px] text-amber-200">
+                    Restored from this browser after the page reloaded; not saved until you save it.
+                    {composer.sameAs && " A saved comment with the same text is already at this place; cancel this draft if it is the same one."}
+                </p>
+            )}
             <div className="mt-2 flex justify-end gap-2">
                 <button type="button" onClick={closeComposer} className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500">Cancel</button>
                 <button type="button" onClick={() => void submitComposer()} disabled={composer.saving || !composer.text.trim()} className="inline-flex items-center gap-1 rounded-md border border-cyan-500/50 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 disabled:opacity-50">
@@ -715,7 +878,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             <div className="mt-1.5 flex flex-wrap justify-end gap-2 text-[11px] text-slate-400">
                 {root && <button type="button" onClick={() => startReply(comment)} className="inline-flex items-center gap-1 hover:text-white" data-comment-reply=""><CornerDownRight size={11} /> Reply</button>}
                 {root && <button type="button" onClick={() => void toggleResolved(comment)} className={`inline-flex items-center gap-1 hover:text-white ${comment.resolved ? "text-emerald-300" : ""}`} data-comment-resolve="" aria-pressed={Boolean(comment.resolved)}><Check size={11} /> {comment.resolved ? "Resolved" : "Resolve"}</button>}
-                <button type="button" onClick={() => setEditingComment({ id: comment.id, text: comment.body, saving: false })} className="inline-flex items-center gap-1 hover:text-white"><Pencil size={11} /> Edit</button>
+                <button type="button" onClick={() => setEditingComment({ id: comment.id, text: comment.body, base: comment.body, saving: false })} className="inline-flex items-center gap-1 hover:text-white"><Pencil size={11} /> Edit</button>
                 <button type="button" onClick={() => void removeComment(comment)} className="inline-flex items-center gap-1 hover:text-rose-200"><Trash2 size={11} /> Delete</button>
             </div>
         )
@@ -833,6 +996,29 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     );
 
     const noteButtonLabel = textual && mediaType !== "design" ? "Add a note about the whole document" : "Add a note about the whole deliverable";
+    const canNote = isDraft && (!documentChanged || showingPinned) && !showSource && !editing;
+
+    // Unsaved text from before a reload that cannot go back where it was written. It is the reader's words, shown
+    // verbatim with where they were meant for; placing it opens a composer, discarding it is the only way it goes away.
+    const recoveredCard = recovered.length > 0 && (
+        <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100" data-recovered-drafts="">
+            <p className="font-semibold">Unsaved text from before this page reloaded</p>
+            <p className="mt-0.5 text-[11px] text-amber-100/80">It was never saved and has not been moved; place it yourself or discard it.</p>
+            <ul className="mt-2 space-y-2">
+                {recovered.map((item) => (
+                    <li key={item.id} className="rounded-md border border-amber-500/30 bg-slate-950/60 p-2" data-recovered-draft={item.id} data-recovered-reason={item.reason}>
+                        <div className="text-[11px] text-amber-200/90">{item.label} · {recoveredReasonText(item.reason)}</div>
+                        <pre className="mt-1 whitespace-pre-wrap font-sans text-sm text-slate-100" data-recovered-text="">{item.text}</pre>
+                        <div className="mt-1.5 flex flex-wrap justify-end gap-2 text-[11px]">
+                            {canNote && <button type="button" onClick={() => placeRecovered(item)} className="rounded border border-cyan-500/50 bg-cyan-500/15 px-2 py-1 text-cyan-100 hover:bg-cyan-500/25">Use as a note about the whole {textual && mediaType !== "design" ? "document" : "deliverable"}</button>}
+                            <button type="button" onClick={() => void copyRecovered(item)} className="rounded border border-slate-700 px-2 py-1 text-slate-300 hover:border-slate-500">Copy</button>
+                            <button type="button" onClick={() => discardRecovered(item)} className="rounded border border-slate-700 px-2 py-1 text-slate-300 hover:border-rose-400 hover:text-rose-200">Discard</button>
+                        </div>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 
     const reviewPanel = (
         <div className="space-y-3" data-review-panel="">
@@ -842,6 +1028,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 <span className={`rounded-full border px-2 py-0.5 text-[11px] ${isDraft ? "border-amber-500/40 bg-amber-500/10 text-amber-200" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"}`}>{isDraft ? "Draft" : "Finished"}</span>
             </div>
             <div>{saveIndicator}</div>
+            {recoveredCard}
             {submissionCard}
             {!isDraft && (
                 <button type="button" onClick={() => void startNewReview()} className="text-[11px] text-cyan-300 hover:underline">Start a new review of this {mediaLabel(mediaType).toLowerCase()}</button>
@@ -856,6 +1043,12 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 <div>
                     <label className="block text-[11px] font-semibold text-slate-300" htmlFor="review-summary">Summary (optional, saved as you type)</label>
                     <textarea id="review-summary" value={summary} onChange={(e) => onSummaryChange(e.target.value)} placeholder="Overall impression, decisions, what to do next…" className="mt-1 h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-500/60" />
+                    {summaryRestored && (
+                        <p role="status" data-summary-restored="" className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-amber-200">
+                            Summary restored from this browser after the page reloaded; it is not saved yet.
+                            <button type="button" onClick={() => { if (summaryTimer.current) { window.clearTimeout(summaryTimer.current); summaryTimer.current = null; } void persistSummary(summary); }} className="underline">Save now</button>
+                        </p>
+                    )}
                 </div>
             )}
             {!isDraft && review?.summary && (

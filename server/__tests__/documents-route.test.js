@@ -118,6 +118,8 @@ test('reading serves the actual content with source task state, and raw/download
     expect(read.json.source.task).toMatchObject({ id: TASK_ID, title: 'Verify repairs', status: 'completed', status_message: 'QA passed (cross-executor review)' });
     expect(read.json.source.project).toMatchObject({ id: PROJECT_ID, name: 'Praxis' });
     expect(read.json.review).toBeNull();
+    expect(read.json.viewer).toEqual({ id: 'local_user' });
+    expect((await api('GET', `/api/documents/${document.id}`, undefined, { user: 'someone-else' })).json.viewer).toEqual({ id: 'someone-else' });
     expect(read.json.links.review_url).toBe(`https://nexus.vibeshiftai.com/documents/${document.id}`);
 
     const raw = await api('GET', `/api/documents/${document.id}/raw`);
@@ -171,6 +173,8 @@ test('drafts persist server-side with verified anchors, dedupe by client id, and
     expect(second.json.review.id).toBe(review.id);
     expect(second.json.review.summary).toBe('Draft summary');
     expect(second.json.review.comments.map(c => c.id).sort()).toEqual([created.json.comment.id, note.json.comment.id].sort());
+    // The review view carries each comment's client id, so a browser that reloaded mid-save can see its draft landed.
+    expect(second.json.review.comments.map(c => c.client_id).sort()).toEqual(['c-1', 'c-2']);
 
     const removed = await api('DELETE', `/api/documents/reviews/${review.id}/comments/${note.json.comment.id}`);
     expect(removed.status).toBe(200);

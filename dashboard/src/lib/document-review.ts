@@ -163,6 +163,8 @@ export interface ReviewComment {
     target_label?: string | null;
     /** A reply's root comment in the same review; null for a root. */
     parent_id?: string | null;
+    /** The idempotency id the reviewer sent; absent on an API that predates it. */
+    client_id?: string | null;
     resolved?: boolean;
     resolved_at?: string | null;
     created_at: string;
@@ -254,6 +256,8 @@ export interface DocumentResponse {
     review_status?: DocumentReviewStatus;
     outgoing?: DocumentOutgoing | null;
     current_decision?: (DocumentDecision & { applies_to_current_revision: boolean }) | null;
+    /** The reviewer this read is for; absent on an API that predates it. Unsaved review text is bound to it. */
+    viewer?: { id: string } | null;
     links: { review_url: string; raw_url: string; review_path?: string };
 }
 

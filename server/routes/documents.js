@@ -414,6 +414,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         const currentAssets = documentChanged ? revisionAssets(currentRevision) : null;
         const comments = store().listComments(review.id).map(comment => ({
             ...fmt.publicComment(comment),
+            // The reviewer's idempotency id, so a browser that reloaded mid-save can tell its draft already landed (task 1390fc34).
+            client_id: comment.client_id ?? null,
             anchor: fmt.MEDIA_COMMENT_KINDS.has(comment.kind)
                 ? (documentChanged ? fmt.mediaAnchorState(comment, currentAssets) : { state: 'intact', current_asset_key: comment.anchor?.asset_key ?? null })
                 : fmt.anchorState(comment, currentRevision?.content, pinned?.content_hash, currentRevision?.content_hash),
@@ -755,6 +757,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 review: review ? reviewView(review, { revision: captured.revision }) : null,
                 review_status: store().getReviewStatus(doc.id),
                 current_decision: latest ? { ...latest, applies_to_current_revision: latest.revision_id === fresh.current_revision_id } : null,
+                // Who this read is for: the browser binds its unsaved review text to this reviewer (task 1390fc34).
+                viewer: { id: req.user.id },
                 links: { review_url: fmt.reviewUrlFor(fresh.id), review_path: fmt.reviewPathFor(fresh.id), raw_url: `/api/documents/${fresh.id}/raw` },
             });
         } catch (err) {

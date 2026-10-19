@@ -15,5 +15,6 @@ import { DocumentReviewPage } from "@/components/document-review/document-review
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    return <DocumentReviewPage documentId={id} />;
+    // One reviewer instance per document: moving to another id must not carry a review, composer or summary across.
+    return <DocumentReviewPage key={id} documentId={id} />;
 }
