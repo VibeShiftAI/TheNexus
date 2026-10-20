@@ -301,7 +301,10 @@ body { zoom: var(--nexus-display-scale, 1); }
    clip any residual horizontal overflow at the root — clip, not hidden, so
    sticky headers keep working. See docs/mobile-shell.md. */
 @media (max-width: 767px) {
-  html { overflow-x: clip; }
+  /* Both elements: with html alone, mobile Chrome still widens the layout viewport to the overflow (a long inline code
+     token at 125% display size made it 465x1005 on a 390x844 phone), and every fixed control, the review drawer's
+     Finish review among them, was laid out below the visible screen (task 7fe1005f). */
+  html, body { overflow-x: clip; }
   /* Long tokens in pre-wrapped text (briefs, logs) wrap instead of widening the layout viewport. */
   .whitespace-pre-wrap { overflow-wrap: anywhere; }
   .flex > *, .grid > * { min-width: 0; }

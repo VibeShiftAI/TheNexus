@@ -25,7 +25,7 @@
  */
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
     AlertTriangle,
@@ -279,6 +279,17 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const [seekTo, setSeekTo] = useState<number | null>(null);
     const [requestedPage, setRequestedPage] = useState<number | null>(null);
     const [linkCopied, setLinkCopied] = useState(false);
+    /** The sticky header's height: the rails stick just below it, at the spot they start from, so their bottom edge never moves. */
+    const [headerHeight, setHeaderHeight] = useState<number | null>(null);
+    const headerRef = useCallback((el: HTMLElement | null) => {
+        if (!el) return;
+        const measure = () => setHeaderHeight(el.offsetHeight);
+        measure();
+        if (typeof ResizeObserver === "undefined") return;
+        const observer = new ResizeObserver(measure);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
     const summaryTimer = useRef<number | null>(null);
     const summaryDirty = useRef(false);
     /** Phone: the review drawer was closed to make room for the composer; reopen it when the composer closes. */
@@ -1166,8 +1177,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     })();
 
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30" data-document-review-page="" data-media-type={mediaType}>
-            <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
+        <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30" data-document-review-page="" data-media-type={mediaType} style={headerHeight === null ? undefined : ({ "--review-rail-top": `calc(${headerHeight}px + 1.25rem)` } as CSSProperties)}>
+            <header ref={headerRef} className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
                 {/* Row 1: where you are and what you can do. Row 2: what this is. */}
                 <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-2">
                     <div className="hidden min-w-0 sm:block">
@@ -1259,8 +1270,12 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             </header>
 
             <div className="mx-auto max-w-[1600px] px-4 py-5 lg:grid lg:grid-cols-[200px_minmax(0,1fr)_380px] lg:gap-6">
+                {/* The rails stick where they start, just below the header, and end above the floating ticker, audio, voice
+                    and feedback controls (lib/floating-controls), so their last controls, Finish review among them, scroll
+                    into open space whether or not the page has scrolled. vh is divided by the display scale: under the body
+                    zoom 100vh is taller than the window. */}
                 <aside className="hidden lg:block">
-                    <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pr-2">{outlinePanel}</div>
+                    <div className="sticky top-[var(--review-rail-top,6rem)] max-h-[max(8rem,calc(100vh/var(--nexus-display-scale,1)-var(--review-rail-top,6rem)-var(--nexus-floating-bottom,6rem)))] overflow-y-auto pr-2">{outlinePanel}</div>
                 </aside>
 
                 <article className="min-w-0" data-stage="">
@@ -1299,13 +1314,15 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 </article>
 
                 <aside className="hidden lg:block">
-                    <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-slate-800 bg-slate-900/40 p-3">{reviewPanel}</div>
+                    <div className="sticky top-[var(--review-rail-top,6rem)] max-h-[max(8rem,calc(100vh/var(--nexus-display-scale,1)-var(--review-rail-top,6rem)-var(--nexus-floating-bottom,6rem)))] overflow-y-auto rounded-xl border border-slate-800 bg-slate-900/40 p-3">{reviewPanel}</div>
                 </aside>
             </div>
 
+            {/* Phone sheets and drawers pad their ends past the mini player and feedback launcher, which stay on top of them;
+                the scroll padding keeps a focused or scrolled-to control (Send to Praxis) out from under them too. */}
             {/* Phone: composer sheet */}
             {composer && (
-                <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[70vh] overflow-y-auto border-t border-cyan-500/40 bg-slate-950 p-3 pb-6 shadow-2xl lg:hidden" data-composer-sheet="">
+                <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[calc(70vh/var(--nexus-display-scale,1))] overflow-y-auto border-t border-cyan-500/40 bg-slate-950 p-3 pb-[max(1.5rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)] shadow-2xl lg:hidden" data-composer-sheet="">
                     {composerPanel}
                 </div>
             )}
@@ -1314,7 +1331,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             {outlineOpen && (
                 <div className="fixed inset-0 z-[80] lg:hidden" role="dialog" aria-label={navigatorTitle}>
                     <button type="button" aria-label={`Close ${navigatorTitle.toLowerCase()}`} onClick={() => setOutlineOpen(false)} className="absolute inset-0 bg-black/60" />
-                    <div className="absolute inset-x-0 bottom-0 max-h-[75vh] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-8">
+                    <div className="absolute inset-x-0 bottom-0 max-h-[calc(75vh/var(--nexus-display-scale,1))] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-[max(2rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)]">
                         <div className="mb-2 flex justify-end"><button type="button" onClick={() => setOutlineOpen(false)} aria-label="Close" className="rounded p-1 text-slate-400"><X size={16} /></button></div>
                         {outlinePanel}
                     </div>
@@ -1325,7 +1342,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             {reviewOpen && (
                 <div className="fixed inset-0 z-[80] lg:hidden" role="dialog" aria-label="Your review">
                     <button type="button" aria-label="Close review" onClick={() => setReviewOpen(false)} className="absolute inset-0 bg-black/60" />
-                    <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-8" data-review-drawer="">
+                    <div className="absolute inset-x-0 bottom-0 max-h-[calc(85vh/var(--nexus-display-scale,1))] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-[max(2rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)]" data-review-drawer="">
                         <div className="mb-2 flex justify-end"><button type="button" onClick={() => setReviewOpen(false)} aria-label="Close" className="rounded p-1 text-slate-400"><X size={16} /></button></div>
                         {reviewPanel}
                     </div>

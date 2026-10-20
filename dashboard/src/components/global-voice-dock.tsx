@@ -8,6 +8,7 @@ import { VOICE_SETUP_EVENT } from "@/lib/voice-input";
 // The storage key lives in a lib module: this file is imported by the root layout, and a non-component export here
 // makes Fast Refresh fall back to a full reload of every open page on each save (task 1390fc34, 2026-10-19).
 import { VOICE_DOCK_COLLAPSED_KEY } from "@/lib/voice-dock-preferences";
+import { floatingControlRef } from "@/lib/floating-controls";
 
 /** Root placement preserves capture and playback across client navigation. */
 export function GlobalVoiceDock() {
@@ -28,7 +29,8 @@ export function GlobalVoiceDock() {
   }, []);
   if (pathname === "/login" || pathname?.startsWith("/login/")) return null;
   return (
-    <div aria-label="Global voice controls" role="region" className="fixed bottom-12 right-3 z-50 flex max-w-[calc(100vw/var(--nexus-display-scale,1)-1.5rem)] items-center gap-1 rounded-xl border border-slate-700/70 bg-slate-950/95 p-1.5 shadow-xl backdrop-blur-md">
+    // Beside or above the mini player and clear of the feedback launcher, placed by lib/floating-controls (task 7fe1005f).
+    <div ref={floatingControlRef("voice")} aria-label="Global voice controls" role="region" style={{ bottom: "var(--nexus-voice-bottom, 3rem)", right: "var(--nexus-voice-right, 0.75rem)" }} className="fixed z-50 flex max-w-[calc(100vw/var(--nexus-display-scale,1)-var(--nexus-voice-right,0.75rem)-0.75rem)] items-center gap-1 rounded-xl border border-slate-700/70 bg-slate-950/95 p-1.5 shadow-xl backdrop-blur-md">
       <button
         type="button"
         onClick={() => toggle(!collapsed)}

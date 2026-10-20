@@ -18,6 +18,7 @@ import { HudModal } from "@/components/bridge/hud";
 import type { StreamEvent } from "@praxis/contract";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
 import { describeHitlAction, selectPendingAlert } from "@/lib/alert-action";
+import { floatingControlRef } from "@/lib/floating-controls";
 
 const FAILURE_ALERT_WINDOW_MS = 10 * 60 * 1000;
 
@@ -138,8 +139,9 @@ export function EventTicker() {
     .filter((l): l is { e: StreamEvent; text: string } => Boolean(l.text));
 
   return (
-    <div className={`fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md transition-colors duration-500 ${frame}`}>
-      <div className="mx-auto flex max-w-[2400px] items-center gap-2 overflow-hidden px-3">
+    <div ref={floatingControlRef("ticker")} className={`fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md transition-colors duration-500 ${frame}`}>
+      {/* The right padding keeps the display size control out from under the feedback launcher. */}
+      <div className="mx-auto flex max-w-[2400px] items-center gap-2 overflow-hidden px-3" style={{ paddingRight: "max(0.75rem, var(--nexus-ticker-right, 0px))" }}>
       <div
         className="flex min-w-0 flex-1 h-9 cursor-pointer items-center gap-3 overflow-hidden px-6"
         onClick={() => setLogOpen(true)}

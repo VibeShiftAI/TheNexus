@@ -7,6 +7,7 @@ import { Pause, Play, Volume2, X } from "lucide-react";
 import { bindMediaSpeech, claimMediaSpeech } from "@/lib/speech-ownership";
 import { reportClientActivity } from "@/lib/active-client";
 import type { ChatAudioItem } from "@/lib/chat-audio";
+import { floatingControlRef } from "@/lib/floating-controls";
 
 // ────────────────────────────────────────────────────────────
 // Shared types (also used by ai-terminal.tsx)
@@ -761,16 +762,22 @@ function GlobalAudioMiniPlayer({
     const { item, playing, currentTime, duration } = nowPlaying;
     const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
     return (
-        <div className="fixed bottom-4 right-4 z-[90] flex items-center gap-3 rounded-lg border border-cyan-500/30 bg-slate-900/95 px-3 py-2 shadow-[0_0_18px_rgba(34,211,238,0.15)] backdrop-blur">
+        // Placed just above the ticker and left of the feedback launcher by lib/floating-controls; it narrows on a phone
+        // rather than running off the left edge (task 7fe1005f).
+        <div
+            ref={floatingControlRef("audio")}
+            style={{ bottom: "var(--nexus-audio-bottom, 1rem)", right: "var(--nexus-audio-right, 1rem)" }}
+            className="fixed z-[90] flex max-w-[calc(100vw/var(--nexus-display-scale,1)-var(--nexus-audio-right,1rem)-0.75rem)] items-center gap-3 rounded-lg border border-cyan-500/30 bg-slate-900/95 px-3 py-2 shadow-[0_0_18px_rgba(34,211,238,0.15)] backdrop-blur"
+        >
             <button
                 onClick={() => onToggle(item)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-500/40 text-cyan-300 transition hover:bg-cyan-500/20"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-500/40 text-cyan-300 transition hover:bg-cyan-500/20"
                 title={playing ? "Pause" : "Play"}
                 aria-label={playing ? "Pause" : "Play"}
             >
                 {playing ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
             </button>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                     <Volume2 size={11} className={playing ? "text-cyan-400 animate-pulse" : "text-cyan-400/60"} />
                     <span className="max-w-[190px] truncate text-[10px] font-bold uppercase tracking-wider text-cyan-300">
@@ -778,7 +785,7 @@ function GlobalAudioMiniPlayer({
                     </span>
                 </div>
                 <div
-                    className="mt-1.5 h-1 w-[220px] cursor-pointer rounded-full bg-slate-700/70"
+                    className="mt-1.5 h-1 w-[220px] max-w-full cursor-pointer rounded-full bg-slate-700/70"
                     onClick={(e) => {
                         if (duration <= 0) return;
                         const rect = e.currentTarget.getBoundingClientRect();

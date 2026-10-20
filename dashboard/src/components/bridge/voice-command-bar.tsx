@@ -751,8 +751,10 @@ export function VoiceCommandBar() {
         <Settings2 size={14} />
       </button>
 
+      {/* Popovers open up and left from the dock, which lib/floating-controls moves (above the audio player, left of the
+          feedback launcher); their limits follow its offsets so the top and left edges stay on screen. */}
       {settingsOpen && (
-        <div ref={settingsRef} role="dialog" aria-label="Talk to Praxis setup" tabIndex={-1} className="custom-scrollbar absolute right-0 bottom-full z-50 mb-3 w-96 max-w-[calc(100vw/var(--nexus-display-scale,1)-2.25rem)] max-h-[calc(100dvh/var(--nexus-display-scale,1)-8rem)] overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-4 shadow-2xl focus-visible:outline-2 focus-visible:outline-cyan-400">
+        <div ref={settingsRef} role="dialog" aria-label="Talk to Praxis setup" tabIndex={-1} className="custom-scrollbar absolute right-0 bottom-full z-50 mb-3 w-96 max-w-[calc(100vw/var(--nexus-display-scale,1)-var(--nexus-voice-right,0.75rem)-1.5rem)] max-h-[calc(100dvh/var(--nexus-display-scale,1)-var(--nexus-voice-bottom,3rem)-5rem)] overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 p-4 shadow-2xl focus-visible:outline-2 focus-visible:outline-cyan-400">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-cyan-200">Talk to Praxis</h2>
             <button type="button" onClick={() => { cancelAll(); setSettingsOpen(false); }} aria-label="Close voice setup" className="rounded p-1.5 text-slate-300 hover:text-white"><X size={16} /></button>
@@ -842,7 +844,7 @@ export function VoiceCommandBar() {
       )}
 
       {panelOpen && !settingsOpen && (transcript || response || speechNotice) && (
-        <div className="custom-scrollbar absolute right-0 bottom-full z-50 mb-3 w-80 max-w-[calc(100vw/var(--nexus-display-scale,1)-2.25rem)] max-h-[calc(100dvh/var(--nexus-display-scale,1)-8rem)] overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-md">
+        <div className="custom-scrollbar absolute right-0 bottom-full z-50 mb-3 w-80 max-w-[calc(100vw/var(--nexus-display-scale,1)-var(--nexus-voice-right,0.75rem)-1.5rem)] max-h-[calc(100dvh/var(--nexus-display-scale,1)-var(--nexus-voice-bottom,3rem)-5rem)] overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-md">
           <div className="mb-1 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">voice channel</span>
             <button onClick={() => setPanelOpen(false)} aria-label="Close voice panel">

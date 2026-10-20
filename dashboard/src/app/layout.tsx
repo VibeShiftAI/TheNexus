@@ -43,7 +43,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '7rem' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: 'max(7rem, var(--nexus-floating-bottom, 0px))' }}>
           <DisplayScaleProvider>
           <CortexProvider>
             <LiveBoardStateProvider>
