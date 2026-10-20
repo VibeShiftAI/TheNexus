@@ -1,0 +1,11 @@
+Captured at: 2026-10-20T23:38:49.616611+00:00
+Source: live GET /api/tasks/9cae1b0e-cba3-4580-a83a-1c3222404dbe, antigravity_payload.operator_rulings
+Question: QA/Praxis: does criterion 4’s explicit hardware-blocker fallback permit deferring the native Windows observations in criteria 1 and 2, or must acceptance wait for a Windows-connected executor?
+Robert’s answer (verbatim): you can defer that requirement until I get home
+Inbox answer: task-question-9cae1b0e-1792536333178; answered_at: 2026-10-20T22:46:13.870Z
+Applied scope: native Windows physical-display observations in criteria 1 and 2 are deferred until Robert gets home. Rendering, auth, exact revision, contract, isolation, expiry and documented limitations remain required. No Windows test or installed binary is implied.
+No repeated device access/connection checks were performed in this continuation because the operator deferred that work.
+Execution: 239c1406-6a62-40f6-bc91-5e1ad1154313; branch: main; starting HEAD: 9311fbd8381c9911ef2797cce6f04407e9877996
+Dependency 6d6e2638-8fc1-46fa-8545-3ad4d5876dc0: completed
+Dependency be441473-ebd1-4c93-b3a1-9f3e3d3decf4: completed
+Dependency 91f1f758-4b40-464b-a2a0-29f29de0bf98: completed
