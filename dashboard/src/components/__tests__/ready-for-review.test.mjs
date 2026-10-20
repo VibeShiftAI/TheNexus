@@ -189,10 +189,11 @@ test('project Deliverables steps back when a decision empties the page shown, in
 
 test('Reviews remains in the navigation menu and bridge header without a dashboard review panel', () => {
   const sidebar = fs.readFileSync(new URL('../nav-sidebar.tsx', import.meta.url), 'utf8');
-  const items = sidebar.slice(sidebar.indexOf('const navItems = ['));
-  const firstHref = items.match(/href:\s*"([^"]+)"/)[1];
-  assert.equal(firstHref, '/documents');
-  assert.match(items, /href: "\/documents", label: "Reviews: Documents for Your Decision"/);
+  // Since the 2026-10-20 menu redesign Reviews is a featured item rendered first in the nav
+  // (rendered order is covered by nav-sidebar-menu.test.mjs).
+  assert.match(sidebar, /const reviewsItem: NavItem = \{ href: "\/documents", label: "Reviews", hint: "Documents for your decision"/);
+  const nav = sidebar.slice(sidebar.indexOf('<nav'));
+  assert.match(nav, /^<nav[^>]*>\s*\{renderItem\(reviewsItem, true\)\}/, 'Reviews is the first destination in the menu');
 
   const home = fs.readFileSync(new URL('../../app/page.tsx', import.meta.url), 'utf8');
   const header = home.slice(home.indexOf('<header'), home.indexOf('</header>'));
