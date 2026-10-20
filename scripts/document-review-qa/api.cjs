@@ -28,6 +28,8 @@ const log = [];
 app.use((req, _res, next) => { log.push({ t: new Date().toISOString(), method: req.method, url: req.url }); next(); });
 app.get('/__qa', (_req, res) => res.json({ qaDirectory: QA_DIR }));
 app.get('/__log', (_req, res) => res.json(log));
+// The dashboard's connection probe; without it every page shows the "Nexus unreachable" banner over its top edge.
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', qa: true }));
 app.use('/api/documents', (req, _res, next) => { req.user = { id: 'local_user', role: 'admin', is_service: false }; next(); });
 app.use('/api/documents', createDocumentsRouter({ db, delivery }));
 (async () => {

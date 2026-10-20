@@ -1,5 +1,7 @@
 # Isolated document review browser check
 
+`verify-drafts.mjs` and `verify-floating-controls.mjs` own the whole stack themselves (API, receiver, `next dev` on :3100, Chrome) and need nothing started first: `node scripts/document-review-qa/verify-floating-controls.mjs` hit-tests Finish review, Send to Praxis (never clicked) and the audio, voice and feedback controls at desktop, short, display-scaled and phone sizes. `NEXUS_QA_DASHBOARD_DIR=<a git archive of the baseline dashboard with its own node_modules copy>` runs the same checks on the old code; `NEXUS_QA_ONLY=<regex>` limits the windows.
+
 Adapted from the prior repair's `/tmp/nexus-ui-iso/verify.mjs`, `api.js` and `receiver.js`. The check drives Chrome at 390px and 1440px: a visible whole-document note, saving/resuming the draft, Finish during an outage, and automatic delivery recovery without reload. The API fixture mounts the real document router and outbox against a new temporary database. A local stand-in receives every synthetic turn. The report is copied unchanged into the fixture project. Production databases and chat are never used.
 
 **macOS setup:** temporary paths under `/var` resolve to `/private/var`. Document registration needs the report path and project root in the same canonical form; mixing the two can fail the path-boundary check. The fixture already uses `fs.realpathSync.native()` for both. Preserve those calls when adapting it.
