@@ -240,6 +240,34 @@ and records as `verification: "runtime_attested", verified: false`. A direct
 operator write may carry a `decision_ref` and `reason` too; `fields` is optional
 for it.
 
+A `sanction` block is the one write the runtime records as `authorized`
+without relaying a decision: Robert's standing ruling in task b4b27285 that an
+executor may work in the additional repos its task needs, with QA reviewing
+them. `POST /api/tasks/:id/workspace-delta` with the runtime bearer and
+`sanction: { "kind": "workspace_addition", "reason"?, "by"? }` (task a47a00bf;
+on 2026-10-20 the same addition arrived unauthenticated, was held as drift
+during execution and blocked the saved inbox answer of task 9cae1b0e) is
+recorded with origin `runtime`, the `sanction` beside it, outcome
+`authorized`, and `contract.authorized_by.basis`
+`sanctioned_workspace_addition` with the `added_roots`. The origin is never
+relabelled as his. The admission guard (`db/work-admission.js`
+`sanctionedAddition`) applies the sanction only when the write changes
+`payload.workspace_roots` and nothing else, removes no root, and no hold is
+open on a workspace field; the delta planner refuses a sanctioned `move` or
+`workspace` change (400 `task_delta_invalid`). Refusals write nothing: 403
+`contract_change_unverified` (no runtime bearer, a wrong one, bridge or
+executor headers), 503 `contract_change_unverifiable` (the key is not
+configured, or identity could not be checked), 409 `contract_change_mixed`
+with `undeclared_fields` (and `removed_roots`) when the write would change
+more than the added roots, 400 `contract_change_invalid` on any other route,
+beside a `contract_change` claim, or with another kind. While drift on the
+workspace fields is already held the sanction is declined rather than
+applied: the entry records `sanction_declined.because:
+hold_open_on_workspace_fields`, the write joins that hold as the plain
+runtime write it is, and only Robert's decision clears it. A version
+conflict is a conflict as before; the plain, unsanctioned write stays
+available to a caller without the credential and is held during execution.
+
 ### Receipt fields (schema_version stays 1, all additive)
 
 - `contract`: the authorized baseline. `{version, hash, fingerprint, fields:
