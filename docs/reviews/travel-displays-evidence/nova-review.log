@@ -1,0 +1,14 @@
+Reviewed at 2026-10-20T22:14:13.616970+00:00
+PASS /Volumes/Projects/TheNexus $ git diff --exit-code 33fde73 -- dashboard desktop server scripts .gitignore (exit 0, no output)
+PASS /Volumes/Projects/nexus-shared $ git diff --exit-code 367c543 -- src/presentations.ts src/index.ts test/presentations.test.cjs (exit 0, no output)
+PASS /Volumes/Projects/TheNexus $ git diff --check -- docs/reviews/travel-displays-windows.md (exit 0, no output)
+Self-review: read the full new walkthrough diff, operator-output transcript and access record. No new application source or runtime behavior. No remaining new content defect found.
+Fresh verification: Python socket.create_connection to supplied 192.168.4.34 on ports 22/3389/5985/5986, timeout=3 each: all timed out; /sbin/route -n get 192.168.4.34: gateway 192.168.86.1, interface en1. No remote authentication or execution.
+CUA observation: target mac, browsers [], remoteApps []. Operator supplied missing sshd service. This is an access blocker, not Windows native display proof.
+Historical tests read this continuation: resume-server-tests.log 28 passed; resume-dashboard-tests.log 19 passed; resume-contract-tests.log 4 passed. No test rerun claimed. Source equality corroborated above.
+Outcome: incomplete with criteria 1 and 2 blocked. Operator answered the diagnostic question; no repeat question. New remote-access setup is outside the implemented presentation foundation and was not performed.
+Prior task commits retained: 4bc6710, 4e71421, 23e56de, 59855bd, 33fde73, 3fed7bc in TheNexus; 367c543 in nexus-shared. No new writes in nexus-shared or other repositories this continuation.
+PASS foreign .env.example SHA256 remains e87f409424c736d95b28120b31ffb7411ee39198e7199c581b57a81ff1a093ab
+UTF8_MOJIBAKE_PASS docs/reviews/travel-displays-windows.md
+UTF8_MOJIBAKE_PASS docs/reviews/travel-displays-evidence/nova-operator-output.log
+UTF8_MOJIBAKE_PASS docs/reviews/travel-displays-evidence/nova-access-check.log

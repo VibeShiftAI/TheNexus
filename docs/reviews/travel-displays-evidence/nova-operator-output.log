@@ -1,0 +1,20 @@
+Source: Robert's inbox answer task-question-9cae1b0e-1792533759050, received 2026-10-20T22:07:08.828Z.
+Provenance: operator-reported PowerShell output; not a command executed remotely by this agent.
+PS C:\Users\rober> whoami; Get-Service sshd; Get-NetIPAddress -AddressFamily IPv4 | Select-Object InterfaceAlias,IPAddress
+nova\rober
+Get-Service : Cannot find any service with service name 'sshd'.
+At line:1 char:9
++ whoami; Get-Service sshd; Get-NetIPAddress -AddressFamily IPv4 | Sele ...
++         ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (sshd:String) [Get-Service], ServiceCommandException
+    + FullyQualifiedErrorId : NoServiceFoundForGivenName,Microsoft.PowerShell.Commands.GetServiceCommand
+
+InterfaceAlias               IPAddress
+--------------               ---------
+Wi-Fi 5                      169.254.85.107
+Wi-Fi 4                      169.254.224.60
+Wi-Fi 3                      169.254.239.204
+Bluetooth Network Connection 169.254.146.244
+Wi-Fi                        192.168.4.34
+CloudflareWARP               172.16.0.2
+Loopback Pseudo-Interface 1  127.0.0.1

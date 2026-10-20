@@ -1,0 +1,35 @@
+{
+  "handoff_id": "travel-displays-windows-dd79d4c6-v1",
+  "status": "delivered",
+  "document_id": "470c263f-c519-49b8-8f5a-4c2e965dc787",
+  "revision_id": "3a912eae-0e9a-43b9-ae01-6a4c200986c4",
+  "content_hash": "22e96d078008e9f935d955473db61b8be6594aef0fc2239f1eab9c03e97238c1",
+  "review_path": "/documents/470c263f-c519-49b8-8f5a-4c2e965dc787",
+  "raw_path": "/api/documents/470c263f-c519-49b8-8f5a-4c2e965dc787/raw?revision=3a912eae-0e9a-43b9-ae01-6a4c200986c4",
+  "readiness": {
+    "document_id": "470c263f-c519-49b8-8f5a-4c2e965dc787",
+    "revision_id": "3a912eae-0e9a-43b9-ae01-6a4c200986c4",
+    "content_hash": "22e96d078008e9f935d955473db61b8be6594aef0fc2239f1eab9c03e97238c1",
+    "media_type": "markdown",
+    "ready": true,
+    "checked_at": "2026-10-20T22:14:39.546Z",
+    "checks": [
+      {
+        "asset_key": "primary",
+        "role": "primary",
+        "required": true,
+        "ok": true,
+        "status": "servable",
+        "byte_length": 43938,
+        "content_hash": "22e96d078008e9f935d955473db61b8be6594aef0fc2239f1eab9c03e97238c1",
+        "mime_type": "text/markdown",
+        "media_type": "markdown",
+        "source": "disk"
+      }
+    ],
+    "required_total": 1,
+    "required_ok": 1
+  },
+  "raw_matches_disk": true,
+  "review_status": "needs_review"
+}

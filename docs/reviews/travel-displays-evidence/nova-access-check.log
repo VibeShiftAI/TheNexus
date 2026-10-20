@@ -1,0 +1,16 @@
+CHECKED_AT 2026-10-20T22:11:57.743651+00:00
+HOST macOS-26.5.2-arm64-arm-64bit-Mach-O
+METHOD Python socket.create_connection(('192.168.4.34', port), timeout=3), four named service ports concurrently; no authentication or commands sent.
+SSH TCP 22: timed out; authenticated=false
+RDP TCP 3389: timed out; authenticated=false
+WinRM HTTP TCP 5985: timed out; authenticated=false
+WinRM HTTPS TCP 5986: timed out; authenticated=false
+COMMAND /sbin/route -n get 192.168.4.34
+route to: 192.168.4.34
+destination: 192.168.4.34
+gateway: 192.168.86.1
+interface: en1
+flags: <UP,GATEWAY,HOST,DONE,WASCLONED,IFSCOPE,IFREF,GLOBAL>
+CUA cua.getState({emit:false}); cua.computer.target: mac; browsers=[]; remoteApps=[]; errors=undefined. Remote-app inventory filter: remote|sharing|windows|jump|teamviewer|anydesk|rustdesk|parsec|rdp against app ID/name.
+LIMIT These timeouts prove no connection from this executor at this time; they do not prove RDP/WinRM are disabled, the laptop is off, or the exact network/firewall cause. No claim of Windows OS version/model or receiver protocol.
+DECISION Retain criteria 1 and 2 blocked. Do not retry the answered SSH query or establish new remote access under this display task. Resume from a supported execution/control session attached to the laptop, with the retained code and build-storage policy, or obtain an explicitly scoped access/setup decision. No duplicate task, service install, firewall/Access-policy change, release, casting or task-status mutation was performed.
