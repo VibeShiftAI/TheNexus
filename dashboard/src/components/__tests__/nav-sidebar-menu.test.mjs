@@ -20,13 +20,13 @@ const DESTINATIONS = [
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
-function installFetch({ projects = [], holdProjects = false } = {}) {
+function installFetch({ projects = [] } = {}) {
     const calls = [];
     const original = globalThis.fetch;
     globalThis.fetch = async (url, init = {}) => {
         const u = String(url);
         calls.push({ url: u, method: init.method || "GET", body: init.body ? JSON.parse(init.body) : null });
-        if (u.startsWith("/api/projects")) return holdProjects ? new Promise(() => {}) : json(projects);
+        if (u.startsWith("/api/projects")) return json(projects);
         if (u.startsWith("/api/model-control/options")) return json({ localOnly: { enabled: false, reason: null }, aliases: [], models: [] });
         if (u.startsWith("/api/model-control/local-only")) {
             const body = JSON.parse(init.body);
@@ -135,7 +135,7 @@ test("every destination is listed in its group without search, Reviews first, LA
 });
 
 test("Tab and Shift+Tab wrap inside the open menu", async (t) => {
-    const h = harness(t, { projects: [{ id: "p1", name: "TheNexus", type: "web-app" }] });
+    const h = harness(t);
     await h.render(true);
     const dialog = h.dialog();
     const focusable = Array.from(dialog.querySelectorAll("a[href], button:not([disabled]), input:not([disabled]), select:not([disabled])"));
@@ -154,28 +154,22 @@ test("Tab and Shift+Tab wrap inside the open menu", async (t) => {
     assert.equal(key(first, "Tab").defaultPrevented, false, "ordinary Tab inside the menu is left to the browser");
 });
 
-test("projects show a loading state, then every project with long names truncated and titled", async (t) => {
-    const loading = harness(t, { holdProjects: true });
-    await loading.render(true);
-    assert.match(loading.container.querySelector('[role="status"]')?.textContent ?? "", /Loading projects\.\.\./);
-    loading.dispose();
-
-    const longName = "AVeryLongProjectNameWithoutAnySpacesThatWouldOverflowANarrowColumnIfNotTruncated";
-    const projects = Array.from({ length: 40 }, (_, i) => ({ id: `p${i}`, name: i === 0 ? longName : `Project ${i}`, type: "tool" }));
-    const loaded = harness(t, { projects });
-    await loaded.render(true);
-    const links = Array.from(loaded.container.querySelectorAll('a[href^="/project/"]'));
-    assert.equal(links.length, 40);
-    assert.equal(links[39].getAttribute("href"), "/project/p39");
-    assert.equal(links[0].getAttribute("title"), longName);
-    assert.match(links[0].querySelector(".truncate")?.className ?? "", /truncate/);
-    loaded.dispose();
-
-    const empty = harness(t, { projects: [] });
-    await empty.render(true);
-    assert.match(empty.container.textContent, /No active projects/);
-    empty.dispose();
-    assert.equal(document.documentElement.style.overflow, "", "every mount gave the page lock back");
+// Robert's review of 2026-10-20 (submission cd98d2e4): projects live on the
+// dashboard, so the menu has no Active Projects section and no projects fetch.
+test("the menu has no Active Projects section and never requests the project list", async (t) => {
+    const projects = Array.from({ length: 8 }, (_, i) => ({ id: `p${i}`, name: `Project ${i}`, type: "tool" }));
+    const h = harness(t, { projects });
+    await h.render(true);
+    const text = h.container.textContent;
+    assert.doesNotMatch(text, /Active Projects/);
+    assert.doesNotMatch(text, /Loading projects/);
+    assert.doesNotMatch(text, /No active projects/);
+    assert.equal(h.container.querySelectorAll('a[href^="/project/"]').length, 0, "no project links");
+    assert.equal(h.container.querySelector('[role="status"]'), null, "no loading status");
+    assert.deepEqual(Array.from(h.container.querySelectorAll("h3")).map((el) => el.textContent), ["Operate", "Knowledge and studio", "Models and systems", "Controls", "Model Aliases"]);
+    assert.equal(h.net.calls.filter((c) => c.url.startsWith("/api/projects")).length, 0, "no menu-only projects request");
+    h.dispose();
+    assert.equal(document.documentElement.style.overflow, "", "the mount gave the page lock back");
 });
 
 test("the page lock keeps an existing overflow value and is released when the menu unmounts open", async (t) => {

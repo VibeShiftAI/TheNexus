@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect, useId, useRef } from "react";
-import { X, BookOpen, Gauge, FolderGit2, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard, ClipboardList, Send, GraduationCap, Landmark, Smartphone, FileCheck2, ShieldCheck, ExternalLink, type LucideIcon } from "lucide-react";
+import { X, BookOpen, Gauge, Settings, Cpu, WifiOff, Route, BrainCircuit, BarChart3, KanbanSquare, Clapperboard, ClipboardList, Send, GraduationCap, Landmark, Smartphone, FileCheck2, ShieldCheck, ExternalLink, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { getProjects, type Project } from "@/lib/nexus";
 import { getLocalOnlyMode, setLocalOnlyMode } from "@/lib/model-control";
 import { ModelAliasManager } from "@/components/model-alias-manager";
 import { postToShell, useMobileShell } from "@/lib/mobile-shell";
@@ -26,15 +25,13 @@ interface NavItem {
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 // The menu is a wide slide-over on desktop (grouped destinations in two
-// columns beside the controls, projects below) and a full-width sheet on a
-// phone. Header and footer stay pinned; only the middle scrolls, so Close and
+// columns beside the controls) and a full-width sheet on a phone. Projects
+// live on the dashboard's Project Reference grid, not here. Header and footer stay pinned; only the middle scrolls, so Close and
 // Settings are always on screen however short the window or large the text.
 // It stacks above the voice dock (z-50) and connection banner (z-60) but
 // under the audio mini player (z-90), whose space the footer keeps clear via
 // --nexus-floating-overlay-bottom (lib/floating-controls).
 export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [localOnly, setLocalOnly] = useState<{ enabled: boolean; reason: string | null }>({ enabled: false, reason: null });
   const mobileShell = useMobileShell();
   const titleId = useId();
@@ -63,27 +60,6 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
     const observer = new ResizeObserver(measure);
     for (const el of [panel, header, footer]) observer.observe(el);
     return () => observer.disconnect();
-  }, []);
-
-  // Fetch projects list
-  useEffect(() => {
-    let active = true;
-    getProjects()
-      .then((data) => {
-        if (active) {
-          setProjects(data || []);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to load projects inside NavSidebar:", err);
-        if (active) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
   }, []);
 
   useEffect(() => {
@@ -307,46 +283,6 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
               </div>
             </section>
           </div>
-
-          {/* Active Projects Section */}
-          <section aria-labelledby={`${titleId}-projects`} className="mt-6">
-            <h3 id={`${titleId}-projects`} className={`${sectionHeading} border-b border-slate-800 px-1 pb-2`}>
-              <FolderGit2 size={12} className="shrink-0 text-slate-500" aria-hidden="true" />
-              <span className="min-w-0 [overflow-wrap:anywhere]">Active Projects</span>
-              {!loading && projects.length > 0 ? <span className="shrink-0 font-mono font-normal normal-case tracking-normal text-slate-600">{projects.length}</span> : null}
-            </h3>
-            {loading ? (
-              <div role="status" className="flex items-center justify-center py-4 text-xs text-slate-500">
-                <div className="mr-2 h-3 w-3 animate-spin rounded-full border border-slate-500 border-t-transparent motion-reduce:animate-none" aria-hidden="true" />
-                Loading projects...
-              </div>
-            ) : projects.length === 0 ? (
-              <div className="px-2 py-4 text-xs text-slate-600">No active projects</div>
-            ) : (
-              <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {projects.map((project) => (
-                  <li key={project.id} className="min-w-0">
-                    <Link
-                      href={`/project/${project.id}`}
-                      onClick={onClose}
-                      title={project.name}
-                      className={`group flex min-h-11 items-center justify-between gap-2 rounded-lg border border-slate-800/40 bg-slate-950/20 px-3 py-2 transition-colors motion-reduce:transition-none hover:border-slate-800 hover:bg-slate-950/60 ${focusRing}`}
-                    >
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400 group-hover:bg-cyan-300" aria-hidden="true" />
-                        <span className="truncate text-sm font-medium text-slate-400 transition-colors motion-reduce:transition-none group-hover:text-white">
-                          {project.name}
-                        </span>
-                      </span>
-                      <span className="max-w-[40%] shrink-0 truncate rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-slate-500 group-hover:text-slate-400">
-                        {project.type}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
         </div>
 
         {/* Footer, pinned unless cramped. In the Android shell the two settings buttons share a row when they fit (a rem minimum, so large text stacks them). */}

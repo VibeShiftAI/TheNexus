@@ -9,6 +9,11 @@
  * horizontal overflow and page scroll behind the menu, walks it with Tab,
  * closes it with Escape and the backdrop and checks where focus lands.
  *
+ * Since Robert's review of 2026-10-20 (task 584f2f1d) the menu has no Active
+ * Projects section: the check fails if the menu shows a project link, the
+ * heading or its loading/empty text, and if the dashboard's own project grid
+ * does not list every fixture project.
+ *
  * No backend is needed or touched: every /api/* request is answered from a
  * fixture through CDP request interception, and anything aimed at :4000 or
  * :4299 is blocked, so the live Nexus API never sees a request.
@@ -199,7 +204,6 @@ const PROBE = `(() => {
     lastNav: navLinks[navLinks.length - 1],
     localOnly: dialog.querySelector('button[aria-label="Toggle local-only mode"]'),
     aliasSave: byText('button', 'Save Alias'),
-    lastProject: projectLinks[projectLinks.length - 1],
     settings: Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent.trim() === 'Settings'),
     connection: byText('button', 'Connection settings'),
   };
@@ -244,6 +248,7 @@ const PROBE = `(() => {
     labelled: dialog.getAttribute('aria-labelledby') ? (document.getElementById(dialog.getAttribute('aria-labelledby'))?.textContent || null) : (dialog.getAttribute('aria-label') || null),
     viewport: { vw, vh, docScrollWidth: document.documentElement.scrollWidth },
     navLinks: navLinks.length, navColumns: navCols, projectLinks: projectLinks.length,
+    projectsHeading: /Active Projects/i.test(dialog.textContent),
     loadingText: /Loading projects/.test(dialog.textContent), emptyText: /No active projects/.test(dialog.textContent),
     targets: out, sideways: sideways.slice(0, 8), scrollers, smallTargets: smallTargets.slice(0, 20),
   };
@@ -327,6 +332,8 @@ for (const name of selected) {
     await sleep(2500);
     const row = { viewport: name, fixture: FIXTURE, shell: SHELL };
     row.closedBefore = await evalJs(menuState);
+    // The dashboard's Project Reference grid, outside the menu, is where projects live now.
+    row.dashboardProjects = await evalJs(`new Set(Array.from(document.querySelectorAll('a[href^="/project/"]')).filter((a) => !a.closest('[data-nav-menu]')).map((a) => a.getAttribute('href'))).size`);
     // Let the page be scrollable behind the menu so the containment check means something.
     row.pageScrollBefore = await evalJs(`(window.scrollTo(0, 0), document.documentElement.scrollHeight - innerHeight)`);
     await openMenu(vp);
@@ -415,6 +422,9 @@ for (const name of selected) {
     row.absent = absent;
     const sideways = row.afterScroll.viewport.docScrollWidth > row.afterScroll.viewport.vw || row.afterScroll.sideways.length > 0;
     const problems = [];
+    const shown = [row.atOpen, row.afterScroll];
+    if (shown.some((p) => p.projectLinks > 0 || p.projectsHeading || p.loadingText || p.emptyText)) problems.push("menu still shows Active Projects");
+    if (FIXTURE !== "loading" && row.dashboardProjects !== projectsFixture().length) problems.push(`dashboard lists ${row.dashboardProjects} of ${projectsFixture().length} projects`);
     if (row.pageScrollY > 0) problems.push("page scrolled behind the menu");
     if (row.closedBefore.focusableInside > 0) problems.push("closed menu is focusable");
     if (vp.mobile && row.atOpen.smallTargets.length) problems.push(`touch targets under 44px: ${row.atOpen.smallTargets.join(",")}`);
@@ -433,7 +443,7 @@ for (const name of selected) {
     row.problems = problems;
     if (missing.length || sideways || problems.length) failures++;
     report.push(row);
-    console.log(`${name.padEnd(9)} ${TAG.padEnd(14)} panel ${d.width}px cols ${row.atOpen.navColumns} links ${row.atOpen.navLinks} projects ${row.atOpen.projectLinks}` +
+    console.log(`${name.padEnd(9)} ${TAG.padEnd(14)} panel ${d.width}px cols ${row.atOpen.navColumns} links ${row.atOpen.navLinks} menu projects ${row.atOpen.projectLinks} dashboard projects ${row.dashboardProjects}` +
         ` | unreachable: ${missing.join(",") || "none"}${Object.keys(row.covered).length ? " | covered: " + JSON.stringify(row.covered) : ""}` +
         ` | sideways: ${sideways ? "YES " + row.afterScroll.sideways.join(";") : "no"} | pageScrollY ${row.pageScrollY}` +
         (INTERACT ? ` | Tab stops ${row.tabWalk.visited.length}` : "") +
