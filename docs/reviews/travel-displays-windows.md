@@ -85,13 +85,41 @@ Five-second Mac-side mDNS browsing and bounded TXT resolution observed nine Cast
 
 Robert's temporary selected-view pairing approval and named test devices remain accepted; no new pairing/account decision is needed. To close Windows-native criteria, use an existing authorized Windows session on his laptop, record its model/OS and the exact locally built/installed binary, run native discovery there, then select an actual external display. Exercise all four views, exact old/new document revisions, two displays with different scale factors/negative coordinates where available, one-display refusal, disconnect/unplug/reconnect and controller-auth expiry. OS picker/consent remains a human/device prerequisite. On the Android successor, record the actual phone model/OS and native-origin inventory. On Living Room TV, first observe model/protocol and reachable browser or supported route, then exercise scoped pairing, stop, disconnect, expiry and another-document denial. Do not infer protocol from the name or replace Windows evidence with these Mac fixtures.
 
+## Resumed laptop-session check (20 October, 21:57 UTC)
+
+Robert answered the Windows-session question at 21:19:44.736 UTC: “I'm on the laptop now, can you use this session?” (inbox answer `task-question-9cae1b0e-1792531151681`). This accepts use of his current laptop session; it does not establish that the executor has a connection to it. The pairing approval and all three selected devices remain unchanged.
+
+The fresh check found a `Win32` Nexus activity report at 21:41:33.942 UTC (`docs/reviews/travel-displays-evidence/resume-session-check.log:4`). Its label comes from `navigator.platform` (`dashboard/src/lib/active-client.ts:51`). The presence router only stores and returns the last activity report (`server/routes/presence.js:23`, `:36`); it has no command or display-control transport. The report is consistent with Robert using Windows, but proves neither the installed shell version nor authenticated Windows OS identity.
+
+The executor terminal still reported `Darwin 25.5.0 arm64` and macOS 26.5.2 (`resume-session-check.log:2`). Computer Use returned `target:mac`, Mac application IDs and an empty connected-browser list (`resume-session-check.log:3`). The SSH configuration exposes only the local OrbStack Linux endpoint, and the current Praxis bridge has no Windows execution tool (`resume-session-check.log:6`, `:7`). This is an observed missing connection, not a claim that the laptop is off or lacks SSH.
+
+Two deployment facts also prevent treating the dashboard session as the new native feature: the live update feed reports shell 1.4.0 with publication date 17 July 2026 (`resume-session-check.log:8`), while `GET http://127.0.0.1:4000/api/presentations/config` returns **404** (`resume-session-check.log:9`). The feed is not evidence of the version installed on the laptop. The retained task commits were not published, and this resume did not restart production, install a binary or start a cast. A fresh `adb devices -l` again listed no attached phone (`resume-session-check.log:10`). The TV inventory above remains historical; this resume did not repeat TV discovery or infer a protocol.
+
+**Concrete next step requested from Robert:** open PowerShell on the laptop, without elevation, and paste the output of this read-only command:
+
+```powershell
+whoami; Get-Service sshd; Get-NetIPAddress -AddressFamily IPv4 | Select-Object InterfaceAlias,IPAddress
+```
+
+This checks the current account, whether an existing SSH service is present/running, and its local IPv4 interfaces. It installs nothing, starts no service, changes no firewall and requests no password or private key. Microsoft documents `sshd` as the Windows OpenSSH service: [OpenSSH on Windows](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_install_firstuse). A missing-service error is useful evidence, not an instruction to install or enable it. The request is retained at `resume-session-check.log:18`; no Windows result had arrived when this revision was prepared.
+
+If an existing authorized SSH route is available, verify its connection using the existing authentication and record the actual Windows model/OS and build prerequisites. SSH availability alone does not prove access to the interactive desktop: physical display selection, OS consent and visual verification still require Robert's interactive session or a connected Windows computer-control surface. If no existing route is available, keep criteria 1 and 2 blocked; opening the signed-in dashboard again cannot supply that capability. Establishing a new remote-access service would require a separate concrete setup decision, not copying Nexus credentials or injecting general command execution into the presentation bridge. Preserve the existing task and successor chain.
+
+The retained implementation was not rewritten. Fresh focused verification passed **28 server tests**, **19 dashboard/renderer/bridge tests**, and **4 shared-contract tests**:
+
+- From TheNexus: `npx jest server/__tests__/presentations.test.js --runInBand --verbose`; `resume-server-tests.log:32` records 28 passed. Lines 2–29 exercise authentication, immutable views, provenance/ambiguity, selected-view pairing, stream revocation and both leases.
+- From `dashboard`: `node --import ./test/register.mjs --test src/components/__tests__/presentation-*.test.mjs src/components/__tests__/document-markdown.test.mjs src/components/__tests__/document-media-viewers.test.mjs src/lib/__tests__/presentation-*.test.ts`; `resume-dashboard-tests.log:22` records 19 passed. Lines 10–19 cover native gating, exact revision, all four families, failed-refresh blanking and serialized lifecycle behavior.
+- From `/Volumes/Projects/nexus-shared`: `node --test test/presentations.test.cjs`; `resume-contract-tests.log:7` records 4 passed. This command only rechecked the retained contract; no shared-repository files were edited in this resume.
+
+All evidence filenames in this subsection are under `docs/reviews/travel-displays-evidence/`. The earlier full build, native cross-check and real Chromium results remain separately dated evidence; they were not rerun or relabeled as Windows runtime proof. Self-review of this resume found no application-source change, and the new evidence/documents passed strict UTF-8 and mojibake checks. Normal independent QA remains outstanding. Existing source and evidence commits `4bc6710`, `4e71421`, `23e56de`, `59855bd`, `33fde73`, and shared commit `367c543` are retained. All three predecessors still read completed and the foreign `.env.example` hash is unchanged (`resume-session-check.log:12`, `:13`, `:14`, `:17`).
+
 ## Criterion-by-criterion evidence
 
 1. **Blocked for full native attestation.** The four read-only views and exact revision behavior passed HTTP/browser tests, but this run did not observe them on a chosen Windows physical display. `browser.log:1` states `windowsRuntime:false`; the native implementation is at `desktop/src-tauri/src/presentation.rs:250`.
-2. **Blocked for full native attestation.** Native source, identity/topology policy tests and adapter check are present; fresh laptop-origin discovery, placement and unplug/reconnect require the unavailable Windows session. `hardware-inventory.log:12` records the access finding; `presentation-wire-tests.log:16` is explicitly host testing.
+2. **Blocked for full native attestation.** Native source, identity/topology policy tests and adapter check are present; fresh laptop-origin discovery, placement and unplug/reconnect require the unavailable Windows session. `resume-session-check.log:2`–`:7` corroborate the access blocker despite the Win32 activity report; `presentation-wire-tests.log:16` is explicitly host testing.
 3. **Met for the shared foundation.** `contract-tests.log:5`, `server-presentations-tests.log:10`, `:11`, `:16`, `:24` and `browser.log:19` prove schema/provenance, strict authority denial, selected-view isolation and credential omission. Android/Praxis native/runtime consumers remain their separate tasks.
 4. **Met via the explicitly allowed hardware-blocker route.** Focused automated results and the real-browser flow are above. Full-shell resource build, Windows runtime and installation are distinguished from passing adapter/host checks; hardware blockers are retained without claiming native success.
-5. **Matrix and exact test evidence prepared for Documents.** The handoff receipt and exact revision links in the task response are the registration authority; file existence alone is not a delivery claim.
+5. **Registered walkthrough with matrix and exact test evidence.** The stable document is `470c263f-c519-49b8-8f5a-4c2e965dc787`; the previous delivered revision was `40c7ef1b-21f5-4f4c-822b-b470193ba7e9` (`handoff-verification.json:8`). This resumed revision is handed off under the same key and document identity. The new handoff receipt and exact revision links in the task response establish its registration; file existence alone is not a delivery claim.
 6. **Met via automated evidence and the explicitly allowed device blockers.** `server-presentations-tests.log:10`, `:13`, `:19`, `:26`, `:27`, `:28`, `:29` and `browser.log:19` cover one-view pairing, revocation, expiry, isolation and truthful receiver liveness. The laptop/phone/TV availability findings are recorded above; their models/protocols remain unknown. Physical pairing is not claimed.
 
 ## Commits and preservation
@@ -103,6 +131,16 @@ Additional declared repository `/Volumes/Projects/nexus-shared`: source contract
 All three predecessor IDs still read `completed` (`docs/reviews/travel-displays-evidence/preflight.log:2`). The research document remained approved at revision `32ed69cf-96a6-41fd-9fe6-21d458b921f5`, hash `68b1637becd15029714286cad870d1fe346ab022992cb144d3fe4eb84c192e5f` (`preflight.log:6`). Its current registry/history and original submission comments were read; its file and comments were not edited. The foreign `.env.example` is byte-identical to the dispatch snapshot, SHA-256 `e87f409424c736d95b28120b31ffb7411ee39198e7199c581b57a81ff1a093ab` (`preflight.log:7`). The prior menu work was preserved.
 
 ## Files touched
+
+Resume-only changes are the walkthrough and the `resume-*` verification/receipt artifacts below; all implementation files remain at the retained commits.
+
+- /Volumes/Projects/TheNexus/docs/reviews/travel-displays-evidence/resume-session-check.log
+- /Volumes/Projects/TheNexus/docs/reviews/travel-displays-evidence/resume-server-tests.log
+- /Volumes/Projects/TheNexus/docs/reviews/travel-displays-evidence/resume-dashboard-tests.log
+- /Volumes/Projects/TheNexus/docs/reviews/travel-displays-evidence/resume-contract-tests.log
+- /Volumes/Projects/TheNexus/docs/reviews/travel-displays-evidence/resume-review.log
+- /Volumes/Projects/TheNexus/docs/reviews/travel-displays-evidence/resume-handoff.json
+- /Volumes/Projects/TheNexus/docs/reviews/travel-displays-evidence/resume-handoff-verification.json
 
 - .gitignore
 - dashboard/.gitignore
@@ -192,7 +230,7 @@ All three predecessor IDs still read `completed` (`docs/reviews/travel-displays-
 - **Fallback (do this instead):** If there is genuinely nothing to drive, declare that in place of a command rather than omitting the gate or inventing a command you did not run.
 - **Consequence (if you proceed anyway):** A completion reported without the marker line is treated as unverified work and flagged for the human reviewer, whatever the walkthrough claims.
 
-#### BC-WORKSPACE-BINDING — Your home workspace is `/Volumes/Projects/TheNexus`. You MAY work in additional repos under /Volumes/Projects when the task genuinely needs it, and you MUST name every extra repo you touched — absolute path — and why, in your completion report.
+#### BC-WORKSPACE-BINDING — Your home workspace is `/Volumes/Projects/TheNexus` and `/Volumes/Projects/nexus-shared`. You MAY work in additional repos under /Volumes/Projects when the task genuinely needs it, and you MUST name every extra repo you touched — absolute path — and why, in your completion report.
 - **Prerequisite (resolve first):** Before writing outside the home workspace, know that the task genuinely needs that repo. Praxis records every write outside the home root, so the record and your report have to agree.
 - **Authority (who may waive it):** You, by declaring it in the completion report — that is the sanctioned way to widen the task's footprint. If the WHOLE task belongs in a different repo, re-point it through the workspace endpoint instead so QA's primary diff moves with you.
 - **Fallback (do this instead):** If you touched a repo you did not need, say so in the report anyway (an honest extra repo is not a defect); if you cannot tell which repos you touched, list every one you might have.

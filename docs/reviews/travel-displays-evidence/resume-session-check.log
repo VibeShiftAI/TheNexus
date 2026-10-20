@@ -1,0 +1,19 @@
+CHECKED_AT "2026-10-20T21:57:53.535213+00:00"
+EXEC_HOST {"platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O", "uname": "Darwin 25.5.0 arm64"}
+CUA_OBSERVED_THIS_RESUME {"browsers": [], "command": "cua.getState({emit:false}); cua.computer.target", "running_apps": ["com.google.Chrome", "com.apple.systempreferences", "com.anthropic.claudefordesktop", "com.openai.codex", "com.apple.Terminal", "ai.elementlabs.lmstudio", "com.apple.finder", "dev.kdrag0n.MacVirt"], "target": "mac", "windows_surface_exposed": false}
+NEXUS_ACTIVITY {"at": "2026-10-20T21:41:33.942000+00:00", "label": "Win32", "meaning": "navigator.platform self-report; not authenticated OS identity, remote control, or monitor evidence"}
+PRESENCE_SOURCE {"client": "dashboard/src/lib/active-client.ts:51 navigator.platform label", "server": "server/routes/presence.js:23 POST stores clientId/label/time; line36 GET returns lastActive; no command transport"}
+SSH_CONFIGURATION {"configured_hosts": ["orb"], "files": ["/Users/robertwashko/.ssh/config", "/Users/robertwashko/.orbstack/ssh/config"], "orb": "OrbStack Linux loopback 127.0.0.1:32222; not Windows", "windows_endpoint_known": false}
+PRAXIS_BRIDGE {"scope": "readonly", "tools": ["work_admission", "register_background_work", "write_done_receipt", "document_handoff", "get_current_time", "ask_robert", "local_memory", "graph", "notes", "search_conversations", "supervisor_status", "infra_health_check", "cortex_memory", "nexus_tasks", "nexus_projects", "nexus_board", "git_get_diff", "get_day_schedule", "skill_recall", "recall_council_session"], "windows_execution_tool": false}
+LIVE_UPDATE_FEED {"limitation": "Feed metadata only; does not prove installed laptop version. Retained task commits were not published.", "platforms": ["windows-aarch64"], "pub_date": "2026-07-17T16:46:00Z", "version": "1.4.0"}
+LIVE_PRESENTATION_CONFIG {"http_status": 404, "limitation": "Not served by current local API; no restart, deployment, credential forwarding, or authority bypass performed."}
+ANDROID_ADB "List of devices attached"
+LIVING_ROOM_TV {"new_device_test": false, "retained_inventory": "hardware-inventory.log:54 records Living Room speaker (Nest Audio), not the chosen TV; TV protocol/model/reachability remain unknown"}
+PREDECESSOR {"id": "6d6e2638-8fc1-46fa-8545-3ad4d5876dc0", "status": "completed"}
+PREDECESSOR {"id": "be441473-ebd1-4c93-b3a1-9f3e3d3decf4", "status": "completed"}
+PREDECESSOR {"id": "91f1f758-4b40-464b-a2a0-29f29de0bf98", "status": "completed"}
+REGISTRY_BEFORE_EDIT {"current_revision_id": "40c7ef1b-21f5-4f4c-822b-b470193ba7e9", "document": "470c263f-c519-49b8-8f5a-4c2e965dc787", "review_count": 0, "review_status": "needs_review"}
+REGISTRY_BEFORE_EDIT {"current_revision_id": "32ed69cf-96a6-41fd-9fe6-21d458b921f5", "document": "c1be8472-49bd-4534-8ec7-e10dfeaa4722", "review_count": 1, "review_status": "approved"}
+FOREIGN_ENV_SHA256 "e87f409424c736d95b28120b31ffb7411ee39198e7199c581b57a81ff1a093ab"
+REQUESTED_OPERATOR_CHECK {"command": "whoami; Get-Service sshd; Get-NetIPAddress -AddressFamily IPv4 | Select-Object InterfaceAlias,IPAddress", "purpose": "Check existing SSH service/account/address, without installation or configuration changes. If unavailable, an interactive Windows test session still must be established. SSH availability alone would not prove interactive-display control.", "result": "pending; not executed on Windows by this run"}
+SOURCE_RETAINED {"TheNexus_head": "33fde73", "Windows_native_runtime": false, "physical_display_verification": false, "shared_head": "367c543"}

@@ -1,0 +1,14 @@
+Reviewed at 2026-10-20T22:00:04.702982+00:00
+PASS /Volumes/Projects/TheNexus $ git diff --exit-code 33fde73 -- dashboard desktop server scripts .gitignore (exit 0, no output)
+PASS /Volumes/Projects/nexus-shared $ git diff --exit-code 367c543 -- src/presentations.ts src/index.ts test/presentations.test.cjs (exit 0, no output)
+PASS /Volumes/Projects/TheNexus $ git diff --check -- docs/reviews/travel-displays-windows.md (exit 0, no output)
+Self-review: read the complete resumed walkthrough diff and every new session/test evidence record; corrected active-client.ts evidence line from 50 to 51. No remaining new content defects found.
+Retained implementation self-review is code-review.log:1-7; the source-equality checks above corroborate that no source has changed since that review. This resume does not claim a new Windows runtime or full native build verification.
+Fresh verify: server presentations 28/28; dashboard presentation/document/bridge regressions 19/19; shared presentation contract 4/4. Exact commands/results are in the resumed walkthrough and resume-*-tests.log.
+Operator PowerShell check is a requested read-only preflight, not a result observed on Windows. Nexus Win32 activity is self-reported platform metadata and has no command transport.
+Task outcome remains needs_input: criteria 1 and 2 require interactive Windows/native-display evidence. Criteria 4 and 6 explicitly allow recorded hardware blockers. No requirement was silently waived.
+UTF8_MOJIBAKE_PASS docs/reviews/travel-displays-windows.md
+UTF8_MOJIBAKE_PASS docs/reviews/travel-displays-evidence/resume-contract-tests.log
+UTF8_MOJIBAKE_PASS docs/reviews/travel-displays-evidence/resume-dashboard-tests.log
+UTF8_MOJIBAKE_PASS docs/reviews/travel-displays-evidence/resume-server-tests.log
+UTF8_MOJIBAKE_PASS docs/reviews/travel-displays-evidence/resume-session-check.log
