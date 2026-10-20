@@ -26,8 +26,9 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 
 // The menu is a wide slide-over on desktop (grouped destinations in two
 // columns beside the controls) and a full-width sheet on a phone. Projects
-// live on the dashboard's Project Reference grid, not here. Header and footer stay pinned; only the middle scrolls, so Close and
-// Settings are always on screen however short the window or large the text.
+// live on the dashboard's Project Reference grid, not here. Header and footer
+// stay pinned; only the middle scrolls, so Close and Settings are always on
+// screen however short the window or large the text.
 // It stacks above the voice dock (z-50) and connection banner (z-60) but
 // under the audio mini player (z-90), whose space the footer keeps clear via
 // --nexus-floating-overlay-bottom (lib/floating-controls).
