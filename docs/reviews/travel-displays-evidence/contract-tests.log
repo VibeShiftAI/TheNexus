@@ -1,0 +1,12 @@
+✔ document presentation requires exact revision and content hash (1.156708ms)
+✔ four view families and explicit focus modes, no arbitrary URL view (0.944375ms)
+✔ discovery carries device provenance and rejects foreign or duplicate target identities (0.676375ms)
+✔ target resolution is exact, fresh, and never guesses duplicate names (0.090625ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42.343334

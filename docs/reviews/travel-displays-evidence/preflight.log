@@ -1,0 +1,9 @@
+Read 2026-10-20T21:07:44.977212+00:00
+{"id": "6d6e2638-8fc1-46fa-8545-3ad4d5876dc0", "status": "completed", "updated_at": "2026-10-20T18:18:06.493Z"}
+{"id": "be441473-ebd1-4c93-b3a1-9f3e3d3decf4", "status": "completed", "updated_at": "2026-10-20T20:41:28.939Z"}
+{"id": "91f1f758-4b40-464b-a2a0-29f29de0bf98", "status": "completed", "updated_at": "2026-10-20T18:09:43.599Z"}
+Source research history {"document_id": "c1be8472-49bd-4534-8ec7-e10dfeaa4722", "current_revision_id": "32ed69cf-96a6-41fd-9fe6-21d458b921f5", "review_status": "approved"}
+Current source revision {"id": "32ed69cf-96a6-41fd-9fe6-21d458b921f5", "document_id": "c1be8472-49bd-4534-8ec7-e10dfeaa4722", "content_hash": "68b1637becd15029714286cad870d1fe346ab022992cb144d3fe4eb84c192e5f", "byte_length": 67826, "line_count": 518, "file_mtime": "2026-10-20T18:11:49.134Z", "captured_at": "2026-10-20T18:12:05.386Z", "media_type": "markdown", "mime_type": "text/markdown", "source": "capture", "edited_by": null, "asset_count": 1, "width": null, "height": null}
+Foreign .env.example byte-identical to dispatch snapshot: True; SHA-256 e87f409424c736d95b28120b31ffb7411ee39198e7199c581b57a81ff1a093ab
+Branch main
+Primary repo /Volumes/Projects/TheNexus; additional declared repo /Volumes/Projects/nexus-shared for versioned presentation contracts; no Praxis source edits.

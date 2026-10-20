@@ -1,0 +1,20 @@
+ENVIRONMENT {"date":"2026-10-20T21:06:59.988Z","host":"darwin","browser":"Chrome/155.0.8059.85","viewport":"1440x1000","fixtures":true,"windowsRuntime":false,"physicalDevices":false}
+VIEW_AMBIENT {"kind":"ambient","readOnly":true,"links":0,"reviewControls":0,"overflow":false,"localStorage":0}
+STOP_AMBIENT {"blanked":true}
+VIEW_FOCUS {"kind":"focus","readOnly":true,"links":0,"reviewControls":0,"overflow":false,"localStorage":0}
+STOP_FOCUS {"blanked":true}
+VIEW_BOARD {"kind":"focus","readOnly":true,"links":0,"reviewControls":0,"overflow":false,"localStorage":0}
+STOP_BOARD {"blanked":true}
+VIEW_DAY-PLAN {"kind":"day-plan","readOnly":true,"links":0,"reviewControls":0,"overflow":false,"localStorage":0}
+STOP_DAY-PLAN {"blanked":true}
+VIEW_MARKDOWN {"kind":"document","readOnly":true,"links":0,"reviewControls":0,"overflow":false,"localStorage":0}
+STOP_MARKDOWN {"blanked":true}
+VIEW_IMAGE {"kind":"document","readOnly":true,"links":0,"reviewControls":0,"overflow":false,"imageWidth":960,"localStorage":0}
+STOP_IMAGE {"blanked":true}
+VIEW_PDF {"kind":"document","readOnly":true,"links":0,"reviewControls":0,"overflow":false,"pdfInert":true,"localStorage":0}
+STOP_PDF {"blanked":true}
+VIEW_VIDEO {"kind":"document","readOnly":true,"links":0,"reviewControls":0,"overflow":false,"videoReady":4,"localStorage":0}
+STOP_VIDEO {"blanked":true}
+CONTROLLER_UI {"selectStartStop":"PASS","nativeBridge":"simulated","httpOperatorJwt":"synthetic signed fixture"}
+ISOLATION {"requests":78,"operatorCredentials":false,"unselectedResources":false,"generalApiStatus":404,"consoleErrors":[]}
+RESULT "PASS: eight selected views/media variants and eight controller revocations in real Chromium; no native/hardware claim."

@@ -1,0 +1,6 @@
+server/services/presentation-data.js: strict UTF-8; no replacement characters or common mojibake signatures
+server/services/presentations.js: strict UTF-8; no replacement characters or common mojibake signatures
+server/routes/presentations.js: strict UTF-8; no replacement characters or common mojibake signatures
+server/presentation-receiver.js: strict UTF-8; no replacement characters or common mojibake signatures
+server/__tests__/presentations.test.js: strict UTF-8; no replacement characters or common mojibake signatures
+server/server.js: strict UTF-8; no replacement characters or common mojibake signatures

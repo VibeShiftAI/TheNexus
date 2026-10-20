@@ -1,0 +1,113 @@
+Captured 2026-10-20T21:04:02.030170+00:00
+
+Host Darwin arm64 macOS 26.5.2
+
+Scope: Mac inventory only; no Windows/Android-origin discovery, no production cast, no consent dialogs accepted.
+
+$ adb devices -l
+List of devices attached
+
+
+
+Configured SSH host aliases matching Windows/laptop/travel: none
+
+$ dns-sd -B _googlecast._tcp local.
+Browsing for _googlecast._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:02.052  ...STARTING...
+Timestamp     A/R    Flags  if Domain               Service Type         Instance Name
+17:04:02.055  Add        3  17 local.               _googlecast._tcp.    Google-Nest-Mini-b0f331ab04815808ca4d37dda4ecc35a
+17:04:02.055  Add        3  17 local.               _googlecast._tcp.    Nest-Audio-bd3ee50908bbd4e8859061e1d4d6640b
+17:04:02.055  Add        3  17 local.               _googlecast._tcp.    Google-Cast-Group-3BAAB38123F54F78B6C7F741895F8318
+17:04:02.055  Add        3  17 local.               _googlecast._tcp.    Nest-Audio-4ed4b1e5332ffeb2ce60107ec8bddd02
+17:04:02.055  Add        3  17 local.               _googlecast._tcp.    Nest-Audio-7a09efd5d4c8117f8a1366164bc93533
+17:04:02.055  Add        3  17 local.               _googlecast._tcp.    Google-Home-bb5b627e2461ab5b84967d365ec7712f
+17:04:02.055  Add        3  17 local.               _googlecast._tcp.    Google-Home-Mini-6b35f78f0a684f2508e9e63af82096bf
+17:04:02.055  Add        3  17 local.               _googlecast._tcp.    Google-Cast-Group-82F22F8E61184A1DB2ADA7C12A3B6AFE-1
+17:04:02.055  Add        2  17 local.               _googlecast._tcp.    Google-Cast-Group-D0EC53E7DA50427B9D6CF043FF775383
+
+
+$ dns-sd -B _airplay._tcp local.
+Browsing for _airplay._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:02.055  ...STARTING...
+Timestamp     A/R    Flags  if Domain               Service Type         Instance Name
+17:04:02.055  Add        3   1 local.               _airplay._tcp.       Mac Studio
+17:04:02.055  Add        3  17 local.               _airplay._tcp.       Mac Studio
+17:04:02.055  Add        3  28 local.               _airplay._tcp.       Mac Studio
+17:04:02.055  Add        2  30 local.               _airplay._tcp.       Mac Studio
+
+
+$ dns-sd -L Google-Nest-Mini-b0f331ab04815808ca4d37dda4ecc35a _googlecast._tcp local.
+Lookup Google-Nest-Mini-b0f331ab04815808ca4d37dda4ecc35a._googlecast._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:07.055  ...STARTING...
+17:04:07.061  Google-Nest-Mini-b0f331ab04815808ca4d37dda4ecc35a._googlecast._tcp.local. can be reached at b0f331ab-0481-5808-ca4d-37dda4ecc35a.local.:8009 (interface 17)
+ id=b0f331ab04815808ca4d37dda4ecc35a cd=CE1470C708501EDEA3CCA6E175A600BB rm=3BC8013EBAB1C94C ve=05 md=Google\ Nest\ Mini ic=/setup/icon.png fn=Kitchen\ speaker\ 2 ca=198660 st=0 bs=FA8FCA7FEDEE nf=1 rs=
+
+
+$ dns-sd -L Nest-Audio-bd3ee50908bbd4e8859061e1d4d6640b _googlecast._tcp local.
+Lookup Nest-Audio-bd3ee50908bbd4e8859061e1d4d6640b._googlecast._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:07.061  ...STARTING...
+17:04:07.061  Nest-Audio-bd3ee50908bbd4e8859061e1d4d6640b._googlecast._tcp.local. can be reached at bd3ee509-08bb-d4e8-8590-61e1d4d6640b.local.:8009 (interface 17)
+ id=bd3ee50908bbd4e8859061e1d4d6640b cd=A4E90B172B7350A30D453DF9591AF592 rm=44A3B03CA2D593F6 ve=05 md=Nest\ Audio ic=/setup/icon.png fn=Living\ Room\ speaker ca=199428 st=0 bs=FA8FCA7B2C1F nf=1 rs=
+
+
+$ dns-sd -L Google-Cast-Group-3BAAB38123F54F78B6C7F741895F8318 _googlecast._tcp local.
+Lookup Google-Cast-Group-3BAAB38123F54F78B6C7F741895F8318._googlecast._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:07.057  ...STARTING...
+17:04:07.061  Google-Cast-Group-3BAAB38123F54F78B6C7F741895F8318._googlecast._tcp.local. can be reached at bd3ee509-08bb-d4e8-8590-61e1d4d6640b.local.:32000 (interface 17)
+ id=3BAAB381-23F5-4F78-B6C7-F741895F8318 cd=3BAAB381-23F5-4F78-B6C7-F741895F8318 rm=44A3B03CA2D593F6 ve=05 md=Google\ Cast\ Group ic=/setup/icon.png fn=Living\ Room\ Speakers ca=199332 st=0 bs=FA8FCA7B2C1F nf=1 rs=
+
+
+$ dns-sd -L Nest-Audio-4ed4b1e5332ffeb2ce60107ec8bddd02 _googlecast._tcp local.
+Lookup Nest-Audio-4ed4b1e5332ffeb2ce60107ec8bddd02._googlecast._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:07.059  ...STARTING...
+17:04:07.061  Nest-Audio-4ed4b1e5332ffeb2ce60107ec8bddd02._googlecast._tcp.local. can be reached at 4ed4b1e5-332f-feb2-ce60-107ec8bddd02.local.:8009 (interface 17)
+ id=4ed4b1e5332ffeb2ce60107ec8bddd02 cd=8C80394C90D3C403B9B7C576C9EA1F45 rm=7876BC4CFFA6DE67 ve=05 md=Nest\ Audio ic=/setup/icon.png fn=Bedroom\ Speaker ca=199172 st=0 bs=FA8FCA660BC6 nf=1 rs=
+
+
+$ dns-sd -L Nest-Audio-7a09efd5d4c8117f8a1366164bc93533 _googlecast._tcp local.
+Lookup Nest-Audio-7a09efd5d4c8117f8a1366164bc93533._googlecast._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:10.069  ...STARTING...
+17:04:10.077  Nest-Audio-7a09efd5d4c8117f8a1366164bc93533._googlecast._tcp.local. can be reached at 7a09efd5-d4c8-117f-8a13-66164bc93533.local.:8009 (interface 17)
+ id=7a09efd5d4c8117f8a1366164bc93533 cd=01C2798AECB49B1ABB790FD72E0B8A68 rm=0BBED40DA5D62E62 ve=05 md=Nest\ Audio ic=/setup/icon.png fn=Living\ Room\ speaker ca=199172 st=0 bs=FA8FCA876979 nf=1 rs=
+
+
+$ dns-sd -L Google-Home-bb5b627e2461ab5b84967d365ec7712f _googlecast._tcp local.
+Lookup Google-Home-bb5b627e2461ab5b84967d365ec7712f._googlecast._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:10.074  ...STARTING...
+17:04:10.077  Google-Home-bb5b627e2461ab5b84967d365ec7712f._googlecast._tcp.local. can be reached at bb5b627e-2461-ab5b-8496-7d365ec7712f.local.:8009 (interface 17)
+ id=bb5b627e2461ab5b84967d365ec7712f cd=072B6C6205FE580648418F5BEE0CBA97 rm=5718EFBE29F9866F ve=05 md=Google\ Home ic=/setup/icon.png fn=Office\ speaker ca=199172 st=0 bs=FA8FCA806F90 nf=1 rs=
+
+
+$ dns-sd -L Google-Home-Mini-6b35f78f0a684f2508e9e63af82096bf _googlecast._tcp local.
+Lookup Google-Home-Mini-6b35f78f0a684f2508e9e63af82096bf._googlecast._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:10.072  ...STARTING...
+17:04:10.077  Google-Home-Mini-6b35f78f0a684f2508e9e63af82096bf._googlecast._tcp.local. can be reached at 6b35f78f-0a68-4f25-08e9-e63af82096bf.local.:8009 (interface 17)
+ id=6b35f78f0a684f2508e9e63af82096bf cd=7E323CDDA090DBF08713CE6720365C4E rm=70E1A864E9F495DD ve=05 md=Google\ Home\ Mini ic=/setup/icon.png fn=Bathroom\ speaker ca=199172 st=0 bs=FA8FCA92DB72 nf=1 rs=
+
+
+$ dns-sd -L Google-Cast-Group-82F22F8E61184A1DB2ADA7C12A3B6AFE-1 _googlecast._tcp local.
+Lookup Google-Cast-Group-82F22F8E61184A1DB2ADA7C12A3B6AFE-1._googlecast._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:10.076  ...STARTING...
+17:04:10.077  Google-Cast-Group-82F22F8E61184A1DB2ADA7C12A3B6AFE-1._googlecast._tcp.local. can be reached at 6b35f78f-0a68-4f25-08e9-e63af82096bf.local.:32092 (interface 17)
+ id=82F22F8E-6118-4A1D-B2AD-A7C12A3B6AFE cd=82F22F8E-6118-4A1D-B2AD-A7C12A3B6AFE rm=70E1A864E9F495DD ve=05 md=Google\ Cast\ Group ic=/setup/icon.png fn=Home\ group ca=199204 st=0 bs=FA8FCA92DB72 nf=1 rs=
+
+
+$ dns-sd -L Google-Cast-Group-D0EC53E7DA50427B9D6CF043FF775383 _googlecast._tcp local.
+Lookup Google-Cast-Group-D0EC53E7DA50427B9D6CF043FF775383._googlecast._tcp.local.
+DATE: ---Tue 20 Oct 2026---
+17:04:13.094  ...STARTING...
+17:04:13.096  Google-Cast-Group-D0EC53E7DA50427B9D6CF043FF775383._googlecast._tcp.local. can be reached at 6b35f78f-0a68-4f25-08e9-e63af82096bf.local.:32107 (interface 17)
+ id=D0EC53E7-DA50-427B-9D6C-F043FF775383 cd=D0EC53E7-DA50-427B-9D6C-F043FF775383 rm=70E1A864E9F495DD ve=05 md=Google\ Cast\ Group ic=/setup/icon.png fn=Subspace\ Channels ca=199204 st=0 bs=FA8FCA92DB72 nf=1 rs=
+
+
+Inventory is bounded and not exhaustive. Friendly names and TXT records are observations, not proof of Windows/Android connectivity. No Windows execution or TV browser session was available in this run.

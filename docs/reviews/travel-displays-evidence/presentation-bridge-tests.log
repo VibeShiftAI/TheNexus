@@ -1,0 +1,2 @@
+Passed 7 bridge origin/frame cases, immutable native flag, correlated result, and navigation race.
+Main-window chrome/loaders retain core capability; presentation is outside its window scope and no remote scope exists.

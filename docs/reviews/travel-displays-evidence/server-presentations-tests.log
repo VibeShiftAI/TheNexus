@@ -1,0 +1,35 @@
+PASS server/__tests__/presentations.test.js
+  ✓ every controller request requires a fresh verified operator assertion, including device sessions (31 ms)
+  ✓ inventory validates provenance, bounded targets, unique identity, timestamps, and native method (23 ms)
+  ✓ target selection refuses ambiguous names, unavailable targets, stale inventory and wrong view capabilities (8 ms)
+  ✓ all four projections expose only allowlisted data and immutable selected view (15 ms)
+  ✓ exact document revision and hash are mandatory; unsupported media and missing registered primary are refused (7 ms)
+  ✓ document text stays pinned when the current document changes and signals a newer revision (6 ms)
+  ✓ active focus distinguishes fresh runtime activity from board labels without leaking executor payloads (5 ms)
+  ✓ native confirmation, explicit stop, lease expiry, and hard expiry revoke reads (45 ms)
+  ✓ pairing is single-use, scoped to the original receiver, and issues no credentials to the controller (7 ms)
+  ✓ receiver cannot choose another view or access APIs, mutations, credentials, or arbitrary static files (8 ms)
+  ✓ receiver media serves the exact captured primary with byte ranges and stop revokes it (7 ms)
+  ✓ pairing codes and receiver capabilities expire, and process restart forgets all authority (6 ms)
+  ✓ receiver refuses cross-origin enrollment and bounds enrollment requests (6 ms)
+  ✓ receiver listener is opt-in with loopback default and rejects unsafe remote HTTP origin (10 ms)
+  ✓ every controller mutation and selected read refuses missing, expired, and forged authority (12 ms)
+  ✓ PDF and image capture keep their exact registered bytes and do not expose filesystem identities (10 ms)
+  ✓ corrupt stored media is rejected even when review-media locates an existing blob (3 ms)
+  ✓ two receiver capabilities remain isolated to their selected document revisions (6 ms)
+  ✓ inventories and sessions have finite capacity and stopped session capacity is reusable (37 ms)
+  ✓ receiver pairing attempts are bounded and a disconnected presentation requires a new session (8 ms)
+  ✓ revocation closes an already open receiver media stream (60 ms)
+  ✓ an invalid calendar day is refused before a session is created (3 ms)
+  ✓ Android inventory follows the same provenance contract and focus board results are bounded (3 ms)
+  ✓ receiver rejects excessive simultaneous media streams for one capability (59 ms)
+  ✓ controller heartbeat cannot claim a paired browser is active before the TV redeems its token (4 ms)
+  ✓ a closed TV disconnects after 45 seconds even when the controller continues renewing (4 ms)
+  ✓ receiver reads renew its own liveness without renewing controller authority (5 ms)
+  ✓ an unredeemed claimed receiver expires with its pairing even while controller heartbeats continue (4 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       28 passed, 28 total
+Snapshots:   0 total
+Time:        0.529 s, estimated 1 s
+Ran all test suites matching server/__tests__/presentations.test.js.

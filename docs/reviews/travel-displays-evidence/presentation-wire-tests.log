@@ -1,0 +1,17 @@
+   Compiling nexus-presentation-wire-tests v0.0.0 (/Volumes/Projects/BuildCache/Managed/nexus-travel-displays-windows/DerivedData/wire-tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running unittests lib.rs (/Volumes/Projects/BuildCache/Managed/nexus-travel-displays-windows/DerivedData/cargo-target/debug/deps/nexus_presentation_wire_tests-b41d34557c512f9b)
+
+running 9 tests
+test presentation_policy::tests::bridge_requires_current_exact_https_origin_and_top_frame ... ok
+test presentation_policy::tests::unplug_expiry_and_stop_are_terminal_until_an_explicit_new_start ... ok
+test presentation_policy::tests::exact_selection_never_guesses_same_friendly_names_and_preserves_physical_geometry ... ok
+test presentation_policy::tests::selection_fails_closed_for_stale_missing_duplicate_and_single_display ... ok
+test presentation_policy::tests::output_only_admits_pinned_presentation_and_same_origin_blob_media ... ok
+test presentation_policy::tests::identity_uses_device_interface_and_installation_not_order_or_friendly_name ... ok
+test presentation_policy::tests::iso_timestamps_and_session_lifetimes_are_bounded_and_calendar_valid ... ok
+test presentation_wire::tests::status_preserves_terminal_session_identity_and_omits_absent_messages ... ok
+test presentation_wire::tests::accepts_only_correlated_narrow_commands_without_arbitrary_urls ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

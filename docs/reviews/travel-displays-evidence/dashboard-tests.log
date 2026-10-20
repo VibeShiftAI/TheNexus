@@ -1,0 +1,27 @@
+✔ renders full GFM with per-block source line anchors and no active scripts (41.611167ms)
+✔ tapping a block control selects that block; non-interactive mode has no controls (15.343542ms)
+✔ outline lists headings with their source lines, skipping fenced content (0.403583ms)
+✔ mermaid fences render as diagrams; captions, prose and other fences are untouched (11.182583ms)
+✔ a broken mermaid fence shows a fallback with its source while the rest of the document renders (7.48175ms)
+✔ changing the document replaces its diagrams; unrelated re-renders do not redraw (16.9585ms)
+✔ an image opens in the zoomable viewer; dragging a region opens the composer and saves a region comment the rail lists with its pin (165.529458ms)
+✔ a design package shows its directions and screens, comments anchor to a screen, and approving records the selected direction (97.349833ms)
+✔ Edit opens the text editor, Save writes a new revision through the API and the page reloads onto it (62.122542ms)
+✔ neither the global launcher nor exact-review button renders in a standalone browser (36.26475ms)
+✔ document controller button relays the exact displayed revision, never asks for latest (16.440083ms)
+✔ all four families render selected data without approval, chat, or navigation controls (21.996042ms)
+✔ document output visibly binds exact identity and keeps update notification read-only (2.141458ms)
+✔ PDF, image and video use existing read-only media stages (3.908958ms)
+✔ a receiver blanks previously displayed data on failed refresh (44.888917ms)
+✔ presentation Mermaid stays literal and cannot issue requests or navigation (1.522042ms)
+✔ browser and unsupported shells have no display launcher (0.357542ms)
+✔ native requests correlate replies and send only the bounded action payload (3.689709ms)
+✔ reconciliation waits for native activation and an old stop cannot close a later start (0.683875ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 881.172041

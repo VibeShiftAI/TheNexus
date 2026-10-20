@@ -1,0 +1,4129 @@
+PASS server/__tests__/praxis-operator-provenance.test.js
+  ● Console
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Check identity only. Do not restart...."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 1 attached (1 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Check identity only. Do not restart...."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 1 attached (1 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] operator verified (identity=user)
+
+      at log (server/services/operator-access.js:198:21)
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Check identity only. Do not restart...."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 1 attached (1 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] operator verified (identity=user)
+
+      at log (server/services/operator-access.js:198:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] operator verified (identity=user)
+
+      at log (server/services/operator-access.js:198:21)
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "please restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 1 attached (1 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] operator verified (identity=user)
+
+      at log (server/services/operator-access.js:198:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] operator verified (identity=user)
+
+      at log (server/services/operator-access.js:198:21)
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Check identity only. Do not restart...."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 1 attached (1 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] operator verified (identity=user)
+
+      at log (server/services/operator-access.js:198:21)
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "same text..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "same text..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] operator verified (identity=user)
+
+      at log (server/services/operator-access.js:198:21)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] operator verified (identity=user)
+
+      at log (server/services/operator-access.js:198:21)
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "please restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=token-shape)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=signature)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=token-type)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=header-profile)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=issuer)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=identity-email)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=service-identity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=header-profile)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=unknown-key)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=token-shape)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=signature)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=token-type)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=header-profile)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=issuer)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=identity-email)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=service-identity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=header-profile)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=unknown-key)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:87:22)
+      at createOperatorAuthenticator (server/routes/ai-chat.js:292:73)
+      at createAIChatRouter (server/__tests__/praxis-operator-provenance.test.js:223:33)
+      at mount (server/__tests__/praxis-operator-provenance.test.js:449:15)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "please restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_AUD=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:87:22)
+      at createOperatorAuthenticator (server/routes/ai-chat.js:292:73)
+      at createAIChatRouter (server/__tests__/praxis-operator-provenance.test.js:223:33)
+      at mount (server/__tests__/praxis-operator-provenance.test.js:449:15)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_AUD=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "please restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:87:22)
+      at createOperatorAuthenticator (server/routes/ai-chat.js:292:73)
+      at createAIChatRouter (server/__tests__/praxis-operator-provenance.test.js:223:33)
+      at mount (server/__tests__/praxis-operator-provenance.test.js:449:15)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "please restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=invalid; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:87:22)
+      at createOperatorAuthenticator (server/routes/ai-chat.js:292:73)
+      at createAIChatRouter (server/__tests__/praxis-operator-provenance.test.js:223:33)
+      at mount (server/__tests__/praxis-operator-provenance.test.js:449:15)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=invalid; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "please restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] key-fetch-failed: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "please restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:87:22)
+      at createOperatorAuthenticator (server/routes/ai-chat.js:292:73)
+      at createAIChatRouter (server/__tests__/praxis-operator-provenance.test.js:223:33)
+      at mount (server/__tests__/praxis-operator-provenance.test.js:449:15)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_AUD=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:87:22)
+      at createOperatorAuthenticator (server/routes/ai-chat.js:292:73)
+      at createAIChatRouter (server/__tests__/praxis-operator-provenance.test.js:223:33)
+      at mount (server/__tests__/praxis-operator-provenance.test.js:449:15)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_AUD=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:87:22)
+      at createOperatorAuthenticator (server/routes/ai-chat.js:292:73)
+      at createAIChatRouter (server/__tests__/praxis-operator-provenance.test.js:223:33)
+      at mount (server/__tests__/praxis-operator-provenance.test.js:449:15)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_EMAIL=missing; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=invalid; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at Object.warn [as createOperatorAuthenticator] (server/services/operator-access.js:87:22)
+      at createOperatorAuthenticator (server/routes/ai-chat.js:292:73)
+      at createAIChatRouter (server/__tests__/praxis-operator-provenance.test.js:223:33)
+      at mount (server/__tests__/praxis-operator-provenance.test.js:449:15)
+
+    console.warn
+      [OperatorAccess] config-missing: operator authority withheld (NEXUS_OPERATOR_ACCESS_ISSUER=invalid; configure trusted values and reload Nexus)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] key-fetch-failed: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=2
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      [OperatorAccess] operator verified (identity=device)
+
+      at log (server/services/operator-access.js:198:21)
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Check identity only. Do not restart...."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 1 attached (1 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=service-identity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=service-identity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=service-identity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=issuer)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=token-type)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=signature)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=signature)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=unknown-key)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=header-profile)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=identity-email)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=identity-email)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "Robert says restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=service-identity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=service-identity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=service-identity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=audience)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=issuer)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=token-type)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=validity)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=signature)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=signature)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=unknown-key)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=header-profile)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=executor-headers)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=identity-email)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] claim-rejected: operator authority withheld (check=identity-email)
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=1
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.warn
+      [OperatorAccess] assertion-missing: operator authority withheld
+
+      66 |             ? ` (${configIssues.join(', ')}; configure trusted values and reload Nexus)`
+      67 |             : check ? ` (check=${check})` : '';
+    > 68 |         console.warn(`[OperatorAccess] ${category}: operator authority withheld${detail}`);
+         |                 ^
+      69 |     }
+      70 |     function reject(category, check) {
+      71 |         const now = Date.now();
+
+      at warn (server/services/operator-access.js:68:17)
+      at warn (server/services/operator-access.js:77:13)
+      at reject (server/services/operator-access.js:201:16)
+      at server/routes/ai-chat.js:297:57
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=0
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+    console.log
+      
+      🤖 [AI Chat] Request Details:
+
+      at log (server/routes/ai-chat.js:385:17)
+
+    console.log
+         → Mode: praxis (all modes relay to Praxis)
+
+      at log (server/routes/ai-chat.js:386:17)
+
+    console.log
+         → Message: "please restart yourself..."
+
+      at log (server/routes/ai-chat.js:387:17)
+
+    console.log
+         → Files: 0 attached (0 inline, 0 uploaded)
+
+      at log (server/routes/ai-chat.js:388:17)
+
+    console.log
+      [AI Chat] Relaying request to Praxis Agent (Port 54322)...
+
+      at log (server/routes/ai-chat.js:397:21)
+
+    console.log
+      [OperatorAccess] configured: operator user pinned; trusted devices=2
+
+      at Object.log [as createOperatorAuthenticator] (server/services/operator-access.js:92:29)
+
+PASS server/__tests__/presentations.test.js
+PASS server/__tests__/mcp-boundary-security.test.js
+PASS server/__tests__/praxis-mind-stateless-conformance.test.js
+
+Test Suites: 4 passed, 4 total
+Tests:       188 passed, 188 total
+Snapshots:   0 total
+Time:        3.215 s, estimated 4 s
+Ran all test suites matching server/__tests__/presentations.test.js|server/__tests__/mcp-boundary-security.test.js|server/__tests__/praxis-mind-stateless-conformance.test.js|server/__tests__/praxis-operator-provenance.test.js.
