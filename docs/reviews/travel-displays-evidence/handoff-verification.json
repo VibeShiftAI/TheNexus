@@ -1,0 +1,369 @@
+{
+  "handoff_id": "travel-displays-windows-df0c6b63-v1",
+  "status": "delivered",
+  "artifacts": [
+    {
+      "key": "nexus:travel-displays:windows",
+      "document_id": "470c263f-c519-49b8-8f5a-4c2e965dc787",
+      "revision_id": "40c7ef1b-21f5-4f4c-822b-b470193ba7e9",
+      "hash": "b64a07530e0f7531bc6486c7a30aaebb9c915b8c7601f2cede3ccf427ac30934",
+      "review_path": "/documents/470c263f-c519-49b8-8f5a-4c2e965dc787",
+      "raw_path": "/api/documents/470c263f-c519-49b8-8f5a-4c2e965dc787/raw?revision=40c7ef1b-21f5-4f4c-822b-b470193ba7e9",
+      "readiness": {
+        "document_id": "470c263f-c519-49b8-8f5a-4c2e965dc787",
+        "revision_id": "40c7ef1b-21f5-4f4c-822b-b470193ba7e9",
+        "content_hash": "b64a07530e0f7531bc6486c7a30aaebb9c915b8c7601f2cede3ccf427ac30934",
+        "media_type": "markdown",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.391Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 33123,
+            "content_hash": "b64a07530e0f7531bc6486c7a30aaebb9c915b8c7601f2cede3ccf427ac30934",
+            "mime_type": "text/markdown",
+            "media_type": "markdown",
+            "source": "disk"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    },
+    {
+      "key": "nexus:travel-displays:windows:evidence:ambient",
+      "document_id": "c17c5e37-4609-4f90-bc75-496d50e9ee13",
+      "revision_id": "fa444b3d-309c-4a24-90af-1996a865af7c",
+      "hash": "2065acf00a0c2f1315f4bc74cd71f6fef58293703a407218d955ba1f74044226",
+      "review_path": "/documents/c17c5e37-4609-4f90-bc75-496d50e9ee13",
+      "raw_path": "/api/documents/c17c5e37-4609-4f90-bc75-496d50e9ee13/raw?revision=fa444b3d-309c-4a24-90af-1996a865af7c",
+      "readiness": {
+        "document_id": "c17c5e37-4609-4f90-bc75-496d50e9ee13",
+        "revision_id": "fa444b3d-309c-4a24-90af-1996a865af7c",
+        "content_hash": "2065acf00a0c2f1315f4bc74cd71f6fef58293703a407218d955ba1f74044226",
+        "media_type": "image",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.391Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 69802,
+            "content_hash": "2065acf00a0c2f1315f4bc74cd71f6fef58293703a407218d955ba1f74044226",
+            "mime_type": "image/png",
+            "media_type": "image",
+            "source": "blob"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    },
+    {
+      "key": "nexus:travel-displays:windows:evidence:focus",
+      "document_id": "9e78f719-082a-4290-9f25-56459ece39b9",
+      "revision_id": "7a818240-a535-4483-9d0d-411ecb40903e",
+      "hash": "816d825b468d20b1e63a46a664bade922f7ed6f39abecea9080e1ca075b2f7dc",
+      "review_path": "/documents/9e78f719-082a-4290-9f25-56459ece39b9",
+      "raw_path": "/api/documents/9e78f719-082a-4290-9f25-56459ece39b9/raw?revision=7a818240-a535-4483-9d0d-411ecb40903e",
+      "readiness": {
+        "document_id": "9e78f719-082a-4290-9f25-56459ece39b9",
+        "revision_id": "7a818240-a535-4483-9d0d-411ecb40903e",
+        "content_hash": "816d825b468d20b1e63a46a664bade922f7ed6f39abecea9080e1ca075b2f7dc",
+        "media_type": "image",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.391Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 42894,
+            "content_hash": "816d825b468d20b1e63a46a664bade922f7ed6f39abecea9080e1ca075b2f7dc",
+            "mime_type": "image/png",
+            "media_type": "image",
+            "source": "blob"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    },
+    {
+      "key": "nexus:travel-displays:windows:evidence:board",
+      "document_id": "891b7745-6265-473b-9ffc-ef0efb015d58",
+      "revision_id": "b3f3f95f-2855-4d5d-b312-d9a8165435a2",
+      "hash": "86037668d17fcfceb267ae9f8ca2b989d7c6c65f0d0682a1a58fb2c1a19c7f90",
+      "review_path": "/documents/891b7745-6265-473b-9ffc-ef0efb015d58",
+      "raw_path": "/api/documents/891b7745-6265-473b-9ffc-ef0efb015d58/raw?revision=b3f3f95f-2855-4d5d-b312-d9a8165435a2",
+      "readiness": {
+        "document_id": "891b7745-6265-473b-9ffc-ef0efb015d58",
+        "revision_id": "b3f3f95f-2855-4d5d-b312-d9a8165435a2",
+        "content_hash": "86037668d17fcfceb267ae9f8ca2b989d7c6c65f0d0682a1a58fb2c1a19c7f90",
+        "media_type": "image",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.392Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 54832,
+            "content_hash": "86037668d17fcfceb267ae9f8ca2b989d7c6c65f0d0682a1a58fb2c1a19c7f90",
+            "mime_type": "image/png",
+            "media_type": "image",
+            "source": "blob"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    },
+    {
+      "key": "nexus:travel-displays:windows:evidence:day-plan",
+      "document_id": "664452b8-5a7d-4ba3-a1aa-a00aad4f2151",
+      "revision_id": "7b745026-d37d-4e66-8941-5f3a0be4577a",
+      "hash": "051ec60af289d80c4f7c6ff0b8fe245ba88ea71763630b1d37440bdd9008d0c5",
+      "review_path": "/documents/664452b8-5a7d-4ba3-a1aa-a00aad4f2151",
+      "raw_path": "/api/documents/664452b8-5a7d-4ba3-a1aa-a00aad4f2151/raw?revision=7b745026-d37d-4e66-8941-5f3a0be4577a",
+      "readiness": {
+        "document_id": "664452b8-5a7d-4ba3-a1aa-a00aad4f2151",
+        "revision_id": "7b745026-d37d-4e66-8941-5f3a0be4577a",
+        "content_hash": "051ec60af289d80c4f7c6ff0b8fe245ba88ea71763630b1d37440bdd9008d0c5",
+        "media_type": "image",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.393Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 45181,
+            "content_hash": "051ec60af289d80c4f7c6ff0b8fe245ba88ea71763630b1d37440bdd9008d0c5",
+            "mime_type": "image/png",
+            "media_type": "image",
+            "source": "blob"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    },
+    {
+      "key": "nexus:travel-displays:windows:evidence:markdown",
+      "document_id": "588eff71-418d-4cc7-bf38-a0c5f6472d48",
+      "revision_id": "5aee9b1c-5822-4f80-ba83-4a3a7a73d5f0",
+      "hash": "d8321f6d0472525b5ea193080e18b1da0c772ac5aa3a0daf6a3a435de4a5f16d",
+      "review_path": "/documents/588eff71-418d-4cc7-bf38-a0c5f6472d48",
+      "raw_path": "/api/documents/588eff71-418d-4cc7-bf38-a0c5f6472d48/raw?revision=5aee9b1c-5822-4f80-ba83-4a3a7a73d5f0",
+      "readiness": {
+        "document_id": "588eff71-418d-4cc7-bf38-a0c5f6472d48",
+        "revision_id": "5aee9b1c-5822-4f80-ba83-4a3a7a73d5f0",
+        "content_hash": "d8321f6d0472525b5ea193080e18b1da0c772ac5aa3a0daf6a3a435de4a5f16d",
+        "media_type": "image",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.393Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 78986,
+            "content_hash": "d8321f6d0472525b5ea193080e18b1da0c772ac5aa3a0daf6a3a435de4a5f16d",
+            "mime_type": "image/png",
+            "media_type": "image",
+            "source": "blob"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    },
+    {
+      "key": "nexus:travel-displays:windows:evidence:image",
+      "document_id": "bed8be78-f28c-4d91-8d13-9ad79eb14668",
+      "revision_id": "de7a1c37-cd5b-423c-9739-4455889b4307",
+      "hash": "a2d659ef2174eeec14dccb09b7e02b0605a0e2b012429701a92bedad4c42edd1",
+      "review_path": "/documents/bed8be78-f28c-4d91-8d13-9ad79eb14668",
+      "raw_path": "/api/documents/bed8be78-f28c-4d91-8d13-9ad79eb14668/raw?revision=de7a1c37-cd5b-423c-9739-4455889b4307",
+      "readiness": {
+        "document_id": "bed8be78-f28c-4d91-8d13-9ad79eb14668",
+        "revision_id": "de7a1c37-cd5b-423c-9739-4455889b4307",
+        "content_hash": "a2d659ef2174eeec14dccb09b7e02b0605a0e2b012429701a92bedad4c42edd1",
+        "media_type": "image",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.394Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 50988,
+            "content_hash": "a2d659ef2174eeec14dccb09b7e02b0605a0e2b012429701a92bedad4c42edd1",
+            "mime_type": "image/png",
+            "media_type": "image",
+            "source": "blob"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    },
+    {
+      "key": "nexus:travel-displays:windows:evidence:pdf",
+      "document_id": "ea3c3b84-dcd8-44fe-8d4e-6cbe03530b68",
+      "revision_id": "2e66500b-b71e-4caf-8f5d-57a857299052",
+      "hash": "44161b6640e4690715a3f9226329293fa870b6e4e3f14457e814f52618bef6a2",
+      "review_path": "/documents/ea3c3b84-dcd8-44fe-8d4e-6cbe03530b68",
+      "raw_path": "/api/documents/ea3c3b84-dcd8-44fe-8d4e-6cbe03530b68/raw?revision=2e66500b-b71e-4caf-8f5d-57a857299052",
+      "readiness": {
+        "document_id": "ea3c3b84-dcd8-44fe-8d4e-6cbe03530b68",
+        "revision_id": "2e66500b-b71e-4caf-8f5d-57a857299052",
+        "content_hash": "44161b6640e4690715a3f9226329293fa870b6e4e3f14457e814f52618bef6a2",
+        "media_type": "image",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.394Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 51471,
+            "content_hash": "44161b6640e4690715a3f9226329293fa870b6e4e3f14457e814f52618bef6a2",
+            "mime_type": "image/png",
+            "media_type": "image",
+            "source": "blob"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    },
+    {
+      "key": "nexus:travel-displays:windows:evidence:video",
+      "document_id": "650f56d8-e14f-4e32-b711-b61c9463ddf5",
+      "revision_id": "a70d0a97-b81a-47ac-8e9b-7e16c2de54a6",
+      "hash": "3635a443cc9d6b666f6606c75eefae5ad5a74193c7e3c0a408b4ca933a2e90fd",
+      "review_path": "/documents/650f56d8-e14f-4e32-b711-b61c9463ddf5",
+      "raw_path": "/api/documents/650f56d8-e14f-4e32-b711-b61c9463ddf5/raw?revision=a70d0a97-b81a-47ac-8e9b-7e16c2de54a6",
+      "readiness": {
+        "document_id": "650f56d8-e14f-4e32-b711-b61c9463ddf5",
+        "revision_id": "a70d0a97-b81a-47ac-8e9b-7e16c2de54a6",
+        "content_hash": "3635a443cc9d6b666f6606c75eefae5ad5a74193c7e3c0a408b4ca933a2e90fd",
+        "media_type": "image",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.396Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 82890,
+            "content_hash": "3635a443cc9d6b666f6606c75eefae5ad5a74193c7e3c0a408b4ca933a2e90fd",
+            "mime_type": "image/png",
+            "media_type": "image",
+            "source": "blob"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    },
+    {
+      "key": "nexus:travel-displays:windows:evidence:stopped",
+      "document_id": "cb104f51-7399-4925-9780-baacf9527669",
+      "revision_id": "4a316c04-9bc5-4f64-98de-95b111f099a9",
+      "hash": "d384a4a46f06ec3db72b1549fb8200ce77dc621165497441f9f7742b0b2a825c",
+      "review_path": "/documents/cb104f51-7399-4925-9780-baacf9527669",
+      "raw_path": "/api/documents/cb104f51-7399-4925-9780-baacf9527669/raw?revision=4a316c04-9bc5-4f64-98de-95b111f099a9",
+      "readiness": {
+        "document_id": "cb104f51-7399-4925-9780-baacf9527669",
+        "revision_id": "4a316c04-9bc5-4f64-98de-95b111f099a9",
+        "content_hash": "d384a4a46f06ec3db72b1549fb8200ce77dc621165497441f9f7742b0b2a825c",
+        "media_type": "image",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.397Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 25360,
+            "content_hash": "d384a4a46f06ec3db72b1549fb8200ce77dc621165497441f9f7742b0b2a825c",
+            "mime_type": "image/png",
+            "media_type": "image",
+            "source": "blob"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    },
+    {
+      "key": "nexus:travel-displays:windows:evidence:controller-fixture",
+      "document_id": "babedec1-5317-4e2a-bac1-0ea09fbade96",
+      "revision_id": "614e454a-e070-4d6a-8a14-312d6c46eee7",
+      "hash": "1a7ff2d2acb7388b8774c1fcb8a79afcc9d9ec562aac0d05e75bd4eca2fe00af",
+      "review_path": "/documents/babedec1-5317-4e2a-bac1-0ea09fbade96",
+      "raw_path": "/api/documents/babedec1-5317-4e2a-bac1-0ea09fbade96/raw?revision=614e454a-e070-4d6a-8a14-312d6c46eee7",
+      "readiness": {
+        "document_id": "babedec1-5317-4e2a-bac1-0ea09fbade96",
+        "revision_id": "614e454a-e070-4d6a-8a14-312d6c46eee7",
+        "content_hash": "1a7ff2d2acb7388b8774c1fcb8a79afcc9d9ec562aac0d05e75bd4eca2fe00af",
+        "media_type": "image",
+        "ready": true,
+        "checked_at": "2026-10-20T21:15:19.397Z",
+        "checks": [
+          {
+            "asset_key": "primary",
+            "role": "primary",
+            "required": true,
+            "ok": true,
+            "status": "servable",
+            "byte_length": 115886,
+            "content_hash": "1a7ff2d2acb7388b8774c1fcb8a79afcc9d9ec562aac0d05e75bd4eca2fe00af",
+            "mime_type": "image/png",
+            "media_type": "image",
+            "source": "blob"
+          }
+        ],
+        "required_total": 1,
+        "required_ok": 1
+      },
+      "raw_and_disk_match": true
+    }
+  ]
+}
