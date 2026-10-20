@@ -23,6 +23,14 @@ const AUTHORIZING_ORIGINS = new Set(['operator', 'operator_relayed']);
 // while a rewrite of the rulings is on record.
 const VOUCHED_ANSWER_ORIGINS = new Set(['operator', 'operator_relayed', 'runtime']);
 const ORIGIN_KINDS = new Set(['operator', 'operator_relayed', 'runtime', 'system', 'unverified']);
+// A standing authorization Robert recorded once (task b4b27285, 2026-09-02):
+// an executor may work in the additional repos its task needs, and QA
+// reviews them. The runtime records such an addition under its own credential
+// with `sanction: {kind: 'workspace_addition'}` (task a47a00bf). It authorizes
+// exactly the roots added to payload.workspace_roots: never the primary
+// workspace, another field, or drift already held on the workspace fields.
+const SANCTIONED_WORKSPACE_ADDITION = 'workspace_addition';
+const WORKSPACE_SCOPE_FIELDS = new Set(['workspace', 'payload.workspace', 'payload.workspace_roots']);
 const CONTRACT_CHANGE_HISTORY = 30;
 const CONTRACT_DRIFT_REASON = 'Contract changed during execution by an unverified source; review the recorded diff, then approve it or return to the authorized contract.';
 const RULINGS_REWRITE_REASON = 'Recorded operator rulings were rewritten or removed; review the current scope before execution.';
@@ -155,10 +163,44 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         if (normalized(given.reason)) result.reason = String(given.reason).trim().slice(0, 2000);
         if (given.decision_ref) result.decision_ref = given.decision_ref;
         if (Array.isArray(given.fields)) result.declared_fields = given.fields.filter(f => typeof f === 'string');
+        if (given.sanction !== undefined) {
+            // A sanction rides only the runtime's own checked credential; on
+            // any other origin it is a label in the payload and proves nothing.
+            const sanction = object(given.sanction);
+            if (kind !== 'runtime' || result.authority !== 'runtime_credential') throw fail('A sanctioned workspace addition requires the Praxis runtime credential', 403, 'contract_change_unverified');
+            if (sanction.kind !== SANCTIONED_WORKSPACE_ADDITION) throw fail('Unsupported sanction kind', 400, 'contract_change_invalid');
+            result.sanction = { kind: sanction.kind, ...(normalized(sanction.reason) ? { reason: String(sanction.reason).trim().slice(0, 2000) } : {}),
+                ...(normalized(sanction.by) ? { by: String(sanction.by).trim().slice(0, 200) } : {}) };
+        }
         // A verified origin is a credential checked by the route, never a label in the payload.
         if (AUTHORIZING_ORIGINS.has(kind) && !result.authority) throw fail('A verified operator origin requires a checked authority', 403, 'contract_change_unverified');
         if (kind === 'operator_relayed' && !result.decision_ref) throw fail('A relayed operator decision needs the decision it relays', 400, 'contract_change_invalid');
         return result;
+    }
+    /**
+     * Whether a sanctioned write is the addition the standing ruling covers:
+     * the runtime, under its credential, adding roots to
+     * payload.workspace_roots and changing nothing else. Any other governed
+     * change in the same write is refused outright (409 contract_change_mixed,
+     * nothing written) so the caller sends it with its own authority. While a
+     * hold is already open on the workspace fields the sanction is declined,
+     * not applied: the write lands as the plain runtime write it is, joins
+     * that hold, and only Robert's decision clears it. A sanction never
+     * decides drift someone else wrote.
+     */
+    const rootList = value => Array.isArray(value) ? value.filter(root => typeof root === 'string') : [];
+    function sanctionedAddition(origin, written, beforeFields, afterFields, hold) {
+        if (!origin.sanction) return null;
+        const undeclared = written.map(change => change.field).filter(field => field !== 'payload.workspace_roots');
+        if (undeclared.length) throw fail('A sanctioned workspace addition may change only payload.workspace_roots; send other contract changes separately, with their own authority', 409, 'contract_change_mixed', { undeclared_fields: undeclared });
+        const before = rootList(beforeFields.raw['payload.workspace_roots']), after = new Set(rootList(afterFields.raw['payload.workspace_roots']));
+        const removed = before.filter(root => !after.has(root));
+        if (removed.length) throw fail('A sanctioned workspace addition cannot remove or replace roots', 409, 'contract_change_mixed', { undeclared_fields: ['payload.workspace_roots'], removed_roots: removed });
+        if (hold && hold.drifted_fields.some(field => WORKSPACE_SCOPE_FIELDS.has(field))) return { applied: false, declined: 'hold_open_on_workspace_fields' };
+        // The first registration lists the primary workspace alongside the new
+        // root; the primary is the task's own workspace, never an addition.
+        const primary = afterFields.raw.workspace;
+        return { applied: true, added_roots: [...after].filter(root => !before.includes(root) && canonicalPath(root) !== primary) };
     }
     // References Nexus can check are checked here against the task's own
     // record; a runtime attestation stays labelled as such and never verified.
@@ -334,21 +376,29 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         // governed; a bogus reference never rides a no-op or a rulings edit.
         const decisionRef = origin.decision_ref ? verifyDecisionRef(before, previous, origin.decision_ref) : undefined;
         if (!written.length) return null;
-        const authorizing = AUTHORIZING_ORIGINS.has(origin.kind);
+        const hold = previous.contract_hold ? { ...previous.contract_hold, authorized_values: { ...previous.contract_hold.authorized_values }, change_ids: [...previous.contract_hold.change_ids] } : null;
+        const sanction = sanctionedAddition(origin, written, beforeFields, afterFields, hold);
+        const authorizing = AUTHORIZING_ORIGINS.has(origin.kind) || Boolean(sanction?.applied);
         if (authorizing && origin.declared_fields) {
             const undeclared = written.map(change => change.field).filter(field => !origin.declared_fields.includes(field));
             if (undeclared.length) throw fail('This write changes contract fields the relayed decision did not declare; send them as a separate unverified edit', 409, 'contract_change_mixed', { undeclared_fields: undeclared });
         }
         const recordedOrigin = { kind: origin.kind, authority: origin.authority, requester: origin.requester,
-            ...(origin.reason ? { reason: origin.reason } : {}), ...(decisionRef ? { decision_ref: decisionRef } : {}) };
+            ...(origin.reason ? { reason: origin.reason } : {}), ...(decisionRef ? { decision_ref: decisionRef } : {}),
+            ...(sanction?.applied ? { sanction: origin.sanction } : {}),
+            ...(sanction && !sanction.applied ? { sanction_declined: { ...origin.sanction, because: sanction.declined } } : {}) };
         const recordedAt = new Date(now()).toISOString();
-        const hold = previous.contract_hold ? { ...previous.contract_hold, authorized_values: { ...previous.contract_hold.authorized_values }, change_ids: [...previous.contract_hold.change_ids] } : null;
         const authorizedBy = extra => ({ origin: recordedOrigin.kind, authority: recordedOrigin.authority, requester: recordedOrigin.requester,
-            ...(recordedOrigin.reason ? { reason: recordedOrigin.reason } : {}), ...(decisionRef ? { decision_ref: decisionRef } : {}), ...extra });
+            ...(recordedOrigin.reason ? { reason: recordedOrigin.reason } : {}), ...(decisionRef ? { decision_ref: decisionRef } : {}),
+            ...(recordedOrigin.sanction ? { sanction: recordedOrigin.sanction } : {}), ...extra });
         let contract = baseline, outcome, resolvedEntries = [];
         if (authorizing) {
+            // Robert's own change, his relayed decision, or the runtime's
+            // sanctioned addition: the baseline advances by exactly the
+            // written fields. A sanctioned addition names the roots it added.
             outcome = 'authorized';
-            contract = authorizedBaseline({ ...baseline.fields, ...Object.fromEntries(written.map(c => [c.field, c.after_sha256])) }, baseline.version + 1, authorizedBy({ basis: 'operator_change' }));
+            contract = authorizedBaseline({ ...baseline.fields, ...Object.fromEntries(written.map(c => [c.field, c.after_sha256])) }, baseline.version + 1,
+                authorizedBy(sanction?.applied ? { basis: 'sanctioned_workspace_addition', added_roots: sanction.added_roots } : { basis: 'operator_change' }));
         } else if (!execution.executing && !hold) {
             // Nobody has executed against the previous reading; the next
             // dispatch admits the task against this contract. Once a hold is

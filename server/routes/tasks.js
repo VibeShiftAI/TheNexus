@@ -84,7 +84,8 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
     for (const [suffix, operation] of [['operator-rulings', 'appendRuling'], ['workspace-delta', 'workspaceDelta']]) {
         router.post(`/:taskId/${suffix}`, async (req, res) => {
             try {
-                const origin = await contractAuthority.classifyWrite(req);
+                // Only the workspace-delta planner may carry a sanctioned addition (task a47a00bf).
+                const origin = await contractAuthority.classifyWrite(req, req.body, { sanctionable: operation === 'workspaceDelta' });
                 const task = await db.applyTaskDelta(req.params.taskId, operation, req.body, { origin });
                 if (!task) return res.status(500).json({ error: 'Database error' });
                 res.json({ success: true, task: admissionResponse(task) });

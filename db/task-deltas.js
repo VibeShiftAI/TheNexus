@@ -61,13 +61,19 @@ function ledgerPayload(task, ledger) {
     return { ...task.antigravity_payload, ...ledger };
 }
 function workspaceDelta(task, input) {
-    fields(input, ['workspace', 'workspace_roots', 'history', 'payload_ledger', 'expected_version', 'contract_change']);
+    fields(input, ['workspace', 'workspace_roots', 'history', 'payload_ledger', 'expected_version', 'contract_change', 'sanction']);
     if (input.workspace !== undefined) string(input.workspace, 'workspace');
     if (!Array.isArray(input.workspace_roots) || input.workspace_roots.some(root => typeof root !== 'string' || !root.trim())) fail('workspace_roots must list paths');
     if (!object(input.history)) fail('history must be an object');
     fields(input.history, ['from', 'to', 'action', 'at', 'reason', 'by']);
     string(input.history.to, 'history.to'); string(input.history.at, 'history.at', 100);
     if (!['add', 'move'].includes(input.history.action)) fail('history.action must be add or move');
+    if (input.sanction !== undefined) {
+        if (!object(input.sanction) || input.sanction.kind !== 'workspace_addition') fail('sanction.kind must be workspace_addition');
+        // The standing ruling covers adding a root, never moving the primary
+        // workspace: a move keeps its own authority (work-admission.js).
+        if (input.history.action !== 'add' || input.workspace !== undefined) fail('A sanctioned workspace delta may only add roots (history.action add, no workspace)');
+    }
     if (input.payload_ledger !== undefined && input.expected_version === undefined) fail('Ledger delta requires expected_version');
     const payload = input.payload_ledger === undefined ? payloadOf(task) : ledgerPayload({ ...task, antigravity_payload: payloadOf(task) }, input.payload_ledger);
     return { ...payload, ...(input.workspace === undefined ? {} : { workspace: input.workspace }),

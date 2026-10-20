@@ -27,11 +27,22 @@
  * fails on credentials; its edits are recorded, and held only during
  * execution. A PATCH that claims an origin in `contract_change` must prove it
  * or nothing is written.
+ *
+ * A `sanction` block (task a47a00bf, 2026-10-20) is not a claim: it names a
+ * standing authorization Robert already recorded, which the runtime applies
+ * under its own credential. The only kind is `workspace_addition` (task
+ * b4b27285: an executor may work in the additional repos its task needs, and
+ * QA reviews them). This module checks the runtime credential; the admission
+ * guard (db/work-admission.js sanctionedAddition) checks that the write adds
+ * roots and changes nothing else. The origin stays `runtime`, never relabelled
+ * as Robert's; the sanction is recorded beside it. Only the workspace-delta
+ * route accepts one.
  */
 const { createOperatorAuthenticator } = require('./operator-access');
 const { requireStakeholderAuthority } = require('./stakeholder-authority');
 
 const ORIGIN_CLAIMS = new Set(['operator', 'operator_relayed']);
+const SANCTION_KINDS = new Set(['workspace_addition']);
 const REF_KINDS = new Set(['operator_ruling', 'document_decision', 'chat_instruction', 'inbox_answer', 'questionnaire']);
 
 const refuse = (status, code, message, extra = {}) => Object.assign(new Error(message), { status, code, ...extra });
@@ -68,6 +79,20 @@ function parseContractChange(block) {
     return parsed;
 }
 
+/** Shape check only; whether the write is in fact an addition is checked in the admission guard. */
+function parseSanction(block) {
+    if (block === undefined || block === null) return null;
+    if (typeof block !== 'object' || Array.isArray(block)) throw refuse(400, 'contract_change_invalid', 'sanction must be an object');
+    if (!SANCTION_KINDS.has(block.kind)) throw refuse(400, 'contract_change_invalid', `sanction.kind must be one of ${[...SANCTION_KINDS].join(', ')}`);
+    const parsed = { kind: block.kind };
+    for (const [field, max] of [['reason', 2000], ['by', 200]]) {
+        if (block[field] === undefined) continue;
+        if (typeof block[field] !== 'string' || block[field].length > max) throw refuse(400, 'contract_change_invalid', `sanction.${field} must be a string of at most ${max} characters`);
+        parsed[field] = block[field];
+    }
+    return parsed;
+}
+
 function createContractChangeAuthority({ authenticateOperator } = {}) {
     let operator = authenticateOperator || null;
 
@@ -81,11 +106,20 @@ function createContractChangeAuthority({ authenticateOperator } = {}) {
         catch { return { operator: false, reason: 'check-unavailable' }; }
     }
 
-    /** Classify a task write. Throws (status, code) only when `contract_change` claims more than the request proves. */
-    async function classifyWrite(req, body = req.body) {
+    /**
+     * Classify a task write. Throws (status, code) only when `contract_change`
+     * claims, or `sanction` asks for, more than the request proves. A sanction
+     * is accepted only where the route says so (`sanctionable`): the
+     * workspace-delta route, whose planner limits what the body can change.
+     */
+    async function classifyWrite(req, body = req.body, { sanctionable = false } = {}) {
         const claim = parseContractChange(body?.contract_change);
+        const sanction = parseSanction(body?.sanction);
         const bridge = executorHeaders(req);
         if (claim && bridge) throw refuse(403, 'contract_change_unverified', 'Executor and bridge credentials cannot assert an operator origin');
+        if (sanction && !sanctionable) throw refuse(400, 'contract_change_invalid', 'A sanction is accepted only on the workspace-delta route');
+        if (sanction && claim) throw refuse(400, 'contract_change_invalid', 'A sanctioned write cannot also claim an operator origin; send one or the other');
+        if (sanction && bridge) throw refuse(403, 'contract_change_unverified', 'Executor and bridge credentials cannot sanction a workspace addition; the Praxis runtime records it under its own credential');
         if (claim?.origin === 'operator_relayed') {
             const runtime = credential(req, 'runtime');
             if (!runtime.ok) throw refuse(runtime.status === 503 ? 503 : 403, runtime.status === 503 ? 'contract_change_unverifiable' : 'contract_change_unverified',
@@ -108,7 +142,15 @@ function createContractChangeAuthority({ authenticateOperator } = {}) {
             throw refuse(403, 'contract_change_unverified', 'This request claims an operator origin but carries neither Robert’s verified session nor his operator credential', { reason: session.reason });
         }
         const runtime = req.get('authorization') && !bridge ? credential(req, 'runtime') : { ok: false };
-        if (runtime.ok) return { kind: 'runtime', authority: 'runtime_credential', requester: 'runtime' };
+        if (runtime.ok) return { kind: 'runtime', authority: 'runtime_credential', requester: 'runtime', ...(sanction ? { sanction } : {}) };
+        if (sanction) {
+            // Without the runtime credential nothing vouches that the standing
+            // ruling is being applied: nothing is written, and the caller may
+            // still send the plain, governed write.
+            if (session.reason === 'check-unavailable') throw refuse(503, 'contract_change_unverifiable', 'Operator identity could not be checked; the sanctioned addition was not written');
+            if (runtime.status === 503) throw refuse(503, 'contract_change_unverifiable', 'The runtime credential is not configured; a sanctioned workspace addition cannot be verified');
+            throw refuse(403, 'contract_change_unverified', 'A sanctioned workspace addition needs the Praxis runtime credential; without it the write is an unverified change', { reason: session.reason });
+        }
         return { kind: 'unverified', authority: null, requester: bridge ? 'executor_bridge' : req.get('authorization') ? 'unverified_bearer' : 'unauthenticated',
             session_reason: session.reason };
     }
@@ -137,7 +179,7 @@ function createContractChangeAuthority({ authenticateOperator } = {}) {
             { reason: session.reason });
     }
 
-    return { classifyWrite, classifyDecision, parseContractChange };
+    return { classifyWrite, classifyDecision, parseContractChange, parseSanction };
 }
 
-module.exports = { createContractChangeAuthority, parseContractChange };
+module.exports = { createContractChangeAuthority, parseContractChange, parseSanction };
