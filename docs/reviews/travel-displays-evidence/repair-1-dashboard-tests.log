@@ -1,0 +1,32 @@
+Checked at: 2026-10-20T22:38:42.351066+00:00
+CWD: /Volumes/Projects/TheNexus/dashboard
+Command: node --import ./test/register.mjs --test src/components/__tests__/presentation-controller.test.mjs src/components/__tests__/presentation-view.test.mjs src/components/__tests__/document-markdown.test.mjs src/components/__tests__/document-media-viewers.test.mjs src/lib/__tests__/presentation-native.test.ts src/lib/__tests__/presentation-operations.test.ts
+✔ renders full GFM with per-block source line anchors and no active scripts (34.391375ms)
+✔ tapping a block control selects that block; non-interactive mode has no controls (13.923292ms)
+✔ outline lists headings with their source lines, skipping fenced content (0.296916ms)
+✔ mermaid fences render as diagrams; captions, prose and other fences are untouched (11.125791ms)
+✔ a broken mermaid fence shows a fallback with its source while the rest of the document renders (6.074958ms)
+✔ changing the document replaces its diagrams; unrelated re-renders do not redraw (15.790166ms)
+✔ an image opens in the zoomable viewer; dragging a region opens the composer and saves a region comment the rail lists with its pin (148.730833ms)
+✔ a design package shows its directions and screens, comments anchor to a screen, and approving records the selected direction (87.937208ms)
+✔ Edit opens the text editor, Save writes a new revision through the API and the page reloads onto it (57.164833ms)
+✔ neither the global launcher nor exact-review button renders in a standalone browser (8.71175ms)
+✔ document controller button relays the exact displayed revision, never asks for latest (9.963042ms)
+✔ all four families render selected data without approval, chat, or navigation controls (21.441875ms)
+✔ document output visibly binds exact identity and keeps update notification read-only (1.927583ms)
+✔ PDF, image and video use existing read-only media stages (3.906334ms)
+✔ a receiver blanks previously displayed data on failed refresh (45.34925ms)
+✔ presentation Mermaid stays literal and cannot issue requests or navigation (1.493709ms)
+✔ browser and unsupported shells have no display launcher (0.354458ms)
+✔ native requests correlate replies and send only the bounded action payload (3.645917ms)
+✔ reconciliation waits for native activation and an old stop cannot close a later start (0.678417ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 968.491042
+
+EXIT_CODE: 0

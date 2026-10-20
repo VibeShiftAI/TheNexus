@@ -1,0 +1,18 @@
+Checked at: 2026-10-20T22:37:36.861582+00:00
+Execution: 47067bb1-4323-40d9-9d62-842177abc733; bounded repair attempt 1/2
+Command: uname -srm; observed Darwin 25.5.0 arm64
+Computer Use observation at 2026-10-20T22:37:26.618Z: target=mac; browsers=[]; matching remoteApps=[]; inventory errors=[]
+Computer Use method: cua.getState({emit:false}); filter application id/name by remote|sharing|windows|jump|teamviewer|anydesk|rustdesk|parsec|rdp. This is an inventory observation, not proof that no other software could exist.
+Connection method: Python socket.create_connection(('192.168.4.34', port), timeout=3), four concurrent attempts, no authentication or remote commands.
+SSH TCP 22: TimeoutError: timed out
+RDP TCP 3389: TimeoutError: timed out
+WinRM HTTP TCP 5985: TimeoutError: timed out
+WinRM HTTPS TCP 5986: TimeoutError: timed out
+Command: /sbin/route -n get 192.168.4.34; exit=0
+Route: destination=192.168.4.34; gateway=192.168.86.1; interface=en1
+Limits: These timeouts do not identify the cause, prove the laptop is off, or prove RDP/WinRM disabled. The operator's missing-sshd answer is retained separately in nova-operator-output.log and was not rerun on Windows.
+Tool metadata search for SSH, WinRM, remote execution or Windows sessions returned no applicable remote execution tool; two unrelated Sites tools matched free text.
+Reproduced finding: this dispatch cannot obtain Windows-origin discovery or physical-display runtime observations with the exposed execution/control connections.
+No Windows command, native build, installation, remote-access configuration, production restart, casting, push or task-status mutation was performed by this check.
+Prerequisites read live before edits: 6d6e2638-8fc1-46fa-8545-3ad4d5876dc0=completed; be441473-ebd1-4c93-b3a1-9f3e3d3decf4=completed; 91f1f758-4b40-464b-a2a0-29f29de0bf98=completed.
+Dispatch preflight: main; HEAD=fb64a2ad43128a79bb569be54dee77b6d4fa1494; only dirty path=.env.example (foreign; preserved).

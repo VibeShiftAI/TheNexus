@@ -1,0 +1,15 @@
+Checked at: 2026-10-20T22:41:43.334694+00:00
+PASS exit=0, no output: git diff --exit-code 33fde73 -- dashboard desktop server scripts .gitignore
+PASS exit=0, no output: git -C /Volumes/Projects/nexus-shared diff --exit-code 367c543 -- src/presentations.ts src/index.ts test/presentations.test.cjs
+PASS foreign .env.example SHA-256 unchanged: e87f409424c736d95b28120b31ffb7411ee39198e7199c581b57a81ff1a093ab
+PASS git diff --check -- docs/reviews/travel-displays-windows.md: exit=0, no output
+Review: full new walkthrough diff and four new evidence logs read; no application-source changes; citations distinguish fresh fixture tests, historical build/browser/device records, and unobserved Windows runtime. The environmental finding remains unresolved and is formally disputed for a ruling.
+Fresh verification: server 28 passed/exit=0; dashboard 19 passed/fail=0/exit=0; shared contract 4 passed/fail=0/exit=0; commands and full output retained in repair-1-*-tests.log.
+Fresh access check reproduced Darwin/Mac-only tools and TCP timeouts for 22,3389,5985,5986 on 192.168.4.34; no native Windows evidence obtained.
+Task source remains at retained commits; only TheNexus docs/evidence edited. /Volumes/Projects/nexus-shared read/tested only; its foreign modifications preserved. Praxis was read for QA marker semantics, not edited.
+PASS strict UTF-8 and mojibake scan: docs/reviews/travel-displays-windows.md
+PASS strict UTF-8 and mojibake scan: docs/reviews/travel-displays-evidence/repair-1-access.log
+PASS strict UTF-8 and mojibake scan: docs/reviews/travel-displays-evidence/repair-1-contract-tests.log
+PASS strict UTF-8 and mojibake scan: docs/reviews/travel-displays-evidence/repair-1-dashboard-tests.log
+PASS strict UTF-8 and mojibake scan: docs/reviews/travel-displays-evidence/repair-1-server-tests.log
+Documents guard: a GET captured revision cae74488-fc13-4257-8417-4f6d34fc64df from the edited file; raw bytes and hash matched the repair exactly, reviews remained empty. Handoff registered that exact captured revision; no newer foreign edits or comments were overwritten.

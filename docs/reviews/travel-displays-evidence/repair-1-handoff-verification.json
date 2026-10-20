@@ -1,0 +1,36 @@
+{
+  "handoff_id": "travel-displays-windows-repair1-47067bb1-v1",
+  "status": "delivered",
+  "document_id": "470c263f-c519-49b8-8f5a-4c2e965dc787",
+  "revision_id": "cae74488-fc13-4257-8417-4f6d34fc64df",
+  "content_hash": "c81127d7306f8d47ec067ee7ae34299af02e096a123cb85ecf437d05eacc92dd",
+  "review_path": "/documents/470c263f-c519-49b8-8f5a-4c2e965dc787",
+  "raw_path": "/api/documents/470c263f-c519-49b8-8f5a-4c2e965dc787/raw?revision=cae74488-fc13-4257-8417-4f6d34fc64df",
+  "readiness": {
+    "document_id": "470c263f-c519-49b8-8f5a-4c2e965dc787",
+    "revision_id": "cae74488-fc13-4257-8417-4f6d34fc64df",
+    "content_hash": "c81127d7306f8d47ec067ee7ae34299af02e096a123cb85ecf437d05eacc92dd",
+    "media_type": "markdown",
+    "ready": true,
+    "checked_at": "2026-10-20T22:43:01.425Z",
+    "checks": [
+      {
+        "asset_key": "primary",
+        "role": "primary",
+        "required": true,
+        "ok": true,
+        "status": "servable",
+        "byte_length": 52238,
+        "content_hash": "c81127d7306f8d47ec067ee7ae34299af02e096a123cb85ecf437d05eacc92dd",
+        "mime_type": "text/markdown",
+        "media_type": "markdown",
+        "source": "disk"
+      }
+    ],
+    "required_total": 1,
+    "required_ok": 1
+  },
+  "raw_matches_disk": true,
+  "review_status": "needs_review",
+  "checked_at": "2026-10-20T22:43:01.426901+00:00"
+}

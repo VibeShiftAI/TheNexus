@@ -1,0 +1,71 @@
+{
+  "id": "travel-displays-windows-repair1-47067bb1-v1",
+  "input": {
+    "id": "travel-displays-windows-repair1-47067bb1-v1",
+    "source": {
+      "type": "task",
+      "execution_id": "47067bb1-4323-40d9-9d62-842177abc733"
+    },
+    "project_id": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+    "task_id": "9cae1b0e-cba3-4580-a83a-1c3222404dbe",
+    "manifest": [
+      {
+        "key": "nexus:travel-displays:windows",
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/travel-displays-windows.md",
+        "title": "Nexus travel displays: Windows and shared presentation views",
+        "purpose": "Review the bounded repair: reproduced Windows access blocker, fresh 28/19/4 test results, and formal criterion 1/2 ruling request while native proof remains blocked.",
+        "kind": "walkthrough",
+        "requires_review": true,
+        "intended_action": "none"
+      }
+    ],
+    "review_expected": true
+  },
+  "status": "delivered",
+  "created_at": 1792536153710,
+  "attempts": 1,
+  "next_attempt_at": 1792536153710,
+  "hashes": {
+    "/Volumes/Projects/TheNexus/docs/reviews/travel-displays-windows.md": "c81127d7306f8d47ec067ee7ae34299af02e096a123cb85ecf437d05eacc92dd"
+  },
+  "receipts": [
+    {
+      "id": "df4a1c58-4cf4-41f5-b38c-cd5e4d91d723",
+      "document_id": "470c263f-c519-49b8-8f5a-4c2e965dc787",
+      "revision_id": "cae74488-fc13-4257-8417-4f6d34fc64df",
+      "content_hash": "c81127d7306f8d47ec067ee7ae34299af02e096a123cb85ecf437d05eacc92dd",
+      "byte_length": 52238,
+      "line_count": 294,
+      "deliverable_key": "nexus:travel-displays:windows",
+      "path": "/Volumes/Projects/TheNexus/docs/reviews/travel-displays-windows.md",
+      "root_project_id": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+      "project_id": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+      "task_id": "9cae1b0e-cba3-4580-a83a-1c3222404dbe",
+      "title": "Nexus travel displays: Windows and shared presentation views",
+      "purpose": "Review the bounded repair: reproduced Windows access blocker, fresh 28/19/4 test results, and formal criterion 1/2 ruling request while native proof remains blocked.",
+      "kind": "walkthrough",
+      "requires_review": true,
+      "intended_action": "none",
+      "source": {
+        "type": "task",
+        "execution_id": "47067bb1-4323-40d9-9d62-842177abc733"
+      },
+      "blocking_task_ids": [],
+      "document_created": false,
+      "revision_created": false,
+      "registered_by": "local_user",
+      "registered_at": "2026-10-20T22:42:33.722Z",
+      "review_status": "needs_review",
+      "review_path": "/documents/470c263f-c519-49b8-8f5a-4c2e965dc787",
+      "review_url": "https://nexus.vibeshiftai.com/documents/470c263f-c519-49b8-8f5a-4c2e965dc787",
+      "raw_path": "/api/documents/470c263f-c519-49b8-8f5a-4c2e965dc787/raw?revision=cae74488-fc13-4257-8417-4f6d34fc64df",
+      "media_type": "markdown",
+      "mime_type": "text/markdown",
+      "asset_count": 1,
+      "preview_asset_key": null,
+      "readiness_path": "/api/documents/470c263f-c519-49b8-8f5a-4c2e965dc787/readiness?revision=cae74488-fc13-4257-8417-4f6d34fc64df"
+    }
+  ],
+  "message": "Documents registered (editorial approval and technical QA remain separate):\n- [Nexus travel displays: Windows and shared presentation views](/documents/470c263f-c519-49b8-8f5a-4c2e965dc787) — Review the bounded repair: reproduced Windows access blocker, fresh 28/19/4 test results, and formal criterion 1/2 ruling request while native proof remains blocked.; media markdown; [exact revision cae74488-fc13-4257-8417-4f6d34fc64df](/api/documents/470c263f-c519-49b8-8f5a-4c2e965dc787/raw?revision=cae74488-fc13-4257-8417-4f6d34fc64df); review required. Receipt: df4a1c58-4cf4-41f5-b38c-cd5e4d91d723.",
+  "announcement": "Documents registered (editorial approval and technical QA remain separate):\n- [Nexus travel displays: Windows and shared presentation views](/documents/470c263f-c519-49b8-8f5a-4c2e965dc787) — Review the bounded repair: reproduced Windows access blocker, fresh 28/19/4 test results, and formal criterion 1/2 ruling request while native proof remains blocked.; media markdown; [exact revision cae74488-fc13-4257-8417-4f6d34fc64df](/api/documents/470c263f-c519-49b8-8f5a-4c2e965dc787/raw?revision=cae74488-fc13-4257-8417-4f6d34fc64df); review required. Receipt: df4a1c58-4cf4-41f5-b38c-cd5e4d91d723."
+}
