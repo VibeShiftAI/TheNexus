@@ -109,3 +109,4 @@ dashboard/public/*.apk
 data/travel-tabs.json
 .nexus-shared-src/
 data/review-blobs/
+data/presentation-captures/

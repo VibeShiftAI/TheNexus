@@ -180,6 +180,15 @@ app.use('/api/updates', require('./routes/updates')());
 // Travel-shell tab roster — the shell pulls this at launch; the dashboard
 // settings modal edits it. Tab changes need no rebuild.
 app.use('/api/tabs', require('./routes/tabs')());
+// Travel presentation control has its own verified operator boundary. The
+// optional receiver is a separate listener with no general API or auth cookie.
+const { createPresentationService } = require('./services/presentations');
+const { receiverConfiguration, startPresentationReceiver } = require('./presentation-receiver');
+const presentationReceiverConfig = receiverConfiguration();
+const presentations = createPresentationService({ db, receiverOrigin: presentationReceiverConfig.origin });
+app.use('/api/presentations', require('./routes/presentations')({ service: presentations }));
+const presentationReceiver = startPresentationReceiver({ service: presentations, configuration: presentationReceiverConfig });
+server.on('close', () => { presentationReceiver?.close(); presentations.close(); });
 app.use('/api/local-queue', createLocalQueueRouter());
 app.use('/api/skill-candidates', require('./routes/skill-candidates')());
 // Read-only skill-wiki browser over the shared-mind vault (manifests,
