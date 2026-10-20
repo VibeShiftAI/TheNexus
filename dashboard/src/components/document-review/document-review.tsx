@@ -25,6 +25,7 @@
  */
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { PresentDocumentButton } from "@/components/presentation/presentation-controller";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
@@ -1251,9 +1252,12 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             </button>
                         )}
                         {doc && (
+                            <>
+                            {shownRevision && ['markdown', 'pdf', 'image', 'video'].includes(mediaType) && <PresentDocumentButton documentId={doc.id} revisionId={shownRevision.id} contentHash={shownRevision.content_hash} />}
                             <a href={rawDocumentUrl(doc.id, { revision: showingPinned ? review?.revision_id : null, download: true })} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
                                 <Download size={13} /> Download
                             </a>
+                            </>
                         )}
                         <button type="button" onClick={() => void copyLink()} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
                             {linkCopied ? <Check size={13} className="text-emerald-300" /> : null} {linkCopied ? "Link copied" : "Copy link"}

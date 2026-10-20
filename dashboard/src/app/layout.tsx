@@ -9,6 +9,7 @@ import { EventTicker } from "@/components/bridge/event-ticker";
 import { LiveBoardStateProvider } from "@/components/live-board-state";
 import { ConnectionBanner } from "@/components/connection-banner";
 import { MobileShellBridge } from "@/components/mobile-shell-bridge";
+import { TravelPresentationLauncher } from "@/components/presentation/presentation-controller";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -67,6 +68,7 @@ export default function RootLayout({
             {/* Android shell seam — renders nothing in a browser (docs/mobile-shell.md) */}
             <MobileShellBridge />
             <GlobalVoiceDock />
+            <TravelPresentationLauncher />
             </BridgeActivityProvider>
             </LiveBoardStateProvider>
           </CortexProvider>

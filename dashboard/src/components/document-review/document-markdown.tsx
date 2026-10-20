@@ -111,7 +111,7 @@ function BlockShell({ start, end, children }: { start: number; end: number; chil
     );
 }
 
-function blockComponent(tag: string) {
+function blockComponent(tag: string, allowMermaid = true) {
     const Block = (props: BlockProps) => {
         const { node, children, ...rest } = props;
         const start = Number(rest["data-block-start"]);
@@ -119,7 +119,7 @@ function blockComponent(tag: string) {
         delete rest["data-block-start"];
         delete rest["data-block-end"];
         const Tag = tag as keyof React.JSX.IntrinsicElements;
-        const mermaid = tag === "pre" ? mermaidFenceSource(node) : null;
+        const mermaid = allowMermaid && tag === "pre" ? mermaidFenceSource(node) : null;
         const element =
             mermaid !== null ? (
                 <MermaidDiagram source={mermaid} />
@@ -173,6 +173,8 @@ const COMPONENTS: Components = {
     a: Anchor,
 } as Components;
 
+const PRESENTATION_PRE = blockComponent("pre", false);
+
 const PROSE =
     "prose prose-invert max-w-none prose-p:text-slate-200 prose-p:leading-relaxed prose-li:text-slate-200 prose-strong:text-white " +
     "prose-headings:text-slate-50 prose-headings:scroll-mt-28 prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg " +
@@ -185,10 +187,12 @@ export interface DocumentMarkdownProps {
     selected?: BlockRef | null;
     commentCounts?: Record<number, number>;
     interactive?: boolean;
+    /** External presentation: text links and embedded resources confer no navigation or network access. */
+    presentationSafe?: boolean;
     onBlockSelect?: (block: BlockRef, extra?: { selection?: string }) => void;
 }
 
-export function DocumentMarkdown({ content, selected = null, commentCounts = {}, interactive = true, onBlockSelect }: DocumentMarkdownProps) {
+export function DocumentMarkdown({ content, selected = null, commentCounts = {}, interactive = true, presentationSafe = false, onBlockSelect }: DocumentMarkdownProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const selectRef = useRef(onBlockSelect);
     selectRef.current = onBlockSelect;
@@ -228,7 +232,13 @@ export function DocumentMarkdown({ content, selected = null, commentCounts = {},
     return (
         <BlockContext.Provider value={{ selected, commentCounts, interactive, onBlockSelect }}>
             <div ref={containerRef} className={`${PROSE} pr-9 md:pr-10`} onMouseUp={captureSelection} data-document-markdown="">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeBlockAnchors]} components={COMPONENTS} skipHtml={false}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeBlockAnchors]} components={presentationSafe ? {
+                    ...COMPONENTS,
+                    // Mermaid may fetch image nodes before sanitizing SVG; keep fences literal here.
+                    pre: PRESENTATION_PRE as Components["pre"],
+                    a: ({ children }) => <span>{children}</span>,
+                    img: ({ alt }) => <span className="text-slate-400">[Embedded image omitted: {alt || 'image'}]</span>,
+                } : COMPONENTS} skipHtml={false}>
                     {content}
                 </ReactMarkdown>
             </div>

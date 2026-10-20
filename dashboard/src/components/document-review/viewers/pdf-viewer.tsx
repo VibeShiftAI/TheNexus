@@ -13,7 +13,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, MessageSquarePlus } from "luci
 
 export interface PageMarker { id: string; index: number; page: number; label?: string | null; resolved?: boolean }
 
-export function PdfViewer({ src, assetKey, markers = [], selectedMarkerId = null, onSelectMarker, annotate = false, onPage, onLoadState, requestedPage }: {
+export function PdfViewer({ src, assetKey, markers = [], selectedMarkerId = null, onSelectMarker, annotate = false, onPage, onLoadState, requestedPage, presentationSafe = false }: {
     src: string;
     assetKey: string;
     markers?: PageMarker[];
@@ -23,6 +23,8 @@ export function PdfViewer({ src, assetKey, markers = [], selectedMarkerId = null
     onPage?: (page: number) => void;
     onLoadState?: (assetKey: string, state: "loaded" | "failed") => void;
     requestedPage?: number | null;
+    /** Keep PDF interactions inside the revocable presentation surface. */
+    presentationSafe?: boolean;
 }) {
     const [page, setPage] = useState(1);
     useEffect(() => { if (requestedPage) setPage(requestedPage); }, [requestedPage]);
@@ -45,7 +47,7 @@ export function PdfViewer({ src, assetKey, markers = [], selectedMarkerId = null
                         ))}
                     </span>
                 )}
-                <a href={src} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 rounded-md border border-slate-700 px-2 py-1 hover:border-cyan-500/60"><ExternalLink size={12} /> Open full</a>
+                {!presentationSafe && <a href={src} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 rounded-md border border-slate-700 px-2 py-1 hover:border-cyan-500/60"><ExternalLink size={12} /> Open full</a>}
                 {annotate && onPage && (
                     <button type="button" onClick={() => onPage(page)} className="inline-flex items-center gap-1 rounded-md border border-cyan-500/50 bg-cyan-500/15 px-2.5 py-1.5 font-semibold text-cyan-100 hover:bg-cyan-500/25" data-pdf-comment="">
                         <MessageSquarePlus size={13} /> Comment on page {page}
@@ -55,7 +57,10 @@ export function PdfViewer({ src, assetKey, markers = [], selectedMarkerId = null
             <iframe
                 key={page}
                 title="PDF"
-                src={`${src}#page=${page}&view=FitH`}
+                src={`${src}#page=${page}&view=FitH${presentationSafe ? "&toolbar=0&navpanes=0" : ""}`}
+                inert={presentationSafe || undefined}
+                tabIndex={presentationSafe ? -1 : undefined}
+                style={presentationSafe ? { pointerEvents: "none" } : undefined}
                 className="h-[72vh] w-full bg-slate-900"
                 onLoad={() => onLoadState?.(assetKey, "loaded")}
                 onError={() => onLoadState?.(assetKey, "failed")}

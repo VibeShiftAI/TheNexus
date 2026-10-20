@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/check-contract-freshness.mjs",
+    "predev": "node scripts/check-contract-freshness.mjs && npm run build:presentation",
     "dev": "next dev",
-    "prebuild": "node scripts/check-contract-freshness.mjs",
+    "prebuild": "node scripts/check-contract-freshness.mjs && npm run build:presentation",
+    "build:presentation": "node scripts/build-presentation.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

@@ -21,6 +21,7 @@
 
 # production
 /build
+/public/presentation/
 
 # misc
 .DS_Store
