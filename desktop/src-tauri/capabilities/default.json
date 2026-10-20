@@ -1,8 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Loader window (macOS) and travel-shell webviews (Windows). IPC reaches only local app pages (tab strip + per-tab loaders); once a loader hands over to a remote tunnel origin, that content has no Tauri access.",
+  "description": "Local app pages in the main window: the macOS loader and Windows tab strip/loaders. Remote origins have no Tauri access. Presentation and sign-in windows receive no core capability.",
   "windows": ["main"],
-  "webviews": ["*"],
   "permissions": ["core:default"]
 }

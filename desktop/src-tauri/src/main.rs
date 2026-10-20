@@ -24,6 +24,12 @@
 
 #[cfg(target_os = "windows")]
 mod renewal_gate;
+#[cfg(target_os = "windows")]
+mod presentation;
+#[cfg(target_os = "windows")]
+mod presentation_policy;
+#[cfg(target_os = "windows")]
+mod presentation_wire;
 
 use std::sync::Mutex;
 
@@ -731,6 +737,9 @@ mod travel {
         let tabs = fetch_remote_tabs(app.handle()).unwrap_or_else(default_tabs);
         app.manage(ActiveTab(Mutex::new(tabs[0].id.clone())));
         app.manage(Roster(tabs.clone()));
+        crate::presentation::install(app, tabs.iter()
+            .find(|tab| tab.id == "bridge" && tab.hosted)
+            .map(|tab| (tab.id.as_str(), tab.url.as_str())));
 
         let window = WindowBuilder::new(app, "main")
             .title("The Nexus")
@@ -769,6 +778,9 @@ mod travel {
             let mut builder = WebviewBuilder::new(tab.id.clone(), WebviewUrl::App("loader.html".into()))
                 .initialization_script(&feedback_widget_script(tab))
                 .on_new_window(open_in_browser);
+            if let Some(script) = crate::presentation::initialization_script(app.handle(), &tab.id) {
+                builder = builder.initialization_script(&script);
+            }
             if tab.hosted {
                 let nav_app = app.handle().clone();
                 let tab_id = tab.id.clone();
@@ -776,6 +788,9 @@ mod travel {
                 builder = builder
                     .initialization_script(&shell_global)
                     .on_navigation(move |url| {
+                        if crate::presentation::intercept(&nav_app, &tab_id, url) {
+                            return false;
+                        }
                         // The dashboard asks for a session renewal when Access
                         // starts bouncing it (lib/session-renewal): run the
                         // exchange off the main thread and cancel the
