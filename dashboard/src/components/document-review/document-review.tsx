@@ -290,6 +290,33 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         observer.observe(el);
         return () => observer.disconnect();
     }, []);
+    /**
+     * Desktop rails stick only when the window leaves them their 8rem minimum between the header and the floating
+     * controls. A shorter window (the screenshot's 389px at 125% or 150%) would push the floor of a sticky rail under
+     * the mini player, so they scroll with the page instead (QA round 1 of task 7fe1005f).
+     */
+    const [railsFlow, setRailsFlow] = useState(false);
+    useEffect(() => {
+        if (headerHeight === null) return;
+        const root = window.document.documentElement;
+        const check = () => {
+            // Body units, like the header height and the reserve: the window is divided by the display scale.
+            const zoom = parseFloat(getComputedStyle(window.document.body).zoom) || 1;
+            const rem = parseFloat(getComputedStyle(root).fontSize) || 16;
+            const reserve = parseFloat(getComputedStyle(root).getPropertyValue("--nexus-floating-bottom")) || 6 * rem;
+            setRailsFlow(root.clientHeight / zoom - (headerHeight + 1.25 * rem) - reserve < 8 * rem);
+        };
+        check();
+        window.addEventListener("resize", check);
+        // lib/floating-controls republishes the reserve on <html>; the display scale arrives on <body>.
+        const observer = new MutationObserver(check);
+        observer.observe(root, { attributes: true, attributeFilter: ["style"] });
+        observer.observe(window.document.body, { attributes: true, attributeFilter: ["style"] });
+        return () => {
+            window.removeEventListener("resize", check);
+            observer.disconnect();
+        };
+    }, [headerHeight]);
     const summaryTimer = useRef<number | null>(null);
     const summaryDirty = useRef(false);
     /** Phone: the review drawer was closed to make room for the composer; reopen it when the composer closes. */
@@ -1176,6 +1203,15 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         }
     })();
 
+    // The rails stick where they start, just below the header, and end above the floating ticker, audio, voice and
+    // feedback controls (lib/floating-controls), so their last controls, Finish review among them, scroll into open space
+    // whether or not the page has scrolled. vh is divided by the display scale: under the body zoom 100vh is taller than
+    // the window. Too short a window for that and they scroll with the page, which ends past the controls (layout
+    // paddingBottom, root scroll padding); the header's height as scroll margin keeps focus from parking a control under it.
+    const railPosition = railsFlow
+        ? "[&_*]:scroll-mt-[var(--review-rail-top,6rem)]"
+        : "sticky top-[var(--review-rail-top,6rem)] max-h-[max(8rem,calc(100vh/var(--nexus-display-scale,1)-var(--review-rail-top,6rem)-var(--nexus-floating-bottom,6rem)))] overflow-y-auto";
+
     return (
         <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30" data-document-review-page="" data-media-type={mediaType} style={headerHeight === null ? undefined : ({ "--review-rail-top": `calc(${headerHeight}px + 1.25rem)` } as CSSProperties)}>
             <header ref={headerRef} className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
@@ -1270,12 +1306,9 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             </header>
 
             <div className="mx-auto max-w-[1600px] px-4 py-5 lg:grid lg:grid-cols-[200px_minmax(0,1fr)_380px] lg:gap-6">
-                {/* The rails stick where they start, just below the header, and end above the floating ticker, audio, voice
-                    and feedback controls (lib/floating-controls), so their last controls, Finish review among them, scroll
-                    into open space whether or not the page has scrolled. vh is divided by the display scale: under the body
-                    zoom 100vh is taller than the window. */}
+                {/* Sticky or in the page flow: see railPosition. */}
                 <aside className="hidden lg:block">
-                    <div className="sticky top-[var(--review-rail-top,6rem)] max-h-[max(8rem,calc(100vh/var(--nexus-display-scale,1)-var(--review-rail-top,6rem)-var(--nexus-floating-bottom,6rem)))] overflow-y-auto pr-2">{outlinePanel}</div>
+                    <div className={`${railPosition} pr-2`} data-rail-position={railsFlow ? "flow" : "sticky"}>{outlinePanel}</div>
                 </aside>
 
                 <article className="min-w-0" data-stage="">
@@ -1314,7 +1347,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 </article>
 
                 <aside className="hidden lg:block">
-                    <div className="sticky top-[var(--review-rail-top,6rem)] max-h-[max(8rem,calc(100vh/var(--nexus-display-scale,1)-var(--review-rail-top,6rem)-var(--nexus-floating-bottom,6rem)))] overflow-y-auto rounded-xl border border-slate-800 bg-slate-900/40 p-3">{reviewPanel}</div>
+                    <div className={`${railPosition} rounded-xl border border-slate-800 bg-slate-900/40 p-3`} data-rail-position={railsFlow ? "flow" : "sticky"}>{reviewPanel}</div>
                 </aside>
             </div>
 

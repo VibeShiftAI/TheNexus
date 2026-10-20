@@ -42,6 +42,9 @@ const CASES = [
   { name: "desktop-short-1280x560", width: 1280, height: 560, dpr: 1, scale: 1 },
   { name: "desktop-1512x900-scale125", width: 1512, height: 900, dpr: 2, scale: 1.25 },
   { name: "desktop-short-1600x720-scale150", width: 1600, height: 720, dpr: 1, scale: 1.5 },
+  // The screenshot's height at 125% and 150% leaves less room than the rail's minimum (QA round 1, 2026-10-20).
+  { name: "desktop-screenshot-height-1209x389-scale125", width: 1209, height: 389, dpr: 2, scale: 1.25 },
+  { name: "desktop-screenshot-height-1600x389-scale150", width: 1600, height: 389, dpr: 1, scale: 1.5 },
   { name: "desktop-1440x900-no-launcher-dock-collapsed", width: 1440, height: 900, dpr: 1, scale: 1, launcher: false, collapsed: true },
   { name: "phone-390x844", width: 390, height: 844, dpr: 3, scale: 1, mobile: true },
   { name: "phone-390x844-scale125", width: 390, height: 844, dpr: 3, scale: 1.25, mobile: true },
@@ -275,16 +278,34 @@ try {
     const viewport = (await send("Page.getLayoutMetrics")).result.cssLayoutViewport;
     check(`${c.name}: layout viewport is the window (${c.width}x${c.height})`, viewport.clientWidth === c.width && viewport.clientHeight === c.height, viewport);
     if (!c.mobile) {
-      // The review rail must end above every floating control, before and after the page scrolls.
-      const railClear = () => evalJs(`(() => { const rail = window.__qa.visible('[data-review-panel]').parentElement.getBoundingClientRect();
+      // A sticky review rail must end above every floating control, before and after the page scrolls. When the window
+      // leaves less than the rail's 8rem minimum between the header and the controls, the rail scrolls with the page
+      // instead, and its end must scroll clear of the controls and of the header.
+      const railClear = () => evalJs(`(() => { const el = window.__qa.visible('[data-review-panel]').parentElement; const rail = el.getBoundingClientRect();
         const tops = [window.__qa.audioPlayer(), document.querySelector('[aria-label="Global voice controls"]'), window.__qa.launcher(), document.querySelector('[aria-label="Open full event log"]')?.closest('.fixed')]
           .filter(Boolean).map((el) => el.getBoundingClientRect()).filter((r) => r.right > rail.left && r.left < rail.right).map((r) => r.top);
-        return { scrollY: Math.round(scrollY), railTop: Math.round(rail.top), railBottom: Math.round(rail.bottom), clusterTop: Math.round(Math.min(...tops)), clear: rail.bottom <= Math.min(...tops) }; })()`);
+        const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1; const header = document.querySelector('header').getBoundingClientRect().bottom;
+        const reserve = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nexus-floating-bottom'));
+        return { mode: el.dataset.railPosition, position: getComputedStyle(el).position, roomBelowHeader: Math.round(innerHeight / zoom - (header / zoom + 20) - reserve),
+          scrollY: Math.round(scrollY), headerBottom: Math.round(header), railTop: Math.round(rail.top), railBottom: Math.round(rail.bottom), clusterTop: Math.round(Math.min(...tops)), clear: rail.bottom <= Math.min(...tops) }; })()`);
       const atTop = await railClear();
-      await evalJs("window.scrollTo(0, 700); true"); await settle();
-      const scrolled = await railClear();
-      await evalJs("window.scrollTo(0, 0); true"); await settle();
-      check(`${c.name}: review rail ends above the floating controls, page at the top and scrolled`, atTop.clear && scrolled.clear && Math.abs(atTop.railTop - scrolled.railTop) <= 1, { atTop, scrolled });
+      log("RAIL", atTop);
+      check(`${c.name}: review rail is sticky exactly when the window leaves it 8rem above the floating controls`,
+        atTop.mode === (atTop.roomBelowHeader < 128 ? "flow" : "sticky") && atTop.position === (atTop.mode === "flow" ? "static" : "sticky"), atTop);
+      if (atTop.mode === "sticky") {
+        await evalJs("window.scrollTo(0, 700); true"); await settle();
+        const scrolled = await railClear();
+        await evalJs("window.scrollTo(0, 0); true"); await settle();
+        check(`${c.name}: review rail ends above the floating controls, page at the top and scrolled`, atTop.clear && scrolled.clear && Math.abs(atTop.railTop - scrolled.railTop) <= 1, { atTop, scrolled });
+      } else {
+        await evalJs("window.scrollTo(0, 120); true"); await settle();
+        const moved = await railClear();
+        await evalJs("window.__qa.visible('[data-review-panel]').parentElement.scrollIntoView({ block: 'end' }); true"); await settle();
+        const end = await railClear();
+        await evalJs("window.scrollTo(0, 0); true"); await settle();
+        check(`${c.name}: review rail scrolls with the page and its end scrolls clear of the floating controls`,
+          Math.abs(atTop.railTop - moved.railTop - (moved.scrollY - atTop.scrollY)) <= 1 && end.clear && end.railBottom > end.headerBottom, { atTop, moved, end });
+      }
     }
     check(`${c.name}: audio, voice dock and launcher do not overlap`, (await evalJs("window.__qa.overlaps()")).length === 0, await evalJs("window.__qa.overlaps()"));
 

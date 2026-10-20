@@ -106,11 +106,13 @@ test('the voice dock registers itself and takes its position from the plan', asy
 
 test('the review page keeps Finish review above the floating controls on desktop, phone and at every display scale', () => {
   const review = readFileSync(new URL('../../components/document-review/document-review.tsx', import.meta.url), 'utf8');
-  const rails = review.match(/sticky top-\[var\(--review-rail-top,6rem\)\] [^"]*/g) ?? [];
-  assert.equal(rails.length, 2, 'outline and review rails stick where they start, below the measured header');
-  for (const rail of rails) {
-    assert.match(rail, /max-h-\[max\(8rem,calc\(100vh\/var\(--nexus-display-scale,1\)-var\(--review-rail-top,6rem\)-var\(--nexus-floating-bottom,6rem\)\)\)\]/);
-  }
+  const sticky = review.match(/"sticky top-\[var\(--review-rail-top,6rem\)\] [^"]*"/g) ?? [];
+  assert.equal(sticky.length, 1, 'the rails stick where they start, below the measured header');
+  assert.match(sticky[0], /max-h-\[max\(8rem,calc\(100vh\/var\(--nexus-display-scale,1\)-var\(--review-rail-top,6rem\)-var\(--nexus-floating-bottom,6rem\)\)\)\]/);
+  assert.equal((review.match(/className=\{`\$\{railPosition\} /g) ?? []).length, 2, 'outline and review rails share the position');
+  // Short of 8rem between the header and the floating controls, the rails scroll with the page (QA round 1: 389px at 125% and 150%).
+  assert.match(review, /root\.clientHeight \/ zoom - \(headerHeight \+ 1\.25 \* rem\) - reserve < 8 \* rem/);
+  assert.match(review, /const railPosition = railsFlow\s+\? "\[&_\*\]:scroll-mt-\[var\(--review-rail-top,6rem\)\]"\s+: "sticky /);
   assert.match(review, /"--review-rail-top": `calc\(\$\{headerHeight\}px \+ 1\.25rem\)`/, 'rail top = header height + the grid padding above the rails');
   assert.match(review, /<header ref=\{headerRef\} className="sticky top-0/);
   for (const marker of ['data-composer-sheet=""', 'data-review-drawer=""']) {
