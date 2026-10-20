@@ -1,10 +1,10 @@
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Box,
   Check,
   ClipboardCopy,
@@ -165,8 +165,8 @@ export default function CatalogPage() {
     <main className="min-h-screen bg-slate-950 pb-32 text-slate-200">
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
         <div className="container mx-auto flex min-h-16 flex-wrap items-center justify-between gap-3 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <Link href={`/studio?channelId=${encodeURIComponent(channelId)}`} className="rounded-full p-2 text-slate-400 hover:bg-slate-800 hover:text-white"><ArrowLeft size={20} /></Link>
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
+            <Breadcrumbs parents={[{ label: "Studio", href: `/studio?channelId=${encodeURIComponent(channelId)}` }]} current="Object Catalog" />
             <div className="flex items-center gap-2">
               <Orbit size={22} className="text-cyan-300" />
               <div>

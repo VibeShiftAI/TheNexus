@@ -30,7 +30,7 @@ test('background policy preserves dialogue, explicit final responses and request
     for (const flag of ['voiceAnnouncement', 'voiceDeliveryNotice', 'hitlAnnounce', 'hitlAck']) expect(hidden({ role: 'assistant', metadata: { [flag]: true } })).toBe(true);
     expect(hidden({ role: 'assistant', metadata: { voiceConversation: true } })).toBe(false);
     expect(hidden({ role: 'user', metadata: { eventType: 'task_qa_passed', voiceAnnouncement: true } })).toBe(false);
-    expect(hidden({ role: 'system', metadata: { eventType: 'task_answer_pending', persisted: false } })).toBe(false);
+    expect(hidden({ role: 'system', metadata: { eventType: 'task_answer_pending', persisted: false } })).toBe(true);
     expect(hidden({ role: 'system', metadata: { eventType: 'chat_dispatch.task_correction_redispatch' } })).toBe(true);
     expect(hidden({ role: 'assistant', metadata: { eventType: 'task_qa_passed', chatDirectedFinal: true } })).toBe(false);
     expect(hidden({ role: 'assistant', metadata: { eventType: 'status_report_ready', requestedBriefing: true } })).toBe(false);
@@ -86,14 +86,14 @@ test('real sync retries return canonical voice receipts once in Activity and his
     } finally { server.closeAllConnections(); await new Promise(r => server.close(r)); }
 });
 
-test('history preserves canonical system blockers and chat-directed finals while context stays dialogue-only', async () => {
+test('system blockers and completion notices move to Activity while context stays dialogue-only', async () => {
     const conversation = await db.createConversation('praxis', 'Canonical notices');
     for (const [id, metadata] of [['blocked', { eventType: 'task_blocked' }], ['final', { eventType: 'chat_dispatch.task_qa_passed' }], ['routine', { eventType: 'day_schedule_approved' }]]) {
         await db.saveChatMessage({ id, conversation_id: conversation.id, role: 'system', content: id, metadata });
     }
-    expect((await db.getChatMessages(conversation.id, { chatVisibleOnly: true })).map(r => r.id)).toEqual(['blocked', 'final']);
+    expect((await db.getChatMessages(conversation.id, { chatVisibleOnly: true })).map(r => r.id)).toEqual([]);
     expect(await db.getChatMessages(conversation.id, { conversationalOnly: true })).toEqual([]);
-    expect(await db.countChatMessages(conversation.id, { chatVisibleOnly: true })).toBe(2);
+    expect(await db.countChatMessages(conversation.id, { chatVisibleOnly: true })).toBe(0);
 });
 test('Activity write failure rolls back a new background receipt and retry can succeed', async () => {
     const conversation = await db.createConversation('praxis', 'Atomic archive');
@@ -134,10 +134,10 @@ test('startup migrates legacy rows with their original dates and a second startu
     sqlite.close();
 });
 
-test('taskless HITL questions remain visible; duplicates and routine approvals go to Activity', () => {
+test('all system HITL notices go to Activity', () => {
     const { isActivityOnlyChatMessage: hidden } = require('../../db/chat-message-policy');
     for (const hitlType of ['low_confidence', 'subjective_validation', undefined]) {
-        expect(hidden({ role: 'system', metadata: { isHitlRequest: true, hitlType } })).toBe(false);
+        expect(hidden({ role: 'system', metadata: { isHitlRequest: true, hitlType } })).toBe(true);
         expect(hidden({ role: 'system', metadata: { isHitlRequest: true, hitlType, taskId: 'task-1' } })).toBe(true);
     }
     expect(hidden({ role: 'system', metadata: { isHitlRequest: true, hitlType: 'trade_approval' } })).toBe(true);
@@ -147,4 +147,17 @@ test('Activity since compares mixed SQLite and ISO timestamps chronologically', 
     await db.recordAgEvent({ event_type: 'time_after', title: 'After', created_at: '2030-01-01 03:00:00' });
     expect((await db.getAgEvents({ since: '2030-01-01T02:00:00Z' })).map(e => e.event_type)).toEqual(['time_after']);
     expect((await db.getAgEvents({ since: '2030-01-01 02:00:00' })).map(e => e.event_type)).toEqual(['time_after']);
+});
+
+test('system notices default to Activity, including new event types and untyped notices', async () => {
+    const conversation = await db.createConversation('praxis', 'System notices');
+    for (const [i, eventType] of ['eval_unavailable', 'red_alert', 'calendar_dispatch_held', 'alert_detected', 'outbound_email_held', 'stakeholder_report_review', 'future_system_event', undefined].entries()) {
+        const message = { id: `system-default-${i}`, conversation_id: conversation.id, role: 'system', content: `Notice ${i}`, metadata: { eventType, severity: 'critical', requiresAction: true } };
+        await db.saveChatMessage(message);
+        const events = (await db.getAgEvents({ limit: 100 })).filter(e => e.metadata.chatMessageId === message.id);
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({ message: message.content, event_type: eventType || 'system_message' });
+    }
+    await db.saveChatMessage({ id: 'direct-failure', conversation_id: conversation.id, role: 'system', content: 'Your reply failed', metadata: { responseFailed: true, replyTo: 'question' } });
+    expect((await db.getChatMessages(conversation.id, { chatVisibleOnly: true })).map(r => r.id)).toEqual(['direct-failure']);
 });

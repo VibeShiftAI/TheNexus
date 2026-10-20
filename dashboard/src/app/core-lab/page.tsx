@@ -7,9 +7,9 @@
  */
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, FlaskConical, Play, Square } from "lucide-react";
+import { FlaskConical, Play, Square } from "lucide-react";
 import { CoreCanvas } from "@/components/bridge/core-canvas";
 import {
   deriveCoreState,
@@ -170,10 +170,8 @@ export default function CoreLabPage() {
   return (
     <div className="min-h-screen bg-slate-950 p-6 text-slate-200">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-4 flex items-center gap-3">
-          <Link href="/" className="text-slate-500 transition-colors hover:text-white" aria-label="Back to bridge">
-            <ArrowLeft size={18} />
-          </Link>
+        <div className="mb-4 flex min-w-0 flex-wrap items-center gap-3">
+          <Breadcrumbs current="Core Lab" />
           <FlaskConical size={18} className="text-violet-400" />
           <h1 className="text-lg font-bold tracking-tight">Core Lab</h1>
           <span className="text-xs text-slate-500">the orb's animation vocabulary, one scenario at a time</span>

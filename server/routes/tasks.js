@@ -192,6 +192,13 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         const taskName = title || name;
         if (!project_id || !taskName) return res.status(400).json({ error: 'project_id and title are required' });
         if (!requireValidKnowledgeMetadata(res, metadata)) return;
+        const qaImprovement = metadata?.qaImprovement;
+        if (qaImprovement !== undefined && (!qaImprovement || typeof qaImprovement !== 'object' || Array.isArray(qaImprovement)
+            || Object.keys(qaImprovement).some(key => !['parentTaskId', 'finalizationId'].includes(key))
+            || typeof qaImprovement.parentTaskId !== 'string' || !qaImprovement.parentTaskId.trim()
+            || typeof qaImprovement.finalizationId !== 'string' || !/^[a-f0-9]{64}$/i.test(qaImprovement.finalizationId))) {
+            return res.status(400).json({ error: 'Invalid metadata.qaImprovement: expected parentTaskId and a 64-hex finalizationId', code: 'invalid_qa_improvement' });
+        }
         let canonicalStatus = 'planning';
         if (status !== undefined && status !== null) {
             canonicalStatus = requireValidStatus(res, status);
@@ -207,6 +214,31 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
         }
         try {
             const admissionOptions = repeatOptions(req);
+            let linkedTaskId;
+            const matchesLink = task => task.id === linkedTaskId && task.project_id === project_id
+                && task.metadata?.qaImprovement?.parentTaskId === qaImprovement.parentTaskId
+                && typeof task.metadata?.qaImprovement?.finalizationId === 'string'
+                && task.metadata.qaImprovement.finalizationId.toLowerCase() === qaImprovement.finalizationId.toLowerCase();
+            if (qaImprovement) {
+                const parent = await db.getTask(qaImprovement.parentTaskId);
+                if (!parent) return res.status(404).json({ error: 'QA improvement parent task not found', code: 'qa_improvement_parent_not_found' });
+                if (parent.project_id !== project_id || normalizeTaskBoardStatus(parent.status) !== 'completed') {
+                    return res.status(409).json({ error: 'QA improvement parent must be completed and in the same project', code: 'qa_improvement_parent_conflict' });
+                }
+                // The request board lease covers this lookup and normal admitted creation.
+                // A retry observes the durable child even if the original response was lost.
+                const hash = crypto.createHash('sha256').update(JSON.stringify(['nexus:qa-improvement:v1',
+                    qaImprovement.parentTaskId, qaImprovement.finalizationId.toLowerCase()])).digest();
+                hash[6] = (hash[6] & 0x0f) | 0x50;
+                hash[8] = (hash[8] & 0x3f) | 0x80;
+                const hex = hash.subarray(0, 16).toString('hex');
+                linkedTaskId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+                const existing = await db.getTask(linkedTaskId);
+                if (existing) {
+                    if (!matchesLink(existing)) return res.status(409).json({ error: 'QA improvement task identity has a different immutable link', code: 'qa_improvement_link_conflict' });
+                    return res.status(200).json(existing);
+                }
+            }
             const deps = Array.isArray(dependencies)
                 ? [...new Set(dependencies.filter(d => typeof d === 'string' && d))]
                 : [];
@@ -227,6 +259,7 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 console.warn(`[Provenance] Refused operator-authorship claim "${claim.downgradedFrom}" on task create; recorded as "${claim.source}"`);
             }
             const result = await db.createTask({
+                ...(linkedTaskId ? { id: linkedTaskId } : {}),
                 project_id, name: taskName, status: canonicalStatus,
                 priority: priority === 'high' ? 2 : (typeof priority === 'number' ? priority : 1),
                 description: description || '',
@@ -238,6 +271,10 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 ...(metadata !== undefined ? { metadata } : {}),
                 last_activity_at: new Date().toISOString()
             }, ...(admissionOptions ? [admissionOptions] : []));
+            if (!result) throw new Error('Database did not create task');
+            // Admission may reuse a contract already owned by another task. Never
+            // relabel that task or bypass its admission identity to force a child.
+            if (qaImprovement && !matchesLink(result)) return res.status(409).json({ error: 'Existing work admission owns a different QA improvement link', code: 'qa_improvement_link_conflict' });
             res.status(201).json(result);
         } catch (error) {
             if (sendLeaseError(res, error)) return;

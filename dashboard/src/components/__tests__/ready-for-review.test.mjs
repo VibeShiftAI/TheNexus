@@ -187,7 +187,7 @@ test('project Deliverables steps back when a decision empties the page shown, in
   } finally { t.cleanup(); window.setInterval = realSetInterval; }
 });
 
-test('Reviews is the first entry of the navigation menu and sits in the bridge header and rail', () => {
+test('Reviews remains in the navigation menu and bridge header without a dashboard review panel', () => {
   const sidebar = fs.readFileSync(new URL('../nav-sidebar.tsx', import.meta.url), 'utf8');
   const items = sidebar.slice(sidebar.indexOf('const navItems = ['));
   const firstHref = items.match(/href:\s*"([^"]+)"/)[1];
@@ -197,7 +197,6 @@ test('Reviews is the first entry of the navigation menu and sits in the bridge h
   const home = fs.readFileSync(new URL('../../app/page.tsx', import.meta.url), 'utf8');
   const header = home.slice(home.indexOf('<header'), home.indexOf('</header>'));
   assert.match(header, /<ReviewsNavButton pending=\{reviewQueue\.pending\} \/>/, 'header button with the pending count');
-  assert.match(home, /id="panel-reviews"[\s\S]*?<ReadyForReview queue=\{reviewQueue\}/, 'rail section on wide screens');
-  assert.match(home, /id="panel-reviews-compact"[\s\S]*?<ReadyForReview queue=\{reviewQueue\}/, 'above the stations on narrow screens');
-  assert.equal((home.match(/useReviewQueue\(/g) || []).length, 1, 'one query feeds both');
+  assert.doesNotMatch(home, /<ReadyForReview\b|id="panel-reviews(?:-compact)?"/, 'no review panel at any screen size');
+  assert.equal((home.match(/useReviewQueue\(/g) || []).length, 1, 'the header keeps its live pending count');
 });

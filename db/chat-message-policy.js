@@ -23,6 +23,9 @@ function metadataOf(row) {
 function isActivityOnlyChatMessage(row) {
     if (row.role === 'user') return false;
     const metadata = metadataOf(row);
+    // System receipts belong in Activity regardless of event type. Only a
+    // failed direct reply stays in chat so the user's turn has an outcome.
+    if (row.role === 'system') return !(metadata.responseFailed === true && metadata.replyTo);
     if (metadata.voiceAnnouncement || metadata.voiceDeliveryNotice || metadata.hitlAnnounce || metadata.hitlAck) return true;
     // Task-linked requests already have a canonical task_blocked notice.
     // Taskless questions may be the only actionable interruption.
@@ -44,7 +47,7 @@ function isConversationalChatMessage(row) {
 function chatMessageActivityEvent(row) {
     const metadata = metadataOf(row);
     const eventType = metadata.eventType || metadata.event_type
-        || (metadata.voiceAnnouncement ? 'voice_announcement' : metadata.voiceDeliveryNotice ? 'voice_delivery_notice' : 'hitl_announcement');
+        || (metadata.voiceAnnouncement ? 'voice_announcement' : metadata.voiceDeliveryNotice ? 'voice_delivery_notice' : metadata.isHitlRequest || metadata.hitlAnnounce || metadata.hitlAck ? 'hitl_announcement' : 'system_message');
     return {
         idempotency_key: `chat-message:${row.id}`, event_type: eventType, created_at: row.created_at,
         title: metadata.title || eventType.replace(/[_.]/g, ' '), message: row.content,

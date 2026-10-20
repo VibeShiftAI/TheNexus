@@ -33,3 +33,15 @@ test('expired requests cannot enter or remain in the voice queue', async () => {
   assert.equal(eligibleAlert(expired, 'conversational'), false);
   assert.equal(await currentVoiceAlert(event, async () => Response.json((expired as any).request)), null);
 });
+
+test('callback-owned failure is suppressed even before current-task lookup', async () => {
+  const owned = { type: 'task.failed', eventId: 'attempt', taskId: 't1', at: event.at, error: 'Attempt failed', failureRecoveryOwner: 'callback' } as StreamEvent;
+  let lookups = 0;
+  const current = await currentVoiceAlert(owned, async () => { lookups++; return Response.json({ status: 'failed' }); });
+  assert.equal(current, null);
+  assert.equal(lookups, 0);
+});
+test('unowned failure remains current when a recovery request could not be created', async () => {
+  const unowned = { type: 'task.failed', eventId: 'fallback', taskId: 't1', at: event.at, error: 'Recovery failed' } as StreamEvent;
+  assert.equal(await currentVoiceAlert(unowned, async () => Response.json({ status: 'failed' })), unowned);
+});

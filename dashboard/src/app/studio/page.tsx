@@ -1,11 +1,11 @@
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Archive,
-  ArrowLeft,
   Atom,
   CheckCircle2,
   ChevronRight,
@@ -242,10 +242,8 @@ export default function StudioPage() {
     <main className="min-h-screen bg-slate-950 text-slate-200">
       <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
         <div className="container mx-auto flex min-h-16 flex-wrap items-center justify-between gap-3 px-6 py-3">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
-              <ArrowLeft size={20} />
-            </Link>
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+            <Breadcrumbs current="Studio" />
             <div className="flex items-center gap-2">
               <Clapperboard size={22} className="text-cyan-300" />
               <div>

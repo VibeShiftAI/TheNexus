@@ -226,7 +226,7 @@ function compareProjectFields(actual, expected, prefix = '') {
   for (const [field, value] of Object.entries(expected || {})) {
     if (value === undefined) continue;
     const key = prefix ? `${prefix}.${field}` : field;
-    if (field === 'knowledge' || field === 'endpoint' || field === 'application') {
+    if (field === 'knowledge' || field === 'endpoint' || field === 'application' || field === 'verification' || field === 'resolution') {
       mismatches.push(...compareProjectFields(actual?.[field], value, key));
     } else if (field === 'checkpoints' && Array.isArray(value)) {
       // The plan is stored as {items, archived, revision}; verify the ordered definitions
@@ -335,7 +335,11 @@ async function updateProject(ctx, {
         }
         if (resolve_need) {
           const resolved = (after?.needs || []).find((need) => need.id === resolve_need.id);
-          const { id, ...expectedNeed } = resolve_need;
+          const { id, expected_knowledge_revision, append_evidence, record_application, ...expectedNeed } = resolve_need;
+          for (const entry of append_evidence || []) {
+            if (!resolved?.knowledge?.evidence?.some(e => e.ref === entry.ref)) mismatches.push({field:'append_evidence',expected:entry.ref,actual:null});
+          }
+          if (record_application && !resolved?.knowledge?.applications?.some(a => a.id === record_application.id)) mismatches.push({field:'record_application',expected:record_application.id,actual:null});
           // The API may reopen stale knowledge after acceptance/application changes.
           // Verify the returned complete record and all explicitly supplied knowledge.
           if (applyResult?.resolved_need?.status === 'open' && applyResult.resolved_need.knowledge?.research_status === 'stale') expectedNeed.status = 'open';

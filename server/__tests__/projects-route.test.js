@@ -37,6 +37,24 @@ describe('projects route', () => {
     handle = null;
   });
 
+  it.each(['', '/scaffold'])('creates a Git baseline through project route %s', async (route) => {
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const { execFileSync } = require('child_process');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'project-tracking-'));
+    const db = { isDatabaseEnabled: () => true, upsertProject: jest.fn(async p => ({...p,id:'p'})), writeLeases: {runSync: (_r, fn) => fn(), run: (_r, fn) => fn()} };
+    const app = express(); app.use(express.json());
+    app.use('/api/projects', require('../routes/projects')({db, PROJECT_ROOT:root, getAllProjects:jest.fn(), scanProjects:jest.fn(), contextSync:{}}));
+    handle = await listen(app);
+    try {
+      const result = await requestJson(`${handle.baseUrl}/api/projects${route}`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'New Project'})});
+      expect(result.status).toBe(route ? 200 : 201);
+      const cwd = path.join(root,'New Project');
+      expect(execFileSync('git',['rev-parse','--verify','HEAD'],{cwd,encoding:'utf8',stdio:'pipe'}).trim()).toMatch(/^[a-f0-9]{40}$/);
+      expect(execFileSync('git',['status','--porcelain'],{cwd,encoding:'utf8'})).toBe('');
+      expect(fs.readFileSync(path.join(cwd,'.gitignore'),'utf8')).toContain('.env');
+    } finally { fs.rmSync(root,{recursive:true,force:true}); }
+  });
+
   it('rejects stale conditional need projections at the HTTP boundary', async () => {
     const expected = { status: 'open', notes: '', description: 'Choose policy', kind: 'decision' };
     const db = { updateProjectNeed: jest.fn(() => ({ conflict: true })) };

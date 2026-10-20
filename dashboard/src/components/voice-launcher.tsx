@@ -4,10 +4,13 @@ import { Mic } from 'lucide-react';
 import { VOICE_SETUP_EVENT } from '@/lib/voice-input';
 
 /** Opens the single global voice owner; opening setup never starts capture. */
-export function VoiceLauncher() {
+export function VoiceLauncher({ onOpen }: { onOpen?: () => void } = {}) {
   return <button
     type="button"
-    onClick={() => window.dispatchEvent(new window.Event(VOICE_SETUP_EVENT))}
+    onClick={() => {
+      onOpen?.();
+      window.dispatchEvent(new window.Event(VOICE_SETUP_EVENT));
+    }}
     aria-label="Talk to Praxis"
     aria-keyshortcuts="Alt+Shift+V"
     title="Talk to Praxis — voice setup (Alt+Shift+V)"

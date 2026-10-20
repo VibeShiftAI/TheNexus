@@ -1,5 +1,6 @@
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Inbox, Mail, Paperclip, RefreshCw, Send } from 'lucide-react';
@@ -41,7 +42,7 @@ export function PraxisMailbox() {
       <div className="mx-auto max-w-7xl">
         <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Link href="/" className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-cyan-200"><ArrowLeft size={15} />Dashboard</Link>
+            <Breadcrumbs current="Praxis Mail" className="mb-4" />
             <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight"><Mail className="text-cyan-300" size={26} />Praxis mail</h1>
             <p className="mt-2 text-sm text-slate-400">{account ?? 'Dedicated Praxis mailbox'}</p>
           </div>

@@ -1,8 +1,11 @@
-import type { KnowledgeNeed, ProjectNeed } from "@praxis/contract";
+import type { KnowledgeNeed, KnowledgeEvidence, KnowledgeApplication, ProjectNeed } from "@praxis/contract";
 import { API_URL, authFetch } from "./shared";
 
 export type ProjectNeedPatch = Partial<Omit<ProjectNeed, "knowledge">> & {
   knowledge?: Partial<KnowledgeNeed>;
+  expected_knowledge_revision?: number;
+  append_evidence?: KnowledgeEvidence[];
+  record_application?: KnowledgeApplication;
 };
 export interface ProjectNeedResponse {
   success: boolean;

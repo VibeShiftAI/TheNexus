@@ -2,6 +2,7 @@
 const crypto = require('crypto');
 const { isDeepStrictEqual: equal } = require('util');
 const { ProjectNeedSchema, EndStateCriterionSchema, EndpointDefinitionSchema, EndStateAssessmentSchema, checkpointProgress, projectWideRequiredNeeds, knowledgeProgress, assessmentVerifies } = require('@praxis/contract');
+const { normalizeKnowledgeLifecycle, reopenKnowledge: reopen } = require('./knowledge-lifecycle');
 const { normalizeCheckpointPlan, clearPendingAssessments, needsLinkedToCheckpoints } = require('./project-checkpoints');
 
 const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -37,19 +38,16 @@ function normalizeCriteria(raw, existing = [], at, label = 'end_state_criteria')
         return { ...candidate, ...criterion };
     });
 }
-function reopen(need, reason) {
-    const out = { ...need, status: 'open', knowledge: { ...need.knowledge, research_status: 'stale', review_reason: reason } };
-    delete out.resolved_at;
-    return out;
-}
-function normalizeNeed(item, previous, project, at, actor) {
+function normalizeNeed(item, previous, project, at, actor, mutation) {
     object(item, 'need');
     if (own(item, 'knowledge')) object(item.knowledge, 'knowledge');
     const candidate = { ...previous, ...item, id: previous?.id || item.id || crypto.randomUUID().slice(0, 8), created_at: previous?.created_at || item.created_at || at };
     // Attribution records the original declarer. PATCH source identifies the verifier.
     if (previous?.source) candidate.source = previous.source;
     if (previous?.knowledge || item.knowledge) candidate.knowledge = { ...previous?.knowledge, ...item.knowledge };
-    let need = { ...candidate, ...parse(ProjectNeedSchema, candidate, 'need') };
+    let need = normalizeKnowledgeLifecycle(candidate, previous, mutation?.input || item, { at, actor, scoped: !!mutation });
+    need = { ...need, ...parse(ProjectNeedSchema, need, 'need') };
+    for (const field of ['expected_knowledge_revision', 'append_evidence', 'record_application']) delete need[field];
     if (!need.id.trim() || !need.description.trim()) throw invalid('each need requires an id and description');
     if (need.knowledge) {
         const k = need.knowledge;
@@ -62,32 +60,6 @@ function normalizeNeed(item, previous, project, at, actor) {
         if (k.criterion_ids.some(id => (project.end_state_criteria || []).some(c => c.id === id))) {
             if (project.end_state_updated_at) k.endpoint_revision = project.end_state_updated_at;
             else delete k.endpoint_revision;
-        }
-        // Verification is server-owned. Unrelated edits retain the last historical check.
-        for (const field of ['verified_at', 'verified_by']) {
-            if (before?.[field] !== undefined) k[field] = before[field];
-            else delete k[field];
-        }
-        const scopeChanged = before && (before.question !== k.question || before.satisfaction_test !== k.satisfaction_test ||
-            !equal([...(before.criterion_ids || [])].sort(), [...k.criterion_ids].sort()));
-        const badApplication = !equal(before?.application, k.application) && ['insufficient', 'outdated'].includes(k.application?.status);
-        const answerChanged = previous?.status === 'met' && before && (!equal(before.answer, k.answer) || !equal(before.evidence, k.evidence));
-        if (scopeChanged || badApplication || answerChanged) {
-            // A changed acceptance question cannot reuse the previous answer as automatic proof.
-            need = reopen(need, badApplication ? `Application reported ${k.application.status}` : scopeChanged ? 'Knowledge question or acceptance scope changed' : 'Verified answer or evidence changed');
-        } else if (need.status === 'met' && previous?.status === 'met' && k.research_status === 'stale') {
-            need = reopen(need, 'Research marked stale for review');
-        } else if (need.status === 'met') {
-            if (!k.answer?.trim() || !k.evidence.length) throw invalid('Satisfying a structured need requires an answer and evidence reference');
-            if (previous?.status !== 'met' || !before) {
-                k.research_status = 'evidence_ready';
-                k.verified_at = at;
-                k.verified_by = actor || item.source || previous?.source || 'api';
-                delete k.review_reason;
-                need.resolved_at = at;
-            }
-        } else if (previous?.status === 'met' && need.status === 'open') {
-            need = reopen(need, 'Explicitly reopened for review');
         }
     }
     if (need.status === 'open') delete need.resolved_at;
@@ -121,6 +93,7 @@ function prepareProjectPatch(current, updates, { needMutation } = {}) {
         delete patch[guard];
     }
     const at = timestamp(current.updated_at);
+    const priorKnowledgeIds = new Set((current.needs || []).filter(need => need.knowledge).map(need => need.id));
     if (own(patch, 'end_state') && typeof patch.end_state !== 'string') throw invalid('end_state must be a string');
     if (own(patch, 'endpoint')) {
         object(patch.endpoint, 'endpoint');
@@ -141,8 +114,10 @@ function prepareProjectPatch(current, updates, { needMutation } = {}) {
         next.end_state_updated_at = revisionAt;
     }
     if (own(patch, 'needs')) {
-        if (!Array.isArray(patch.needs) || patch.needs.length > 50) throw invalid('needs must be an array of at most 50 entries');
+        if (!Array.isArray(patch.needs) || patch.needs.length > 200) throw invalid('needs must be an array of at most 200 entries');
         const existing = current.needs || [];
+        // Need links may be introduced in the same atomic save as their checkpoint definitions.
+        const needProject = Array.isArray(patch.checkpoints) ? { ...next, checkpoints: { items: patch.checkpoints.map(item => ({ ...(current.checkpoints?.items || []).find(cp => cp.id === item.id), ...item })) } } : next;
         if (!needMutation && current.id && [...existing, ...patch.needs].some(n => n?.knowledge) && !own(updates, 'expected_updated_at')) {
             throw invalid('Whole needs-array saves require expected_updated_at; use per-need PATCH for independent changes.', 428);
         }
@@ -150,7 +125,8 @@ function prepareProjectPatch(current, updates, { needMutation } = {}) {
         patch.needs = patch.needs.map(item => {
             const previous = existing.find(n => n?.id === item?.id);
             // Adding/patching a different need must never rewrite legacy records.
-            let need = equal(item, previous) ? previous : normalizeNeed(item, previous, next, at, needMutation?.source || patch.end_state_source);
+            const mutation = needMutation?.id === item?.id ? needMutation : undefined;
+            let need = equal(item, previous) && !mutation ? previous : normalizeNeed(item, previous, needProject, at, mutation?.source || patch.end_state_source, mutation);
             if (ids.has(need.id)) throw invalid('Need ids must be unique');
             ids.add(need.id);
             return need;
@@ -158,8 +134,8 @@ function prepareProjectPatch(current, updates, { needMutation } = {}) {
     }
     if (changed) {
         patch.needs = (patch.needs || current.needs || []).map(need => {
-            if (!need.knowledge?.criterion_ids?.some(id => [...(current.end_state_criteria || []), ...(next.end_state_criteria || [])].some(c => c.id === id)) || need.status === 'dropped') return need;
-            const reopened = reopen(need, 'Linked endpoint or criteria changed; review prior evidence');
+            if (!priorKnowledgeIds.has(need.id) || !need.knowledge?.criterion_ids?.some(id => [...(current.end_state_criteria || []), ...(next.end_state_criteria || [])].some(c => c.id === id)) || need.status === 'dropped') return need;
+            const reopened = reopen(need, 'Linked endpoint or criteria changed; review prior evidence', at);
             reopened.knowledge.endpoint_revision = patch.end_state_updated_at;
             return reopened;
         });
@@ -190,8 +166,8 @@ function prepareProjectPatch(current, updates, { needMutation } = {}) {
                     // A checkpoint whose definition moved cannot keep the knowledge verified against the old one.
                     const linked = needsLinkedToCheckpoints(plan, changedIds, needsNow);
                     if (linked.size) {
-                        patch.needs = needsNow.map(need => linked.has(need.id) && need.status !== 'dropped'
-                            ? reopen(need, 'Linked checkpoint definition changed; review prior evidence')
+                        patch.needs = needsNow.map(need => priorKnowledgeIds.has(need.id) && linked.has(need.id) && need.status !== 'dropped'
+                            ? reopen(need, 'Linked checkpoint definition changed; review prior evidence', at)
                             : need);
                     }
                 }

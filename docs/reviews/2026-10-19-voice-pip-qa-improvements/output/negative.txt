@@ -1,0 +1,5 @@
+no-fix (parent behaviour): ℹ pass 4 ℹ fail 1 | first failure: Expected values to be strictly equal: 'true' !== 'false'
+routing only: ℹ pass 4 ℹ fail 1 | first failure: expanding shows the bar at once
+routing + css, synchronous focus: ℹ pass 4 ℹ fail 1 | first failure: the open setup window is focused again
+routing + focus, visibility transition on expand: ℹ pass 4 ℹ fail 1 | first failure: expanding shows the bar at once
+all fixes: ℹ pass 5 ℹ fail 0

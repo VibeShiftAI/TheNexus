@@ -241,12 +241,19 @@ export function deriveBridgeActivity(input: {
   }
   for (const [id, item] of latestTask) {
     const age = input.now - Date.parse(item.at);
+    // Stream progress can tie or slightly follow the registry update. Its
+    // two-minute animation window must not expire a run that a fresh poll
+    // still confirms is active (for example, a long simulator test).
+    const registryConfirmsActive = input.runsAvailable && input.runs.some(
+      (run) => run.taskId === id && run.executor === item.executor &&
+        run.status === "active" && Date.parse(run.startedAt) <= Date.parse(item.at),
+    );
     if (
       item.status === "active" &&
       age >= 0 &&
       (item.source === "Executor registry"
         ? input.runsAvailable
-        : age < 120000 && input.connected)
+        : registryConfirmsActive || age < 120000 && input.connected)
     )
       active.set(id, item);
   }

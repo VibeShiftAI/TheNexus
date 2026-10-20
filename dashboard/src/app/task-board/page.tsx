@@ -1,10 +1,10 @@
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
-  ArrowLeft,
   ArrowUpDown,
   Check,
   ChevronDown,
@@ -294,11 +294,8 @@ export default function TaskBoardPage() {
     <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30">
       <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
         <div className="container mx-auto flex min-h-16 flex-wrap items-center justify-between gap-3 px-6 py-3">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white">
-              <ArrowLeft size={18} />
-              <span>Dashboard</span>
-            </Link>
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+            <Breadcrumbs current="Task Board" />
             <div className="h-6 w-px bg-slate-700" />
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-cyan-500" />

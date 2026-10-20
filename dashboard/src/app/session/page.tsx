@@ -13,9 +13,9 @@
  * Nexus API self-check (the verified verdict, present after a reload).
  */
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import Link from "next/link";
-import { ArrowLeft, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import {
     describeAudience,
     nextStep,
@@ -113,9 +113,7 @@ export default function SessionPage() {
         <main className="min-h-screen bg-slate-950 text-slate-200" data-session-check="" data-session-kind={kind ?? (result ? "undetermined" : "pending")} data-session-operator={result ? result.operator.state : "pending"}>
             <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
                 <div className="mx-auto flex max-w-[900px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-                    <Link href="/" className="flex shrink-0 items-center gap-1.5 text-sm text-slate-400 hover:text-white">
-                        <ArrowLeft size={16} /> Bridge
-                    </Link>
+                    <Breadcrumbs current="Session Check" />
                     <div className="hidden h-5 w-px bg-slate-700 sm:block" />
                     <div className="min-w-0 flex-1">
                         <h1 className="flex items-center gap-2 text-base font-semibold text-white">

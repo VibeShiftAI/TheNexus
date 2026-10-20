@@ -1,0 +1,193 @@
+✔ voice chat identifies spoken conversation and uses provided audio without resynthesis (32.123125ms)
+✔ pending synthesis can be stopped before any audio exists (9.816459ms)
+✔ recording shows elapsed seconds and allows speech beyond fifteen seconds (8.420041ms)
+✔ initial silence releases capture without transcribing (4.400875ms)
+✔ cancel while waiting for microphone permission releases a late stream (3.914416ms)
+✔ unmount stops microphone tracks and cancels recording timers (2.659042ms)
+✔ unmount aborts a pending speech request (4.277041ms)
+✔ voice shares typed history and merges saved receipt rows once without socket delivery (4.134875ms)
+✔ a selection change during classification keeps the original chat and does not merge into the new one (4.594791ms)
+✔ local navigation archives the transcript and result using stable IDs in shared chat (5.923ms)
+✔ ending during a local queue request retains the transcript and records its uncertain outcome (4.700042ms)
+✔ archival failure reports the successful local action separately and never reruns it (3.796375ms)
+✔ voice waits for a selected shared chat before opening the microphone (2.556708ms)
+✔ changing chat while recording keeps the conversation where the voice turn began (3.47925ms)
+✔ voice on /task/task-42 omits unrelated route IDs from project scope (3.905ms)
+✔ voice on /studio/idea/idea-42 omits unrelated route IDs from project scope (5.767667ms)
+✔ voice captures the canonical project scope before later route navigation (4.629917ms)
+✔ writer failure keeps the completed action factual and silent without rerunning it (4.27125ms)
+✔ ending during composition aborts the writer and archives the known action with no late speech (4.429666ms)
+✔ status_report composes known server facts once without executing another action (3.950167ms)
+✔ End during transcript archival preserves already executed status_report (5.045708ms)
+✔ demo_mode composes known server facts once without executing another action (3.900959ms)
+✔ End during transcript archival preserves already executed demo_mode (4.068375ms)
+✔ away_briefing composes known server facts once without executing another action (4.039375ms)
+✔ End during transcript archival preserves already executed away_briefing (4.60175ms)
+✔ cancellation while classification is unresolved archives uncertainty about server actions (4.740916ms)
+✔ a suppressed chat receipt is displayed unchanged with no generation or playback (2.903667ms)
+✔ every voice test writes fresh audibility prose and displays the exact synthesized words (11.379458ms)
+✔ stalled writer headers times out without speech or another command (5.078042ms)
+✔ stalled writer body times out without speech or another command (4.5875ms)
+✔ hidden cancels a pending voice test without late speech (7.101292ms)
+✔ unmount cancels a pending voice test without late speech (4.707583ms)
+✔ voice test writer failure stays text only (5.389583ms)
+✖ two eligible live alerts each compose once and replayed event IDs stay deduplicated (3.606542ms)
+✔ model control composes the confirmed returned state once (4.703834ms)
+✔ malformed model control result never claims a successful enabled or disabled state (5.39025ms)
+✔ switching chat during composition archives the spoken words only in the original conversation (4.619084ms)
+✔ a hidden tab cannot begin composing a new alert even when it is still the active client (2.4885ms)
+✔ an alert cannot start playback when off changes during prose composition (7.113666ms)
+✔ an alert cannot start playback when attention changes during prose composition (6.349875ms)
+✔ an alert cannot start playback when quiet-hours changes during prose composition (4.318417ms)
+✔ an alert cannot start playback when device changes during prose composition (3.496791ms)
+✔ alert playback cancels a stalled active-device response body at its deadline (7.528125ms)
+✖ a repeated announcement speaks its saved wording and does not copy another conversation into this chat (2.124834ms)
+✔ voice test preserves the specific speech failure instead of blaming volume (5.517625ms)
+✖ announcement chat and voice visibility: success (2.876ms)
+✖ announcement chat and voice visibility: synthesis-failure (2.240875ms)
+✖ announcement chat and voice visibility: blocked (4.159792ms)
+✖ announcement chat and voice visibility: cue-failure (1.849667ms)
+✖ announcement chat and voice visibility: device-skip (2.1185ms)
+✖ a blocked task and its question produce one complete spoken announcement (2.808292ms)
+✖ recomposed question uses a fresh archive identity instead of replaying question-only wording (3.053917ms)
+ℹ tests 52
+ℹ suites 0
+ℹ pass 43
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 642.776708
+
+✖ failing tests:
+
+test at src/lib/__tests__/voice-command-bar.test.ts:507:1
+✖ two eligible live alerts each compose once and replayed event IDs stay deduplicated (3.606542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///private/tmp/voice-pip-snap-ebf0e42/dashboard/src/lib/__tests__/voice-command-bar.test.ts:527:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual'
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:704:1
+✖ a repeated announcement speaks its saved wording and does not copy another conversation into this chat (2.124834ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'The previously saved announcement.'
+  
+      at TestContext.<anonymous> (file:///private/tmp/voice-pip-snap-ebf0e42/dashboard/src/lib/__tests__/voice-command-bar.test.ts:724:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'The previously saved announcement.',
+    operator: 'strictEqual'
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: success (2.876ms)
+  AssertionError [ERR_ASSERTION]: false == true
+      at TestContext.<anonymous> (file:///private/tmp/voice-pip-snap-ebf0e42/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: synthesis-failure (2.240875ms)
+  AssertionError [ERR_ASSERTION]: false == true
+      at TestContext.<anonymous> (file:///private/tmp/voice-pip-snap-ebf0e42/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: blocked (4.159792ms)
+  AssertionError [ERR_ASSERTION]: false == true
+      at TestContext.<anonymous> (file:///private/tmp/voice-pip-snap-ebf0e42/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: cue-failure (1.849667ms)
+  AssertionError [ERR_ASSERTION]: false == true
+      at TestContext.<anonymous> (file:///private/tmp/voice-pip-snap-ebf0e42/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: device-skip (2.1185ms)
+  AssertionError [ERR_ASSERTION]: false == true
+      at TestContext.<anonymous> (file:///private/tmp/voice-pip-snap-ebf0e42/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:802:1
+✖ a blocked task and its question produce one complete spoken announcement (2.808292ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///private/tmp/voice-pip-snap-ebf0e42/dashboard/src/lib/__tests__/voice-command-bar.test.ts:833:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual'
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:853:1
+✖ recomposed question uses a fresh archive identity instead of replaying question-only wording (3.053917ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///private/tmp/voice-pip-snap-ebf0e42/dashboard/src/lib/__tests__/voice-command-bar.test.ts:896:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual'
+  }

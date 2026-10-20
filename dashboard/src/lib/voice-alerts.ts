@@ -10,6 +10,11 @@ const RATE_MS = 120_000;
 const MAX_AGE_MS = 10 * 60_000;
 const STORE_MAX = 300;
 const ROUTINE = new Set(['day-schedule', 'skill-candidates', 'board-maintenance']);
+/** The runtime callback owns retry/escalation; only its final request interrupts. */
+function callbackOwnsFailure(event: StreamEvent): boolean {
+  return event.type === 'task.failed'
+    && (event as StreamEvent & { failureRecoveryOwner?: unknown }).failureRecoveryOwner === 'callback';
+}
 export function readAlertMode(): AlertMode {
   try {
     const saved = localStorage.getItem(ALERT_MODE_KEY);
@@ -20,6 +25,7 @@ export function readAlertMode(): AlertMode {
 }
 export function eligibleAlert(e: StreamEvent, mode: AlertMode): boolean {
   if (mode === 'off') return false;
+  if (callbackOwnsFailure(e)) return false;
   // Review worker lifecycle is presence telemetry, not the parent task verdict.
   if ('taskId' in e && e.taskId?.startsWith('qa--')) return false;
   if (e.type === 'task.completed' && e.result?.summary?.trimStart().startsWith('⏸️')) return false;
@@ -57,6 +63,7 @@ export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | un
 
 /** Verify the current request immediately before composing/archiving speech. */
 export async function currentVoiceAlert(event: StreamEvent, fetcher: (url: string, init?: RequestInit) => Promise<Response> = fetch, signal?: AbortSignal): Promise<StreamEvent | null> {
+  if (callbackOwnsFailure(event)) return null;
   if (event.type !== 'hitl.created' && event.type !== 'task.blocked' && event.type !== 'task.failed') return event;
   const hitlId = event.type === 'hitl.created' ? event.request.id : event.type === 'task.blocked' ? event.blockedOnHitlId : undefined;
   const taskId = 'taskId' in event ? event.taskId : undefined;

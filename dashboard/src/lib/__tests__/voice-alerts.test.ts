@@ -295,3 +295,30 @@ test('a block arriving during question prose preparation requeues complete facts
   assert.equal(await alerts.canPlay(question, new AbortController().signal, () => true, block as any), true);
   finish();
 });
+
+for (const mode of ['attention', 'conversational'] as const) test(`callback-owned failed attempts never interrupt in ${mode} mode`, async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  const attempt = event('task.failed', { failureRecoveryOwner: 'callback', error: 'Retrying with another executor' });
+  assert.equal(eligibleAlert(attempt, mode), false);
+  f.alerts.update([attempt], mode); await tick();
+  await f.advance(120000);
+  assert.equal(f.spoken.length, 0);
+});
+test('callback-owned attempt and canonical input request produce one actionable announcement', async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  const attempt = event('task.failed', { failureRecoveryOwner: 'callback', error: 'Attempt stopped' });
+  const question = f.question('recovery', { request: { id: 'recovery', taskId: 'task-1', question: 'Which executor should retry?', metadata: { kind: 'qa-blocked' } } });
+  f.alerts.update([attempt, question], 'conversational'); await tick();
+  await f.advance(120000);
+  assert.deepEqual(f.spoken.map(s => s.event.eventId), ['recovery']);
+  assert.equal(f.spoken[0].facts.question, 'Which executor should retry?');
+  assert.equal(f.spoken[0].facts.actionHref, '/inbox#recovery');
+});
+test('failed recovery owner leaves an unowned failure independently deliverable', async t => {
+  const f = pairFixture(); t.after(() => f.alerts.dispose());
+  f.alerts.update([event('task.failed', { failureRecoveryOwner: 'callback' })], 'attention'); await tick();
+  const fallback = event('task.failed', { eventId: 'fallback', error: 'Recovery request could not be saved' });
+  f.alerts.update([fallback], 'attention'); await tick();
+  assert.deepEqual(f.spoken.map(s => s.event.eventId), ['fallback']);
+  assert.equal(eligibleAlert(event('task.failed', { failureRecoveryOwner: 'unknown' }), 'attention'), true);
+});

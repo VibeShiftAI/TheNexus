@@ -16,6 +16,7 @@ const need = {
   created_at: at,
   knowledge: {
     question: "Which database survives failover?",
+    purpose: "Choose the recovery architecture", resolution: { method: "experiment", owner: "Operator", next_action: "Run the recovery trial" }, revision: 4,
     tags: ["database"],
     satisfaction_test: "Document a recovery trial",
     criterion_ids: ["c"],
@@ -63,6 +64,22 @@ const button = (container, label) =>
   [...container.querySelectorAll("button")].find(
     (b) => b.textContent.trim() === label,
   );
+async function inputValue(container, label, value) {
+  const element = [...container.querySelectorAll("label")].find(l => l.textContent.startsWith(label))?.querySelector("input, textarea, select");
+  assert.ok(element, `Missing field ${label}`);
+  await act(async () => {
+    const prototype = element.tagName === "TEXTAREA" ? window.HTMLTextAreaElement.prototype : element.tagName === "SELECT" ? window.HTMLSelectElement.prototype : window.HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(prototype, "value").set.call(element, value);
+    element.dispatchEvent(new window.Event(element.tagName === "SELECT" ? "change" : "input", { bubbles: true }));
+  });
+}
+async function verify(ui) {
+  assert.ok(button(ui.container, "Verify answer"));
+  await act(async () => button(ui.container, "Verify answer").click());
+  await inputValue(ui.container, "Verification rationale", "The trial demonstrates the documented recovery test.");
+  await act(async () => ui.container.querySelector('[aria-label="Evidence for verification"] input[type="checkbox"]').click());
+  await act(async () => button(ui.container, "Confirm verification").click());
+}
 async function mount(Component, props) {
   const container = document.createElement("div");
   document.body.append(container);
@@ -77,6 +94,65 @@ async function mount(Component, props) {
     },
   };
 }
+
+test('main knowledge list contains only action items; completed steps and revision consequences stay in history', async () => {
+  const complete={...need,id:'complete',status:'met',knowledge:{...need.knowledge,question:'Already applied question',verified_at:at,verification:{revision:4,rationale:'Trial passed',evidence_refs:['trial.md']},applications:[{id:'a',task_id:'t',answer_revision:4,status:'applied',notes:'Implemented'}]}};
+  const deferred={...need,id:'later',knowledge:{...need.knowledge,deferred_reason:'After launch'}};
+  const ui=await mount(ProjectNeedsPanel,{project:{...project,needs:[complete,deferred,need]},tasks:[],onUpdate:()=>{}});
+  try {
+    const actions=ui.container.querySelector('[aria-label="Needs requiring action"]');
+    assert.ok(actions);
+    assert.deepEqual([...actions.children].map(n=>n.id),['need-n']);
+    const history=[...ui.container.querySelectorAll('details')].find(d=>d.querySelector('summary')?.textContent==='Completed needs (1)');
+    assert.ok(history);
+    assert.equal(history.open,false);
+    assert.ok(button(history,'Verified').disabled);
+    assert.ok(button(history,'Applied').disabled);
+    assert.doesNotMatch(history.textContent,/Blocking/);
+    assert.match(history.textContent,/Nothing left to do for this answer/);
+    await act(async()=>button(history,'Revise applied answer').click());
+    assert.match(ui.container.textContent,/Started or completed work gets a new follow-up task/);
+    await inputValue(ui.container,'Answer','Use B instead');
+    assert.ok(button(ui.container,'Save revision & update work'));
+    assert.ok(button(actions,'Apply after verification').disabled);
+  } finally {ui.close();}
+});
+
+test('partially applied legacy answers can obtain explicit verification before applying to remaining work', async () => {
+  const legacy={...need,status:'met',knowledge:{...need.knowledge,revision:0,verified_at:at,verification:undefined,task_ids:['t','remaining'],application:{status:'applied',task_id:'t'}}};
+  const ui=await mount(ProjectNeedsPanel,{project:{...project,needs:[legacy]},tasks:[],onUpdate:()=>{}});
+  try {
+    assert.ok(button(ui.container,'Verify answer'));
+    assert.equal(button(ui.container,'Verify answer').disabled,false);
+    assert.ok(button(ui.container,'Apply after verification').disabled);
+    await act(async()=>button(ui.container,'Verify answer').click());
+    assert.ok(button(ui.container,'Confirm verification'));
+  } finally {ui.close();}
+});
+
+test('retired applied questions require reopening or their successor before revision', async () => {
+  for (const retired of [{status:'dropped'},{status:'met',superseded_by:['successor']}]) {
+    const n={...need,status:retired.status,knowledge:{...need.knowledge,superseded_by:retired.superseded_by,applications:[{task_id:'t',status:'applied',answer_revision:4}]}};
+    const ui=await mount(ProjectNeedsPanel,{project:{...project,needs:[n]},tasks:[],onUpdate:()=>{}});
+    try {
+      assert.ok(button(ui.container,'Revise applied answer').disabled);
+      if (retired.status==='dropped') assert.equal(button(ui.container,'Reopen').disabled,false);
+      else assert.match(ui.container.textContent,/Revise the successor question/);
+    } finally {ui.close();}
+  }
+});
+
+test('reverse-linked pending tasks remain visible in the action list', async () => {
+  const n={...need,status:'met',knowledge:{...need.knowledge,blocking:false,verified_at:at,verification:{revision:4,rationale:'Trial passed',evidence_refs:['trial.md']},applications:[{task_id:'t',answer_revision:4,status:'applied'}]}};
+  const ui=await mount(ProjectNeedsPanel,{project:{...project,needs:[n]},tasks:[{id:'pending',title:'Pending application',status:'planning',metadata:{knowledge_need_ids:['n']}}],onUpdate:()=>{}});
+  try {
+    const actions=ui.container.querySelector('[aria-label="Needs requiring action"]');
+    assert.equal(actions.children.length,1);
+    assert.match(actions.textContent,/Linked to unfinished work/);
+    assert.match(actions.textContent,/Pending application/);
+    assert.ok(button(actions,'Apply to task'));
+  } finally {ui.close();}
+});
 
 test("endpoint shows unverifiable evidence and accepts a proposal only after the explicit action", async () => {
   const original = fetch;
@@ -108,7 +184,7 @@ test("endpoint shows unverifiable evidence and accepts a proposal only after the
   }
 });
 
-test("structured need satisfies through a scoped PATCH and tag opens actual knowledge retrieval", async () => {
+test("structured need verifies through an explicit guarded review and tag opens actual knowledge retrieval", async () => {
   const original = fetch;
   const calls = [];
   globalThis.fetch = async (url, options) => {
@@ -164,11 +240,13 @@ test("structured need satisfies through a scoped PATCH and tag opens actual know
       /\/api\/ingestion-control\/knowledge\?term=database/,
     );
     assert.match(ui.container.textContent, /Recovery trial used A/);
-    await act(async () => button(ui.container, "Satisfy").click());
+    await verify(ui);
     const call = calls.find((c) => c.options?.method === "PATCH");
     assert.match(call.url, /\/projects\/p\/needs\/n\?/);
     assert.deepEqual(JSON.parse(call.options.body), {
       status: "met",
+      expected_knowledge_revision: 4,
+      knowledge: { verification: { rationale: "The trial demonstrates the documented recovery test.", evidence_refs: ["trial.md"] } },
       source: "operator",
     });
     assert.equal(
@@ -199,7 +277,10 @@ test("need without evidence cannot be satisfied, and retrieval failure is explic
     onUpdate: () => {},
   });
   try {
-    assert.equal(button(ui.container, "Satisfy").disabled, true);
+    assert.ok(button(ui.container, "Review answer"));
+    assert.equal(button(ui.container, "Review answer").disabled, false);
+    assert.equal(button(ui.container, "Verify answer").disabled, true);
+    assert.match(ui.container.textContent, /Add an evidence reference/);
     await act(async () => button(ui.container, "#database").click());
     assert.match(ui.container.textContent, /Cortex offline/);
     assert.match(ui.container.textContent, /unavailable/i);
@@ -209,46 +290,31 @@ test("need without evidence cannot be satisfied, and retrieval failure is explic
   }
 });
 
-test("editing application feedback sends a partial knowledge patch and retains verified evidence", async () => {
+test("application records use a stable id and separate version-bound payload", async () => {
   const original = fetch;
   const calls = [];
   globalThis.fetch = async (url, options) => {
     if (!options?.method) return { ok: true, json: async () => project };
     calls.push(JSON.parse(options.body));
-    return {
-      ok: true,
-      json: async () => ({
-        success: true,
-        need,
-        needs: [need],
-        updated_at: "v2",
-      }),
-    };
+    return { ok: false, status: 409, json: async () => ({ error: "Reload before saving; your text is preserved" }) };
   };
-  const ui = await mount(ProjectNeedsPanel, {
-    project,
-    tasks: [],
-    onUpdate: () => {},
-  });
+  const verified = { ...need, status: "met", knowledge: { ...need.knowledge, verified_at: at, verification: { rationale: "Trial passed", evidence_refs: ["trial.md"], revision: 4 } } };
+  const ui = await mount(ProjectNeedsPanel, { project: { ...project, needs: [verified] }, tasks: [{ id: "t", title: "Ship recovery" }], onUpdate: () => {} });
   try {
-    await act(async () => button(ui.container, "Edit need").click());
-    const outcome = [...ui.container.querySelectorAll("label")]
-      .find((l) => l.textContent.startsWith("Application outcome"))
-      .querySelector("select");
-    await act(async () => {
-      outcome.value = "insufficient";
-      outcome.dispatchEvent(new window.Event("change", { bubbles: true }));
-    });
-    await act(async () => button(ui.container, "Save need").click());
-    assert.equal(calls[0].knowledge.application.status, "insufficient");
-    assert.ok(calls[0].knowledge.application.at);
-    assert.equal("evidence" in calls[0].knowledge, false);
-    assert.equal("answer" in calls[0].knowledge, false);
-    assert.equal("criterion_ids" in calls[0].knowledge, false);
-  } finally {
-    ui.close();
-    globalThis.fetch = original;
-  }
+    assert.ok(button(ui.container, "Apply to task"));
+    await act(async () => button(ui.container, "Apply to task").click());
+    await inputValue(ui.container, "Application outcome", "applied");
+    await inputValue(ui.container, "Application evidence reference", "task:t");
+    await inputValue(ui.container, "Application explanation", "Used the trial to configure recovery.");
+    await act(async () => button(ui.container, "Record application").click());
+    assert.match(ui.container.textContent, /your text is preserved/);
+    await act(async () => button(ui.container, "Record application").click());
+    assert.equal(calls[0].record_application.id, calls[1].record_application.id);
+    assert.equal(calls[0].record_application.answer_revision, 4);
+    assert.equal(calls[0].record_application.task_id, "t");
+    assert.equal(calls[0].record_application.evidence_ref, "task:t");
+    assert.equal(calls[0].knowledge, undefined);
+  } finally { ui.close(); globalThis.fetch = original; }
 });
 
 test("a successful need save with a failed project refresh never promotes its new guard onto stale fields", async () => {
@@ -272,7 +338,7 @@ test("a successful need save with a failed project refresh never promotes its ne
     onUpdate: (p) => updates.push(p),
   });
   try {
-    await act(async () => button(ui.container, "Satisfy").click());
+    await verify(ui);
     assert.equal(updates.length, 0);
     assert.match(ui.container.textContent, /Need saved.*reload/i);
   } finally {
@@ -425,4 +491,41 @@ test("mission brief keeps stale met knowledge visible among outstanding needs", 
   } finally {
     ui.close();
   }
+});
+
+test("received evidence without an answer opens a usable editor and preserves text on a conflict", async () => {
+  const original = fetch;
+  const calls = [];
+  globalThis.fetch = async (_, options) => { calls.push(JSON.parse(options.body)); return { ok: false, status: 409, json: async () => ({ error: "Knowledge revision changed; reload before saving" }) }; };
+  const ui = await mount(ProjectNeedsPanel, { project: { ...project, needs: [{ ...need, knowledge: { ...need.knowledge, answer: "", research_status: "evidence_received" } }] }, tasks: [], onUpdate: () => {} });
+  try {
+    assert.match(ui.container.textContent, /Record an answer before verification/);
+    assert.ok(button(ui.container, "Review evidence"));
+    assert.equal(button(ui.container, "Review evidence").disabled, false);
+    await act(async () => button(ui.container, "Review evidence").click());
+    await inputValue(ui.container, "Answer", "The observed failover supports A.");
+    await act(async () => button(ui.container, "Save need").click());
+    assert.equal(calls[0].expected_knowledge_revision, 4);
+    assert.deepEqual(calls[0].knowledge, { answer: "The observed failover supports A." });
+    assert.match(ui.container.textContent, /Knowledge revision changed/);
+    assert.equal([...ui.container.querySelectorAll("label")].find(l => l.textContent.startsWith("Answer")).querySelector("textarea").value, "The observed failover supports A.");
+  } finally { ui.close(); globalThis.fetch = original; }
+});
+
+test("stale questions show context, separate history, and require deliberate evidence selection", async () => {
+  const stale = { ...need, knowledge: { ...need.knowledge, research_status: "stale", review_reason: "Platform changed", history: [{ revision: 3, question: "Old question", satisfaction_test: "Old test", answer: "Earlier answer", evidence: [{ ref: "task:t" }], at }], applications: [{ id: "app-old", task_id: "t", status: "insufficient", answer_revision: 3, notes: "Old application result", at }] } };
+  const ui = await mount(ProjectNeedsPanel, { project: { ...project, needs: [stale] }, tasks: [{ id: "t", title: "Recovery task" }], onUpdate: () => {} });
+  try {
+    for (const text of ["Choose the recovery architecture", "Run the recovery trial", "Operator", "Platform changed", "Earlier answer", "Old application result"]) assert.ok(ui.container.textContent.includes(text), text);
+    assert.equal(button(ui.container, "Satisfy"), undefined);
+    await act(async () => button(ui.container, "Verify answer").click());
+    const dialog = ui.container.querySelector('[role="dialog"]');
+    assert.ok(dialog);
+    assert.match(dialog.textContent, /Document a recovery trial/);
+    assert.equal(button(ui.container, "Confirm verification").disabled, true);
+    await inputValue(ui.container, "Verification rationale", "The current scope is covered.");
+    assert.equal(button(ui.container, "Confirm verification").disabled, true);
+    await act(async () => dialog.querySelector('input[type="checkbox"]').click());
+    assert.equal(button(ui.container, "Confirm verification").disabled, false);
+  } finally { ui.close(); }
 });

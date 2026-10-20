@@ -9,10 +9,9 @@
  * ORGANS / PIPELINE / DIRECTIVES / EPOCHS data below and bump ATLAS_REV.
  */
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import {
-    ArrowLeft,
     BookOpen,
     BrainCircuit,
     Cpu,
@@ -1170,15 +1169,9 @@ export default function CodexPage() {
 
             {/* Header HUD */}
             <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-                <div className="container mx-auto flex h-16 items-center justify-between px-6">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/"
-                            className="flex items-center gap-2 text-slate-400 transition-colors hover:text-white"
-                        >
-                            <ArrowLeft size={18} />
-                            <span className="text-sm">Dashboard</span>
-                        </Link>
+                <div className="container mx-auto flex min-h-16 flex-wrap gap-y-2 py-3 items-center justify-between px-6">
+                    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+                        <Breadcrumbs current="Codex" />
                         <div className="h-6 w-px bg-slate-700" />
                         <div className="flex items-center gap-2">
                             <div className="h-2 w-2 animate-pulse rounded-full bg-cyan-500" />

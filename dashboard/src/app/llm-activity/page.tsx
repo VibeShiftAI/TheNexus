@@ -1,17 +1,16 @@
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import React, { useState, useCallback } from "react";
 import { useLiveRefetch } from "@/components/live-board-state";
 
 import {
   Activity,
   RefreshCw,
-  ArrowLeft,
   Brain,
   Cpu,
   AlertTriangle,
 } from "lucide-react";
-import Link from "next/link";
 import {
   BarChart,
   Bar,
@@ -130,11 +129,9 @@ export default function LLMActivityPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0f", color: "#e2e8f0", padding: "24px", fontFamily: "ui-sans-serif, system-ui" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/" style={{ color: "#94a3b8", display: "flex", alignItems: "center" }}>
-            <ArrowLeft size={20} />
-          </Link>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 24 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", minWidth: 0, maxWidth: "100%", alignItems: "center", gap: 12 }}>
+          <Breadcrumbs current="LLM Activity" />
           <Brain size={24} color="#d97757" />
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>LLM Activity — who is calling which AI</h1>
         </div>

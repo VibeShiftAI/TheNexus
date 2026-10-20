@@ -11,6 +11,7 @@
  * the final verdict.
  */
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveRefetch } from "@/components/live-board-state";
 import Link from "next/link";
@@ -18,7 +19,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
     AlertTriangle,
-    ArrowLeft,
     CheckCircle2,
     ChevronDown,
     ChevronRight,
@@ -1075,12 +1075,10 @@ export default function CouncilPage() {
 
             {/* Header */}
             <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-                <div className="container mx-auto flex h-16 items-center justify-between px-6">
-                    <div className="flex items-center gap-4">
-                        <Link href="/" className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
-                            <ArrowLeft size={20} />
-                        </Link>
-                        <div className="flex items-center gap-3">
+                <div className="container mx-auto flex min-h-16 flex-wrap gap-y-2 py-3 items-center justify-between px-6">
+                    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+                        <Breadcrumbs current="Council" />
+                        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
                             <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-violet-500/20 border border-amber-500/20">
                                 <Landmark size={20} className="text-amber-300" />
                             </div>

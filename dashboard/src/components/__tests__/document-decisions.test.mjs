@@ -186,6 +186,7 @@ test('a new revision captured while reading turns the decision into a conflict; 
     await settle();
     const history = card(c).querySelector('[data-document-history]');
     assert.equal(history.querySelectorAll('[data-history-revision]').length, 2);
+    assert.equal(history.querySelector('[data-history-revision="rev-1"] a').getAttribute('href'), '/api/documents/doc-1/raw?revision=rev-1&download=1', 'previous versions remain linked after a new review starts');
     assert.match(history.querySelector('[data-history-revision="rev-2"]').textContent, /rev bbbbbbbb[\s\S]*current[\s\S]*Approved/);
     assert.match(history.querySelector('[data-history-revision="rev-1"]').textContent, /Feedback draft · 1 comment/);
     assert.match(c.querySelector('[data-comment-list]').textContent, /Script the rollback\./, 'old comments persist after the decision');

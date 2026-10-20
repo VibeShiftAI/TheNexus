@@ -251,3 +251,52 @@ test('an open draft on the older revision keeps its unsaved text and its revisio
     assert.match(c.querySelector('[data-comment-list]').textContent, /Summarise the studies here\./);
   } finally { t.cleanup(); }
 });
+
+test('an already-open finished review discovers the replacement revision after delivery, retaining previous review access', async () => {
+  const srv = server({ review: submittedReview(), current: 'rev-1' });
+  const t = mount(srv);
+  try {
+    await settle();
+    assert.equal(headerRevision(t.container), 'aaaaaaaa');
+    srv.state.current = 'rev-2';
+    await settle(1150);
+    assert.equal(headerRevision(t.container), 'bbbbbbbb');
+    assert.match(article(t.container).textContent, /Provenance: registered after review/);
+    assert.match(t.container.querySelector('[data-review-panel]').textContent, /Previous review/);
+    assert.ok(button(t.container, 'Review this revision'));
+    await click(button(t.container, 'View reviewed revision'));
+    srv.state.current = 'rev-3';
+    await settle(1150);
+    assert.equal(headerRevision(t.container), 'aaaaaaaa', 'refresh preserves explicit historical viewing');
+    await click(button(t.container, 'View current file'));
+    assert.equal(headerRevision(t.container), 'cccccccc');
+    assert.equal(srv.calls.filter(x => x.method !== 'GET').length, 0, 'refresh never creates duplicate documents or reviews');
+  } finally { t.cleanup(); }
+});
+
+test('a slow older refresh cannot replace a newer revision already displayed', async () => {
+  const srv = server({ review: submittedReview(), current: 'rev-1' });
+  const t = mount(srv);
+  let release;
+  try {
+    await settle();
+    const handler = srv.handler;
+    let delayNext = true;
+    srv.handler = async (url, init) => {
+      const response = await handler(url, init);
+      if (url.pathname === '/api/documents/doc-1' && delayNext) {
+        delayNext = false;
+        await new Promise(resolve => { release = resolve; });
+      }
+      return response;
+    };
+    await act(async () => { window.dispatchEvent(new window.Event('focus')); });
+    srv.state.current = 'rev-2';
+    await act(async () => { window.dispatchEvent(new window.Event('focus')); });
+    await settle();
+    assert.equal(headerRevision(t.container), 'bbbbbbbb');
+    await act(async () => { release(); });
+    await settle();
+    assert.equal(headerRevision(t.container), 'bbbbbbbb', 'the stale response is discarded');
+  } finally { release?.(); t.cleanup(); }
+});

@@ -1,0 +1,6 @@
+expanded  {"url":"/task-board","collapsed":"false","visibility":"visible","opacity":"1","dock":{"x":1145,"y":721,"w":277,"h":44},"voiceVisible":true,"conversationVisible":true,"pip":"Collapse voice controls","viewport":"1440x813"}
+collapsed {"url":"/task-board","collapsed":"true","visibility":"hidden","opacity":"0","dock":{"x":1362,"y":723,"w":60,"h":42},"voiceVisible":false,"conversationVisible":false,"pip":"Expand voice controls","viewport":"1440x813"} stored= 1
+reloaded  {"url":"/task-board","collapsed":"true","visibility":"hidden","opacity":"0","dock":{"x":1362,"y":723,"w":60,"h":42},"voiceVisible":false,"conversationVisible":false,"pip":"Expand voice controls","viewport":"1440x813"}
+expanded2 {"url":"/task-board","collapsed":"false","visibility":"visible","opacity":"1","dock":{"x":1145,"y":721,"w":277,"h":44},"voiceVisible":true,"conversationVisible":true,"pip":"Collapse voice controls","viewport":"1440x813"}
+settings dialog opens: true
+after collapsed shortcut {"url":"/task-board","collapsed":"false","visibility":"visible","opacity":"0.996275","dock":{"x":1145,"y":721,"w":277,"h":44},"voiceVisible":true,"conversationVisible":true,"pip":"Collapse voice controls","viewport":"1440x813"} dialog visibility visible

@@ -20,14 +20,20 @@ const text = (value) => ({ content: [{ type: 'text', text: JSON.stringify(value,
 
 // These input schemas describe partial writes. The canonical contract is
 // validated at the Nexus database boundary after merging with the saved card.
+const evidenceInput = z.object({ref:z.string().min(1),summary:z.string().optional(),checked_at:z.string().optional()});
+const applicationInput = z.object({id:z.string().min(1),task_id:z.string().min(1),status:z.enum(['ready','applied','validated','not_relevant','untried','successful','insufficient','outdated']),answer_revision:z.number().int().nonnegative().optional(),notes:z.string().min(1),evidence_ref:z.string().optional(),challenges_knowledge:z.boolean().optional()});
 const knowledgeShape = {
+  purpose:z.string().min(1), group:z.string(),
+  resolution:z.object({method:z.enum(['existing_knowledge','research','experiment','human','decision','acceptance']),owner:z.string().optional(),next_action:z.string().optional()}),
+  deferred_until:z.string(), deferred_reason:z.string(), superseded_by:z.array(z.string()),
+  verification:z.object({rationale:z.string().min(1),evidence_refs:z.array(z.string().min(1)).min(1)}),
   question: z.string().min(1),
   tags: z.array(z.string()),
   satisfaction_test: z.string().min(1),
   criterion_ids: z.array(z.string()),
   task_ids: z.array(z.string()),
   blocking: z.boolean(),
-  research_status: z.enum(['open', 'researching', 'evidence_ready', 'stale']),
+  research_status: z.enum(['open', 'researching', 'evidence_received', 'awaiting_answer', 'evidence_ready', 'stale']),
   answer: z.string(),
   evidence: z.array(z.object({ ref: z.string().min(1), summary: z.string().optional(), checked_at: z.string().optional() })),
   endpoint_revision: z.string(),
@@ -35,6 +41,7 @@ const knowledgeShape = {
   verified_by: z.string(),
   review_reason: z.string(),
   application: z.object({
+    id: z.string().optional(), answer_revision: z.number().int().nonnegative().optional(), challenges_knowledge: z.boolean().optional(),
     status: z.enum(['untried', 'successful', 'insufficient', 'outdated']),
     task_id: z.string().optional(), at: z.string().optional(),
     evidence_ref: z.string().optional(), notes: z.string().optional(),
@@ -111,14 +118,17 @@ function register(server, ctx) {
           .describe('capability = missing component/ability, resource = compute/money/hardware, credential = key/account Robert must provision, decision = human call needed, information = knowledge to hunt first.'),
         description: z.string().describe('What is missing, concretely.'),
         notes: z.string().optional(),
-        knowledge: knowledgePatch.optional().describe('Structured question; include question and satisfaction_test. Satisfaction requires answer and evidence.'),
+        knowledge: knowledgePatch.optional().describe('Structured question; include question, purpose, resolution and satisfaction_test. Verification is separate after saving an answer and evidence.'),
       }).optional().describe('Declare one thing the project is missing on the way to its end state.'),
       resolve_need: z.object({
-        id: z.string().describe('Need id (from nexus_projects_list open_needs).'),
+        id: z.string().describe('Need id (from nexus_projects_list needs).'),
+        expected_knowledge_revision: z.number().int().nonnegative().optional().describe('Current knowledge revision, required for answer edits and verification.'),
+        append_evidence: z.array(evidenceInput).optional(),
+        record_application: applicationInput.optional(),
         status: z.enum(['met', 'dropped', 'open']).optional().describe('met = satisfied, dropped = no longer relevant, open = reopen.'),
         notes: z.string().optional().describe('How it was met / why dropped.'),
         description: z.string().optional(),
-        knowledge: knowledgePatch.optional().describe('Merge knowledge fields or record application feedback. Application feedback does not require status; insufficient/outdated reopens stale.'),
+        knowledge: knowledgePatch.optional().describe('Merge knowledge fields. Verification requires current expected_knowledge_revision, a saved answer, and verification rationale with evidence_refs. Use record_application for per-task history.'),
       }).optional().describe('Close out (or reopen) one existing need.'),
     },
     async ({ project_id, status, priority, description, end_state, endpoint, end_state_criteria, end_state_assessment, checkpoints, end_state_reason, upgrade_posture, add_need, resolve_need, expected_status, expected_end_state_updated_at, expected_updated_at, expected_checkpoints_revision }) => {

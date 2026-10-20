@@ -1,0 +1,238 @@
+✔ every module the root layout imports is a Fast Refresh boundary, except the ones already listed (1.4155ms)
+✔ the voice dock storage key is read from the lib module, not exported by the component (0.111292ms)
+✔ the export reader distinguishes components from values (0.324458ms)
+✔ voice chat identifies spoken conversation and uses provided audio without resynthesis (39.102667ms)
+✔ pending synthesis can be stopped before any audio exists (11.293417ms)
+✔ recording shows elapsed seconds and allows speech beyond fifteen seconds (11.789834ms)
+✔ initial silence releases capture without transcribing (5.354083ms)
+✔ cancel while waiting for microphone permission releases a late stream (5.240583ms)
+✔ unmount stops microphone tracks and cancels recording timers (3.844875ms)
+✔ unmount aborts a pending speech request (6.290083ms)
+✔ voice shares typed history and merges saved receipt rows once without socket delivery (6.218875ms)
+✔ a selection change during classification keeps the original chat and does not merge into the new one (8.009792ms)
+✔ local navigation archives the transcript and result using stable IDs in shared chat (6.5365ms)
+✔ ending during a local queue request retains the transcript and records its uncertain outcome (6.00725ms)
+✔ archival failure reports the successful local action separately and never reruns it (4.922666ms)
+✔ voice waits for a selected shared chat before opening the microphone (3.563209ms)
+✔ changing chat while recording keeps the conversation where the voice turn began (5.056042ms)
+✔ voice on /task/task-42 omits unrelated route IDs from project scope (6.493916ms)
+✔ voice on /studio/idea/idea-42 omits unrelated route IDs from project scope (5.324625ms)
+✔ voice captures the canonical project scope before later route navigation (5.401667ms)
+✔ writer failure keeps the completed action factual and silent without rerunning it (5.616584ms)
+✔ ending during composition aborts the writer and archives the known action with no late speech (6.312916ms)
+✔ status_report composes known server facts once without executing another action (6.720833ms)
+✔ End during transcript archival preserves already executed status_report (6.185292ms)
+✔ demo_mode composes known server facts once without executing another action (5.732708ms)
+✔ End during transcript archival preserves already executed demo_mode (5.476875ms)
+✔ away_briefing composes known server facts once without executing another action (5.598042ms)
+✔ End during transcript archival preserves already executed away_briefing (6.716917ms)
+✔ cancellation while classification is unresolved archives uncertainty about server actions (5.265ms)
+✔ a suppressed chat receipt is displayed unchanged with no generation or playback (4.432084ms)
+✔ every voice test writes fresh audibility prose and displays the exact synthesized words (14.701167ms)
+✔ stalled writer headers times out without speech or another command (8.382083ms)
+✔ stalled writer body times out without speech or another command (6.567041ms)
+✔ hidden cancels a pending voice test without late speech (7.810708ms)
+✔ unmount cancels a pending voice test without late speech (6.373541ms)
+✔ voice test writer failure stays text only (7.668375ms)
+✖ two eligible live alerts each compose once and replayed event IDs stay deduplicated (5.739542ms)
+✔ model control composes the confirmed returned state once (6.716834ms)
+✔ malformed model control result never claims a successful enabled or disabled state (5.83725ms)
+✔ switching chat during composition archives the spoken words only in the original conversation (6.6195ms)
+✔ a hidden tab cannot begin composing a new alert even when it is still the active client (3.175791ms)
+✔ an alert cannot start playback when off changes during prose composition (10.204125ms)
+✔ an alert cannot start playback when attention changes during prose composition (10.422292ms)
+✔ an alert cannot start playback when quiet-hours changes during prose composition (3.824417ms)
+✔ an alert cannot start playback when device changes during prose composition (3.523625ms)
+✔ alert playback cancels a stalled active-device response body at its deadline (3.587334ms)
+✖ a repeated announcement speaks its saved wording and does not copy another conversation into this chat (2.448208ms)
+✔ voice test preserves the specific speech failure instead of blaming volume (7.689083ms)
+✖ announcement chat and voice visibility: success (4.037416ms)
+✖ announcement chat and voice visibility: synthesis-failure (2.73675ms)
+✖ announcement chat and voice visibility: blocked (4.750459ms)
+✖ announcement chat and voice visibility: cue-failure (2.44275ms)
+✖ announcement chat and voice visibility: device-skip (3.012667ms)
+✖ a blocked task and its question produce one complete spoken announcement (3.445375ms)
+✖ recomposed question uses a fresh archive identity instead of replaying question-only wording (3.218084ms)
+✔ one root dock mounts inside existing providers and the home page owns no voice instance (0.508666ms)
+✔ dock preserves the actual recording and controls on ordinary navigation, then releases them on login (148.601667ms)
+✔ collapse pip hides the bar without unmounting it, remembers the choice, and expands back to working controls (13.829ms)
+✔ a saved collapsed dock restores collapsed and voice setup expands it so the setup dialog is visible (12.920875ms)
+✔ Alt+Shift+V on a collapsed dock expands it and focuses setup, also when setup was left open; a held key does neither (15.73625ms)
+✔ setup event and non-repeating shortcut open and focus setup without capturing (41.980958ms)
+✔ labelled launcher routes to the existing setup without a second capture owner (13.073833ms)
+✔ local check uses selected exact input with preferred constraints and stops five seconds after grant (20.826375ms)
+✔ pending local check releases a late microphone after Stop check (11.54ms)
+✔ pending local check releases a late microphone after Escape (8.624792ms)
+✔ pending local check releases a late microphone after hidden (7.890583ms)
+✔ pending local check releases a late microphone after preemption (7.786791ms)
+✔ pending local check releases a late microphone after unmount (7.021208ms)
+✔ pending local check releases a late microphone after device change (8.098666ms)
+✔ microphone error NotAllowedError gives useful guidance without exception detail (9.074459ms)
+✔ microphone error NotFoundError gives useful guidance without exception detail (8.406083ms)
+✔ microphone error OverconstrainedError gives useful guidance without exception detail (9.309917ms)
+✔ microphone error NotReadableError gives useful guidance without exception detail (8.574209ms)
+✔ microphone error UnexpectedError gives useful guidance without exception detail (8.743834ms)
+✔ unsupported capture keeps visible setup actions and explains recovery {"secure":false} (5.034167ms)
+✔ unsupported capture keeps visible setup actions and explains recovery {"media":false} (6.199833ms)
+✔ unsupported capture keeps visible setup actions and explains recovery {"recorder":false} (5.083958ms)
+✔ raw check can work without MediaRecorder or a permissions query and reports missing meter honestly (8.944333ms)
+✔ silence reports no signal without transcribing (8.620583ms)
+✔ saved missing device is not silently replaced; choosing default recovers and applies to conversation (10.107958ms)
+✔ selection persists only per browser and changes cancel capture without rearming it (10.168291ms)
+✔ an older enumeration cannot replace refreshed devices or cancel the current check (8.448666ms)
+✔ unplugging selected device stops its check and presents reconnect guidance (11.468125ms)
+✔ blocked local storage does not prevent manual setup or microphone check (9.398208ms)
+✔ Test Praxis voice ends conversation, uses shared speech, and Stop speaking cancels the request (9.743625ms)
+✔ explicit speech playback preempts local checking without starting follow-up capture (12.37275ms)
+✔ a saved wake preference never arms the microphone on mount or opening setup (4.387708ms)
+✔ concealed devices before permission do not reject a saved exact microphone (12.793ms)
+✔ active local check stops its stream and timers on Escape (8.076875ms)
+✔ active local check stops its stream and timers on preemption (7.861416ms)
+✔ active local check stops its stream and timers on unmount (5.959959ms)
+✔ disconnecting default microphone after signal reports recovery instead of Ready (11.55825ms)
+✔ disconnecting selected microphone after signal reports recovery instead of Ready (8.347083ms)
+✔ a track already ended at grant cannot begin a signal check (4.032083ms)
+✔ the final check reads track state even when no ended event arrived (4.474292ms)
+✔ missing microphone discovery leaves playing output test owned (6.681ms)
+✔ missing microphone discovery leaves pending output test owned (4.91625ms)
+ℹ tests 97
+ℹ suites 0
+ℹ pass 88
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 783.655667
+
+✖ failing tests:
+
+test at src/lib/__tests__/voice-command-bar.test.ts:507:1
+✖ two eligible live alerts each compose once and replayed event IDs stay deduplicated (5.739542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Volumes/Projects/TheNexus/dashboard/src/lib/__tests__/voice-command-bar.test.ts:527:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual'
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:704:1
+✖ a repeated announcement speaks its saved wording and does not copy another conversation into this chat (2.448208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'The previously saved announcement.'
+  
+      at TestContext.<anonymous> (file:///Volumes/Projects/TheNexus/dashboard/src/lib/__tests__/voice-command-bar.test.ts:724:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'The previously saved announcement.',
+    operator: 'strictEqual'
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: success (4.037416ms)
+  AssertionError [ERR_ASSERTION]: false == true
+      at TestContext.<anonymous> (file:///Volumes/Projects/TheNexus/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: synthesis-failure (2.73675ms)
+  AssertionError [ERR_ASSERTION]: false == true
+      at TestContext.<anonymous> (file:///Volumes/Projects/TheNexus/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: blocked (4.750459ms)
+  AssertionError [ERR_ASSERTION]: false == true
+      at TestContext.<anonymous> (file:///Volumes/Projects/TheNexus/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: cue-failure (2.44275ms)
+  AssertionError [ERR_ASSERTION]: false == true
+      at TestContext.<anonymous> (file:///Volumes/Projects/TheNexus/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: device-skip (3.012667ms)
+  AssertionError [ERR_ASSERTION]: false == true
+      at TestContext.<anonymous> (file:///Volumes/Projects/TheNexus/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '=='
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:802:1
+✖ a blocked task and its question produce one complete spoken announcement (3.445375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Volumes/Projects/TheNexus/dashboard/src/lib/__tests__/voice-command-bar.test.ts:833:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual'
+  }
+
+test at src/lib/__tests__/voice-command-bar.test.ts:853:1
+✖ recomposed question uses a fresh archive identity instead of replaying question-only wording (3.218084ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Volumes/Projects/TheNexus/dashboard/src/lib/__tests__/voice-command-bar.test.ts:896:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual'
+  }

@@ -1,11 +1,10 @@
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import Link from "next/link";
 import {
     AlertTriangle,
-    ArrowLeft,
     Bot,
     Brain,
     CheckCircle2,
@@ -471,10 +470,8 @@ export default function ModelControlPage() {
         <main className="min-h-screen bg-[#090d14] text-slate-200">
             <div className="mx-auto max-w-7xl px-5 py-6">
                 <header className="mb-6 flex flex-col gap-4 border-b border-slate-800 pb-5 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link href="/" className="rounded border border-slate-800 bg-slate-950/60 p-2 text-slate-400 hover:text-white" aria-label="Back to dashboard">
-                            <ArrowLeft size={18} />
-                        </Link>
+                    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
+                        <Breadcrumbs current="Model Control" />
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
                             <Route size={20} />
                         </div>

@@ -917,12 +917,14 @@ function DispatchRow({
   // feed lands directly on that activity's logs rather than the top of the list.
   useEffect(() => {
     if (highlight && articleRef.current) {
+      setOpen(true);
       articleRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [highlight]);
 
   return (
     <article
+      id={`dispatch-${dispatch.id}`}
       ref={articleRef}
       className={`rounded-lg border bg-slate-900/50 ${
         highlight
@@ -1189,9 +1191,14 @@ export function TaskDispatchConsole({
   const [highlightId, setHighlightId] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const match = window.location.hash.match(/^#dispatch-(.+)$/);
-    try { setHighlightId(match ? decodeURIComponent(match[1]) : null); }
-    catch { setHighlightId(null); }
+    const readHash = () => {
+      const match = window.location.hash.match(/^#dispatch-(.+)$/);
+      try { setHighlightId(match ? decodeURIComponent(match[1]) : null); }
+      catch { setHighlightId(null); }
+    };
+    readHash();
+    window.addEventListener("hashchange", readHash);
+    return () => window.removeEventListener("hashchange", readHash);
   }, []);
 
   const anyRunning = useMemo(

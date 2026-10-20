@@ -1,0 +1,9 @@
+✖ a blocked task and its question produce one complete spoken announcement
+✖ a repeated announcement speaks its saved wording and does not copy another conversation into this chat
+✖ announcement chat and voice visibility: blocked
+✖ announcement chat and voice visibility: cue-failure
+✖ announcement chat and voice visibility: device-skip
+✖ announcement chat and voice visibility: success
+✖ announcement chat and voice visibility: synthesis-failure
+✖ recomposed question uses a fresh archive identity instead of replaying question-only wording
+✖ two eligible live alerts each compose once and replayed event IDs stay deduplicated

@@ -174,3 +174,23 @@ test("fresh stream progress retains the registry's resolved model", () => {
   });
   assert.equal(result.activeItems[0].model, "claude-fable-5-1");
 });
+
+for (const offset of [0, 1]) {
+  test(`fresh registry keeps quiet testing active after stream progress expires (offset ${offset}ms)`, () => {
+    const updatedAt = new Date(now - 20 * 60000).toISOString();
+    const run = { taskId: "quiet-test", executor: "claude-code", title: "Simulator tests",
+      kind: "task", phase: "testing", status: "active",
+      startedAt: new Date(now - 40 * 60000).toISOString(), updatedAt };
+    const events = [frame("executor.progress", {
+      at: new Date(Date.parse(updatedAt) + offset).toISOString(),
+      progress: { taskId: run.taskId, executor: run.executor, phase: "testing" },
+    })];
+    const input = { ...base, events, runs: [run] as any };
+    assert.equal(deriveBridgeActivity(input).activeItems.length, 1);
+    assert.equal(deriveBridgeActivity(input).activeItems[0].phase, "testing");
+    assert.equal(deriveBridgeActivity({ ...input, runsAvailable: false }).activeItems.length, 0);
+    assert.equal(deriveBridgeActivity({ ...input, events: [...events, frame("task.completed", {
+      taskId: run.taskId, result: { outcome: "success", executor: run.executor },
+    })] }).activeItems.length, 0);
+  });
+}

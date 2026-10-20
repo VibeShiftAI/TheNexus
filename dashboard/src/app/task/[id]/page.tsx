@@ -10,13 +10,13 @@
  * session. Board cards and old /project/<id>?taskId= deep links land here.
  */
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   AlertTriangle,
-  ArrowLeft,
   BookOpen,
   Check,
   ClipboardCopy,
@@ -37,6 +37,7 @@ import {
 } from "@/lib/nexus";
 import { copyClaudeDispatch } from "@/lib/claude-dispatch";
 import { STATUS_OPTIONS } from "@/components/task-edit-modal";
+import { TaskProgressPanel } from "@/components/task-view/task-progress-panel";
 import { TaskDispatchConsole } from "@/components/task-view/dispatch-console";
 import { QaReviewPanel } from "@/components/task-view/qa-review-panel";
 import { QaHoldPanel } from "@/components/task-view/qa-hold-panel";
@@ -223,14 +224,8 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
     <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30">
       <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
         <div className="container mx-auto flex min-h-16 flex-wrap items-center justify-between gap-3 px-6 py-3">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/task-board"
-              className="flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
-            >
-              <ArrowLeft size={18} />
-              <span>Task Board</span>
-            </Link>
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+            <Breadcrumbs parents={[{ label: "Task Board", href: "/task-board" }]} current={title} />
             <div className="h-6 w-px bg-slate-700" />
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-cyan-500" />
@@ -321,6 +316,8 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
               </div>
             )}
 
+            <TaskProgressPanel key={task.id} task={task} />
+
             {/* Human-input tasks lead with the place to put the input: the
                 guided blind-labelling entry sits ahead of everything else. */}
             <LabelingEntryPanel taskId={task.id} onLinked={setLabelingLinked} />
@@ -360,7 +357,7 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
             <div className={hasSideContent ? "grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
               {/* Main column */}
               <div className="min-w-0 space-y-5">
-                <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-4" data-description={labelingLinked ? (descriptionOpen ? "open" : "collapsed") : "open"}>
+                <section id="task-description" className="rounded-lg border border-slate-800 bg-slate-900/40 p-4" data-description={labelingLinked ? (descriptionOpen ? "open" : "collapsed") : "open"}>
                   {labelingLinked ? (
                     <button
                       type="button"
@@ -388,17 +385,17 @@ export default function TaskPage({ params }: { params: Promise<{ id: string }> }
                 <TaskSequencePanel task={task} projectId={projectId} onChanged={load} />
 
                 {walkthrough?.content && (
-                  <section id="task-walkthrough" className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-                    <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-emerald-200">
-                      <BookOpen size={15} /> Walkthrough — the worker&apos;s final report
-                    </h3>
+                  <details id="task-walkthrough" className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                    <summary className="mb-1 flex cursor-pointer items-center gap-2 text-sm font-semibold text-emerald-200">
+                      <BookOpen size={15} /> Full worker report — expand to read
+                    </summary>
                     <p className="mb-3 text-[11px] text-emerald-200/60">
                       {walkthrough.generatedAt && `Captured ${new Date(walkthrough.generatedAt).toLocaleString()}`}
                       {(walkthrough as { executor?: string }).executor &&
                         ` · by ${(walkthrough as { executor?: string }).executor}`}
                     </p>
                     <Markdown content={walkthrough.content} />
-                  </section>
+                  </details>
                 )}
 
                 <QaReviewPanel taskId={task.id} />

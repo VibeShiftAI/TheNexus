@@ -1,8 +1,8 @@
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Atom, Loader2, Orbit, Pause, Play, RotateCcw } from "lucide-react";
+import { Atom, Loader2, Orbit, Pause, Play, RotateCcw } from "lucide-react";
 import { getBoard, type SpaceObject } from "@/lib/studio";
 import NbodyView from "./NbodyView";
 import KeplerView from "./KeplerView";
@@ -38,7 +38,7 @@ export default function SimulatorPage() {
   return (
     <main className="flex h-screen flex-col bg-slate-950 text-slate-200">
       <header className="flex flex-wrap items-center gap-3 border-b border-slate-800 px-6 py-3">
-        <Link href={`/studio/catalog?channelId=${encodeURIComponent(channelId)}`} className="rounded-full p-2 text-slate-400 hover:bg-slate-800 hover:text-white"><ArrowLeft size={20} /></Link>
+        <Breadcrumbs parents={[{ label: "Studio", href: `/studio?channelId=${encodeURIComponent(channelId)}` }, { label: "Object Catalog", href: `/studio/catalog?channelId=${encodeURIComponent(channelId)}` }]} current="Simulator" />
         <h1 className="text-lg font-bold text-white">Planetary Simulator</h1>
 
         {/* Mode toggle */}

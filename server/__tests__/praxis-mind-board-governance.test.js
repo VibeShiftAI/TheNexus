@@ -311,6 +311,22 @@ describe('ONE BACKEND — board reads go through lib/backends, and a 404 still r
 });
 
 describe('project endpoint and knowledge wire records', () => {
+  test('atomic evidence commands survive schema parsing and readback verification', async () => {
+    const {backends,projects}=fakeNexus();
+    const need={id:'n1',kind:'information',status:'open',description:'Question',knowledge:{revision:3,evidence:[]}};
+    projects.get('p1').needs=[need];
+    backends.nexusProjectUpdateNeed=jest.fn(async (_id,_need,patch)=>{
+      need.knowledge={...need.knowledge,evidence:patch.append_evidence,revision:4};
+      return {success:true,need};
+    });
+    const {praxisMind}=loadSurface({backends});
+    const tool=praxisMind(writer('atomic-evidence')).tools.get('nexus_project_update');
+    const input={id:'n1',expected_knowledge_revision:3,append_evidence:[{ref:'reply:1'}]};
+    expect(tool.schema.resolve_need.parse(input)).toEqual(input);
+    const result=await tool.handler({project_id:'p1',resolve_need:input});
+    expect(result.isError).toBeUndefined();
+    expect(backends.nexusProjectUpdateNeed).toHaveBeenCalledWith('p1','n1',expect.objectContaining(input.append_evidence ? {append_evidence:input.append_evidence,expected_knowledge_revision:3}:{}));
+  });
   const knowledge = { question: 'Which rollout works?', tags: ['safe-rollouts'], satisfaction_test: 'A measured trial.', criterion_ids: ['c1'], task_ids: ['t1'], blocking: true, research_status: 'open', evidence: [] };
   test('MCP accepts an explicit observation clear when revising a criterion', () => {
     const { backends } = fakeNexus();

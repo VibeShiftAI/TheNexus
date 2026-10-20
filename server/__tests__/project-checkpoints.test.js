@@ -16,7 +16,7 @@ const passObservation = { status: 'pass', observed_at: OBSERVED, evidence_ref: '
 const manual = (id, observation = passObservation) => ({ id, kind: 'manual', description: `Acceptance ${id}`, enabled: true, ...(observation ? { observation } : {}) });
 const checkpoint = (id, title, criteria, extra = {}) => ({ id, title, goal: `${title} is observably reached`, criteria, ...extra });
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-const knowledge = (blocking = true, criterionIds = []) => ({ question: 'Which rollout strategy meets the budget?', tags: ['rollouts'], satisfaction_test: 'A measured trial supports the answer.', criterion_ids: criterionIds, task_ids: [], blocking, evidence: [] });
+const knowledge = (blocking = true, criterionIds = []) => ({ question: 'Which rollout strategy meets the budget?', purpose: 'Choose a safe rollout', resolution: { method: 'experiment' }, tags: ['rollouts'], satisfaction_test: 'A measured trial supports the answer.', criterion_ids: criterionIds, task_ids: [], blocking, evidence: [] });
 
 describe('project checkpoints: persistence, editing and guarded advancement', () => {
     let db, raw, dir, server, url, oldDbPath;
@@ -82,6 +82,26 @@ describe('project checkpoints: persistence, editing and guarded advancement', ()
         expect(result.body.transition).toMatchObject({ outcome: 'advanced' });
         return result.body.project;
     }
+
+    test('atomic question and checkpoint-link edits validate against the merged plan', async () => {
+        const saved=await savePlan([checkpoint('a','Foundation',[manual('a1')])]);
+        const result=await req('',{expected_updated_at:saved.updated_at,checkpoints:[{id:'a',need_ids:['n']}],needs:[{id:'n',kind:'information',description:'Which rate?',knowledge:{question:'Which rate?',purpose:'Choose calculation',satisfaction_test:'A selected rate',resolution:{method:'decision'},criterion_ids:['a1']}}]});
+        expect(result.status).toBe(200);
+        expect(result.body.checkpoints.items[0].need_ids).toEqual(['n']);
+        expect(result.body.needs[0].knowledge.criterion_ids).toEqual(['a1']);
+        expect(result.body.needs[0].knowledge.revision).toBe(1);
+        expect(result.body.needs[0].knowledge.research_status).not.toBe('stale');
+        expect(result.body.needs[0].knowledge.history).toEqual([]);
+    });
+
+    test('new questions created alongside endpoint criteria have no obsolete revision to reopen', async () => {
+        const result=await req('',{end_state_criteria:[manual('new-final')],needs:[{id:'new-need',kind:'information',description:'Which rollout?',knowledge:knowledge(true,['new-final'])}]});
+        expect(result.status).toBe(200);
+        expect(result.body.needs[0].knowledge.revision).toBe(1);
+        expect(result.body.needs[0].knowledge.research_status).not.toBe('stale');
+        expect(result.body.needs[0].knowledge.history).toEqual([]);
+        expect(result.body.needs[0].knowledge.endpoint_revision).toBe(result.body.end_state_updated_at);
+    });
 
     test('projects without a plan read null and legacy writes never touch an existing plan', async () => {
         const before = await req('', undefined, 'GET');
@@ -219,7 +239,8 @@ describe('project checkpoints: persistence, editing and guarded advancement', ()
         expect(blocked.status).toBe(200);
         expect(blocked.body.transition).toMatchObject({ outcome: 'recorded', knowledge: { required: 1, satisfied: 0, unresolved: 1, open_ids: [linked.id] } });
         expect(blocked.body.project.checkpoints.items[0].assessment.knowledge).toEqual({ required: 1, satisfied: 0, unresolved: 1 });
-        const met = await req(`/needs/${linked.id}`, { status: 'met', knowledge: { answer: 'Use a canary.', evidence: [{ ref: 'vault:trial', checked_at: OBSERVED }] }, source: 'executor' });
+        const answered = await req(`/needs/${linked.id}`, { expected_knowledge_revision: blocked.body.project.needs.find(n => n.id === linked.id).knowledge.revision, knowledge: { answer: 'Use a canary.', evidence: [{ ref: 'vault:trial', checked_at: OBSERVED }] }, source: 'executor' });
+        const met = await req(`/needs/${linked.id}`, { status: 'met', expected_knowledge_revision: answered.body.need.knowledge.revision, knowledge: { verification: { rationale: 'The measured trial supports the answer.', evidence_refs: ['vault:trial'] } }, source: 'executor' });
         expect(met.status).toBe(200);
         const project = (await req('', undefined, 'GET')).body;
         // Satisfying knowledge cleared the pending evaluation; a fresh one is required and now verifies.
@@ -235,7 +256,9 @@ describe('project checkpoints: persistence, editing and guarded advancement', ()
 
     test('a definition edit returns a completed checkpoint to pending with its evidence kept as history, reopens linked knowledge, and an inserted checkpoint becomes current', async () => {
         const need = (await req('/needs', { kind: 'information', description: 'Rollout knowledge', source: 'operator', knowledge: knowledge(true) }, 'POST')).body.need;
-        await req(`/needs/${need.id}`, { status: 'met', knowledge: { answer: 'Use a canary.', evidence: [{ ref: 'vault:trial' }] }, source: 'executor' });
+        const answered = await req(`/needs/${need.id}`, { expected_knowledge_revision: need.knowledge.revision, knowledge: { answer: 'Use a canary.', evidence: [{ ref: 'vault:trial' }] }, source: 'executor' });
+        const verified = await req(`/needs/${need.id}`, { status: 'met', expected_knowledge_revision: answered.body.need.knowledge.revision, knowledge: { verification: { rationale: 'The measured trial supports the answer.', evidence_refs: ['vault:trial'] } }, source: 'executor' });
+        expect(verified.status).toBe(200);
         const saved = await savePlan([checkpoint('a', 'Foundation', [manual('a1')], { need_ids: [need.id] }), checkpoint('b', 'Rollout', [manual('b1')])]);
         const advanced = await advance(saved, 'a');
         const untouched = await savePlan([{ id: 'a' }, { id: 'b', title: 'Rollout renamed' }]);

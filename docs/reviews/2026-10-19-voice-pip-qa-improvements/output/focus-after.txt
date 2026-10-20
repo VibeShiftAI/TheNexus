@@ -1,0 +1,7 @@
+start                    {"collapsed":"false","barVisibility":"visible","dialog":false,"dialogVisibility":null,"focusInDialog":false,"active":"BODY","stored":null,"transition":"max-width, opacity"}
+A collapsed, setup shut  {"collapsed":"true","barVisibility":"hidden","dialog":false,"dialogVisibility":null,"focusInDialog":false,"active":"BODY","stored":"1","transition":"max-width, opacity, visibility"}
+B held key (repeat)      {"collapsed":"true","barVisibility":"hidden","dialog":false,"dialogVisibility":null,"focusInDialog":false,"active":"BODY","stored":"1","transition":"max-width, opacity, visibility"}
+C shortcut               {"collapsed":"false","barVisibility":"visible","dialog":true,"dialogVisibility":"visible","focusInDialog":true,"active":"Talk to Praxis setup","stored":"1","transition":"max-width, opacity"}
+D collapsed, setup open  {"collapsed":"true","barVisibility":"hidden","dialog":true,"dialogVisibility":"hidden","focusInDialog":true,"active":"Talk to Praxis setup","stored":"1","transition":"max-width, opacity, visibility"}
+E shortcut               {"collapsed":"false","barVisibility":"visible","dialog":true,"dialogVisibility":"visible","focusInDialog":true,"active":"Talk to Praxis setup","stored":"1","transition":"max-width, opacity"}
+F Escape                 {"collapsed":"false","barVisibility":"visible","dialog":false,"dialogVisibility":null,"focusInDialog":false,"active":"BODY","stored":"1","transition":"max-width, opacity"}

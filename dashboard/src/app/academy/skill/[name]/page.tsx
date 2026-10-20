@@ -11,13 +11,12 @@
  * knowledge, or telemetry shows as an explicit empty state.
  */
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
-  ArrowLeft,
   BookOpen,
   ExternalLink,
   FileQuestion,
@@ -146,7 +145,6 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default function SkillWikiPage({ params }: { params: Promise<{ name: string }> }) {
   const { name } = use(params);
-  const router = useRouter();
   const [skill, setSkill] = useState<SkillDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -168,14 +166,8 @@ export default function SkillWikiPage({ params }: { params: Promise<{ name: stri
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 pb-12">
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-        <div className="container mx-auto flex h-16 items-center gap-4 px-6">
-          <button
-            onClick={() => router.push("/academy")}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft size={18} />
-            <span className="text-sm">Academy</span>
-          </button>
+        <div className="container mx-auto flex min-h-16 flex-wrap gap-y-2 py-3 items-center gap-4 px-6">
+          <Breadcrumbs parents={[{ label: "Academy", href: "/academy" }]} current={name} />
           <div className="h-6 w-px bg-slate-700" />
           <div className="flex min-w-0 items-center gap-2">
             <GraduationCap size={16} className="text-pink-400" />

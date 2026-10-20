@@ -64,7 +64,7 @@ never silently register a reference document in place of a review request):
 |---|---|
 | `deliverable` | object with only `key`, `purpose`, `requires_review`, `intended_action`, `source`, `blocking_task_ids` |
 | `requires_review` | boolean, required. `false` means a reference document: discoverable, never awaiting a decision |
-| `purpose` | required, 1-500 characters |
+| `purpose` | optional descriptive text, up to 500 characters; omitted, null or blank values become `Purpose not provided.` and never block delivery |
 | `intended_action` | required, one of `none`, `implement`, `send`, `publish`. Anything but `none` requires `requires_review: true` (approval comes before the action) |
 | `key` | optional, 1-300 printable characters, must not start with `path:` (that prefix is reserved for derived keys) |
 | `source` | optional object: `type` is `task` or `chat`; optional `conversation_id`, `message_id`, `execution_id` (1-200 printable characters each). A chat source needs `conversation_id` |

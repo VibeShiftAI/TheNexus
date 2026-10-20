@@ -1,11 +1,10 @@
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useEffect, useState } from "react";
 import { use as usePromise } from "react";
-import Link from "next/link";
 import {
   Archive,
-  ArrowLeft,
   Check,
   ChevronRight,
   ClipboardCopy,
@@ -355,10 +354,8 @@ function Shell({ title = "Episode", subtitle, channelId, children }: { title?: s
   return (
     <main className="min-h-screen bg-slate-950 text-slate-200">
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
-        <div className="container mx-auto flex min-h-16 items-center gap-4 px-6 py-3">
-          <Link href={`/studio?channelId=${encodeURIComponent(channelId)}`} className="rounded-full p-2 text-slate-400 hover:bg-slate-800 hover:text-white">
-            <ArrowLeft size={20} />
-          </Link>
+        <div className="container mx-auto flex min-h-16 flex-wrap items-center gap-4 px-6 py-3">
+          <Breadcrumbs parents={[{ label: "Studio", href: `/studio?channelId=${encodeURIComponent(channelId)}` }]} current={title} />
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold text-white">{title}</h1>
             {subtitle && <p className="truncate text-xs text-slate-500">{subtitle}</p>}

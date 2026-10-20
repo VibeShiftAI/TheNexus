@@ -5,10 +5,10 @@
  */
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Send, RefreshCw, PauseCircle, PlayCircle, Clock, AlertTriangle, MessageSquare, Terminal, Landmark } from "lucide-react";
+import { Send, RefreshCw, PauseCircle, PlayCircle, Clock, AlertTriangle, MessageSquare, Terminal, Landmark } from "lucide-react";
 import {
   effectiveReferenceVoices,
   getCouncilSessions,
@@ -106,7 +106,6 @@ function statusChip(status: string) {
 }
 
 export default function OpsConsolePage() {
-  const router = useRouter();
   const { sseRuns } = useCrewActivity();
   // The shared connection lifecycle's verdict (live / recovering / offline /
   // reauth) and the one explicit sign-in action, for the status line below.
@@ -243,14 +242,8 @@ export default function OpsConsolePage() {
     <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 pb-12">
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
         <div className="container mx-auto flex flex-wrap items-center justify-between gap-3 px-6 py-3">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/")}
-              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-            >
-              <ArrowLeft size={18} />
-              <span className="text-sm">Bridge</span>
-            </button>
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+            <Breadcrumbs current="Ops" />
             <div className="h-6 w-px bg-slate-700" />
             <div className="flex items-center gap-2">
               <Send size={16} className="text-cyan-400" />

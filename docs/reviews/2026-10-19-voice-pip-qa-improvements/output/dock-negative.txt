@@ -1,0 +1,31 @@
+✔ one root dock mounts inside existing providers and the home page owns no voice instance (0.485542ms)
+✔ dock preserves the actual recording and controls on ordinary navigation, then releases them on login (126.746125ms)
+✔ collapse pip hides the bar without unmounting it, remembers the choice, and expands back to working controls (11.199375ms)
+✔ a saved collapsed dock restores collapsed and voice setup expands it so the setup dialog is visible (8.185125ms)
+✖ Alt+Shift+V on a collapsed dock expands it with setup open and focused, and a held key does neither (7.808625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 432.693042
+
+✖ failing tests:
+
+test at src/lib/__tests__/voice-dock.test.ts:200:1
+✖ Alt+Shift+V on a collapsed dock expands it with setup open and focused, and a held key does neither (7.808625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  'true' !== 'false'
+  
+      at TestContext.<anonymous> (file:///Volumes/Projects/TheNexus/dashboard/src/lib/__tests__/voice-dock.test.ts:230:10)
+      at async Test.run (node:internal/test_runner/test:981:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:678:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'true',
+    expected: 'false',
+    operator: 'strictEqual'
+  }

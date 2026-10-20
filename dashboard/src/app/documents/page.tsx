@@ -18,9 +18,9 @@
  * queue 2026-10-02, task 75de5032).
  */
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, FileCheck2, Loader2, RefreshCw, Search, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, FileCheck2, Loader2, RefreshCw, Search, X } from "lucide-react";
 import {
     DOCUMENT_KINDS,
     countDocuments,
@@ -203,9 +203,7 @@ export default function DocumentsPage() {
         <main className="min-h-screen bg-slate-950 text-slate-200" data-documents-index="">
             <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
                 <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-                    <Link href="/" className="flex shrink-0 items-center gap-1.5 text-sm text-slate-400 hover:text-white">
-                        <ArrowLeft size={16} /> Bridge
-                    </Link>
+                    <Breadcrumbs current="Reviews" />
                     <div className="hidden h-5 w-px bg-slate-700 sm:block" />
                     <div className="order-last min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-0">
                         <h1 className="flex items-center gap-2 text-base font-semibold text-white">

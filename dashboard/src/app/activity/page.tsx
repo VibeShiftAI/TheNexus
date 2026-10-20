@@ -1,4 +1,5 @@
 "use client";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { RoutingEconomicsPanel } from "@/components/routing-economics-panel";
@@ -68,9 +69,10 @@ function ActivityReport() {
   return (
     <main className="min-h-screen bg-slate-950 hud-backdrop px-4 py-6 text-slate-200 sm:px-8">
       <div className="mx-auto max-w-6xl space-y-5">
-        <Link href="/" className="text-sm text-cyan-300 hover:text-white">
-          ← Nexus bridge
-        </Link>
+        <Breadcrumbs
+          parents={path ? [{ label: "Vault Activity", href: "/activity?channel=vault" }] : []}
+          current={path ? "Vault Document" : "Activity Report"}
+        />
         <div>
           <h1 className="text-2xl font-bold text-white">
             {path ? "Vault document" : "Activity report"}

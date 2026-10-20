@@ -5,6 +5,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 // @ts-expect-error Test loader supplies the controllable navigation module.
 import { setPathname } from 'next/navigation';
+import { VOICE_DOCK_COLLAPSED_KEY } from '../voice-dock-preferences';
 const tick = () => new Promise(resolve => setImmediate(resolve));
 test('one root dock mounts inside existing providers and the home page owns no voice instance', () => {
   const layout = readFileSync(new URL('../../app/layout.tsx', import.meta.url), 'utf8');
@@ -50,13 +51,13 @@ test('collapse pip hides the bar without unmounting it, remembers the choice, an
   assert.ok(collapse); assert.equal(collapse.getAttribute('aria-expanded'), 'true'); assert.equal(collapse.getAttribute('aria-controls'), 'global-voice-bar');
   await act(async () => { collapse.click(); await tick(); });
   assert.equal(bar.dataset.collapsed, 'true'); assert.match(bar.className, /\binvisible\b/); assert.match(bar.className, /\bmax-w-0\b/);
-  assert.equal(localStorage.getItem(module.VOICE_DOCK_COLLAPSED_KEY), '1');
+  assert.equal(localStorage.getItem(VOICE_DOCK_COLLAPSED_KEY), '1');
   assert.equal(host.querySelector('[aria-label="Start voice command"]'), voice, 'controls stay mounted while collapsed');
   const expand = host.querySelector('[aria-label="Expand voice controls"]') as HTMLButtonElement;
   assert.ok(expand); assert.equal(expand.getAttribute('aria-expanded'), 'false');
   await act(async () => { expand.click(); await tick(); });
   assert.equal(bar.dataset.collapsed, 'false'); assert.match(bar.className, /\bvisible\b/); assert.doesNotMatch(bar.className, /\binvisible\b/);
-  assert.equal(localStorage.getItem(module.VOICE_DOCK_COLLAPSED_KEY), '0');
+  assert.equal(localStorage.getItem(VOICE_DOCK_COLLAPSED_KEY), '0');
   await act(async () => { (host.querySelector('[aria-label="Start conversation"]') as HTMLButtonElement).click(); await tick(); });
   assert.ok(host.querySelector('[aria-label="End conversation"]')); assert.ok(host.querySelector('[aria-label="Stop recording"]')); assert.equal(recordings, 1);
   await act(async () => { (host.querySelector('[aria-label="End conversation"]') as HTMLButtonElement).click(); await tick(); });
@@ -65,7 +66,7 @@ test('collapse pip hides the bar without unmounting it, remembers the choice, an
 });
 test('a saved collapsed dock restores collapsed and voice setup expands it so the setup dialog is visible', async t => {
   const module = await import('../../components/global-voice-dock');
-  localStorage.clear(); localStorage.setItem(module.VOICE_DOCK_COLLAPSED_KEY, '1'); setPathname('/');
+  localStorage.clear(); localStorage.setItem(VOICE_DOCK_COLLAPSED_KEY, '1'); setPathname('/');
   t.mock.method(globalThis, 'fetch', async input => String(input).includes('board') ? Response.json([]) : Response.json({ available: true }));
   Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [] }), enumerateDevices: async () => [] } });
   const host = document.createElement('div'); document.body.append(host); const root = createRoot(host);
@@ -75,4 +76,32 @@ test('a saved collapsed dock restores collapsed and voice setup expands it so th
   assert.equal(bar.dataset.collapsed, 'true'); assert.ok(host.querySelector('[aria-label="Expand voice controls"]'));
   await act(async () => { window.dispatchEvent(new window.Event('nexus:voice-setup')); await tick(); });
   assert.equal(bar.dataset.collapsed, 'false'); assert.ok(host.querySelector('[role="dialog"][aria-label="Talk to Praxis setup"]'));
+});
+test('Alt+Shift+V on a collapsed dock expands it and focuses setup, also when setup was left open; a held key does neither', async t => {
+  const module = await import('../../components/global-voice-dock');
+  localStorage.clear(); localStorage.setItem(VOICE_DOCK_COLLAPSED_KEY, '1'); setPathname('/');
+  t.mock.method(globalThis, 'fetch', async input => String(input).includes('board') ? Response.json([]) : Response.json({ available: true }));
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [] }), enumerateDevices: async () => [] } });
+  // A browser refuses focus to content inside the hidden bar; jsdom has no styles, so model that rule from the dock's own state.
+  const focus = HTMLElement.prototype.focus;
+  t.mock.method(HTMLElement.prototype, 'focus', function (this: HTMLElement, options?: FocusOptions) { if (!this.closest('[data-collapsed="true"]')) focus.call(this, options); });
+  const host = document.createElement('div'); document.body.append(host); const root = createRoot(host);
+  t.after(async () => { await act(async () => root.unmount()); host.remove(); localStorage.clear(); });
+  await act(async () => { root.render(React.createElement(module.GlobalVoiceDock)); await tick(); });
+  const bar = host.querySelector('#global-voice-bar') as HTMLElement;
+  const setup = () => host.querySelector('[role="dialog"][aria-label="Talk to Praxis setup"]');
+  const shortcut = (repeat = false) => act(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'V', altKey: true, shiftKey: true, repeat })); await tick(); });
+  assert.equal(bar.dataset.collapsed, 'true'); assert.match(bar.className, /transition-\[[^\]]*visibility/, 'collapsing fades out before hiding');
+  await shortcut(true);
+  assert.equal(bar.dataset.collapsed, 'true', 'a repeating key leaves the dock collapsed'); assert.equal(setup(), null);
+  await shortcut();
+  assert.equal(bar.dataset.collapsed, 'false'); assert.ok(setup()?.contains(document.activeElement), 'setup opens with focus');
+  // A visibility transition would hold the bar hidden at the start of the expand, when setup takes focus.
+  assert.doesNotMatch(bar.className, /transition-\[[^\]]*visibility/, 'expanding shows the bar at once');
+  // Setup left open and the dock collapsed from its pip; the browser drops focus from content it hides.
+  await act(async () => { (host.querySelector('[aria-label="Collapse voice controls"]') as HTMLButtonElement).click(); await tick(); });
+  (document.activeElement as HTMLElement | null)?.blur();
+  assert.equal(bar.dataset.collapsed, 'true'); assert.ok(setup()); assert.equal(setup()?.contains(document.activeElement), false);
+  await shortcut();
+  assert.equal(bar.dataset.collapsed, 'false'); assert.ok(setup()?.contains(document.activeElement), 'the open setup window is focused again');
 });

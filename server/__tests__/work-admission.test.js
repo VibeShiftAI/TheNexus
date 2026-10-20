@@ -422,3 +422,11 @@ test('reopening terminal work requires fresh admission without blocking normal e
         console.log('Admission retained-corpus replay:', JSON.stringify(summaries));
     } finally { corpus.close(); }
 });
+
+test.each(['failed', 'archived'])('resuming %s preserves an unchanged admitted contract without a terminal-repeat hold', async status => {
+    const task = await db.createTask(proposal());
+    expect(receipt(await db.updateTask(task.id, {status})).decision).toBe('new_work');
+    const resumed = await db.updateTask(task.id, {status:'in_progress'});
+    expect(receipt(resumed).decision).toBe('new_work');
+    expect(receipt(await db.getWorkAdmission(task.id)).decision).toBe('new_work');
+});

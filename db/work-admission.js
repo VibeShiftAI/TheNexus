@@ -6,6 +6,9 @@ const DECISIONS = new Set(['new_work', 'covered_by_open', 'already_delivered', '
 const RESOLUTION_WINDOW_MS = 15 * 60 * 1000;
 const RETRIEVAL_VERSION = 2;
 const TERMINAL_STATUSES = new Set(['completed', 'done', 'complete', 'cancelled', 'canceled', 'archived', 'failed']);
+// Failed/archived runs retain their execution history, but their board labels
+// alone do not require a fresh authorization to resume an unchanged contract.
+const REPEAT_AUTHORIZATION_STATUSES = new Set(['completed', 'done', 'complete', 'cancelled', 'canceled']);
 // A task is executing while an executor or QA session can be reading its brief:
 // a started board status, or an open dispatch row for the task or its QA run.
 const EXECUTING_STATUSES = new Set(['in_progress', 'dispatched', 'ready_for_review', 'review']);
@@ -639,7 +642,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     function guardUpdate(task, updates, context = {}) {
         const previous = readReceipt(task.id);
         const origin = normalizeOrigin(context.origin);
-        const reopening = TERMINAL_STATUSES.has(task.status) && updates.status !== undefined && !TERMINAL_STATUSES.has(updates.status);
+        const reopening = REPEAT_AUTHORIZATION_STATUSES.has(task.status) && updates.status !== undefined && !REPEAT_AUTHORIZATION_STATUSES.has(updates.status);
         if (!previous && !reopening) {
             // No receipt to govern, but a relayed decision is still checked: a
             // bogus reference never lands anywhere.

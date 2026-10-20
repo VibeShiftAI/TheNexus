@@ -1,11 +1,10 @@
 "use client";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useEffect, useCallback, useMemo, useState } from "react";
 import { useLiveRefetch } from "@/components/live-board-state";
 
-import Link from "next/link";
 import {
-    ArrowLeft,
     BookOpen,
     BrainCircuit,
     Check,
@@ -360,11 +359,9 @@ export default function KnowledgeIngestionPage() {
     return (
         <main className="min-h-screen bg-slate-950 text-slate-200">
             <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-                <div className="container mx-auto flex h-16 items-center justify-between px-6">
-                    <div className="flex items-center gap-4">
-                        <Link href="/" className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
-                            <ArrowLeft size={20} />
-                        </Link>
+                <div className="container mx-auto flex min-h-16 flex-wrap gap-y-2 py-3 items-center justify-between px-6">
+                    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+                        <Breadcrumbs current="Knowledge Ingestion" />
                         <div>
                             <h1 className="text-xl font-bold tracking-tight text-white">KNOWLEDGE INGESTION</h1>
                             <p className="text-xs text-slate-500">Nightly sweep terms, sources, run history, and the knowledge they build.</p>

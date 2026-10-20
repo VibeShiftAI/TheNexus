@@ -31,7 +31,7 @@ test('criteria changes clear copied acceptance and retain the exact historical d
 });
 test('knowledge links may name a checkpoint criterion', () => {
   const p = project();
-  const patch = prepareProjectPatch(p, { needs: [{ id: 'n', kind: 'information', description: 'Question', status: 'open', created_at: T, knowledge: { question: 'Which?', satisfaction_test: 'Measured answer', criterion_ids: ['m'], blocking: true } }] }, { needMutation: {} });
+  const patch = prepareProjectPatch(p, { needs: [{ id: 'n', kind: 'information', description: 'Question', status: 'open', created_at: T, knowledge: { question: 'Which?', purpose: 'Choose the checkpoint approach', resolution: { method: 'experiment', next_action: 'Measure the candidates' }, satisfaction_test: 'Measured answer', criterion_ids: ['m'], blocking: true } }] }, { needMutation: {} });
   expect(patch.needs[0].knowledge.criterion_ids).toEqual(['m']);
 });
 test('adding a checkpoint invalidates an earlier final-goal success', () => {

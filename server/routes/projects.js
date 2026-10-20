@@ -370,18 +370,37 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         }
     });
 
+    // New workspaces start with a real baseline; never sweep an existing directory.
+    const initializeNewProjectTracking = (projectPath) => {
+        const leases = requireLeases(db);
+        leases.runSync({scope:'workspace', path:projectPath}, () => {
+            fs.writeFileSync(path.join(projectPath, '.gitignore'), '.DS_Store\nnode_modules/\n.next/\ndist/\n.env\n.env.*\n!.env.example\n*.pem\n*.key\n', {flag:'wx'});
+            workspaceCommand(leases, projectPath, 'git', ['init', '-b', 'main']);
+            workspaceCommand(leases, projectPath, 'git', ['add', '--', '.gitignore']);
+            workspaceCommand(leases, projectPath, 'git', ['commit', '-m', 'Initialize project tracking']);
+        });
+    };
+
     // ─── Create Project ──────────────────────────────────────────────────
     router.post('/', async (req, res) => {
         const { name, description, type, goal } = req.body;
-        if (!name) return res.status(400).json({ error: 'Project name is required' });
+        if (typeof name !== 'string' || !/^[a-zA-Z0-9-_\s]+$/.test(name) || !name.trim()) return res.status(400).json({ error: 'Invalid project name' });
         try {
             const newProject = {
                 name, description: description || goal || '', type: type || 'tool',
                 path: path.join(PROJECT_ROOT, name), tasks_list: []
             };
-            const result = await db.upsertProject(newProject);
             const projectPath = path.join(PROJECT_ROOT, name);
-            if (!fs.existsSync(projectPath)) requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.mkdirSync(projectPath, { recursive: true }));
+            if (!fs.existsSync(projectPath)) {
+                requireLeases(db).runSync({scope:'workspace', path:projectPath}, () => {
+                    fs.mkdirSync(projectPath, {recursive:true});
+                    initializeNewProjectTracking(projectPath);
+                });
+            } else {
+                // Registering existing projects must not silently create or commit their files.
+                workspaceCommand(requireLeases(db), projectPath, 'git', ['rev-parse', '--verify', 'HEAD']);
+            }
+            const result = await db.upsertProject(newProject);
             res.status(201).json(result);
         } catch (error) {
             if (sendLeaseError(res, error)) return;
@@ -408,7 +427,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                 tasks: supervisor?.tasks || [], stack: {}, urls: { production: '', repo: '' }
             };
             requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.writeFileSync(path.join(projectPath, 'project.json'), JSON.stringify(projectMeta, null, 4)));
-            workspaceCommand(requireLeases(db), projectPath, 'git', ['init']);
+            initializeNewProjectTracking(projectPath);
 
             if (supervisor) {
                 const supervisorPath = path.join(projectPath, 'supervisor');
@@ -420,6 +439,9 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                 requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.writeFileSync(path.join(supervisorPath, 'tracks.md'), '# Project Tracks\n\n## [ ] Track: Initial Setup\n'));
                 requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.writeFileSync(path.join(supervisorPath, 'setup_state.json'), JSON.stringify({ last_successful_step: "scaffold_complete", created_at: new Date().toISOString() }, null, 2)));
             }
+
+            workspaceCommand(requireLeases(db), projectPath, 'git', ['add', '--', 'project.json', ...(supervisor ? ['supervisor/'] : [])]);
+            workspaceCommand(requireLeases(db), projectPath, 'git', ['commit', '-m', 'Record project scaffold']);
 
             let projectId = null;
             if (db.isDatabaseEnabled()) {
@@ -552,7 +574,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
 
     // Need-scoped mutations are read/merged/written atomically inside SQLite.
     async function mutateNeed(req, res, adding) {
-        const allowed = ['kind', 'description', 'source', 'notes', 'knowledge', 'status', 'expected'];
+        const allowed = ['kind', 'description', 'source', 'notes', 'knowledge', 'status', 'expected', 'expected_knowledge_revision', 'append_evidence', 'record_application'];
         if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return res.status(400).json({ error: 'Need patch must be an object' });
         const expected = req.body.expected;
         if (expected !== undefined && (!expected || Array.isArray(expected) ||

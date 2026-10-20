@@ -1,9 +1,10 @@
 "use client"
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { getProject, getProjectCommits, getTasks, getProjectReadme, getProjectBrief, Project, ProjectBrief, Commit, Task, getDashboardStats, ReviewItem, unarchiveProject } from "@/lib/nexus";
-import { ArrowLeft, GitBranch, Zap, Bot, Activity, Brain, FolderOpen as Folders, FileText, ChevronDown, ChevronUp, Archive, Settings2, Globe, ExternalLink } from "lucide-react";
+import { GitBranch, Zap, Bot, Activity, Brain, FolderOpen as Folders, FileText, ChevronDown, ChevronUp, Archive, Settings2, Globe, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { AITerminal } from "@/components/ai-terminal";
 import { TaskManager } from "@/components/task-manager";
@@ -156,15 +157,9 @@ export default function ProjectDetailPage() {
         <main className="min-h-screen bg-slate-950 hud-backdrop text-slate-200 selection:bg-cyan-500/30">
             {/* Header HUD */}
             <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-                <div className="container mx-auto flex h-16 items-center justify-between px-6">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/"
-                            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                        >
-                            <ArrowLeft size={18} />
-                            <span className="text-sm">Bridge</span>
-                        </Link>
+                <div className="container mx-auto flex min-h-16 flex-wrap gap-y-2 py-3 items-center justify-between px-6">
+                    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+                        <Breadcrumbs current={project.name} />
                         <div className="h-6 w-px bg-slate-700" />
                         <div className="flex items-center gap-2.5">
                             <Folders className="text-cyan-500" size={18} />
@@ -276,7 +271,7 @@ export default function ProjectDetailPage() {
 
                 <div className="grid items-start gap-6 xl:grid-cols-2">
                     <ProjectEndpointPanel project={project} onUpdate={setProject} />
-                    <ProjectNeedsPanel project={project} tasks={tasks} onUpdate={setProject} />
+                    <ProjectNeedsPanel project={project} tasks={tasks} onUpdate={updated => { setProject(updated); void loadTasks(); }} />
                 </div>
 
                 {/* Reports row — operations report beside git + artifacts rail */}

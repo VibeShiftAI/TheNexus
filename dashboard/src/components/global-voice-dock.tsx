@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight, Mic } from "lucide-react";
 import { VoiceCommandBar } from "@/components/bridge/voice-command-bar";
 import { VOICE_SETUP_EVENT } from "@/lib/voice-input";
-
-export const VOICE_DOCK_COLLAPSED_KEY = "nexus.voice.dock.collapsed";
+// The storage key lives in a lib module: this file is imported by the root layout, and a non-component export here
+// makes Fast Refresh fall back to a full reload of every open page on each save (task 1390fc34, 2026-10-19).
+import { VOICE_DOCK_COLLAPSED_KEY } from "@/lib/voice-dock-preferences";
 
 /** Root placement preserves capture and playback across client navigation. */
 export function GlobalVoiceDock() {
@@ -39,10 +40,11 @@ export function GlobalVoiceDock() {
       >
         {collapsed ? <><ChevronLeft size={12} aria-hidden="true" /><Mic size={14} aria-hidden="true" /></> : <ChevronRight size={12} aria-hidden="true" />}
       </button>
+      {/* Visibility animates only on collapse, so the fade still plays; expanding shows the bar at once, or setup could not take focus. */}
       <div
         id="global-voice-bar"
         data-collapsed={collapsed ? "true" : "false"}
-        className={`transition-[max-width,opacity,visibility] duration-200 ease-out ${collapsed ? "invisible max-h-0 max-w-0 overflow-hidden opacity-0" : "visible max-w-[100vw] opacity-100"}`}
+        className={`duration-200 ease-out ${collapsed ? "invisible max-h-0 max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity,visibility]" : "visible max-w-[100vw] opacity-100 transition-[max-width,opacity]"}`}
       >
         <VoiceCommandBar />
       </div>

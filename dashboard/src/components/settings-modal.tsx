@@ -1,6 +1,7 @@
 "use client";
 
 import { DisplayScaleControl } from "@/components/display-scale";
+import { VoiceLauncher } from "@/components/voice-launcher";
 import { useState, useEffect, useCallback } from "react";
 import {
     Settings, X, Save, Loader2, Eye, EyeOff,
@@ -121,6 +122,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <section className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
                         <h3 className="mb-3 text-sm font-semibold text-white">Text & display size</h3>
                         <DisplayScaleControl full />
+                    </section>
+                    <section className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
+                        <h3 className="mb-2 text-sm font-semibold text-white">Voice settings</h3>
+                        <p className="mb-3 text-xs text-slate-400">Choose and check your microphone, test Praxis voice, and adjust wake word, spoken alerts, and ambient mode.</p>
+                        <VoiceLauncher onOpen={onClose} />
                     </section>
                     {loading ? (
                         <div className="flex items-center justify-center py-12">

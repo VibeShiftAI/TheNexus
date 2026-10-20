@@ -13,6 +13,7 @@ const path = require('path');
 const fs = require('fs');
 const { normalizeTaskBoardStatus, isTaskDone, MemberMemoryInputSchema } = require('@praxis/contract');
 const { prepareProjectPatch, invalid: invalidProject, timestamp: projectTimestamp } = require('./project-data');
+const { routeKnowledgeChangeWork } = require('./knowledge-change-work');
 const { applyCheckpointTransition, applyCheckpointReopen } = require('./project-checkpoints');
 const { initializeMemberMemory, createMemberMemoryLedger } = require('./member-memory');
 const { initializeMemberProfileProposals, createMemberProfileProposals } = require('./member-profile-proposals');
@@ -861,6 +862,8 @@ function writeProject(projectId, updates, options) {
     const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
     if (!current) return null;
     const patch = prepareProjectPatch(current, updates, options);
+    routeKnowledgeChangeWork({ db, current, patch, createTask, updateTask,
+        readTask: id => deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id)) });
     // Identity is stable even when a scanner upserts the same project by name.
     delete patch.id;
     const { sql, values } = buildUpdate('projects', patch, 'id', projectId);
@@ -888,7 +891,8 @@ function updateProjectNeed(projectId, needId, updates) {
             if (!current) return null;
             if (!Array.isArray(current.needs ?? [])) throw new Error('Invalid stored needs array');
             const needs = [...(current.needs || [])];
-            const { expected, ...patch } = updates;
+            const { expected, expected_knowledge_revision, append_evidence, record_application, ...patch } = updates;
+            let mutationId = needId;
             if (needId) {
                 const index = needs.findIndex(need => need.id === needId);
                 if (index < 0) throw invalidProject('Need not found', 404);
@@ -897,9 +901,10 @@ function updateProjectNeed(projectId, needId, updates) {
                 )) return { conflict: true };
                 needs[index] = { ...needs[index], ...patch, id: needId };
             } else {
-                needs.push({ ...patch, id: crypto.randomUUID().slice(0, 8) });
+                mutationId = crypto.randomUUID().slice(0, 8);
+                needs.push({ ...patch, id: mutationId });
             }
-            const updated = writeProject(current.id, { needs }, { needMutation: { source: patch.source } });
+            const updated = writeProject(current.id, { needs }, { needMutation: { id: mutationId, input: updates, source: patch.source } });
             return { ...updated, success: true, need: needId ? updated.needs.find(need => need.id === needId) : updated.needs.at(-1) };
         }).immediate();
     } catch (err) {
