@@ -1,0 +1,423 @@
+{
+  "base": "http://localhost:3100",
+  "fixture": "default",
+  "shell": false,
+  "report": [
+    {
+      "viewport": "1440x900",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": false,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible"
+      },
+      "pageScrollBefore": 1408,
+      "focusAfterOpen": "page:Open navigation menu",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 29,
+        "bodyOverflow": "visible/visible"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 448,
+          "top": 0,
+          "bottom": 900,
+          "width": 448
+        },
+        "labelled": null,
+        "viewport": {
+          "vw": 1440,
+          "vh": 900,
+          "docScrollWidth": 1440
+        },
+        "navLinks": 14,
+        "navColumns": 1,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 24,
+            "bottom": 52,
+            "left": 395,
+            "right": 423,
+            "height": 28,
+            "width": 28,
+            "inView": true,
+            "hitOk": false,
+            "coveredBy": "div.pointer-events-auto flex max-w-[min(92vw,44rem)] f",
+            "reachable": false
+          },
+          "firstNav": {
+            "present": true,
+            "text": "Reviews: Documents for Your Decision",
+            "top": 109,
+            "bottom": 159,
+            "left": 24,
+            "right": 423,
+            "height": 50,
+            "width": 399,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "Reviews: Documents for Your Decision",
+            "top": 109,
+            "bottom": 159,
+            "left": 24,
+            "right": 423,
+            "height": 50,
+            "width": 399,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS Dashboard",
+            "top": 703,
+            "bottom": 753,
+            "left": 24,
+            "right": 423,
+            "height": 50,
+            "width": 399,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "Studio",
+            "top": 967,
+            "bottom": 1017,
+            "left": 24,
+            "right": 423,
+            "height": 50,
+            "width": 399,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "nav.mt-8 space-y-4",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 1060,
+            "bottom": 1084,
+            "left": 366,
+            "right": 410,
+            "height": 24,
+            "width": 44,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "nav.mt-8 space-y-4",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 1398,
+            "bottom": 1428,
+            "left": 37,
+            "right": 410,
+            "height": 30,
+            "width": 373,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "nav.mt-8 space-y-4",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 1832,
+            "bottom": 1870,
+            "left": 24,
+            "right": 419,
+            "height": 38,
+            "width": 395,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "nav.mt-8 space-y-4",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 1895,
+            "bottom": 1945,
+            "left": 24,
+            "right": 423,
+            "height": 50,
+            "width": 399,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "nav.mt-8 space-y-4",
+            "reachable": false
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [],
+        "smallTargets": [
+          ":28",
+          "Toggle local-only mode:24",
+          "Save Alias:30",
+          "TheNexusweb-app:38",
+          "Praxistool:38",
+          "TheCortexservice:38",
+          "Nexus-Mobile-Androidresearch:38",
+          "shared-mindgame:38",
+          "LARSweb-app:38",
+          "Groundrulestool:38",
+          "VibeShift Siteservice:38"
+        ]
+      },
+      "shots": [
+        "offline_1440x900_open.png",
+        "offline_1440x900_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 448,
+          "top": 0,
+          "bottom": 900,
+          "width": 448
+        },
+        "labelled": null,
+        "viewport": {
+          "vw": 1440,
+          "vh": 900,
+          "docScrollWidth": 1440
+        },
+        "navLinks": 14,
+        "navColumns": 1,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 24,
+            "bottom": 52,
+            "left": 395,
+            "right": 423,
+            "height": 28,
+            "width": 28,
+            "inView": true,
+            "hitOk": false,
+            "coveredBy": "div.pointer-events-auto flex max-w-[min(92vw,44rem)] f",
+            "reachable": false
+          },
+          "firstNav": {
+            "present": true,
+            "text": "Reviews: Documents for Your Decision",
+            "top": 109,
+            "bottom": 159,
+            "left": 24,
+            "right": 423,
+            "height": 50,
+            "width": 399,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "Reviews: Documents for Your Decision",
+            "top": 109,
+            "bottom": 159,
+            "left": 24,
+            "right": 423,
+            "height": 50,
+            "width": 399,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS Dashboard",
+            "top": 703,
+            "bottom": 753,
+            "left": 24,
+            "right": 423,
+            "height": 50,
+            "width": 399,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "Studio",
+            "top": 967,
+            "bottom": 1017,
+            "left": 24,
+            "right": 423,
+            "height": 50,
+            "width": 399,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "nav.mt-8 space-y-4",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 1060,
+            "bottom": 1084,
+            "left": 366,
+            "right": 410,
+            "height": 24,
+            "width": 44,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "nav.mt-8 space-y-4",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 1398,
+            "bottom": 1428,
+            "left": 37,
+            "right": 410,
+            "height": 30,
+            "width": 373,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "nav.mt-8 space-y-4",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 1832,
+            "bottom": 1870,
+            "left": 24,
+            "right": 419,
+            "height": 38,
+            "width": 395,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "nav.mt-8 space-y-4",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 1895,
+            "bottom": 1945,
+            "left": 24,
+            "right": 423,
+            "height": 50,
+            "width": 399,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "nav.mt-8 space-y-4",
+            "reachable": false
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [],
+        "smallTargets": [
+          ":28",
+          "Toggle local-only mode:24",
+          "Save Alias:30",
+          "TheNexusweb-app:38",
+          "Praxistool:38",
+          "TheCortexservice:38",
+          "Nexus-Mobile-Androidresearch:38",
+          "shared-mindgame:38",
+          "LARSweb-app:38",
+          "Groundrulestool:38",
+          "VibeShift Siteservice:38"
+        ]
+      },
+      "pageScrollY": 960,
+      "reached": {
+        "close": false,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "lastNav": false,
+        "localOnly": false,
+        "aliasSave": false,
+        "lastProject": false,
+        "settings": false,
+        "connection": false
+      },
+      "covered": {
+        "close": "div.pointer-events-auto flex max-w-[min(92vw,44rem)] f"
+      },
+      "unreachable": [
+        "close",
+        "lastNav",
+        "localOnly",
+        "aliasSave",
+        "lastProject",
+        "settings"
+      ],
+      "absent": [
+        "connection"
+      ]
+    }
+  ],
+  "blocked": [],
+  "apiRequests": [
+    "GET localhost:3100/api/praxis/dispatch-state",
+    "GET localhost:3100/api/praxis/council/sessions",
+    "GET localhost:3100/api/dispatches/active",
+    "GET localhost:3100/api/token-usage",
+    "GET localhost:3100/api/praxis/hitl/pending",
+    "GET localhost:3100/api/model-control/chat-config",
+    "GET localhost:3100/api/ai/chat/activity",
+    "GET localhost:3100/api/praxis/stats",
+    "GET localhost:3100/api/ingestion-control/topic-map",
+    "GET localhost:3100/api/praxis/llm-log",
+    "GET localhost:3100/api/model-control/options",
+    "GET localhost:3100/api/calendar",
+    "GET localhost:3100/api/documents",
+    "GET localhost:3100/api/knowledge-activity",
+    "GET localhost:3100/api/praxis/stream/snapshot",
+    "GET localhost:3100/api/notes",
+    "GET localhost:3100/api/board-state",
+    "GET localhost:3100/api/dispatch-insight/autonomy",
+    "GET localhost:3100/api/dispatch-insight/live-work",
+    "GET localhost:3100/api/activity",
+    "GET localhost:3100/api/ag/events",
+    "GET localhost:3100/api/projects",
+    "GET localhost:3100/api/pins",
+    "GET localhost:3100/api/praxis/voice-status",
+    "GET localhost:3100/api/praxis/council/arbiter",
+    "GET localhost:3100/api/praxis/stream",
+    "GET localhost:3100/api/projects/pulse",
+    "GET localhost:3100/api/health",
+    "POST localhost:3100/api/presence/client-activity"
+  ]
+}

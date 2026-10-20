@@ -1,0 +1,4242 @@
+{
+  "base": "http://localhost:3100",
+  "fixture": "default",
+  "shell": false,
+  "report": [
+    {
+      "viewport": "1440x900",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "pageScrollBefore": 1408,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 29,
+        "bodyOverflow": "hidden/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 1152,
+          "top": 0,
+          "bottom": 900,
+          "width": 1152
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1440,
+          "vh": 900,
+          "docScrollWidth": 1440
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 1095,
+            "right": 1139,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 467,
+            "bottom": 511,
+            "left": 408,
+            "right": 783,
+            "height": 44,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 126,
+            "bottom": 170,
+            "left": 1058,
+            "right": 1114,
+            "height": 44,
+            "width": 56,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 478,
+            "bottom": 508,
+            "left": 820,
+            "right": 1114,
+            "height": 30,
+            "width": 294,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 826,
+            "bottom": 870,
+            "left": 394,
+            "right": 757,
+            "height": 44,
+            "width": 362,
+            "inView": true,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 844,
+            "bottom": 888,
+            "left": 24,
+            "right": 248,
+            "height": 44,
+            "width": 224,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 825,
+            "clientHeight": 762,
+            "scrollWidth": 1151,
+            "clientWidth": 1151
+          }
+        ],
+        "smallTargets": [
+          "Save Alias:30"
+        ]
+      },
+      "shots": [
+        "default_1440x900_open.png",
+        "default_1440x900_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 1152,
+          "top": 0,
+          "bottom": 900,
+          "width": 1152
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1440,
+          "vh": 900,
+          "docScrollWidth": 1440
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 1095,
+            "right": 1139,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 22,
+            "bottom": 87,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": true,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 22,
+            "bottom": 87,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": true,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 544,
+            "bottom": 598,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 404,
+            "bottom": 448,
+            "left": 408,
+            "right": 783,
+            "height": 44,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 544,
+            "bottom": 598,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 63,
+            "bottom": 107,
+            "left": 1058,
+            "right": 1114,
+            "height": 44,
+            "width": 56,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 415,
+            "bottom": 445,
+            "left": 820,
+            "right": 1114,
+            "height": 30,
+            "width": 294,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 763,
+            "bottom": 807,
+            "left": 394,
+            "right": 757,
+            "height": 44,
+            "width": 362,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 844,
+            "bottom": 888,
+            "left": 24,
+            "right": 248,
+            "height": 44,
+            "width": 224,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 825,
+            "clientHeight": 762,
+            "scrollWidth": 1151,
+            "clientWidth": 1151
+          }
+        ],
+        "smallTargets": [
+          "Save Alias:30"
+        ]
+      },
+      "pageScrollY": 0,
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "lastProject": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "steps": 60,
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:TheNexusweb-app",
+          "menu:Praxistool",
+          "menu:TheCortexservice",
+          "menu:Nexus-Mobile-Androidresearch",
+          "menu:shared-mindgame",
+          "menu:LARSweb-app",
+          "menu:Groundrulestool",
+          "menu:VibeShift Siteservice",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "clickedAt": [
+          1296,
+          450
+        ],
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    },
+    {
+      "viewport": "1280x720",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "pageScrollBefore": 1588,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 29,
+        "bodyOverflow": "hidden/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 1152,
+          "top": 0,
+          "bottom": 720,
+          "width": 1152
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1280,
+          "vh": 720,
+          "docScrollWidth": 1280
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 1095,
+            "right": 1139,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 467,
+            "bottom": 511,
+            "left": 408,
+            "right": 783,
+            "height": 44,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 126,
+            "bottom": 170,
+            "left": 1058,
+            "right": 1114,
+            "height": 44,
+            "width": 56,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 478,
+            "bottom": 508,
+            "left": 820,
+            "right": 1114,
+            "height": 30,
+            "width": 294,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 826,
+            "bottom": 870,
+            "left": 394,
+            "right": 757,
+            "height": 44,
+            "width": 362,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 664,
+            "bottom": 708,
+            "left": 24,
+            "right": 248,
+            "height": 44,
+            "width": 224,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 825,
+            "clientHeight": 582,
+            "scrollWidth": 1151,
+            "clientWidth": 1151
+          }
+        ],
+        "smallTargets": [
+          "Save Alias:30"
+        ]
+      },
+      "shots": [
+        "default_1280x720_open.png",
+        "default_1280x720_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 1152,
+          "top": 0,
+          "bottom": 720,
+          "width": 1152
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1280,
+          "vh": 720,
+          "docScrollWidth": 1280
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 1095,
+            "right": 1139,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -158,
+            "bottom": -93,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -158,
+            "bottom": -93,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 364,
+            "bottom": 418,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 224,
+            "bottom": 268,
+            "left": 408,
+            "right": 783,
+            "height": 44,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 364,
+            "bottom": 418,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": -117,
+            "bottom": -73,
+            "left": 1058,
+            "right": 1114,
+            "height": 44,
+            "width": 56,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 235,
+            "bottom": 265,
+            "left": 820,
+            "right": 1114,
+            "height": 30,
+            "width": 294,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 583,
+            "bottom": 627,
+            "left": 394,
+            "right": 757,
+            "height": 44,
+            "width": 362,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 664,
+            "bottom": 708,
+            "left": 24,
+            "right": 248,
+            "height": 44,
+            "width": 224,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 825,
+            "clientHeight": 582,
+            "scrollWidth": 1151,
+            "clientWidth": 1151
+          }
+        ],
+        "smallTargets": [
+          "Save Alias:30"
+        ]
+      },
+      "pageScrollY": 0,
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "lastProject": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "steps": 60,
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:TheNexusweb-app",
+          "menu:Praxistool",
+          "menu:TheCortexservice",
+          "menu:Nexus-Mobile-Androidresearch",
+          "menu:shared-mindgame",
+          "menu:LARSweb-app",
+          "menu:Groundrulestool",
+          "menu:VibeShift Siteservice",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "clickedAt": [
+          1216,
+          360
+        ],
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    },
+    {
+      "viewport": "1024x600",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "pageScrollBefore": 2451,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 29,
+        "bodyOverflow": "hidden/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 976,
+          "top": 0,
+          "bottom": 600,
+          "width": 976
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1024,
+          "vh": 600,
+          "docScrollWidth": 1024
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 919,
+            "right": 963,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 607,
+            "height": 65,
+            "width": 583,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 607,
+            "height": 65,
+            "width": 583,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 312,
+            "height": 54,
+            "width": 288,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 467,
+            "bottom": 511,
+            "left": 320,
+            "right": 607,
+            "height": 44,
+            "width": 288,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 312,
+            "height": 54,
+            "width": 288,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 126,
+            "bottom": 170,
+            "left": 882,
+            "right": 938,
+            "height": 44,
+            "width": 56,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 478,
+            "bottom": 508,
+            "left": 644,
+            "right": 938,
+            "height": 30,
+            "width": 294,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 878,
+            "bottom": 922,
+            "left": 492,
+            "right": 951,
+            "height": 44,
+            "width": 460,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 544,
+            "bottom": 588,
+            "left": 24,
+            "right": 248,
+            "height": 44,
+            "width": 224,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 877,
+            "clientHeight": 462,
+            "scrollWidth": 975,
+            "clientWidth": 975
+          }
+        ],
+        "smallTargets": [
+          "Save Alias:30"
+        ]
+      },
+      "shots": [
+        "default_1024x600_open.png",
+        "default_1024x600_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 976,
+          "top": 0,
+          "bottom": 600,
+          "width": 976
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1024,
+          "vh": 600,
+          "docScrollWidth": 1024
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 919,
+            "right": 963,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -330,
+            "bottom": -265,
+            "left": 24,
+            "right": 607,
+            "height": 65,
+            "width": 583,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -330,
+            "bottom": -265,
+            "left": 24,
+            "right": 607,
+            "height": 65,
+            "width": 583,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 192,
+            "bottom": 246,
+            "left": 24,
+            "right": 312,
+            "height": 54,
+            "width": 288,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 52,
+            "bottom": 96,
+            "left": 320,
+            "right": 607,
+            "height": 44,
+            "width": 288,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 192,
+            "bottom": 246,
+            "left": 24,
+            "right": 312,
+            "height": 54,
+            "width": 288,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": -289,
+            "bottom": -245,
+            "left": 882,
+            "right": 938,
+            "height": 44,
+            "width": 56,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 63,
+            "bottom": 93,
+            "left": 644,
+            "right": 938,
+            "height": 30,
+            "width": 294,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 463,
+            "bottom": 507,
+            "left": 492,
+            "right": 951,
+            "height": 44,
+            "width": 460,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 544,
+            "bottom": 588,
+            "left": 24,
+            "right": 248,
+            "height": 44,
+            "width": 224,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 877,
+            "clientHeight": 462,
+            "scrollWidth": 975,
+            "clientWidth": 975
+          }
+        ],
+        "smallTargets": [
+          "Save Alias:30"
+        ]
+      },
+      "pageScrollY": 0,
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "lastProject": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "steps": 60,
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:TheNexusweb-app",
+          "menu:Praxistool",
+          "menu:TheCortexservice",
+          "menu:Nexus-Mobile-Androidresearch",
+          "menu:shared-mindgame",
+          "menu:LARSweb-app",
+          "menu:Groundrulestool",
+          "menu:VibeShift Siteservice",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "clickedAt": [
+          1000,
+          300
+        ],
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    },
+    {
+      "viewport": "390x844",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "clip visible/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "pageScrollBefore": 4137,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 29,
+        "bodyOverflow": "hidden/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "bottom": 844,
+          "width": 390
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 390,
+          "vh": 844,
+          "docScrollWidth": 390
+        },
+        "navLinks": 14,
+        "navColumns": 1,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 333,
+            "right": 377,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 16,
+            "right": 373,
+            "height": 65,
+            "width": 357,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 16,
+            "right": 373,
+            "height": 65,
+            "width": 357,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 929,
+            "bottom": 982,
+            "left": 16,
+            "right": 373,
+            "height": 54,
+            "width": 357,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 737,
+            "bottom": 781,
+            "left": 16,
+            "right": 373,
+            "height": 44,
+            "width": 357,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 929,
+            "bottom": 982,
+            "left": 16,
+            "right": 373,
+            "height": 54,
+            "width": 357,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 1047,
+            "bottom": 1091,
+            "left": 304,
+            "right": 360,
+            "height": 44,
+            "width": 56,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 1425,
+            "bottom": 1469,
+            "left": 29,
+            "right": 360,
+            "height": 44,
+            "width": 331,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 1907,
+            "bottom": 1951,
+            "left": 16,
+            "right": 373,
+            "height": 44,
+            "width": 357,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 788,
+            "bottom": 832,
+            "left": 16,
+            "right": 373,
+            "height": 44,
+            "width": 357,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 1906,
+            "clientHeight": 706,
+            "scrollWidth": 389,
+            "clientWidth": 389
+          }
+        ],
+        "smallTargets": []
+      },
+      "shots": [
+        "default_390x844_open.png",
+        "default_390x844_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "bottom": 844,
+          "width": 390
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 390,
+          "vh": 844,
+          "docScrollWidth": 390
+        },
+        "navLinks": 14,
+        "navColumns": 1,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 333,
+            "right": 377,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -1115,
+            "bottom": -1050,
+            "left": 16,
+            "right": 373,
+            "height": 65,
+            "width": 357,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -1115,
+            "bottom": -1050,
+            "left": 16,
+            "right": 373,
+            "height": 65,
+            "width": 357,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": -271,
+            "bottom": -218,
+            "left": 16,
+            "right": 373,
+            "height": 54,
+            "width": 357,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": -463,
+            "bottom": -419,
+            "left": 16,
+            "right": 373,
+            "height": 44,
+            "width": 357,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": -271,
+            "bottom": -218,
+            "left": 16,
+            "right": 373,
+            "height": 54,
+            "width": 357,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": -153,
+            "bottom": -109,
+            "left": 304,
+            "right": 360,
+            "height": 44,
+            "width": 56,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 225,
+            "bottom": 269,
+            "left": 29,
+            "right": 360,
+            "height": 44,
+            "width": 331,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 707,
+            "bottom": 751,
+            "left": 16,
+            "right": 373,
+            "height": 44,
+            "width": 357,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 788,
+            "bottom": 832,
+            "left": 16,
+            "right": 373,
+            "height": 44,
+            "width": 357,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 1906,
+            "clientHeight": 706,
+            "scrollWidth": 389,
+            "clientWidth": 389
+          }
+        ],
+        "smallTargets": []
+      },
+      "pageScrollY": 0,
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "lastProject": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "clip visible/clip visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "steps": 60,
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:TheNexusweb-app",
+          "menu:Praxistool",
+          "menu:TheCortexservice",
+          "menu:Nexus-Mobile-Androidresearch",
+          "menu:shared-mindgame",
+          "menu:LARSweb-app",
+          "menu:Groundrulestool",
+          "menu:VibeShift Siteservice",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "skipped": "panel covers the viewport width; Close button is the dismiss control"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "clip visible/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    },
+    {
+      "viewport": "375x667",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "clip visible/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "pageScrollBefore": 4314,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 29,
+        "bodyOverflow": "hidden/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 375,
+          "top": 0,
+          "bottom": 667,
+          "width": 375
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 375,
+          "vh": 667,
+          "docScrollWidth": 375
+        },
+        "navLinks": 14,
+        "navColumns": 1,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 318,
+            "right": 362,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 16,
+            "right": 358,
+            "height": 65,
+            "width": 342,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 16,
+            "right": 358,
+            "height": 65,
+            "width": 342,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 929,
+            "bottom": 982,
+            "left": 16,
+            "right": 358,
+            "height": 54,
+            "width": 342,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 737,
+            "bottom": 781,
+            "left": 16,
+            "right": 358,
+            "height": 44,
+            "width": 342,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 929,
+            "bottom": 982,
+            "left": 16,
+            "right": 358,
+            "height": 54,
+            "width": 342,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 1047,
+            "bottom": 1091,
+            "left": 289,
+            "right": 345,
+            "height": 44,
+            "width": 56,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 1425,
+            "bottom": 1469,
+            "left": 29,
+            "right": 345,
+            "height": 44,
+            "width": 316,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 1907,
+            "bottom": 1951,
+            "left": 16,
+            "right": 358,
+            "height": 44,
+            "width": 342,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 611,
+            "bottom": 655,
+            "left": 16,
+            "right": 358,
+            "height": 44,
+            "width": 342,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 1906,
+            "clientHeight": 529,
+            "scrollWidth": 374,
+            "clientWidth": 374
+          }
+        ],
+        "smallTargets": []
+      },
+      "shots": [
+        "default_375x667_open.png",
+        "default_375x667_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 375,
+          "top": 0,
+          "bottom": 667,
+          "width": 375
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 375,
+          "vh": 667,
+          "docScrollWidth": 375
+        },
+        "navLinks": 14,
+        "navColumns": 1,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 318,
+            "right": 362,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -1292,
+            "bottom": -1227,
+            "left": 16,
+            "right": 358,
+            "height": 65,
+            "width": 342,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -1292,
+            "bottom": -1227,
+            "left": 16,
+            "right": 358,
+            "height": 65,
+            "width": 342,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": -448,
+            "bottom": -395,
+            "left": 16,
+            "right": 358,
+            "height": 54,
+            "width": 342,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": -640,
+            "bottom": -596,
+            "left": 16,
+            "right": 358,
+            "height": 44,
+            "width": 342,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": -448,
+            "bottom": -395,
+            "left": 16,
+            "right": 358,
+            "height": 54,
+            "width": 342,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": -330,
+            "bottom": -286,
+            "left": 289,
+            "right": 345,
+            "height": 44,
+            "width": 56,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 48,
+            "bottom": 92,
+            "left": 29,
+            "right": 345,
+            "height": 44,
+            "width": 316,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 530,
+            "bottom": 574,
+            "left": 16,
+            "right": 358,
+            "height": 44,
+            "width": 342,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 611,
+            "bottom": 655,
+            "left": 16,
+            "right": 358,
+            "height": 44,
+            "width": 342,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 1906,
+            "clientHeight": 529,
+            "scrollWidth": 374,
+            "clientWidth": 374
+          }
+        ],
+        "smallTargets": []
+      },
+      "pageScrollY": 0,
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "lastProject": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "clip visible/clip visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "steps": 60,
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:TheNexusweb-app",
+          "menu:Praxistool",
+          "menu:TheCortexservice",
+          "menu:Nexus-Mobile-Androidresearch",
+          "menu:shared-mindgame",
+          "menu:LARSweb-app",
+          "menu:Groundrulestool",
+          "menu:VibeShift Siteservice",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "skipped": "panel covers the viewport width; Close button is the dismiss control"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "clip visible/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    },
+    {
+      "viewport": "zoom200",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "clip visible/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "pageScrollBefore": 3575,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 29,
+        "bodyOverflow": "hidden/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 672,
+          "top": 0,
+          "bottom": 450,
+          "width": 672
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 720,
+          "vh": 450,
+          "docScrollWidth": 720
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 615,
+            "right": 659,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 647,
+            "height": 65,
+            "width": 623,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 647,
+            "height": 65,
+            "width": 623,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 332,
+            "height": 54,
+            "width": 308,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 467,
+            "bottom": 511,
+            "left": 340,
+            "right": 647,
+            "height": 44,
+            "width": 308,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 332,
+            "height": 54,
+            "width": 308,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 726,
+            "bottom": 770,
+            "left": 578,
+            "right": 634,
+            "height": 44,
+            "width": 56,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 1103,
+            "bottom": 1147,
+            "left": 37,
+            "right": 634,
+            "height": 44,
+            "width": 597,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 1377,
+            "bottom": 1421,
+            "left": 340,
+            "right": 647,
+            "height": 44,
+            "width": 308,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 394,
+            "bottom": 438,
+            "left": 24,
+            "right": 150,
+            "height": 44,
+            "width": 126,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 1376,
+            "clientHeight": 312,
+            "scrollWidth": 671,
+            "clientWidth": 671
+          }
+        ],
+        "smallTargets": []
+      },
+      "shots": [
+        "default_zoom200_open.png",
+        "default_zoom200_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 672,
+          "top": 0,
+          "bottom": 450,
+          "width": 672
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 720,
+          "vh": 450,
+          "docScrollWidth": 720
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 615,
+            "right": 659,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -979,
+            "bottom": -914,
+            "left": 24,
+            "right": 647,
+            "height": 65,
+            "width": 623,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -979,
+            "bottom": -914,
+            "left": 24,
+            "right": 647,
+            "height": 65,
+            "width": 623,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": -457,
+            "bottom": -403,
+            "left": 24,
+            "right": 332,
+            "height": 54,
+            "width": 308,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": -597,
+            "bottom": -553,
+            "left": 340,
+            "right": 647,
+            "height": 44,
+            "width": 308,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": -457,
+            "bottom": -403,
+            "left": 24,
+            "right": 332,
+            "height": 54,
+            "width": 308,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": -338,
+            "bottom": -294,
+            "left": 578,
+            "right": 634,
+            "height": 44,
+            "width": 56,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 39,
+            "bottom": 83,
+            "left": 37,
+            "right": 634,
+            "height": 44,
+            "width": 597,
+            "inView": true,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 313,
+            "bottom": 357,
+            "left": 340,
+            "right": 647,
+            "height": 44,
+            "width": 308,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 394,
+            "bottom": 438,
+            "left": 24,
+            "right": 150,
+            "height": 44,
+            "width": 126,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 1376,
+            "clientHeight": 312,
+            "scrollWidth": 671,
+            "clientWidth": 671
+          }
+        ],
+        "smallTargets": []
+      },
+      "pageScrollY": 0,
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "lastProject": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "clip visible/clip visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "steps": 60,
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:TheNexusweb-app",
+          "menu:Praxistool",
+          "menu:TheCortexservice",
+          "menu:Nexus-Mobile-Androidresearch",
+          "menu:shared-mindgame",
+          "menu:LARSweb-app",
+          "menu:Groundrulestool",
+          "menu:VibeShift Siteservice",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "clickedAt": [
+          696,
+          225
+        ],
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "clip visible/clip visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "clip visible/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    },
+    {
+      "viewport": "scale150",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "pageScrollBefore": 2885,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 29,
+        "bodyOverflow": "hidden/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 1208,
+          "top": 0,
+          "bottom": 720,
+          "width": 1208
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1280,
+          "vh": 720,
+          "docScrollWidth": 1280
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 18,
+            "bottom": 84,
+            "left": 1123,
+            "right": 1189,
+            "height": 66,
+            "width": 66,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 127,
+            "bottom": 223,
+            "left": 36,
+            "right": 655,
+            "height": 96,
+            "width": 619,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 127,
+            "bottom": 223,
+            "left": 36,
+            "right": 655,
+            "height": 96,
+            "width": 619,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 930,
+            "bottom": 1010,
+            "left": 36,
+            "right": 340,
+            "height": 80,
+            "width": 304,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 720,
+            "bottom": 786,
+            "left": 352,
+            "right": 655,
+            "height": 66,
+            "width": 304,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 930,
+            "bottom": 1010,
+            "left": 36,
+            "right": 340,
+            "height": 80,
+            "width": 304,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 188,
+            "bottom": 254,
+            "left": 1068,
+            "right": 1152,
+            "height": 66,
+            "width": 84,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 705,
+            "bottom": 749,
+            "left": 710,
+            "right": 1152,
+            "height": 44,
+            "width": 442,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 1257,
+            "bottom": 1323,
+            "left": 418,
+            "right": 789,
+            "height": 66,
+            "width": 370,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 636,
+            "bottom": 702,
+            "left": 36,
+            "right": 372,
+            "height": 66,
+            "width": 336,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 837,
+            "clientHeight": 343,
+            "scrollWidth": 805,
+            "clientWidth": 805
+          }
+        ],
+        "smallTargets": []
+      },
+      "shots": [
+        "default_scale150_open.png",
+        "default_scale150_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 1208,
+          "top": 0,
+          "bottom": 720,
+          "width": 1208
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1280,
+          "vh": 720,
+          "docScrollWidth": 1280
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 18,
+            "bottom": 84,
+            "left": 1123,
+            "right": 1189,
+            "height": 66,
+            "width": 66,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -615,
+            "bottom": -519,
+            "left": 36,
+            "right": 655,
+            "height": 96,
+            "width": 619,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -615,
+            "bottom": -519,
+            "left": 36,
+            "right": 655,
+            "height": 96,
+            "width": 619,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 188,
+            "bottom": 268,
+            "left": 36,
+            "right": 340,
+            "height": 80,
+            "width": 304,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": -22,
+            "bottom": 44,
+            "left": 352,
+            "right": 655,
+            "height": 66,
+            "width": 304,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 188,
+            "bottom": 268,
+            "left": 36,
+            "right": 340,
+            "height": 80,
+            "width": 304,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": -554,
+            "bottom": -488,
+            "left": 1068,
+            "right": 1152,
+            "height": 66,
+            "width": 84,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": -37,
+            "bottom": 7,
+            "left": 710,
+            "right": 1152,
+            "height": 44,
+            "width": 442,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 515,
+            "bottom": 581,
+            "left": 418,
+            "right": 789,
+            "height": 66,
+            "width": 370,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 636,
+            "bottom": 702,
+            "left": 36,
+            "right": 372,
+            "height": 66,
+            "width": 336,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 837,
+            "clientHeight": 343,
+            "scrollWidth": 805,
+            "clientWidth": 805
+          }
+        ],
+        "smallTargets": []
+      },
+      "pageScrollY": 0,
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "lastProject": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "steps": 60,
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:TheNexusweb-app",
+          "menu:Praxistool",
+          "menu:TheCortexservice",
+          "menu:Nexus-Mobile-Androidresearch",
+          "menu:shared-mindgame",
+          "menu:LARSweb-app",
+          "menu:Groundrulestool",
+          "menu:VibeShift Siteservice",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "clickedAt": [
+          1244,
+          360
+        ],
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    },
+    {
+      "viewport": "text200",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "clip visible/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "pageScrollBefore": 7712,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 29,
+        "bodyOverflow": "hidden/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "bottom": 844,
+          "width": 390
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 390,
+          "vh": 844,
+          "docScrollWidth": 390
+        },
+        "navLinks": 14,
+        "navColumns": 1,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 24,
+            "bottom": 112,
+            "left": 277,
+            "right": 365,
+            "height": 88,
+            "width": 88,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 169,
+            "bottom": 329,
+            "left": 32,
+            "right": 357,
+            "height": 160,
+            "width": 325,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 169,
+            "bottom": 329,
+            "left": 32,
+            "right": 357,
+            "height": 160,
+            "width": 325,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 1967,
+            "bottom": 2144,
+            "left": 32,
+            "right": 357,
+            "height": 177,
+            "width": 325,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 1583,
+            "bottom": 1671,
+            "left": 32,
+            "right": 357,
+            "height": 88,
+            "width": 325,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 1967,
+            "bottom": 2144,
+            "left": 32,
+            "right": 357,
+            "height": 177,
+            "width": 325,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 2353,
+            "bottom": 2441,
+            "left": 57,
+            "right": 169,
+            "height": 88,
+            "width": 112,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 3051,
+            "bottom": 3139,
+            "left": 57,
+            "right": 332,
+            "height": 88,
+            "width": 275,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 4013,
+            "bottom": 4101,
+            "left": 32,
+            "right": 357,
+            "height": 88,
+            "width": 325,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 732,
+            "bottom": 820,
+            "left": 32,
+            "right": 357,
+            "height": 88,
+            "width": 325,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 4012,
+            "clientHeight": 570,
+            "scrollWidth": 389,
+            "clientWidth": 389
+          }
+        ],
+        "smallTargets": []
+      },
+      "shots": [
+        "default_text200_open.png",
+        "default_text200_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "bottom": 844,
+          "width": 390
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 390,
+          "vh": 844,
+          "docScrollWidth": 390
+        },
+        "navLinks": 14,
+        "navColumns": 1,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 24,
+            "bottom": 112,
+            "left": 277,
+            "right": 365,
+            "height": 88,
+            "width": 88,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -3273,
+            "bottom": -3113,
+            "left": 32,
+            "right": 357,
+            "height": 160,
+            "width": 325,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -3273,
+            "bottom": -3113,
+            "left": 32,
+            "right": 357,
+            "height": 160,
+            "width": 325,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": -1475,
+            "bottom": -1298,
+            "left": 32,
+            "right": 357,
+            "height": 177,
+            "width": 325,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": -1859,
+            "bottom": -1771,
+            "left": 32,
+            "right": 357,
+            "height": 88,
+            "width": 325,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": -1475,
+            "bottom": -1298,
+            "left": 32,
+            "right": 357,
+            "height": 177,
+            "width": 325,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": -1089,
+            "bottom": -1001,
+            "left": 57,
+            "right": 169,
+            "height": 88,
+            "width": 112,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": -391,
+            "bottom": -303,
+            "left": 57,
+            "right": 332,
+            "height": 88,
+            "width": 275,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 571,
+            "bottom": 659,
+            "left": 32,
+            "right": 357,
+            "height": 88,
+            "width": 325,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 732,
+            "bottom": 820,
+            "left": 32,
+            "right": 357,
+            "height": 88,
+            "width": 325,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollHeight": 4012,
+            "clientHeight": 570,
+            "scrollWidth": 389,
+            "clientWidth": 389
+          }
+        ],
+        "smallTargets": []
+      },
+      "pageScrollY": 0,
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "lastProject": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "clip visible/clip visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "steps": 60,
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:TheNexusweb-app",
+          "menu:Praxistool",
+          "menu:TheCortexservice",
+          "menu:Nexus-Mobile-Androidresearch",
+          "menu:shared-mindgame",
+          "menu:LARSweb-app",
+          "menu:Groundrulestool",
+          "menu:VibeShift Siteservice",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "skipped": "panel covers the viewport width; Close button is the dismiss control"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "clip visible/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    },
+    {
+      "viewport": "320text200",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "clip visible/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "pageScrollBefore": 8288,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 29,
+        "bodyOverflow": "hidden/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "bottom": 640,
+          "width": 320
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 320,
+          "vh": 640,
+          "docScrollWidth": 320
+        },
+        "navLinks": 14,
+        "navColumns": 1,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 40,
+            "bottom": 128,
+            "left": 207,
+            "right": 295,
+            "height": 88,
+            "width": 88,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 201,
+            "bottom": 394,
+            "left": 32,
+            "right": 287,
+            "height": 193,
+            "width": 255,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 201,
+            "bottom": 394,
+            "left": 32,
+            "right": 287,
+            "height": 193,
+            "width": 255,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 2255,
+            "bottom": 2471,
+            "left": 32,
+            "right": 287,
+            "height": 216,
+            "width": 255,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "Operate",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 1793,
+            "bottom": 1881,
+            "left": 32,
+            "right": 287,
+            "height": 88,
+            "width": 255,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "Operate",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 2255,
+            "bottom": 2471,
+            "left": 32,
+            "right": 287,
+            "height": 216,
+            "width": 255,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "Operate",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 2680,
+            "bottom": 2768,
+            "left": 57,
+            "right": 169,
+            "height": 88,
+            "width": 112,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "Operate",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 3417,
+            "bottom": 3505,
+            "left": 57,
+            "right": 262,
+            "height": 88,
+            "width": 205,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "Operate",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 4411,
+            "bottom": 4499,
+            "left": 32,
+            "right": 287,
+            "height": 88,
+            "width": 255,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "Operate",
+            "reachable": false
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 4572,
+            "bottom": 4660,
+            "left": 32,
+            "right": 287,
+            "height": 88,
+            "width": 255,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "Operate",
+            "reachable": false
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "absolute inset-y-0 left-0 flex w-full flex-col border-r bord",
+            "scrollHeight": 4684,
+            "clientHeight": 640,
+            "scrollWidth": 319,
+            "clientWidth": 319
+          }
+        ],
+        "smallTargets": []
+      },
+      "shots": [
+        "default_320text200_open.png",
+        "default_320text200_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "bottom": 640,
+          "width": 320
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 320,
+          "vh": 640,
+          "docScrollWidth": 320
+        },
+        "navLinks": 14,
+        "navColumns": 1,
+        "projectLinks": 8,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 40,
+            "bottom": 128,
+            "left": 207,
+            "right": 295,
+            "height": 88,
+            "width": 88,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -3843,
+            "bottom": -3650,
+            "left": 32,
+            "right": 287,
+            "height": 193,
+            "width": 255,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -3843,
+            "bottom": -3650,
+            "left": 32,
+            "right": 287,
+            "height": 193,
+            "width": 255,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": -1789,
+            "bottom": -1573,
+            "left": 32,
+            "right": 287,
+            "height": 216,
+            "width": 255,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": -2251,
+            "bottom": -2163,
+            "left": 32,
+            "right": 287,
+            "height": 88,
+            "width": 255,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": -1789,
+            "bottom": -1573,
+            "left": 32,
+            "right": 287,
+            "height": 216,
+            "width": 255,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": -1364,
+            "bottom": -1276,
+            "left": 57,
+            "right": 169,
+            "height": 88,
+            "width": 112,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": -627,
+            "bottom": -539,
+            "left": 57,
+            "right": 262,
+            "height": 88,
+            "width": 205,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lastProject": {
+            "present": true,
+            "text": "VibeShift Siteservice",
+            "top": 367,
+            "bottom": 455,
+            "left": 32,
+            "right": 287,
+            "height": 88,
+            "width": 255,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 528,
+            "bottom": 616,
+            "left": 32,
+            "right": 287,
+            "height": 88,
+            "width": 255,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "absolute inset-y-0 left-0 flex w-full flex-col border-r bord",
+            "scrollHeight": 4684,
+            "clientHeight": 640,
+            "scrollWidth": 319,
+            "clientWidth": 319
+          }
+        ],
+        "smallTargets": []
+      },
+      "pageScrollY": 0,
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "lastProject": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "clip visible/clip visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "steps": 60,
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:TheNexusweb-app",
+          "menu:Praxistool",
+          "menu:TheCortexservice",
+          "menu:Nexus-Mobile-Androidresearch",
+          "menu:shared-mindgame",
+          "menu:LARSweb-app",
+          "menu:Groundrulestool",
+          "menu:VibeShift Siteservice",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "skipped": "panel covers the viewport width; Close button is the dismiss control"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "clip visible/clip visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    }
+  ],
+  "blocked": [],
+  "apiRequests": [
+    "GET localhost:3100/api/praxis/dispatch-state",
+    "GET localhost:3100/api/praxis/council/sessions",
+    "GET localhost:3100/api/dispatches/active",
+    "GET localhost:3100/api/token-usage",
+    "GET localhost:3100/api/praxis/hitl/pending",
+    "GET localhost:3100/api/model-control/chat-config",
+    "GET localhost:3100/api/ai/chat/activity",
+    "GET localhost:3100/api/praxis/stats",
+    "GET localhost:3100/api/ingestion-control/topic-map",
+    "GET localhost:3100/api/praxis/llm-log",
+    "GET localhost:3100/api/model-control/options",
+    "GET localhost:3100/api/calendar",
+    "GET localhost:3100/api/documents",
+    "GET localhost:3100/api/knowledge-activity",
+    "GET localhost:3100/api/praxis/stream/snapshot",
+    "GET localhost:3100/api/notes",
+    "GET localhost:3100/api/board-state",
+    "GET localhost:3100/api/dispatch-insight/autonomy",
+    "GET localhost:3100/api/dispatch-insight/live-work",
+    "GET localhost:3100/api/activity",
+    "GET localhost:3100/api/ag/events",
+    "GET localhost:3100/api/projects",
+    "GET localhost:3100/api/pins",
+    "GET localhost:3100/api/praxis/voice-status",
+    "GET localhost:3100/api/praxis/council/arbiter",
+    "GET localhost:3100/api/praxis/stream",
+    "GET localhost:3100/api/projects/pulse",
+    "GET localhost:3100/api/health",
+    "POST localhost:3100/api/presence/client-activity"
+  ]
+}
