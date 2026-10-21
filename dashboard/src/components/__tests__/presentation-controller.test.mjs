@@ -60,13 +60,47 @@ test('Android discovers its own source, starts the selected view and revokes on 
     await act(async () => start.click());
     assert.ok(commands.some(c => c.action === 'start' && c.sessionId === 'session-1'));
     assert.ok(document.body.textContent.includes('Android confirmed'));
-    const picker = [...document.querySelectorAll('button')].find(b => b.textContent === 'Choose wireless display');
+    const picker = [...document.querySelectorAll('button')].find(b => b.textContent === 'Connect with Cast');
     assert.ok(picker);
     await act(async () => picker.click());
     assert.ok(commands.some(c => c.action === 'wireless-picker'));
     await act(async () => window.dispatchEvent(new window.CustomEvent('nexus:display-background')));
     assert.ok(requests.some(r => r.method === 'DELETE' && r.url.endsWith('/session-1')));
     assert.ok(commands.some(c => c.action === 'stop'));
+  } finally { await act(async () => root.unmount()); div.remove(); globalThis.fetch = originalFetch; delete window.__NEXUS_DISPLAYS__; delete window.ReactNativeWebView; }
+});
+
+test('Android Cast discovery opens the native picker without TV browser setup and reports launch failure', async () => {
+  const originalFetch = globalThis.fetch;
+  window.__NEXUS_DISPLAYS__ = { version: 1, platform: 'android' };
+  const now = new Date(), commands = [];
+  const sourceDevice = { id: 'cast-phone', name: 'Pixel', platform: 'android' };
+  const inventory = { version: 1, sourceDevice, observedAt: now.toISOString(), expiresAt: new Date(+now + 30000).toISOString(), status: 'available', limitations: [], targets: [{ id: 'cast-tv', name: 'Living Room TV', sourceDeviceId: sourceDevice.id, method: 'cast', availability: 'unavailable', observedAt: now.toISOString(), capabilities: [], limitations: [] }] };
+  let launchFailed = false;
+  window.ReactNativeWebView = { postMessage: raw => {
+    const { command } = JSON.parse(raw); commands.push(command.action);
+    const detail = command.action === 'discover' ? { inventory } : command.action === 'status' && launchFailed
+      ? { state: 'failed', code: 'cast_start_failed', message: 'The Cast receiver could not be started.' } : { state: 'stopped' };
+    window.dispatchEvent(new window.CustomEvent('nexus:display-result', { detail: { requestId: command.requestId, ok: true, ...detail } }));
+  } };
+  globalThis.fetch = async url => Response.json(url.endsWith('/config') ? { receiverOrigin: 'https://receiver.example' } : url.endsWith('/sessions') ? { sessions: [] } : {});
+  const div = document.createElement('div'); document.body.append(div); const root = createRoot(div);
+  try {
+    await act(async () => root.render(createElement(TravelPresentationLauncher)));
+    await act(async () => div.querySelector('button').click());
+    const connect = [...document.querySelectorAll('button')].find(b => b.textContent === 'Connect Living Room TV');
+    assert.ok(connect, 'Discovered Cast display has an actionable connection control');
+    assert.equal(document.querySelector('input[value="cast-tv"]'), null);
+    assert.ok(!document.body.textContent.includes('https://receiver.example'));
+    assert.ok(!document.body.textContent.includes('Pair a TV browser'));
+    assert.ok(!document.body.textContent.includes('cast · unavailable'));
+    assert.ok(document.querySelector('input[aria-label="TV pairing code"]'));
+    await act(async () => connect.click());
+    assert.ok(commands.includes('wireless-picker'));
+    assert.ok(!commands.includes('start'), 'Picker selection alone grants no presentation authority');
+    launchFailed = true;
+    await act(async () => [...document.querySelectorAll('button')].find(b => b.textContent.includes('Refresh')).click());
+    assert.equal(document.querySelector('[role="alert"]').textContent, 'The Cast receiver could not be started.');
   } finally { await act(async () => root.unmount()); div.remove(); globalThis.fetch = originalFetch; delete window.__NEXUS_DISPLAYS__; delete window.ReactNativeWebView; }
 });
 

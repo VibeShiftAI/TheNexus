@@ -60,8 +60,12 @@ export function TravelPresentationLauncher() {
     sessionsRef.current = listed.sessions.filter(s => s.sourceDeviceId === next.sourceDevice.id);
     setSessions(sessionsRef.current);
     setReceiverOrigin(config.receiverOrigin);
+    if (android) {
+      const native = await requestNativeDisplay({ action: 'status' });
+      if (native.code === 'cast_start_failed') setError(native.message || 'The Cast receiver could not be started. Try connecting again.');
+    }
     return next;
-  }, []);
+  }, [android]);
   const perform = useCallback(async (action: (ensureActive: () => void) => Promise<void>) => {
     if (android && document.visibilityState === 'hidden') return;
     const generation = lifecycle.current;
@@ -98,7 +102,8 @@ export function TravelPresentationLauncher() {
       try {
         const listed = await presentationRequest<{ sessions: PresentationSession[] }>(`${api}/sessions`);
         const own = listed.sessions.filter(s => s.sourceDeviceId === inventoryRef.current?.sourceDevice.id);
-        const native = own.some(s => nativeSession(s) && live(s)) ? await requestNativeDisplay({ action: 'status' }) : null;
+        const native = android || own.some(s => nativeSession(s) && live(s)) ? await requestNativeDisplay({ action: 'status' }) : null;
+        if (native?.code === 'cast_start_failed' && !disposed) setError(native.message || 'The Cast receiver could not be started. Try connecting again.');
         for (const session of own.filter(live)) {
           if (disposed || suspended.current) return;
           if (revoking.current.has(session.id)) { await presentationRequest(`${api}/sessions/${session.id}`, { method: 'DELETE' }); continue; }
@@ -115,7 +120,7 @@ export function TravelPresentationLauncher() {
     };
     const timer = setInterval(() => { void tick(); }, 10000);
     return () => { disposed = true; clearInterval(timer); };
-  }, [enabled]);
+  }, [enabled, android]);
 
   useEffect(() => {
     if (!enabled || !android) return;
@@ -157,6 +162,10 @@ export function TravelPresentationLauncher() {
 
   if (!enabled) return null;
   const selectedTarget = inventory?.targets.find(target => target.id === selection);
+  const openWirelessPicker = () => void perform(async () => {
+    await requestNativeDisplay({ action: 'wireless-picker' });
+    setNotice(android ? 'Choose your TV in the native Cast picker, then enter its two-digit code below.' : 'Choose the target in the device picker, then refresh displays.');
+  });
   const viewOption = view.kind === 'focus' ? `focus-${view.mode}` : view.kind;
   return <>
     <button type="button" onClick={() => { setOpen(true); void perform(async () => { await refresh(); }); }} className="fixed bottom-12 left-4 z-40 flex items-center gap-2 rounded-full border border-cyan-700 bg-slate-950 px-4 py-2 text-sm text-cyan-100 shadow-xl"><MonitorUp size={17} /> Displays{sessions.some(live) ? ' · presenting' : ''}</button>
@@ -176,7 +185,7 @@ export function TravelPresentationLauncher() {
           {view.kind === 'document' ? <div className="break-all rounded-lg border border-slate-700 p-3 font-mono text-xs"><p>Document {view.documentId}</p><p>Revision {view.revisionId}</p><p>SHA-256 {view.contentHash}</p></div> : <p className="text-xs text-slate-400">For a document, open its review and choose “Present this revision”. Markdown, PDF, images and video are supported.</p>}
           <section className="space-y-3"><div className="flex items-center justify-between"><h3 className="font-semibold">Displays from this device</h3><button type="button" className={buttonClass} disabled={busy} onClick={() => void perform(async () => { await refresh(); })}><RefreshCw size={14} className="mr-1 inline" /> Refresh</button></div>
             {inventory && <p className="text-xs text-slate-400">Source: {inventory.sourceDevice.name} · {inventory.sourceDevice.platform} · observed {new Date(inventory.observedAt).toLocaleTimeString()}. Refresh before starting.</p>}
-            {inventory?.targets.map(target => <label key={target.id} className="block rounded-lg border border-slate-700 p-3"><input type="radio" name="presentation-target" value={target.id} checked={selection === target.id} disabled={target.availability !== 'available' || !target.capabilities.includes(view.kind)} onChange={() => setSelection(target.id)} /> <strong>{target.name}</strong> <span className="text-slate-400">· {target.method} · {target.availability}</span><span className="mt-1 block break-all pl-5 font-mono text-[11px] text-slate-500">{target.id}</span>{target.limitations.map((limit, i) => <span key={i} className="mt-1 block pl-5 text-xs text-amber-200">{limit}</span>)}</label>)}
+            {inventory?.targets.map(target => android && target.method === 'cast' ? <div key={target.id} className="rounded-lg border border-slate-700 p-3"><strong>{target.name}</strong><span className="ml-2 text-slate-400">Google Cast</span><p className="my-2 text-xs text-slate-400">Connect, then enter the two-digit code shown on this TV.</p><button type="button" className={buttonClass} disabled={busy} onClick={openWirelessPicker}>Connect {target.name}</button></div> : <label key={target.id} className="block rounded-lg border border-slate-700 p-3"><input type="radio" name="presentation-target" value={target.id} checked={selection === target.id} disabled={target.availability !== 'available' || !target.capabilities.includes(view.kind)} onChange={() => setSelection(target.id)} /> <strong>{target.name}</strong> <span className="text-slate-400">· {target.method} · {target.availability}</span><span className="mt-1 block break-all pl-5 font-mono text-[11px] text-slate-500">{target.id}</span>{target.limitations.map((limit, i) => <span key={i} className="mt-1 block pl-5 text-xs text-amber-200">{limit}</span>)}</label>)}
             {!inventory?.targets.length && <p>No usable displays reported. Connect a supported display, then refresh from this device.</p>}
             {inventory?.limitations.map((limit, i) => <p key={i} className="text-xs text-slate-400">{limit}</p>)}
             <button type="button" className={`${buttonClass} border-cyan-600 bg-cyan-950`} disabled={busy || !selectedTarget || selectedTarget.availability !== 'available'} onClick={() => void perform(async ensureActive => {
@@ -199,19 +208,19 @@ export function TravelPresentationLauncher() {
               } catch (cause) { revoking.current.add(created.id); await requestNativeDisplay({ action: 'stop' }).catch(() => {}); await presentationRequest(`${api}/sessions/${created.id}`, { method: 'DELETE' }).catch(() => {}); throw cause; }
               await refresh(); setNotice(`${platformName} confirmed the presentation window.`);
             })}>Present on selected display</button>
-            <button type="button" className={buttonClass} disabled={busy} onClick={() => void perform(async () => { await requestNativeDisplay({ action: 'wireless-picker' }); setNotice('Choose the target in the device picker, then refresh or enter the receiver pairing code. Opening the picker alone does not start a Nexus view.'); })}>Choose wireless display</button>
-            <p className="text-xs text-slate-400">{android ? 'Google Cast requires a configured custom Nexus receiver. Launch it with the Cast picker, then pair the code below. Android wireless-display settings may mirror the whole phone; a separate presentation display depends on the phone and TV.' : 'Wireless display: press Win+K and choose a Miracast-compatible target in Windows. Use Extend mode, then refresh here. OS consent stays in Windows.'}</p>
+            <button type="button" className={buttonClass} disabled={busy} onClick={openWirelessPicker}>{android ? 'Connect with Cast' : 'Choose wireless display'}</button>
+            <p className="text-xs text-slate-400">{android ? 'Choose your TV in the native Cast picker. Nexus opens its pairing screen automatically.' : 'Wireless display: press Win+K and choose a Miracast-compatible target in Windows. Use Extend mode, then refresh here. OS consent stays in Windows.'}</p>
           </section>
-          <section className="space-y-3 border-t border-slate-800 pt-5"><h3 className="font-semibold">Pair a TV browser</h3>
-            {receiverOrigin ? <><p>On the TV browser, open <span className="break-all font-mono text-cyan-200">{receiverOrigin}/presentation/index.html</span>. Get a two-digit code, then enter it here for only the selected view.</p><form className="flex flex-wrap gap-2" onSubmit={event => { event.preventDefault(); if (!/^[0-9]{2}$/.test(code)) return; void perform(async ensureActive => {
+          <section className="space-y-3 border-t border-slate-800 pt-5"><h3 className="font-semibold">{android ? 'Enter TV code' : 'Pair a TV browser'}</h3>
+            {receiverOrigin ? <>{android ? <p>Enter the two digits shown on your Cast TV to share only the selected view.</p> : <p>On the TV browser, open <span className="break-all font-mono text-cyan-200">{receiverOrigin}/presentation/index.html</span>. Get a two-digit code, then enter it here for only the selected view.</p>}<form className="flex flex-wrap gap-2" onSubmit={event => { event.preventDefault(); if (!/^[0-9]{2}$/.test(code)) return; void perform(async ensureActive => {
               const fresh = await refresh();
               ensureActive();
               const claimed = await presentationRequest<{ session: PresentationSession }>(`${api}/pairings/${encodeURIComponent(code.trim())}/claim`, { method: 'POST', body: JSON.stringify({ sourceDevice: fresh.sourceDevice, view }) });
               sessionsRef.current = [...sessionsRef.current, claimed.session];
               ensureActive();
               setCode(''); await refresh(); setNotice('Pairing approved for this selected view. The TV will connect on its next poll.');
-            }); }}><input aria-label="TV pairing code" value={code} inputMode="numeric" pattern="[0-9]{2}" maxLength={2} onChange={event => setCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 2))} required className="min-w-0 rounded-lg border border-slate-600 bg-slate-900 p-2 font-mono" /><button className={buttonClass} disabled={busy || !/^[0-9]{2}$/.test(code)}>Pair selected view</button></form></> : <p className="text-slate-400">The isolated TV receiver address is not configured. A reachable receiver origin is required; the TV must never sign in to the full dashboard. Use an attached display meanwhile.</p>}
-            <p className="text-xs text-slate-400">{android ? 'TV browsers require an explicit pairing code; they are not automatically discovered. Apple TV/AirPlay has no supported Android sender here. Use a supported Cast receiver, TV browser or attached display.' : 'TV browsers are paired manually. Cast from WebView2 and AirPlay are not supported here; a TV name alone does not establish either protocol.'}</p>
+            }); }}><input aria-label="TV pairing code" value={code} inputMode="numeric" pattern="[0-9]{2}" maxLength={2} onChange={event => setCode(event.target.value.replace(/[^0-9]/g, '').slice(0, 2))} required className="min-w-0 rounded-lg border border-slate-600 bg-slate-900 p-2 font-mono" /><button className={buttonClass} disabled={busy || !/^[0-9]{2}$/.test(code)}>Pair selected view</button></form></> : <p className="text-slate-400">The Nexus receiver is not configured. Use an attached display while receiver setup is completed.</p>}
+            <p className="text-xs text-slate-400">{android ? 'Apple TV/AirPlay is not supported by this Android app. Use Google Cast or an attached display.' : 'TV browsers are paired manually. Cast from WebView2 and AirPlay are not supported here; a TV name alone does not establish either protocol.'}</p>
           </section>
           <section className="space-y-3 border-t border-slate-800 pt-5"><h3 className="font-semibold">Presentation sessions</h3>{!sessions.length && <p className="text-slate-400">No sessions from this device.</p>}{sessions.map(session => <div key={session.id} className="rounded-lg border border-slate-700 p-3"><div className="flex items-center justify-between gap-3"><span>{session.view.kind} · {session.state}</span>{live(session) && <button type="button" className={buttonClass} disabled={busy} onClick={() => void perform(async () => {
             // Revoke first: even if closing a native window fails, its data lease is ended.
