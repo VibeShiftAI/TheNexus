@@ -25,7 +25,7 @@ const { initializeStakeholderPolicy, createStakeholderPolicy } = require('./stak
 const { initializeDocumentReviews, createDocumentReviewStore } = require('./document-reviews');
 const { initializeClientAccess, createClientAccess } = require('./client-access');
 const { initializeWorkAdmission, createWorkAdmission } = require('./work-admission');
-const { initializeActivityEvents, recordActivityEvent } = require('./activity-events');
+const { initializeActivityEvents, recordActivityEvent, readActivityEvents } = require('./activity-events');
 const { isActivityOnlyChatMessage, chatMessageActivityEvent } = require('./chat-message-policy');
 
 /**
@@ -3176,17 +3176,7 @@ async function clearChatMessages(conversationId) {
 async function getAgEvents({ limit = 50, since = null, severity = null } = {}) {
     if (!db) return [];
     try {
-        const where = [];
-        const params = [];
-        if (since) { where.push('julianday(created_at) > julianday(?)'); params.push(since); }
-        if (severity) { where.push('severity = ?'); params.push(severity); }
-        const sql = `SELECT * FROM ag_events${where.length ? ' WHERE ' + where.join(' AND ') : ''}`
-            + ' ORDER BY datetime(created_at) DESC, id DESC LIMIT ?';
-        params.push(Math.min(Number(limit) || 50, 500));
-        return db.prepare(sql).all(...params).map(row => {
-            row.metadata = deser(row.metadata);
-            return row;
-        });
+        return readActivityEvents(db, { limit, since, severity });
     } catch (err) {
         console.error('[Database] Error reading ag_events:', err.message);
         return [];
