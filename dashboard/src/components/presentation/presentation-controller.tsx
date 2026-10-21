@@ -10,6 +10,7 @@ import { presentationRequest } from '@/lib/presentation-transport';
 
 const api = '/api/presentations';
 const live = (s: PresentationSession) => s.state === 'active' || s.state === 'starting';
+const nativeSession = (s: PresentationSession) => s.method === 'windows-monitor' || s.method === 'android-presentation';
 const buttonClass = 'rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-100 hover:border-cyan-400 disabled:opacity-40';
 
 export function PresentDocumentButton({ documentId, revisionId, contentHash }: { documentId: string; revisionId: string; contentHash: string }) {
@@ -22,6 +23,11 @@ export function PresentDocumentButton({ documentId, revisionId, contentHash }: {
 }
 
 export function TravelPresentationLauncher() {
+  const android = typeof window !== 'undefined' && window.__NEXUS_DISPLAYS__?.platform === 'android';
+  const platformName = android ? 'Android' : 'Windows';
+  const suspended = useRef(false);
+  const lifecycle = useRef(0);
+  const revoking = useRef(new Set<string>());
   const [enabled, setEnabled] = useState(false);
   const [open, setOpen] = useState(false);
   const [inventory, setInventory] = useState<DisplayInventory | null>(null);
@@ -54,17 +60,23 @@ export function TravelPresentationLauncher() {
     setReceiverOrigin(config.receiverOrigin);
     return next;
   }, []);
-  const perform = useCallback(async (action: () => Promise<void>) => {
+  const perform = useCallback(async (action: (ensureActive: () => void) => Promise<void>) => {
+    if (android && document.visibilityState === 'hidden') return;
+    const generation = lifecycle.current;
+    const ensureActive = () => {
+      if (android && (suspended.current || generation !== lifecycle.current || document.visibilityState === 'hidden')) throw new Error('The Android controller left the foreground. Start again to present.');
+    };
+    suspended.current = false;
     setBusy(true); setError(''); setNotice('');
-    try { await operations.current(action); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Display request failed.'); }
+    try { await operations.current(() => { ensureActive(); return action(ensureActive); }); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Display request failed.'); }
     finally { setBusy(false); }
-  }, []);
+  }, [android]);
 
   useEffect(() => {
     if (!displayShellAvailable()) return;
     setEnabled(true);
-    // The source identifier comes only from this laptop's native inventory.
-    void operations.current(refresh).catch(() => {});
+    // Android discovery starts on a controller gesture, never from the home host.
+    if (!android) void operations.current(refresh).catch(() => {});
     const present = (event: Event) => {
       const parsed = PresentationViewSchema.safeParse((event as CustomEvent).detail);
       if (!parsed.success || parsed.data.kind !== 'document') return;
@@ -72,21 +84,23 @@ export function TravelPresentationLauncher() {
     };
     window.addEventListener('nexus:present-document', present);
     return () => window.removeEventListener('nexus:present-document', present);
-  }, [perform, refresh]);
+  }, [perform, refresh, android]);
 
   useEffect(() => {
     if (!enabled) return;
     let disposed = false, running = false;
     const tick = async () => {
-      if (running || !inventoryRef.current) return; running = true;
+      if (running || suspended.current || !inventoryRef.current) return; running = true;
       await operations.current(async () => {
-      if (disposed) return;
+      if (disposed || suspended.current) return;
       try {
         const listed = await presentationRequest<{ sessions: PresentationSession[] }>(`${api}/sessions`);
         const own = listed.sessions.filter(s => s.sourceDeviceId === inventoryRef.current?.sourceDevice.id);
-        const native = own.some(s => s.method === 'windows-monitor' && live(s)) ? await requestNativeDisplay({ action: 'status' }) : null;
+        const native = own.some(s => nativeSession(s) && live(s)) ? await requestNativeDisplay({ action: 'status' }) : null;
         for (const session of own.filter(live)) {
-          const active = session.method !== 'windows-monitor' || (native?.sessionId === session.id && native.state === 'active');
+          if (disposed || suspended.current) return;
+          if (revoking.current.has(session.id)) { await presentationRequest(`${api}/sessions/${session.id}`, { method: 'DELETE' }); continue; }
+          const active = !nativeSession(session) || (native?.sessionId === session.id && native.state === 'active');
           await presentationRequest(`${api}/sessions/${session.id}/heartbeat`, { method: 'POST', body: JSON.stringify({ state: active ? 'active' : 'disconnected' }) });
         }
         if (!disposed) { sessionsRef.current = own; setSessions(own); }
@@ -100,6 +114,28 @@ export function TravelPresentationLauncher() {
     const timer = setInterval(() => { void tick(); }, 10000);
     return () => { disposed = true; clearInterval(timer); };
   }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled || !android) return;
+    const background = () => {
+      if (suspended.current) return;
+      suspended.current = true;
+      lifecycle.current++;
+      void operations.current(async () => {
+        // Serialize after any in-flight start/claim. Revoke authority before native teardown.
+        await Promise.allSettled(sessionsRef.current.filter(live).map(session => {
+          revoking.current.add(session.id);
+          return presentationRequest(`${api}/sessions/${session.id}`, { method: 'DELETE' });
+        }));
+        await requestNativeDisplay({ action: 'stop' }).catch(() => {});
+        setNotice('Presentation ended when the Android controller left the foreground. Start again to present.');
+      });
+    };
+    const visibility = () => { if (document.visibilityState === 'hidden') background(); };
+    window.addEventListener('nexus:display-background', background);
+    document.addEventListener('visibilitychange', visibility);
+    return () => { window.removeEventListener('nexus:display-background', background); document.removeEventListener('visibilitychange', visibility); };
+  }, [enabled, android]);
 
   useEffect(() => {
     if (!open) return;
@@ -136,41 +172,50 @@ export function TravelPresentationLauncher() {
           }}><option value="ambient">Ambient bridge</option><option value="focus-active">Current focus / active work</option><option value="focus-board">Task board</option><option value="day-plan">Calendar / day plan</option>{view.kind === 'document' && <option value="document">Selected document revision</option>}</select></label>
           {view.kind === 'day-plan' && <label className="block">Plan date<input aria-label="Plan date" type="date" value={view.date} onChange={event => setView({ kind: 'day-plan', date: event.target.value })} className="ml-3 rounded-lg border border-slate-600 bg-slate-900 p-2" /></label>}
           {view.kind === 'document' ? <div className="break-all rounded-lg border border-slate-700 p-3 font-mono text-xs"><p>Document {view.documentId}</p><p>Revision {view.revisionId}</p><p>SHA-256 {view.contentHash}</p></div> : <p className="text-xs text-slate-400">For a document, open its review and choose “Present this revision”. Markdown, PDF, images and video are supported.</p>}
-          <section className="space-y-3"><div className="flex items-center justify-between"><h3 className="font-semibold">Displays on this laptop</h3><button type="button" className={buttonClass} disabled={busy} onClick={() => void perform(async () => { await refresh(); })}><RefreshCw size={14} className="mr-1 inline" /> Refresh</button></div>
+          <section className="space-y-3"><div className="flex items-center justify-between"><h3 className="font-semibold">Displays from this device</h3><button type="button" className={buttonClass} disabled={busy} onClick={() => void perform(async () => { await refresh(); })}><RefreshCw size={14} className="mr-1 inline" /> Refresh</button></div>
             {inventory && <p className="text-xs text-slate-400">Source: {inventory.sourceDevice.name} · {inventory.sourceDevice.platform} · observed {new Date(inventory.observedAt).toLocaleTimeString()}. Refresh before starting.</p>}
             {inventory?.targets.map(target => <label key={target.id} className="block rounded-lg border border-slate-700 p-3"><input type="radio" name="presentation-target" value={target.id} checked={selection === target.id} disabled={target.availability !== 'available' || !target.capabilities.includes(view.kind)} onChange={() => setSelection(target.id)} /> <strong>{target.name}</strong> <span className="text-slate-400">· {target.method} · {target.availability}</span><span className="mt-1 block break-all pl-5 font-mono text-[11px] text-slate-500">{target.id}</span>{target.limitations.map((limit, i) => <span key={i} className="mt-1 block pl-5 text-xs text-amber-200">{limit}</span>)}</label>)}
-            {!inventory?.targets.length && <p>No usable displays reported. Refresh in the Windows travel shell.</p>}
+            {!inventory?.targets.length && <p>No usable displays reported. Connect a supported display, then refresh from this device.</p>}
             {inventory?.limitations.map((limit, i) => <p key={i} className="text-xs text-slate-400">{limit}</p>)}
-            <button type="button" className={`${buttonClass} border-cyan-600 bg-cyan-950`} disabled={busy || !selectedTarget || selectedTarget.availability !== 'available'} onClick={() => void perform(async () => {
+            <button type="button" className={`${buttonClass} border-cyan-600 bg-cyan-950`} disabled={busy || !selectedTarget || selectedTarget.availability !== 'available'} onClick={() => void perform(async ensureActive => {
               if (!selection) return;
               const fresh = await refresh();
+              ensureActive();
               const target = fresh.targets.find(t => t.id === selection && t.availability === 'available');
               if (!target) throw new Error('That display is no longer available. Choose a current target.');
-              for (const previous of sessionsRef.current.filter(s => s.method === 'windows-monitor' && live(s))) {
+              for (const previous of sessionsRef.current.filter(s => nativeSession(s) && live(s))) {
                 await requestNativeDisplay({ action: 'stop' }); await presentationRequest(`${api}/sessions/${previous.id}`, { method: 'DELETE' });
               }
               const created = await presentationRequest<PresentationSession>(`${api}/sessions`, { method: 'POST', body: JSON.stringify({ sourceDeviceId: fresh.sourceDevice.id, targetId: selection, view }) });
+              sessionsRef.current = [...sessionsRef.current, created];
               try {
+                ensureActive();
                 const opened = await requestNativeDisplay({ action: 'start', targetId: selection, sessionId: created.id, expiresAt: created.expiresAt });
-                if (opened.state !== 'active' || opened.sessionId !== created.id) throw new Error('Windows did not confirm this presentation.');
+                ensureActive();
+                if (opened.state !== 'active' || opened.sessionId !== created.id) throw new Error(`${platformName} did not confirm this presentation.`);
                 await presentationRequest(`${api}/sessions/${created.id}/heartbeat`, { method: 'POST', body: JSON.stringify({ state: 'active' }) });
-              } catch (cause) { await requestNativeDisplay({ action: 'stop' }).catch(() => {}); await presentationRequest(`${api}/sessions/${created.id}`, { method: 'DELETE' }).catch(() => {}); throw cause; }
-              await refresh(); setNotice('Windows confirmed the presentation window.');
+              } catch (cause) { revoking.current.add(created.id); await requestNativeDisplay({ action: 'stop' }).catch(() => {}); await presentationRequest(`${api}/sessions/${created.id}`, { method: 'DELETE' }).catch(() => {}); throw cause; }
+              await refresh(); setNotice(`${platformName} confirmed the presentation window.`);
             })}>Present on selected display</button>
-            <p className="text-xs text-slate-400">Wireless display: press Win+K and choose a Miracast-compatible target in Windows. Use Extend mode, then refresh here. OS consent stays in Windows.</p>
+            <button type="button" className={buttonClass} disabled={busy} onClick={() => void perform(async () => { await requestNativeDisplay({ action: 'wireless-picker' }); setNotice('Choose the target in the device picker, then refresh or enter the receiver pairing code. Opening the picker alone does not start a Nexus view.'); })}>Choose wireless display</button>
+            <p className="text-xs text-slate-400">{android ? 'Google Cast requires a configured custom Nexus receiver. Launch it with the Cast picker, then pair the code below. Android wireless-display settings may mirror the whole phone; a separate presentation display depends on the phone and TV.' : 'Wireless display: press Win+K and choose a Miracast-compatible target in Windows. Use Extend mode, then refresh here. OS consent stays in Windows.'}</p>
           </section>
           <section className="space-y-3 border-t border-slate-800 pt-5"><h3 className="font-semibold">Pair a TV browser</h3>
-            {receiverOrigin ? <><p>On the TV browser, open <span className="break-all font-mono text-cyan-200">{receiverOrigin}/presentation/index.html</span>. Get a code, then enter it here for only the selected view.</p><form className="flex flex-wrap gap-2" onSubmit={event => { event.preventDefault(); void perform(async () => {
+            {receiverOrigin ? <><p>On the TV browser, open <span className="break-all font-mono text-cyan-200">{receiverOrigin}/presentation/index.html</span>. Get a code, then enter it here for only the selected view.</p><form className="flex flex-wrap gap-2" onSubmit={event => { event.preventDefault(); void perform(async ensureActive => {
               const fresh = await refresh();
-              await presentationRequest(`${api}/pairings/${encodeURIComponent(code.trim())}/claim`, { method: 'POST', body: JSON.stringify({ sourceDevice: fresh.sourceDevice, view }) });
+              ensureActive();
+              const claimed = await presentationRequest<{ session: PresentationSession }>(`${api}/pairings/${encodeURIComponent(code.trim())}/claim`, { method: 'POST', body: JSON.stringify({ sourceDevice: fresh.sourceDevice, view }) });
+              sessionsRef.current = [...sessionsRef.current, claimed.session];
+              ensureActive();
               setCode(''); await refresh(); setNotice('Pairing approved for this selected view. The TV will connect on its next poll.');
             }); }}><input aria-label="TV pairing code" value={code} maxLength={32} onChange={event => setCode(event.target.value.toUpperCase())} required className="min-w-0 rounded-lg border border-slate-600 bg-slate-900 p-2 font-mono" /><button className={buttonClass} disabled={busy || !code.trim()}>Pair selected view</button></form></> : <p className="text-slate-400">The isolated TV receiver address is not configured. A reachable receiver origin is required; the TV must never sign in to the full dashboard. Use an attached display meanwhile.</p>}
-            <p className="text-xs text-slate-400">TV browsers are paired manually. Cast from WebView2 and AirPlay are not supported here; a TV name alone does not establish either protocol.</p>
+            <p className="text-xs text-slate-400">{android ? 'TV browsers require an explicit pairing code; they are not automatically discovered. Apple TV/AirPlay has no supported Android sender here. Use a supported Cast receiver, TV browser or attached display.' : 'TV browsers are paired manually. Cast from WebView2 and AirPlay are not supported here; a TV name alone does not establish either protocol.'}</p>
           </section>
-          <section className="space-y-3 border-t border-slate-800 pt-5"><h3 className="font-semibold">Presentation sessions</h3>{!sessions.length && <p className="text-slate-400">No sessions from this laptop.</p>}{sessions.map(session => <div key={session.id} className="rounded-lg border border-slate-700 p-3"><div className="flex items-center justify-between gap-3"><span>{session.view.kind} · {session.state}</span>{live(session) && <button type="button" className={buttonClass} disabled={busy} onClick={() => void perform(async () => {
+          <section className="space-y-3 border-t border-slate-800 pt-5"><h3 className="font-semibold">Presentation sessions</h3>{!sessions.length && <p className="text-slate-400">No sessions from this device.</p>}{sessions.map(session => <div key={session.id} className="rounded-lg border border-slate-700 p-3"><div className="flex items-center justify-between gap-3"><span>{session.view.kind} · {session.state}</span>{live(session) && <button type="button" className={buttonClass} disabled={busy} onClick={() => void perform(async () => {
             // Revoke first: even if closing a native window fails, its data lease is ended.
+            revoking.current.add(session.id);
             await presentationRequest(`${api}/sessions/${session.id}`, { method: 'DELETE' });
-            if (session.method === 'windows-monitor') await requestNativeDisplay({ action: 'stop' });
+            if (nativeSession(session)) await requestNativeDisplay({ action: 'stop' });
             await refresh(); setNotice('Presentation stopped and receiver access revoked.');
           })}>Stop / revoke</button>}</div><p className="mt-2 break-all font-mono text-xs text-slate-400">{session.targetId}</p><p className="text-xs text-slate-400">Expires {new Date(session.expiresAt).toLocaleTimeString()}{session.reason ? ` · ${session.reason}` : ''}</p></div>)}</section>
         </div>

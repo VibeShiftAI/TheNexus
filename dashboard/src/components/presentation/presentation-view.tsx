@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { PresentationSnapshot } from '@praxis/contract';
 import { DocumentMarkdown } from '../document-review/document-markdown';
-import { PdfViewer } from '../document-review/viewers/pdf-viewer';
+import { PresentationPdf } from './presentation-pdf';
 import { ImageViewer } from '../document-review/viewers/image-viewer';
 import { VideoViewer } from '../document-review/viewers/video-viewer';
 
@@ -50,7 +50,7 @@ export function PresentationView({ snapshot, assetSrc }: { snapshot: Presentatio
       <div className="presentation-identity"><span>Document {content.documentId}</span><span>Revision {content.revisionId}</span><span>SHA-256 {content.contentHash}</span></div>
       {content.newerRevisionAvailable && <p className="presentation-notice">A newer revision exists. This screen keeps the selected revision; choose a new presentation on the controller to change it.</p>}
       {content.mediaType === 'markdown' ? <DocumentMarkdown content={content.content || ''} interactive={false} presentationSafe /> : !assetSrc ? <p role="status">Loading the selected revision’s media…</p> :
-        content.mediaType === 'pdf' ? <PdfViewer presentationSafe src={assetSrc} assetKey="primary" annotate={false} /> :
+        content.mediaType === 'pdf' ? <PresentationPdf src={assetSrc} /> :
         content.mediaType === 'image' ? <ImageViewer src={assetSrc} alt={content.title} assetKey="primary" annotate={false} /> :
         <VideoViewer src={assetSrc} assetKey="primary" kind="video" mimeType={content.mimeType} annotate={false} />}
     </section>}

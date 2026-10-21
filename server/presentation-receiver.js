@@ -33,8 +33,10 @@ function createPresentationReceiverApp({ service, staticDir = path.resolve(__dir
     app.disable('x-powered-by');
     app.set('trust proxy', false);
     app.use(presentationHeaders);
-    app.use((_req, res, next) => {
-        res.set('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; frame-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+    app.use((req, res, next) => {
+        const sdk = req.path === '/presentation/cast.html' ? ' https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/' : '';
+        const ipc = req.path === '/presentation/cast.html' ? ' ws://localhost:8008/v2/ipc' : '';
+        res.set('Content-Security-Policy', `default-src 'none'; script-src 'self' 'wasm-unsafe-eval'${sdk}; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self'; connect-src 'self' blob:${ipc}; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`);
         res.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
         res.set('Cross-Origin-Resource-Policy', 'same-origin');
         res.set('Cross-Origin-Opener-Policy', 'same-origin');
@@ -57,8 +59,8 @@ function createPresentationReceiverApp({ service, staticDir = path.resolve(__dir
     app.get('/', (_req, res) => res.redirect('/presentation/index.html'));
     app.get('/presentation/:file', (req, res, next) => {
         // No source maps, arbitrary files, nested paths, or general Next.js app.
-        if (!/^[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(?:html|js|css|woff2?)$/.test(req.params.file)
-            || (req.params.file.endsWith('.html') && req.params.file !== 'index.html')) return next();
+        if (!/^[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(?:html|js|css|woff2?|wasm|bcmap|pfb|ttf|png)$/.test(req.params.file)
+            || (req.params.file.endsWith('.html') && !['index.html', 'cast.html'].includes(req.params.file))) return next();
         res.sendFile(req.params.file, { root: staticDir, dotfiles: 'deny', cacheControl: false, lastModified: false, etag: false }, error => {
             if (error && !res.headersSent) next(presentationError('not_found', 404, 'Receiver asset not found.'));
         });

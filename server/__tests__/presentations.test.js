@@ -119,6 +119,8 @@ beforeEach(async () => {
     const staticDir = path.join(workspace, 'static');
     fs.mkdirSync(staticDir);
     fs.writeFileSync(path.join(staticDir, 'index.html'), '<!doctype html><title>Presentation</title>');
+    fs.writeFileSync(path.join(staticDir, 'cast.html'), '<!doctype html><title>Cast presentation</title>');
+    fs.writeFileSync(path.join(staticDir, 'icon.png'), Buffer.from([137, 80, 78, 71]));
     fs.writeFileSync(path.join(staticDir, 'presentation.js'), 'window.presentation = true;');
     receiver = await listen(createPresentationReceiverApp({ service, staticDir }));
 });
@@ -515,4 +517,39 @@ test('an unredeemed claimed receiver expires with its pairing even while control
         await request(controller, `/api/presentations/sessions/${claim.data.session.id}/heartbeat`, { method: 'POST', body: { state: 'active' } });
     }
     expect((await request(controller, `/api/presentations/sessions/${claim.data.session.id}`)).data.state).toBe('expired');
+});
+
+test('only the explicit Cast entry permits the vendor SDK and it never exposes operator routes', async () => {
+    const cast = await request(receiver, '/presentation/cast.html');
+    expect(cast.status).toBe(200);
+    expect(cast.headers.get('content-security-policy')).toContain('https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/');
+    expect(cast.headers.get('content-security-policy')).toContain('ws://localhost:8008/v2/ipc');
+    const ordinary = await request(receiver, '/presentation/index.html');
+    expect(ordinary.headers.get('content-security-policy')).not.toContain('https://www.gstatic.com');
+    expect(ordinary.headers.get('content-security-policy')).not.toContain('ws://localhost');
+    expect((await request(receiver, '/api/presentations/config')).status).toBe(404);
+    expect((await request(receiver, '/presentation/other.html')).status).toBe(404);
+    expect((await request(receiver, '/presentation/icon.png')).status).toBe(200);
+});
+
+test('Android can present all shared families and pair a receiver without transferring operator authority', async () => {
+    const phone = { id: 'android:phone-1', name: 'Android phone', platform: 'android' };
+    const report = inventory({ sourceDevice: phone });
+    report.targets = report.targets.map(t => ({ ...t, sourceDeviceId: phone.id, method: 'android-presentation' }));
+    expect((await request(controller, '/api/presentations/inventory', { method: 'PUT', body: report })).status).toBe(200);
+    const document = registerDocument();
+    for (const view of [{ kind: 'ambient' }, { kind: 'focus', mode: 'active' }, { kind: 'focus', mode: 'board' }, { kind: 'day-plan', date: '2026-10-20' }, document.view]) {
+        const created = await request(controller, '/api/presentations/sessions', { method: 'POST', body: { sourceDeviceId: phone.id, targetId: 'monitor-1', view } });
+        expect(created.status).toBe(201);
+        expect((await request(controller, `/api/presentations/sessions/${created.data.id}/view`)).data.content.kind).toBe(view.kind);
+        expect((await request(controller, `/api/presentations/sessions/${created.data.id}`, { method: 'DELETE' })).data.state).toBe('stopped');
+    }
+    const enrolled = await request(receiver, '/receiver/pairings', { method: 'POST', body: { name: 'Cast display' } });
+    const claimed = await request(controller, `/api/presentations/pairings/${enrolled.data.code}/claim`, { method: 'POST', body: { sourceDevice: phone, view: document.view } });
+    expect(claimed.status).toBe(201);
+    const poll = await request(receiver, `/receiver/pairings/${enrolled.data.code}`, { token: enrolled.data.pollToken });
+    expect((await request(receiver, '/receiver/view', { token: poll.data.token })).data.content.revisionId).toBe(document.view.revisionId);
+    expect((await request(controller, '/api/presentations/sessions', { signed: false, token: poll.data.token })).status).toBe(401);
+    await request(controller, `/api/presentations/sessions/${claimed.data.session.id}`, { method: 'DELETE' });
+    expect((await request(receiver, '/receiver/view', { token: poll.data.token })).status).toBe(401);
 });

@@ -30,11 +30,11 @@ test('document output visibly binds exact identity and keeps update notification
 });
 
 test('PDF, image and video use existing read-only media stages', () => {
-  for (const [mediaType, tag] of [['pdf', 'iframe'], ['image', 'img'], ['video', 'video']]) {
+  for (const [mediaType, tag] of [['pdf', 'canvas'], ['image', 'img'], ['video', 'video']]) {
     const html = renderToStaticMarkup(createElement(PresentationView, { snapshot: snapshot({ ...doc, mediaType, content: null }), assetSrc: 'blob:asset' }));
     assert.ok(html.includes(`<${tag}`));
     assert.doesNotMatch(html, /Comment on|Comment at|data-image-draft|Open full|target="_blank"/);
-    if (mediaType === 'pdf') { assert.match(html, /inert=""/); assert.match(html, /pointer-events:none/); }
+    if (mediaType === 'pdf') { assert.doesNotMatch(html, /<iframe|<a\b/); assert.match(html, /PDF page/); }
   }
 });
 
