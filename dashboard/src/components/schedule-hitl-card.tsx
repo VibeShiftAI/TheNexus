@@ -392,7 +392,7 @@ export function ScheduleHitlCard({
           {followup ? "QA follow-up slate" : "Morning Plan"} — {schedule.date}
         </span>
         <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
-          {activeCount} dispatching{skipCount > 0 ? `, ${skipCount} skipped` : ""}
+          {activeCount} {followup ? "selected" : "dispatching"}{skipCount > 0 ? `, ${skipCount} skipped` : ""}
           {revokedCount > 0 ? `, ${revokedCount} revoked` : ""}
           {executorChanges > 0 ? `, ${executorChanges} worker changes` : ""}
           {modelChanges > 0 ? `, ${modelChanges} model changes` : ""}
