@@ -14,6 +14,15 @@
  * heading or its loading/empty text, and if the dashboard's own project grid
  * does not list every fixture project.
  *
+ * Since task 68909e82 (2026-10-21) every focusable control in the menu is
+ * hit-tested while scrolling, not only the named sample targets. Wheel and
+ * drag steps are a third of the menu's visible scroll area (at most 240px),
+ * so a short window cannot step a control from below the visible area to
+ * above it, and scrolling continues until the menu stops at its end. The Tab
+ * walk is one lap of the menu's focusable controls plus two, and fails if a
+ * control is never focused, focus does not wrap, or a focused control is
+ * hidden or covered.
+ *
  * No backend is needed or touched: every /api/* request is answered from a
  * fixture through CDP request interception, and anything aimed at :4000 or
  * :4299 is blocked, so the live Nexus API never sees a request.
@@ -22,13 +31,17 @@
  *   CHECK_BASE=http://localhost:3100 CHECK_OUT=/path/out node scripts/nav-menu-browser-check.mjs
  *
  * Env: CHECK_BASE (http://localhost:3100), CHECK_OUT (./.nav-menu-check),
- * CHECK_VIEWPORTS (comma list of names below; default all),
+ * CHECK_VIEWPORTS (comma list of names below, or ad hoc <w>x<h> with optional
+ * -touch and -text200 suffixes such as 568x320-touch; default all named),
  * CHECK_FIXTURE (default | long | empty | loading), CHECK_SHELL=1 to emulate
  * the Android shell (Connection settings), CHECK_OFFLINE=1 to fail /api/health
  * so the connection banner floats over the page, CHECK_TAG (screenshot prefix),
  * CHECK_REDUCED_MOTION=1 to emulate prefers-reduced-motion and require a still panel,
- * CHECK_INTERACT=0 to skip the keyboard/close checks (before evidence).
- * Exits 1 when a target is unreachable or the page scrolls sideways.
+ * CHECK_INTERACT=0 to skip the keyboard/close checks (before evidence),
+ * CHECK_WHEEL_STEP=<px> and CHECK_TAB_STEPS=<n> to force a fixed wheel step or
+ * Tab walk length (diagnostics: 240 and 60 reproduce the earlier fixed values).
+ * Exits 1 when a target or control is unreachable, the Tab walk misses a
+ * control, or the page scrolls sideways.
  */
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
@@ -66,8 +79,24 @@ const VIEWPORTS = {
     "text200": { width: 390, height: 844, dpr: 2, mobile: true, rootFont: "200%" },
     // The narrowest phone in common use with doubled text.
     "320text200": { width: 320, height: 640, dpr: 2, mobile: true, rootFont: "200%" },
+    // Short windows: a laptop browser 400px tall (split screen) and a phone held
+    // landscape, also with doubled text (the shell's two footer buttons must stack).
+    "1280x400": { width: 1280, height: 400, dpr: 1, mobile: false },
+    "844x390": { width: 844, height: 390, dpr: 2, mobile: true },
+    "844x390text200": { width: 844, height: 390, dpr: 2, mobile: true, rootFont: "200%" },
 };
+function viewportFor(name) {
+    if (VIEWPORTS[name]) return VIEWPORTS[name];
+    const m = /^(\d+)x(\d+)((?:-touch|-text200)*)$/.exec(name);
+    if (!m) return null;
+    const mobile = m[3].includes("-touch");
+    return { width: Number(m[1]), height: Number(m[2]), dpr: mobile ? 2 : 1, mobile, rootFont: m[3].includes("-text200") ? "200%" : undefined };
+}
 const selected = (process.env.CHECK_VIEWPORTS || Object.keys(VIEWPORTS).join(",")).split(",").map((s) => s.trim()).filter(Boolean);
+// The menu's own focus-trap selector (FOCUSABLE in nav-sidebar.tsx), limited to rendered controls.
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const controlsIn = (root) => `Array.from(${root}.querySelectorAll(${JSON.stringify(FOCUSABLE)})).filter((el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden')`;
+const LABEL_OF = `(el) => (el.getAttribute('aria-label') || (el.tagName === 'SELECT' ? 'select ' + (el.selectedOptions[0]?.textContent.trim() || '') : el.textContent.trim().replace(/\\s+/g, ' ')) || el.getAttribute('placeholder') || el.getAttribute('name') || el.tagName.toLowerCase()).slice(0, 40)`;
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 const TYPES = ["web-app", "tool", "service", "research", "game"];
@@ -208,17 +237,25 @@ const PROBE = `(() => {
     connection: byText('button', 'Connection settings'),
   };
   const vw = window.innerWidth, vh = window.innerHeight;
-  const out = {};
-  for (const [name, el] of Object.entries(targets)) {
-    if (!el) { out[name] = { present: false }; continue; }
+  const measure = (el) => {
     const r = el.getBoundingClientRect();
     const inView = r.width > 0 && r.height > 0 && r.top >= -0.5 && r.left >= -0.5 && r.bottom <= vh + 0.5 && r.right <= vw + 0.5;
     const cx = Math.min(vw - 1, Math.max(0, r.left + r.width / 2)), cy = Math.min(vh - 1, Math.max(0, r.top + r.height / 2));
     const hit = document.elementFromPoint(cx, cy);
     const hitOk = !!hit && (hit === el || el.contains(hit));
     const coveredBy = hitOk || !hit ? null : (hit.closest('[aria-label]')?.getAttribute('aria-label') || hit.tagName.toLowerCase() + '.' + String(hit.className).slice(0, 50));
-    out[name] = { present: true, text: el.textContent.trim().slice(0, 40), top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), height: Math.round(r.height), width: Math.round(r.width), inView, hitOk, coveredBy, reachable: inView && hitOk };
+    return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), height: Math.round(r.height), width: Math.round(r.width), inView, hitOk, coveredBy, reachable: inView && hitOk };
+  };
+  const out = {};
+  for (const [name, el] of Object.entries(targets)) {
+    out[name] = el ? { present: true, text: el.textContent.trim().slice(0, 40), ...measure(el) } : { present: false };
   }
+  // Every focusable control, in DOM order, so the scroll loop can prove each one reachable.
+  const labelOf = ${LABEL_OF};
+  const controls = ${controlsIn("dialog")}.map((el, i) => {
+    const m = measure(el);
+    return { i, label: labelOf(el), top: m.top, inView: m.inView, coveredBy: m.coveredBy, reachable: m.reachable };
+  });
   const dr = dialog.getBoundingClientRect();
   let sideways = [];
   for (const el of dialog.querySelectorAll('*')) {
@@ -238,8 +275,18 @@ const PROBE = `(() => {
     return el.scrollWidth > el.clientWidth + 1 && Array.from(el.childNodes).some((n) => n.nodeType === 3 && n.textContent.trim());
   }).map((el) => el.textContent.trim().slice(0, 30) + ':' + el.scrollWidth + '>' + el.clientWidth);
   sideways = sideways.concat(spill.map((s) => 'text spill ' + s));
+  // A control wider than the panel is cut off at its edge even when the panel clips it.
+  const clipped = ${controlsIn("dialog")}.filter((el) => { const r = el.getBoundingClientRect(); return r.right > Math.min(vw, dr.right) + 1 || r.left < Math.max(0, dr.left) - 1; });
+  sideways = sideways.concat(clipped.map((el) => 'control past the panel edge ' + labelOf(el)));
+  // visibleHeight: the part of a scroller on screen and not under its own sticky
+  // children (the cramped-mode header); wheel steps are sized from it.
   const scrollers = [dialog, ...dialog.querySelectorAll('*')].filter((el) => /(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight + 1)
-    .map((el) => ({ cls: String(el.className).slice(0, 60), scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
+    .map((el) => {
+      const r = el.getBoundingClientRect();
+      const sticky = Array.from(el.children).filter((c) => getComputedStyle(c).position === 'sticky').reduce((h, c) => h + c.getBoundingClientRect().height, 0);
+      const top = Math.max(r.top, 0) + sticky, bottom = Math.min(r.top + el.clientHeight, vh);
+      return { cls: String(el.className).slice(0, 60), scrollTop: Math.round(el.scrollTop), scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, visibleHeight: Math.round(Math.max(0, bottom - top)), centerY: Math.round((top + bottom) / 2), scrollWidth: el.scrollWidth, clientWidth: el.clientWidth };
+    });
   const nav = dialog.querySelector('nav');
   const navCols = nav ? new Set(navLinks.map((a) => Math.round(a.getBoundingClientRect().left))).size : 0;
   const smallTargets = Array.from(dialog.querySelectorAll('a, button')).filter((el) => { const r = el.getBoundingClientRect(); return r.width && r.height < 43.5; }).map((el) => (el.getAttribute('aria-label') || el.textContent.trim()).slice(0, 30) + ':' + Math.round(el.getBoundingClientRect().height));
@@ -250,7 +297,7 @@ const PROBE = `(() => {
     navLinks: navLinks.length, navColumns: navCols, projectLinks: projectLinks.length,
     projectsHeading: /Active Projects/i.test(dialog.textContent),
     loadingText: /Loading projects/.test(dialog.textContent), emptyText: /No active projects/.test(dialog.textContent),
-    targets: out, sideways: sideways.slice(0, 8), scrollers, smallTargets: smallTargets.slice(0, 20),
+    targets: out, controls, sideways: sideways.slice(0, 8), scrollers, smallTargets: smallTargets.slice(0, 20),
   };
 })()`;
 
@@ -301,7 +348,7 @@ async function openMenu(vp) {
 }
 
 // Scroll the way a person would: wheel over the menu body on desktop, a touch
-// drag on the phone sizes. Returns how far the wheel actually moved things.
+// drag on the phone sizes.
 async function scrollMenu(vp, cx, cy, dy) {
     if (vp.mobile) {
         await send("Input.synthesizeScrollGesture", { x: cx, y: cy, yDistance: -dy, gestureSourceType: "touch", speed: 3000 });
@@ -314,7 +361,7 @@ async function scrollMenu(vp, cx, cy, dy) {
 const report = [];
 let failures = 0;
 for (const name of selected) {
-    const vp = VIEWPORTS[name];
+    const vp = viewportFor(name);
     if (!vp) { console.error(`unknown viewport ${name}`); continue; }
     await send("Emulation.setDeviceMetricsOverride", { width: vp.width, height: vp.height, deviceScaleFactor: vp.dpr, mobile: vp.mobile });
     await send("Emulation.setTouchEmulationEnabled", { enabled: vp.mobile, maxTouchPoints: vp.mobile ? 5 : 0 });
@@ -342,48 +389,91 @@ for (const name of selected) {
     row.atOpen = await evalJs(PROBE);
     row.shots = [await shot(`${TAG}_${name}_open.png`)];
 
-    // Scroll the menu to its end, checking targets after every step.
+    // Scroll the menu to its end, checking the targets and every control after
+    // each step. A step is a third of the scroller's visible height (24 to
+    // 240px), so a control up to two thirds of that height is fully on screen
+    // at some step however short the window. Scrolling stops once nothing has
+    // moved for three steps; the cap only guards against a menu that never settles.
     const d = row.atOpen.dialog;
     const cx = Math.round(Math.max(d.left, 0) + Math.min(d.width, vp.width) / 2);
-    const cy = Math.round(vp.height * 0.55);
+    const scroller = row.atOpen.scrollers.slice().sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))[0] || null;
+    const cy = scroller ? scroller.centerY : Math.round(vp.height * 0.55);
+    const wheelStep = Number(process.env.CHECK_WHEEL_STEP) || (scroller ? Math.max(24, Math.min(240, Math.floor(scroller.visibleHeight / 3))) : 240);
+    // A touch drag moves the content a little less than its distance, hence three times the steps the range needs.
+    const maxSteps = (scroller ? Math.ceil((scroller.scrollHeight - scroller.clientHeight) / wheelStep) * 3 : 0) + 6;
     const reached = Object.fromEntries(Object.entries(row.atOpen.targets).map(([k, t]) => [k, !!t.reachable]));
     const covered = {};
+    const controlReached = new Map(row.atOpen.controls.map((c) => [c.i, c.reachable]));
+    const controlCovered = new Map();
     let lastSig = "";
     let still = 0;
-    for (let step = 0; step < 60 && still < 3; step++) {
-        await scrollMenu(vp, cx, cy, 240);
+    let steps = 0;
+    for (; steps < maxSteps && still < 3; steps++) {
+        await scrollMenu(vp, cx, cy, wheelStep);
         const p = await evalJs(PROBE);
         for (const [k, t] of Object.entries(p.targets)) {
             if (t.reachable) reached[k] = true;
             else if (t.present && t.inView && t.coveredBy) covered[k] = t.coveredBy;
         }
-        const sig = JSON.stringify(Object.values(p.targets).map((t) => t.top));
+        for (const c of p.controls) {
+            if (c.reachable) controlReached.set(c.i, true);
+            else if (!controlReached.has(c.i)) controlReached.set(c.i, false);
+            if (!c.reachable && c.inView && c.coveredBy) controlCovered.set(c.i, c.coveredBy);
+        }
+        const sig = JSON.stringify(p.controls.map((c) => c.top).concat(Object.values(p.targets).map((t) => t.top)));
         still = sig === lastSig ? still + 1 : 0;
         lastSig = sig;
     }
     row.afterScroll = await evalJs(PROBE);
     row.pageScrollY = await evalJs("Math.round(window.scrollY)");
+    const endScroller = scroller && row.afterScroll.scrollers.find((s) => s.cls === scroller.cls);
+    row.scroll = { scroller, wheelStep, steps, maxSteps, atEnd: !scroller || (!!endScroller && endScroller.scrollTop + endScroller.clientHeight >= endScroller.scrollHeight - 1) };
     row.reached = reached;
     // Only targets that never became reachable count as covered; passing under
     // the pinned header or footer while scrolling is expected.
     row.covered = Object.fromEntries(Object.entries(covered).filter(([k]) => !reached[k]));
+    const controlLabel = new Map([...row.atOpen.controls, ...row.afterScroll.controls].map((c) => [c.i, `#${c.i} ${c.label}`]));
+    row.controls = {
+        atOpen: row.atOpen.controls.length,
+        afterScroll: row.afterScroll.controls.length,
+        unreachable: [...controlReached].filter(([, ok]) => !ok).map(([i]) => controlLabel.get(i)),
+        covered: Object.fromEntries([...controlCovered].filter(([i]) => !controlReached.get(i)).map(([i, by]) => [controlLabel.get(i), by])),
+    };
     row.shots.push(await shot(`${TAG}_${name}_scrolled.png`));
 
     if (INTERACT) {
         await key("Escape");
         await waitSlidOut();
         row.escape = { state: await evalJs(menuState), focus: await evalJs(describeActive) };
-        // Keyboard open + Tab walk: focus must stay in the menu and visit every target.
+        // Keyboard open + Tab walk: focus must stay in the menu and visit every
+        // control. The walk is one lap of the menu's focusable controls plus two
+        // (every control once, then the wrap back to the first); controls are
+        // tagged in DOM order, the trap's order, so the walk can name a miss.
         await evalJs(`(${TRIGGER}).focus(), true`);
         await key("Enter");
         await sleep(700);
         row.keyboardOpenFocus = await evalJs(describeActive);
+        const tabLabels = await evalJs(`(() => { const d = document.querySelector('[role="dialog"][aria-modal="true"]'); const labelOf = ${LABEL_OF}; return ${controlsIn("d")}.map((el, i) => (el.setAttribute('data-nav-check', String(i)), '#' + i + ' ' + labelOf(el))); })()`);
+        const tabSteps = Number(process.env.CHECK_TAB_STEPS) || tabLabels.length + 2;
         const walk = [];
-        for (let i = 0; i < 60; i++) {
+        for (let i = 0; i < tabSteps; i++) {
             await key("Tab");
-            walk.push(await evalJs(`(() => { const a = document.activeElement; const r = a.getBoundingClientRect(); return { who: ${describeActive}, visible: r.top >= -0.5 && r.bottom <= innerHeight + 0.5 && r.height > 0 }; })()`));
+            walk.push(await evalJs(`(() => { const a = document.activeElement; const r = a.getBoundingClientRect();
+              const hit = document.elementFromPoint(Math.min(innerWidth - 1, Math.max(0, r.left + r.width / 2)), Math.min(innerHeight - 1, Math.max(0, r.top + r.height / 2)));
+              return { who: ${describeActive}, idx: a.getAttribute('data-nav-check'), visible: r.top >= -0.5 && r.bottom <= innerHeight + 0.5 && r.height > 0, uncovered: !!hit && (hit === a || a.contains(hit)) }; })()`));
         }
-        row.tabWalk = { steps: walk.length, leftMenu: walk.filter((w) => !w.who.startsWith("menu:")).map((w) => w.who), hiddenWhileFocused: walk.filter((w) => !w.visible).map((w) => w.who), visited: [...new Set(walk.map((w) => w.who))] };
+        const seen = new Set(walk.map((w) => w.idx));
+        row.tabWalk = {
+            focusables: tabLabels.length,
+            steps: walk.length,
+            missed: tabLabels.filter((_, i) => !seen.has(String(i))),
+            wrapped: walk.length > tabLabels.length && walk[tabLabels.length].idx === "0",
+            untagged: walk.filter((w) => w.idx === null && w.who.startsWith("menu:")).map((w) => w.who),
+            leftMenu: walk.filter((w) => !w.who.startsWith("menu:")).map((w) => w.who),
+            hiddenWhileFocused: walk.filter((w) => !w.visible).map((w) => w.who),
+            coveredWhileFocused: walk.filter((w) => w.visible && !w.uncovered).map((w) => w.who),
+            visited: [...new Set(walk.map((w) => w.who))],
+        };
         await key("Tab", { shift: true });
         row.shiftTab = await evalJs(describeActive);
         // Backdrop: click outside the panel when the panel leaves room for it.
@@ -429,11 +519,17 @@ for (const name of selected) {
     if (row.closedBefore.focusableInside > 0) problems.push("closed menu is focusable");
     if (vp.mobile && row.atOpen.smallTargets.length) problems.push(`touch targets under 44px: ${row.atOpen.smallTargets.join(",")}`);
     if (process.env.CHECK_REDUCED_MOTION === "1" && !/^none |^\S+ 0s$/.test(row.openState.panelTransition)) problems.push(`panel animates under reduced motion (${row.openState.panelTransition})`);
+    if (!row.scroll.atEnd) problems.push(`scrolling stopped before the end of the menu after ${row.scroll.steps} steps`);
+    if (row.controls.atOpen !== row.controls.afterScroll) problems.push(`control count changed while scrolling (${row.controls.atOpen} to ${row.controls.afterScroll})`);
     if (INTERACT) {
         if (!row.focusAfterOpen.startsWith("menu:")) problems.push(`open left focus on ${row.focusAfterOpen}`);
         if (!row.keyboardOpenFocus.startsWith("menu:")) problems.push(`keyboard open left focus on ${row.keyboardOpenFocus}`);
+        if (row.tabWalk.missed.length) problems.push(`Tab never reached ${row.tabWalk.missed.length} of ${row.tabWalk.focusables} controls: ${row.tabWalk.missed.join(",")}`);
+        if (!row.tabWalk.wrapped) problems.push("Tab did not wrap back to the first control");
+        if (row.tabWalk.untagged.length) problems.push(`Tab stopped outside the menu's focus list: ${row.tabWalk.untagged.join(",")}`);
         if (row.tabWalk.leftMenu.length) problems.push(`Tab left the menu ${row.tabWalk.leftMenu.length}x`);
         if (row.tabWalk.hiddenWhileFocused.length) problems.push(`focused off screen: ${row.tabWalk.hiddenWhileFocused.join(",")}`);
+        if (row.tabWalk.coveredWhileFocused.length) problems.push(`focused under another element: ${row.tabWalk.coveredWhileFocused.join(",")}`);
         if (!row.shiftTab.startsWith("menu:")) problems.push(`Shift+Tab left the menu (${row.shiftTab})`);
         if (row.escape.focus !== "page:Open navigation menu" || row.escape.state.focusableInside > 0) problems.push("Escape did not close and return focus");
         if (row.backdrop.state && (row.backdrop.state.onScreen || row.backdrop.focus !== "page:Open navigation menu")) problems.push("backdrop did not close and return focus");
@@ -441,12 +537,14 @@ for (const name of selected) {
         if (row.closedAfter.focusableInside > 0) problems.push("closed menu is focusable");
     }
     row.problems = problems;
-    if (missing.length || sideways || problems.length) failures++;
+    const lost = missing.concat(row.controls.unreachable);
+    if (lost.length || sideways || problems.length) failures++;
     report.push(row);
     console.log(`${name.padEnd(9)} ${TAG.padEnd(14)} panel ${d.width}px cols ${row.atOpen.navColumns} links ${row.atOpen.navLinks} menu projects ${row.atOpen.projectLinks} dashboard projects ${row.dashboardProjects}` +
-        ` | unreachable: ${missing.join(",") || "none"}${Object.keys(row.covered).length ? " | covered: " + JSON.stringify(row.covered) : ""}` +
+        ` | controls reached ${row.controls.afterScroll - row.controls.unreachable.length}/${row.controls.afterScroll} (wheel ${row.scroll.wheelStep}px x${row.scroll.steps})` +
+        ` | unreachable: ${lost.join(",") || "none"}${Object.keys(row.covered).length ? " | covered: " + JSON.stringify(row.covered) : ""}${Object.keys(row.controls.covered).length ? " | controls covered: " + JSON.stringify(row.controls.covered) : ""}` +
         ` | sideways: ${sideways ? "YES " + row.afterScroll.sideways.join(";") : "no"} | pageScrollY ${row.pageScrollY}` +
-        (INTERACT ? ` | Tab stops ${row.tabWalk.visited.length}` : "") +
+        (INTERACT ? ` | Tab ${row.tabWalk.focusables - row.tabWalk.missed.length}/${row.tabWalk.focusables} in ${row.tabWalk.steps} steps${row.tabWalk.wrapped ? ", wrapped" : ""}` : "") +
         ` | ${problems.length ? "PROBLEMS: " + problems.join("; ") : "behaviour ok"}`);
 }
 

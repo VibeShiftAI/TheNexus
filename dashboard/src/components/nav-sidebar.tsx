@@ -287,7 +287,7 @@ export function NavSidebar({ isOpen, onClose, onOpenSettings }: NavSidebarProps)
         </div>
 
         {/* Footer, pinned unless cramped. In the Android shell the two settings buttons share a row when they fit (a rem minimum, so large text stacks them). */}
-        <div ref={footerRef} className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-2 border-t border-slate-800 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom),var(--nexus-floating-overlay-bottom,0px))] sm:flex sm:px-6">
+        <div ref={footerRef} className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-2 border-t border-slate-800 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom),var(--nexus-floating-overlay-bottom,0px))] sm:flex sm:flex-wrap sm:px-6">
           {mobileShell ? (
             <button
               type="button"
