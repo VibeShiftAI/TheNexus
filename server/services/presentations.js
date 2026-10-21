@@ -4,7 +4,7 @@
  * Restart, expiry, stop, or a missed authenticated controller heartbeat revokes
  * receiver capabilities. Only hashes of receiver secrets are retained.
  */
-const { randomBytes, randomUUID, createHash, timingSafeEqual } = require('node:crypto');
+const { randomBytes, randomInt, randomUUID, createHash, timingSafeEqual } = require('node:crypto');
 const { z } = require('zod');
 const {
     DisplayInventorySchema, DisplaySourceSchema, PresentationStartSchema, PresentationViewSchema,
@@ -14,6 +14,7 @@ const { createPresentationData, presentationError } = require('./presentation-da
 
 const CONTROLLER_LEASE_MS = 45_000;
 const RECEIVER_LEASE_MS = 45_000;
+const PAIRING_CODES = Array.from({ length: 100 }, (_, value) => String(value).padStart(2, '0'));
 const TERMINAL = new Set(['stopped', 'expired', 'disconnected', 'failed']);
 const heartbeatSchema = z.object({ state: z.enum(['active', 'disconnected', 'failed']) }).strict();
 const pairingSchema = z.object({ name: z.string().trim().min(1).max(160) }).strict();
@@ -35,6 +36,7 @@ function createPresentationService({ db, now = Date.now, receiverOrigin = null, 
     const inventories = new Map();
     const sessions = new Map();
     const pairings = new Map();
+    const reservedPairingCodes = new Map();
     const tokenSessions = new Map();
     const rates = new Map();
     let pendingStarts = 0;
@@ -78,6 +80,7 @@ function createPresentationService({ db, now = Date.now, receiverOrigin = null, 
 
     function prune() {
         for (const [code, pairing] of pairings) if (pairing.expiresAt <= now()) pairings.delete(code);
+        for (const [code, until] of reservedPairingCodes) if (until <= now()) reservedPairingCodes.delete(code);
         for (const record of sessions.values()) check(record);
         for (const [key, bucket] of rates) if (bucket.until <= now()) rates.delete(key);
     }
@@ -194,10 +197,17 @@ function createPresentationService({ db, now = Date.now, receiverOrigin = null, 
         const request = parse(pairingSchema, input);
         rate('enroll', client, 10);
         if (closed || pairings.size >= maxPairings) throw presentationError('pairing_capacity', 429, 'Too many receivers are waiting to pair.');
-        const code = randomBytes(8).toString('hex').toUpperCase();
+        // The short code selects a receiver; its separate 256-bit poll secret
+        // remains mandatory. Claiming still requires an authenticated controller.
+        const availableCodes = PAIRING_CODES.filter(code => !reservedPairingCodes.has(code));
+        if (!availableCodes.length) throw presentationError('pairing_capacity', 429, 'All pairing codes are in use. Wait for a code to expire and try again.');
+        const code = availableCodes[randomInt(availableCodes.length)];
         const pollToken = randomBytes(32).toString('base64url');
         const expiresAt = now() + PRESENTATION_PAIRING_TTL_MS;
-        pairings.set(code, { name: request.name, targetId: `receiver:${randomUUID()}`, pollHash: hash(pollToken), expiresAt, attempts: 0, sessionId: null, claiming: false });
+        // Do not reassign a consumed code while its original display
+        // could still show it as valid. Reservations share the pairing expiry.
+        reservedPairingCodes.set(code, expiresAt);
+        pairings.set(code, { name: request.name, targetId: `receiver:${randomUUID()}`, pollHash: hash(pollToken), expiresAt, sessionId: null, claiming: false });
         return { code, pollToken, expiresAt: iso(expiresAt) };
     }
 
@@ -234,7 +244,8 @@ function createPresentationService({ db, now = Date.now, receiverOrigin = null, 
         rate('poll', client, 120);
         const pairing = pendingPairing(code);
         if (typeof token !== 'string' || token.length > 512 || !timingSafeEqual(Buffer.from(hash(token || ''), 'hex'), Buffer.from(pairing.pollHash, 'hex'))) {
-            if (++pairing.attempts >= 8) pairings.delete(code);
+            // A public selector is not authority to cancel somebody else's
+            // pairing. Throttle the caller without invalidating the real TV.
             throw presentationError('receiver_unauthorized', 401, 'The receiver credential is invalid or expired.');
         }
         if (!pairing.sessionId) return { state: 'pending' };
@@ -265,7 +276,7 @@ function createPresentationService({ db, now = Date.now, receiverOrigin = null, 
     function close() {
         closed = true;
         for (const record of sessions.values()) revoke(record, 'expired', 'The presentation service closed.');
-        pairings.clear(); tokenSessions.clear(); inventories.clear(); rates.clear();
+        pairings.clear(); reservedPairingCodes.clear(); tokenSessions.clear(); inventories.clear(); rates.clear();
         data.close();
     }
 

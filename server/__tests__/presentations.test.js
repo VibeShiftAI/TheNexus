@@ -274,7 +274,7 @@ test('native confirmation, explicit stop, lease expiry, and hard expiry revoke r
 test('pairing is single-use, scoped to the original receiver, and issues no credentials to the controller', async () => {
     const pending = await request(receiver, '/receiver/pairings', { method: 'POST', body: { name: 'Hotel TV' } });
     expect(pending.status).toBe(201);
-    expect(pending.data.code).toMatch(/^[A-Z0-9]{8,}$/);
+    expect(pending.data.code).toMatch(/^[0-9]{2}$/);
     expect(Buffer.from(pending.data.pollToken, 'base64url').length).toBeGreaterThanOrEqual(32);
     expect((await request(receiver, `/receiver/pairings/${pending.data.code}`, { token: pending.data.pollToken })).data).toEqual({ state: 'pending' });
     expect((await request(receiver, `/receiver/pairings/${pending.data.code}`, { token: 'incorrect' })).status).toBe(401);
@@ -291,6 +291,40 @@ test('pairing is single-use, scoped to the original receiver, and issues no cred
     expect((await request(receiver, `/receiver/pairings/${pending.data.code}`, { token: pending.data.pollToken })).status).toBe(404);
     expect((await request(receiver, '/receiver/view', { token: poll.data.token })).data.content.kind).toBe('ambient');
     expect((await request(controller, '/api/presentations/sessions', { signed: false, token: poll.data.token })).status).toBe(401);
+});
+
+test('two-digit codes are unique at pending capacity and keep independent receiver secrets', () => {
+    const pairs = Array.from({ length: 64 }, (_, i) => service.enroll({ name: `TV ${i}` }, `receiver-${i}`));
+    expect(pairs.every(pair => /^[0-9]{2}$/.test(pair.code))).toBe(true);
+    expect(new Set(pairs.map(pair => pair.code)).size).toBe(64);
+    expect(() => service.enroll({ name: 'Overflow TV' }, 'overflow')).toThrow('Too many receivers');
+    for (const pair of pairs) expect(service.poll(pair.code, pair.pollToken, pair.code)).toEqual({ state: 'pending' });
+});
+
+test('retired two-digit codes remain reserved until expiry and exhausted codes recover after expiry', async () => {
+    const codes = new Set();
+    for (let i = 0; i < 100; i++) {
+        const pair = service.enroll({ name: `TV ${i}` }, `receiver-${i}`);
+        expect(pair.code).toMatch(/^[0-9]{2}$/);
+        expect(codes.has(pair.code)).toBe(false);
+        codes.add(pair.code);
+        const claimed = await service.claim(pair.code, { sourceDevice: source, view: { kind: 'ambient' } }, `controller-${i}`);
+        expect(service.poll(pair.code, pair.pollToken, `receiver-${i}`).state).toBe('paired');
+        service.stop(claimed.session.id);
+    }
+    expect(codes.has('00')).toBe(true);
+    expect(codes.has('99')).toBe(true);
+    expect(() => service.enroll({ name: 'Wait for code' }, 'overflow')).toThrow('codes');
+    current += 120_001;
+    expect(service.enroll({ name: 'New TV' }, 'recovered').code).toMatch(/^[0-9]{2}$/);
+});
+
+test('a consumed short code is not immediately assigned to another receiver', async () => {
+    const paired = await pair();
+    const next = service.enroll({ name: 'Different TV' }, 'different-tv');
+    expect(next.code).not.toBe(paired.enrolled.code);
+    expect(() => service.poll(next.code, paired.enrolled.pollToken, 'old-tv')).toThrow('credential');
+    expect(service.poll(next.code, next.pollToken, 'different-tv')).toEqual({ state: 'pending' });
 });
 
 test('receiver cannot choose another view or access APIs, mutations, credentials, or arbitrary static files', async () => {
@@ -435,10 +469,15 @@ test('inventories and sessions have finite capacity and stopped session capacity
     expect((await attempt()).status).toBe(201);
 });
 
-test('receiver pairing attempts are bounded and a disconnected presentation requires a new session', async () => {
+test('invalid receiver secrets cannot cancel pairing, are rate limited, and disconnection needs a new session', async () => {
     const pending = await request(receiver, '/receiver/pairings', { method: 'POST', body: { name: 'TV' } });
     for (let i = 0; i < 8; i++) expect((await request(receiver, `/receiver/pairings/${pending.data.code}`, { token: 'incorrect' })).status).toBe(401);
-    expect((await request(receiver, `/receiver/pairings/${pending.data.code}`, { token: pending.data.pollToken })).status).toBe(404);
+    expect((await request(receiver, `/receiver/pairings/${pending.data.code}`, { token: pending.data.pollToken })).data).toEqual({ state: 'pending' });
+    for (let i = 0; i < 120; i++) expect(() => service.poll(pending.data.code, 'incorrect', 'guessing-client')).toThrow('credential');
+    expect(() => service.poll(pending.data.code, 'incorrect', 'guessing-client')).toThrow('Too many');
+    const claimed = await service.claim(pending.data.code, { sourceDevice: source, view: { kind: 'ambient' } }, 'controller');
+    for (let i = 0; i < 8; i++) expect(() => service.poll(pending.data.code, 'incorrect', 'another-guesser')).toThrow('credential');
+    expect(service.poll(pending.data.code, pending.data.pollToken, 'real-tv')).toMatchObject({ state: 'paired', session: { id: claimed.session.id } });
     const session = await start();
     expect((await request(controller, `/api/presentations/sessions/${session.id}/heartbeat`, { method: 'POST', body: { state: 'disconnected' } })).data.state).toBe('disconnected');
     expect((await request(controller, `/api/presentations/sessions/${session.id}/heartbeat`, { method: 'POST', body: { state: 'active' } })).status).toBe(410);

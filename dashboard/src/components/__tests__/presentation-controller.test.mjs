@@ -92,6 +92,11 @@ test('backgrounding during pairing revokes the returned session even when the fo
   try {
     await act(async () => root.render(createElement(TravelPresentationLauncher)));
     await act(async () => div.querySelector('button').click());
+    await act(async () => {
+      const input = document.querySelector('input[aria-label="TV pairing code"]');
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, '07');
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
     await act(async () => document.querySelector('[role="dialog"] form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
     assert.equal(claiming, true);
     await act(async () => { window.dispatchEvent(new window.CustomEvent('nexus:display-background')); finishClaim(); });
@@ -127,5 +132,42 @@ test('native discovery remains visible when publication fails, but presenting st
     await act(async () => [...document.querySelectorAll('button')].find(b => b.textContent === 'Present on selected display').click());
     assert.ok(!commands.includes('start'));
     assert.ok(requests.every(url => url.endsWith('/inventory')));
+  } finally { await act(async () => root.unmount()); div.remove(); globalThis.fetch = originalFetch; delete window.__NEXUS_DISPLAYS__; delete window.ReactNativeWebView; }
+});
+
+
+test('TV pairing uses two numeric digits and preserves a leading zero in the claimed code', async () => {
+  const originalFetch = globalThis.fetch;
+  window.__NEXUS_DISPLAYS__ = { version: 1, platform: 'android' };
+  const now = new Date(), claims = [];
+  const sourceDevice = { id: 'phone-short-code', name: 'Android phone', platform: 'android' };
+  const inventory = { version: 1, sourceDevice, observedAt: now.toISOString(), expiresAt: new Date(+now + 30000).toISOString(), status: 'unavailable', limitations: [], targets: [] };
+  window.ReactNativeWebView = { postMessage: raw => {
+    const { command } = JSON.parse(raw);
+    window.dispatchEvent(new window.CustomEvent('nexus:display-result', { detail: { requestId: command.requestId, ok: true, inventory } }));
+  } };
+  globalThis.fetch = async (url, init = {}) => {
+    if (url.endsWith('/claim')) {
+      claims.push({ url, body: JSON.parse(init.body) });
+      return Response.json({ session: { id: 'short-session', sourceDeviceId: sourceDevice.id, targetId: 'tv', method: 'paired-browser', view: { kind: 'ambient' }, state: 'starting' } });
+    }
+    return Response.json(url.endsWith('/config') ? { receiverOrigin: 'https://receiver.example' } : url.endsWith('/sessions') ? { sessions: [] } : {});
+  };
+  const div = document.createElement('div'); document.body.append(div); const root = createRoot(div);
+  try {
+    await act(async () => root.render(createElement(TravelPresentationLauncher)));
+    await act(async () => div.querySelector('button').click());
+    const input = document.querySelector('input[aria-label="TV pairing code"]');
+    const button = [...document.querySelectorAll('button')].find(b => b.textContent === 'Pair selected view');
+    assert.equal(input.inputMode, 'numeric');
+    assert.equal(input.maxLength, 2);
+    const enter = async value => act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+    await enter('0'); assert.equal(button.disabled, true);
+    await enter('07'); assert.equal(button.disabled, false);
+    await act(async () => button.click());
+    assert.deepEqual(claims, [{ url: '/api/presentations/pairings/07/claim', body: { sourceDevice, view: { kind: 'ambient' } } }]);
   } finally { await act(async () => root.unmount()); div.remove(); globalThis.fetch = originalFetch; delete window.__NEXUS_DISPLAYS__; delete window.ReactNativeWebView; }
 });
