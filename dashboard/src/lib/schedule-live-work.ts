@@ -221,6 +221,10 @@ export function mergeLiveWork(
   untimed.sort((a, b) => {
     const rank = LANE_RANK[a.lane] - LANE_RANK[b.lane];
     if (rank !== 0) return rank;
+    if (Boolean(a.item.improvement) !== Boolean(b.item.improvement)) return a.item.improvement ? 1 : -1;
+    if (a.item.improvement && b.item.improvement) {
+      return (a.item.improvement.priority ?? Number.MAX_SAFE_INTEGER) - (b.item.improvement.priority ?? Number.MAX_SAFE_INTEGER);
+    }
     return (a.item.position ?? 0) - (b.item.position ?? 0);
   });
   queue.sort((a, b) => (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER));
@@ -336,8 +340,8 @@ export function laneWord(dep: { lane: LiveWorkLane | null; position?: number | n
  */
 export function liveItemLabel(item: LiveWorkItem): string {
   if (item.improvement) {
-    const labels: Record<string, string> = { waiting: "waiting — approved work runs first", running: "running", reviewing: "independent QA reviewing", verified: "verified", declined: "declined", needs_attention: "needs attention", unknown: "status unknown" };
-    return `QA improvements · ${labels[item.improvement.status] ?? "status unknown"}`;
+    const labels: Record<string, string> = { waiting: "awaiting idle review", review_held: "awaiting review", proposed: "proposed — awaiting approval", retained: "retained — pending evidence or dependency", completed_after_review: "completed after review — no execution required", running: "running", reviewing: "independent QA reviewing", verified: "verified", declined: "declined", needs_attention: "needs attention", unknown: "status unknown" };
+    return `QA improvements · ${labels[item.improvement.status] ?? "status unknown"}${item.improvement.priority ? ` · priority ${item.improvement.priority}` : ""}`;
   }
   if (item.backgroundObligation) return `${item.backgroundObligation.state === "held" ? "held" : "waiting"} for background evidence`;
   switch (item.lane) {

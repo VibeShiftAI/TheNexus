@@ -13,7 +13,7 @@ export interface ProgressAttempt {
 export interface ProgressEvent { id: string; title: string; text: string; at: string; type?: string; href?: string; attemptId?: string }
 export interface TaskImprovement {
   id: string;
-  status: 'linked' | 'waiting' | 'running' | 'reviewing' | 'verified' | 'declined' | 'needs_attention' | 'review_held' | 'unknown';
+  status: 'proposed' | 'retained' | 'completed_after_review' | 'linked' | 'waiting' | 'running' | 'reviewing' | 'verified' | 'declined' | 'needs_attention' | 'review_held' | 'unknown';
   updatedAt: string | null;
   author: string;
   dispatchId?: string;
@@ -21,6 +21,7 @@ export interface TaskImprovement {
   suggestions: Array<{ source: string; text: string }>;
   reason: string;
   review?: { assessment: 'pass' | 'fail'; notes: string; evidence: string; reviewer: string };
+  followupReview?: { status: 'proposed' | 'retained' | 'completed'; reviewedAt: string | null; reason: string; slateId?: string; priority?: number; decisions: Array<{ index: number; disposition: 'execute' | 'retain' | 'complete'; reason: string; evidence: string[] }> };
   commitSha?: string;
 }
 export interface TaskImprovements { available: boolean; items: TaskImprovement[] }

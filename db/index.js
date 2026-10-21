@@ -1220,16 +1220,35 @@ async function getTask(taskId) {
     }
 }
 
+// Defer until all enclosing synchronous transactions have committed. Re-read
+// so a rolled-back outer mutation cannot notify Praxis of nonexistent evidence.
+function queueFollowupEvidenceChange(before, after) {
+    const { materialTaskChanged, notifyTaskEvidenceChange } = require('../server/services/followup-activity');
+    if (!materialTaskChanged(before, after)) return;
+    queueMicrotask(() => {
+        try {
+            const current = deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(after.id));
+            if (current && current.version >= after.version && materialTaskChanged(before, current)) {
+                void notifyTaskEvidenceChange(before, current);
+            }
+        } catch { /* A closed database cannot publish an unconfirmed write. */ }
+    });
+}
+
 function createTask(task, admissionOptions) {
     if (!db) return null;
     try {
         const prepared = normalizeTaskStatusField({ ...task, id: task.id || uuid(),
             created_at: task.created_at || now(), updated_at: now() }, 'createTask');
+        let inserted = false;
         const admitted = workAdmission.admit(prepared, row => {
             const { sql, values } = buildInsert('tasks', row);
             db.prepare(sql).run(...values);
+            inserted = true;
         }, admissionOptions);
-        return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(admitted.id));
+        const createdTask = deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(admitted.id));
+        if (inserted) queueFollowupEvidenceChange(null, createdTask);
+        return createdTask;
     } catch (err) {
         if (err.code === 'work_admission_conflict') throw err;
         console.error('[Database] Error creating task:', err.message);
@@ -1246,8 +1265,9 @@ function createTask(task, admissionOptions) {
 function updateTask(taskId, updates, expectedVersion, context = {}) {
     if (!db) return null;
     try {
-        return db.transaction(() => {
-            const existing = deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId));
+        let existing;
+        const updated = db.transaction(() => {
+            existing = deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId));
             if (!existing) {
                 if (expectedVersion !== undefined) throw Object.assign(new Error('Task changed since it was read'), { code: 'task_version_conflict' });
                 return null;
@@ -1265,6 +1285,8 @@ function updateTask(taskId, updates, expectedVersion, context = {}) {
             }
             return deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId));
         })();
+        queueFollowupEvidenceChange(existing, updated);
+        return updated;
     } catch (err) {
         if (err.code === 'task_version_conflict' || (err.status && err.code)) throw err;
         console.error('[Database] Error updating task:', err.message);

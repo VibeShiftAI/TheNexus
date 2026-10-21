@@ -26,7 +26,7 @@ test('maps legacy finalizations truthfully without treating sent as success', ()
  const result = service().readTaskImprovements('t1', { dataDir: dir });
  const items = Object.fromEntries(result.items.map(item => [item.id, item]));
  expect(items.pending.status).toBe('waiting'); expect(items.deferred.status).toBe('waiting');
- expect(items.deferred.reason).toMatch(/approved work takes precedence/i);
+ expect(items.deferred.reason).toMatch(/thirty continuous idle minutes/i);
  expect(items.dispatching.status).toBe('unknown'); expect(items.sent.status).toBe('unknown');
  expect(items['not-sent'].status).toBe('needs_attention');
 });
@@ -71,14 +71,14 @@ test('calendar reads all tasks once, keeps improvement identity and filters arch
  expect(result.items.find(i=>i.taskId==='t1')).toMatchObject({title:'QA improvements — Parent one',lane:'waiting',improvement:{id:'r1',status:'waiting'}});
  expect(result.items.find(i=>i.taskId==='t2')).toMatchObject({lane:'running',improvement:{id:'r2',status:'running'}});
 });
-test('held legacy suggestions remain in task details but never enter the calendar', () => {
+test('held legacy suggestions remain visible in the pending calendar list', () => {
  write('task-finalizations','r1',{...finalization('r1','review-held'),optionalReview:{required:true,reason:'Review relevance with Robert first'}});
  const detail=service().readTaskImprovements('t1',{dataDir:dir});
  expect(detail.items[0]).toMatchObject({status:'review_held',reviewRequired:true});
- expect(service().readCalendarImprovements([{id:'t1',name:'Parent',status:'completed'}],{dataDir:dir}).items).toHaveLength(0);
- // Even legacy records that were already sent stay out of the schedule during review.
+ expect(service().readCalendarImprovements([{id:'t1',name:'Parent',status:'completed'}],{dataDir:dir}).items).toHaveLength(1);
+ // Legacy runs remain visible as pending review, never active execution.
  write('qa-improvement-runs','r1',run());
- expect(service().readCalendarImprovements([{id:'t1',name:'Parent',status:'completed'}],{dataDir:dir}).items).toHaveLength(0);
+ expect(service().readCalendarImprovements([{id:'t1',name:'Parent',status:'completed'}],{dataDir:dir}).items).toHaveLength(1);
 });
 
 const optionalTaskId = '0d1001a3-20b5-4d74-b6b1-a1a13cdb0945';
@@ -139,4 +139,31 @@ test.each(['future','malformed','wrong-kind','missing-record','long-header'])('r
  if(issue==='long-header') text=withHeader('qa-improvement-runs',{...r,reason:'x'.repeat(70000)});
  write('qa-improvement-runs','r1',text);
  expect(service().readTaskImprovements('t1',{dataDir:dir})).toEqual({available:false,items:[]});
+});
+
+const followupReview = status => ({status, reviewedAt:'2026-10-21T12:00:00Z', reason:'Evidence assessed.', slateId:'slate-1',priority:2,decisions:[{index:0,disposition:status==='completed'?'complete':status==='proposed'?'execute':'retain',reason:'Concrete reason.',evidence:['Existing fix verified.']}]});
+test.each(['proposed','retained','completed'])('projects %s follow-up review without claiming implementation QA', status => {
+ write('task-finalizations','r1',withHeader('task-finalizations',{...finalization('r1','review-held'),optionalReview:{required:true},followupReview:followupReview(status)}));
+ const item=service().readTaskImprovements('t1',{dataDir:dir}).items[0];
+ expect(item.status).toBe(status==='completed'?'completed_after_review':status);
+ expect(item.followupReview).toMatchObject({status,priority:2,decisions:[{index:0,reason:'Concrete reason.',evidence:['Existing fix verified.']}]});
+ expect(item.updatedAt).toBe('2026-10-21T12:00:00.000Z');
+ expect(service().readCalendarImprovements([{id:'t1',status:'completed'}],{dataDir:dir}).items[0].lane).toBe(status==='completed'?'finished':'waiting');
+});
+test('review decision supersedes legacy run but linked task remains authoritative', () => {
+ write('qa-improvement-runs','r1',run('running'));
+ write('task-finalizations','r1',{...finalization('r1','deferred'),followupReview:followupReview('retained')});
+ expect(service().readTaskImprovements('t1',{dataDir:dir}).items[0].status).toBe('retained');
+ write('task-finalizations','r1',{...finalization('r1','sent'),optionalTaskId,followupReview:followupReview('proposed')});
+ expect(service().readTaskImprovements('t1',{dataDir:dir}).items[0]).toMatchObject({status:'linked',followupReview:{status:'proposed'}});
+ expect(service().readCalendarImprovements([{id:'t1',status:'completed'}],{dataDir:dir}).items).toEqual([]);
+});
+
+test('linked execution retains a separate pending row for unresolved findings only', () => {
+ const review={...followupReview('proposed'),decisions:[{index:0,disposition:'execute',reason:'Fix now.',evidence:[]},{index:1,disposition:'retain',reason:'Waiting for dependency.',evidence:['Dependency open.']}]};
+ write('task-finalizations','r1',{...finalization('r1','sent'),optionalTaskId,followupReview:review});
+ const result=service().readCalendarImprovements([{id:'t1',status:'completed'},{id:optionalTaskId,status:'approved'}],{dataDir:dir});
+ expect(result.items).toHaveLength(1);
+ expect(result.items[0]).toMatchObject({lane:'waiting',improvement:{status:'retained',reason:'Waiting for dependency.'}});
+ expect(service().readTaskImprovements('t1',{dataDir:dir}).items[0].status).toBe('linked');
 });

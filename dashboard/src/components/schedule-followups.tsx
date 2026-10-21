@@ -166,7 +166,7 @@ function SuggestionRow({ row }: { row: LiveScheduleRow }) {
           className="font-mono text-[10px] tabular-nums text-slate-500"
           title={updated ? `Improvement status updated ${new Date(updated).toLocaleString()}` : "Improvement update time unavailable"}
         >
-          {updated ? formatTime(updated) : "—"}
+          {updated ? new Date(updated).toLocaleString() : "—"}
         </span>
       </div>
       <p data-live-label className="text-[10px] text-slate-500" title={liveItemLabel(item)}>{liveItemLabel(item)}</p>
@@ -214,7 +214,7 @@ export function FollowUpsSection({ rows, availability, onChanged, followupError,
       >
         <GitBranch size={12} className="shrink-0 text-slate-500" aria-hidden="true" />
         <span data-live-followups-header className="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
-          Follow-ups from today’s plan
+          Pending QA follow-ups
         </span>
         {summary && <span data-live-followups-count className="truncate text-[10px] text-slate-500">{summary}</span>}
         <span className="ml-auto shrink-0 text-slate-500" aria-hidden="true">
@@ -228,7 +228,7 @@ export function FollowUpsSection({ rows, availability, onChanged, followupError,
       </button>
       <div id={`${id}-list`} className={listClass}>
         <p className="px-1 pb-1.5 text-[10px] text-slate-500">
-          Successors of work on today’s calendar. They have no slot of their own: start one when its predecessors are done, or add it to the calendar after today’s last planned task.
+          QA findings remain here across days while awaiting review or approval. Prepared task follow-ups are also shown below; they have no calendar slot.
         </p>
         {followupError && <p className="px-1 pb-1.5 text-[10px] text-amber-300">{followupError}</p>}
         {prepared.length > 0 && (
@@ -239,7 +239,7 @@ export function FollowUpsSection({ rows, availability, onChanged, followupError,
         {suggestions.length > 0 && (
           <div className={prepared.length > 0 ? "mt-2" : ""}>
             <div className="px-1 py-1 text-[9px] font-semibold uppercase tracking-widest text-slate-500">
-              QA improvement suggestions · optional, on finished work
+              QA findings · awaiting review or approval
             </div>
             <ul className="space-y-1.5">
               {suggestions.map((row) => <SuggestionRow key={row.key} row={row} />)}

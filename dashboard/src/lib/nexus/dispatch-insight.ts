@@ -201,7 +201,7 @@ export interface AutomaticStartRequest {
 }
 
 export interface LiveWorkItem {
-    improvement?: { id: string; status: string; reason: string; updatedAt?: string | null };
+    improvement?: { id: string; status: string; reason: string; priority?: number; updatedAt?: string | null };
     /** Current-execution completion gate, attributed by Praxis. */
     backgroundObligation?: { executionId: string; state: 'held' | 'waiting'; detail: string };
 

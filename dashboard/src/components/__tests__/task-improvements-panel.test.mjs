@@ -10,12 +10,13 @@ function render(improvements, progressOverride = {}) {
  const div = document.createElement('div'); div.innerHTML = renderToStaticMarkup(createElement(TaskProgressView, {input}));
  return div;
 }
-const item = { id:'r1', status:'waiting', updatedAt:'2026-10-10T11:00:00Z', author:'codex', suggestions:[{source:'QA reviewer',text:'Full suggestion: add a regression test.\nKeep the edge case.'}], reason:'Improvement dispatch is deferred; approved work takes precedence.' };
+const item = { id:'r1', status:'waiting', updatedAt:'2026-10-10T11:00:00Z', author:'codex', suggestions:[{source:'QA reviewer',text:'Full suggestion: add a regression test.\nKeep the edge case.'}], reason:'Awaiting follow-up review after thirty continuous idle minutes.' };
 test('completed parent shows waiting improvement separately with full suggestion and timestamp', () => {
  const div = render({available:true,items:[item]});
  const panel = div.querySelector('[aria-label="QA improvements"]'); assert.ok(panel);
  assert.match(div.textContent,/Verified completion/);
- assert.match(panel.textContent,/Waiting — not started/); assert.ok(panel.querySelector('a[href="/calendar"]')); assert.match(panel.textContent,/approved work takes precedence/);
+ assert.match(panel.textContent,/Waiting — not started/); assert.ok(panel.querySelector('a[href="/calendar"]')); assert.match(panel.textContent,/thirty continuous idle minutes/);
+ assert.doesNotMatch(panel.textContent,/including tasks held for checks/);
  assert.match(panel.textContent,/Parent task QA does not verify/);
  assert.match(panel.querySelector('details').textContent,/Keep the edge case/);
  assert.equal(panel.querySelector('time').getAttribute('datetime'),item.updatedAt);
@@ -44,4 +45,13 @@ test('linked follow-up is prominent and does not claim stale legacy execution st
  assert.ok(link); assert.match(link.textContent,/Tracked in follow-up task/);
  assert.doesNotMatch(panel.textContent,/Waiting — not started|Running|Verified/);
  assert.ok(panel.querySelector('details'));
+});
+
+test('review-only completion shows decision rationale and evidence without claiming verification', () => {
+ const panel=render({available:true,items:[{...item,status:'completed_after_review',followupReview:{status:'completed',priority:2,slateId:'slate-1',decisions:[{index:0,disposition:'complete',reason:'Already addressed.',evidence:['Existing test passes.']}]}}]}).querySelector('[aria-label="QA improvements"]');
+ assert.match(panel.textContent,/Completed after review/);
+ assert.match(panel.textContent,/No implementation or independent QA completion is implied/);
+ assert.match(panel.textContent,/Already addressed/);
+ assert.match(panel.textContent,/Existing test passes/);
+ assert.match(panel.textContent,/Priority 2/);
 });

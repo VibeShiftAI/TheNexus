@@ -28,17 +28,29 @@ function projectRun(record) {
         reason: reason || ({ running: 'Improvement work was dispatched; completion has not been verified.', reviewing: 'The improvement changes are awaiting an independent QA result.', verified: 'Independent QA passed for these improvement changes.', declined: 'The improvement suggestions were declined.', needs_attention: 'The improvement work needs attention.', unknown: 'The improvement state could not be confirmed.' }[status]),
         ...(review ? { review } : {}), ...(typeof record.commitSha === 'string' && /^[a-f\d]{7,64}$/i.test(record.commitSha) ? { commitSha: record.commitSha } : {}) };
 }
+function projectFollowupReview(value) {
+    if (!value || !['proposed', 'retained', 'completed'].includes(value.status)) return undefined;
+    return { status: value.status, reviewedAt: timestamp(value.reviewedAt), reason: publicText(value.reason),
+        ...(identifier(value.slateId) ? { slateId: value.slateId } : {}),
+        ...(Number.isSafeInteger(value.priority) && value.priority > 0 ? { priority: value.priority } : {}),
+        decisions: Array.isArray(value.decisions) ? value.decisions.slice(0, 40).filter(d => d && Number.isSafeInteger(d.index) && d.index >= 0 && ['execute', 'retain', 'complete'].includes(d.disposition)).map(d => ({
+            index: d.index, disposition: d.disposition, reason: publicText(d.reason),
+            evidence: Array.isArray(d.evidence) ? d.evidence.slice(0, 40).map(publicText).filter(Boolean) : [],
+        })) : [],
+    };
+}
 function projectFinalization(record) {
     const states = {
-        pending: ['waiting', 'Waiting for optional improvement dispatch; approved work takes precedence.'],
-        deferred: ['waiting', 'Improvement dispatch is deferred; approved work takes precedence.'],
+        pending: ['waiting', 'Awaiting follow-up review after thirty continuous idle minutes.'],
+        deferred: ['waiting', 'Awaiting follow-up review after thirty continuous idle minutes.'],
         dispatching: ['unknown', 'Improvement dispatch was started, but no durable run confirms whether it is running or finished.'],
         sent: ['unknown', 'Improvement dispatch was sent, but no durable run or independent QA result is available.'],
         'not-sent': ['needs_attention', 'The improvement suggestions were not dispatched.'],
     };
     const optionalTaskId = typeof record.optionalTaskId === 'string' && /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(record.optionalTaskId) ? record.optionalTaskId : null;
-    const [status, reason] = record.optionalReview?.required ? ['review_held', publicText(record.optionalReview.reason) || 'Review with Robert before scheduling.'] : optionalTaskId ? ['linked', 'Current execution and QA status are tracked in the linked follow-up task.'] : states[record.optionalStatus] || ['unknown', 'The improvement dispatch state could not be confirmed.'];
-    return { id: record.id, taskId: record.taskId, reviewRequired: record.optionalReview?.required === true, ...(optionalTaskId ? { optionalTaskId } : {}), status, updatedAt: (record.optionalReview?.required ? timestamp(record.optionalReview.heldAt) : null) || timestamp(record.optionalStartedAt) || timestamp(record.completedAt) || timestamp(record.createdAt), author: publicText(record.evidence?.author) || 'Unknown', suggestions: suggestions(record.opts?.improvements?.suggestions), reason };
+    const followupReview = projectFollowupReview(record.followupReview);
+    const [status, reason] = followupReview ? (optionalTaskId ? ['linked', 'Current execution and QA status are tracked in the linked follow-up task.'] : [followupReview.status === 'completed' ? 'completed_after_review' : followupReview.status, followupReview.reason || 'Follow-up review recorded.']) : record.optionalReview?.required ? ['review_held', publicText(record.optionalReview.reason) || 'Awaiting relevance review by Praxis before scheduling.'] : optionalTaskId ? ['linked', 'Current execution and QA status are tracked in the linked follow-up task.'] : states[record.optionalStatus] || ['unknown', 'The improvement dispatch state could not be confirmed.'];
+    return { id: record.id, taskId: record.taskId, reviewRequired: !followupReview && record.optionalReview?.required === true, ...(followupReview ? { followupReview } : {}), ...(optionalTaskId ? { optionalTaskId } : {}), status, updatedAt: followupReview?.reviewedAt || (record.optionalReview?.required ? timestamp(record.optionalReview.heldAt) : null) || timestamp(record.optionalStartedAt) || timestamp(record.completedAt) || timestamp(record.createdAt), author: publicText(record.evidence?.author) || 'Unknown', suggestions: suggestions(record.opts?.improvements?.suggestions), reason };
 }
 
 // v1 is one complete property on the first line, inside an ordinary JSON object.
@@ -109,10 +121,11 @@ function readTaskImprovements(taskId, { dataDir = process.env.PRAXIS_DATA_DIR ||
                         const finalization = projectFinalization(record);
                         const legacy = items.get(record.id);
                         if (!legacy && (finalization.suggestions.length || finalization.optionalTaskId)) items.set(record.id, finalization);
-                        else if (legacy && legacy.taskId === record.taskId && (finalization.optionalTaskId || finalization.reviewRequired)) {
+                        else if (legacy && legacy.taskId === record.taskId && (finalization.optionalTaskId || finalization.reviewRequired || finalization.followupReview)) {
                             // Preserve legacy evidence, but the durable link or hold controls current status.
                             items.set(record.id, { ...legacy, status: finalization.status, reason: finalization.reason,
                                 reviewRequired: finalization.reviewRequired,
+                                ...(finalization.followupReview ? { followupReview: finalization.followupReview, updatedAt: finalization.updatedAt } : {}),
                                 ...(finalization.optionalTaskId ? { optionalTaskId: finalization.optionalTaskId } : {}),
                             });
                         }
@@ -131,14 +144,20 @@ function readCalendarImprovements(boardRows, options) {
     const board = new Map(boardRows.filter(row => !row.archived_at).map(row => [row.id, row]));
     return { available: records.available, items: records.items.flatMap(record => {
         const parent = board.get(record.taskId);
-        if (!parent || record.reviewRequired || record.optionalTaskId) return [];
-        const lane = { running: 'running', reviewing: 'qa', verified: 'finished', declined: 'finished' }[record.status] || 'waiting';
+        if (!parent) return [];
+        if (record.optionalTaskId) {
+            const retained = record.followupReview?.decisions.filter(decision => decision.disposition === 'retain') || [];
+            if (!retained.length) return [];
+            // The linked task owns execution; this row represents only findings left pending.
+            record = { ...record, status: 'retained', reason: retained.map(decision => decision.reason).filter(Boolean).join('\n') || 'Findings retained pending evidence or dependency.' };
+        }
+        const lane = { running: 'running', reviewing: 'qa', verified: 'finished', declined: 'finished', completed_after_review: 'finished' }[record.status] || 'waiting';
         return [{ taskId: record.taskId, title: `QA improvements — ${parent.name || record.taskId}`,
             boardStatus: parent.status, projectId: parent.project_id || null, projectName: parent.project_name || null,
             lane, executor: record.author, updatedAt: record.updatedAt,
             startedAt: ['running', 'qa'].includes(lane) ? record.startedAt || null : null,
             finishedAt: lane === 'finished' ? record.updatedAt : null,
-            improvement: { id: record.id, status: record.status, reason: record.reason, updatedAt: record.updatedAt },
+            improvement: { id: record.id, status: record.status, reason: record.reason, updatedAt: record.updatedAt, ...(record.followupReview?.priority ? { priority: record.followupReview.priority } : {}) },
         }];
     }) };
 }

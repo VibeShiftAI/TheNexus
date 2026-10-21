@@ -309,3 +309,13 @@ test("chainFollowUps: an automatic-start successor anchors to its predecessor's 
   assert.equal(startsAutomatically({ ...WAITING, autoStart: false, automaticStart: { taskId: WAITING.taskId, state: "waiting", requestedAt: "2026-10-17T00:00:00Z" } }), true);
   assert.equal(startsAutomatically({ ...WAITING, autoStart: false, automaticStart: { taskId: WAITING.taskId, state: "cancelled", requestedAt: "2026-10-17T00:00:00Z" } }), false);
 });
+
+test('reviewed QA backlog is ranked and preserves explicit review outcome labels', () => {
+ const items: LiveWorkItem[] = [3,1,2].map(priority => ({taskId:`parent-${priority}`,title:'QA finding',lane:'waiting',boardStatus:'completed',updatedAt:at(-24),improvement:{id:`r${priority}`,status:'proposed',reason:'Impact assessed.',priority}}));
+ const result=mergeLiveWork([],response(items),WINDOW);
+ assert.deepEqual(result.untimed.map(row=>row.item.improvement?.priority),[1,2,3]);
+ assert.match(liveItemLabel(items[0]),/proposed — awaiting approval.*priority 3/);
+ for (const [status,label] of [['review_held','awaiting review'],['retained','retained'],['completed_after_review','completed after review — no execution required']]) {
+  assert.ok(liveItemLabel({...items[0],improvement:{...items[0].improvement!,status}}).includes(label));
+ }
+});

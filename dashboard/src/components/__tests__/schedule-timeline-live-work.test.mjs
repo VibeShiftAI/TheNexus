@@ -299,6 +299,8 @@ for (const spill of [false, true]) {
    assert.ok(list, 'the running row sits in the scroll list');
    assert.equal(list.querySelectorAll('[data-live-row="waiting"]').length, 0, 'no follow-up row inside the timeline list');
    const section = view.container.querySelector('[data-live-followups]');
+   assert.match(section.querySelector('[data-live-followups-header]').textContent, /Pending QA follow-ups/);
+   assert.doesNotMatch(section.textContent, /Successors of work on today’s calendar/);
    assert.equal(section.querySelectorAll('[data-live-row="waiting"]').length, 2, 'both follow-ups are in the section');
    assert.match(section.querySelector('[data-live-followups-count]').textContent, /1 prepared · 1 QA suggestion/);
    assert.match(view.row(WAITING.taskId).textContent, /starts automatically/);
