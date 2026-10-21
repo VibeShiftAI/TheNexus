@@ -63,6 +63,7 @@ interface SlotRoutingMeta {
 }
 
 interface ScheduleSlotMeta {
+  parentTaskId?: string;
   slotNumber: number;
   nexusTaskId: string;
   title: string;
@@ -139,7 +140,7 @@ interface QaSpotAuditMeta {
 type AuditDecision = "ok" | "flag";
 
 interface ScheduleMetadata {
-  kind: "day-schedule";
+  kind: "day-schedule" | "qa-followup-slate";
   date: string;
   nightlySummary: string | null;
   slots: ScheduleSlotMeta[];
@@ -164,7 +165,7 @@ interface MaintenanceMetadata {
 function asScheduleMetadata(meta: unknown): ScheduleMetadata | null {
   if (!meta || typeof meta !== "object") return null;
   const obj = meta as Record<string, unknown>;
-  if (obj.kind !== "day-schedule") return null;
+  if (obj.kind !== "day-schedule" && obj.kind !== "qa-followup-slate") return null;
   if (!Array.isArray(obj.slots)) return null;
   return obj as unknown as ScheduleMetadata;
 }
@@ -303,6 +304,7 @@ export function ScheduleHitlCard({
     );
   }
 
+  const followup = schedule.kind === "qa-followup-slate";
   const skipCount = Object.keys(skips).length;
   const revokedCount = Object.keys(revokedApprovals).filter(
     (taskId) => skips[taskId] === undefined,
@@ -387,7 +389,7 @@ export function ScheduleHitlCard({
     <article className="rounded-lg border border-cyan-500/30 bg-slate-950/60 p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] font-medium text-cyan-300">
-          Morning Plan — {schedule.date}
+          {followup ? "QA follow-up slate" : "Morning Plan"} — {schedule.date}
         </span>
         <span className="text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">
           {activeCount} dispatching{skipCount > 0 ? `, ${skipCount} skipped` : ""}
@@ -400,7 +402,7 @@ export function ScheduleHitlCard({
 
       {schedule.nightlySummary ? (
         <div className="mb-3 rounded border border-slate-700/60 bg-slate-900/60 p-2 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-300">
-          <span className="font-semibold text-cyan-300">Nightly:</span>{" "}
+          <span className="font-semibold text-cyan-300">{followup ? "Recommendation:" : "Nightly:"}</span>{" "}
           {schedule.nightlySummary}
         </div>
       ) : null}
@@ -471,7 +473,7 @@ export function ScheduleHitlCard({
                                 📝 note ·{" "}
                               </span>
                             ) : null}
-                            {slot.workspace} · ~{slot.estimatedMinutes}min
+                            {slot.workspace}{!followup && ` · ~${slot.estimatedMinutes}min`}
                           </span>
                         </span>
                       </button>
@@ -482,7 +484,7 @@ export function ScheduleHitlCard({
                     <td className="px-2 py-1">
                       <ComplexityBadge value={slot.complexity} />
                     </td>
-                    <td className="px-2 py-1 text-slate-300">{formatTime(slot.startTime)}</td>
+                    <td className="px-2 py-1 text-slate-300">{followup ? "After approval" : formatTime(slot.startTime)}</td>
                     <td className="px-2 py-1">
                       <div className="flex flex-col gap-1">
                         <select
@@ -630,10 +632,11 @@ export function ScheduleHitlCard({
                               <span className="italic text-slate-500">No extra instructions.</span>
                             )}
                           </div>
+                          {slot.parentTaskId && <Link href={`/task/${slot.parentTaskId}#qa-improvements`} className="text-cyan-300 underline">View original task and QA findings</Link>}
                           {slot.taskDescription &&
                           slot.taskDescription.trim() !== (slot.instructions ?? "").trim() ? (
                             <div>
-                              <span className="font-semibold text-cyan-300">Task description:</span>{" "}
+                              <span className="font-semibold text-cyan-300">{followup ? "Why this task:" : "Task description:"}</span>{" "}
                               <span className="whitespace-pre-wrap">{slot.taskDescription}</span>
                             </div>
                           ) : null}
@@ -674,7 +677,7 @@ export function ScheduleHitlCard({
                     <tr key={`${slot.nexusTaskId}-draft`} className="border-t border-slate-700/40 bg-rose-950/20">
                       <td colSpan={7} className="px-2 py-2">
                         <label className="mb-1 block text-[length:var(--hitl-fs-11,0.6875rem)] text-rose-300">
-                          Skip reason (recorded on the task and written to Cortex memory so Praxis stops re-proposing it):
+                          {followup ? "Skip reason (saved with this slate; the finding remains in the backlog):" : "Skip reason (recorded on the task and written to Cortex memory so Praxis stops re-proposing it):"}
                         </label>
                         <textarea
                           autoFocus
@@ -749,7 +752,7 @@ export function ScheduleHitlCard({
             ? "Approving..."
             : activeCount === 0
               ? "All slots skipped"
-              : `Approve plan (${activeCount})`}
+              : `Approve ${followup ? "slate" : "plan"} (${activeCount})`}
         </button>
       </div>
     </article>

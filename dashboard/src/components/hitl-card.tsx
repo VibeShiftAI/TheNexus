@@ -65,6 +65,9 @@ export function HitlCard({
   onResolveSchedule?: HitlResolver;
 }) {
   if (describeHitlAction(request).state !== 'pending') return <AlertAction action={describeHitlAction(request)} inline />;
+  if (request.metadata?.kind === "qa-followup-slate" && Array.isArray(request.metadata.slots)) {
+    return <ScheduleHitlCard request={request} resolving={resolving} onResolve={onResolve} />;
+  }
   if (isScheduleHitl(request)) {
     return (
       <ScheduleHitlCard
