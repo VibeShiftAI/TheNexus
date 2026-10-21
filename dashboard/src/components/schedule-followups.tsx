@@ -26,8 +26,7 @@ import { taskHref } from "@/lib/task-links";
  * Praxis relay), or give the task a real slot on the calendar right after
  * today's last planned task. Mounting the section never starts anything.
  *
- * Phones open the section collapsed to its header; wider screens open it.
- * Either way the toggle wins once it has been used.
+ * The section starts collapsed on every screen size; its header toggles it.
  */
 
 export function followUpRows(rows: LiveScheduleRow[]): LiveScheduleRow[] {
@@ -36,11 +35,6 @@ export function followUpRows(rows: LiveScheduleRow[]): LiveScheduleRow[] {
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-/** Matches the `md:` breakpoint the untoggled section is open at; true where media queries are unavailable (tests). */
-function wideScreen(): boolean {
-  return typeof window === "undefined" || typeof window.matchMedia !== "function" || window.matchMedia("(min-width: 768px)").matches;
 }
 
 /** A saved or in-flight automatic start means the calendar must not double it. */
@@ -190,14 +184,13 @@ export interface FollowUpsSectionProps {
 }
 
 export function FollowUpsSection({ rows, availability, onChanged, followupError, id = "followups", className = "" }: FollowUpsSectionProps) {
-  // null = not toggled yet: closed on phones, open on wider screens (CSS).
-  const [open, setOpen] = useState<boolean | null>(null);
+  const [open, setOpen] = useState(false);
   const waiting = followUpRows(rows);
   const prepared = waiting.filter((row) => !row.item.improvement);
   const suggestions = waiting.filter((row) => row.item.improvement);
   if (waiting.length === 0 && !followupError) return null;
 
-  const listClass = open === null ? "hidden md:block" : open ? "block" : "hidden";
+  const listClass = open ? "block" : "hidden";
   const summary = [
     prepared.length > 0 && `${prepared.length} prepared`,
     suggestions.length > 0 && `${suggestions.length} QA ${suggestions.length === 1 ? "suggestion" : "suggestions"}`,
@@ -207,8 +200,8 @@ export function FollowUpsSection({ rows, availability, onChanged, followupError,
     <section id={id} data-live-followups className={className}>
       <button
         type="button"
-        onClick={() => setOpen((prev) => (prev === null ? !wideScreen() : !prev))}
-        aria-expanded={open === null ? undefined : open}
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
         aria-controls={`${id}-list`}
         className="flex w-full items-center gap-2 rounded px-1 py-1 text-left hover:bg-slate-800/30"
       >
@@ -218,12 +211,7 @@ export function FollowUpsSection({ rows, availability, onChanged, followupError,
         </span>
         {summary && <span data-live-followups-count className="truncate text-[10px] text-slate-500">{summary}</span>}
         <span className="ml-auto shrink-0 text-slate-500" aria-hidden="true">
-          {open === null ? (
-            <>
-              <ChevronDown size={13} className="md:hidden" />
-              <ChevronUp size={13} className="hidden md:block" />
-            </>
-          ) : open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </span>
       </button>
       <div id={`${id}-list`} className={listClass}>
