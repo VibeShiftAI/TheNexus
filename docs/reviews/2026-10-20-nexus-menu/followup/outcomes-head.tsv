@@ -1,0 +1,1059 @@
+ok	src/components/__tests__/activity-conversation.test.mjs	Ask Praxis preserves an unsent draft and seeds a question without sending
+ok	src/components/__tests__/activity-conversation.test.mjs	grouped Activity exposes each original revision in expandable details
+ok	src/components/__tests__/activity-feed-merge.test.ts	commits and Praxis events interleave on one newest-first timeline
+ok	src/components/__tests__/activity-feed-merge.test.ts	each tab shows only its own half
+ok	src/components/__tests__/activity-feed-merge.test.ts	routine task updates group together while actionable events remain independent
+ok	src/components/__tests__/activity-feed-merge.test.ts	rows carry stable keys and the feed is bounded
+ok	src/components/__tests__/activity-feed-merge.test.ts	SQLite timestamps are read as UTC, not local time
+ok	src/components/__tests__/ai-terminal-shape.test.ts	ai-terminal.tsx does not import the markdown/highlight pipeline directly
+ok	src/components/__tests__/ai-terminal-shape.test.ts	ai-terminal.tsx stays under its line budget
+ok	src/components/__tests__/ai-terminal-shape.test.ts	the extracted lanes are the ones the terminal composes with
+ok	src/components/__tests__/ai-terminal-suppressed-voice.test.ts	typed JSON reply retains suppression without losing replay audio
+ok	src/components/__tests__/ai-terminal-suppressed-voice.test.ts	typed streaming reply retains suppression without losing replay audio
+ok	src/components/__tests__/alert-action.test.mjs	alert copy links safely without active HTML and shows full multiline question
+ok	src/components/__tests__/alert-action.test.mjs	expired rich requests show history without approval controls
+ok	src/components/__tests__/alert-action.test.mjs	real activity row removes the historical needs-you badge when the request was answered
+ok	src/components/__tests__/alert-action.test.mjs	resolved activity card has saved answer and a history target without needs-you label
+ok	src/components/__tests__/alert-action.test.mjs	shared HITL card explains ack-only semantics and makes question links clickable
+ok	src/components/__tests__/automatic-start-control.test.mjs	completed prerequisites offer queue now; refusal stays visible with task link
+ok	src/components/__tests__/automatic-start-control.test.mjs	new task version zero can be explicitly queued
+ok	src/components/__tests__/automatic-start-control.test.mjs	optional improvement rows cannot restart the completed parent task
+ok	src/components/__tests__/automatic-start-control.test.mjs	prepared follow-up only authorized on click; cancel targets exact saved request
+ok	src/components/__tests__/automatic-start-control.test.mjs	shows approved-plan lineage even after predecessors finish, without granting approval
+ok	src/components/__tests__/automatic-start-control.test.mjs	unavailable automatic-start service cannot look like an empty healthy queue
+ok	src/components/__tests__/automatic-start-control.test.mjs	uncertain and starting requests offer neither cancel nor duplicate start
+ok	src/components/__tests__/autonomy-control.test.mjs	a refresh requested before pause cannot overwrite the confirmed pause
+ok	src/components/__tests__/autonomy-control.test.mjs	accepted action with failed verification displays UNKNOWN
+ok	src/components/__tests__/autonomy-control.test.mjs	offline POST is visible and disables control until state can be verified
+ok	src/components/__tests__/autonomy-control.test.mjs	one-click pause and resume verify state, attribution and surviving runs
+ok	src/components/__tests__/autonomy-control.test.mjs	rejected POST reports failure without claiming rejected state
+ok	src/components/__tests__/autonomy-control.test.mjs	unreachable or invalid state is UNKNOWN and disables action
+ok	src/components/__tests__/autonomy-indicator.test.mjs	an explicit pause names who asked for it and how long it has held
+ok	src/components/__tests__/autonomy-indicator.test.mjs	an unreachable Praxis renders unknown, never running
+ok	src/components/__tests__/autonomy-indicator.test.mjs	no-live-schedule renders distinctly from an explicit pause
+ok	src/components/__tests__/autonomy-indicator.test.mjs	running renders as running, with the reason on hover
+ok	src/components/__tests__/autonomy-indicator.test.mjs	the chip is keyboard reachable
+ok	src/components/__tests__/bridge-activity-view.test.mjs	real provider data drives circuits and keyboard-accessible drilldowns through to the full vault document
+ok	src/components/__tests__/calendar-page-live-work.test.mjs	calendar page: a live read with nothing in flight says so, instead of staying silent
+ok	src/components/__tests__/calendar-page-live-work.test.mjs	calendar page: a successor with automatic start is drawn right under its predecessor's grid block
+ok	src/components/__tests__/calendar-page-live-work.test.mjs	calendar page: a task on the grid and in the queue is badged on its block, not listed twice
+ok	src/components/__tests__/calendar-page-live-work.test.mjs	calendar page: adding a prepared follow-up to the calendar posts once, then the refetch shows it as a slot
+ok	src/components/__tests__/calendar-page-live-work.test.mjs	calendar page: queued work shown only as a badge is still reported as work, and the block title links to the task
+ok	src/components/__tests__/calendar-page-live-work.test.mjs	calendar page: runtime read unavailable keeps the grid and says the queue cannot be shown
+ok	src/components/__tests__/calendar-page-live-work.test.mjs	calendar page: the strip lists running and queued work in queue order with chained successors under their predecessor; loose follow-ups render in their own section under the grid
+ok	src/components/__tests__/calendar-page-live-work.test.mjs	prepared Canva follow-up stays distinct and the calendar button explicitly saves automatic start
+ok	src/components/__tests__/capacity-gate.test.mjs	capacity gate keeps technical prose behind a keyboard-accessible drilldown
+ok	src/components/__tests__/chat-composer-draft.test.mjs	a rejected send keeps the draft; an accepted send clears both the box and the stored copy
+ok	src/components/__tests__/chat-composer-draft.test.mjs	text dropped in by nexus:chat-seed is a draft too
+ok	src/components/__tests__/chat-composer-draft.test.mjs	typed text is mirrored to sessionStorage and a fresh composer restores it
+ok	src/components/__tests__/chat-model-control.test.mjs	a backend switch is confirmed first; a model switch inside the backend is not
+ok	src/components/__tests__/chat-model-control.test.mjs	a change made in the settings modal repaints the header control
+ok	src/components/__tests__/chat-model-control.test.mjs	a failed save shows an error and never presents the un-saved model as active
+ok	src/components/__tests__/chat-model-control.test.mjs	a rejected free-text save restores the settings field to the confirmed model
+ok	src/components/__tests__/chat-model-control.test.mjs	cancelling a backend switch leaves the executor alone
+ok	src/components/__tests__/chat-model-control.test.mjs	clicking the trigger after a failed load actually retries, as its tooltip promises
+ok	src/components/__tests__/chat-model-control.test.mjs	picking a model saves through the shared chat-config helpers and repaints both surfaces
+ok	src/components/__tests__/chat-model-control.test.mjs	the header shows which model is answering as Praxis without a click
+ok	src/components/__tests__/chat-model-control.test.mjs	the picker is keyboard-dismissable with Escape
+ok	src/components/__tests__/chat-model-control.test.mjs	the picker stops taking clicks while a save is in flight
+ok	src/components/__tests__/cli-lane-panel.test.mjs	an older Praxis without the fields says so instead of rendering an empty gate
+ok	src/components/__tests__/cli-lane-panel.test.mjs	per-executor rows show the active run, its phase and elapsed time
+ok	src/components/__tests__/cli-lane-panel.test.mjs	queue positions render in order, each with its title and wait clock
+ok	src/components/__tests__/cli-lane-panel.test.mjs	structured gate numbers are available in the capacity detail panel
+ok	src/components/__tests__/cli-lane-panel.test.mjs	the compact gate opens its original reason verbatim in the full report
+ok	src/components/__tests__/cli-lane-panel.test.mjs	the section carries an accessible summary of the lane state
+ok	src/components/__tests__/connection-banner.test.mjs	`reauth` in a browser offers one explicit sign-in action, never navigates on its own, and the click opens the sign-in window while this document stays
+ok	src/components/__tests__/connection-banner.test.mjs	a blocked sign-in window keeps all edits and offers another window attempt
+ok	src/components/__tests__/connection-banner.test.mjs	a probe that drags on shows `recovering` only after the grace window, so an ordinary foreground return never flashes a banner
+ok	src/components/__tests__/connection-banner.test.mjs	hidden while live; `offline` shows an honest dated pill with a manual retry that probes again
+ok	src/components/__tests__/connection-banner.test.mjs	inside the travel shell: `renewing` shows after the grace window while the shell is asked; once every attempt fails, sign-in opens a separate window
+ok	src/components/__tests__/contract-hold-panel.test.mjs	a field the drift added, absent from the authorized contract, is labelled as returnable rather than as found on read
+ok	src/components/__tests__/contract-hold-panel.test.mjs	a held task shows the authorized and current values, the unverified writer and the executing phase
+ok	src/components/__tests__/contract-hold-panel.test.mjs	a task without a contract hold renders nothing, including an ordinary needs_evidence overlap hold
+ok	src/components/__tests__/contract-hold-panel.test.mjs	accepting the change posts one CAS-protected decision with the hold's change ids and refreshes
+ok	src/components/__tests__/contract-hold-panel.test.mjs	drift found on read, with no recorded authorized value, says so instead of showing an empty authorized column
+ok	src/components/__tests__/contract-hold-panel.test.mjs	labels and descriptions name the field, the writer and the phase in words
+ok	src/components/__tests__/contract-hold-panel.test.mjs	QA improvement: a stale or changed hold offers a Refresh diff action that reloads the review
+ok	src/components/__tests__/contract-hold-panel.test.mjs	QA repair: a field deleted while held shows as absent, not as the last intermediate value an entry carried
+ok	src/components/__tests__/contract-hold-panel.test.mjs	QA repair: the current value follows the task row when it differs from the last held entry
+ok	src/components/__tests__/contract-hold-panel.test.mjs	returning to the authorized contract sends that decision with the note
+ok	src/components/__tests__/contract-hold-panel.test.mjs	without a verified operator session the refusal is explained, and a stale hold asks for a refresh
+ok	src/components/__tests__/contract-hold-panel.test.mjs	workspace warning remains visible on the task without a decision button
+ok	src/components/__tests__/council-ballots.test.mjs	a seat without a position is shown as such, never counted toward the majority
+ok	src/components/__tests__/council-ballots.test.mjs	a session still in flight shows its pending seats and never claims all seats agree
+ok	src/components/__tests__/council-ballots.test.mjs	agreement-only history fabricates neither dissent nor an endorsement
+ok	src/components/__tests__/council-ballots.test.mjs	an unreadable store and a never-balloted task each say so instead of reading as no dissent
+ok	src/components/__tests__/council-ballots.test.mjs	dissent opens by itself and shows both positions with each seat's cue and source
+ok	src/components/__tests__/council-ballots.test.mjs	panel and session toggles expose their expanded state and controlled content
+ok	src/components/__tests__/current-focus.test.mjs	a cached phase renders as Running with its reason, and the durable record and feed disagreements stay visible
+ok	src/components/__tests__/current-focus.test.mjs	a session-derived model names its source inline, not only in a tooltip
+ok	src/components/__tests__/current-focus.test.mjs	errors never look like an idle success, and refresh is available
+ok	src/components/__tests__/current-focus.test.mjs	full panel shows project, task purpose, stage and links with unknown model explicit
+ok	src/components/__tests__/current-focus.test.mjs	input wait opens existing approval and keyboard focus stays in the panel
+ok	src/components/__tests__/daily-journal-tabs.test.ts	Praxis journal exposes stock analysis and YouTube script tabs
+ok	src/components/__tests__/dashboard-work-summary-layout.test.ts	home page renders the bridge cockpit instead of the journal + work summary layout
+ok	src/components/__tests__/dispatch-console-provider-route.test.mjs	dispatch client forwards the provider selected by the console
+ok	src/components/__tests__/dispatch-console-provider-route.test.mjs	pinned CLI models use subscriptions; API routes still require keys
+ok	src/components/__tests__/dispatch-history-anchor.test.mjs	an in-page progress link opens and scrolls the selected dispatch after mount
+ok	src/components/__tests__/dispatch-map.test.mjs	active providers and council seats show actual models, including multiple Claude models
+ok	src/components/__tests__/dispatch-map.test.mjs	all reported lanes and each configured council seat survive roster expansion
+ok	src/components/__tests__/dispatch-map.test.mjs	central capacity instrument opens the existing full gate report and restores focus
+ok	src/components/__tests__/dispatch-map.test.mjs	chat center has its own activity and opens the message receipt, independent of busy executors
+ok	src/components/__tests__/dispatch-map.test.mjs	dispatch map represents execution and council roles together without fake progress
+ok	src/components/__tests__/dispatch-map.test.mjs	quiet and queued map states reserve identical tracks and keep council captions mounted
+ok	src/components/__tests__/dispatch-map.test.mjs	second-round council voices update the original seat and QA completion keeps review color
+ok	src/components/__tests__/dispatch-map.test.mjs	unavailable telemetry never animates cached executor activity
+ok	src/components/__tests__/display-scale.test.mjs	master scale applies globally, stays bounded, resets, and restores the saved preference
+ok	src/components/__tests__/document-blockers.test.mjs	a failed save keeps the selection and exposes an error for retry
+ok	src/components/__tests__/document-blockers.test.mjs	blocking badge links to waiting tasks in full and compact rows; producer is separate
+ok	src/components/__tests__/document-blockers.test.mjs	reference can be promoted with a named waiting task and refreshes the reader
+ok	src/components/__tests__/document-decisions.test.mjs	a decision whose response was lost is retried with the same id and answered from the record
+ok	src/components/__tests__/document-decisions.test.mjs	a kept note never moves silently: after the file changed it says which revision it was written for, and the decision targets the revision on screen as a new attempt
+ok	src/components/__tests__/document-decisions.test.mjs	a new revision captured while reading turns the decision into a conflict; comments and history persist
+ok	src/components/__tests__/document-decisions.test.mjs	a restored note becomes unpersisted when its next write fails in both stores
+ok	src/components/__tests__/document-decisions.test.mjs	authentication_required approve cleared-persisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	authentication_required approve cleared-unpersisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	authentication_required approve empty: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	authentication_required approve whitespace: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	authentication_required request_changes cleared-persisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	authentication_required request_changes cleared-unpersisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	authentication_required request_changes empty: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	authentication_required request_changes whitespace: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	authentication_required: when both stores fail, keep editable text and require copying before reload
+ok	src/components/__tests__/document-decisions.test.mjs	Discard note removes the kept note from the device and the card
+ok	src/components/__tests__/document-decisions.test.mjs	Finish review sends feedback only: it records no decision and says so
+ok	src/components/__tests__/document-decisions.test.mjs	localStorage quota failure falls back to sessionStorage and restores the exact note and attempt after reload
+ok	src/components/__tests__/document-decisions.test.mjs	operator_check_unavailable approve cleared-persisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_check_unavailable approve cleared-unpersisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_check_unavailable approve empty: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_check_unavailable approve whitespace: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_check_unavailable request_changes cleared-persisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_check_unavailable request_changes cleared-unpersisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_check_unavailable request_changes empty: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_check_unavailable request_changes whitespace: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_check_unavailable: when both stores fail, keep editable text and require copying before reload
+ok	src/components/__tests__/document-decisions.test.mjs	operator_credential_unconfigured approve cleared-persisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_credential_unconfigured approve cleared-unpersisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_credential_unconfigured approve empty: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_credential_unconfigured approve whitespace: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_credential_unconfigured request_changes cleared-persisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_credential_unconfigured request_changes cleared-unpersisted: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_credential_unconfigured request_changes empty: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_credential_unconfigured request_changes whitespace: no-note refusal gives recovery without storage or note claims
+ok	src/components/__tests__/document-decisions.test.mjs	operator_credential_unconfigured: when both stores fail, keep editable text and require copying before reload
+ok	src/components/__tests__/document-decisions.test.mjs	reference documents take no decision, and a pre-contract API offers none
+ok	src/components/__tests__/document-decisions.test.mjs	Request changes on the current revision while the review is pinned to an older one: no bearer is sent, a credential refusal keeps the note, and the retry records on that exact revision
+ok	src/components/__tests__/document-decisions.test.mjs	task status, QA verdict and the document decision are labelled apart; Approve document targets the revision on screen
+ok	src/components/__tests__/document-decisions.test.mjs	the recovery the refusal recommends keeps the note: after a reload it comes back with its revision and attempt id, and recording it clears it
+ok	src/components/__tests__/document-decisions.test.mjs	without an operator session nothing is recorded and the message says where decisions can be made
+ok	src/components/__tests__/document-latest-revision.test.mjs	a slow older refresh cannot replace a newer revision already displayed
+ok	src/components/__tests__/document-latest-revision.test.mjs	an already-open finished review discovers the replacement revision after delivery, retaining previous review access
+ok	src/components/__tests__/document-latest-revision.test.mjs	an open draft on the older revision keeps its unsaved text and its revision; approval targets the latest on screen and the stale guard still holds
+ok	src/components/__tests__/document-latest-revision.test.mjs	moving to another document in the same mounted page opens that document on its latest revision, even from the reviewed-revision view
+ok	src/components/__tests__/document-latest-revision.test.mjs	opening a document whose latest revision was registered after a finished review shows the latest revision, not the reviewed one
+ok	src/components/__tests__/document-latest-revision.test.mjs	return navigation after a newer revision is registered opens on that newer revision
+ok	src/components/__tests__/document-latest-revision.test.mjs	the reviewed revision stays one explicit click away, read-only for decisions, and the latest is one click back
+ok	src/components/__tests__/document-markdown.test.mjs	a broken mermaid fence shows a fallback with its source while the rest of the document renders
+ok	src/components/__tests__/document-markdown.test.mjs	changing the document replaces its diagrams; unrelated re-renders do not redraw
+ok	src/components/__tests__/document-markdown.test.mjs	mermaid fences render as diagrams; captions, prose and other fences are untouched
+ok	src/components/__tests__/document-markdown.test.mjs	outline lists headings with their source lines, skipping fenced content
+ok	src/components/__tests__/document-markdown.test.mjs	renders full GFM with per-block source line anchors and no active scripts
+ok	src/components/__tests__/document-markdown.test.mjs	tapping a block control selects that block; non-interactive mode has no controls
+ok	src/components/__tests__/document-media-viewers.test.mjs	a design package shows its directions and screens, comments anchor to a screen, and approving records the selected direction
+ok	src/components/__tests__/document-media-viewers.test.mjs	an image opens in the zoomable viewer; dragging a region opens the composer and saves a region comment the rail lists with its pin
+ok	src/components/__tests__/document-media-viewers.test.mjs	Edit opens the text editor, Save writes a new revision through the API and the page reloads onto it
+ok	src/components/__tests__/document-outgoing.test.mjs	Cancel send records permanent cancellation and removes send controls
+ok	src/components/__tests__/document-outgoing.test.mjs	cancelled cannot be approved or cancelled again
+ok	src/components/__tests__/document-outgoing.test.mjs	delivering cannot be approved or cancelled again
+ok	src/components/__tests__/document-outgoing.test.mjs	pending delivery polls read-only status and stops once sent
+ok	src/components/__tests__/document-outgoing.test.mjs	send control displays operator refusal without another action
+ok	src/components/__tests__/document-outgoing.test.mjs	send control displays server failure without another action
+ok	src/components/__tests__/document-outgoing.test.mjs	send control displays stale snapshot without another action
+ok	src/components/__tests__/document-outgoing.test.mjs	sent cannot be approved or cancelled again
+ok	src/components/__tests__/document-outgoing.test.mjs	the reviewer shows the exact envelope and sends only an explicit snapshot-bound approval
+ok	src/components/__tests__/document-outgoing.test.mjs	unavailable, stale, or missing-copy draft is held: {"fileState":"not_found"}
+ok	src/components/__tests__/document-outgoing.test.mjs	unavailable, stale, or missing-copy draft is held: {"outgoing":{"envelope":{"to":"member@example.test","cc":[],"subject":"Exact subject","text":"Exact first line.\n\nSecond <literal> line.","attachments":[]}}}
+ok	src/components/__tests__/document-outgoing.test.mjs	unavailable, stale, or missing-copy draft is held: {"outgoing":{"invalidated_at":"2026-10-05T00:01:00Z"}}
+ok	src/components/__tests__/document-outgoing.test.mjs	unavailable, stale, or missing-copy draft is held: {"outgoing":{"revision_id":"older-revision"}}
+ok	src/components/__tests__/document-outgoing.test.mjs	uncertain cannot be approved or cancelled again
+ok	src/components/__tests__/document-review-drafts.test.mjs	a document read that started before a save cannot hide the saved comment
+ok	src/components/__tests__/document-review-drafts.test.mjs	a draft stays with its document: another document shows nothing of it, and it is back on return
+ok	src/components/__tests__/document-review-drafts.test.mjs	a draft written for another reviewer is left alone, and a failed save keeps text and client id across a reload
+ok	src/components/__tests__/document-review-drafts.test.mjs	a passage comment being typed survives a reload with its anchor and client id, and saving it clears the draft
+ok	src/components/__tests__/document-review-drafts.test.mjs	a passage comment typed on one revision is recovered, never moved, when the page comes back on a newer one
+ok	src/components/__tests__/document-review-drafts.test.mjs	a reload during the save: the comment reached the server, so it is listed once and the draft is gone
+ok	src/components/__tests__/document-review-drafts.test.mjs	a reply, a comment edit and the summary each come back after a reload bound to the right comment and review
+ok	src/components/__tests__/document-review-drafts.test.mjs	finishing the review clears the stored draft and a finished review turns leftover text into recovered text
+ok	src/components/__tests__/document-review-drafts.test.mjs	the same words saved at another passage do not swallow an unsaved comment after a reload (API with client ids)
+ok	src/components/__tests__/document-review-drafts.test.mjs	the same words saved at another passage do not swallow an unsaved comment after a reload (API without client ids)
+ok	src/components/__tests__/document-review-drafts.test.mjs	without client ids from the API a reload during the save keeps the draft, points at the saved twin, and saving again adds nothing
+ok	src/components/__tests__/document-review.test.mjs	"Approve once this change is made" sends the approve_after_changes grant with the finish and the finished review shows the delegation
+ok	src/components/__tests__/document-review.test.mjs	a changed document opens on the current file with honest anchor states; the reviewed revision is an explicit click and the only one annotated
+ok	src/components/__tests__/document-review.test.mjs	a failed save keeps the text and retries with the same client id; whole-document notes save too
+ok	src/components/__tests__/document-review.test.mjs	a finish rejected before it was processed says so and keeps the draft editable
+ok	src/components/__tests__/document-review.test.mjs	a finish whose response was lost reconciles with the server instead of claiming nothing was sent
+ok	src/components/__tests__/document-review.test.mjs	a plain finish carries no approve_after_changes field and shows no delegation
+ok	src/components/__tests__/document-review.test.mjs	a scheduled automatic retry keeps being observed until its outcome is known
+ok	src/components/__tests__/document-review.test.mjs	a terminal delivery failure is shown as final and is not polled
+ok	src/components/__tests__/document-review.test.mjs	Finish review submits once with the summary and shows queued then delivered with a receipt
+ok	src/components/__tests__/document-review.test.mjs	finishing with zero comments opens a draft and submits it
+ok	src/components/__tests__/document-review.test.mjs	on the phone, adding a whole-document note closes the review drawer so the composer is reachable, then returns to it
+ok	src/components/__tests__/document-review.test.mjs	renders the report with its source task and anchors a tapped block comment to real lines
+ok	src/components/__tests__/documents-index.test.mjs	a failed step-back with more than one page left shows the error, hides the pager, and Retry recovers
+ok	src/components/__tests__/documents-index.test.mjs	a page emptied by decisions steps back to the last page with documents
+ok	src/components/__tests__/documents-index.test.mjs	a pre-contract API is labelled honestly instead of faking counts or filters
+ok	src/components/__tests__/documents-index.test.mjs	filters in the address bar (from task and project links) open the matching view
+ok	src/components/__tests__/documents-index.test.mjs	loading, error, zero and nothing-pending are distinct states
+ok	src/components/__tests__/documents-index.test.mjs	opens on Needs your review with server counts, purpose, version and same-origin Open links
+ok	src/components/__tests__/documents-index.test.mjs	pages through more than 100 pending documents with truthful counts and reaches every one
+ok	src/components/__tests__/documents-index.test.mjs	search, project, task and kind filters are applied by the server with matching counts
+ok	src/components/__tests__/documents-index.test.mjs	the empty-response guard does not misreport a legitimately empty first page
+ok	src/components/__tests__/event-ticker-text.test.mjs	a red alert keeps its acknowledgment guidance on the strip
+ok	src/components/__tests__/event-ticker-text.test.mjs	the bridge strip names the project and the ask when the card has a brief
+ok	src/components/__tests__/event-ticker-text.test.mjs	without a brief it names the project and the task, never the generic type-your-answer line
+ok	src/components/__tests__/focus-stores.test.mjs	shared snapshots coalesce reads, retain last good data with explicit errors, and recover
+ok	src/components/__tests__/followup-slate-card.test.mjs	QA slate uses normal task controls and sends overrides instead of raw review prose
+ok	src/components/__tests__/groundrules-labeling.test.mjs	a dirty draft keeps the revision it was built on across Reload: after a remote edit its autosave is refused as stale and the conflict is shown, never a silent overwrite
+ok	src/components/__tests__/groundrules-labeling.test.mjs	a save without any operator proof is refused by the server and shown as not saved, with the credential panel pointing at the fix
+ok	src/components/__tests__/groundrules-labeling.test.mjs	autosave: a draft saves with the packet hash and revision, errors come back per field, the pick-words fallback fills the quote, and a reload resumes from the server
+ok	src/components/__tests__/groundrules-labeling.test.mjs	commit: the review refuses while anything is open, a commit freezes Stage A, Part B opens only through its reveal gate, and a post-exposure change is recorded beside the baseline
+ok	src/components/__tests__/groundrules-labeling.test.mjs	conflicts: a save from another device is surfaced and never overwritten silently; a changed packet blocks saves until a deliberate rebind
+ok	src/components/__tests__/groundrules-labeling.test.mjs	entry card: a linked task shows one Start action ahead of the inventory; an unlinked task shows nothing
+ok	src/components/__tests__/groundrules-labeling.test.mjs	leaving the page sends the pending autosave at once with keepalive instead of losing it
+ok	src/components/__tests__/groundrules-labeling.test.mjs	start screen: counts and digests, no Part B or C content, Start needs the operator credential and sends it only on the write
+ok	src/components/__tests__/groundrules-labeling.test.mjs	two edits whose saves overlap are sent one after another, the second naming the revision the first acknowledged
+ok	src/components/__tests__/hitl-accept-as-is.test.mjs	desktop accept-as-is is a normal actionable option and sends the server-defaulted payload
+ok	src/components/__tests__/human-brief-card.test.mjs	a card without a brief renders as before, minus the owner box
+ok	src/components/__tests__/human-brief-card.test.mjs	a deliverable row describes the document by its brief when one is registered
+ok	src/components/__tests__/human-brief-card.test.mjs	a malformed brief is ignored rather than rendered half-empty
+ok	src/components/__tests__/human-brief-card.test.mjs	an inbox card with a brief leads with it, lists the questions, folds the full message, and shows no owner box
+ok	src/components/__tests__/inbox-alert-target.test.mjs	a background inbox refresh preserves the mounted answer and its typed draft
+ok	src/components/__tests__/inbox-alert-target.test.mjs	old inbox link fetches its resolved request beyond the recent-history window and displays the whole answer
+ok	src/components/__tests__/live-board-state-contract.test.ts	EVENT_DOMAINS has no entries the contract does not define
+ok	src/components/__tests__/live-board-state-contract.test.ts	every mapped domain is a real LiveDomain
+ok	src/components/__tests__/live-board-state-contract.test.ts	every StreamEvent type has an explicit domain mapping
+ok	src/components/__tests__/live-board-state-contract.test.ts	heartbeat invalidates nothing and stream.reset invalidates everything
+ok	src/components/__tests__/live-board-state-contract.test.ts	unknown event types still bump activity rather than nothing
+ok	src/components/__tests__/live-board-state-recovery.test.mjs	`connected` follows the socket even while the SSE source is dead (the PRAXIS chip no longer reads Offline after every backend restart)
+ok	src/components/__tests__/live-board-state-recovery.test.mjs	backend restart: the socket drop probes, the outage reads `offline` with no refetch storm, and the retry that passes refetches every consumer exactly once and reconnects the socket at once
+ok	src/components/__tests__/live-board-state-recovery.test.mjs	expired session: the probe's redirect verdict reads `reauth`; nothing retries, refetches or navigates by itself; the explicit action opens the sign-in window, leaves the document, and is reflected
+ok	src/components/__tests__/live-board-state-recovery.test.mjs	foreground return: visible + focus + online fired together make one probe and one refetch per consumer; a second return inside the gap makes none
+ok	src/components/__tests__/live-board-state-recovery.test.mjs	unmount releases everything: socket listeners, the socket itself after the linger, the SSE source, and the wake listeners
+ok	src/components/__tests__/live-board-state.test.ts	a duplicate eventId across transports bumps once, whichever transport is first
+ok	src/components/__tests__/live-board-state.test.ts	a presence.changed frame updates the presence snapshot; the reducer never mutates its input
+ok	src/components/__tests__/live-board-state.test.ts	events without an eventId cannot be deduped: a double delivery double-bumps (harmlessly)
+ok	src/components/__tests__/live-board-state.test.ts	heartbeats bump nothing and stay out of the ring; the ring is capped
+ok	src/components/__tests__/live-board-state.test.ts	invalidateAll bumps every domain by exactly one and keeps the ring and presence (a recovery, not a reset)
+ok	src/components/__tests__/live-board-state.test.ts	per-domain revisions are monotonic and only the invalidated domains move
+ok	src/components/__tests__/live-board-state.test.ts	stream.reset (or a praxis:resync) clears the ring to the reset frame alone: nothing held predates a gap nobody can replay
+ok	src/components/__tests__/live-board-state.test.ts	the dedupe set is bounded: after MAX ids the oldest is forgotten
+ok	src/components/__tests__/markdown-message-links.test.mjs	a Praxis document-review link opens in-app on the current origin, not in a new window
+ok	src/components/__tests__/markdown-message-links.test.mjs	the bare review URL and a localhost:3000 link both stay in-app; the Access login host does not
+ok	src/components/__tests__/member-evidence.test.mjs	a payload from the real lookup passes the client and renders conflicts, completion claims and named-question topics
+ok	src/components/__tests__/member-evidence.test.mjs	an unavailable lookup shows the server error and renders no evidence
+ok	src/components/__tests__/member-evidence.test.mjs	changing the question refetches with that question and partial buckets say how much is missing
+ok	src/components/__tests__/member-evidence.test.mjs	general scope omits the project bucket and the project-only role question
+ok	src/components/__tests__/member-evidence.test.mjs	labels every source separately: missing project assertion, directory default, claim, inference, pending proposal, history and identity warning
+ok	src/components/__tests__/member-evidence.test.mjs	records from another project or member are rejected before anything is rendered
+ok	src/components/__tests__/member-memory.test.mjs	a response from another scope is rejected before any notes are rendered
+ok	src/components/__tests__/member-memory.test.mjs	failed correction preserves form and does not claim it saved
+ok	src/components/__tests__/member-memory.test.mjs	loading older history uses its cursor and preserves already loaded records
+ok	src/components/__tests__/member-memory.test.mjs	malformed responses show a useful error without exposing schema internals
+ok	src/components/__tests__/member-memory.test.mjs	renders evidence without upgrading an inference and corrects an exact scoped event
+ok	src/components/__tests__/member-memory.test.mjs	retry after an uncertain write reuses the exact payload and idempotency key
+ok	src/components/__tests__/member-memory.test.mjs	scope switch clears prior data and ignores an older in-flight response
+ok	src/components/__tests__/member-profile-proposals.test.mjs	dismissal does not claim a fact was added; evidence text stays escaped
+ok	src/components/__tests__/member-profile-proposals.test.mjs	loading another page cannot silently authorize old proposals against changed memory
+ok	src/components/__tests__/member-profile-proposals.test.mjs	refreshing stale proposals does not unlock review when current facts cannot be refreshed
+ok	src/components/__tests__/member-profile-proposals.test.mjs	rejects foreign scope and invalid proposal responses before displaying their text
+ok	src/components/__tests__/member-profile-proposals.test.mjs	shows full evidence and claim status; acceptance uses the reviewed memory version and refreshes memory
+ok	src/components/__tests__/member-profile-proposals.test.mjs	stale acceptance keeps evidence visible and prevents another acceptance until explicit refresh
+ok	src/components/__tests__/mobile-shell-bridge.test.mjs	a hash-only change on the current page updates the hash instead of re-routing
+ok	src/components/__tests__/mobile-shell-bridge.test.mjs	announces ready, location and badge count to the shell
+ok	src/components/__tests__/mobile-shell-bridge.test.mjs	routes sanitised navigate events and ignores origin escapes
+ok	src/components/__tests__/mobile-shell-bridge.test.mjs	stops listening once unmounted
+ok	src/components/__tests__/module-activity-view.test.mjs	a board status alone never animates execution; a live QA run points to its report
+ok	src/components/__tests__/module-activity-view.test.mjs	community inspection can follow a bridge and open an encoded entity report
+ok	src/components/__tests__/module-activity-view.test.mjs	executor detail points a QA shadow run to the original task evidence
+ok	src/components/__tests__/module-activity-view.test.mjs	existing history stays quiet and only newly arriving identifiers pulse
+ok	src/components/__tests__/nav-sidebar-lars-link.test.mjs	Nexus hamburger menu links to the LARS dashboard
+ok	src/components/__tests__/nav-sidebar-menu.test.mjs	a closed menu ignores Escape, and closing does not steal focus that already moved elsewhere
+ok	src/components/__tests__/nav-sidebar-menu.test.mjs	closed menu is inert; opening labels the dialog, takes focus and locks the page; closing gives both back
+ok	src/components/__tests__/nav-sidebar-menu.test.mjs	Escape, the backdrop, Close and every destination close the menu
+ok	src/components/__tests__/nav-sidebar-menu.test.mjs	every destination is listed in its group without search, Reviews first, LARS in a new tab
+ok	src/components/__tests__/nav-sidebar-menu.test.mjs	Local Only sends the same request as before and shows the answer
+ok	src/components/__tests__/nav-sidebar-menu.test.mjs	Settings opens settings and closes; Connection settings appears only in the Android shell
+ok	src/components/__tests__/nav-sidebar-menu.test.mjs	Tab and Shift+Tab wrap inside the open menu
+ok	src/components/__tests__/nav-sidebar-menu.test.mjs	the menu has no Active Projects section and never requests the project list
+ok	src/components/__tests__/nav-sidebar-menu.test.mjs	the page lock keeps an existing overflow value and is released when the menu unmounts open
+ok	src/components/__tests__/nav-sidebar-menu.test.mjs	when the opener never took focus (Safari), focus returns to the menu trigger
+ok	src/components/__tests__/nav-sidebar-shell-settings.test.mjs	the drawer shows Connection settings only when the mobile shell is present
+ok	src/components/__tests__/ops-connection-status.test.mjs	live with telemetry: dated as of the last answer, no action
+ok	src/components/__tests__/ops-connection-status.test.mjs	reauth in a browser offers exactly one explicit action; while its window is open it says so; a blocked window offers a popup retry
+ok	src/components/__tests__/ops-connection-status.test.mjs	reauth inside the travel shell preserves the page using the native sign-in window
+ok	src/components/__tests__/ops-connection-status.test.mjs	recovering, renewing and offline name the gap honestly; offline says since when and offers a retry
+ok	src/components/__tests__/ops-connection-status.test.mjs	the API is healthy but dispatch telemetry failed (Praxis down behind a healthy Nexus): stale, dated, retry offered, never 'no runs'
+ok	src/components/__tests__/ops-connection-status.test.mjs	the component exposes phase/tone/data-state attributes and wires each offered button to the right handler
+ok	src/components/__tests__/ops-local-queue.test.mjs	a confirmed pause is not overwritten by an older poll
+ok	src/components/__tests__/ops-local-queue.test.mjs	polls the model queue every five seconds
+ok	src/components/__tests__/ops-local-queue.test.mjs	refreshes live data and preserves the previous snapshot with a visible stale error
+ok	src/components/__tests__/ops-local-queue.test.mjs	renders all jobs in worker order with future jobs separate and finished jobs excluded
+ok	src/components/__tests__/ops-local-queue.test.mjs	shows the native model queue even when no background jobs exist
+ok	src/components/__tests__/ops-local-queue.test.mjs	shows the unsent research backlog even when LM Studio has zero queued requests
+ok	src/components/__tests__/ops-local-queue.test.mjs	stale extraction progress is visibly unconfirmed
+ok	src/components/__tests__/ops-local-queue.test.mjs	unknown native counts are unavailable and a missing source is not an empty queue
+ok	src/components/__tests__/ops-local-queue.test.mjs	worker pause failures are shown without claiming the worker paused
+ok	src/components/__tests__/ops-page-recovery.test.mjs	an obsolete dispatch-state answer that lands after the reconnect refetch cannot overwrite the recovered rows (the missing-active-run sequence)
+ok	src/components/__tests__/ops-page-recovery.test.mjs	telemetry that becomes unavailable while the last answer was 'no runs' says so; it never reads as 'no runs on record'
+ok	src/components/__tests__/ops-page-recovery.test.mjs	the Nexus API itself unreachable with a cached empty list: offline tone, and the empty text acknowledges the gap
+ok	src/components/__tests__/ops-refresh-stability.test.mjs	Ops stays live between clock ticks and reflects changed dispatch status
+ok	src/components/__tests__/praxis-mailbox.test.mjs	a delayed message cannot replace the current selection or leak into another folder
+ok	src/components/__tests__/praxis-mailbox.test.mjs	combined Inbox filters email and feedback and opens the complete feedback conversation
+ok	src/components/__tests__/praxis-mailbox.test.mjs	load more preserves existing mail, and refresh replaces the page
+ok	src/components/__tests__/praxis-mailbox.test.mjs	mailbox failure is explicit and retry recovers, without claiming an empty inbox
+ok	src/components/__tests__/praxis-mailbox.test.mjs	opens complete mail as plain text and performs only reads
+ok	src/components/__tests__/praxis-mailbox.test.mjs	Outbox separates pending approval from actual sent mail
+ok	src/components/__tests__/praxis-mailbox.test.mjs	Retry discards an expired pagination cursor and loads a fresh first page
+ok	src/components/__tests__/presence-indicator-view.test.ts	getPresenceVisualState gives executing a faster distinct scanner
+ok	src/components/__tests__/presence-indicator-view.test.ts	getPresenceVisualState gives thinking an animated live core
+ok	src/components/__tests__/presence-indicator-view.test.ts	getPresenceVisualState makes disconnected state explicit
+ok	src/components/__tests__/presentation-controller.test.mjs	Android Cast discovery opens the native picker without TV browser setup and reports launch failure
+ok	src/components/__tests__/presentation-controller.test.mjs	Android discovers its own source, starts the selected view and revokes on background
+ok	src/components/__tests__/presentation-controller.test.mjs	backgrounding during pairing revokes the returned session even when the following refresh fails
+ok	src/components/__tests__/presentation-controller.test.mjs	document controller button relays the exact displayed revision, never asks for latest
+ok	src/components/__tests__/presentation-controller.test.mjs	native discovery remains visible when publication fails, but presenting still requires server acceptance
+ok	src/components/__tests__/presentation-controller.test.mjs	neither the global launcher nor exact-review button renders in a standalone browser
+ok	src/components/__tests__/presentation-controller.test.mjs	TV pairing uses two numeric digits and preserves a leading zero in the claimed code
+ok	src/components/__tests__/presentation-view.test.mjs	a receiver blanks previously displayed data on failed refresh
+ok	src/components/__tests__/presentation-view.test.mjs	all four families render selected data without approval, chat, or navigation controls
+ok	src/components/__tests__/presentation-view.test.mjs	document output visibly binds exact identity and keeps update notification read-only
+ok	src/components/__tests__/presentation-view.test.mjs	PDF, image and video use existing read-only media stages
+ok	src/components/__tests__/presentation-view.test.mjs	presentation Mermaid stays literal and cannot issue requests or navigation
+ok	src/components/__tests__/project-checkpoints-panel.test.mjs	a stale plan revision is reported and the draft stays open
+ok	src/components/__tests__/project-checkpoints-panel.test.mjs	authoring reorders, removes and adds checkpoints and saves the whole ordered plan under both guards
+ok	src/components/__tests__/project-checkpoints-panel.test.mjs	distinguishes no checkpoints, waiting for evidence, and an unverified final goal after the sequence
+ok	src/components/__tests__/project-checkpoints-panel.test.mjs	editing retains the original guard when fresher props arrive
+ok	src/components/__tests__/project-checkpoints-panel.test.mjs	reopening a verified checkpoint is an explicit guarded action; nothing in the panel completes one
+ok	src/components/__tests__/project-checkpoints-panel.test.mjs	shows the long-term goal, the current checkpoint with its evidence, upcoming and completed history
+ok	src/components/__tests__/project-checkpoints-panel.test.mjs	the mission brief keeps the directive and names the current checkpoint
+ok	src/components/__tests__/project-client-access.test.mjs	an empty ledger and an unavailable API are both stated plainly
+ok	src/components/__tests__/project-client-access.test.mjs	renders entitlements with their live access, published versions and client decisions
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	a successful need save with a failed project refresh never promotes its new guard onto stale fields
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	application records use a stable id and separate version-bound payload
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	clear observation explicitly clears historical manual evidence on the wire
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	endpoint editor preserves metric values, sampling windows and observations in its guarded request
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	endpoint shows unverifiable evidence and accepts a proposal only after the explicit action
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	general settings use the editing snapshot guard and leave full knowledge data to scoped editors
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	main knowledge list contains only action items; completed steps and revision consequences stay in history
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	mission brief keeps stale met knowledge visible among outstanding needs
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	need without evidence cannot be satisfied, and retrieval failure is explicit
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	partially applied legacy answers can obtain explicit verification before applying to remaining work
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	received evidence without an answer opens a usable editor and preserves text on a conflict
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	retired applied questions require reopening or their successor before revision
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	reverse-linked pending tasks remain visible in the action list
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	stale questions show context, separate history, and require deliberate evidence selection
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	structured need verifies through an explicit guarded review and tag opens actual knowledge retrieval
+ok	src/components/__tests__/project-endpoint-panels.test.mjs	switch to metric explicitly clears historical manual evidence on the wire
+ok	src/components/__tests__/qa-hold-panel.test.mjs	a held task is badged with the reason, distinct from an ordinary todo
+ok	src/components/__tests__/qa-hold-panel.test.mjs	a task with no hold renders nothing at all
+ok	src/components/__tests__/qa-hold-panel.test.mjs	an operator-started task says the explicit stop holds its correction too
+ok	src/components/__tests__/qa-hold-panel.test.mjs	the findings the badge links to are rendered in full
+ok	src/components/__tests__/qa-hold-panel.test.mjs	the real 2026-09-02 event splits into a pause reason and reviewer findings
+ok	src/components/__tests__/ready-for-review.test.mjs	loading, error and a pre-contract API are not shown as a count
+ok	src/components/__tests__/ready-for-review.test.mjs	project Deliverables opens on All when nothing needs review, and says when there are none
+ok	src/components/__tests__/ready-for-review.test.mjs	project Deliverables reads the same registry for the project, opens on what needs review and pages
+ok	src/components/__tests__/ready-for-review.test.mjs	project Deliverables steps back when a decision empties the page shown, instead of calling the view empty
+ok	src/components/__tests__/ready-for-review.test.mjs	reference documents never count, and an empty queue says nothing is waiting
+ok	src/components/__tests__/ready-for-review.test.mjs	Reviews remains in the navigation menu and bridge header without a dashboard review panel
+ok	src/components/__tests__/ready-for-review.test.mjs	the bridge header Reviews button and Ready for your review show the server pending count and newest items
+ok	src/components/__tests__/reauth-preserves-document.test.mjs	an unsent task-description edit survives 'Sign in again' (separate window, this document untouched) and the renewed session's recovery
+ok	src/components/__tests__/reauth-preserves-document.test.mjs	blocked popup fallback completes after popups are allowed, preserving the original editor
+ok	src/components/__tests__/reauth-preserves-document.test.mjs	travel shell interactive fallback completes in the native cookie profile without replacing the editor
+ok	src/components/__tests__/reauth-preserves-document.test.mjs	when sign-in is blocked, retrying the window keeps the editor intact
+ok	src/components/__tests__/receiver-pairing.test.mjs	a launched Cast receiver enrolls without cookies, reads only its paired view, and clears on sender loss
+ok	src/components/__tests__/receiver-pairing.test.mjs	missing Cast SDK never enrolls a receiver or silently falls back to a browser
+ok	src/components/__tests__/review-documents-panel.test.mjs	a task with more deliverables than the panel shows links to the full filtered queue
+ok	src/components/__tests__/review-documents-panel.test.mjs	lists the task deliverables with purpose, version, document status and a direct Open
+ok	src/components/__tests__/review-documents-panel.test.mjs	on a pre-contract API it still lists the task documents but claims no pending count
+ok	src/components/__tests__/review-documents-panel.test.mjs	renders nothing without deliverables and shows a retry on errors
+ok	src/components/__tests__/routing-economics.test.mjs	an old deep-linked run is explicitly fetched and its output opens in the dispatch console
+ok	src/components/__tests__/routing-economics.test.mjs	empty registry model and lanes show no data, never zero dollars or perfect success
+ok	src/components/__tests__/routing-economics.test.mjs	fetched comparison renders lane/model estimates, metric sample sizes and exact run links
+ok	src/components/__tests__/routing-economics.test.mjs	read failure is visibly unavailable, not empty history, with a retry control
+ok	src/components/__tests__/run-trace-surface.test.mjs	a run still in flight reads as in flight, not as badly traced
+ok	src/components/__tests__/run-trace-surface.test.mjs	an activity with no run behind it says so instead of scoring 0 of 8
+ok	src/components/__tests__/run-trace-surface.test.mjs	completeness always states the denominator
+ok	src/components/__tests__/run-trace-surface.test.mjs	gaps are grouped by reason, so one cause is not read as several faults
+ok	src/components/__tests__/run-trace-surface.test.mjs	no finished runs reports no score, never 0%
+ok	src/components/__tests__/run-trace-surface.test.mjs	the ceiling imposed by fleet instrumentation is stated with the score
+ok	src/components/__tests__/run-trace-surface.test.mjs	the task-level figure carries the runs behind it
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	a prepared follow-up can be added to the calendar after the last planned task; a saved automatic start hides that button
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	a successor with automatic start hangs under its predecessor’s calendar slot; without automatic start it stays a loose follow-up
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	follow-ups sit in their own section after the whole timeline even when the plan spills past midnight, never between its rows
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	follow-ups sit in their own section after the whole timeline, never between its rows
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	mixed schedule + queue: a task on the calendar and in the queue is one row with a badge; a completed calendar row is not doubled
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	no day plan + a queue: running and queued work appear at once, in Praxis's order, each linking to its task
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	no plan and no runtime read: the empty state is explicit about the missing queue
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	queue head on the calendar: 'up next' still names the head, and the badged slot's title links to the task
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	refetch transitions: a queued task becomes the running one, and a later failed read keeps the rows marked stale
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	renders optional improvements beside the completed parent with reason and task detail link
+ok	src/components/__tests__/schedule-timeline-live-work.test.mjs	runtime read unavailable: the calendar still renders and the panel says the queue cannot be shown — never 'nothing queued'
+ok	src/components/__tests__/session-page.test.mjs	a person signed in under another address is told which pin to correct, and the address shown is the session's own
+ok	src/components/__tests__/session-page.test.mjs	a token issued for another application is told which pin to correct, from the array form of the claim
+ok	src/components/__tests__/session-page.test.mjs	after the reload with the laptop pinned, the page reports the device identity and nothing to do
+ok	src/components/__tests__/session-page.test.mjs	inside the travel shell before the Nexus reload, the page names the service-token session and the pin to add
+ok	src/components/__tests__/session-page.test.mjs	on the Mac app (localhost) the page explains the missing Access session instead of asking for a login
+ok	src/components/__tests__/session-page.test.mjs	when the dashboard probe cannot be reached, the page says the kind is undetermined rather than "no Access session"
+ok	src/components/__tests__/session-page.test.mjs	when the probe is silent but the edge names the session, the edge reading is shown
+ok	src/components/__tests__/session-page.test.mjs	with the laptop pinned but the running child refusing at audience, the page reads the form of the claim and names the reload, not a pin
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a completion with no reviewer verdict gets a label of its own
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a healthy slate renders all four stages with their stamps and no alarm
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a manually completed slot is reported as unproven, not as QA-passed
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a partly verified slate does not wear the same chip as a finished one
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a reached stage that is not finished reads partial, never done
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a reconciled completion keeps its attempt evidence and loses the QA claim
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a rejected slate is blocked, which must not look like waiting
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a rejected slate says it will not run instead of counting minutes
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a settled slate is neutral, not amber with a clock (QA 2026-09-18)
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a settled slate wears a neutral chip with no elapsed clock
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a slate that reached every stage has no stall sentence at all
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a slate with no live work left is not described as a stall waiting to clear
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	a stage with nothing to qualify carries no labels at all
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	an absent approval record reads unknown, never done
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	an unknown stage says there is no record, not that it did not happen
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	an unreadable QA ledger reads as unknown, never as zero passes
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	an unreadable slate renders as unknown, never as "no slate"
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	an unreadable slate says so rather than claiming there is none
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	durations read as a person reads them
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	only the stalled stage reads as waiting, the ones behind it are upcoming
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	outcomes that are not a QA pass get their own visible label
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	the four stages are the lifecycle, in order
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	the never-approved slate shows WHERE it is stuck and for how long
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	the progress fraction is on the stage itself, for the chip to render
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	the reviewer behind a real pass is on the row, not only in the count
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	the slot list separates withdrawn slots from work that actually ran
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	the stall sentence names the stage and the clock
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	unreadable QA with live work has no verification delay claim or clock
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	work that never entered the dispatch plane says so in its row
+ok	src/components/__tests__/slate-lifecycle-surface.test.mjs	yesterday's file is never headlined as today's slate
+ok	src/components/__tests__/stakeholder-proposal-review.test.mjs	dashboard distinguishes accepted
+ok	src/components/__tests__/stakeholder-proposal-review.test.mjs	dashboard distinguishes applied
+ok	src/components/__tests__/stakeholder-proposal-review.test.mjs	dashboard distinguishes approved
+ok	src/components/__tests__/stakeholder-proposal-review.test.mjs	dashboard distinguishes issued
+ok	src/components/__tests__/stakeholder-proposal-review.test.mjs	dashboard distinguishes proposed
+ok	src/components/__tests__/stakeholder-proposal-review.test.mjs	policy and exact revision review require operator credential and send bound decision
+ok	src/components/__tests__/studio-navigation.test.mjs	Nexus menu links to the multi-channel Studio
+ok	src/components/__tests__/studio-navigation.test.mjs	Studio idea page keeps the video editor focused on production assets
+ok	src/components/__tests__/studio-navigation.test.mjs	Studio page exposes the YouTube production workflow
+ok	src/components/__tests__/task-improvements-panel.test.mjs	completed parent shows waiting improvement separately with full suggestion and timestamp
+ok	src/components/__tests__/task-improvements-panel.test.mjs	improvement review evidence and dispatch remain accessible for all terminal states
+ok	src/components/__tests__/task-improvements-panel.test.mjs	linked follow-up is prominent and does not claim stale legacy execution status
+ok	src/components/__tests__/task-improvements-panel.test.mjs	retained snapshots show stale status and unavailable API remains backwards compatible
+ok	src/components/__tests__/task-improvements-panel.test.mjs	review-only completion shows decision rationale and evidence without claiming verification
+ok	src/components/__tests__/task-progress-panel.test.mjs	all blocking routine admission decisions appear but allowed and contract holds do not duplicate
+ok	src/components/__tests__/task-progress-panel.test.mjs	background hold renders exact reason and only links a recorded recovery question
+ok	src/components/__tests__/task-progress-panel.test.mjs	historical admission holds are absent from active and terminal tasks and confirmed running work
+ok	src/components/__tests__/task-progress-panel.test.mjs	partial overlap names remaining scope without promising automatic re-review
+ok	src/components/__tests__/task-progress-panel.test.mjs	pending admission shows factual reason, checked time and compared task links without requesting user action
+ok	src/components/__tests__/task-progress-panel.test.mjs	renders source message timestamp next to update independently from task start
+ok	src/components/__tests__/task-progress-panel.test.mjs	resumable nonterminal statuses show admission while active and terminal states suppress historical receipts
+ok	src/components/__tests__/task-progress-panel.test.mjs	scheduled work also exposes its admission hold before dispatch
+ok	src/components/__tests__/task-progress-panel.test.mjs	summary separates reported text from evidence and renders chronological questions between attempts
+ok	src/components/__tests__/task-progress-panel.test.mjs	unfinished task does not link to absent completion dossier anchors
+ok	src/components/__tests__/topic-constellation.test.mjs	access changes only the touched crystal brightness; geometry stays fixed and idle bridge dots move
+ok	src/components/__tests__/topic-constellation.test.mjs	canvas hit testing follows display scaling; reduced motion and offscreen state stop work animation
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	a 7d token sum shows the coverage behind it, not a bare number
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	a fully covered aggregate reports no unknown causes
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	coverage always states the denominator, never a bare percentage
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	estimated tokens are visibly marked, never shown as a measurement
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	measured token counts are labelled differently from estimated ones
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	runs that reported no usage read as unknown, never as a zero
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	runs with no usage record read as unknown instead of vanishing
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	the LLM activity widget reports how many calls left no usage record
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	the LLM activity widget stays quiet when usage is complete
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	the now strip adds no coverage caveat when every run reported usage
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	the now strip qualifies a cumulative total that covers only some runs
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	the now strip says unknown, not a dash, when no run reported usage
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	the power station carries the same caveat the details page shows
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	the power station stays quiet when usage is complete
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	the task cost aggregate is never shown without its coverage
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	unknown runs are explained by cause, biggest group first
+ok	src/components/__tests__/usage-missing-attribution.test.mjs	zero priced runs reports 0% coverage rather than implying completeness
+ok	src/components/__tests__/usage-unknown-cost.test.mjs	unknown aggregate tokens render distinctly from measured zero
+ok	src/components/__tests__/usage-unknown-cost.test.mjs	usage panel renders missing model prices as Unknown without a zero dollar claim
+ok	src/hooks/__tests__/chat-audio-autoplay.test.ts	a briefing this device already started never re-announces
+ok	src/hooks/__tests__/chat-audio-autoplay.test.ts	a fresh, unheard briefing auto-plays
+ok	src/hooks/__tests__/chat-audio-autoplay.test.ts	an already-pending briefing is not re-staged by a later transcript scan
+ok	src/hooks/__tests__/chat-audio-autoplay.test.ts	legacy voice notes use the same freshness discipline plus dismiss/listened
+ok	src/hooks/__tests__/chat-audio-autoplay.test.ts	the fresh window is REPORT_AUTOPLAY_FRESH_MS, inclusive at the boundary
+ok	src/hooks/__tests__/chat-audio-autoplay.test.ts	the item already on the global player is not staged again
+ok	src/hooks/__tests__/chat-audio-autoplay.test.ts	voice keys are message IDENTITY, never array position
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	a deferred ended event cannot release ownership after explicit replay restarts the element
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	a deferred pause from an older playback cannot release a newly started media lease
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	a deferred play event from interrupted media cannot cancel recording, while manual replay still can
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	a deferred play event is also ignored after the media has ended
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	a note that expires while recording waits stays available for manual replay
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	an old queued pause cannot release the actual chat reservation while its comm chirp is pending
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	an unavailable cue leaves a report for manual replay without repeated autoplay attempts
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	automatic chat note waits for recording and starts after release
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	native chat playback pauses immediately when recording claims speech
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	recording during a deferred active-device lookup invalidates the pending chat start
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	remounting native audio bindings retains ownership of an already playing note
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	suppressed saved audio never autoplays and stays available for explicit replay
+ok	src/hooks/__tests__/chat-audio-ownership.test.ts	voice-session-owned replies never autoplay in chat but retain manual replay
+ok	src/hooks/__tests__/file-attachments-reducer.test.ts	a drop of nothing but oversized files leaves the state identity untouched
+ok	src/hooks/__tests__/file-attachments-reducer.test.ts	clear (the post-send reset) empties the list and revokes every thumbnail
+ok	src/hooks/__tests__/file-attachments-reducer.test.ts	files are accepted with their name, size and type
+ok	src/hooks/__tests__/file-attachments-reducer.test.ts	files over 25 MB are dropped, the rest of the drop still lands
+ok	src/hooks/__tests__/file-attachments-reducer.test.ts	only image/* files get a preview thumbnail URL
+ok	src/hooks/__tests__/file-attachments-reducer.test.ts	previews for overflowed files are revoked rather than leaked
+ok	src/hooks/__tests__/file-attachments-reducer.test.ts	removing a non-image revokes nothing
+ok	src/hooks/__tests__/file-attachments-reducer.test.ts	removing an attachment removes both lists at the same index and revokes its URL
+ok	src/hooks/__tests__/file-attachments-reducer.test.ts	the list caps at 5 and the HEAD wins — already-picked files are never evicted
+ok	src/hooks/__tests__/use-current-focus.test.mjs	clock alone expires activity while subsequent fetches remain pending
+ok	src/hooks/__tests__/use-current-focus.test.mjs	freshness keeps advancing during a feed outage after an initially good snapshot
+ok	src/hooks/__tests__/use-hitl-inbox.test.mjs	a delayed snapshot cannot resurrect a successfully answered question
+ok	src/hooks/__tests__/use-hitl-inbox.test.mjs	a refresh after an error stays explicitly loading while the request is unsettled
+ok	src/hooks/__tests__/use-hitl-inbox.test.mjs	mounting under a retained HITL frame still loads unrelated pending requests
+ok	src/lib/__tests__/alert-action.test.ts	absent or unavailable evidence never falsely clears an alert
+ok	src/lib/__tests__/alert-action.test.ts	answered event preserves choice and notes without claiming the task resumed
+ok	src/lib/__tests__/alert-action.test.ts	bridge keeps a fresh failure above a routine request while a critical request stays visible
+ok	src/lib/__tests__/alert-action.test.ts	completed task makes its old blocked signal historical but not unrelated incident fixed
+ok	src/lib/__tests__/alert-action.test.ts	read budget is capped and shared request/task IDs are deduplicated
+ok	src/lib/__tests__/alert-action.test.ts	red alert acknowledgment is distinguished from repairing the incident
+ok	src/lib/__tests__/alert-action.test.ts	safe destinations reject active protocols, protocol-relative URLs and encoded controls
+ok	src/lib/__tests__/alert-action.test.ts	saved answer holds ask only for delivery choice and preserve the answer
+ok	src/lib/__tests__/alert-action.test.ts	saved predictive restart proposals require current-state review before a decision
+ok	src/lib/__tests__/alert-action.test.ts	TTL expiry matches runtime strict boundary and retains invalid-date fallback
+ok	src/lib/__tests__/alert-action.test.ts	verified pending request exposes the exact question and specific inbox destination
+ok	src/lib/__tests__/announcement-cue.test.ts	already canceled announcement never creates or plays a cue
+ok	src/lib/__tests__/announcement-cue.test.ts	blocked or stalled cue settles without leaving an announcement stuck
+ok	src/lib/__tests__/announcement-cue.test.ts	cancellation stops the cue and never authorizes subsequent speech
+ok	src/lib/__tests__/announcement-cue.test.ts	combadge finishes before the announcement can proceed, at a gentle volume
+ok	src/lib/__tests__/autonomy.test.ts	a null snapshot reads unknown
+ok	src/lib/__tests__/autonomy.test.ts	an unanswered schedule probe reads unknown, not running
+ok	src/lib/__tests__/autonomy.test.ts	an unreachable Praxis reads unknown, never running
+ok	src/lib/__tests__/autonomy.test.ts	explicit pause carries who asked for it and since when
+ok	src/lib/__tests__/autonomy.test.ts	formatSince renders minutes, hours and days
+ok	src/lib/__tests__/autonomy.test.ts	no-live-schedule is a DIFFERENT state from an explicit pause
+ok	src/lib/__tests__/autonomy.test.ts	running: no explicit pause and a live day schedule
+ok	src/lib/__tests__/autonomy.test.ts	the explicit flag outranks the schedule probe
+ok	src/lib/__tests__/board-invalidation.test.ts	dispatch station delegates task invalidation to the shared board hook
+ok	src/lib/__tests__/bridge-activity.test.ts	agent runs open operations rather than a nonexistent task and snapshot starts populate dispatch history
+ok	src/lib/__tests__/bridge-activity.test.ts	fresh registry keeps quiet testing active after stream progress expires (offset 0ms)
+ok	src/lib/__tests__/bridge-activity.test.ts	fresh registry keeps quiet testing active after stream progress expires (offset 1ms)
+ok	src/lib/__tests__/bridge-activity.test.ts	fresh stream progress retains the registry's resolved model
+ok	src/lib/__tests__/bridge-activity.test.ts	newer registry terminal state wins over older stream progress and old completion cannot stop a new attempt
+ok	src/lib/__tests__/bridge-activity.test.ts	old progress settles, future frames never animate, and unavailable sources do not claim live activity
+ok	src/lib/__tests__/bridge-activity.test.ts	QA lifecycle links to the original task and never equates run success with QA pass
+ok	src/lib/__tests__/bridge-activity.test.ts	real ledger calls and file timestamps classify separately, failed calls stay failed, pulses expire
+ok	src/lib/__tests__/bridge-activity.test.ts	terminal events stop registry work and replayed events do not double count
+ok	src/lib/__tests__/calendar.test.ts	calendarEventsUrl uses the Next.js relative API proxy
+ok	src/lib/__tests__/calendar.test.ts	emptyCalendarEventForm starts as a scheduled blank event
+ok	src/lib/__tests__/calendar.test.ts	parseCalendarEventStatus keeps known statuses and falls back to scheduled
+ok	src/lib/__tests__/calendar.test.ts	toDatetimeLocalValue formats a Date for datetime-local inputs
+ok	src/lib/__tests__/chat-activity.test.ts	a local failure before acceptance never invents a message receipt
+ok	src/lib/__tests__/chat-activity.test.ts	an older response cannot hide a newer pending message, while a final reply ends work
+ok	src/lib/__tests__/chat-activity.test.ts	fresh receipts between dashboard clock ticks stay visible without a Signal lost flash
+ok	src/lib/__tests__/chat-activity.test.ts	immediate sending never claims receipt; stale server work stops animating
+ok	src/lib/__tests__/chat-activity.test.ts	only the selected conversation and chat-correlated states drive the center
+ok	src/lib/__tests__/chat-config-store.test.ts	a failed save surfaces the error and leaves the last confirmed config in place
+ok	src/lib/__tests__/chat-config-store.test.ts	applyChatConfig writes to /api/model-control/chat-config and publishes to every subscriber
+ok	src/lib/__tests__/chat-config-store.test.ts	concurrent writes are serialized, so the last one clicked is the one left standing
+ok	src/lib/__tests__/chat-config-store.test.ts	indicator labels are short and readable, per backend
+ok	src/lib/__tests__/chat-config-store.test.ts	the shared suggestion list carries the dash-form Fable 5.1 slug
+ok	src/lib/__tests__/chat-draft.test.ts	a draft round-trips; an empty write removes the key instead of storing an empty string
+ok	src/lib/__tests__/chat-draft.test.ts	a storage that throws (disabled, quota) never breaks typing: reads return empty, writes are swallowed
+ok	src/lib/__tests__/chat-draft.test.ts	the default storage is the window's sessionStorage (dies with the tab, survives a same-tab navigation)
+ok	src/lib/__tests__/cli-lane.test.ts	a Praxis without the CLI-lane fields reports unavailable, not an empty gate
+ok	src/lib/__tests__/cli-lane.test.ts	a suspended worker in the posture is flagged on its lane row
+ok	src/lib/__tests__/cli-lane.test.ts	an empty queue on a live gate is a real answer, not 'unavailable'
+ok	src/lib/__tests__/cli-lane.test.ts	compact gate status names the reported blocker without confusing measurements with a failure
+ok	src/lib/__tests__/cli-lane.test.ts	missing timestamps degrade to null rather than a bogus zero clock
+ok	src/lib/__tests__/cli-lane.test.ts	per-executor rows carry only ACTIVE runs, with slot occupancy
+ok	src/lib/__tests__/cli-lane.test.ts	queue entries get 1-based positions and a waiting-since clock
+ok	src/lib/__tests__/cli-lane.test.ts	stalled attempts are surfaced from attemptStalls
+ok	src/lib/__tests__/cli-lane.test.ts	structured gate numbers render against their thresholds once Praxis sends them
+ok	src/lib/__tests__/cli-lane.test.ts	the concurrency gate reason is carried through verbatim
+ok	src/lib/__tests__/connection-lifecycle.test.ts	a blocked sign-in window never destroys the document; its attempt flag clears once a probe passes
+ok	src/lib/__tests__/connection-lifecycle.test.ts	a hidden page does not retry on a timer; the next `visible` probes immediately
+ok	src/lib/__tests__/connection-lifecycle.test.ts	a real offline-to-online episode renews again after failed exchange budget exhaustion
+ok	src/lib/__tests__/connection-lifecycle.test.ts	a sign-in window closed without announcing still gets one probe; refused again, the state returns to `reauth` with the action available
+ok	src/lib/__tests__/connection-lifecycle.test.ts	a transport failing while the API probes healthy is throttled to one probe per 10s and does NOT broadcast recovery (no deck-wide refetch loop)
+ok	src/lib/__tests__/connection-lifecycle.test.ts	backend restart: a transport failure probes, the outage is `offline` with doubling backoff, and the retry that passes broadcasts recovery
+ok	src/lib/__tests__/connection-lifecycle.test.ts	browser `offline` marks the phase at once without probing; `online` probes once and broadcasts
+ok	src/lib/__tests__/connection-lifecycle.test.ts	expired session in a browser: `reauth` has no automatic retry and never navigates or opens anything by itself; wake signals re-probe at most every 30s
+ok	src/lib/__tests__/connection-lifecycle.test.ts	inside a shell, an Access bounce first asks the shell to renew: bounded attempts with growing waits, the document never navigates, then `reauth`
+ok	src/lib/__tests__/connection-lifecycle.test.ts	looksLikeTransportFailure / responseLooksJson tell the connection layer from the API's own JSON error
+ok	src/lib/__tests__/connection-lifecycle.test.ts	native cooldown deferrals do not exhaust exchange attempts; slow completion is single-flight
+ok	src/lib/__tests__/connection-lifecycle.test.ts	probeApiHealth: an Access bounce (opaque redirect / 401 / 403) is `reauth`, a down backend is `unreachable`, JSON 200 is `ok`, and the token never leaves the probe
+ok	src/lib/__tests__/connection-lifecycle.test.ts	reauthenticate() and signInHere() outside `reauth` are no-ops: neither can be used to reload or pop up on a healthy page
+ok	src/lib/__tests__/connection-lifecycle.test.ts	shell renewal that works: the shell's `renewed` event cuts the wait short, the probe passes, the deck is told to refetch, and the counters reset
+ok	src/lib/__tests__/connection-lifecycle.test.ts	single flight: signals during an in-flight probe never start a second probe; at most one follow-up, dropped when the verdict already answers it
+ok	src/lib/__tests__/connection-lifecycle.test.ts	sleep detector: a 15s tick that arrives a minute late is a wake signal
+ok	src/lib/__tests__/connection-lifecycle.test.ts	start/stop is refcounted: two holders register the wake listeners once; they detach only after the last release
+ok	src/lib/__tests__/connection-lifecycle.test.ts	the explicit action opens the sign-in flow in its own window and leaves this document alone; a second click focuses that window; its announcement probes, and a passing probe closes it
+ok	src/lib/__tests__/connection-lifecycle.test.ts	wake signals fired together coalesce into ONE probe; a passing probe broadcasts recovery once and lands in `live`
+ok	src/lib/__tests__/connection-lifecycle.test.ts	while live, a wake signal inside the gap after a passing probe is redundant; after the gap it probes and broadcasts
+ok	src/lib/__tests__/core-state.test.mjs	a fresher completion event beats a stale seed that still says inFlight
+ok	src/lib/__tests__/core-state.test.mjs	a live council.update event puts the orb in council mode
+ok	src/lib/__tests__/core-state.test.mjs	active crew flips an idle orb to Crew Working and raises intensity
+ok	src/lib/__tests__/core-state.test.mjs	an incomplete council with no fresh signal is treated as interrupted
+ok	src/lib/__tests__/core-state.test.mjs	disconnected stream renders offline regardless of other signals
+ok	src/lib/__tests__/core-state.test.mjs	idle with nothing happening stays a quiet idle orb
+ok	src/lib/__tests__/core-state.test.mjs	needs-Robert states outrank the council spectacle
+ok	src/lib/__tests__/core-state.test.mjs	newest event per session wins: completion clears the council
+ok	src/lib/__tests__/core-state.test.mjs	pulses map task and hitl events to ripple kinds
+ok	src/lib/__tests__/core-state.test.mjs	seed poll with inFlight surfaces a council convened before page load
+ok	src/lib/__tests__/council.test.mjs	sessionIdFromCouncilAck extracts the convened session id
+ok	src/lib/__tests__/council.test.mjs	summonCouncil posts dashboard input to the Praxis summon proxy
+ok	src/lib/__tests__/council.test.mjs	summonCouncil rejects ok:false Praxis responses
+ok	src/lib/__tests__/crew-lanes.test.ts	a closed registry record without any timestamp is still authoritative
+ok	src/lib/__tests__/crew-lanes.test.ts	a lane the registry has never heard of is trusted while young and dropped once silent past the orphan TTL
+ok	src/lib/__tests__/crew-lanes.test.ts	a registry record closed BEFORE the lane's frame (beyond the grace) is an older attempt: the newer stream frame wins
+ok	src/lib/__tests__/crew-lanes.test.ts	a registry record that is still active confirms the lane
+ok	src/lib/__tests__/crew-lanes.test.ts	the registry closing the run (at or after the lane's frame) supersedes an active lane: no phantom run after a missed task.completed
+ok	src/lib/__tests__/crew-lanes.test.ts	without any registry snapshot (never loaded, every fetch failed) the stream's word stands; settled lanes are never the registry's business
+ok	src/lib/__tests__/current-focus.test.ts	a cached tool phase older than the freshness window shows Running and keeps the durable record separately
+ok	src/lib/__tests__/current-focus.test.ts	a feed that stopped refreshing withholds live sub-phase claims from its frozen snapshot and keeps the record
+ok	src/lib/__tests__/current-focus.test.ts	a recovery hold is not called a provider reset and stale actions do not imply freshness
+ok	src/lib/__tests__/current-focus.test.ts	a run against a task the board no longer lists as active is reported as a disagreement, and a superseding terminal event is kept as lifecycle
+ok	src/lib/__tests__/current-focus.test.ts	all reconciled conflicts describe the final execution claim when multiple feeds coexist
+ok	src/lib/__tests__/current-focus.test.ts	an open question and a newer run coexist: the run shows, the request stays linked, and no disagreement is claimed
+ok	src/lib/__tests__/current-focus.test.ts	an open question cannot change execution reconciliation against newer holds
+ok	src/lib/__tests__/current-focus.test.ts	canonical board work stages and queued local jobs remain visible without claiming execution
+ok	src/lib/__tests__/current-focus.test.ts	combines live task progress with exact task/executor session identity
+ok	src/lib/__tests__/current-focus.test.ts	enabled cron schedules are not counted as executing work
+ok	src/lib/__tests__/current-focus.test.ts	fresh independent progress survives a dispatch snapshot outage and ages on its own clock
+ok	src/lib/__tests__/current-focus.test.ts	groups by actual project and never treats a board label as execution
+ok	src/lib/__tests__/current-focus.test.ts	model attribution says where it came from, and a missing value carries a reason instead of a guess
+ok	src/lib/__tests__/current-focus.test.ts	newer terminal events remove stale running signals and unknown tasks stay unattributed
+ok	src/lib/__tests__/current-focus.test.ts	QA runtime ids link to the reviewed board task while preserving exact runtime telemetry matching
+ok	src/lib/__tests__/current-focus.test.ts	queue and run claims for one task are reconciled by freshness and the losing claim is kept
+ok	src/lib/__tests__/current-focus.test.ts	quota, queued and human-input waits remain visible and deduplicate by task
+ok	src/lib/__tests__/current-focus.test.ts	the spawn-time thinking default is not phase evidence; a tool report carrying thinking is
+ok	src/lib/__tests__/decision-note-draft.test.ts	a blank note removes the draft instead of storing an empty one
+ok	src/lib/__tests__/decision-note-draft.test.ts	a draft round-trips per document with its kind, note, attempt id and both revision attributions
+ok	src/lib/__tests__/decision-note-draft.test.ts	an unusable stored value reads as no draft, and an older record without origin fields takes its revision as the origin
+ok	src/lib/__tests__/decision-note-draft.test.ts	fallback reads survive inaccessible local storage and prefer the latest retained copy
+ok	src/lib/__tests__/decision-note-draft.test.ts	local storage recovery clears the older fallback copy
+ok	src/lib/__tests__/decision-note-draft.test.ts	quota fallback replaces an older local draft, reports success, and clears both stores
+ok	src/lib/__tests__/decision-note-draft.test.ts	storage that throws or is missing never breaks the caller
+ok	src/lib/__tests__/document-review-client.test.ts	a refusal keeps the server status, code and reason so the card can say what the session lacked
+ok	src/lib/__tests__/document-review-client.test.ts	decision, comment and finish requests carry the session (cookies) and no bearer header
+ok	src/lib/__tests__/fast-refresh-boundaries.test.ts	every module the root layout imports is a Fast Refresh boundary, except the ones already listed
+ok	src/lib/__tests__/fast-refresh-boundaries.test.ts	the export reader distinguishes components from values
+ok	src/lib/__tests__/fast-refresh-boundaries.test.ts	the voice dock storage key is read from the lib module, not exported by the component
+ok	src/lib/__tests__/floating-controls.test.ts	on a wide window the dock shares the mini player row, which keeps short windows usable; a phone stacks them
+ok	src/lib/__tests__/floating-controls.test.ts	registered controls and the injected launcher are measured into CSS variables, and the plan follows them away
+ok	src/lib/__tests__/floating-controls.test.ts	the review page keeps Finish review above the floating controls on desktop, phone and at every display scale
+ok	src/lib/__tests__/floating-controls.test.ts	the screenshot cluster: the launcher no longer covers the mini player stop button or the ticker display control
+ok	src/lib/__tests__/floating-controls.test.ts	the voice dock registers itself and takes its position from the plan
+ok	src/lib/__tests__/floating-controls.test.ts	with no audio the dock takes the low slot and steps around the launcher; every stack keeps the launcher inside the reserve
+ok	src/lib/__tests__/floating-controls.test.ts	without the feedback launcher the dock stacks above the mini player above the ticker, and the page reserves all of it
+ok	src/lib/__tests__/groundrules-quotes.test.ts	a within span narrows the search and must itself be unique
+ok	src/lib/__tests__/groundrules-quotes.test.ts	editableStageA strips derived fields and fills every editable one
+ok	src/lib/__tests__/groundrules-quotes.test.ts	quoteWords and sourceText behave like the server helpers
+ok	src/lib/__tests__/groundrules-quotes.test.ts	resolveQuote follows the scorer's anchor rule: whitespace-insensitive words, word-boundary end, exactly one match
+ok	src/lib/__tests__/live-socket.test.ts	acquire/release pairs: one socket for N holders, torn down only after the last release + linger
+ok	src/lib/__tests__/live-socket.test.ts	after a full teardown the next acquire opens a fresh connection
+ok	src/lib/__tests__/live-socket.test.ts	linger teardown is cancelled by a re-acquire, and the SAME socket is reused
+ok	src/lib/__tests__/live-socket.test.ts	reconnectLiveSocketNow: a no-op without a socket or while connected; disconnect+connect (the safe path through socket.io's backoff) when disconnected
+ok	src/lib/__tests__/live-socket.test.ts	release is idempotent: double-releasing one handle cannot steal another holder's reference
+ok	src/lib/__tests__/live-socket.test.ts	StrictMode double-mount (acquire, release, acquire) never churns the connection
+ok	src/lib/__tests__/live-socket.test.ts	the local-dev target is :4000 with infinite reconnection
+ok	src/lib/__tests__/live-socket.test.ts	the socket reports to the shared lifecycle: our own disconnects are not failures, real drops probe once, and a passing recovery reconnects a disconnected socket at once
+ok	src/lib/__tests__/mobile-shell.test.ts	a shell descriptor for another origin, or without the native channel, is ignored
+ok	src/lib/__tests__/mobile-shell.test.ts	currentShellPath reports path, query and hash
+ok	src/lib/__tests__/mobile-shell.test.ts	inside the shell on its own origin messages are serialised to the native side
+ok	src/lib/__tests__/mobile-shell.test.ts	outside the shell nothing is detected and sends are no-ops
+ok	src/lib/__tests__/mobile-shell.test.ts	sanitizeShellPath keeps same-origin paths and rejects origin escapes
+ok	src/lib/__tests__/model-control-efforts.test.ts	model control offers the exact live Astra efforts, including max and ultra
+ok	src/lib/__tests__/model-control-efforts.test.ts	model control respects narrower rosters and uses conservative unknown GPT efforts
+ok	src/lib/__tests__/module-activity.test.ts	modules share attributed active work and stop it after a newer terminal event
+ok	src/lib/__tests__/native-renewal-boundary.test.ts	native boundary: transient failure recovers with a real exchange (scheduled=false)
+ok	src/lib/__tests__/native-renewal-boundary.test.ts	native boundary: transient failure recovers with a real exchange (scheduled=true)
+ok	src/lib/__tests__/native-renewal-boundary.test.ts	older travel shells neither consume renewal attempts nor open sign-in in a different profile
+ok	src/lib/__tests__/native-renewal-boundary.test.ts	permanent native deferral stops on an elapsed budget and explicit retry can recover
+ok	src/lib/__tests__/nbody.test.mjs	a single light planet holds a near-circular orbit around a heavy star
+ok	src/lib/__tests__/nbody.test.mjs	computeInitialConditions makes the most-massive body the central anchor
+ok	src/lib/__tests__/nbody.test.mjs	net momentum starts ~zero and is conserved across steps
+ok	src/lib/__tests__/nbody.test.mjs	referenceTimeStep scales the timestep so any system is watchable
+ok	src/lib/__tests__/nexus-barrel.test.ts	the barrel declares nothing of its own
+ok	src/lib/__tests__/nexus-barrel.test.ts	the barrel re-exports exactly the pre-split export surface
+ok	src/lib/__tests__/praxis-stream-store.test.ts	a network-level error (readyState CONNECTING) is the browser's own retry: the store neither reopens nor reports
+ok	src/lib/__tests__/praxis-stream-store.test.ts	a source the browser closed for good (proxy 500 / Access 302) is reopened with doubling backoff, carrying the last event id for the relay's replay
+ok	src/lib/__tests__/praxis-stream-store.test.ts	frames: heartbeats stay out of the ring, presence is applied, stream.reset re-bootstraps the authoritative snapshot
+ok	src/lib/__tests__/praxis-stream-store.test.ts	recovery reopens a closed source at once and cancels the pending backoff; a source that is open but silent through three heartbeats is replaced; a healthy one just re-bootstraps
+ok	src/lib/__tests__/praxis-stream-store.test.ts	the last subscriber leaving (after the linger) stops every retry and drops the recovery hook; a new subscriber reopens
+ok	src/lib/__tests__/praxis-stream-store.test.ts	while the lifecycle says `reauth` no timer reopens against the login page; the operator's recovery brings the stream back
+ok	src/lib/__tests__/presentation-cast.test.ts	a missing Cast SDK is an explicit failure, not a browser pretending to be Cast
+ok	src/lib/__tests__/presentation-cast.test.ts	Cast receiver starts only the read-only app, rejects media LOAD and ends when sender leaves
+ok	src/lib/__tests__/presentation-native.test.ts	Android uses the native message bridge and correlates replies without navigation
+ok	src/lib/__tests__/presentation-native.test.ts	Android without an installed native transport fails honestly
+ok	src/lib/__tests__/presentation-native.test.ts	browser and unsupported shells have no display launcher
+ok	src/lib/__tests__/presentation-native.test.ts	native requests correlate replies and send only the bounded action payload
+ok	src/lib/__tests__/presentation-operations.test.ts	reconciliation waits for native activation and an old stop cannot close a later start
+ok	src/lib/__tests__/project-endpoint.test.ts	a later failed task application stays in the application queue without invalidating knowledge
+ok	src/lib/__tests__/project-endpoint.test.ts	a next endpoint changes the current sentence only in the explicit acceptance payload
+ok	src/lib/__tests__/project-endpoint.test.ts	actionable questions sort by checkpoint blockers, other blockers, unfinished work, then other questions
+ok	src/lib/__tests__/project-endpoint.test.ts	an unlinked task application still needs attention when its latest outcome is pending or failed
+ok	src/lib/__tests__/project-endpoint.test.ts	completed application leaves the action queue, while partial or revised application remains actionable
+ok	src/lib/__tests__/project-endpoint.test.ts	criterion links alone do not make knowledge blocking
+ok	src/lib/__tests__/project-endpoint.test.ts	empty criteria and stale assessments never imply achievement
+ok	src/lib/__tests__/project-endpoint.test.ts	evidence references use verified routes and unsafe or local paths remain copyable text
+ok	src/lib/__tests__/project-endpoint.test.ts	final readiness defers checkpoint-only needs and enforces unfinished sequence gate
+ok	src/lib/__tests__/project-endpoint.test.ts	legacy application counts only at its own revision and latest per-task outcome wins
+ok	src/lib/__tests__/project-endpoint.test.ts	lifecycle review stays actionable with received evidence and no answer, and excludes deferred/superseded work
+ok	src/lib/__tests__/project-endpoint.test.ts	met knowledge requires current verified evidence, consistent with runtime readiness
+ok	src/lib/__tests__/project-endpoint.test.ts	need API calls address one need and round-trip full response and actionable conflicts
+ok	src/lib/__tests__/project-endpoint.test.ts	ordinary saves guard edits and never forward server-owned histories or verification
+ok	src/lib/__tests__/project-endpoint.test.ts	reverse task links keep unapplied work actionable without resurrecting prior applied tasks
+ok	src/lib/__tests__/project-endpoint.test.ts	status and research edits send only changed knowledge fields and retain evidence on server
+ok	src/lib/__tests__/project-endpoint.test.ts	task application is separate, explained, evidence-bound and version-bound
+ok	src/lib/__tests__/project-endpoint.test.ts	unresolved blocking knowledge prevents a green endpoint
+ok	src/lib/__tests__/project-endpoint.test.ts	verification explicitly binds rationale and selected evidence to the saved revision
+ok	src/lib/__tests__/qa-hold-badge.test.ts	a hold with no findings body still badges, and says so
+ok	src/lib/__tests__/qa-hold-badge.test.ts	a withheld correction badges as QA-failed-correction-held, not as a todo
+ok	src/lib/__tests__/qa-hold-badge.test.ts	an operator-started task says the explicit stop holds it too
+ok	src/lib/__tests__/qa-hold-badge.test.ts	shortHoldReason cuts the remediation advice but never returns empty
+ok	src/lib/__tests__/qa-hold-badge.test.ts	the badge links to the findings on the task screen
+ok	src/lib/__tests__/qa-hold-badge.test.ts	the hover title states the facts an ordinary todo does not carry
+ok	src/lib/__tests__/read-praxis-event-stream.test.ts	status frames report progress without becoming response text or a completed answer
+ok	src/lib/__tests__/read-praxis-event-stream.test.ts	status-only disconnect never confirms completion
+ok	src/lib/__tests__/review-drafts.test.ts	a comment is done only when its own client id is on a saved comment; wording alone never discards a draft
+ok	src/lib/__tests__/review-drafts.test.ts	a draft for another document or another known reviewer is foreign; an unknown reviewer is not
+ok	src/lib/__tests__/review-drafts.test.ts	a finished review and a vanished parent turn the text into recovered text
+ok	src/lib/__tests__/review-drafts.test.ts	a passage comment goes back to its composer on the same revision and is recovered, not moved, on another
+ok	src/lib/__tests__/review-drafts.test.ts	a summary is restored over the server copy it was typed on or continues, and dropped when the server moved past it
+ok	src/lib/__tests__/review-drafts.test.ts	an edit is restored only onto the comment it started from, and dropped once it is applied
+ok	src/lib/__tests__/review-drafts.test.ts	an empty draft clears storage; garbage, stale and textless records read as nothing
+ok	src/lib/__tests__/review-drafts.test.ts	falls back to the second store when the first refuses, and the newest copy wins on read
+ok	src/lib/__tests__/review-drafts.test.ts	without client ids from the API the draft is kept, and a same-text comment at the same place is only pointed out
+ok	src/lib/__tests__/review-drafts.test.ts	writes to the first store, reads it back, and clears both stores
+ok	src/lib/__tests__/schedule-live-work.test.ts	background evidence hold is waiting on the schedule with no running count
+ok	src/lib/__tests__/schedule-live-work.test.ts	chainFollowUps: an automatic-start successor anchors to its predecessor's event, else its live row, else stays loose; manual follow-ups are always loose
+ok	src/lib/__tests__/schedule-live-work.test.ts	implementation finished is not QA passed: the QA lane says the reviewer is running; completion is claimed only from the board
+ok	src/lib/__tests__/schedule-live-work.test.ts	local midnight: queued and waiting rows carry over, a run or a reviewer still active since yesterday stays, yesterday's finished work drops out
+ok	src/lib/__tests__/schedule-live-work.test.ts	mixed schedule + queue: a task on the calendar and in the queue is one row — the event gets a badge, no second row
+ok	src/lib/__tests__/schedule-live-work.test.ts	no day plan + a queue: running work is placed at its real start, queued work keeps Praxis's order with no time, linked work waits on its named dependency
+ok	src/lib/__tests__/schedule-live-work.test.ts	no runtime read is never 'nothing queued': unavailable before any good read, stale (with the last rows) after one
+ok	src/lib/__tests__/schedule-live-work.test.ts	prepared follow-ups never promise dispatch and explicit automatic requests do
+ok	src/lib/__tests__/schedule-live-work.test.ts	QA improvements remain separate from completed calendar blocks and each other
+ok	src/lib/__tests__/schedule-live-work.test.ts	queue order comes from Praxis positions, not from the order items arrive in
+ok	src/lib/__tests__/schedule-live-work.test.ts	reviewed QA backlog is ranked and preserves explicit review outcome labels
+ok	src/lib/__tests__/schedule-live-work.test.ts	the queue is reported whole: a head that also has a calendar slot still leads it, and badged work still counts as work
+ok	src/lib/__tests__/schedule-live-work.test.ts	transitions: queued → running → QA → done keep exactly one row per task, and the row leaves once the calendar carries the completion
+ok	src/lib/__tests__/schedule-live-work.test.ts	unresolved QA improvements persist across dates, terminal outcomes remain dated
+ok	src/lib/__tests__/schedule-live-work.test.ts	unscheduled board work never reads as queued: only queued-lane items count, and malformed items are ignored
+ok	src/lib/__tests__/session-check.test.ts	a person's session reads as user, with no Client ID and no address or subject copied out
+ok	src/lib/__tests__/session-check.test.ts	a probe that did not answer is undetermined, never an observed absent session
+ok	src/lib/__tests__/session-check.test.ts	an absent assertion is reported as no session
+ok	src/lib/__tests__/session-check.test.ts	an aged-out token is flagged, a malformed Client ID is withheld, garbage is unknown
+ok	src/lib/__tests__/session-check.test.ts	an audience refusal is explained from the form of the claim: a reload for the single-string form, a pin for another application
+ok	src/lib/__tests__/session-check.test.ts	an unanswered probe never turns into 'no Access session' in the next step
+ok	src/lib/__tests__/session-check.test.ts	before the Nexus reload, the edge reading alone still names the step
+ok	src/lib/__tests__/session-check.test.ts	Cloudflare's get-identity answers reduce to a session kind
+ok	src/lib/__tests__/session-check.test.ts	the audience row says the form of the claim and its relation to the pin, in fixed words
+ok	src/lib/__tests__/session-check.test.ts	the next step names the one setting to change, with the session's own Client ID or address
+ok	src/lib/__tests__/session-check.test.ts	the Nexus self-check answer is read through a whitelist of fixed names
+ok	src/lib/__tests__/session-check.test.ts	the pin comparison says which server check an unverified token would fail, in fixed words only
+ok	src/lib/__tests__/session-check.test.ts	the probe answer is read through a whitelist
+ok	src/lib/__tests__/session-check.test.ts	the travel shell's service-token session reads as service-token with its Client ID and nothing else
+ok	src/lib/__tests__/session-probe-route.test.ts	the probe names the session kind and the pin comparison from the forwarded assertion and logs fixed strings only
+ok	src/lib/__tests__/session-probe-route.test.ts	without a session the probe says so, and a cross-site request is refused
+ok	src/lib/__tests__/session-probe-route.test.ts	without pins in the dashboard process the probe says unpinned rather than guessing
+ok	src/lib/__tests__/session-renewal.test.ts	announceSessionRenewed posts on the channel and pokes the opener directly; signInHref is same-origin
+ok	src/lib/__tests__/session-renewal.test.ts	detectRenewalBridge: a plain browser has none; the travel shell is recognized by its injected global and waits for native completion
+ok	src/lib/__tests__/session-renewal.test.ts	detectRenewalBridge: the Android shell counts only when it advertises the capability, and is asked through its message channel
+ok	src/lib/__tests__/session-renewal.test.ts	native completion wait removes listeners on timeout or disposal
+ok	src/lib/__tests__/session-renewal.test.ts	old travel shells do not advertise renewal or send a no-op renewal request
+ok	src/lib/__tests__/session-renewal.test.ts	openSignInWindow wraps the popup when the browser gives one, and reports null (never a fallback navigation) when it refuses
+ok	src/lib/__tests__/session-renewal.test.ts	subscribeSessionRenewed hears the window event and the channel's `renewed` message only, and unsubscribes both
+ok	src/lib/__tests__/session-trace.test.ts	a person's session traces its pin comparison without the address
+ok	src/lib/__tests__/session-trace.test.ts	an identical reading is written once per window; a different reading is written at once
+ok	src/lib/__tests__/session-trace.test.ts	the trace state stays bounded
+ok	src/lib/__tests__/session-trace.test.ts	the travel shell's page load traces as a Windows service-token session with fixed words only
+ok	src/lib/__tests__/session-trace.test.ts	without an assertion the trace says only that, and garbage reads as unknown
+ok	src/lib/__tests__/skill-wiki.test.ts	known skills navigate, unknown refs degrade to vault references
+ok	src/lib/__tests__/skill-wiki.test.ts	prose without a wiki-link is returned untouched
+ok	src/lib/__tests__/skill-wiki.test.ts	remarkWikiLinks rewrites mdast text into links and inline code
+ok	src/lib/__tests__/skill-wiki.test.ts	skill names route to their wiki page
+ok	src/lib/__tests__/skill-wiki.test.ts	wiki-links inside code spans are left alone
+ok	src/lib/__tests__/studio-state.test.mjs	normalizes legacy Studio project lists into selectable channels
+ok	src/lib/__tests__/studio-state.test.mjs	normalizes Studio boards that arrive without an embedded channel
+ok	src/lib/__tests__/task-board-page.test.ts	task board cards show descriptions instead of action controls
+ok	src/lib/__tests__/task-board.test.ts	filterBoardTasks filters by project, lane, and search text
+ok	src/lib/__tests__/task-board.test.ts	groupBoardTasks places tasks in operational lanes
+ok	src/lib/__tests__/task-board.test.ts	sortBoardTasks orders a lane by the selected key without mutating input
+ok	src/lib/__tests__/task-evidence.test.ts	a completion with no evidence names every gate
+ok	src/lib/__tests__/task-evidence.test.ts	a pre-capture completion stays unverified, with the history flagged
+ok	src/lib/__tests__/task-evidence.test.ts	an unverified completion is amber, never green, and names the missing gate
+ok	src/lib/__tests__/task-evidence.test.ts	only a fully evidenced completion gets the green tone
+ok	src/lib/__tests__/task-links.test.ts	a Praxis event card's inline-code id becomes a link around the code span
+ok	src/lib/__tests__/task-links.test.ts	a tree with no mentions is not rewritten
+ok	src/lib/__tests__/task-links.test.ts	an id embedded in a longer token is not a mention
+ok	src/lib/__tests__/task-links.test.ts	code blocks and existing links are left alone
+ok	src/lib/__tests__/task-links.test.ts	every mention in a line is split out
+ok	src/lib/__tests__/task-links.test.ts	everything that is not a dashboard page stays a plain link
+ok	src/lib/__tests__/task-links.test.ts	ids belonging to something other than a task stay plain text
+ok	src/lib/__tests__/task-links.test.ts	ids in prose become links, nested to any depth
+ok	src/lib/__tests__/task-links.test.ts	inbox links from Praxis notices are in-app routes
+ok	src/lib/__tests__/task-links.test.ts	links into this dashboard collapse to in-app paths on the current origin
+ok	src/lib/__tests__/task-links.test.ts	prose without an id is returned untouched
+ok	src/lib/__tests__/task-links.test.ts	saved chat turns open inside the current dashboard session
+ok	src/lib/__tests__/task-links.test.ts	task ids route to the task screen
+ok	src/lib/__tests__/task-progress.test.ts	a newly running execution never inherits the older dispatch commentary
+ok	src/lib/__tests__/task-progress.test.ts	background evidence hold has a runtime reason and never invents an operator request
+ok	src/lib/__tests__/task-progress.test.ts	explicit reopened task and unrelated follow-up still require their own QA
+ok	src/lib/__tests__/task-progress.test.ts	HITL answers remain separate task history and do not invent the retry cause
+ok	src/lib/__tests__/task-progress.test.ts	latest attempt supplies commentary while earlier failures stay historical
+ok	src/lib/__tests__/task-progress.test.ts	latest message time stays distinct from start time and never uses log modification time
+ok	src/lib/__tests__/task-progress.test.ts	old verified dossier never verifies a new active attempt
+ok	src/lib/__tests__/task-progress.test.ts	optional improvement attempts never replace the completed parent or invalidate its QA
+ok	src/lib/__tests__/task-progress.test.ts	pending exact question wins while expired and unrelated questions are ignored
+ok	src/lib/__tests__/task-progress.test.ts	progress preview extracts readable prose without raw protocol fields or markdown
+ok	src/lib/__tests__/task-progress.test.ts	stopped work without a pending request names the missing recovery action
+ok	src/lib/__tests__/task-progress.test.ts	success stays reported until evidence confirms verification
+ok	src/lib/__tests__/task-progress.test.ts	unavailable or stale sources never assert no action or currently active
+ok	src/lib/__tests__/topic-activity.test.ts	only fresh, attributed accesses for the displayed community generation illuminate topics
+ok	src/lib/__tests__/topic-activity.test.ts	reused community IDs fail closed in either direction across a map rebuild
+ok	src/lib/__tests__/topic-activity.test.ts	topic telemetry remains independent of generic MCP calls, and expires on source failure
+ok	src/lib/__tests__/voice-alert-actions.test.ts	authoritative resolution or unavailable lookup suppresses stale spoken questions
+ok	src/lib/__tests__/voice-alert-actions.test.ts	callback-owned failure is suppressed even before current-task lookup
+ok	src/lib/__tests__/voice-alert-actions.test.ts	expired requests cannot enter or remain in the voice queue
+ok	src/lib/__tests__/voice-alert-actions.test.ts	failed or blocked events cannot describe a task that is already running again
+ok	src/lib/__tests__/voice-alert-actions.test.ts	unowned failure remains current when a recovery request could not be created
+ok	src/lib/__tests__/voice-alert-actions.test.ts	voice archive has a deterministic linked action even if composed prose omits it
+ok	src/lib/__tests__/voice-alert-actions.test.ts	voice facts carry the exact question, action and targeted destination
+ok	src/lib/__tests__/voice-alerts.test.ts	a block arriving during question prose preparation requeues complete facts without another cooldown
+ok	src/lib/__tests__/voice-alerts.test.ts	a question arriving while fallback speech is prepared prevents stale block playback
+ok	src/lib/__tests__/voice-alerts.test.ts	a second question on the same task is never swallowed by the first pair
+ok	src/lib/__tests__/voice-alerts.test.ts	alert composition receives event facts instead of stock spoken lines
+ok	src/lib/__tests__/voice-alerts.test.ts	alert playback bounds an unresponsive active-device check on cancel
+ok	src/lib/__tests__/voice-alerts.test.ts	alert playback bounds an unresponsive active-device check on timeout
+ok	src/lib/__tests__/voice-alerts.test.ts	alert playback rechecks device after the active-device await
+ok	src/lib/__tests__/voice-alerts.test.ts	alert playback rechecks mode after the active-device await
+ok	src/lib/__tests__/voice-alerts.test.ts	alert playback rechecks mode and quiet hours without rejecting its own recorded event
+ok	src/lib/__tests__/voice-alerts.test.ts	alert playback rechecks ownership after the active-device await
+ok	src/lib/__tests__/voice-alerts.test.ts	alert playback rechecks quiet-hours after the active-device await
+ok	src/lib/__tests__/voice-alerts.test.ts	an event arriving while an empty scan finishes still gets a wakeup
+ok	src/lib/__tests__/voice-alerts.test.ts	attention and conversational selection preserve routine exclusions and whole details
+ok	src/lib/__tests__/voice-alerts.test.ts	block and question announce once with both facts (question first: false)
+ok	src/lib/__tests__/voice-alerts.test.ts	block and question announce once with both facts (question first: true)
+ok	src/lib/__tests__/voice-alerts.test.ts	callback-owned attempt and canonical input request produce one actionable announcement
+ok	src/lib/__tests__/voice-alerts.test.ts	callback-owned failed attempts never interrupt in attention mode
+ok	src/lib/__tests__/voice-alerts.test.ts	callback-owned failed attempts never interrupt in conversational mode
+ok	src/lib/__tests__/voice-alerts.test.ts	completion facts retain outcome and summary without claiming reviewed completion
+ok	src/lib/__tests__/voice-alerts.test.ts	deferred alert wakes without another event and disposal cancels its timer
+ok	src/lib/__tests__/voice-alerts.test.ts	explicit question identity outranks proximity and never matches another card
+ok	src/lib/__tests__/voice-alerts.test.ts	failed recovery owner leaves an unowned failure independently deliverable
+ok	src/lib/__tests__/voice-alerts.test.ts	inactive devices never speak and persisted dedupe survives new scheduler instances
+ok	src/lib/__tests__/voice-alerts.test.ts	internal QA runs and suspension terminal events never announce task completion
+ok	src/lib/__tests__/voice-alerts.test.ts	long enhancements fit the speech endpoint while indicating abridgement
+ok	src/lib/__tests__/voice-alerts.test.ts	missing question falls back at the deadline and a late question remains deliverable
+ok	src/lib/__tests__/voice-alerts.test.ts	pending block survives eviction from the incoming recent-event snapshot
+ok	src/lib/__tests__/voice-alerts.test.ts	persisted event registry stays bounded and retains the newly announced identity
+ok	src/lib/__tests__/voice-alerts.test.ts	QA pass speech carries the reviewer enhancements without claiming implementation
+ok	src/lib/__tests__/voice-alerts.test.ts	question arriving during the device lookup replaces the stale block selection
+ok	src/lib/__tests__/voice-alerts.test.ts	quiet hours and rate interval provide a concrete future wakeup
+ok	src/lib/__tests__/voice-alerts.test.ts	quiet hours are checked again after a delayed active-device response
+ok	src/lib/__tests__/voice-alerts.test.ts	settings default conversational and honor previously disabled alerts
+ok	src/lib/__tests__/voice-alerts.test.ts	speech distinguishes no suggestions from an unavailable answer
+ok	src/lib/__tests__/voice-alerts.test.ts	standalone task question is delivered when no block arrives
+ok	src/lib/__tests__/voice-alerts.test.ts	tab lock prevents overlapping checks and the losing tab observes persisted dedupe
+ok	src/lib/__tests__/voice-alerts.test.ts	turning alerts off cancels a scheduled announcement
+ok	src/lib/__tests__/voice-alerts.test.ts	unknown and identifier-shaped titles are never presented as human task names
+ok	src/lib/__tests__/voice-alerts.test.ts	unmount during deferred active check cannot announce
+ok	src/lib/__tests__/voice-alerts.test.ts	unrelated ready alerts are not held behind a pending pair
+ok	src/lib/__tests__/voice-announcement.test.ts	announcement storage failure rejects instead of reporting a saved announcement
+ok	src/lib/__tests__/voice-announcement.test.ts	announcements archive one assistant row with stable event identity and no autoplay
+ok	src/lib/__tests__/voice-announcement.test.ts	automatic announcements and playback diagnostics do not reenter conversation through receipt merging
+ok	src/lib/__tests__/voice-announcement.test.ts	delivery failure is archived idempotently with speech suppressed
+ok	src/lib/__tests__/voice-chat.test.ts	a non-JSON permanent HTTP rejection does not reconnect forever
+ok	src/lib/__tests__/voice-chat.test.ts	accepted work survives a later missing receipt without being posted again
+ok	src/lib/__tests__/voice-chat.test.ts	an ambiguous unsaved acceptance retries with the same ID and body
+ok	src/lib/__tests__/voice-chat.test.ts	ending voice aborts hung acceptance and cleans its timer and abort listener
+ok	src/lib/__tests__/voice-chat.test.ts	interrupted and failed accepted receipts convey uncertainty without reexecution
+ok	src/lib/__tests__/voice-chat.test.ts	local archival retries only storage with stable IDs and voice ownership
+ok	src/lib/__tests__/voice-chat.test.ts	lost acceptance reconciles by exact ID and transient receipt failures never resend accepted work
+ok	src/lib/__tests__/voice-chat.test.ts	permanent acceptance rejection is shown without retrying
+ok	src/lib/__tests__/voice-chat.test.ts	receipt recovery puts the missing earlier user before an already delivered reply and deduplicates receipt IDs
+ok	src/lib/__tests__/voice-chat.test.ts	short request timeout includes a stalled body and eventually reconnects
+not ok	src/lib/__tests__/voice-command-bar.test.ts	a blocked task and its question produce one complete spoken announcement
+ok	src/lib/__tests__/voice-command-bar.test.ts	a hidden tab cannot begin composing a new alert even when it is still the active client
+not ok	src/lib/__tests__/voice-command-bar.test.ts	a repeated announcement speaks its saved wording and does not copy another conversation into this chat
+ok	src/lib/__tests__/voice-command-bar.test.ts	a selection change during classification keeps the original chat and does not merge into the new one
+ok	src/lib/__tests__/voice-command-bar.test.ts	a suppressed chat receipt is displayed unchanged with no generation or playback
+ok	src/lib/__tests__/voice-command-bar.test.ts	alert playback cancels a stalled active-device response body at its deadline
+ok	src/lib/__tests__/voice-command-bar.test.ts	an alert cannot start playback when attention changes during prose composition
+ok	src/lib/__tests__/voice-command-bar.test.ts	an alert cannot start playback when device changes during prose composition
+ok	src/lib/__tests__/voice-command-bar.test.ts	an alert cannot start playback when off changes during prose composition
+ok	src/lib/__tests__/voice-command-bar.test.ts	an alert cannot start playback when quiet-hours changes during prose composition
+not ok	src/lib/__tests__/voice-command-bar.test.ts	announcement chat and voice visibility: blocked
+not ok	src/lib/__tests__/voice-command-bar.test.ts	announcement chat and voice visibility: cue-failure
+not ok	src/lib/__tests__/voice-command-bar.test.ts	announcement chat and voice visibility: device-skip
+not ok	src/lib/__tests__/voice-command-bar.test.ts	announcement chat and voice visibility: success
+not ok	src/lib/__tests__/voice-command-bar.test.ts	announcement chat and voice visibility: synthesis-failure
+ok	src/lib/__tests__/voice-command-bar.test.ts	archival failure reports the successful local action separately and never reruns it
+ok	src/lib/__tests__/voice-command-bar.test.ts	away_briefing composes known server facts once without executing another action
+ok	src/lib/__tests__/voice-command-bar.test.ts	cancel while waiting for microphone permission releases a late stream
+ok	src/lib/__tests__/voice-command-bar.test.ts	cancellation while classification is unresolved archives uncertainty about server actions
+ok	src/lib/__tests__/voice-command-bar.test.ts	changing chat while recording keeps the conversation where the voice turn began
+ok	src/lib/__tests__/voice-command-bar.test.ts	demo_mode composes known server facts once without executing another action
+ok	src/lib/__tests__/voice-command-bar.test.ts	End during transcript archival preserves already executed away_briefing
+ok	src/lib/__tests__/voice-command-bar.test.ts	End during transcript archival preserves already executed demo_mode
+ok	src/lib/__tests__/voice-command-bar.test.ts	End during transcript archival preserves already executed status_report
+ok	src/lib/__tests__/voice-command-bar.test.ts	ending during a local queue request retains the transcript and records its uncertain outcome
+ok	src/lib/__tests__/voice-command-bar.test.ts	ending during composition aborts the writer and archives the known action with no late speech
+ok	src/lib/__tests__/voice-command-bar.test.ts	every voice test writes fresh audibility prose and displays the exact synthesized words
+ok	src/lib/__tests__/voice-command-bar.test.ts	hidden cancels a pending voice test without late speech
+ok	src/lib/__tests__/voice-command-bar.test.ts	initial silence releases capture without transcribing
+ok	src/lib/__tests__/voice-command-bar.test.ts	local navigation archives the transcript and result using stable IDs in shared chat
+ok	src/lib/__tests__/voice-command-bar.test.ts	malformed model control result never claims a successful enabled or disabled state
+ok	src/lib/__tests__/voice-command-bar.test.ts	model control composes the confirmed returned state once
+ok	src/lib/__tests__/voice-command-bar.test.ts	pending synthesis can be stopped before any audio exists
+not ok	src/lib/__tests__/voice-command-bar.test.ts	recomposed question uses a fresh archive identity instead of replaying question-only wording
+ok	src/lib/__tests__/voice-command-bar.test.ts	recording shows elapsed seconds and allows speech beyond fifteen seconds
+ok	src/lib/__tests__/voice-command-bar.test.ts	stalled writer body times out without speech or another command
+ok	src/lib/__tests__/voice-command-bar.test.ts	stalled writer headers times out without speech or another command
+ok	src/lib/__tests__/voice-command-bar.test.ts	status_report composes known server facts once without executing another action
+ok	src/lib/__tests__/voice-command-bar.test.ts	switching chat during composition archives the spoken words only in the original conversation
+not ok	src/lib/__tests__/voice-command-bar.test.ts	two eligible live alerts each compose once and replayed event IDs stay deduplicated
+ok	src/lib/__tests__/voice-command-bar.test.ts	unmount aborts a pending speech request
+ok	src/lib/__tests__/voice-command-bar.test.ts	unmount cancels a pending voice test without late speech
+ok	src/lib/__tests__/voice-command-bar.test.ts	unmount stops microphone tracks and cancels recording timers
+ok	src/lib/__tests__/voice-command-bar.test.ts	voice captures the canonical project scope before later route navigation
+ok	src/lib/__tests__/voice-command-bar.test.ts	voice chat identifies spoken conversation and uses provided audio without resynthesis
+ok	src/lib/__tests__/voice-command-bar.test.ts	voice on /studio/idea/idea-42 omits unrelated route IDs from project scope
+ok	src/lib/__tests__/voice-command-bar.test.ts	voice on /task/task-42 omits unrelated route IDs from project scope
+ok	src/lib/__tests__/voice-command-bar.test.ts	voice shares typed history and merges saved receipt rows once without socket delivery
+ok	src/lib/__tests__/voice-command-bar.test.ts	voice test preserves the specific speech failure instead of blaming volume
+ok	src/lib/__tests__/voice-command-bar.test.ts	voice test writer failure stays text only
+ok	src/lib/__tests__/voice-command-bar.test.ts	voice waits for a selected shared chat before opening the microphone
+ok	src/lib/__tests__/voice-command-bar.test.ts	writer failure keeps the completed action factual and silent without rerunning it
+ok	src/lib/__tests__/voice-conversation.test.ts	alerts wait throughout a conversation turn and settling gap, then never arm capture
+ok	src/lib/__tests__/voice-conversation.test.ts	blocked-playback failure ends conversation without reopening the mic
+ok	src/lib/__tests__/voice-conversation.test.ts	chat failure ends conversation without reopening the mic
+ok	src/lib/__tests__/voice-conversation.test.ts	conversation is off on mount; two turns chain only after every reply audio has ended
+ok	src/lib/__tests__/voice-conversation.test.ts	conversation suspends an enabled wake recognizer through End and reports that it is paused
+ok	src/lib/__tests__/voice-conversation.test.ts	empty-blob failure ends conversation without reopening the mic
+ok	src/lib/__tests__/voice-conversation.test.ts	empty-reply failure ends conversation without reopening the mic
+ok	src/lib/__tests__/voice-conversation.test.ts	empty-transcript failure ends conversation without reopening the mic
+ok	src/lib/__tests__/voice-conversation.test.ts	End during deferred microphone permission releases its late stream
+ok	src/lib/__tests__/voice-conversation.test.ts	End during recording cancels resources and never reopens capture
+ok	src/lib/__tests__/voice-conversation.test.ts	End during settling cancels resources and never reopens capture
+ok	src/lib/__tests__/voice-conversation.test.ts	End during speaking cancels resources and never reopens capture
+ok	src/lib/__tests__/voice-conversation.test.ts	End invalidates deferred chat-json even after a fresh conversation starts
+ok	src/lib/__tests__/voice-conversation.test.ts	End invalidates deferred synthesis even after a fresh conversation starts
+ok	src/lib/__tests__/voice-conversation.test.ts	End invalidates deferred synthesis-json even after a fresh conversation starts
+ok	src/lib/__tests__/voice-conversation.test.ts	End invalidates deferred transcription-json even after a fresh conversation starts
+ok	src/lib/__tests__/voice-conversation.test.ts	Escape ends active capture and clears follow-up work
+ok	src/lib/__tests__/voice-conversation.test.ts	external explicit player preempts recording and retains ownership past follow-up delay
+ok	src/lib/__tests__/voice-conversation.test.ts	external explicit player preempts settling and retains ownership past follow-up delay
+ok	src/lib/__tests__/voice-conversation.test.ts	external explicit player preempts speaking and retains ownership past follow-up delay
+ok	src/lib/__tests__/voice-conversation.test.ts	hidden ends active capture and clears follow-up work
+ok	src/lib/__tests__/voice-conversation.test.ts	manual push-to-talk keeps its stop control beyond ten seconds with broken analyser
+ok	src/lib/__tests__/voice-conversation.test.ts	manual push-to-talk keeps its stop control beyond ten seconds with no analyser
+ok	src/lib/__tests__/voice-conversation.test.ts	opening a capture from settings leaves one upward panel visible
+ok	src/lib/__tests__/voice-conversation.test.ts	ordinary push-to-talk and unrelated explicit playback never arm follow-up capture
+ok	src/lib/__tests__/voice-conversation.test.ts	permission failure ends conversation without reopening the mic
+ok	src/lib/__tests__/voice-conversation.test.ts	playback failure ends conversation without reopening the mic
+ok	src/lib/__tests__/voice-conversation.test.ts	recorder failure ends conversation without reopening the mic
+ok	src/lib/__tests__/voice-conversation.test.ts	synthesis failure ends conversation without reopening the mic
+ok	src/lib/__tests__/voice-conversation.test.ts	ten-second no-speech end works with broken analyser
+ok	src/lib/__tests__/voice-conversation.test.ts	ten-second no-speech end works with no analyser
+ok	src/lib/__tests__/voice-conversation.test.ts	ten-second no-speech end works with silence analyser
+ok	src/lib/__tests__/voice-conversation.test.ts	transcription failure ends conversation without reopening the mic
+ok	src/lib/__tests__/voice-dock.test.ts	a saved collapsed dock restores collapsed and voice setup expands it so the setup dialog is visible
+ok	src/lib/__tests__/voice-dock.test.ts	Alt+Shift+V on a collapsed dock expands it and focuses setup, also when setup was left open; a held key does neither
+ok	src/lib/__tests__/voice-dock.test.ts	collapse pip hides the bar without unmounting it, remembers the choice, and expands back to working controls
+ok	src/lib/__tests__/voice-dock.test.ts	dock preserves the actual recording and controls on ordinary navigation, then releases them on login
+ok	src/lib/__tests__/voice-dock.test.ts	one root dock mounts inside existing providers and the home page owns no voice instance
+ok	src/lib/__tests__/voice-setup.test.ts	a saved wake preference never arms the microphone on mount or opening setup
+ok	src/lib/__tests__/voice-setup.test.ts	a track already ended at grant cannot begin a signal check
+ok	src/lib/__tests__/voice-setup.test.ts	active local check stops its stream and timers on Escape
+ok	src/lib/__tests__/voice-setup.test.ts	active local check stops its stream and timers on preemption
+ok	src/lib/__tests__/voice-setup.test.ts	active local check stops its stream and timers on unmount
+ok	src/lib/__tests__/voice-setup.test.ts	an older enumeration cannot replace refreshed devices or cancel the current check
+ok	src/lib/__tests__/voice-setup.test.ts	blocked local storage does not prevent manual setup or microphone check
+ok	src/lib/__tests__/voice-setup.test.ts	concealed devices before permission do not reject a saved exact microphone
+ok	src/lib/__tests__/voice-setup.test.ts	disconnecting default microphone after signal reports recovery instead of Ready
+ok	src/lib/__tests__/voice-setup.test.ts	disconnecting selected microphone after signal reports recovery instead of Ready
+ok	src/lib/__tests__/voice-setup.test.ts	explicit speech playback preempts local checking without starting follow-up capture
+ok	src/lib/__tests__/voice-setup.test.ts	labelled launcher routes to the existing setup without a second capture owner
+ok	src/lib/__tests__/voice-setup.test.ts	local check uses selected exact input with preferred constraints and stops five seconds after grant
+ok	src/lib/__tests__/voice-setup.test.ts	microphone error NotAllowedError gives useful guidance without exception detail
+ok	src/lib/__tests__/voice-setup.test.ts	microphone error NotFoundError gives useful guidance without exception detail
+ok	src/lib/__tests__/voice-setup.test.ts	microphone error NotReadableError gives useful guidance without exception detail
+ok	src/lib/__tests__/voice-setup.test.ts	microphone error OverconstrainedError gives useful guidance without exception detail
+ok	src/lib/__tests__/voice-setup.test.ts	microphone error UnexpectedError gives useful guidance without exception detail
+ok	src/lib/__tests__/voice-setup.test.ts	missing microphone discovery leaves pending output test owned
+ok	src/lib/__tests__/voice-setup.test.ts	missing microphone discovery leaves playing output test owned
+ok	src/lib/__tests__/voice-setup.test.ts	pending local check releases a late microphone after device change
+ok	src/lib/__tests__/voice-setup.test.ts	pending local check releases a late microphone after Escape
+ok	src/lib/__tests__/voice-setup.test.ts	pending local check releases a late microphone after hidden
+ok	src/lib/__tests__/voice-setup.test.ts	pending local check releases a late microphone after preemption
+ok	src/lib/__tests__/voice-setup.test.ts	pending local check releases a late microphone after Stop check
+ok	src/lib/__tests__/voice-setup.test.ts	pending local check releases a late microphone after unmount
+ok	src/lib/__tests__/voice-setup.test.ts	raw check can work without MediaRecorder or a permissions query and reports missing meter honestly
+ok	src/lib/__tests__/voice-setup.test.ts	saved missing device is not silently replaced; choosing default recovers and applies to conversation
+ok	src/lib/__tests__/voice-setup.test.ts	selection persists only per browser and changes cancel capture without rearming it
+ok	src/lib/__tests__/voice-setup.test.ts	setup event and non-repeating shortcut open and focus setup without capturing
+ok	src/lib/__tests__/voice-setup.test.ts	silence reports no signal without transcribing
+ok	src/lib/__tests__/voice-setup.test.ts	Test Praxis voice ends conversation, uses shared speech, and Stop speaking cancels the request
+ok	src/lib/__tests__/voice-setup.test.ts	the final check reads track state even when no ended event arrived
+ok	src/lib/__tests__/voice-setup.test.ts	unplugging selected device stops its check and presents reconnect guidance
+ok	src/lib/__tests__/voice-setup.test.ts	unsupported capture keeps visible setup actions and explains recovery {"media":false}
+ok	src/lib/__tests__/voice-setup.test.ts	unsupported capture keeps visible setup actions and explains recovery {"recorder":false}
+ok	src/lib/__tests__/voice-setup.test.ts	unsupported capture keeps visible setup actions and explains recovery {"secure":false}
+ok	src/lib/__tests__/voice-speech.test.ts	a real pause before the media ends fails playback and suppresses remaining chunks
+ok	src/lib/__tests__/voice-speech.test.ts	a sign-in HTML response is distinguished from speech audio
+ok	src/lib/__tests__/voice-speech.test.ts	announcement cue runs after synthesis, once before the first speech chunk
+ok	src/lib/__tests__/voice-speech.test.ts	autoplay rejection retains the browser error identity and explains that audio never started
+ok	src/lib/__tests__/voice-speech.test.ts	cancel aborts pending synthesis and a late response cannot create audio or clear a newer session
+ok	src/lib/__tests__/voice-speech.test.ts	cancel during the cue prevents speech and preserves a new microphone owner
+ok	src/lib/__tests__/voice-speech.test.ts	canceled synthesis returns canceled rather than successful completion
+ok	src/lib/__tests__/voice-speech.test.ts	complete reply synthesizes and plays chunks sequentially
+ok	src/lib/__tests__/voice-speech.test.ts	direct speech interrupts another player; automatic speech waits and stale release cannot clear a new owner
+ok	src/lib/__tests__/voice-speech.test.ts	failed cue keeps the announcement silent and releases ownership
+ok	src/lib/__tests__/voice-speech.test.ts	natural pause waits for ended, and intervening explicit playback still cancels the voice turn
+ok	src/lib/__tests__/voice-speech.test.ts	network failure before audio exists is reported as a delivery failure
+ok	src/lib/__tests__/voice-speech.test.ts	oversized reply produces an explicit limit notice rather than silent truncation
+ok	src/lib/__tests__/voice-speech.test.ts	ownership is rechecked after deferred response JSON decoding
+ok	src/lib/__tests__/voice-speech.test.ts	playback callback waits for actual audio start and ignores canceled start: false
+ok	src/lib/__tests__/voice-speech.test.ts	playback callback waits for actual audio start and ignores canceled start: true
+ok	src/lib/__tests__/voice-speech.test.ts	playback failure reports incomplete audio and does not synthesize later chunks
+ok	src/lib/__tests__/voice-speech.test.ts	returned voice audio skips synthesis and cancel releases playback
+ok	src/lib/__tests__/voice-speech.test.ts	sentence chunks preserve all characters, including long unpunctuated text
+ok	src/lib/__tests__/voice-speech.test.ts	speech HTTP 401 reports a preparation failure, not interrupted playback
+ok	src/lib/__tests__/voice-speech.test.ts	speech HTTP 403 reports a preparation failure, not interrupted playback
+ok	src/lib/__tests__/voice-speech.test.ts	speech HTTP 429 reports a preparation failure, not interrupted playback
+ok	src/lib/__tests__/voice-speech.test.ts	speech HTTP 503 reports a preparation failure, not interrupted playback
+ok	src/lib/__tests__/voice-speech.test.ts	speech HTTP 504 reports a preparation failure, not interrupted playback
+ok	src/lib/__tests__/voice-speech.test.ts	speech reports completion only after the entire reply, and can retain ownership for a follow-up
+ok	test/ai-terminal-isolation.test.mjs	a resync-style mid-list insert parses only the inserted message
+ok	test/ai-terminal-isolation.test.mjs	streaming chunks re-parse only the streaming message, never the history
+ok	test/ai-terminal-isolation.test.mjs	typing in the composer renders zero transcript rows and re-parses nothing
+ok	test/ai-terminal-layout.test.mjs	composer starts at rows=1 and its auto-grow height caps at 200px
+ok	test/ai-terminal-layout.test.mjs	modal terminal panel sizes to content up to 80vh, not pinned at 80vh
+ok	test/ai-terminal-perf.test.mjs	composer keypress-to-commit latency at 305 loaded messages
+ok	test/ai-terminal-send.test.mjs	attached file rides the send: upload + inline text content
+ok	test/ai-terminal-send.test.mjs	Enter sends; Shift+Enter does not
+ok	test/ai-terminal-send.test.mjs	nexus:chat-seed fills and focuses the composer input
+ok	test/ai-terminal-send.test.mjs	plain text send: optimistic append, POST body, reply, input cleared
+ok	test/ai-terminal-send.test.mjs	voice memo path: record, stop, send as base64 audio
+ok	test/ai-terminal-window.test.mjs	appends never trim the window out from under a reader
+ok	test/ai-terminal-window.test.mjs	transcript DOM is capped, reveals from memory, then paginates over the network
+ok	test/chat-activity-send.test.mjs	an interrupted response never leaves the center working or claims completion
+ok	test/chat-activity-send.test.mjs	cli_model_incompatible remains failed in the composer when history is saved (stream=false)
+ok	test/chat-activity-send.test.mjs	cli_model_incompatible remains failed in the composer when history is saved (stream=true)
+ok	test/chat-activity-send.test.mjs	outcome_uncertain remains failed in the composer when history is saved (stream=false)
+ok	test/chat-activity-send.test.mjs	outcome_uncertain remains failed in the composer when history is saved (stream=true)
+ok	test/chat-activity-send.test.mjs	provider_failed remains failed in the composer when history is saved (stream=false)
+ok	test/chat-activity-send.test.mjs	provider_failed remains failed in the composer when history is saved (stream=true)
+ok	test/chat-activity-send.test.mjs	real composer send drives sending, confirmed receipt, working, streaming, and final completion
+ok	test/chat-turn-outcome.test.mjs	saved rejected receipt shows its actual explanation and only reads status
+ok	test/chat-turn-outcome.test.mjs	saved uncertain receipt shows its actual explanation and only reads status
+ok	test/cortex-merge.test.mjs	missed messages merge into chronological position, duplicates dropped
+ok	test/cortex-merge.test.mjs	optimistic id-less copies are not duplicated and unchanged lists return the same array

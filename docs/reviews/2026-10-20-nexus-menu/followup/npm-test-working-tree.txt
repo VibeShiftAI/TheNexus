@@ -1,0 +1,31 @@
+cd dashboard && npm test   (working tree at 84660b0, 2026-10-21T23:36:51Z), exit 1
+
+ℹ tests 1059
+ℹ suites 0
+ℹ pass 1050
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15449.937708
+
+Failing tests (from the spec reporter's failure summary):
+✖ failing tests:
+test at src/lib/__tests__/voice-command-bar.test.ts:507:1
+✖ two eligible live alerts each compose once and replayed event IDs stay deduplicated (7.810667ms)
+test at src/lib/__tests__/voice-command-bar.test.ts:704:1
+✖ a repeated announcement speaks its saved wording and does not copy another conversation into this chat (5.226125ms)
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: success (11.868792ms)
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: synthesis-failure (8.832917ms)
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: blocked (9.811708ms)
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: cue-failure (5.801ms)
+test at src/lib/__tests__/voice-command-bar.test.ts:741:95
+✖ announcement chat and voice visibility: device-skip (3.527208ms)
+test at src/lib/__tests__/voice-command-bar.test.ts:802:1
+✖ a blocked task and its question produce one complete spoken announcement (3.708959ms)
+test at src/lib/__tests__/voice-command-bar.test.ts:853:1
+✖ recomposed question uses a fresh archive identity instead of replaying question-only wording (3.766166ms)

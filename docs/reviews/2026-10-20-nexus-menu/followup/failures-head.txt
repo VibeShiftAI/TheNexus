@@ -1,0 +1,189 @@
+# {"tests":1059,"pass":1050,"fail":9,"cancelled":0,"skipped":0,"todo":0}
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 916 - two eligible live alerts each compose once and replayed event IDs stay deduplicated
+  ---
+  duration_ms: 7.359041
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:507:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:527:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 926 - a repeated announcement speaks its saved wording and does not copy another conversation into this chat
+  ---
+  duration_ms: 4.764792
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:704:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + undefined
+    - 'The previously saved announcement.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'The previously saved announcement.'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:724:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 928 - announcement chat and voice visibility: success
+  ---
+  duration_ms: 5.6215
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:741:95'
+  failureType: 'testCodeFailure'
+  error: 'false == true'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 929 - announcement chat and voice visibility: synthesis-failure
+  ---
+  duration_ms: 5.659042
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:741:95'
+  failureType: 'testCodeFailure'
+  error: 'false == true'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 930 - announcement chat and voice visibility: blocked
+  ---
+  duration_ms: 4.671584
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:741:95'
+  failureType: 'testCodeFailure'
+  error: 'false == true'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 931 - announcement chat and voice visibility: cue-failure
+  ---
+  duration_ms: 3.892917
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:741:95'
+  failureType: 'testCodeFailure'
+  error: 'false == true'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 932 - announcement chat and voice visibility: device-skip
+  ---
+  duration_ms: 4.4505
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:741:95'
+  failureType: 'testCodeFailure'
+  error: 'false == true'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 933 - a blocked task and its question produce one complete spoken announcement
+  ---
+  duration_ms: 8.791416
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:802:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:833:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 934 - recomposed question uses a fresh archive identity instead of replaying question-only wording
+  ---
+  duration_ms: 4.807542
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:853:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/head/dashboard/src/lib/__tests__/voice-command-bar.test.ts:896:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...

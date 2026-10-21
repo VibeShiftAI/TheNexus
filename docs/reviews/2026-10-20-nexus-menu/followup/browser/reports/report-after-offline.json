@@ -1,0 +1,1636 @@
+{
+  "base": "http://localhost:3100",
+  "fixture": "default",
+  "shell": false,
+  "report": [
+    {
+      "viewport": "1440x900",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "dashboardProjects": 8,
+      "pageScrollBefore": 1408,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 21,
+        "bodyOverflow": "hidden/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 1152,
+          "top": 0,
+          "bottom": 900,
+          "width": 1152
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1440,
+          "vh": 900,
+          "docScrollWidth": 1440
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 0,
+        "projectsHeading": false,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 1095,
+            "right": 1139,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 467,
+            "bottom": 511,
+            "left": 408,
+            "right": 783,
+            "height": 44,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 126,
+            "bottom": 170,
+            "left": 1058,
+            "right": 1114,
+            "height": 44,
+            "width": 56,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 478,
+            "bottom": 508,
+            "left": 820,
+            "right": 1114,
+            "height": 30,
+            "width": 294,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 844,
+            "bottom": 888,
+            "left": 24,
+            "right": 248,
+            "height": 44,
+            "width": 224,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "controls": [
+          {
+            "i": 0,
+            "label": "Close menu",
+            "top": 12,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 1,
+            "label": "ReviewsDocuments for your decision",
+            "top": 85,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 2,
+            "label": "ActivityLive system report",
+            "top": 194,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 3,
+            "label": "Task Board",
+            "top": 194,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 4,
+            "label": "OpsDispatch console",
+            "top": 255,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 5,
+            "label": "SessionAccess and operator check",
+            "top": 255,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 6,
+            "label": "AcademySkill wiki",
+            "top": 353,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 7,
+            "label": "Council Chamber",
+            "top": 353,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 8,
+            "label": "The Codex",
+            "top": 415,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 9,
+            "label": "Knowledge Ingestion",
+            "top": 415,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 10,
+            "label": "Intake Report Log",
+            "top": 467,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 11,
+            "label": "Studio",
+            "top": 467,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 12,
+            "label": "Model Control",
+            "top": 555,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 13,
+            "label": "System Monitor",
+            "top": 555,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 14,
+            "label": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 15,
+            "label": "Toggle local-only mode",
+            "top": 126,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 16,
+            "label": "alias",
+            "top": 400,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 17,
+            "label": "select Global",
+            "top": 400,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 18,
+            "label": "select Claude Opus 5.5",
+            "top": 439,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 19,
+            "label": "Save Alias",
+            "top": 478,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 20,
+            "label": "Settings",
+            "top": 844,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          }
+        ],
+        "sideways": [],
+        "scrollers": [],
+        "smallTargets": [
+          "Save Alias:30"
+        ]
+      },
+      "shots": [
+        "after-offline_1440x900_open.png",
+        "after-offline_1440x900_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 1152,
+          "top": 0,
+          "bottom": 900,
+          "width": 1152
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1440,
+          "vh": 900,
+          "docScrollWidth": 1440
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 0,
+        "projectsHeading": false,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 1095,
+            "right": 1139,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 783,
+            "height": 65,
+            "width": 759,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 467,
+            "bottom": 511,
+            "left": 408,
+            "right": 783,
+            "height": 44,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 400,
+            "height": 54,
+            "width": 376,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 126,
+            "bottom": 170,
+            "left": 1058,
+            "right": 1114,
+            "height": 44,
+            "width": 56,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 478,
+            "bottom": 508,
+            "left": 820,
+            "right": 1114,
+            "height": 30,
+            "width": 294,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 844,
+            "bottom": 888,
+            "left": 24,
+            "right": 248,
+            "height": 44,
+            "width": 224,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "controls": [
+          {
+            "i": 0,
+            "label": "Close menu",
+            "top": 12,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 1,
+            "label": "ReviewsDocuments for your decision",
+            "top": 85,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 2,
+            "label": "ActivityLive system report",
+            "top": 194,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 3,
+            "label": "Task Board",
+            "top": 194,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 4,
+            "label": "OpsDispatch console",
+            "top": 255,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 5,
+            "label": "SessionAccess and operator check",
+            "top": 255,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 6,
+            "label": "AcademySkill wiki",
+            "top": 353,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 7,
+            "label": "Council Chamber",
+            "top": 353,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 8,
+            "label": "The Codex",
+            "top": 415,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 9,
+            "label": "Knowledge Ingestion",
+            "top": 415,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 10,
+            "label": "Intake Report Log",
+            "top": 467,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 11,
+            "label": "Studio",
+            "top": 467,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 12,
+            "label": "Model Control",
+            "top": 555,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 13,
+            "label": "System Monitor",
+            "top": 555,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 14,
+            "label": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 15,
+            "label": "Toggle local-only mode",
+            "top": 126,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 16,
+            "label": "alias",
+            "top": 400,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 17,
+            "label": "select Global",
+            "top": 400,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 18,
+            "label": "select Claude Opus 5.5",
+            "top": 439,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 19,
+            "label": "Save Alias",
+            "top": 478,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 20,
+            "label": "Settings",
+            "top": 844,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          }
+        ],
+        "sideways": [],
+        "scrollers": [],
+        "smallTargets": [
+          "Save Alias:30"
+        ]
+      },
+      "pageScrollY": 0,
+      "scroll": {
+        "scroller": null,
+        "wheelStep": 240,
+        "steps": 4,
+        "maxSteps": 6,
+        "atEnd": true
+      },
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "controls": {
+        "atOpen": 21,
+        "afterScroll": 21,
+        "unreachable": [],
+        "covered": {}
+      },
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "focusables": 21,
+        "steps": 23,
+        "missed": [],
+        "wrapped": true,
+        "untagged": [],
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "coveredWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "clickedAt": [
+          1296,
+          450
+        ],
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    },
+    {
+      "viewport": "1024x600",
+      "fixture": "default",
+      "shell": false,
+      "closedBefore": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "dashboardProjects": 8,
+      "pageScrollBefore": 2451,
+      "focusAfterOpen": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "openState": {
+        "visibility": "visible",
+        "inert": false,
+        "onScreen": true,
+        "focusableInside": 21,
+        "bodyOverflow": "hidden/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "atOpen": {
+        "dialog": {
+          "left": 0,
+          "right": 976,
+          "top": 0,
+          "bottom": 600,
+          "width": 976
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1024,
+          "vh": 600,
+          "docScrollWidth": 1024
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 0,
+        "projectsHeading": false,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 919,
+            "right": 963,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 607,
+            "height": 65,
+            "width": 583,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": 85,
+            "bottom": 150,
+            "left": 24,
+            "right": 607,
+            "height": 65,
+            "width": 583,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 312,
+            "height": 54,
+            "width": 288,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 467,
+            "bottom": 511,
+            "left": 320,
+            "right": 607,
+            "height": 44,
+            "width": 288,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "bottom": 661,
+            "left": 24,
+            "right": 312,
+            "height": 54,
+            "width": 288,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": 126,
+            "bottom": 170,
+            "left": 882,
+            "right": 938,
+            "height": 44,
+            "width": 56,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 478,
+            "bottom": 508,
+            "left": 644,
+            "right": 938,
+            "height": 30,
+            "width": 294,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 544,
+            "bottom": 588,
+            "left": 24,
+            "right": 248,
+            "height": 44,
+            "width": 224,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "controls": [
+          {
+            "i": 0,
+            "label": "Close menu",
+            "top": 12,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 1,
+            "label": "ReviewsDocuments for your decision",
+            "top": 85,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 2,
+            "label": "ActivityLive system report",
+            "top": 194,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 3,
+            "label": "Task Board",
+            "top": 194,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 4,
+            "label": "OpsDispatch console",
+            "top": 255,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 5,
+            "label": "SessionAccess and operator check",
+            "top": 255,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 6,
+            "label": "AcademySkill wiki",
+            "top": 353,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 7,
+            "label": "Council Chamber",
+            "top": 353,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 8,
+            "label": "The Codex",
+            "top": 415,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 9,
+            "label": "Knowledge Ingestion",
+            "top": 415,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 10,
+            "label": "Intake Report Log",
+            "top": 467,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 11,
+            "label": "Studio",
+            "top": 467,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 12,
+            "label": "Model Control",
+            "top": 555,
+            "inView": true,
+            "coveredBy": "button.flex min-h-11 w-full min-w-0 items-center gap-3 ro",
+            "reachable": false
+          },
+          {
+            "i": 13,
+            "label": "System Monitor",
+            "top": 555,
+            "inView": true,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          {
+            "i": 14,
+            "label": "LARS DashboardOpens in a new tab",
+            "top": 607,
+            "inView": false,
+            "coveredBy": "div.grid shrink-0 grid-cols-[repeat(auto-fit,minmax(mi",
+            "reachable": false
+          },
+          {
+            "i": 15,
+            "label": "Toggle local-only mode",
+            "top": 126,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 16,
+            "label": "alias",
+            "top": 400,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 17,
+            "label": "select Global",
+            "top": 400,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 18,
+            "label": "select Claude Opus 5.5",
+            "top": 439,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 19,
+            "label": "Save Alias",
+            "top": 478,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 20,
+            "label": "Settings",
+            "top": 544,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          }
+        ],
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollTop": 0,
+            "scrollHeight": 616,
+            "clientHeight": 462,
+            "visibleHeight": 462,
+            "centerY": 300,
+            "scrollWidth": 975,
+            "clientWidth": 975
+          }
+        ],
+        "smallTargets": [
+          "Save Alias:30"
+        ]
+      },
+      "shots": [
+        "after-offline_1024x600_open.png",
+        "after-offline_1024x600_scrolled.png"
+      ],
+      "afterScroll": {
+        "dialog": {
+          "left": 0,
+          "right": 976,
+          "top": 0,
+          "bottom": 600,
+          "width": 976
+        },
+        "labelled": "THE NEXUS MENU",
+        "viewport": {
+          "vw": 1024,
+          "vh": 600,
+          "docScrollWidth": 1024
+        },
+        "navLinks": 14,
+        "navColumns": 2,
+        "projectLinks": 0,
+        "projectsHeading": false,
+        "loadingText": false,
+        "emptyText": false,
+        "targets": {
+          "close": {
+            "present": true,
+            "text": "",
+            "top": 12,
+            "bottom": 56,
+            "left": 919,
+            "right": 963,
+            "height": 44,
+            "width": 44,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "firstNav": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -69,
+            "bottom": -4,
+            "left": 24,
+            "right": 607,
+            "height": 65,
+            "width": 583,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "reviews": {
+            "present": true,
+            "text": "ReviewsDocuments for your decision",
+            "top": -69,
+            "bottom": -4,
+            "left": 24,
+            "right": 607,
+            "height": 65,
+            "width": 583,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "lars": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 453,
+            "bottom": 507,
+            "left": 24,
+            "right": 312,
+            "height": 54,
+            "width": 288,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "studio": {
+            "present": true,
+            "text": "Studio",
+            "top": 313,
+            "bottom": 357,
+            "left": 320,
+            "right": 607,
+            "height": 44,
+            "width": 288,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "lastNav": {
+            "present": true,
+            "text": "LARS DashboardOpens in a new tab",
+            "top": 453,
+            "bottom": 507,
+            "left": 24,
+            "right": 312,
+            "height": 54,
+            "width": 288,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "localOnly": {
+            "present": true,
+            "text": "",
+            "top": -28,
+            "bottom": 16,
+            "left": 882,
+            "right": 938,
+            "height": 44,
+            "width": 56,
+            "inView": false,
+            "hitOk": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          "aliasSave": {
+            "present": true,
+            "text": "Save Alias",
+            "top": 324,
+            "bottom": 354,
+            "left": 644,
+            "right": 938,
+            "height": 30,
+            "width": 294,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "settings": {
+            "present": true,
+            "text": "Settings",
+            "top": 544,
+            "bottom": 588,
+            "left": 24,
+            "right": 248,
+            "height": 44,
+            "width": 224,
+            "inView": true,
+            "hitOk": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          "connection": {
+            "present": false
+          }
+        },
+        "controls": [
+          {
+            "i": 0,
+            "label": "Close menu",
+            "top": 12,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 1,
+            "label": "ReviewsDocuments for your decision",
+            "top": -69,
+            "inView": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          {
+            "i": 2,
+            "label": "ActivityLive system report",
+            "top": 40,
+            "inView": true,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          {
+            "i": 3,
+            "label": "Task Board",
+            "top": 40,
+            "inView": true,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          {
+            "i": 4,
+            "label": "OpsDispatch console",
+            "top": 101,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 5,
+            "label": "SessionAccess and operator check",
+            "top": 101,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 6,
+            "label": "AcademySkill wiki",
+            "top": 199,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 7,
+            "label": "Council Chamber",
+            "top": 199,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 8,
+            "label": "The Codex",
+            "top": 261,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 9,
+            "label": "Knowledge Ingestion",
+            "top": 261,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 10,
+            "label": "Intake Report Log",
+            "top": 313,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 11,
+            "label": "Studio",
+            "top": 313,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 12,
+            "label": "Model Control",
+            "top": 401,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 13,
+            "label": "System Monitor",
+            "top": 401,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 14,
+            "label": "LARS DashboardOpens in a new tab",
+            "top": 453,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 15,
+            "label": "Toggle local-only mode",
+            "top": -28,
+            "inView": false,
+            "coveredBy": "div.flex shrink-0 items-center justify-between gap-3 b",
+            "reachable": false
+          },
+          {
+            "i": 16,
+            "label": "alias",
+            "top": 246,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 17,
+            "label": "select Global",
+            "top": 246,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 18,
+            "label": "select Claude Opus 5.5",
+            "top": 285,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 19,
+            "label": "Save Alias",
+            "top": 324,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          },
+          {
+            "i": 20,
+            "label": "Settings",
+            "top": 544,
+            "inView": true,
+            "coveredBy": null,
+            "reachable": true
+          }
+        ],
+        "sideways": [],
+        "scrollers": [
+          {
+            "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+            "scrollTop": 154,
+            "scrollHeight": 616,
+            "clientHeight": 462,
+            "visibleHeight": 462,
+            "centerY": 300,
+            "scrollWidth": 975,
+            "clientWidth": 975
+          }
+        ],
+        "smallTargets": [
+          "Save Alias:30"
+        ]
+      },
+      "pageScrollY": 0,
+      "scroll": {
+        "scroller": {
+          "cls": "pb-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,e",
+          "scrollTop": 0,
+          "scrollHeight": 616,
+          "clientHeight": 462,
+          "visibleHeight": 462,
+          "centerY": 300,
+          "scrollWidth": 975,
+          "clientWidth": 975
+        },
+        "wheelStep": 154,
+        "steps": 4,
+        "maxSteps": 9,
+        "atEnd": true
+      },
+      "reached": {
+        "close": true,
+        "firstNav": true,
+        "reviews": true,
+        "lars": true,
+        "studio": true,
+        "lastNav": true,
+        "localOnly": true,
+        "aliasSave": true,
+        "settings": true,
+        "connection": false
+      },
+      "covered": {},
+      "controls": {
+        "atOpen": 21,
+        "afterScroll": 21,
+        "unreachable": [],
+        "covered": {}
+      },
+      "escape": {
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "keyboardOpenFocus": "menu:THE NEXUS MENUReviewsDocuments for y",
+      "tabWalk": {
+        "focusables": 21,
+        "steps": 23,
+        "missed": [],
+        "wrapped": true,
+        "untagged": [],
+        "leftMenu": [],
+        "hiddenWhileFocused": [],
+        "coveredWhileFocused": [],
+        "visited": [
+          "menu:Close menu",
+          "menu:ReviewsDocuments for your decision",
+          "menu:ActivityLive system report",
+          "menu:Task Board",
+          "menu:OpsDispatch console",
+          "menu:SessionAccess and operator check",
+          "menu:AcademySkill wiki",
+          "menu:Council Chamber",
+          "menu:The Codex",
+          "menu:Knowledge Ingestion",
+          "menu:Intake Report Log",
+          "menu:Studio",
+          "menu:Model Control",
+          "menu:System Monitor",
+          "menu:LARS DashboardOpens in a new tab",
+          "menu:Toggle local-only mode",
+          "menu:INPUT",
+          "menu:Global",
+          "menu:latest opus (anthropic)latest sonnet",
+          "menu:Save Alias",
+          "menu:Settings"
+        ]
+      },
+      "shiftTab": "menu:Close menu",
+      "backdrop": {
+        "clickedAt": [
+          1000,
+          300
+        ],
+        "state": {
+          "visibility": "hidden",
+          "inert": true,
+          "onScreen": false,
+          "focusableInside": 0,
+          "bodyOverflow": "visible/visible",
+          "panelTransition": "transform, translate, scale, rotate 0.3s"
+        },
+        "focus": "page:Open navigation menu"
+      },
+      "closedAfter": {
+        "visibility": "hidden",
+        "inert": true,
+        "onScreen": false,
+        "focusableInside": 0,
+        "bodyOverflow": "visible/visible",
+        "panelTransition": "transform, translate, scale, rotate 0.3s"
+      },
+      "unreachable": [],
+      "absent": [
+        "connection"
+      ],
+      "problems": []
+    }
+  ],
+  "blocked": [],
+  "apiRequests": [
+    "GET localhost:3100/api/praxis/dispatch-state",
+    "GET localhost:3100/api/praxis/council/sessions",
+    "GET localhost:3100/api/dispatches/active",
+    "GET localhost:3100/api/token-usage",
+    "GET localhost:3100/api/praxis/hitl/pending",
+    "GET localhost:3100/api/model-control/chat-config",
+    "GET localhost:3100/api/ai/chat/activity",
+    "GET localhost:3100/api/praxis/stats",
+    "GET localhost:3100/api/ingestion-control/topic-map",
+    "GET localhost:3100/api/praxis/llm-log",
+    "GET localhost:3100/api/model-control/options",
+    "GET localhost:3100/api/calendar",
+    "GET localhost:3100/api/documents",
+    "GET localhost:3100/api/knowledge-activity",
+    "GET localhost:3100/api/praxis/stream/snapshot",
+    "GET localhost:3100/api/notes",
+    "GET localhost:3100/api/board-state",
+    "GET localhost:3100/api/dispatch-insight/autonomy",
+    "GET localhost:3100/api/dispatch-insight/live-work",
+    "GET localhost:3100/api/activity",
+    "GET localhost:3100/api/ag/events",
+    "GET localhost:3100/api/projects",
+    "GET localhost:3100/api/pins",
+    "GET localhost:3100/api/praxis/voice-status",
+    "GET localhost:3100/api/praxis/council/arbiter",
+    "GET localhost:3100/api/praxis/stream",
+    "GET localhost:3100/api/projects/pulse",
+    "GET localhost:3100/api/health",
+    "POST localhost:3100/api/presence/client-activity"
+  ]
+}

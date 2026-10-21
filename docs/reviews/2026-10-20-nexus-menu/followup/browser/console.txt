@@ -1,0 +1,197 @@
+# Console output of the browser-check runs for task 68909e82, 2026-10-21, in run order.
+# Stack: next dev on :3100 (NEXT_DIST_DIR=.next-menu-followup, NEXT_PUBLIC_API_URL=http://127.0.0.1:4299), every /api/* answered from fixtures, :4000/:4299 blocked.
+
+## 1. Unchanged check (git show HEAD:dashboard/scripts/nav-menu-browser-check.mjs), default matrix; then the same with only the 1280x400 and 844x390 viewports added
+dev ready after 2s (pid 3946)
+== old-check.mjs CHECK_OUT=/tmp/nav-followup/before CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=before-long-shell
+1440x900  before-long-shell panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+1280x720  before-long-shell panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+1024x600  before-long-shell panel 976px cols 2 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+390x844   before-long-shell panel 390px cols 1 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+375x667   before-long-shell panel 375px cols 1 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+zoom200   before-long-shell panel 672px cols 2 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+scale150  before-long-shell panel 1208px cols 2 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+text200   before-long-shell panel 390px cols 1 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+320text200 before-long-shell panel 320px cols 1 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/before/report-before-long-shell.json
+exit 0
+== old-check.mjs CHECK_OUT=/tmp/nav-followup/before CHECK_FIXTURE=default CHECK_TAG=before-default
+1440x900  before-default panel 1152px cols 2 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+1280x720  before-default panel 1152px cols 2 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+1024x600  before-default panel 976px cols 2 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+390x844   before-default panel 390px cols 1 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+375x667   before-default panel 375px cols 1 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+zoom200   before-default panel 672px cols 2 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+scale150  before-default panel 1208px cols 2 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+text200   before-default panel 390px cols 1 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+320text200 before-default panel 320px cols 1 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/before/report-before-default.json
+exit 0
+== old-check-short.mjs CHECK_OUT=/tmp/nav-followup/before CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=before-short-long-shell CHECK_VIEWPORTS=1280x400,844x390
+1280x400  before-short-long-shell panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+844x390   before-short-long-shell panel 796px cols 2 links 14 menu projects 0 dashboard projects 42 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 22 | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/before/report-before-short-long-shell.json
+exit 0
+== old-check-short.mjs CHECK_OUT=/tmp/nav-followup/before CHECK_FIXTURE=default CHECK_TAG=before-short-default CHECK_VIEWPORTS=1280x400,844x390
+1280x400  before-short-default panel 1152px cols 2 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+844x390   before-short-default panel 796px cols 2 links 14 menu projects 0 dashboard projects 8 | unreachable: none | sideways: no | pageScrollY 0 | Tab stops 21 | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/before/report-before-short-default.json
+exit 0
+
+## 2. Intermediate version of the new check (before the past-the-panel-edge rule): fixed 240px wheel vs adaptive steps in short windows
+dev ready after 2s (pid 21072)
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/wheel CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=fixed240-short CHECK_WHEEL_STEP=240 CHECK_INTERACT=0 CHECK_VIEWPORTS=1280x400,844x390,1280x360,1024x320,667x375-touch,568x320-touch
+1280x400  fixed240-short panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 240px x5) | unreachable: none | sideways: no | pageScrollY 0 | behaviour ok
+844x390   fixed240-short panel 796px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 240px x7) | unreachable: none | sideways: no | pageScrollY 0 | behaviour ok
+1280x360  fixed240-short panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 240px x5) | unreachable: none | sideways: no | pageScrollY 0 | behaviour ok
+1024x320  fixed240-short panel 976px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 240px x5) | unreachable: none | sideways: no | pageScrollY 0 | behaviour ok
+667x375-touch fixed240-short panel 619px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 240px x7) | unreachable: none | sideways: no | pageScrollY 0 | behaviour ok
+568x320-touch fixed240-short panel 568px cols 1 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 240px x9) | unreachable: none | sideways: no | pageScrollY 0 | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/wheel/report-fixed240-short.json
+exit 0
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/wheel CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=adaptive-short CHECK_VIEWPORTS=1280x400,844x390,1280x360,1024x320,667x375-touch,568x320-touch
+1280x400  adaptive-short panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 83px x8) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+844x390   adaptive-short panel 796px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 80px x14) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+1280x360  adaptive-short panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 97px x8) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+1024x320  adaptive-short panel 976px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 83px x9) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+667x375-touch adaptive-short panel 619px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 75px x15) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+568x320-touch adaptive-short panel 568px cols 1 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 83px x18) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/wheel/report-adaptive-short.json
+exit 0
+dev ready after 2s (pid 24469)
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/wheel CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=fixed240-shorter CHECK_WHEEL_STEP=240 CHECK_INTERACT=0 CHECK_VIEWPORTS=1280x300,1024x280,844x300-touch,640x280-touch,1280x400-text200,844x390-touch-text200,1440x900-text200
+1280x300  fixed240-shorter panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 20/22 (wheel 240px x5) | unreachable: #4 OpsDispatch console,#5 SessionAccess and operator check | controls covered: {"#4 OpsDispatch console":"div.flex shrink-0 items-center justify-between gap-3 b","#5 SessionAccess and operator check":"div.flex shrink-0 items-center justify-between gap-3 b"} | sideways: no | pageScrollY 0 | behaviour ok
+1024x280  fixed240-shorter panel 976px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 20/22 (wheel 240px x6) | unreachable: #4 OpsDispatch console,#5 SessionAccess and operator check | controls covered: {"#4 OpsDispatch console":"h2.text-base font-bold leading-tight tracking-tight t","#5 SessionAccess and operator check":"div.flex shrink-0 items-center justify-between gap-3 b"} | sideways: no | pageScrollY 0 | behaviour ok
+844x300-touch fixed240-shorter panel 796px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 20/22 (wheel 240px x7) | unreachable: #4 OpsDispatch console,#5 SessionAccess and operator check | controls covered: {"#4 OpsDispatch console":"div.flex shrink-0 items-center justify-between gap-3 b","#5 SessionAccess and operator check":"div.flex shrink-0 items-center justify-between gap-3 b"} | sideways: no | pageScrollY 0 | behaviour ok
+640x280-touch fixed240-shorter panel 592px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 16/22 (wheel 240px x7) | unreachable: #4 OpsDispatch console,#5 SessionAccess and operator check,#12 Model Control,#13 System Monitor,#16 alias,#17 select Global | controls covered: {"#12 Model Control":"div.flex shrink-0 items-center justify-between gap-3 b","#13 System Monitor":"div.flex shrink-0 items-center justify-between gap-3 b","#16 alias":"h2.text-base font-bold leading-tight tracking-tight t","#17 select Global":"div.flex shrink-0 items-center justify-between gap-3 b"} | sideways: no | pageScrollY 0 | behaviour ok
+1280x400-text200 fixed240-shorter panel 1184px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 19/22 (wheel 240px x11) | unreachable: lars,lastNav,#12 Model Control,#13 System Monitor,#14 LARS DashboardOpens in a new tab | controls covered: {"#12 Model Control":"div.flex shrink-0 items-center justify-between gap-3 b","#13 System Monitor":"div.flex shrink-0 items-center justify-between gap-3 b"} | sideways: no | pageScrollY 0 | behaviour ok
+844x390-touch-text200 fixed240-shorter panel 748px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 17/22 (wheel 240px x12) | unreachable: lars,lastNav,localOnly,settings,#14 LARS DashboardOpens in a new tab,#15 Toggle local-only mode,#16 alias,#17 select Global,#21 Settings | covered: {"lars":"div.flex shrink-0 items-center justify-between gap-3 b","lastNav":"div.flex shrink-0 items-center justify-between gap-3 b","localOnly":"div.flex shrink-0 items-center justify-between gap-3 b"} | controls covered: {"#14 LARS DashboardOpens in a new tab":"div.flex shrink-0 items-center justify-between gap-3 b","#15 Toggle local-only mode":"div.flex shrink-0 items-center justify-between gap-3 b","#16 alias":"div.flex shrink-0 items-center justify-between gap-3 b","#17 select Global":"div.flex shrink-0 items-center justify-between gap-3 b"} | sideways: no | pageScrollY 0 | behaviour ok
+1440x900-text200 fixed240-shorter panel 1344px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 240px x7) | unreachable: none | sideways: no | pageScrollY 0 | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/wheel/report-fixed240-shorter.json
+exit 1
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/wheel CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=adaptive-shorter CHECK_VIEWPORTS=1280x300,1024x280,844x300-touch,640x280-touch,1280x400-text200,844x390-touch-text200,1440x900-text200
+1280x300  adaptive-shorter panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 77px x10) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+1024x280  adaptive-shorter panel 976px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 70px x10) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+844x300-touch adaptive-shorter panel 796px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 77px x15) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+640x280-touch adaptive-shorter panel 592px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 70px x17) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+1280x400-text200 adaptive-shorter panel 1184px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 21/22 (wheel 87px x24) | unreachable: lars,lastNav,#14 LARS DashboardOpens in a new tab | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | PROBLEMS: focused off screen: menu:LARS DashboardOpens in a new tab
+844x390-touch-text200 adaptive-shorter panel 748px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 21/22 (wheel 84px x29) | unreachable: settings,#21 Settings | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | PROBLEMS: focused under another element: menu:Settings
+1440x900-text200 adaptive-shorter panel 1344px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 207px x7) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/wheel/report-adaptive-shorter.json
+exit 1
+
+## 3. Final check, footer temporarily without sm:flex-wrap (before the fix)
+dev ready after 2s (pid 32420)
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=beforefix-long-shell CHECK_VIEWPORTS=844x390text200,844x390
+844x390text200 beforefix-long-shell panel 748px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 21/22 (wheel 84px x28) | unreachable: settings,#21 Settings | sideways: YES control past the panel edge Settings | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | PROBLEMS: focused under another element: menu:Settings
+844x390   beforefix-long-shell panel 796px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 80px x14) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-beforefix-long-shell.json
+exit 1
+
+## 4. Final check, fixed footer: default, reduced motion, offline
+dev ready after 2s (pid 34414)
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=default CHECK_TAG=after-default
+1440x900  after-default  panel 1152px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 240px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+1280x720  after-default  panel 1152px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 194px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+1024x600  after-default  panel 976px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 154px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+390x844   after-default  panel 390px cols 1 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 235px x7) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+375x667   after-default  panel 375px cols 1 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 176px x9) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+zoom200   after-default  panel 672px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 104px x11) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+scale150  after-default  panel 1208px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 114px x7) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+text200   after-default  panel 390px cols 1 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 190px x17) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+320text200 after-default  panel 320px cols 1 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 157px x23) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+1280x400  after-default  panel 1152px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 87px x8) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+844x390   after-default  panel 796px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 84px x13) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+844x390text200 after-default  panel 748px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 84px x28) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-after-default.json
+exit 0
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=default CHECK_TAG=after-reduced CHECK_REDUCED_MOTION=1 CHECK_VIEWPORTS=1280x720,390x844
+1280x720  after-reduced  panel 1152px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 194px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+390x844   after-reduced  panel 390px cols 1 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 235px x6) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-after-reduced.json
+exit 0
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=default CHECK_TAG=after-offline CHECK_OFFLINE=1 CHECK_VIEWPORTS=1440x900,1024x600
+1440x900  after-offline  panel 1152px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 240px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+1024x600  after-offline  panel 976px cols 2 links 14 menu projects 0 dashboard projects 8 | controls reached 21/21 (wheel 154px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-after-offline.json
+exit 0
+
+## 5. Final check: long fixture + Android shell; failure path CHECK_TAB_STEPS=20
+dev ready after 2s (pid 39520)
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=after-long-shell
+1440x900  after-long-shell panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 240px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+1280x720  after-long-shell panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 190px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+1024x600  after-long-shell panel 976px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 150px x5) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+390x844   after-long-shell panel 390px cols 1 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 224px x7) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+375x667   after-long-shell panel 375px cols 1 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 165px x9) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+zoom200   after-long-shell panel 672px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 100px x12) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+scale150  after-long-shell panel 1208px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 110px x8) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+text200   after-long-shell panel 390px cols 1 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 235px x15) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+320text200 after-long-shell panel 320px cols 1 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 157px x23) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+1280x400  after-long-shell panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 83px x8) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+844x390   after-long-shell panel 796px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 80px x14) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+844x390text200 after-long-shell panel 748px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 84px x29) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-after-long-shell.json
+exit 0
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=failpath-tab20 CHECK_TAB_STEPS=20 CHECK_VIEWPORTS=1440x900,390x844
+1440x900  failpath-tab20 panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 240px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 20/22 in 20 steps | PROBLEMS: Tab never reached 2 of 22 controls: #20 Connection settingsapp v0.0.0-fixture,#21 Settings; Tab did not wrap back to the first control
+390x844   failpath-tab20 panel 390px cols 1 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 224px x7) | unreachable: none | sideways: no | pageScrollY 0 | Tab 20/22 in 20 steps | PROBLEMS: Tab never reached 2 of 22 controls: #20 Connection settingsapp v0.0.0-fixture,#21 Settings; Tab did not wrap back to the first control
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-failpath-tab20.json
+exit 1
+
+## 6. Final check: empty and loading fixtures
+dev ready after 2s (pid 45287)
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=empty CHECK_TAG=after-empty
+1440x900  after-empty    panel 1152px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 240px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+1280x720  after-empty    panel 1152px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 194px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+1024x600  after-empty    panel 976px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 154px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+390x844   after-empty    panel 390px cols 1 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 235px x7) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+375x667   after-empty    panel 375px cols 1 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 176px x9) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+zoom200   after-empty    panel 672px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 104px x11) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+scale150  after-empty    panel 1208px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 114px x7) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+text200   after-empty    panel 390px cols 1 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 190px x16) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+320text200 after-empty    panel 320px cols 1 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 157px x22) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+1280x400  after-empty    panel 1152px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 87px x8) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+844x390   after-empty    panel 796px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 84px x13) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+844x390text200 after-empty    panel 748px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 84px x28) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-after-empty.json
+exit 0
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=loading CHECK_TAG=after-loading
+1440x900  after-loading  panel 1152px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 240px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+1280x720  after-loading  panel 1152px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 194px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+1024x600  after-loading  panel 976px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 154px x4) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+390x844   after-loading  panel 390px cols 1 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 235px x7) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+375x667   after-loading  panel 375px cols 1 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 176px x8) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+zoom200   after-loading  panel 672px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 104px x11) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+scale150  after-loading  panel 1208px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 114px x7) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+text200   after-loading  panel 390px cols 1 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 190px x16) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+320text200 after-loading  panel 320px cols 1 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 157px x23) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+1280x400  after-loading  panel 1152px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 87px x8) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+844x390   after-loading  panel 796px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 84px x14) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+844x390text200 after-loading  panel 748px cols 2 links 14 menu projects 0 dashboard projects 0 | controls reached 21/21 (wheel 84px x29) | unreachable: none | sideways: no | pageScrollY 0 | Tab 21/21 in 23 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-after-loading.json
+exit 0
+
+## 7. Final check: failure path CHECK_WHEEL_STEP=240 in very short windows, adaptive steps in the same windows, desktop sizes with doubled root text (exploratory)
+dev ready after 2s (pid 51897)
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=failpath-wheel240 CHECK_WHEEL_STEP=240 CHECK_INTERACT=0 CHECK_VIEWPORTS=1280x300,1024x280,844x300-touch,640x280-touch
+1280x300  failpath-wheel240 panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 20/22 (wheel 240px x5) | unreachable: #4 OpsDispatch console,#5 SessionAccess and operator check | controls covered: {"#4 OpsDispatch console":"div.flex shrink-0 items-center justify-between gap-3 b","#5 SessionAccess and operator check":"div.flex shrink-0 items-center justify-between gap-3 b"} | sideways: no | pageScrollY 0 | behaviour ok
+1024x280  failpath-wheel240 panel 976px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 20/22 (wheel 240px x6) | unreachable: #4 OpsDispatch console,#5 SessionAccess and operator check | controls covered: {"#4 OpsDispatch console":"h2.text-base font-bold leading-tight tracking-tight t","#5 SessionAccess and operator check":"div.flex shrink-0 items-center justify-between gap-3 b"} | sideways: no | pageScrollY 0 | behaviour ok
+844x300-touch failpath-wheel240 panel 796px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 20/22 (wheel 240px x7) | unreachable: #4 OpsDispatch console,#5 SessionAccess and operator check | controls covered: {"#4 OpsDispatch console":"div.flex shrink-0 items-center justify-between gap-3 b","#5 SessionAccess and operator check":"div.flex shrink-0 items-center justify-between gap-3 b"} | sideways: no | pageScrollY 0 | behaviour ok
+640x280-touch failpath-wheel240 panel 592px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 18/22 (wheel 240px x7) | unreachable: #4 OpsDispatch console,#5 SessionAccess and operator check,#16 alias,#17 select Global | controls covered: {"#16 alias":"h2.text-base font-bold leading-tight tracking-tight t","#17 select Global":"div.flex shrink-0 items-center justify-between gap-3 b"} | sideways: no | pageScrollY 0 | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-failpath-wheel240.json
+exit 1
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=adaptive-very-short CHECK_VIEWPORTS=1280x300,1024x280,844x300-touch,640x280-touch
+1280x300  adaptive-very-short panel 1152px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 77px x10) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+1024x280  adaptive-very-short panel 976px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 70px x10) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+844x300-touch adaptive-very-short panel 796px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 77px x15) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+640x280-touch adaptive-very-short panel 592px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 70px x17) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-adaptive-very-short.json
+exit 0
+== nav-menu-browser-check.mjs CHECK_OUT=/tmp/nav-followup/final CHECK_FIXTURE=long CHECK_SHELL=1 CHECK_TAG=explore-desktop-text200 CHECK_VIEWPORTS=1280x400-text200,1280x720-text200,1024x600-text200,1440x900-text200
+1280x400-text200 explore-desktop-text200 panel 1184px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 21/22 (wheel 87px x24) | unreachable: lars,lastNav,#14 LARS DashboardOpens in a new tab | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | PROBLEMS: focused off screen: menu:LARS DashboardOpens in a new tab
+1280x720-text200 explore-desktop-text200 panel 1184px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 147px x13) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+1024x600-text200 explore-desktop-text200 panel 928px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 8/22 (wheel 154px x44) | unreachable: firstNav,reviews,lars,studio,lastNav,#1 ReviewsDocuments for your decision,#2 ActivityLive system report,#3 Task Board,#4 OpsDispatch console,#5 SessionAccess and operator check,#6 AcademySkill wiki,#7 Council Chamber,#8 The Codex,#9 Knowledge Ingestion,#10 Intake Report Log,#11 Studio,#12 Model Control,#13 System Monitor,#14 LARS DashboardOpens in a new tab | sideways: YES text spill Knowledge and studio:168>143 | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | PROBLEMS: focused off screen: menu:ReviewsDocuments for your decision,menu:ActivityLive system report,menu:Task Board,menu:OpsDispatch console,menu:SessionAccess and operator check,menu:AcademySkill wiki,menu:Council Chamber,menu:The Codex,menu:Knowledge Ingestion,menu:Intake Report Log,menu:Studio,menu:Model Control,menu:System Monitor,menu:LARS DashboardOpens in a new tab,menu:ReviewsDocuments for your decision
+1440x900-text200 explore-desktop-text200 panel 1344px cols 2 links 14 menu projects 0 dashboard projects 42 | controls reached 22/22 (wheel 207px x7) | unreachable: none | sideways: no | pageScrollY 0 | Tab 22/22 in 24 steps, wrapped | behaviour ok
+blocked live-API requests: 0; report /tmp/nav-followup/final/report-explore-desktop-text200.json
+exit 1

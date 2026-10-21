@@ -1,0 +1,209 @@
+# {"tests":1059,"pass":1049,"fail":10,"cancelled":0,"skipped":0,"todo":0}
+
+# src/components/__tests__/ready-for-review.test.mjs
+not ok 368 - Reviews remains in the navigation menu and bridge header without a dashboard review panel
+  ---
+  duration_ms: 0.309625
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/components/__tests__/ready-for-review.test.mjs:190:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading '1')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/components/__tests__/ready-for-review.test.mjs:193:53)
+    Test.runInAsyncScope (node:async_hooks:211:14)
+    Test.run (node:internal/test_runner/test:980:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:678:18)
+    Test.postRun (node:internal/test_runner/test:1091:19)
+    Test.run (node:internal/test_runner/test:1019:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 916 - two eligible live alerts each compose once and replayed event IDs stay deduplicated
+  ---
+  duration_ms: 9.101208
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:507:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:527:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 926 - a repeated announcement speaks its saved wording and does not copy another conversation into this chat
+  ---
+  duration_ms: 4.002291
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:704:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + undefined
+    - 'The previously saved announcement.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'The previously saved announcement.'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:724:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 928 - announcement chat and voice visibility: success
+  ---
+  duration_ms: 11.176958
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:741:95'
+  failureType: 'testCodeFailure'
+  error: 'false == true'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 929 - announcement chat and voice visibility: synthesis-failure
+  ---
+  duration_ms: 3.749667
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:741:95'
+  failureType: 'testCodeFailure'
+  error: 'false == true'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 930 - announcement chat and voice visibility: blocked
+  ---
+  duration_ms: 6.156667
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:741:95'
+  failureType: 'testCodeFailure'
+  error: 'false == true'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 931 - announcement chat and voice visibility: cue-failure
+  ---
+  duration_ms: 3.910291
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:741:95'
+  failureType: 'testCodeFailure'
+  error: 'false == true'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 932 - announcement chat and voice visibility: device-skip
+  ---
+  duration_ms: 3.377167
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:741:95'
+  failureType: 'testCodeFailure'
+  error: 'false == true'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:766:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 933 - a blocked task and its question produce one complete spoken announcement
+  ---
+  duration_ms: 4.408625
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:802:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:833:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...
+
+# src/lib/__tests__/voice-command-bar.test.ts
+not ok 934 - recomposed question uses a fresh archive identity instead of replaying question-only wording
+  ---
+  duration_ms: 4.144208
+  type: 'test'
+  location: '/private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:853:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/nav-attr.O9G8T8/control-old-assert/dashboard/src/lib/__tests__/voice-command-bar.test.ts:896:10)
+    async Test.run (node:internal/test_runner/test:981:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:678:7)
+  ...

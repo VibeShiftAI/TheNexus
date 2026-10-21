@@ -1,0 +1,12 @@
+baseline c193147, menu e3230af, HEAD 84660b0, node v23.7.0
+commits touching the menu files since the baseline:
+  84660b0 Exercise every Nexus menu control in the browser check; stack the shell footer at large text
+  e3230af Reflow the Nexus menu header comment
+  954e72f Remove Active Projects from the Nexus menu per Robert's review
+  b5d7ee0 Expand the Nexus menu into a grouped wide panel with a scrollable body
+baseline: exit 1, # tests 1017 # pass 1008 # fail 9 
+baseline-plus-menu: exit 1, # tests 1027 # pass 1018 # fail 9 
+head-without-menu: exit 1, # tests 1049 # pass 1040 # fail 9 
+head: exit 1, # tests 1059 # pass 1050 # fail 9 
+control-old-assert: exit 1, # tests 1059 # pass 1049 # fail 10 
+wrote /Volumes/Projects/TheNexus/docs/reviews/2026-10-20-nexus-menu/followup/attribution-table.md
