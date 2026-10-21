@@ -68,26 +68,26 @@ afterAll(async () => {
     fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('October 20 reproduction: an unauthenticated addition during execution is held as unverified drift', async () => {
+test('October 20 reproduction: an unauthenticated addition now continues with a warning', async () => {
     const before = await task();
     expect(receipt(before).decision).toBe('new_work');
     const res = await api('POST', `/${before.id}/workspace-delta`, { ...unsanctioned(SIBLING), expected_version: before.version });
     expect(res.status).toBe(200);
     const after = await db.getTask(before.id);
     expect(after.antigravity_payload.workspace_roots).toEqual([HOME, SIBLING]);
-    expect(receipt(after).contract_hold).toMatchObject({ drifted_fields: ['payload.workspace_roots'] });
-    expect(receipt(after).decision).toBe('needs_evidence');
-    expect(lastChange(after)).toMatchObject({ outcome: 'held', origin: { kind: 'unverified', requester: 'unauthenticated' }, execution: { phase: 'executing' } });
+    expect(receipt(after).contract_hold).toBeUndefined();
+    expect(receipt(after).decision).toBe('new_work');
+    expect(lastChange(after)).toMatchObject({ outcome: 'recorded', warning: 'workspace_change', origin: { kind: 'unverified', requester: 'unauthenticated' }, execution: { phase: 'executing' } });
 });
 
-test('the runtime credential alone still holds an addition during execution; the sanction is what applies the standing ruling', async () => {
+test('the runtime credential alone records a warning without claiming operator authority', async () => {
     const before = await task();
     const res = await api('POST', `/${before.id}/workspace-delta`, { ...unsanctioned(SIBLING), expected_version: before.version }, runtime);
     expect(res.status).toBe(200);
     const after = await db.getTask(before.id);
-    expect(lastChange(after)).toMatchObject({ outcome: 'held', origin: { kind: 'runtime', authority: 'runtime_credential' } });
+    expect(lastChange(after)).toMatchObject({ outcome: 'recorded', warning: 'workspace_change', origin: { kind: 'runtime', authority: 'runtime_credential' } });
     expect(lastChange(after).origin.sanction).toBeUndefined();
-    expect(receipt(after).contract_hold.drifted_fields).toEqual(['payload.workspace_roots']);
+    expect(receipt(after).contract_hold).toBeUndefined();
 });
 
 test('a sanctioned addition under the runtime credential is authorized: scope, baseline and admission are preserved', async () => {
@@ -147,7 +147,7 @@ test('without the runtime credential a sanction writes nothing; the plain govern
     // The plain write (what the runtime sends when its credential is unset) is still governed: held during execution.
     const plain = await api('POST', `/${before.id}/workspace-delta`, { ...unsanctioned(SIBLING), expected_version: before.version });
     expect(plain.status).toBe(200);
-    expect(receipt(await db.getTask(before.id)).contract_hold.drifted_fields).toEqual(['payload.workspace_roots']);
+    expect(receipt(await db.getTask(before.id)).contract_hold).toBeUndefined();
 });
 
 test('a sanction never covers a move, a write that changes another field, or a PATCH', async () => {
@@ -197,28 +197,17 @@ test('a sanctioned addition leaves a genuine hold on another field exactly where
     expect(receipt(after).contract.fields['payload.prompt']).toBe(receipt(held).contract.fields['payload.prompt']);
 });
 
-test('while drift on the workspace fields is already held, a sanction is declined and only Robert clears the hold', async () => {
-    const before = await task();
-    // October 20 as it happened: the unauthenticated addition is held.
-    await api('POST', `/${before.id}/workspace-delta`, { ...unsanctioned(SIBLING), expected_version: before.version });
-    const held = await db.getTask(before.id);
-    expect(receipt(held).contract_hold.drifted_fields).toEqual(['payload.workspace_roots']);
-    // A sanctioned addition of another root joins that hold instead of deciding it.
-    const res = await api('POST', `/${before.id}/workspace-delta`, { ...addition(THIRD), expected_version: held.version }, runtime);
-    expect(res.status).toBe(200);
-    const after = await db.getTask(before.id);
-    expect(after.antigravity_payload.workspace_roots).toEqual([HOME, SIBLING, THIRD]);
-    expect(lastChange(after)).toMatchObject({ outcome: 'held', origin: { kind: 'runtime', sanction_declined: { kind: 'workspace_addition', because: 'hold_open_on_workspace_fields' } } });
-    expect(lastChange(after).origin.sanction).toBeUndefined();
-    expect(receipt(after).contract_hold.change_ids).toHaveLength(2);
-    expect(receipt(after).contract.version).toBe(receipt(held).contract.version);
-    // The runtime cannot decide it either; Robert's credential can.
-    const relay = await api('POST', `/${before.id}/work-admission/contract`, { expected_task_version: after.version, decision: 'approve', change_ids: receipt(after).contract_hold.change_ids }, runtime);
-    expect(relay.status).toBe(400);
-    const approve = await api('POST', `/${before.id}/work-admission/contract`, { expected_task_version: after.version, decision: 'approve', change_ids: receipt(after).contract_hold.change_ids }, operator);
-    expect(approve.status).toBe(200);
-    expect(receipt(approve.data).contract_hold).toBeFalsy();
-    expect(receipt(approve.data).decision).toBe('new_work');
+test('a sanctioned addition after a warning continues without requiring another decision', async () => {
+ const before=await task();
+ await api('POST', `/${before.id}/workspace-delta`, {...unsanctioned(SIBLING),expected_version:before.version});
+ const warned=await db.getTask(before.id);
+ const res=await api('POST', `/${before.id}/workspace-delta`, {...addition(THIRD),expected_version:warned.version}, runtime);
+ expect(res.status).toBe(200);
+ const after=await db.getTask(before.id);
+ expect(after.antigravity_payload.workspace_roots).toEqual([HOME,SIBLING,THIRD]);
+ expect(lastChange(after).outcome).toBe('authorized');
+ expect(receipt(after).contract_hold).toBeUndefined();
+ expect(receipt(after).decision).toBe('new_work');
 });
 
 test('a stale expected_version is a conflict: nothing written, no hold, no baseline move', async () => {

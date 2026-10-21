@@ -1,3 +1,4 @@
+const { initializeActivityEvents, recordActivityEvent } = require('./activity-events');
 const { createHash } = require('crypto');
 const path = require('path');
 const { canonicalPath } = require('./write-leases');
@@ -55,6 +56,7 @@ const dependencyList = value => {
 const rulingEntries = value => Array.isArray(value) ? value.filter(entry => typeof entry === 'string' && entry.trim()).map(entry => entry.trim()) : [];
 
 function initializeWorkAdmission(db) {
+    initializeActivityEvents(db);
     // The unique key and receipt commit with the task row; no reservation can
     // outlive a rolled-back insert, and a lost response is safe to retry.
     db.exec(`CREATE TABLE IF NOT EXISTS work_admissions (
@@ -366,6 +368,8 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
      * Returns the next receipt body (without overlap inspection) and the
      * recorded entry, or null when nothing governed changed.
      */
+    const workspaceFields = new Set(['workspace', 'payload.workspace', 'payload.workspace_roots', 'payload.additional_workspaces']);
+    const workspaceOnly = fields => fields.length > 0 && fields.every(field => workspaceFields.has(field));
     function classifyContractChange({ before, after, previous, origin, execution, unattributed = false }) {
         const beforeFields = governedFields(before), afterFields = governedFields(after);
         const baseline = previous.contract || authorizedBaseline(beforeFields, 1, { origin: 'legacy', authority: null, basis: 'receipt_without_contract' }, { fingerprint: previous.fingerprint });
@@ -391,6 +395,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         const authorizedBy = extra => ({ origin: recordedOrigin.kind, authority: recordedOrigin.authority, requester: recordedOrigin.requester,
             ...(recordedOrigin.reason ? { reason: recordedOrigin.reason } : {}), ...(decisionRef ? { decision_ref: decisionRef } : {}),
             ...(recordedOrigin.sanction ? { sanction: recordedOrigin.sanction } : {}), ...extra });
+        const workspaceWarning = !authorizing && workspaceOnly(written.map(change => change.field)) && (!hold || workspaceOnly(hold.drifted_fields));
         let contract = baseline, outcome, resolvedEntries = [];
         if (authorizing) {
             // Robert's own change, his relayed decision, or the runtime's
@@ -399,6 +404,10 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
             outcome = 'authorized';
             contract = authorizedBaseline({ ...baseline.fields, ...Object.fromEntries(written.map(c => [c.field, c.after_sha256])) }, baseline.version + 1,
                 authorizedBy(sanction?.applied ? { basis: 'sanctioned_workspace_addition', added_roots: sanction.added_roots } : { basis: 'operator_change' }));
+        } else if (workspaceWarning) {
+            // Robert's October 21 policy: workspace discrepancies are visible warnings, never a reason to reject his saved answer.
+            outcome = 'recorded';
+            contract = authorizedBaseline(afterFields, baseline.version + 1, authorizedBy({ basis: 'workspace_warning_policy' }));
         } else if (!execution.executing && !hold) {
             // Nobody has executed against the previous reading; the next
             // dispatch admits the task against this contract. Once a hold is
@@ -434,14 +443,19 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         // A hold clears either because the fields are back at the authorized
         // reading, or because Robert's own edit made a new reading authoritative.
         const restoresBaseline = Boolean(hold && !nextHold && contract.hash === baseline.hash);
-        const clearedBy = hold && !nextHold ? (restoresBaseline ? 'reverted_by_edit' : 'superseded_by_authorized_edit') : null;
+        const clearedBy = hold && !nextHold ? (workspaceWarning ? 'workspace_warning_policy' : restoresBaseline ? 'reverted_by_edit' : 'superseded_by_authorized_edit') : null;
         const entry = { id: `change-${digest({ task: before.id, version: before.version, recordedAt, written }).slice(0, 16)}`, recorded_at: recordedAt, task_version: before.version ?? null,
-            fields: outcome === 'held' ? fieldDiff(unattributed ? baseline.fields : beforeFields.hashes, afterFields.hashes, unattributed ? null : beforeFields.raw, afterFields.raw, { values: true }) : written,
-            origin: recordedOrigin, execution, outcome, contract_version: contract.version, ...(restoresBaseline ? { restores_baseline: true } : {}) };
+            fields: outcome === 'held' || workspaceWarning ? fieldDiff(unattributed ? baseline.fields : beforeFields.hashes, afterFields.hashes, unattributed ? null : beforeFields.raw, afterFields.raw, { values: true }) : written,
+            origin: recordedOrigin, execution, outcome, ...(workspaceWarning ? { warning: 'workspace_change' } : {}), contract_version: contract.version, ...(restoresBaseline ? { restores_baseline: true } : {}) };
         if (outcome === 'held' && nextHold) nextHold.change_ids = [...new Set([...nextHold.change_ids, entry.id])];
         const history = appendChange(previous, entry);
-        if (resolvedEntries.length) history.contract_changes = history.contract_changes.map(item => resolvedEntries.includes(item.id) && !item.resolution
-            ? { ...item, resolution: { decision: clearedBy, recorded_at: recordedAt, by: recordedOrigin } } : item);
+        if (resolvedEntries.length) {
+            const firstHeld = history.contract_changes.findIndex(item => resolvedEntries.includes(item.id));
+            history.contract_changes = history.contract_changes.map((item, index) => !item.resolution &&
+                (workspaceWarning ? firstHeld >= 0 && index >= firstHeld : resolvedEntries.includes(item.id))
+                ? { ...item, ...(workspaceWarning ? {warning: 'workspace_change', contract_version: contract.version} : {}),
+                    resolution: { decision: clearedBy, recorded_at: recordedAt, by: workspaceWarning ? {kind:'system'} : recordedOrigin } } : item);
+        }
         if (nextHold) contract.fingerprint = null; else contract.fingerprint = afterFields.fingerprint;
         return { contract, hold: nextHold, history, entry, outcome, baselineAdvanced: contract.version !== baseline.version };
     }
@@ -588,7 +602,17 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     const withHold = (receipt, hold) => hold
         ? { ...receipt, decision: 'needs_evidence', reason: holdReason(receipt), hold_kind: 'contract_drift', contract_hold: hold }
         : (({ hold_kind, contract_hold, ...rest }) => rest)(receipt);
+    function recordWorkspaceWarnings(taskId, receipt) {
+        for (const change of receipt?.contract_changes || []) if (change.warning === 'workspace_change') {
+            recordActivityEvent(db, {event_type:'task_workspace_changed', severity:'warning',
+                title:'Workspace changed; continuation allowed', task_id:taskId, source:'work-admission', requires_action:false,
+                message:`Workspace changes were recorded without blocking the saved answer or task continuation: ${change.fields.map(field => field.field).join(', ')}. Source: ${change.origin.requester || change.origin.kind}.`,
+                metadata:{changeId:change.id,recordedAt:change.recorded_at,fields:change.fields,origin:change.origin},
+                idempotency_key:`workspace-change:${taskId}:${change.id}`});
+        }
+    }
     function save(task, receipt, { mutation = false } = {}) {
+        recordWorkspaceWarnings(task.id, receipt);
         db.prepare('INSERT INTO work_admissions (task_id, document) VALUES (?, ?) ON CONFLICT(task_id) DO UPDATE SET document=excluded.document').run(task.id, JSON.stringify(receipt));
         // Ordinary reads refresh the authoritative receipt projection without
         // manufacturing a task edit. Explicit decisions/concerns remain CAS
@@ -631,6 +655,20 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     function current(id) {
         return db.transaction(() => {
             let task = readTask(id), previous = readReceipt(id);
+            // Upgrade already-persisted workspace holds without inventing operator approval.
+            if (previous?.contract && previous.contract_hold && workspaceOnly(previous.contract_hold.drifted_fields)
+                && workspaceOnly(fieldDiff(previous.contract.fields, governedFields(task).hashes).map(change => change.field))) {
+                const ids = new Set(previous.contract_hold.change_ids);
+                const contract = authorizedBaseline(governedFields(task), previous.contract.version + 1,
+                    { origin: 'system', authority: null, basis: 'workspace_warning_policy' });
+                const entries = previous.contract_changes || [];
+                const firstHeld = entries.findIndex(entry => ids.has(entry.id));
+                const history = entries.map((entry, index) => firstHeld >= 0 && index >= firstHeld && !entry.resolution
+                    ? { ...entry, warning: 'workspace_change', contract_version: contract.version, resolution: {decision: 'workspace_warning_policy', recorded_at: new Date(now()).toISOString(), by: {kind:'system'}} } : entry);
+                const refreshed = carryResolution(baseReceipt(task, previous.concerns || [], previous, { contract }), previous.contract_hold.prior);
+                task = save(task, { ...withHold(refreshed, null), contract_changes: history });
+                previous = task.metadata.work_admission;
+            }
             const inspected = inspect(task, previous?.concerns || []);
             if (previous && previous.fingerprint !== inspected.fingerprint && previous.fingerprint === legacyFingerprint(task)) {
                 task = save(task, { ...previous, fingerprint: inspected.fingerprint, legacy_fingerprint: previous.fingerprint });
@@ -679,7 +717,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     const carryIf = (change, receipt, previous) => {
         // Drift undone, by its author or by Robert: the pre-drift decision applies again when the compared owners still stand.
         if (previous?.contract_hold && !change.hold) return carryResolution(receipt, previous.contract_hold.prior);
-        return change.outcome === 'authorized' || (!change.baselineAdvanced && !change.hold) ? carryResolution(receipt, previous) : receipt;
+        return change.outcome === 'authorized' || change.entry?.warning === 'workspace_change' || (!change.baselineAdvanced && !change.hold) ? carryResolution(receipt, previous) : receipt;
     };
     /**
      * Guard one task write. `context.origin` is the route's verified reading of
@@ -767,6 +805,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
                 next = { ...previous, ...audit, ...(fingerprint !== previous.fingerprint ? { fingerprint, legacy_fingerprint: previous.fingerprint } : {}) };
             }
         }
+        if (next) recordWorkspaceWarnings(task.id, next);
         if (next) db.prepare('INSERT INTO work_admissions (task_id, document) VALUES (?, ?) ON CONFLICT(task_id) DO UPDATE SET document=excluded.document').run(task.id, JSON.stringify(next));
         metadata.work_admission = next || previous;
         return { ...updates, metadata };

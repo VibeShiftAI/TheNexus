@@ -327,3 +327,15 @@ test("QA improvement: a stale or changed hold offers a Refresh diff action that 
         stale.cleanup();
     }
 });
+
+test('workspace warning remains visible on the task without a decision button', async () => {
+ const task={id:TASK_ID,metadata:{work_admission:{decision:'new_work',contract_changes:[{...HELD_ENTRY,warning:'workspace_change',fields:[{field:'payload.workspace',before:'/old',after:'/new'}]}]}}};
+ const ui=await mount(task);
+ try {
+  assert.match(ui.text,/Workspace changed; continuation allowed/);
+  assert.match(ui.text,/unverified writer/);
+  assert.match(ui.text,/\/old/);
+  assert.match(ui.text,/\/new/);
+  assert.equal(ui.container.querySelectorAll('button').length,0);
+ } finally {ui.cleanup();}
+});

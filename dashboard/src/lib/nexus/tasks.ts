@@ -204,6 +204,7 @@ export interface ContractChangeEntry {
     origin: { kind: string; authority: string | null; requester: string; reason?: string; decision_ref?: Record<string, unknown> };
     execution: { phase: string; status: string | null; next_status?: string; open_dispatches: Array<{ id: string; task_id: string; kind: string; executor: string }> };
     outcome: 'authorized' | 'recorded' | 'held';
+    warning?: 'workspace_change';
     contract_version: number;
     resolution?: { decision: string; recorded_at: string; authority?: string | null; reason?: string };
 }

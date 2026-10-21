@@ -151,6 +151,20 @@ export function ContractHoldPanel({ task, onChanged }: { task: TaskById; onChang
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<"approve" | "return_to_authorized" | null>(null);
   const [failure, setFailure] = useState<{ text: string; refresh: boolean } | null>(null);
+  const warnings = (receipt?.contract_changes ?? []).filter(entry => entry.warning === 'workspace_change');
+  if (!hold && warnings.length) return (
+    <section id="contract-hold" aria-label="Workspace change warning" className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
+      <h3 className="text-sm font-semibold text-amber-200">Workspace changed; continuation allowed</h3>
+      <p className="mt-1 text-sm">These changes are recorded for visibility. They do not block your saved answer or task continuation.</p>
+      <ul className="mt-3 space-y-3">{warnings.map(entry => <li key={entry.id}>
+        <p className="text-xs">{entry.recorded_at}: {describeOrigin(entry.origin)}</p>
+        {entry.fields.map(field => <div key={field.field} className="mt-1 text-xs">
+          <strong>{fieldLabel(field.field)}</strong>
+          {('before' in field || 'after' in field) && <pre className="max-h-48 overflow-auto whitespace-pre-wrap">{renderValue(field.before)} → {renderValue(field.after)}</pre>}
+        </div>)}
+      </li>)}</ul>
+    </section>
+  );
   if (!receipt || !hold) return null;
 
   const entries = receipt.contract_changes ?? [];

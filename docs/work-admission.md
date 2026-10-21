@@ -386,3 +386,10 @@ written before this rule have no `contract_hold`; they still resolve through
   localhost it explains that it carries no verified session. Its "Now in the
   brief" column reads the task row itself, so a field deleted while held shows
   as absent, and a stale or changed hold offers a "Refresh diff" action.
+
+
+## Workspace changes are warnings (2026-10-21)
+
+Robert requested that workspace discrepancies stop refusing task continuation. Changes limited to workspace, payload.workspace, payload.workspace_roots or payload.additional_workspaces advance the baseline with a workspace_change warning. Original writer attribution remains intact. Nexus atomically records a deduplicated Recent Activity warning, and the task panel shows the changed fields. No additional answer or approval is requested.
+
+Existing workspace-only drift holds reconcile on admission inspection or the next workspace write. If an older mixed change had its other fields restored, the remaining workspace drift is resolved by the explicit system workspace_warning_policy; the historical edits remain visible. Existing reviewed overlap decisions carry forward only while their evidence and concerns remain unchanged. Praxis adopts the policy-marked snapshot and delivers retained answers through its normal receipt-based resume flow. Mixed scope changes and unrelated admission checks keep their existing behavior.
