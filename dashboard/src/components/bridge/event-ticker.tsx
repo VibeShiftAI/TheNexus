@@ -18,6 +18,7 @@ import { HudModal } from "@/components/bridge/hud";
 import type { StreamEvent } from "@praxis/contract";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
 import { describeHitlAction, selectPendingAlert } from "@/lib/alert-action";
+import { pendingRequestTickerText } from "@/lib/ticker-text";
 import { floatingControlRef } from "@/lib/floating-controls";
 
 const FAILURE_ALERT_WINDOW_MS = 10 * 60 * 1000;
@@ -117,7 +118,7 @@ export function EventTicker() {
   if (pendingRequest) {
     const action = describeHitlAction(pendingRequest);
     alert = pendingRequest.priority === 'critical' ? 'red' : 'amber';
-    alertText = `${action.label}: ${action.instruction}`;
+    alertText = pendingRequestTickerText(pendingRequest);
     alertHref = action.href;
     alertLinkLabel = action.linkLabel;
   }
