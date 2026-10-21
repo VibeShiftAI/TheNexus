@@ -22,7 +22,6 @@ export function AlertAction({ action, inline = false, showQuestion = true }: { a
   return <section className={`my-2 space-y-2 rounded border p-2 text-xs ${pending ? 'border-amber-500/30 bg-amber-500/5 text-amber-100' : 'border-slate-700 text-slate-300'}`}>
     <p className="font-semibold">{action.label}</p>
     <p>{action.instruction}</p>
-    <p className="text-[11px] text-slate-400">Owner: {action.owner}</p>
     {action.reason && <div><strong>Why: </strong><SafeAlertMarkdown>{action.reason}</SafeAlertMarkdown></div>}
     {showQuestion && action.question && <SafeAlertMarkdown>{action.question}</SafeAlertMarkdown>}
     {action.answer && <div><p className="font-semibold">Recorded answer</p><SafeAlertMarkdown>{action.answer}</SafeAlertMarkdown></div>}

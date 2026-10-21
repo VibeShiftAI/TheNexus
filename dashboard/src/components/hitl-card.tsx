@@ -23,8 +23,10 @@ import { Archive, ChevronDown, ChevronRight, Loader2, Send } from "lucide-react"
 import type { HITLRequest } from "@praxis/contract";
 
 import { hitlTaskMeta, parseResumeContext, PRIORITY_TONES, REASON_LABELS } from "@/lib/hitl-meta";
+import { briefDetails, briefFromMetadata, briefQuestions } from "@/lib/human-brief";
 import { describeHitlAction } from "@/lib/alert-action";
 import { AlertAction, SafeAlertMarkdown } from "./alert-action";
+import { HumanBriefBlock } from "./human-brief";
 import {
   BoardMaintenanceHitlCard,
   ScheduleHitlCard,
@@ -112,6 +114,17 @@ export function HitlRequestCard({
   // the agent-mediated resume, so don't offer "park" there.
   const canPark = meta.kind === "task-question";
   const action = describeHitlAction(request, true);
+  // The human brief (Praxis docs/human-brief.md) leads when the producer
+  // shipped one: project, what happened, the problem, the ask. The sender's
+  // full text then becomes detail under it rather than the whole card.
+  const brief = briefFromMetadata(request.metadata);
+  const questions = brief ? briefQuestions(request.metadata) : [];
+  const details = brief ? briefDetails(request.metadata) : undefined;
+  // With a brief and structured questions the `question` text twin repeats
+  // them; with a brief alone (task questions, approvals) the question is
+  // still the thing to answer, so it stays, long ones folded.
+  const showQuestionText = !brief || questions.length === 0;
+  const foldQuestion = Boolean(brief) && showQuestionText && request.question.length > 700;
 
   async function submit(choice?: string) {
     const freeText = reply.trim();
@@ -172,13 +185,61 @@ export function HitlRequestCard({
           </Link>
         ) : null}
 
+        {/* kind-specific guidance (acknowledging repairs nothing, a saved
+            answer awaits delivery); ordinary questions show none */}
+        {action.guidance ? (
+          <p className="mb-2 text-[length:var(--hitl-fs-xs,0.75rem)] leading-relaxed text-amber-200/90" data-hitl-guidance="">
+            {action.guidance}
+          </p>
+        ) : null}
+        {action.relatedLinks?.map(link => (
+          <Link key={link.href} href={link.href} className="mb-2 block text-[length:var(--hitl-fs-xs,0.75rem)] text-cyan-300 underline">{link.label} →</Link>
+        ))}
+
+        {/* the brief first, when there is one */}
+        {brief ? (
+          <div className="mb-3">
+            <HumanBriefBlock brief={brief} />
+          </div>
+        ) : null}
+
+        {/* the numbered questions an ask_robert card carries */}
+        {brief && questions.length > 0 ? (
+          <ol className="mb-3 list-decimal space-y-1.5 pl-5 text-[length:var(--hitl-fs-sm,0.875rem)] leading-relaxed text-slate-100" data-brief-questions="">
+            {questions.map((q, i) => <li key={i}>{q}</li>)}
+          </ol>
+        ) : null}
+
         {/* the question — pre-wrap so multi-paragraph questions (red alerts,
             EOD summaries) keep their structure instead of welding into one
             line (2026-08-30: the inbox item is the informed-decision surface) */}
-        <AlertAction action={describeHitlAction(request, true)} inline showQuestion={false} />
-        <div className="mb-3 text-[length:var(--hitl-fs-sm,0.875rem)] leading-relaxed text-slate-100">
-          <SafeAlertMarkdown>{request.question}</SafeAlertMarkdown>
-        </div>
+        {showQuestionText && !foldQuestion ? (
+          <div className="mb-3 text-[length:var(--hitl-fs-sm,0.875rem)] leading-relaxed text-slate-100">
+            <SafeAlertMarkdown>{request.question}</SafeAlertMarkdown>
+          </div>
+        ) : null}
+        {showQuestionText && foldQuestion ? (
+          <details className="mb-3 rounded-md border border-slate-800 bg-slate-950/70" data-brief-details="question">
+            <summary className="cursor-pointer px-2.5 py-1.5 text-[length:var(--hitl-fs-11,0.6875rem)] uppercase tracking-wider text-slate-500 transition hover:text-slate-300">
+              Full question
+            </summary>
+            <div className="px-2.5 pb-2.5 text-[length:var(--hitl-fs-sm,0.875rem)] leading-relaxed text-slate-200">
+              <SafeAlertMarkdown>{request.question}</SafeAlertMarkdown>
+            </div>
+          </details>
+        ) : null}
+
+        {/* the sender's full message, kept under the brief */}
+        {brief && details ? (
+          <details className="mb-3 rounded-md border border-slate-800 bg-slate-950/70" data-brief-details="message">
+            <summary className="cursor-pointer px-2.5 py-1.5 text-[length:var(--hitl-fs-11,0.6875rem)] uppercase tracking-wider text-slate-500 transition hover:text-slate-300">
+              Full message
+            </summary>
+            <div className="px-2.5 pb-2.5 text-[length:var(--hitl-fs-xs,0.75rem)] leading-relaxed text-slate-300">
+              <SafeAlertMarkdown>{details}</SafeAlertMarkdown>
+            </div>
+          </details>
+        ) : null}
 
         {/* full plan / detail block, when the producer shipped one on the item
             (e.g. the EOD commit card's per-workspace survey). This is the rest

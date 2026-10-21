@@ -12,7 +12,7 @@ test('alert copy links safely without active HTML and shows full multiline quest
   assert.doesNotMatch(html, /href="javascript:|<script>/);
 });
 test('resolved activity card has saved answer and a history target without needs-you label', () => {
-  const html = renderToStaticMarkup(React.createElement(AlertAction, { action: { state: 'resolved', label: 'Answered', owner: 'Robert', instruction: 'This request has been answered.', answer: 'Approved\n\nStaging only.', href: '/inbox#q1', linkLabel: 'View saved answer' } }));
+  const html = renderToStaticMarkup(React.createElement(AlertAction, { action: { state: 'resolved', label: 'Answered', instruction: 'This request has been answered.', answer: 'Approved\n\nStaging only.', href: '/inbox#q1', linkLabel: 'View saved answer' } }));
   assert.match(html, /Approved/); assert.match(html, /Staging only/);
   assert.match(html, /href="\/inbox#q1"/); assert.doesNotMatch(html, /needs you/);
 });

@@ -14,6 +14,7 @@
 import Link from "next/link";
 import { BlockingTasks } from "./blocking-tasks";
 import { ArrowRight } from "lucide-react";
+import { briefFromMetadata } from "@/lib/human-brief";
 import {
     assetUrl,
     documentHref,
@@ -70,6 +71,10 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
     const projectName = entry.project_id ? projectNames?.[entry.project_id] : null;
     const mediaType: MediaType = entry.media_type ?? entry.current_revision?.media_type ?? "markdown";
     const thumbnail = entry.preview_asset_key && entry.current_revision ? assetUrl(entry.id, entry.preview_asset_key, { revision: entry.current_revision.id }) : null;
+    // The row's one-line description: the brief's ask when Praxis registered
+    // one (what the reader decides), else the declared purpose.
+    const brief = briefFromMetadata(entry.metadata);
+    const blurb = brief ? `${brief.problem} ${brief.ask}` : entry.purpose;
 
     return (
         <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2.5" data-document-id={entry.id} data-media-type={mediaType}>
@@ -80,9 +85,9 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
                 <Link href={href} className="block truncate text-sm font-medium text-slate-100 hover:text-cyan-200" title={entry.title}>
                     {entry.title}
                 </Link>
-                {entry.purpose && (
-                    <p className={`mt-0.5 text-[12px] leading-snug text-slate-400 ${compact ? "line-clamp-1" : "line-clamp-2"}`} data-document-purpose="">
-                        {entry.purpose}
+                {blurb && (
+                    <p className={`mt-0.5 text-[12px] leading-snug text-slate-400 ${compact ? "line-clamp-1" : "line-clamp-2"}`} data-document-purpose="" title={entry.purpose ?? undefined}>
+                        {blurb}
                     </p>
                 )}
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">

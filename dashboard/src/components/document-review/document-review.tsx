@@ -87,6 +87,8 @@ import { DocumentMarkdown, type BlockRef } from "./document-markdown";
 import { DecisionCard } from "./decision-card";
 import { OutgoingCard } from "./outgoing-card";
 import { DocumentStatusBadge } from "./deliverable-row";
+import { HumanBriefBlock } from "@/components/human-brief";
+import { briefFromMetadata } from "@/lib/human-brief";
 import { EvidenceDrawer, type LoadStates } from "./evidence-drawer";
 import { MediaIcon, mediaTone } from "./viewers/media-icon";
 import { ImageViewer, type ImagePin } from "./viewers/image-viewer";
@@ -835,6 +837,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const task = data?.source.task ?? null;
     const project = data?.source.project ?? null;
     const asOf = typeof doc?.metadata?.as_of === "string" ? (doc.metadata.as_of as string) : null;
+    // The human brief Praxis registered with the document (Praxis
+    // docs/human-brief.md): which project, what this is, what the reviewer
+    // decides. Shown under the title; absent on documents registered before it.
+    const brief = briefFromMetadata(doc?.metadata);
     const canEdit = Boolean(data?.editable) && !showingPinned && data?.file_state === "ok" && !editing;
 
     const saveIndicator = (() => {
@@ -1297,6 +1303,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                         )}
                         {project && <span>in <Link href={`/project/${project.id}`} className="text-cyan-300 hover:underline">{project.name || project.id}</Link></span>}
                     </div>
+                    {brief && (
+                        <div className="mt-2 max-w-3xl">
+                            <HumanBriefBlock brief={brief} compact />
+                        </div>
+                    )}
                 </div>
                 {/* Phone controls: explicit buttons, no hover required. */}
                 <div className="flex gap-2 border-t border-slate-800/80 px-4 py-2 lg:hidden">

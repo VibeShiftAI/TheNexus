@@ -29,8 +29,9 @@ export interface AlertEvidence {
 export interface AlertActionView {
   state: 'pending' | 'resolved' | 'historical' | 'unknown';
   label: string;
-  owner: string;
   instruction: string;
+  /** Kind-specific guidance worth a line on the pending card itself; absent for ordinary questions. */
+  guidance?: string;
   reason?: string;
   question?: string;
   answer?: string;
@@ -73,12 +74,12 @@ export function describeHitlAction(request: AlertRequest, inline = false): Alert
   const kind = request.metadata?.kind;
   const href = `/inbox#${encodeURIComponent(request.id)}`;
   if (request.resolution) return {
-    state: 'resolved', label: 'Request closed', owner: 'No further answer requested',
+    state: 'resolved', label: 'Request closed',
     instruction: 'This request is closed. Its recorded response is shown below. Check the task or system status for the outcome.',
     question: request.question, answer: savedAlertAnswer(request) ?? '(Closed without an answer.)', href, linkLabel: 'View recorded response',
   };
   if (isAlertRequestExpired(request)) return {
-    state: 'historical', label: 'Request expired', owner: 'Praxis must renew the request',
+    state: 'historical', label: 'Request expired',
     instruction: 'This request has passed its decision deadline. Ask Praxis for a current request before approving or answering it.',
     question: request.question, href, linkLabel: 'View expired request',
   };
@@ -94,11 +95,16 @@ export function describeHitlAction(request: AlertRequest, inline = false): Alert
   if (request.taskId && /return_to_authorized|contract.decision/.test(request.question)) relatedLinks.push({ href: `/task/${encodeURIComponent(request.taskId)}#contract-hold`, label: 'Review task contract decision' });
   return {
     state: 'pending', label: predictiveRestart ? 'Restart proposal needs revalidation' : kind === 'red-alert' ? 'Acknowledgment requested' : kind === 'task-answer-held' ? 'Delivery decision needed' : 'Your input is needed',
-    owner: predictiveRestart ? 'Praxis / recovery; Robert decides whether to approve' : 'Robert', instruction: `${inline ? '' : 'Open this request in Inbox. '}${instruction}`,
+    instruction: `${inline ? '' : 'Open this request in Inbox. '}${instruction}`,
     question: request.question,
     reason: typeof request.metadata?.holdReason === 'string' ? request.metadata.holdReason : undefined,
     answer: kind === 'task-answer-held' && typeof request.metadata?.answer === 'string' ? request.metadata.answer : undefined,
     href, linkLabel: kind === 'red-alert' ? 'Acknowledge in Inbox' : kind === 'task-answer-held' ? 'Choose answer delivery' : 'Answer in Inbox',
+    // Only guidance that says something the card's controls do not: an
+    // acknowledgment that repairs nothing, a saved answer awaiting delivery,
+    // a stale restart proposal. The generic "type your answer" line is not
+    // shown on the card (2026-10-21: Robert asked for the box to go).
+    ...(kind === 'red-alert' || kind === 'task-answer-held' || predictiveRestart ? { guidance: instruction } : {}),
     ...(relatedLinks.length ? { relatedLinks } : {}),
   };
 }
@@ -117,15 +123,15 @@ export function describeAlertAction(event: AlertEvent, evidence: AlertEvidence =
   const hitl = hitlId ? evidence.hitls[hitlId] : undefined;
   if (hitl) return describeHitlAction(hitl);
   const destination = hitlId ? { href: `/inbox#${encodeURIComponent(hitlId)}`, linkLabel: 'Check this request in Inbox' } : reviewDestination(event);
-  if (event.action_taken) return { state: 'resolved', label: 'Action recorded', owner: 'No new request recorded', instruction: 'An action was recorded for this historical alert. Review its destination for the current state.', ...destination };
+  if (event.action_taken) return { state: 'resolved', label: 'Action recorded', instruction: 'An action was recorded for this historical alert. Review its destination for the current state.', ...destination };
   const status = event.task_id ? evidence.tasks[event.task_id]?.status : undefined;
   // A task's terminal state only supersedes its own lifecycle signal. It says
   // nothing about fleet health, third-party replies, or other independent work.
   if (!hitlId && TASK_LIFECYCLE.test(event.event_type) && status && ['completed', 'cancelled', 'archived'].includes(status)) {
-    return { state: 'historical', label: 'Historical task alert', owner: 'No current request established', instruction: `This task is now ${status}. The text below records an earlier interruption; it is not a new request to repeat that action.`, ...destination };
+    return { state: 'historical', label: 'Historical task alert', instruction: `This task is now ${status}. The text below records an earlier interruption; it is not a new request to repeat that action.`, ...destination };
   }
   return {
-    state: 'unknown', label: 'Current action status unverified', owner: 'Not established',
+    state: 'unknown', label: 'Current action status unverified',
     instruction: 'This event recorded a request for attention. Check the current destination before acting; the event alone does not establish that the request is still open.',
     ...destination,
   };

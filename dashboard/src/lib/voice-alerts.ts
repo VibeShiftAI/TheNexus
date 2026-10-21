@@ -54,7 +54,7 @@ export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | un
     case 'hitl.created': {
       const action = isAlertRequest(e.request) ? describeHitlAction(e.request) : undefined;
       return { ...task, status: blocked ? 'blocked' : 'attention', ...(blocked ? { reason: blocked.reason } : {}), question: e.request?.question,
-        ...(action ? { action: action.instruction, actionHref: action.href, actionLabel: action.linkLabel, owner: action.owner,
+        ...(action ? { action: action.instruction, actionHref: action.href, actionLabel: action.linkLabel,
           actionStatus: action.state, deliveryInstruction: 'State the exact question or decision and where to answer it. Do not imply acknowledgment repairs an issue or a saved answer was delivered.' } : {}) };
     }
     default: return task;
