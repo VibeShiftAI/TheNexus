@@ -98,8 +98,9 @@ function createPresentationService({ db, now = Date.now, receiverOrigin = null, 
         const report = parse(DisplayInventorySchema, input);
         const observed = Date.parse(report.observedAt);
         const expires = Date.parse(report.expiresAt);
-        const fresh = stamp => stamp <= now() + 5_000 && stamp > now() - DISPLAY_INVENTORY_TTL_MS;
-        if (!fresh(observed) || expires <= now() || expires > now() + DISPLAY_INVENTORY_TTL_MS
+        const receivedAt = now();
+        const fresh = stamp => stamp <= receivedAt + 5_000 && stamp > receivedAt - DISPLAY_INVENTORY_TTL_MS;
+        if (!fresh(observed) || expires <= receivedAt
             || report.targets.some(target => !fresh(Date.parse(target.observedAt)) || Date.parse(target.observedAt) > expires
                 || target.method === 'paired-browser'
                 || (target.method === 'windows-monitor' && report.sourceDevice.platform !== 'windows')
@@ -111,6 +112,9 @@ function createPresentationService({ db, now = Date.now, receiverOrigin = null, 
             for (const [id, stored] of inventories) if (Date.parse(stored.expiresAt) <= now()) inventories.delete(id);
             if (inventories.size >= maxDevices) throw presentationError('device_capacity', 429, 'Too many source devices are reporting displays.');
         }
+        // The contract bounds lifetime on the device clock. A permitted clock lead
+        // must not reject a fresh report or extend its server-side selection lease.
+        report.expiresAt = iso(Math.min(expires, receivedAt + DISPLAY_INVENTORY_TTL_MS));
         inventories.set(report.sourceDevice.id, clone(report));
         return clone(report);
     }

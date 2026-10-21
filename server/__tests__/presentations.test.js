@@ -162,6 +162,29 @@ test('inventory validates provenance, bounded targets, unique identity, timestam
     expect((await request(controller, '/api/presentations/inventory')).data).toEqual({ inventories: [inventory()] });
 });
 
+test.each([1, 1000, 5000])('Android inventory tolerates %i ms of clock lead without extending server freshness', async clockLead => {
+    const phone = { id: 'android-clock-test', name: 'Pixel 9 Pro', platform: 'android' };
+    const observedAt = iso(current + clockLead);
+    const body = inventory({ sourceDevice: phone, observedAt, expiresAt: iso(current + clockLead + 30_000),
+        targets: [{ ...inventory().targets[0], sourceDeviceId: phone.id, method: 'android-presentation', observedAt }] });
+    const accepted = await request(controller, '/api/presentations/inventory', { method: 'PUT', body });
+    expect(accepted.status).toBe(200);
+    expect(accepted.data.observedAt).toBe(observedAt);
+    expect(accepted.data.expiresAt).toBe(iso(current + 30_000));
+    expect((await request(controller, '/api/presentations/inventory')).data.inventories[0]).toEqual(accepted.data);
+    current += 30_000;
+    const expired = await request(controller, '/api/presentations/sessions', { method: 'POST', body: {
+        sourceDeviceId: phone.id, targetId: 'monitor-1', view: { kind: 'ambient' },
+    } });
+    expect(expired.status).toBe(409);
+    expect(expired.data.code).toBe('stale_inventory');
+});
+
+test('inventory still refuses a clock lead beyond the five-second allowance', async () => {
+    const body = inventory({ observedAt: iso(current + 5001), expiresAt: iso(current + 35_001) });
+    expect((await request(controller, '/api/presentations/inventory', { method: 'PUT', body })).status).toBe(400);
+});
+
 test('target selection refuses ambiguous names, unavailable targets, stale inventory and wrong view capabilities', async () => {
     const attempt = targetId => request(controller, '/api/presentations/sessions', { method: 'POST', body: { sourceDeviceId: source.id, targetId, view: { kind: 'ambient' } } });
     await request(controller, '/api/presentations/inventory', { method: 'PUT', body: inventory({ targets: [inventory().targets[0], { ...inventory().targets[0], id: 'monitor-2' }] }) });

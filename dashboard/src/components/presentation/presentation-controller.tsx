@@ -48,9 +48,11 @@ export function TravelPresentationLauncher() {
   const refresh = useCallback(async () => {
     const result = await requestNativeDisplay({ action: 'discover' });
     const next = DisplayInventorySchema.parse(result.inventory);
-    await presentationRequest(`${api}/inventory`, { method: 'PUT', body: JSON.stringify(next) });
+    // Keep the phone's observed capabilities visible even if the service is unavailable.
+    // Starting still awaits this registration and server authorization on every attempt.
     inventoryRef.current = next; setInventory(next);
     setSelection(current => next.targets.some(target => target.id === current) ? current : '');
+    await presentationRequest(`${api}/inventory`, { method: 'PUT', body: JSON.stringify(next) });
     const [listed, config] = await Promise.all([
       presentationRequest<{ sessions: PresentationSession[] }>(`${api}/sessions`),
       presentationRequest<{ receiverOrigin: string | null }>(`${api}/config`),

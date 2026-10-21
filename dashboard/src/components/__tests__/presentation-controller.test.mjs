@@ -98,3 +98,34 @@ test('backgrounding during pairing revokes the returned session even when the fo
     assert.ok(requests.some(r => r.method === 'DELETE' && r.url.endsWith('/paired-during-background')));
   } finally { await act(async () => root.unmount()); div.remove(); globalThis.fetch = originalFetch; delete window.__NEXUS_DISPLAYS__; delete window.ReactNativeWebView; }
 });
+
+
+test('native discovery remains visible when publication fails, but presenting still requires server acceptance', async () => {
+  const originalFetch = globalThis.fetch;
+  window.__NEXUS_DISPLAYS__ = { version: 1, platform: 'android' };
+  const now = new Date(), commands = [], requests = [];
+  const sourceDevice = { id: 'phone-offline', name: 'Pixel 9 Pro', platform: 'android' };
+  const inventory = { version: 1, sourceDevice, observedAt: now.toISOString(), expiresAt: new Date(+now + 30000).toISOString(), status: 'available',
+    limitations: ['Google Cast is not configured for this build.'], targets: [{ id: 'display-2', name: 'Attached screen', sourceDeviceId: sourceDevice.id,
+      method: 'android-presentation', availability: 'available', observedAt: now.toISOString(), capabilities: ['ambient'], limitations: [] }] };
+  window.ReactNativeWebView = { postMessage: raw => {
+    const { command } = JSON.parse(raw); commands.push(command.action);
+    window.dispatchEvent(new window.CustomEvent('nexus:display-result', { detail: { requestId: command.requestId, ok: true, inventory } }));
+  } };
+  globalThis.fetch = async url => {
+    requests.push(url);
+    return Response.json({ error: 'The display service is unavailable.' }, { status: 503 });
+  };
+  const div = document.createElement('div'); document.body.append(div); const root = createRoot(div);
+  try {
+    await act(async () => root.render(createElement(TravelPresentationLauncher)));
+    await act(async () => div.querySelector('button').click());
+    assert.ok(document.body.textContent.includes('Source: Pixel 9 Pro'));
+    assert.ok(document.body.textContent.includes('Google Cast is not configured for this build.'));
+    assert.equal(document.querySelector('[role="alert"]').textContent, 'The display service is unavailable.');
+    await act(async () => document.querySelector('input[value="display-2"]').click());
+    await act(async () => [...document.querySelectorAll('button')].find(b => b.textContent === 'Present on selected display').click());
+    assert.ok(!commands.includes('start'));
+    assert.ok(requests.every(url => url.endsWith('/inventory')));
+  } finally { await act(async () => root.unmount()); div.remove(); globalThis.fetch = originalFetch; delete window.__NEXUS_DISPLAYS__; delete window.ReactNativeWebView; }
+});
