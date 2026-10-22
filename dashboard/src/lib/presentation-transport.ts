@@ -15,7 +15,12 @@ export async function presentationRequest<T>(url: string, init: RequestInit = {}
     });
     if (!response.ok) {
       const body = await response.json().catch(() => null);
-      throw new Error(response.status === 401 || response.status === 403 ? (token ? 'Presentation access ended. Pair this display again from the controller.' : 'The session is no longer authorized. Sign in on the controller and start again.') : body?.error || 'Presentation ended or is unavailable.');
+      const denied = response.status === 401 || response.status === 403;
+      // The service's error code rides on the thrown Error so a relay can report it verbatim; the message stays for people.
+      throw Object.assign(
+        new Error(denied ? (token ? 'Presentation access ended. Pair this display again from the controller.' : 'The session is no longer authorized. Sign in on the controller and start again.') : body?.error || 'Presentation ended or is unavailable.'),
+        { code: typeof body?.code === 'string' && body.code ? body.code : denied ? 'operator_required' : `http_${response.status}` },
+      );
     }
     if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('The presentation service did not return data. Check the controller sign-in and receiver address.');
     return await response.json() as T;

@@ -89,7 +89,16 @@ export function TravelPresentationLauncher() {
       setView(parsed.data); setOpen(true); void perform(async () => { await refresh(); });
     };
     window.addEventListener('nexus:present-document', present);
-    return () => window.removeEventListener('nexus:present-document', present);
+    // Chat-directed discovery (lib/presentation-chat-relay) publishes the list it
+    // registered, so this panel's heartbeat loop also keeps chat-started sessions
+    // alive and revokes them on background. A controller gesture started that scan.
+    const adopt = (event: Event) => {
+      const parsed = DisplayInventorySchema.safeParse((event as CustomEvent).detail);
+      if (!parsed.success) return;
+      suspended.current = false; inventoryRef.current = parsed.data; setInventory(parsed.data);
+    };
+    window.addEventListener('nexus:display-inventory', adopt);
+    return () => { window.removeEventListener('nexus:present-document', present); window.removeEventListener('nexus:display-inventory', adopt); };
   }, [perform, refresh, android]);
 
   useEffect(() => {

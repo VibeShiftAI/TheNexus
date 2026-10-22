@@ -28,6 +28,7 @@ import { noteChatSend } from "@/hooks/use-chat-activity";
 import { readPraxisEventStream } from "@/lib/read-praxis-event-stream";
 import { useCortex } from "@/components/cortex-provider";
 import { dispatchMorningKickoff } from "@/components/bridge/bridge-fx";
+import { executeDisplayDirective, parseDisplayDirective, renderDisplayReport } from "@/lib/presentation-chat-relay";
 import { useChatAudio } from "@/hooks/use-chat-audio";
 import { useChatHistory, messageKey } from "@/hooks/use-chat-history";
 import { useFileAttachments } from "@/hooks/use-file-attachments";
@@ -264,6 +265,33 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         }
     };
 
+    // Display commands: a Praxis reply may end with ONE bounded directive
+    // (<!-- praxis-display-command ... -->) that this signed-in shell runs with
+    // the operator's own session (discover, start, stop, status). The outcome
+    // goes back as the next chat turn, PRAXIS_DISPLAY_REPORT, which Praxis
+    // reads and answers in plain words. Outside the Windows/Android shell the
+    // report says so; nothing is launched from a browser tab.
+    const relayDisplayDirective = (assistantText: string | undefined) => {
+        const directive = parseDisplayDirective(assistantText);
+        if (!directive) return;
+        void (async () => {
+            const report = await executeDisplayDirective(directive);
+            const reportText = renderDisplayReport(report);
+            const reportMessageId = createClientMessageId();
+            setMessages(prev => [...prev, {
+                id: reportMessageId,
+                role: 'user',
+                content: reportText,
+                timestamp: new Date(),
+                metadata: { displayReport: { action: directive.action, ok: report.ok, code: report.code } },
+            }]);
+            noteChatSend(reportMessageId, 'sending', { conversationId, preview: `Display ${directive.action}: ${report.ok ? 'done' : report.code || 'failed'}` });
+            setTurnStatus('Reporting the display result to Praxis…');
+            setLoading(true);
+            await runSend(reportText, reportMessageId, [], null);
+        })();
+    };
+
     const runSend = async (text: string, clientMessageId: string, filesToUpload: File[], currentAudioBlob: Blob | null) => {
         try {
             const authHeader = await getAuthHeader();
@@ -434,6 +462,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     return [...withoutStreaming, finalMessage];
                 });
                 if (finalEvent?.morningKickoff) dispatchMorningKickoff();
+                relayDisplayDirective(finalMessage.content);
                 noteReplyOutcome(clientMessageId, finalEvent);
                 return;
             }
@@ -456,6 +485,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 return [...prev, assistantMessage];
             });
             if (data.morningKickoff) dispatchMorningKickoff();
+            relayDisplayDirective(assistantMessage.content);
             noteReplyOutcome(clientMessageId, data);
         } catch (error: any) {
             noteChatSend(clientMessageId,'failed',{detail:error?.message || 'Reply could not be confirmed'});
