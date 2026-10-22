@@ -11,8 +11,11 @@
  *
  * Ids and a hash only: never document content, never a URL or credential.
  * localStorage is the carrier because the chat and the review are different
- * routes of the same app; an entry goes stale after a short window and is
- * removed when the review unmounts, so a closed document is not "open".
+ * routes of the same app: in the single-webview shells the review has already
+ * unmounted when Robert asks from the chat route, so the entry outlives the
+ * page and is bounded by time instead. It ages out 30 minutes after the review
+ * last published it, is replaced by the next review opened, and Praxis drops
+ * its own note of it as soon as a turn arrives without one.
  */
 export const OPEN_DOCUMENT_STORAGE_KEY = 'nexus:open-document';
 /** An entry older than this is not offered; the review page refreshes it while mounted. */
