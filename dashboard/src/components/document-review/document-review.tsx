@@ -26,6 +26,7 @@
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { PresentDocumentButton } from "@/components/presentation/presentation-controller";
+import { OPEN_DOCUMENT_REFRESH_MS, forgetOpenDocument, rememberOpenDocument } from "@/lib/presentation-open-document";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import {
@@ -542,6 +543,20 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     };
 
     const shownRevisionId = shownRevision?.id ?? null;
+    // Chat-directed presenting (lib/presentation-open-document): while this review is on
+    // screen, publish the exact revision shown (ids and hash only) so "display this document"
+    // in the Praxis chat pins it; cleared when the review unmounts or the revision changes.
+    const shownContentHash = shownRevision?.content_hash ?? null;
+    const openDocumentId = doc?.id ?? null;
+    const openDocumentTitle = doc?.title ?? null;
+    useEffect(() => {
+        if (!openDocumentId || !shownRevisionId || !shownContentHash) return;
+        const publish = () => rememberOpenDocument({ documentId: openDocumentId, revisionId: shownRevisionId, contentHash: shownContentHash, ...(openDocumentTitle ? { title: openDocumentTitle } : {}) });
+        publish();
+        const timer = window.setInterval(publish, OPEN_DOCUMENT_REFRESH_MS);
+        window.addEventListener("focus", publish);
+        return () => { window.clearInterval(timer); window.removeEventListener("focus", publish); forgetOpenDocument(openDocumentId); };
+    }, [openDocumentId, shownRevisionId, shownContentHash, openDocumentTitle]);
     const openComposer = (next: Omit<Composer, "clientId" | "text" | "saving" | "revisionId"> & { text?: string }) => {
         setComposer(() => ({ clientId: newClientId(), saving: false, revisionId: shownRevisionId, ...next, text: next.text ?? "" }));
         if (reviewOpen) { reopenDrawer.current = true; setReviewOpen(false); }

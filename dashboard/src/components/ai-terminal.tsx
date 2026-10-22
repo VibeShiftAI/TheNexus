@@ -28,7 +28,8 @@ import { noteChatSend } from "@/hooks/use-chat-activity";
 import { readPraxisEventStream } from "@/lib/read-praxis-event-stream";
 import { useCortex } from "@/components/cortex-provider";
 import { dispatchMorningKickoff } from "@/components/bridge/bridge-fx";
-import { executeDisplayDirective, parseDisplayDirective, renderDisplayReport } from "@/lib/presentation-chat-relay";
+import { executeDisplayDirective, readIssuedDirective, renderDisplayReport } from "@/lib/presentation-chat-relay";
+import { currentOpenDocument } from "@/lib/presentation-open-document";
 import { useChatAudio } from "@/hooks/use-chat-audio";
 import { useChatHistory, messageKey } from "@/hooks/use-chat-history";
 import { useFileAttachments } from "@/hooks/use-file-attachments";
@@ -265,15 +266,12 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         }
     };
 
-    // Display commands: a Praxis reply may end with ONE bounded directive
-    // (<!-- praxis-display-command ... -->) that this signed-in shell runs with
-    // the operator's own session (discover, start, stop, status). The outcome
-    // goes back as the next chat turn, PRAXIS_DISPLAY_REPORT, which Praxis
-    // reads and answers in plain words. Outside the Windows/Android shell the
-    // report says so; nothing is launched from a browser tab.
-    const relayDisplayDirective = (assistantText: string | undefined) => {
-        const directive = parseDisplayDirective(assistantText);
-        if (!directive) return;
+    // Display commands: only a reply's structured `displayDirective` field (never its text) is run,
+    // once, with the operator's own session; the PRAXIS_DISPLAY_REPORT turn that follows may carry
+    // one follow-up directive (a stop for a cancelled start), no deeper. lib/presentation-chat-relay.
+    const relayDisplayDirective = (reply: { displayDirective?: unknown } | null | undefined, depth: number) => {
+        const directive = readIssuedDirective(reply?.displayDirective);
+        if (!directive || depth >= 2) return;
         void (async () => {
             const report = await executeDisplayDirective(directive);
             const reportText = renderDisplayReport(report);
@@ -288,11 +286,11 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
             noteChatSend(reportMessageId, 'sending', { conversationId, preview: `Display ${directive.action}: ${report.ok ? 'done' : report.code || 'failed'}` });
             setTurnStatus('Reporting the display result to Praxis…');
             setLoading(true);
-            await runSend(reportText, reportMessageId, [], null);
+            await runSend(reportText, reportMessageId, [], null, depth + 1);
         })();
     };
 
-    const runSend = async (text: string, clientMessageId: string, filesToUpload: File[], currentAudioBlob: Blob | null) => {
+    const runSend = async (text: string, clientMessageId: string, filesToUpload: File[], currentAudioBlob: Blob | null, relayDepth = 0) => {
         try {
             const authHeader = await getAuthHeader();
 
@@ -368,6 +366,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 audio: base64Audio, // Include base64 voice recording if any
                 attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined, // Uploaded file refs
                 stream: canStreamPraxis,
+                ...((open => open ? { displayContext: { document: open } } : {})(currentOpenDocument())), // the review on screen pins "this document"
             });
 
             for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -462,7 +461,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                     return [...withoutStreaming, finalMessage];
                 });
                 if (finalEvent?.morningKickoff) dispatchMorningKickoff();
-                relayDisplayDirective(finalMessage.content);
+                relayDisplayDirective(finalEvent, relayDepth);
                 noteReplyOutcome(clientMessageId, finalEvent);
                 return;
             }
@@ -485,7 +484,7 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
                 return [...prev, assistantMessage];
             });
             if (data.morningKickoff) dispatchMorningKickoff();
-            relayDisplayDirective(assistantMessage.content);
+            relayDisplayDirective(data, relayDepth);
             noteReplyOutcome(clientMessageId, data);
         } catch (error: any) {
             noteChatSend(clientMessageId,'failed',{detail:error?.message || 'Reply could not be confirmed'});

@@ -50,6 +50,22 @@ function wantsEventStream(req) {
 
 const validTurnKey = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,160}$/.test(value);
 
+// ── Display relay fields (Praxis docs/reviews/travel-display-commands.md) ──
+// A chat-directed display command is answered by Praxis with ONE structured
+// `displayDirective` field on the reply (JSON body and the SSE final event).
+// It is passed through as an object only, never folded into the reply text,
+// so the dashboard executes an issued field and never assistant prose. The
+// other direction: an operator turn may carry `displayContext.document`, the
+// document the signed-in app has open (ids and a hash only). It is forwarded
+// only for authenticated operator turns and only as a plain object.
+const plainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+function displayDirectiveOf(data) {
+    return plainObject(data?.displayDirective) ? { displayDirective: data.displayDirective } : {};
+}
+function displayContextOf(body, isOperatorTurn) {
+    return isOperatorTurn && plainObject(body?.displayContext) ? { displayContext: body.displayContext } : {};
+}
+
 /** Same exact user turn, same archived reply across stream reconnects/restarts. */
 async function saveRelayReply(db, message, clientMessageId) {
     if (!validTurnKey(clientMessageId)) return { row: await db.saveChatMessage(message), inserted: true };
@@ -80,6 +96,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
     let voiceData = [];
     let suppressVoice = false;
     let morningKickoff = false;
+    let displayDirective = {};
     let finalized = false;
     let outcome = {};
 
@@ -119,6 +136,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
             voiceData = Array.isArray(event.voiceData) ? event.voiceData : [];
             suppressVoice = event.suppressVoice === true;
             morningKickoff = event.morningKickoff === true;
+            displayDirective = displayDirectiveOf(event);
             outcome = praxisTurnOutcome(event);
         }
 
@@ -182,6 +200,7 @@ async function writePraxisStreamToClient({ praxisResponse, res, db, io, conversa
         voiceData,
         ...(suppressVoice ? { suppressVoice: true } : {}),
         morningKickoff,
+        ...displayDirective,
     };
     res.write(`data: ${JSON.stringify(payload)}\n\n`);
     res.write('data: [DONE]\n\n');
@@ -339,7 +358,7 @@ function createAIChatRouter({ db, io }) {
             body: JSON.stringify({ message: relayMessage,
                 idempotency_key: body.clientMessageId,
                 history: body.history, projectId: body.projectId, audio: body.audio, voiceConversation: body.voiceConversation === true,
-                attachments: body.attachments, conversationContext }),
+                attachments: body.attachments, conversationContext, ...displayContextOf(body, operatorTurns.has(body)) }),
             timeoutMs: getPraxisChatTimeoutMs(), dispatcher: getPraxisChatDispatcher(),
         });
         if (!response.ok) throw new Error(`Praxis returned ${response.status}`);
@@ -436,7 +455,8 @@ function createAIChatRouter({ db, io }) {
                 audio,
                 attachments: attachments || undefined,
                 ...(isAgentMode ? { agentMode: true } : {}),
-                ...(canStream ? { stream: true } : {})
+                ...(canStream ? { stream: true } : {}),
+                ...displayContextOf(req.body, operatorTurns.has(req.body)),
             };
             const fetchPraxis = async () => {
                 const praxisResponse = await praxisFetch('/api/chat', {
@@ -515,7 +535,7 @@ function createAIChatRouter({ db, io }) {
                 const failed = praxisTurnFailed(data);
                 activity.update(activityId,failed || !assistantMessageId ? 'failed' : 'completed',
                     failed ? data.error || data.state : assistantMessageId ? undefined : 'Praxis replied, but Nexus could not save the reply to conversation history.',activityAttempt);
-                return { response: fullResponse, ...praxisTurnOutcome(data), model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, historySaved: !!assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData, ...(data.suppressVoice === true ? { suppressVoice: true } : {}), morningKickoff: data.morningKickoff === true };
+                return { response: fullResponse, ...praxisTurnOutcome(data), model: 'praxis-agent', provider: 'Praxis', mode: 'praxis', conversationId, assistantMessageId, historySaved: !!assistantMessageId, isThinking: false, tokenUsage: { total: 0 }, artifacts: data.artifacts || [], voiceData: data.voiceData, ...(data.suppressVoice === true ? { suppressVoice: true } : {}), morningKickoff: data.morningKickoff === true, ...displayDirectiveOf(data) };
             })();
 
             if (joinable) rememberChatRun(clientMessageId, runPromise);

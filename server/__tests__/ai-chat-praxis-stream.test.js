@@ -69,6 +69,39 @@ describe('AI chat Praxis token streaming', () => {
     jest.resetModules();
   });
 
+  it('passes a structured displayDirective through the final frame only, and drops one that is not an object', async () => {
+    const directive = { version: 1, requestId: 'req-stream-1', action: 'discover', issuedAt: '2026-10-22T14:00:00.000Z', expiresAt: '2026-10-22T14:00:45.000Z', timeoutMs: 20000 };
+    const relay = async (finalEvent) => {
+      global.fetch = jest.fn().mockResolvedValue(streamResponse([
+        'data: {"type":"delta","delta":"Asking your signed-in Nexus app to look for displays now."}\n\n',
+        `data: ${JSON.stringify({ type: 'final', response: 'Asking your signed-in Nexus app to look for displays now.', voiceData: [], ...finalEvent })}\n\n`,
+        'data: [DONE]\n\n',
+      ]));
+      const db = createDbStub();
+      const createAIChatRouter = require('../routes/ai-chat');
+      const app = express();
+      app.use(express.json());
+      app.use('/api/ai/chat', createAIChatRouter({ db, callAI: jest.fn(), io: { emit: jest.fn() } }));
+      handle = await listen(app);
+      const res = await originalFetch(`${handle.baseUrl}/api/ai/chat`, {
+        method: 'POST', headers: { Accept: 'text/event-stream', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'praxis', message: 'show me the displays', history: [] }),
+      });
+      const frames = (await res.text()).split(/\n\n/).filter(f => f.startsWith('data: ') && f !== 'data: [DONE]').map(f => JSON.parse(f.slice(6)));
+      await close(handle); handle = null; jest.resetModules();
+      return { frames, saved: db.saveChatMessage.mock.calls.at(-1)[0] };
+    };
+    const issued = await relay({ displayDirective: directive });
+    const final = issued.frames.find(f => f.type === 'final');
+    expect(final.displayDirective).toEqual(directive);
+    expect(issued.frames.filter(f => f.type === 'delta').every(f => f.displayDirective === undefined && !String(f.delta).includes('requestId'))).toBe(true);
+    expect(final.response).not.toContain('praxis-display-command');
+    expect(issued.saved.content).not.toContain('requestId');
+
+    const prose = await relay({ displayDirective: JSON.stringify(directive) });
+    expect(prose.frames.find(f => f.type === 'final').displayDirective).toBeUndefined();
+  });
+
   it('streams Praxis deltas to the browser and persists one final assistant message', async () => {
     global.fetch = jest.fn().mockResolvedValue(streamResponse([
       'data: {"type":"delta","delta":"hello "}\n\n',

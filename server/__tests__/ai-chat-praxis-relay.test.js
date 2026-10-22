@@ -71,6 +71,29 @@ describe('AI chat Praxis relay', () => {
         expect(db.saveChatMessage.mock.calls.at(-1)[0].metadata.suppressVoice).toBe(true);
     });
 
+    test('a structured displayDirective passes through the JSON reply as an object only, outside the reply text', async () => {
+        const directive = { version: 1, requestId: 'req-1', action: 'discover', issuedAt: '2026-10-22T14:00:00.000Z', expiresAt: '2026-10-22T14:00:45.000Z', timeoutMs: 20000 };
+        global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ response: 'Asking your signed-in Nexus app to look for displays now.', displayDirective: directive }) }));
+        const db = createDb(); await mount(db);
+        const response = await post({ message: 'show me the displays', mode: 'praxis' });
+        expect(response.body.displayDirective).toEqual(directive);
+        expect(response.body.response).not.toContain('praxis-display-command');
+        expect(db.saveChatMessage.mock.calls.at(-1)[0].content).not.toContain('requestId');
+
+        global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ response: 'Nothing to run.', displayDirective: JSON.stringify(directive) }) }));
+        const prose = await post({ message: 'show me the displays again', mode: 'praxis', clientMessageId: 'string-directive' });
+        expect(prose.body.displayDirective).toBeUndefined();
+    });
+
+    test('displayContext is not forwarded to Praxis for a turn without operator identity', async () => {
+        global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ response: 'ok' }) }));
+        await mount(createDb());
+        await post({ message: 'display this document on the Living Room TV', mode: 'praxis', displayContext: { document: { documentId: 'doc', revisionId: 'rev', contentHash: 'a'.repeat(64) } } });
+        const praxisPayload = JSON.parse(global.fetch.mock.calls[0][1].body);
+        expect(praxisPayload.displayContext).toBeUndefined();
+        expect(praxisPayload.message).toBe('display this document on the Living Room TV');
+    });
+
     test('every mode relays to Praxis — including legacy "chat"', async () => {
         global.fetch = jest.fn(async () => ({
             ok: true,

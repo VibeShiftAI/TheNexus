@@ -358,6 +358,35 @@ describe('the chat relay signs what it forwards', () => {
         expect(JSON.stringify(call.init)).not.toContain(token);
     });
 
+    test('an authenticated turn forwards the open document as displayContext, an object only; an unsigned turn does not', async () => {
+        process.env.PRAXIS_OPERATOR_KEY = KEY;
+        global.fetch = jest.fn(async () => ({ ok: true, body: new ReadableStream({
+            start(controller) {
+                controller.enqueue(new TextEncoder().encode('data: {"type":"final","response":"Noted."}\n\ndata: [DONE]\n\n'));
+                controller.close();
+            },
+        }) }));
+        await mount();
+        const token = access.token({ identity_nonce: 'test-session', country: 'US' });
+        const document = { documentId: 'doc-open-1', revisionId: 'rev-open-1', contentHash: 'c'.repeat(64), title: 'Open review' };
+        const sendWith = (headers, clientMessageId, displayContext) => nativeFetch(base, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', Authorization: 'Bearer local-dev-token', ...headers },
+            body: JSON.stringify({ message: 'display this document on the Living Room TV', mode: 'praxis', history: [], clientMessageId, stream: true, displayContext }),
+        });
+        expect((await sendWith({ 'Cf-Access-Jwt-Assertion': token }, 'ctx-signed', { document })).status).toBe(200);
+        const signed = relayed(0);
+        expect(signed.payload.displayContext).toEqual({ document });
+        expectVerifiable(signed, 'nexus-chat-turn');
+
+        expect((await sendWith({}, 'ctx-unsigned', { document })).status).toBe(200);
+        const unsigned = relayed(1);
+        expect(unsigned.payload.displayContext).toBeUndefined();
+        expect(unsigned.header).toBeUndefined();
+
+        expect((await sendWith({ 'Cf-Access-Jwt-Assertion': token }, 'ctx-string', JSON.stringify({ document }))).status).toBe(200);
+        expect(relayed(2).payload.displayContext).toBeUndefined();
+    });
+
     test.each([false, true])('async=%s an authenticated turn never lends authority to the next unsigned body', async asyncMode => {
         process.env.PRAXIS_OPERATOR_KEY = KEY;
         global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ response: 'ordinary reply' }) }));

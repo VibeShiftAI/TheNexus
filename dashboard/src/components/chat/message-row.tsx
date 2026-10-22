@@ -28,6 +28,24 @@ import type {
 } from "@/components/cortex-provider";
 import type { ChatAudioItem } from "@/lib/chat-audio";
 
+/**
+ * A shell display report (the PRAXIS_DISPLAY_REPORT turn the relay sends back
+ * to Praxis) reads as one activity line: action and outcome, never the raw
+ * inventory or session JSON. Works for the live message (metadata) and for a
+ * reloaded transcript (content prefix).
+ */
+const DISPLAY_REPORT_LINE = 'PRAXIS_DISPLAY_REPORT ';
+function displayReportSummary(msg: Message): string | null {
+    const meta = msg.metadata?.displayReport as { action?: unknown; ok?: unknown; code?: unknown } | undefined;
+    const line = (action: unknown, ok: unknown, code: unknown) => `Display ${typeof action === 'string' ? action : 'report'}: ${ok === true ? 'done' : typeof code === 'string' && code ? code.replaceAll('_', ' ') : 'failed'}`;
+    if (meta && typeof meta.action === 'string') return line(meta.action, meta.ok, meta.code);
+    if (typeof msg.content !== 'string' || !msg.content.startsWith(DISPLAY_REPORT_LINE)) return null;
+    try {
+        const report = JSON.parse(msg.content.slice(DISPLAY_REPORT_LINE.length)) as { action?: unknown; ok?: unknown; code?: unknown };
+        return line(report.action, report.ok, report.code);
+    } catch { return 'Display report'; }
+}
+
 export interface MessageRowProps {
     msg: Message;
     rowKey: string;
@@ -89,6 +107,13 @@ export function MessageRow({
     playNextQueuedVoice,
     saveVoiceMemo,
 }: MessageRowProps) {
+    const displayReport = displayReportSummary(msg);
+    if (displayReport) return (
+        <div key={rowKey} data-message-row="display-report" className="flex items-center gap-2 py-1 px-2" title="Sent to Praxis by this device's display relay">
+            <div className="w-3 h-3 flex items-center justify-center flex-shrink-0"><div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50" /></div>
+            <span className="text-xs text-slate-400">{displayReport}</span>
+        </div>
+    );
     return msg.role === 'system' ? (
         /* Multi-line / pre-formatted system events (e.g. [MORNING PLAN])
            render as a card with markdown. Single-line events stay compact. */

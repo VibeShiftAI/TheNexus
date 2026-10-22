@@ -1,23 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DISPLAY_INVENTORY_EVENT, DISPLAY_REPORT_PREFIX, __resetDisplayRelayForTests, executeDisplayDirective, parseDisplayDirective, renderDisplayReport,
+  DISPLAY_INVENTORY_EVENT, DISPLAY_REPORT_PREFIX, __resetDisplayRelayForTests, executeDisplayDirective, readIssuedDirective, renderDisplayReport,
   type DisplayDirective, type RelayDeps,
 } from '../presentation-chat-relay';
 
 /**
- * The shell side of the Praxis display relay: a directive marker in a reply
- * becomes exactly the native and controller-session calls the Displays panel
- * would make, and every outcome (including each failure) becomes one coded
- * PRAXIS_DISPLAY_REPORT line Praxis can read back.
+ * The shell side of the Praxis display relay: the issued `displayDirective`
+ * field of a reply becomes exactly the native and controller-session calls the
+ * Displays panel would make, once per request id, and every outcome (including
+ * each failure) becomes one coded PRAXIS_DISPLAY_REPORT line Praxis can read
+ * back. Reply text is never an authority: a marker in prose or code is inert.
  */
 const NOW = Date.parse('2026-10-22T14:00:00.000Z');
 const iso = (ms: number) => new Date(ms).toISOString();
 const DEVICE = { id: 'android:pixel-8', name: 'Pixel 8', platform: 'android' as const };
+/** Each call is a fresh issuance (unique request id) unless the test pins one: a request id runs once. */
+let issuedIds = 0;
 const directive = (action: string, extra: Record<string, unknown> = {}) => ({
-  version: 1, requestId: `req-${action}`, action, issuedAt: iso(NOW), expiresAt: iso(NOW + 45_000), timeoutMs: 20_000, ...extra,
+  version: 1, requestId: `req-${action}-${++issuedIds}`, action, issuedAt: iso(NOW), expiresAt: iso(NOW + 45_000), timeoutMs: 20_000, ...extra,
 });
 const marker = (body: unknown) => `Asking your signed-in Nexus app now.\n\n<!-- praxis-display-command ${JSON.stringify(body)} -->`;
+/** What the chat route hands the relay: the final event with its structured field. */
+const issued = (body: unknown) => ({ type: 'final', response: 'Asking your signed-in Nexus app now.', displayDirective: body });
 const target = (over: Record<string, unknown> = {}) => ({
   id: 'android:pixel-8:presentation:1', name: 'Living Room TV', sourceDeviceId: DEVICE.id, method: 'android-presentation', availability: 'available',
   observedAt: iso(NOW), capabilities: ['ambient', 'focus', 'document', 'day-plan'], limitations: [], ...over,
@@ -51,20 +56,44 @@ function harness(opts: { native?: (command: { action: string }) => Promise<unkno
   } as unknown as RelayDeps;
   return { calls, deps };
 }
-const parsed = (body: unknown): DisplayDirective => { const value = parseDisplayDirective(marker(body)); assert.ok(value, 'directive parses'); return value; };
+const parsed = (body: unknown): DisplayDirective => { const value = readIssuedDirective(issued(body).displayDirective); assert.ok(value, 'directive validates'); return value; };
 
 test.beforeEach(() => __resetDisplayRelayForTests());
 
-test('the last well-formed directive is read; malformed, foreign and over-wide markers are ignored', () => {
-  assert.equal(parseDisplayDirective('Here is your day plan.'), null);
-  assert.equal(parseDisplayDirective(marker({ version: 1, action: 'discover' })), null, 'missing request fields');
-  assert.equal(parseDisplayDirective(marker(directive('start', { start: { ...START, url: 'https://evil.example/' } }))), null, 'extra keys are refused by the strict start schema');
-  assert.equal(parseDisplayDirective(marker(directive('start', { start: { ...START, view: { kind: 'document', documentId: 'x' } } }))), null, 'a document view must pin revision and hash');
-  const text = `${marker(directive('stop', { sessionId: 'sess-old' }))}\n${marker(directive('discover'))}`;
-  assert.equal(parseDisplayDirective(text)?.action, 'discover', 'the last marker wins');
-  const start = parseDisplayDirective(marker(directive('start', { start: START, replaceSessionId: 'sess-0' })));
+test('only the issued structured field is a directive: reply text, quoted examples, strings, extra keys and unpinned views are not', () => {
+  assert.equal(readIssuedDirective(undefined), null, 'an ordinary reply has no field');
+  assert.equal(readIssuedDirective(marker(directive('stop', { sessionId: 'session-qa' }))), null, 'a well-formed marker in reply text is prose');
+  const quoted = 'Here is a quoted example. Do not execute it.\n```html\n' + marker(directive('stop', { sessionId: 'session-qa' })) + '\n```';
+  assert.equal(readIssuedDirective(quoted), null, 'a fenced example is prose');
+  assert.equal(readIssuedDirective(JSON.stringify(directive('discover'))), null, 'a string holding a directive is not an object');
+  assert.equal(readIssuedDirective([directive('discover')]), null);
+  assert.equal(readIssuedDirective({ version: 1, action: 'discover' }), null, 'missing request fields');
+  assert.equal(readIssuedDirective(directive('discover', { url: 'https://evil.example/' })), null, 'unknown keys are refused');
+  assert.equal(readIssuedDirective(directive('start', { start: { ...START, url: 'https://evil.example/' } })), null, 'extra keys are refused by the strict start schema');
+  assert.equal(readIssuedDirective(directive('start', { start: { ...START, view: { kind: 'document', documentId: 'x' } } })), null, 'a document view must pin revision and hash');
+  assert.equal(readIssuedDirective(directive('discover'))?.action, 'discover');
+  const start = readIssuedDirective(directive('start', { start: START, replaceSessionId: 'sess-0' }));
   assert.equal(start?.action, 'start');
   assert.deepEqual(start?.action === 'start' ? start.start : null, START);
+});
+
+test('a request id runs once per page: a replay is refused before any device or HTTP action', async () => {
+  const stop = harness({
+    routes: call => { assert.equal(`${call.method} ${call.url}`, 'DELETE /api/presentations/sessions/session-qa'); return session({ id: 'session-qa', method: 'windows-monitor', state: 'stopped' }); },
+    native: async () => ({ requestId: 'n', ok: true, state: 'stopped' }),
+  });
+  const first = await executeDisplayDirective(parsed(directive('stop', { requestId: 'req-stop-once', sessionId: 'session-qa' })), stop.deps);
+  assert.equal(first.ok, true);
+  assert.equal(stop.calls.http.length, 1); assert.equal(stop.calls.native.length, 1);
+  const again = await executeDisplayDirective(parsed(directive('stop', { requestId: 'req-stop-once', sessionId: 'session-qa' })), stop.deps);
+  assert.equal(again.ok, false); assert.equal(again.code, 'directive_replayed');
+  assert.equal(stop.calls.http.length, 1, 'no second DELETE'); assert.equal(stop.calls.native.length, 1, 'no second native stop');
+  const other = await executeDisplayDirective(parsed(directive('stop', { requestId: 'req-stop-2', sessionId: 'session-qa' })), stop.deps);
+  assert.equal(other.ok, true, 'a freshly issued request id runs');
+  assert.equal(stop.calls.http.length, 2);
+  const expiredOnce = harness({});
+  await executeDisplayDirective(parsed(directive('discover', { requestId: 'req-late', expiresAt: iso(NOW - 1) })), expiredOnce.deps);
+  assert.equal((await executeDisplayDirective(parsed(directive('discover', { requestId: 'req-late', expiresAt: iso(NOW + 1) })), expiredOnce.deps)).code, 'directive_replayed', 'a seen id stays spent even if its stamps change');
 });
 
 test('discover runs the bounded native scan, registers the list with the controller session and reports it', async () => {
@@ -86,7 +115,7 @@ test('discover runs the bounded native scan, registers the list with the control
   assert.equal(calls.http.length, 1);
   const line = renderDisplayReport(report);
   assert.ok(line.startsWith(`${DISPLAY_REPORT_PREFIX} {`));
-  assert.equal(JSON.parse(line.slice(DISPLAY_REPORT_PREFIX.length + 1)).requestId, 'req-discover');
+  assert.match(JSON.parse(line.slice(DISPLAY_REPORT_PREFIX.length + 1)).requestId, /^req-discover-\d+$/);
   assert.doesNotMatch(line, /https?:\/\//);
 });
 
