@@ -42,7 +42,7 @@ test('a marker quoted in reply text is never executed and no report is sent', as
     ? sse({ assistantMessageId: 'a-1', response: quotedMarker })
     : Response.json({}));
   await send(t, 'what does a directive look like');
-  for (let i = 0; i < 10; i++) await tick();
+  await act(async () => { for (let i = 0; i < 10; i++) await tick(); });
   const calls = chatCalls(fetchMock as never);
   assert.equal(calls.length, 1, 'one send, no report turn');
   assert.ok(!cortexTestStore.messages.some((m: any) => typeof m.content === 'string' && m.content.startsWith('PRAXIS_DISPLAY_REPORT')), 'no PRAXIS_DISPLAY_REPORT message was composed');
@@ -59,7 +59,10 @@ test('an issued displayDirective field runs once and its report goes back as the
       : sse({ assistantMessageId: 'a-2', response: 'Asking your signed-in Nexus app to look for displays now.', displayDirective: directive });
   });
   await send(t, 'show me the displays');
-  for (let i = 0; i < 40 && chatCalls(fetchMock as never).length < 2; i++) await act(async () => { await tick(); });
+  await act(async () => {
+    for (let i = 0; i < 40 && chatCalls(fetchMock as never).length < 2; i++) await tick();
+    for (let i = 0; i < 10; i++) await tick();
+  });
   const calls = chatCalls(fetchMock as never);
   assert.equal(calls.length, 2, 'the send, then exactly one report turn');
   assert.deepEqual(calls[0].displayContext, { document: { documentId: 'doc-open', revisionId: 'rev-open', contentHash: 'c'.repeat(64), title: 'Open review' } }, 'the open review rides on the operator turn');
@@ -76,8 +79,9 @@ test('an issued displayDirective field runs once and its report goes back as the
 
   // A stale open-document entry is not offered.
   localStorage.setItem(OPEN_DOCUMENT_STORAGE_KEY, JSON.stringify({ version: 1, documentId: 'doc-old', revisionId: 'rev-old', contentHash: 'd'.repeat(64), observedAt: new Date(NOW - 31 * 60_000).toISOString() }));
-  cortexTestStore.reset();
+  await act(async () => { cortexTestStore.reset(); });
   await send(t, 'hello again');
+  await act(async () => { for (let i = 0; i < 10; i++) await tick(); });
   const later = chatCalls(fetchMock as never);
   assert.equal(later.at(-1)?.displayContext, undefined, 'a stale entry is dropped');
 });

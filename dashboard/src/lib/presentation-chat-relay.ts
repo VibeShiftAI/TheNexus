@@ -26,7 +26,7 @@ import {
   DisplayInventorySchema, PresentationSessionSchema, PresentationStartSchema,
   type DisplayCommandResult, type DisplayInventory, type DisplayTarget, type PresentationSession, type PresentationStart,
 } from '@praxis/contract';
-import { displayShellAvailable, requestNativeDisplay } from './presentation-native';
+import { displayShellAvailable, requestNativeDisplay, serializeNativeDisplay } from './presentation-native';
 import { presentationRequest } from './presentation-transport';
 
 /** The response field that carries an issued directive. Reply text never does. */
@@ -44,7 +44,7 @@ interface DirectiveBase { version: 1; requestId: string; issuedAt: string; expir
 export type DisplayDirective =
   | (DirectiveBase & { action: 'discover' })
   | (DirectiveBase & { action: 'start'; start: PresentationStart; replaceSessionId?: string })
-  | (DirectiveBase & { action: 'stop'; sessionId: string })
+  | (DirectiveBase & { action: 'stop'; sessionId: string; cancelStartRequestId?: string })
   | (DirectiveBase & { action: 'status'; sessionId?: string });
 
 export interface DisplayReport {
@@ -73,10 +73,18 @@ const nativeMethod = (method: string) => method === 'windows-monitor' || method 
 /** Targets this page has seen, so a start can tell a native window from a receiver that needs its pairing code. */
 let knownTargets = new Map<string, DisplayTarget>();
 let executed = new Set<string>();
+let started = new Map<string, { session: PresentationSession; replaceSessionId?: string }>();
+let cancelled = new Set<string>();
+let lifecycle: Promise<unknown> = Promise.resolve();
+function serializeLifecycle<T>(run: () => Promise<T>): Promise<T> {
+  const result = lifecycle.then(run);
+  lifecycle = result.catch(() => {});
+  return result;
+}
 function remember(inventory: DisplayInventory) {
   for (const target of inventory.targets) knownTargets.set(`${inventory.sourceDevice.id}\u0000${target.id}`, target);
 }
-export function __resetDisplayRelayForTests() { knownTargets = new Map(); executed = new Set(); }
+export function __resetDisplayRelayForTests() { knownTargets = new Map(); executed = new Set(); started = new Map(); cancelled = new Set(); lifecycle = Promise.resolve(); }
 
 /**
  * Read the issued directive from a chat reply's `displayDirective` field.
@@ -95,7 +103,9 @@ export function readIssuedDirective(value: unknown): DisplayDirective | null {
   const allowed = (...extra: string[]) => [...keys].every(key => ['version', 'requestId', 'issuedAt', 'expiresAt', 'timeoutMs', 'action', ...extra].includes(key));
   switch (r.action) {
     case 'discover': return allowed() ? { ...base, action: 'discover' } : null;
-    case 'stop': return allowed('sessionId') && isId(r.sessionId) ? { ...base, action: 'stop', sessionId: r.sessionId } : null;
+    case 'stop':
+      if (!allowed('sessionId', 'cancelStartRequestId') || !isId(r.sessionId) || (r.cancelStartRequestId !== undefined && !isId(r.cancelStartRequestId))) return null;
+      return { ...base, action: 'stop', sessionId: r.sessionId, ...(r.cancelStartRequestId ? { cancelStartRequestId: r.cancelStartRequestId as string } : {}) };
     case 'status':
       if (!allowed('sessionId')) return null;
       if (r.sessionId === undefined) return { ...base, action: 'status' };
@@ -168,7 +178,7 @@ export async function executeDisplayDirective(directive: DisplayDirective, deps:
     return fail('app_background', 'The Nexus app is in the background. Bring it to the front and ask again.');
   }
   const io: Io = {
-    native: deps.native ?? requestNativeDisplay,
+    native: serializeNativeDisplay(deps.native ?? requestNativeDisplay),
     request: deps.request ?? presentationRequest,
     timeoutMs: Math.min(directive.timeoutMs, NATIVE_TIMEOUT_CAP_MS),
     base, fail,
@@ -185,12 +195,25 @@ export async function executeDisplayDirective(directive: DisplayDirective, deps:
         if (typeof window !== 'undefined') window.dispatchEvent(new window.CustomEvent(DISPLAY_INVENTORY_EVENT, { detail: accepted }));
         return { ...base, ok: true, inventory: accepted };
       }
-      case 'start': return await start(directive, io);
+      case 'start': return await serializeLifecycle(async () => {
+        if (cancelled.has(directive.requestId)) return fail('start_cancelled', 'That presentation request was cancelled.');
+        if (Date.parse(directive.expiresAt) <= (deps.now?.() ?? Date.now())) return fail('directive_expired', 'The display request expired while waiting.');
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return fail('app_background', 'Bring the Nexus app to the front and ask again.');
+        return start(directive, io);
+      });
       case 'stop': {
-        // Revoke first: the data lease ends even if closing the native window fails.
-        const stopped = await io.request<PresentationSession>(`${api}/sessions/${encodeURIComponent(directive.sessionId)}`, { method: 'DELETE' });
-        if (nativeMethod(stopped.method)) await io.native({ action: 'stop' }, { timeoutMs: io.timeoutMs }).catch(() => {});
-        return { ...base, ok: true, session: stopped };
+        if (directive.cancelStartRequestId) {
+          cancelled.add(directive.cancelStartRequestId);
+          if (cancelled.size > EXECUTED_LIMIT) cancelled.delete(cancelled.values().next().value!);
+        }
+        return await serializeLifecycle(async () => {
+          // Cancellation names the awaited start as well as the held session. It must
+          // never mean "stop whichever session happens to be on the device now".
+          const replacement = directive.cancelStartRequestId ? started.get(directive.cancelStartRequestId) : undefined;
+          if (replacement?.replaceSessionId === directive.sessionId) await stopSession(replacement.session.id, io);
+          const stopped = await stopSession(directive.sessionId, io);
+          return { ...base, ok: true, session: stopped };
+        });
       }
       case 'status': {
         const listed = await io.request<{ sessions: PresentationSession[] }>(`${api}/sessions`);
@@ -202,6 +225,13 @@ export async function executeDisplayDirective(directive: DisplayDirective, deps:
     const { code, message } = failure(error, directive.action === 'discover' ? 'discovery_failed' : 'controller_request_failed');
     return fail(code, message);
   }
+}
+
+async function stopSession(sessionId: string, io: Io): Promise<PresentationSession> {
+  // Revoke first: the data lease ends even if closing the native window fails.
+  const stopped = await io.request<PresentationSession>(`${api}/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+  if (nativeMethod(stopped.method)) await io.native({ action: 'stop', sessionId }, { timeoutMs: io.timeoutMs }).catch(() => {});
+  return stopped;
 }
 
 async function findTarget(io: Io, start: PresentationStart): Promise<DisplayTarget | undefined> {
@@ -222,10 +252,12 @@ async function start(directive: Extract<DisplayDirective, { action: 'start' }>, 
   }
   if (replaceSessionId) {
     await io.request(`${api}/sessions/${encodeURIComponent(replaceSessionId)}`, { method: 'DELETE' }).catch(() => {});
-    await io.native({ action: 'stop' }, { timeoutMs: io.timeoutMs }).catch(() => {});
+    await io.native({ action: 'stop', sessionId: replaceSessionId }, { timeoutMs: io.timeoutMs }).catch(() => {});
   }
   // The authority opens the session first (fresh inventory, exact revision, capability), then the device shows it.
   const created = await io.request<PresentationSession>(`${api}/sessions`, { method: 'POST', body: JSON.stringify(start) });
+  started.set(directive.requestId, { session: created, replaceSessionId });
+  if (started.size > EXECUTED_LIMIT) started.delete(started.keys().next().value!);
   if (!nativeMethod(created.method)) {
     await io.request(`${api}/sessions/${encodeURIComponent(created.id)}`, { method: 'DELETE' }).catch(() => {});
     return io.fail('pairing_required', 'That receiver pairs with a two-digit code: open Displays in the app, connect it, and enter the code shown on the TV.');
@@ -237,9 +269,9 @@ async function start(directive: Extract<DisplayDirective, { action: 'start' }>, 
       throw Object.assign(new Error('The device did not confirm the presentation window.'), { code: 'native_start_failed' });
     }
   } catch (error) {
-    // Revoke first, then close whatever the device half-opened.
+    // Revoke first, then close only the session this start could have opened.
     await io.request(`${api}/sessions/${encodeURIComponent(created.id)}`, { method: 'DELETE' }).catch(() => {});
-    await io.native({ action: 'stop' }, { timeoutMs: io.timeoutMs }).catch(() => {});
+    await io.native({ action: 'stop', sessionId: created.id }, { timeoutMs: io.timeoutMs }).catch(() => {});
     const { code, message } = failure(error, 'native_start_failed');
     return io.fail(code, message);
   }

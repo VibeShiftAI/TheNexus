@@ -47,3 +47,42 @@ test('Android without an installed native transport fails honestly', async () =>
   try { await assert.rejects(requestNativeDisplay({ action: 'discover' }), /Android.*bridge/i); }
   finally { delete window.__NEXUS_DISPLAYS__; }
 });
+
+test('scoped teardown checks native identity and serializes a newer start behind the check and stop', async () => {
+  window.__NEXUS_DISPLAYS__ = { version: 1, platform: 'windows' };
+  let active: string | null = 'old';
+  let releaseStatus!: () => void;
+  let statusSeen!: () => void;
+  const checked = new Promise<void>(resolve => { statusSeen = resolve; });
+  const calls: string[] = [];
+  const navigate = (url: string) => {
+    const command = JSON.parse(new URL(url).searchParams.get('request')!);
+    calls.push(command.action);
+    const reply = () => window.dispatchEvent(new window.CustomEvent('nexus:display-result', {
+      detail: { requestId: command.requestId, ok: true, sessionId: active, state: active ? 'active' : 'stopped' },
+    }));
+    if (command.action === 'status') { releaseStatus = reply; statusSeen(); return; }
+    if (command.action === 'stop') active = null;
+    if (command.action === 'start') active = command.sessionId;
+    reply();
+  };
+  try {
+    const stop = requestNativeDisplay({ action: 'stop', sessionId: 'old' }, { navigate });
+    // Bound the red run too: the old implementation issues stop without a status check.
+    await Promise.race([checked, stop]);
+    assert.deepEqual(calls, ['status']);
+    const start = requestNativeDisplay({ action: 'start', sessionId: 'new', targetId: 'screen', expiresAt: new Date(Date.now() + 60_000).toISOString() }, { navigate });
+    await Promise.resolve();
+    assert.deepEqual(calls, ['status'], 'start cannot overtake the pending session check');
+    releaseStatus();
+    await Promise.all([stop, start]);
+    assert.deepEqual(calls, ['status', 'stop', 'start']);
+    assert.equal(active, 'new');
+    const lateStop = requestNativeDisplay({ action: 'stop', sessionId: 'old' }, { navigate });
+    await new Promise(resolve => setImmediate(resolve));
+    releaseStatus();
+    await lateStop;
+    assert.equal(active, 'new', 'a stale stop never closes the new output');
+    assert.deepEqual(calls, ['status', 'stop', 'start', 'status']);
+  } finally { delete window.__NEXUS_DISPLAYS__; }
+});

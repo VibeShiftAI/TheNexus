@@ -80,14 +80,14 @@ test('only the issued structured field is a directive: reply text, quoted exampl
 test('a request id runs once per page: a replay is refused before any device or HTTP action', async () => {
   const stop = harness({
     routes: call => { assert.equal(`${call.method} ${call.url}`, 'DELETE /api/presentations/sessions/session-qa'); return session({ id: 'session-qa', method: 'windows-monitor', state: 'stopped' }); },
-    native: async () => ({ requestId: 'n', ok: true, state: 'stopped' }),
+    native: async command => ({ requestId: 'n', ok: true, state: command.action === 'status' ? 'active' : 'stopped', sessionId: 'session-qa' }),
   });
   const first = await executeDisplayDirective(parsed(directive('stop', { requestId: 'req-stop-once', sessionId: 'session-qa' })), stop.deps);
   assert.equal(first.ok, true);
-  assert.equal(stop.calls.http.length, 1); assert.equal(stop.calls.native.length, 1);
+  assert.equal(stop.calls.http.length, 1); assert.equal(stop.calls.native.length, 2);
   const again = await executeDisplayDirective(parsed(directive('stop', { requestId: 'req-stop-once', sessionId: 'session-qa' })), stop.deps);
   assert.equal(again.ok, false); assert.equal(again.code, 'directive_replayed');
-  assert.equal(stop.calls.http.length, 1, 'no second DELETE'); assert.equal(stop.calls.native.length, 1, 'no second native stop');
+  assert.equal(stop.calls.http.length, 1, 'no second DELETE'); assert.equal(stop.calls.native.length, 2, 'no second native check or stop');
   const other = await executeDisplayDirective(parsed(directive('stop', { requestId: 'req-stop-2', sessionId: 'session-qa' })), stop.deps);
   assert.equal(other.ok, true, 'a freshly issued request id runs');
   assert.equal(stop.calls.http.length, 2);
@@ -163,17 +163,17 @@ test('start opens the authority session first, confirms it natively and heartbea
   assert.equal(report.session?.state, 'active');
   assert.deepEqual(seen(good.calls), ['GET /api/presentations/inventory', 'POST /api/presentations/sessions', 'POST /api/presentations/sessions/sess-1/heartbeat']);
 
-  const unconfirmed = harness({ routes, native: async command => command.action === 'start' ? { requestId: 'n', ok: true, state: 'failed', sessionId: 'sess-1' } : { requestId: 'n', ok: true } });
+  const unconfirmed = harness({ routes, native: async command => ({ requestId: 'n', ok: true, state: command.action === 'stop' ? 'stopped' : 'failed', sessionId: 'sess-1' }) });
   const revoked = await executeDisplayDirective(parsed(directive('start', { start: START })), unconfirmed.deps);
   assert.equal(revoked.ok, false); assert.equal(revoked.code, 'native_start_failed');
   assert.ok(seen(unconfirmed.calls).includes('DELETE /api/presentations/sessions/sess-1'), 'the session is revoked');
-  assert.deepEqual(unconfirmed.calls.native.map(c => c.action), ['start', 'stop']);
+  assert.deepEqual(unconfirmed.calls.native.map(c => c.action), ['start', 'status', 'stop']);
 
-  const replacing = harness({ routes, native: async command => command.action === 'start' ? { requestId: 'n', ok: true, state: 'active', sessionId: 'sess-1' } : { requestId: 'n', ok: true } });
+  const replacing = harness({ routes, native: async command => ({ requestId: 'n', ok: true, state: command.action === 'stop' ? 'stopped' : 'active', sessionId: 'sess-1' }) });
   await executeDisplayDirective(parsed(directive('start', { start: START, replaceSessionId: 'sess-1' })), replacing.deps);
   const order = seen(replacing.calls);
   assert.ok(order.indexOf('DELETE /api/presentations/sessions/sess-1') < order.indexOf('POST /api/presentations/sessions'), `the previous session is revoked before the new start: ${order.join(', ')}`);
-  assert.deepEqual(replacing.calls.native.map(c => c.action), ['stop', 'start'], 'the native window closes before the new one opens');
+  assert.deepEqual(replacing.calls.native.map(c => c.action), ['status', 'stop', 'start'], 'the native window closes before the new one opens');
 });
 
 test('authority refusals keep their code and Cast or TV-browser receivers are sent to the pairing code, not started blind', async () => {
@@ -198,11 +198,11 @@ test('authority refusals keep their code and Cast or TV-browser receivers are se
 test('stop revokes through the controller session then closes the native window; status reads the session list', async () => {
   const stop = harness({
     routes: call => { assert.equal(`${call.method} ${call.url}`, 'DELETE /api/presentations/sessions/sess-1'); return session({ state: 'stopped', reason: 'controller' }); },
-    native: async command => { assert.equal(command.action, 'stop'); return { requestId: 'n', ok: true, state: 'stopped' }; },
+    native: async command => ({ requestId: 'n', ok: true, state: command.action === 'status' ? 'active' : 'stopped', sessionId: 'sess-1' }),
   });
   const stopped = await executeDisplayDirective(parsed(directive('stop', { sessionId: 'sess-1' })), stop.deps);
   assert.equal(stopped.ok, true); assert.equal(stopped.session?.state, 'stopped');
-  assert.deepEqual(stop.calls.native.map(c => c.action), ['stop']);
+  assert.deepEqual(stop.calls.native.map(c => c.action), ['status', 'stop']);
 
   const gone = harness({ routes: () => { throw Object.assign(new Error('Presentation ended or is unavailable.'), { code: 'session_not_found' }); } });
   assert.equal((await executeDisplayDirective(parsed(directive('stop', { sessionId: 'sess-9' })), gone.deps)).code, 'session_not_found');
