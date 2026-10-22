@@ -1,3 +1,4 @@
+import './runtime';
 import { createRoot } from 'react-dom/client';
 import { PresentationScreen } from '../components/presentation/presentation-screen';
 import { ReceiverPairing } from '../components/presentation/receiver-pairing';
