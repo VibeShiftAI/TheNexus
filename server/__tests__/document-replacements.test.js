@@ -722,3 +722,75 @@ test('lists and counts reconcile a completed task before any document is opened,
     expect(db.documentReviews.getReplacement(rpOther.id)).toMatchObject({ state: 'failed' });
     expect(await listIds('status=changes_requested')).toEqual([other.document.id]);
 });
+
+// Task 9f4477b5 (QA follow-up of 6b46dcc8): POST /:id/reviews answers for the version, not only when no draft exists yet.
+test('no draft survives into open or failed work: acceptance closes a draft pinned to an older revision too, and the open route refuses even a draft that bypassed it', async () => {
+    const { document, file, v1 } = await setup('draft-survival.md');
+    // A second reviewer's round is opened on v1, then a plain capture (no replacement work) moves the document to v2.
+    const older = await draftWithComment(document.id, 'second-reviewer');
+    expect(older.revision_id).toBe(v1.id);
+    fs.writeFileSync(file, V2);
+    const v2 = (await read(document.id)).json.revision;
+    expect(v2.version).toBe(2);
+    // Robert reviews v2 and requests changes; Praxis accepts the work.
+    const { submission } = await finishReview(document.id);
+    expect(submission.revision_id).toBe(v2.id);
+    expect((await decide(document.id, v2.id, 'request_changes', { note: 'Update the HWC row.' })).status).toBe(201);
+    const accepted = await accept(document.id, { client_request_id: 'req', source: { submission_id: submission.id }, task_id: WORK_TASK });
+    expect(accepted.status).toBe(201);
+    const rp = accepted.json.replacement;
+    // The acceptance closed the draft pinned to v1, not only drafts on v2: the second reviewer has no open draft left.
+    expect(accepted.json.superseded_reviews).toEqual([older.id]);
+    expect(db.documentReviews.getReview(older.id)).toMatchObject({ status: 'superseded', closed_reason: 'superseded', replacement_id: rp.id });
+    expect(db.documentReviews.findOpenDraft(document.id, 'second-reviewer')).toBeFalsy();
+    const inProgress = await api('POST', `/api/documents/${document.id}/reviews`, {}, { user: 'second-reviewer' });
+    expect(inProgress).toMatchObject({ status: 409, json: { code: 'replacement_in_progress', replacement: { id: rp.id } } });
+    // The refusal qualifies the reopening: only work that ends before registering a revision reopens this version.
+    expect(inProgress.json.error).toMatch(/not reviewable until the new version is ready\. If the work fails or is cancelled before registering a new revision, this version reopens; if it registered one first, review waits for an explicit recovery attempt \(recovers_replacement_id\)\. Nothing was recorded/);
+    expect(inProgress.json.error).not.toMatch(/ready or the work fails or is cancelled/);
+
+    // A draft that bypassed the acceptance (written straight to the store) is refused, not handed back writable, with or without revision_id.
+    const stray = db.documentReviews.insertReview({ document_id: document.id, revision_id: v2.id, reviewer_id: 'stray-reviewer' });
+    expect(await api('POST', `/api/documents/${document.id}/reviews`, {}, { user: 'stray-reviewer' })).toMatchObject({ status: 409, json: { code: 'replacement_in_progress', replacement: { id: rp.id } } });
+    expect(await api('POST', `/api/documents/${document.id}/reviews`, { revision_id: v2.id }, { user: 'stray-reviewer' })).toMatchObject({ status: 409, json: { code: 'replacement_in_progress' } });
+
+    // The work registers v3 and then fails: its unaccepted result keeps the version closed, for the stray draft as for anyone.
+    fs.writeFileSync(file, V3);
+    const v3 = (await register(file, { task_id: WORK_TASK })).json.revision;
+    expect(await report(document.id, rp.id, { state: 'failed', detail: 'QA rejected the new bytes' })).toMatchObject({ status: 200, json: { reviewable: false, replacement: { state: 'failed', result_revision_id: v3.id } } });
+    expect(await api('POST', `/api/documents/${document.id}/reviews`, {}, { user: 'stray-reviewer' })).toMatchObject({ status: 409, json: { code: 'replacement_failed', replacement: { id: rp.id } } });
+    expect(await api('POST', `/api/documents/${document.id}/reviews`, { revision_id: v3.id }, { user: 'second-reviewer' })).toMatchObject({ status: 409, json: { code: 'replacement_failed' } });
+    // No refusal opened or touched a round: the only draft is the stray row, unchanged.
+    expect(db.documentReviews.listOpenDrafts(document.id).map(r => r.id)).toEqual([stray.id]);
+    expect(db.documentReviews.getReview(stray.id).updated_at).toBe(stray.updated_at);
+});
+
+test('a draft left on an older revision by a plain capture is returned pinned to that revision and flagged, a new round opens only on the current one, and finishing it authorizes no work', async () => {
+    const { document, file, v1 } = await setup('draft-plain-capture.md');
+    const opened = await api('POST', `/api/documents/${document.id}/reviews`, {});
+    expect(opened).toMatchObject({ status: 201, json: { created: true, review: { revision_id: v1.id, is_current_revision: true, document_changed: false } } });
+    const draft = opened.json.review;
+    expect((await api('POST', `/api/documents/reviews/${draft.id}/comments`, { kind: 'document', body: 'Started on v1.' })).status).toBe(201);
+    // The file changes on disk and a read captures v2; no replacement work exists, so v2 is current and reviewable.
+    fs.writeFileSync(file, V2);
+    const detail = (await read(document.id)).json;
+    const v2 = detail.revision;
+    expect(detail).toMatchObject({ revision: { version: 2 }, reviewable: { ok: true }, replacement: null });
+
+    // The open draft is returned as the caller's round, labelled with its own revision, never relabelled as v2.
+    for (const body of [{}, { revision_id: v2.id }]) {
+        const again = await api('POST', `/api/documents/${document.id}/reviews`, body);
+        expect(again).toMatchObject({ status: 200, json: { created: false, review: { id: draft.id, status: 'draft', revision_id: v1.id, pinned_revision: { id: v1.id, version: 1 }, is_current_revision: false, document_changed: true, pinned_content: V1 } } });
+    }
+    // A tab still showing v1 is stale; another reviewer's new round opens on v2 only.
+    expect(await api('POST', `/api/documents/${document.id}/reviews`, { revision_id: v1.id })).toMatchObject({ status: 409, json: { code: 'stale_revision', current_revision: { id: v2.id } } });
+    expect(await api('POST', `/api/documents/${document.id}/reviews`, {}, { user: 'second-reviewer' })).toMatchObject({ status: 201, json: { review: { revision_id: v2.id, is_current_revision: true } } });
+
+    // Finishing the v1 round is feedback on v1: it opens no work on v2 and records no decision on v1.
+    const finished = await api('POST', `/api/documents/reviews/${draft.id}/finish`, { summary: 'Feedback on what I read.' }, session);
+    expect(finished).toMatchObject({ status: 202, json: { submission: { revision_id: v1.id } } });
+    expect(await accept(document.id, { client_request_id: 'req', source: { submission_id: finished.json.submission.id } })).toMatchObject({ status: 409, json: { code: 'source_not_current', source_revision_id: v1.id, authority_revision_id: v2.id } });
+    expect(await decide(document.id, v1.id, 'request_changes', { note: 'on v1' })).toMatchObject({ status: 409, json: { code: 'stale_revision' } });
+    expect(db.documentReviews.listReplacements(document.id)).toHaveLength(0);
+    expect(db.documentReviews.listDecisions(document.id)).toHaveLength(0);
+});

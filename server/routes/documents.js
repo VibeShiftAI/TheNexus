@@ -20,7 +20,9 @@
  *                                                          `executor` block citing a review Robert finished with the
  *                                                          approve-after-changes grant
  *   GET    /api/documents/:id/decisions/:decisionId        a decision and whether it is still in force (consumer check)
- *   POST   /api/documents/:id/reviews                      open (or return) the caller's draft, pinned to the current revision
+ *   POST   /api/documents/:id/reviews                      open the caller's draft on the current revision, or return the one
+ *                                                          already open (pinned to its own revision; 409 while the version
+ *                                                          takes no review actions, with or without a draft)
  *   GET    /api/documents/reviews/:reviewId                review + comments (+ anchor state against the current revision)
  *   PATCH  /api/documents/reviews/:reviewId                { summary } (draft only)
  *   POST   /api/documents/reviews/:reviewId/comments       add a passage or whole-document comment (draft only; client_id dedupes)
@@ -1854,12 +1856,20 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (requested && requested !== captured.revision.id) {
                 return res.status(409).json({ error: 'The document has a newer revision than the one you are viewing; reload and review the current revision', code: 'stale_revision', revision_id: requested, current_revision: revisionMeta(captured.revision) });
             }
+            // Only the latest ready revision takes review actions (task 6b46dcc8), and handing back a writable draft is one: a
+            // closed version answers 409 with or without a draft. Acceptance supersedes every draft on the document, whatever
+            // revision it is pinned to, so none should survive into open or failed work; one that did is refused here, not
+            // returned. From here to the response nothing awaits, so the gate and the draft lookup read one state.
+            const gate = reviewability(store().getDocument(doc.id), captured.revision);
+            if (!gate.ok) return notReviewable(res, gate);
+            // A draft already open stays the caller's round even when a plain capture or edit (no replacement work) has
+            // since moved the document on: it is returned pinned to its own revision, flagged `is_current_revision: false`
+            // with its anchors read against the current bytes, and finishing it is feedback on that version only, never
+            // authority for work on the current one (sourceAuthorizes). A new round is only ever opened on the current revision.
             let review = store().findOpenDraft(doc.id, req.user.id);
             let created = false;
             if (!review) {
-                // Only the latest ready revision takes a new review (task 6b46dcc8); re-checked inside the insert transaction.
-                const gate = reviewability(store().getDocument(doc.id), captured.revision);
-                if (!gate.ok) return notReviewable(res, gate);
+                // Currency and the gate are re-checked inside the insert transaction.
                 let blocked = null;
                 let overtaken = null;
                 review = store().transaction(() => {

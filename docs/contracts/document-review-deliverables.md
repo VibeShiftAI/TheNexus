@@ -805,6 +805,18 @@ written; the reviewability gate is re-read in the same transaction. Decisions
 re-read the gate inside their own transaction as well, so a decision cannot
 land on a version that closed while it was being validated.
 
+The gate applies whether or not the caller already has an open draft (task
+9f4477b5): while the version is closed, `POST .../reviews` answers 409
+`replacement_in_progress`, `replacement_failed` or `revision_not_ready` and
+never hands back a draft. Acceptance supersedes every open draft on the
+document, whatever revision it is pinned to, so none survives into open or
+failed work through the API. Outside replacement work a plain capture or edit
+can move the document past a draft; that draft stays the caller's round and
+is returned with `created: false`, pinned to its own revision
+(`revision_id`, `pinned_revision`), `is_current_revision: false` and
+`document_changed: true`. Finishing it is feedback on that version: as a
+replacement source it is refused with `source_not_current`.
+
 Reporting: `PATCH /api/documents/:id/replacements/:replacementId` with any of
 `state` (any state in 12.2), `detail`, `task_id` (set once; a different task
 is 409 `task_already_linked`), `execution_id`, `qa_state`, `revision_id` (the
