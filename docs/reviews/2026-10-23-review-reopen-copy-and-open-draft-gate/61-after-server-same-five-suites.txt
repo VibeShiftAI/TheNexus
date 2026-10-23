@@ -1,0 +1,9 @@
+Like-for-like with 01 and 12 (same five suites), after this round:
+$ npx jest document-replacements documents-route document-media document-deliverables document-executor-approvals --runInBand
+PASS server/__tests__/document-deliverables.test.js
+PASS server/__tests__/document-executor-approvals.test.js
+PASS server/__tests__/document-replacements.test.js
+PASS server/__tests__/documents-route.test.js
+PASS server/__tests__/document-media.test.js
+Test Suites: 5 passed, 5 total
+Tests:       70 passed, 70 total

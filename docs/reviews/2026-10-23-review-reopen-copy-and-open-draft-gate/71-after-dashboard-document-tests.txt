@@ -1,0 +1,4 @@
+$ (cd dashboard && node --import ./test/register.mjs --test src/components/__tests__/document-*.test.mjs src/components/__tests__/documents-index.test.mjs src/components/__tests__/review-documents-panel.test.mjs src/components/__tests__/reauth-preserves-document.test.mjs) (working tree, after)
+ℹ tests 112
+ℹ pass 112
+ℹ fail 0

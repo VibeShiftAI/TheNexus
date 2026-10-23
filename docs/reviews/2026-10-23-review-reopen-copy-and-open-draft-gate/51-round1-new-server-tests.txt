@@ -1,0 +1,27 @@
+Round-1 code (git archive 2bdd74e into /tmp/nexus-9f44-r1head, node_modules symlinked) with this round's server test copied in.
+Expected: the open-recovery assertion and the qualified-copy assertion fail, with the round-1 message as the received string.
+$ (cd /tmp/nexus-9f44-r1head && npx jest server/__tests__/document-replacements.test.js --runInBand)
+
+  ✓ a change request after the source task completed links to exactly one work item, supersedes pending drafts and closes the old version to review actions (616 ms)
+  ✓ concurrent and replayed acceptances yield exactly one work item, and a race with a finish or a decision has one winner (122 ms)
+  ✓ only current, change-requesting authority opens work; stale, approving, unfinished or foreign sources are refused and nothing is recorded (94 ms)
+  ✓ a registration under the work task names the result; a QA pass on the current ready result completes the work and only the new version is reviewable (83 ms)
+  ✓ bytes captured by a plain read are never a result, and ready requires the registered result to be the current revision (73 ms)
+  ✓ the linked task closing reconciles the work: completed with a current result is ready, completed without one fails, cancelled cancels; recovery is an explicit new attempt (92 ms)
+  ✓ the submission payload names the replacements endpoint, and an executor records the delegated approval on the exact new revision only once the work is ready (65 ms)
+  ✓ lists, counts and detail agree across documents in every bucket; the in_progress bucket holds only open work (73 ms)
+  ✓ a review racing a result promotion cannot open on the revision it overtook: currency is re-read inside the insert (60 ms)
+  ✓ a failed attempt whose registered bytes are the current revision closes the version until an explicit recovery delivers a new one; the recovery cites the last reviewable version (71 ms)
+  ✕ a recovery that fails before registering anything leaves the closure with the attempt whose bytes are current: detail, refusals and the list row name that attempt, and the next recovery names the latest one (58 ms)
+  ✓ simultaneous task links: exactly one task links, the other report is refused with the linked task, and the same task again is a no-op (56 ms)
+  ✓ lists and counts reconcile a completed task before any document is opened, and agree with the detail read afterwards (66 ms)
+  ✕ no draft survives into open or failed work: acceptance closes a draft pinned to an older revision too, and the open route refuses even a draft that bypassed it (59 ms)
+  ✓ a draft left on an older revision by a plain capture is returned pinned to that revision and flagged, a new round opens only on the current one, and finishing it authorizes no work (58 ms)
+  ● a recovery that fails before registering anything leaves the closure with the attempt whose bytes are current: detail, refusals and the list row name that attempt, and the next recovery names the latest one
+    Expected pattern: /not reviewable until the new version is ready\. If the work fails or is cancelled before registering a new revision, this version reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered a revision first, review waits for an explicit recovery attempt \(recovers_replacement_id\)\. Nothing was recorded/
+    Received string:  "Replacement work on this document is in progress (accepted, task 22222222-2222-4222-8222-22222222222d); this version is not reviewable until the new version is ready. If the work fails or is cancelled before registering a new revision, this version reopens; if it registered one first, review waits for an explicit recovery attempt (recovers_replacement_id). Nothing was recorded"
+  ● no draft survives into open or failed work: acceptance closes a draft pinned to an older revision too, and the open route refuses even a draft that bypassed it
+    Expected pattern: /not reviewable until the new version is ready\. If the work fails or is cancelled before registering a new revision, this version reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered a revision first, review waits for an explicit recovery attempt \(recovers_replacement_id\)\. Nothing was recorded/
+    Received string:  "Replacement work on this document is in progress (accepted, task 22222222-2222-4222-8222-22222222222b); this version is not reviewable until the new version is ready. If the work fails or is cancelled before registering a new revision, this version reopens; if it registered one first, review waits for an explicit recovery attempt (recovers_replacement_id). Nothing was recorded"
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 13 passed, 15 total

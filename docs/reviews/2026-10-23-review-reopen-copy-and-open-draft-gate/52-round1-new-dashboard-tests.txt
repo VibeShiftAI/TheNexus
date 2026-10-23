@@ -1,0 +1,33 @@
+Round-1 code (git archive 2bdd74e into /tmp/nexus-9f44-r1head) with this round's dashboard test copied in.
+Expected: the four copy tests fail with the round-1 copy as actual (the open-recovery test fails on the banner sentence).
+$ (cd /tmp/nexus-9f44-r1head/dashboard && node --import ./test/register.mjs --test src/components/__tests__/document-replacements.test.mjs)
+
+✔ a version with replacement work in progress is read-only on the desktop reader: banner with the task, blocked decision, superseded round kept, nothing written (91.192833ms)
+✔ the phone drawer shows the same closed state as the desktop rail (33.59625ms)
+✔ a stale tab that starts a new review is refused and shown the current version; the next attempt names that version (39.69075ms)
+✔ replacement work accepted while a draft round is open: the next save is refused, the round shows superseded, unsaved text is kept (also across a reload) (122.146708ms)
+✔ a failed attempt leaves the version current and reviewable with the failure explained; an attempt on an older version is history only (48.280417ms)
+✔ a failed attempt whose registered bytes are the current version closes it until recovery: banner, blocked decision and no new round, on desktop and in the phone drawer (52.429625ms)
+✔ the Reviews queue has a Being revised view whose count the other buckets exclude, and the row names the work and the version (26.616625ms)
+✔ a Being revised row closed by a failed attempt wears the failed badge and explains the closure, not work in progress (7.989333ms)
+✔ project deliverables agree: a Being revised tab with the same count, row and empty state (20.052209ms)
+✖ while work is open, every surface says failure or cancellation reopens this version only before new bytes are registered (18.357625ms)
+✖ an open recovery over an earlier failed result never promises that its failure reopens this version, and after it fails the page shows the closure (21.011584ms)
+✖ a decision refused because work was accepted meanwhile qualifies the reopening the same way, and nothing is recorded (32.6455ms)
+✖ the Being revised row for open work (here a second attempt, a recovery) qualifies the reopening in its badge title (7.81475ms)
+ℹ tests 13
+ℹ pass 9
+ℹ fail 4
+✖ failing tests:
+✖ while work is open, every surface says failure or cancellation reopens this version only before new bytes are registered (18.357625ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /until the new version is ready\. If the work fails or is cancelled before registering new bytes, this version reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, review waits for an explicit recovery\./. Input:
+    actual: 'Revision in progressA new version of this document is being produced by revision task task-2. You are reading the current version (v1); it takes no new review, decision or edit until the new version is ready. If the work fails or is cancelled before registering new bytes, this version reopens; bytes it registered first stay closed until an explicit recovery delivers. Earlier comments and decisions are kept.',
+✖ an open recovery over an earlier failed result never promises that its failure reopens this version, and after it fails the page shows the closure (21.011584ms)
+  AssertionError [ERR_ASSERTION]: banner: the reopening is qualified by the failed result: If the work fails or is cancelled before registering new bytes, this version reopens; bytes it registered first stay closed until an explicit recovery delivers.
+    actual: 'If the work fails or is cancelled before registering new bytes, this version reopens; bytes it registered first stay closed until an explicit recovery delivers.',
+✖ a decision refused because work was accepted meanwhile qualifies the reopening the same way, and nothing is recorded (32.6455ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /This version takes no decision until the new version is ready\. If the work fails or is cancelled before registering new bytes, this version reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, decisions wait for an explicit recovery\./. Input:
+    actual: ' A new version of this document is being produced, so nothing was recorded. This version takes no decision until the new version is ready; if the work fails or is cancelled before registering new bytes, this version reopens, and bytes it registered first wait for an explicit recovery. The page now shows the work in progress. Your note and comments are kept.',
+✖ the Being revised row for open work (here a second attempt, a recovery) qualifies the reopening in its badge title (7.81475ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /not reviewable until the new one is ready\. If the work fails or is cancelled before registering new bytes, it reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, review waits for an explicit recovery\./. Input:
+    actual: 'A new version of this document is being produced. This version is not reviewable until the new one is ready; it reopens if the work fails or is cancelled before registering new bytes, and bytes the work registered first wait for an explicit recovery. Your earlier comments and decisions are kept.',

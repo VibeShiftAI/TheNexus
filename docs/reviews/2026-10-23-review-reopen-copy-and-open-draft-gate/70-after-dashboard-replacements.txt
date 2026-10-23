@@ -1,0 +1,17 @@
+$ (cd dashboard && node --import ./test/register.mjs --test src/components/__tests__/document-replacements.test.mjs) (working tree, after)
+✔ a version with replacement work in progress is read-only on the desktop reader: banner with the task, blocked decision, superseded round kept, nothing written (89.476ms)
+✔ the phone drawer shows the same closed state as the desktop rail (29.848834ms)
+✔ a stale tab that starts a new review is refused and shown the current version; the next attempt names that version (34.738542ms)
+✔ replacement work accepted while a draft round is open: the next save is refused, the round shows superseded, unsaved text is kept (also across a reload) (120.138208ms)
+✔ a failed attempt leaves the version current and reviewable with the failure explained; an attempt on an older version is history only (50.788916ms)
+✔ a failed attempt whose registered bytes are the current version closes it until recovery: banner, blocked decision and no new round, on desktop and in the phone drawer (61.724333ms)
+✔ the Reviews queue has a Being revised view whose count the other buckets exclude, and the row names the work and the version (27.22275ms)
+✔ a Being revised row closed by a failed attempt wears the failed badge and explains the closure, not work in progress (5.897708ms)
+✔ project deliverables agree: a Being revised tab with the same count, row and empty state (16.570584ms)
+✔ while work is open, every surface says failure or cancellation reopens this version only before new bytes are registered (12.029917ms)
+✔ an open recovery over an earlier failed result never promises that its failure reopens this version, and after it fails the page shows the closure (20.466291ms)
+✔ a decision refused because work was accepted meanwhile qualifies the reopening the same way, and nothing is recorded (16.238208ms)
+✔ the Being revised row for open work (here a second attempt, a recovery) qualifies the reopening in its badge title (5.410916ms)
+ℹ tests 13
+ℹ pass 13
+ℹ fail 0

@@ -1,0 +1,4 @@
+The reproduction probe from 50, after the change:
+$ npx jest --config /tmp/nexus-qa-9f44-r2/jest.config.json --runInBand --no-cache
+  ✓ PROBE (reviewer Q2): an open recovery over a failed result promises reopening, but its failure before registering bytes leaves the version closed (570 ms)
+Tests:       1 passed, 1 total

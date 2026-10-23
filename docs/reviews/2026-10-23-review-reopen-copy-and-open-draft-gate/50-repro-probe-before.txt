@@ -1,0 +1,36 @@
+QA repair round (attempt 0), reproduction BEFORE the change, on the round-1 working tree (HEAD 2bdd74e, copy not yet edited).
+Probe = server/__tests__/document-replacements.test.js lines 1-167 (harness, requires made absolute) + the probe test below,
+run from /tmp/nexus-qa-9f44-r2 so nothing is added to the repo.
+$ npx jest --config /tmp/nexus-qa-9f44-r2/jest.config.json --runInBand --no-cache
+
+--- probe test ---
+
+test('PROBE (reviewer Q2): an open recovery over a failed result promises reopening, but its failure before registering bytes leaves the version closed', async () => {
+    const { document, file, submission } = await requestedChanges('probe-recovery.md');
+    const first = (await accept(document.id, { client_request_id: 'req', source: { submission_id: submission.id }, task_id: WORK_TASK })).json.replacement;
+    fs.writeFileSync(file, V2);
+    await register(file, { task_id: WORK_TASK });
+    await report(document.id, first.id, { state: 'failed', qa_state: 'failed', detail: 'QA rejected the new bytes' });
+    const second = (await accept(document.id, { client_request_id: 'req-2', source: { submission_id: submission.id }, recovers_replacement_id: first.id, task_id: RECOVERY_TASK })).json.replacement;
+    const during = await api('POST', `/api/documents/${document.id}/reviews`, {});
+    console.log('DURING OPEN RECOVERY:', during.status, during.json.code, '\n', during.json.error);
+    await report(document.id, second.id, { state: 'failed', detail: 'the recovery crashed before registering anything' });
+    const after = await api('POST', `/api/documents/${document.id}/reviews`, {});
+    console.log('AFTER RECOVERY FAILED WITHOUT BYTES:', after.status, after.json.code, '\n', after.json.error);
+    // The copy shown during the recovery must not promise a reopening that the lifecycle refuses.
+    expect(after.json.code).toBe('replacement_failed');
+    expect(during.json.error).toMatch(/only when no failed result governs the current version/);
+});
+--- output ---
+FAIL ../../../private/tmp/nexus-qa-9f44-r2/probe.test.js
+  ✕ PROBE (reviewer Q2): an open recovery over a failed result promises reopening, but its failure before registering bytes leaves the version closed (708 ms)
+  ● PROBE (reviewer Q2): an open recovery over a failed result promises reopening, but its failure before registering bytes leaves the version closed
+    expect(received).toMatch(expected)
+    Expected pattern: /only when no failed result governs the current version/
+    Received string:  "Replacement work on this document is in progress (accepted, task 22222222-2222-4222-8222-22222222222d); this version is not reviewable until the new version is ready. If the work fails or is cancelled before registering a new revision, this version reopens; if it registered one first, review waits for an explicit recovery attempt (recovers_replacement_id). Nothing was recorded"
+      at Object.toMatch (probe.test.js:183:31)
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        1.117 s
+Ran all test suites.

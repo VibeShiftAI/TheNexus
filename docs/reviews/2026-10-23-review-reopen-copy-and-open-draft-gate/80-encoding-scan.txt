@@ -1,0 +1,11 @@
+$ node /tmp/9f44-encoding-scan.mjs <files edited this round> (strict TextDecoder fatal + mojibake pattern)
+ok server/routes/documents.js (150404 bytes, strict UTF-8)
+ok db/document-reviews.js (51149 bytes, strict UTF-8)
+ok server/__tests__/document-replacements.test.js (71447 bytes, strict UTF-8)
+ok dashboard/src/components/document-review/decision-card.tsx (38040 bytes, strict UTF-8)
+ok dashboard/src/components/document-review/document-review.tsx (105100 bytes, strict UTF-8)
+ok dashboard/src/components/document-review/deliverable-row.tsx (9015 bytes, strict UTF-8)
+ok dashboard/src/components/__tests__/document-replacements.test.mjs (44464 bytes, strict UTF-8)
+ok docs/contracts/document-review-deliverables.md (61985 bytes, strict UTF-8)
+exit: 0
+em/en dashes on lines added this round (git diff HEAD | grep '^+'): 0

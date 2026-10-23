@@ -1,0 +1,3 @@
+$ (cd dashboard && node node_modules/typescript/lib/tsc.js --noEmit -p tsconfig.json)
+exit: 0
+dashboard/tsconfig.json byte-identical before and after (cmp)

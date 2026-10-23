@@ -1,0 +1,19 @@
+$ npx jest server/__tests__/document-replacements.test.js --runInBand (working tree, after)
+  ✓ a change request after the source task completed links to exactly one work item, supersedes pending drafts and closes the old version to review actions (352 ms)
+  ✓ concurrent and replayed acceptances yield exactly one work item, and a race with a finish or a decision has one winner (98 ms)
+  ✓ only current, change-requesting authority opens work; stale, approving, unfinished or foreign sources are refused and nothing is recorded (76 ms)
+  ✓ a registration under the work task names the result; a QA pass on the current ready result completes the work and only the new version is reviewable (82 ms)
+  ✓ bytes captured by a plain read are never a result, and ready requires the registered result to be the current revision (65 ms)
+  ✓ the linked task closing reconciles the work: completed with a current result is ready, completed without one fails, cancelled cancels; recovery is an explicit new attempt (86 ms)
+  ✓ the submission payload names the replacements endpoint, and an executor records the delegated approval on the exact new revision only once the work is ready (59 ms)
+  ✓ lists, counts and detail agree across documents in every bucket; the in_progress bucket holds only open work (72 ms)
+  ✓ a review racing a result promotion cannot open on the revision it overtook: currency is re-read inside the insert (59 ms)
+  ✓ a failed attempt whose registered bytes are the current revision closes the version until an explicit recovery delivers a new one; the recovery cites the last reviewable version (77 ms)
+  ✓ a recovery that fails before registering anything leaves the closure with the attempt whose bytes are current: detail, refusals and the list row name that attempt, and the next recovery names the latest one (72 ms)
+  ✓ simultaneous task links: exactly one task links, the other report is refused with the linked task, and the same task again is a no-op (59 ms)
+  ✓ lists and counts reconcile a completed task before any document is opened, and agree with the detail read afterwards (76 ms)
+  ✓ no draft survives into open or failed work: acceptance closes a draft pinned to an older revision too, and the open route refuses even a draft that bypassed it (65 ms)
+  ✓ a draft left on an older revision by a plain capture is returned pinned to that revision and flagged, a new round opens only on the current one, and finishing it authorizes no work (57 ms)
+Test Suites: 1 passed, 1 total
+Tests:       15 passed, 15 total
+exit 0
