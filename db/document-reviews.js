@@ -89,8 +89,10 @@ const REVIEW_STATUSES = ['needs_review', 'changes_requested', 'approved', 'refer
  * and not finished, or whose current revision is the unaccepted result of a
  * failed or cancelled attempt. Such a document is not reviewable, so it leaves
  * the decision buckets until its new current revision is ready (or, when the
- * attempt registered no result, until it fails or is cancelled; a registered
- * result waits for an explicit recovery). `review_status` itself stays one of
+ * attempt registered no result and no failed result governs the current
+ * version, until it fails or is cancelled; a registered result, or the failed
+ * result a recovery set out to replace, waits for an explicit recovery that
+ * delivers). `review_status` itself stays one of
  * REVIEW_STATUSES: it describes decisions, the bucket describes reviewability.
  */
 const LIST_STATUSES = [...REVIEW_STATUSES, 'in_progress'];
@@ -100,8 +102,10 @@ const LIST_STATUSES = [...REVIEW_STATUSES, 'in_progress'];
  * document at a time; accepting it supersedes every pending review draft and
  * closes the document to new reviews, decisions and edits until the work
  * declares the new current revision ready, or fails or is cancelled before
- * registering a result. A result registered by an attempt that then failed or
- * was cancelled keeps the document closed until an explicit recovery delivers.
+ * registering a result over a version no failed result governs. A result
+ * registered by an attempt that then failed or was cancelled keeps the
+ * document closed until an explicit recovery delivers; a recovery that ends
+ * before registering anything leaves it closed.
  *
  *   accepted    the originating change request is linked to revision work (task may follow)
  *   queued      dispatch queued for the linked task

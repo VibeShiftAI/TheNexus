@@ -466,9 +466,19 @@ test('project deliverables agree: a Being revised tab with the same count, row a
 });
 
 // Task 9f4477b5 (QA follow-up of 6b46dcc8): while work is open, every explanation of when this version reopens is qualified.
-// Failure or cancellation reopens the unchanged version only when the attempt registered no new bytes; bytes it did register
-// stay closed until an explicit recovery delivers (the failed-result tests above show that closure).
+// Failure or cancellation reopens the unchanged version only when the attempt registered no new bytes and no failed result
+// governs the current version. Bytes the work registered, and a version an earlier failed or cancelled attempt registered (an
+// open recovery's base), stay closed until an explicit recovery delivers (the failed-result tests above show that closure).
 const UNQUALIFIED_REOPEN = /fails or is cancelled(?! before registering new bytes)/;
+/** Every sentence that says when this version reopens after a failure carries both qualifications. */
+function assertGovernedReopen(text, where) {
+  const sentences = text.split(/(?<=\.)\s*(?=[A-Z])/).filter(s => /fails or is cancelled/.test(s));
+  assert.ok(sentences.length > 0, `${where}: expected an explanation of when this version reopens`);
+  for (const s of sentences) {
+    assert.match(s, /only when no failed result governs the current version/, `${where}: the reopening is qualified by the failed result: ${s}`);
+    assert.match(s, /if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, (?:review waits|decisions wait|they wait) for an explicit recovery/, `${where}: the governed case waits for a recovery: ${s}`);
+  }
+}
 
 test('while work is open, every surface says failure or cancellation reopens this version only before new bytes are registered', async () => {
   window.localStorage.clear();
@@ -477,13 +487,61 @@ test('while work is open, every surface says failure or cancellation reopens thi
   try {
     await settle();
     const c = t.container;
-    assert.match(c.querySelector('[data-replacement-banner]').textContent, /until the new version is ready\. If the work fails or is cancelled before registering new bytes, this version reopens; bytes it registered first stay closed until an explicit recovery delivers\./);
+    assert.match(c.querySelector('[data-replacement-banner]').textContent, /until the new version is ready\. If the work fails or is cancelled before registering new bytes, this version reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, review waits for an explicit recovery\./);
     const cardNode = card(c);
-    assert.match(cardNode.querySelector('[data-decision-blocked]').textContent, /takes no decision until the new version is ready; it reopens if the work fails or is cancelled before registering new bytes, and bytes the work registered first wait for an explicit recovery\./);
-    assert.match(cardNode.querySelector('[data-replacement-note]').textContent, /Decisions reopen when it is ready, or on this version if the work fails or is cancelled before registering new bytes; bytes it registered first wait for an explicit recovery\./);
+    assert.match(cardNode.querySelector('[data-decision-blocked]').textContent, /takes no decision until the new version is ready\. If the work fails or is cancelled before registering new bytes, it reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, decisions wait for an explicit recovery\./);
+    assert.match(cardNode.querySelector('[data-replacement-note]').textContent, /Decisions reopen when it is ready\. If the work fails or is cancelled before registering new bytes, they reopen on this version only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, they wait for an explicit recovery\./);
     assert.equal(c.querySelector('[data-review-closed]').dataset.reviewClosed, 'replacement_in_progress');
-    assert.match(c.querySelector('[data-review-closed]').textContent, /or on this one if the work fails or is cancelled before registering new bytes; bytes it registered first wait for an explicit recovery\./);
+    assert.match(c.querySelector('[data-review-closed]').textContent, /If the work fails or is cancelled before registering new bytes, it reopens on this one only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, review waits for an explicit recovery\./);
     assert.doesNotMatch(c.textContent, UNQUALIFIED_REOPEN, 'no sentence on the page promises that any failure reopens review');
+    assertGovernedReopen(c.textContent, 'reader');
+    assert.deepEqual(writes(srv), []);
+  } finally { t.cleanup(); }
+});
+
+// QA repair round of 9f4477b5: an attempt registered v2 and failed, and a recovery is now open on base v2. If the recovery fails
+// before registering anything, v2 stays closed by the first attempt's failed result (server suite: "a recovery that fails before
+// registering anything ..."), so no surface may tell the reader that such a failure reopens this version.
+test('an open recovery over an earlier failed result never promises that its failure reopens this version, and after it fails the page shows the closure', async () => {
+  window.localStorage.clear();
+  const recovery = replacement({
+    id: 'rp-2', state: 'accepted', attempt: 2, recovers_replacement_id: 'rp-1', base_revision_id: 'rev-2', task_id: 'task-3', client_request_id: 'req-2',
+    links: { task_path: '/task/task-3', review_path: '/documents/doc-1', result_raw_path: null, self_path: '/api/documents/doc-1/replacements/rp-2' },
+  });
+  const srv = server({ review: submittedReview(), current: 'rev-2', replacement: recovery });
+  let t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const banner = c.querySelector('[data-replacement-banner]');
+    assert.equal(banner?.dataset.replacementBanner, 'accepted', 'the open recovery is the banner');
+    assert.match(banner.textContent, /You are reading the current version \(v2\); it takes no new review, decision or edit until the new version is ready\./);
+    assertGovernedReopen(banner.textContent, 'banner');
+    const cardNode = card(c);
+    assert.equal(cardNode.querySelector('[data-decision-blocked]')?.dataset.decisionBlocked, 'replacement_in_progress');
+    assertGovernedReopen(cardNode.querySelector('[data-decision-blocked]').textContent, 'blocked decision');
+    const note = cardNode.querySelector('[data-replacement-note]');
+    assert.match(note.textContent, /attempt 2/);
+    assertGovernedReopen(note.textContent, 'replacement note');
+    assert.equal(c.querySelector('[data-review-closed]').dataset.reviewClosed, 'replacement_in_progress');
+    assertGovernedReopen(c.querySelector('[data-review-closed]').textContent, 'review closed');
+    assert.doesNotMatch(c.textContent, UNQUALIFIED_REOPEN);
+    assert.doesNotMatch(c.textContent, /this version reopens[;,]/, 'no unconditional reopening anywhere on the page');
+    assertGovernedReopen(c.textContent, 'reader');
+    assert.deepEqual(writes(srv), []);
+  } finally { t.cleanup(); }
+
+  // The recovery fails before registering anything: the first attempt's failed result still governs v2, which stays closed.
+  srv.state.replacement = failedReplacement({ result_revision_id: 'rev-2', links: { task_path: '/task/task-2', review_path: '/documents/doc-1', result_raw_path: '/api/documents/doc-1/raw?revision=rev-2', self_path: '/api/documents/doc-1/replacements/rp-1' } });
+  t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    assert.equal(c.querySelector('[data-replacement-banner]')?.dataset.replacementBanner, 'failed');
+    assert.match(c.querySelector('[data-replacement-banner]').textContent, /Review reopens on the new version an explicit recovery delivers, never by reopening this one\./);
+    assert.equal(card(c).querySelector('[data-decision-blocked]')?.dataset.decisionBlocked, 'replacement_failed');
+    assert.equal(c.querySelector('[data-review-closed]').dataset.reviewClosed, 'replacement_failed');
+    assert.equal(button(c, /^Start a new review/), undefined, 'v2 did not reopen');
     assert.deepEqual(writes(srv), []);
   } finally { t.cleanup(); }
 });
@@ -502,17 +560,21 @@ test('a decision refused because work was accepted meanwhile qualifies the reope
     assert.equal(writes(srv).at(-1).path, '/api/documents/doc-1/decisions');
     assert.equal(srv.state.decisions.length, 0, 'the refused decision is not recorded');
     const notice = card(c).querySelector('[data-decision-notice]');
-    assert.match(notice.textContent, /This version takes no decision until the new version is ready; if the work fails or is cancelled before registering new bytes, this version reopens, and bytes it registered first wait for an explicit recovery\./);
+    assert.match(notice.textContent, /This version takes no decision until the new version is ready\. If the work fails or is cancelled before registering new bytes, this version reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, decisions wait for an explicit recovery\./);
     assert.doesNotMatch(notice.textContent, UNQUALIFIED_REOPEN);
+    assertGovernedReopen(notice.textContent, 'decision notice');
   } finally { t.cleanup(); }
 });
 
-test('the Being revised row for open work qualifies the reopening in its badge title', async () => {
+test('the Being revised row for open work (here a second attempt, a recovery) qualifies the reopening in its badge title', async () => {
   const t = mountQueue(registryHandler(inProgressRegistry()), '?status=in_progress');
   try {
     await settle();
-    const title = t.container.querySelector('[data-document-id="doc-003"] [data-replacement-badge]').getAttribute('title');
-    assert.match(title, /not reviewable until the new one is ready; it reopens if the work fails or is cancelled before registering new bytes, and bytes the work registered first wait for an explicit recovery\./);
+    const badge = t.container.querySelector('[data-document-id="doc-003"] [data-replacement-badge]');
+    assert.match(badge.textContent, /attempt 2/);
+    const title = badge.getAttribute('title');
+    assert.match(title, /not reviewable until the new one is ready\. If the work fails or is cancelled before registering new bytes, it reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, review waits for an explicit recovery\./);
     assert.doesNotMatch(title, UNQUALIFIED_REOPEN);
+    assertGovernedReopen(title, 'badge title');
   } finally { t.cleanup(); }
 });

@@ -876,8 +876,15 @@ result if any). What the document reopens at depends on whether the attempt
 registered bytes:
 
 - **No result registered** (the usual failure): the document stays at the
-  version the attempt was meant to replace, `reviewable.ok` is true and the
-  reader says so ("this version stays current and reviewable").
+  version the attempt was meant to replace. When no failed result governs
+  that version, `reviewable.ok` is true and the reader says so ("this version
+  stays current and reviewable"). When it is itself the unaccepted result of
+  an earlier failed or cancelled attempt (a recovery that ended before
+  registering anything), that earlier attempt still governs it: the version
+  stays closed with `replacement_failed`, as in the next case, until a later
+  recovery delivers. While work is open, every explanation of when the
+  version reopens says so ("reopens only when no failed result governs the
+  current version"; task 9f4477b5).
 - **A result registered, then the attempt failed or was cancelled**: those
   bytes are the current revision, but they were never declared ready, so the
   version is closed. `reviewable` is `{ ok: false, reason:

@@ -109,6 +109,11 @@ const read = documentId => api('GET', `/api/documents/${documentId}`);
 const history = documentId => api('GET', `/api/documents/${documentId}/history`).then(r => r.json);
 const counts = (query = '') => api('GET', `/api/documents/counts${query}`).then(r => r.json.counts);
 const listIds = query => api('GET', `/api/documents?${query}`).then(r => r.json.documents.map(d => d.id));
+/**
+ * The 409 replacement_in_progress explanation (task 9f4477b5): failure or cancellation reopens this version only before the
+ * work registers a revision and only when no failed result governs the current version; otherwise review waits for a recovery.
+ */
+const QUALIFIED_IN_PROGRESS = /not reviewable until the new version is ready\. If the work fails or is cancelled before registering a new revision, this version reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered a revision first, review waits for an explicit recovery attempt \(recovers_replacement_id\)\. Nothing was recorded/;
 
 /** The incident shape: the producing task completed, Robert reviewed and requested changes afterwards. */
 async function requestedChanges(name) {
@@ -656,6 +661,12 @@ test('a recovery that fails before registering anything leaves the closure with 
     // The recovery is accepted on base v2, then fails before it registers anything.
     const second = (await accept(document.id, { client_request_id: 'req-2', source: { submission_id: submission.id }, recovers_replacement_id: first.id, task_id: RECOVERY_TASK })).json.replacement;
     expect(second).toMatchObject({ attempt: 2, base_revision_id: v2.id, result_revision_id: null });
+    // While the recovery is open the refusal must not promise that its failure reopens v2: a failed result (the first attempt's
+    // bytes) governs the current version, so the reopening is qualified, and the failure below proves the version stays closed.
+    const duringRecovery = await api('POST', `/api/documents/${document.id}/reviews`, {});
+    expect(duringRecovery).toMatchObject({ status: 409, json: { code: 'replacement_in_progress', replacement: { id: second.id, attempt: 2, recovers_replacement_id: first.id } } });
+    expect(duringRecovery.json.error).toMatch(QUALIFIED_IN_PROGRESS);
+    expect(duringRecovery.json.error).not.toMatch(/this version reopens;/);
     expect(await report(document.id, second.id, { state: 'failed', detail: 'the recovery crashed before registering anything' })).toMatchObject({ status: 200, json: { reviewable: false, replacement: { id: second.id, state: 'failed', result_revision_id: null } } });
     // v2 is still current and still closed by the first attempt: the reader, the refusals and the list row all name that attempt, not the latest one.
     expect((await read(document.id)).json).toMatchObject({ revision: { id: v2.id, version: 2 }, reviewable: { ok: false, reason: 'replacement_failed', replacement_id: first.id }, replacement: { id: first.id, state: 'failed', result_revision_id: v2.id, attempt: 1 } });
@@ -745,9 +756,11 @@ test('no draft survives into open or failed work: acceptance closes a draft pinn
     expect(db.documentReviews.findOpenDraft(document.id, 'second-reviewer')).toBeFalsy();
     const inProgress = await api('POST', `/api/documents/${document.id}/reviews`, {}, { user: 'second-reviewer' });
     expect(inProgress).toMatchObject({ status: 409, json: { code: 'replacement_in_progress', replacement: { id: rp.id } } });
-    // The refusal qualifies the reopening: only work that ends before registering a revision reopens this version.
-    expect(inProgress.json.error).toMatch(/not reviewable until the new version is ready\. If the work fails or is cancelled before registering a new revision, this version reopens; if it registered one first, review waits for an explicit recovery attempt \(recovers_replacement_id\)\. Nothing was recorded/);
+    // The refusal qualifies the reopening: only work that ends before registering a revision, over a version no failed result
+    // governs, reopens this version (the failed-recovery test above shows the governed case staying closed).
+    expect(inProgress.json.error).toMatch(QUALIFIED_IN_PROGRESS);
     expect(inProgress.json.error).not.toMatch(/ready or the work fails or is cancelled/);
+    expect(inProgress.json.error).not.toMatch(/this version reopens;/);
 
     // A draft that bypassed the acceptance (written straight to the store) is refused, not handed back writable, with or without revision_id.
     const stray = db.documentReviews.insertReview({ document_id: document.id, revision_id: v2.id, reviewer_id: 'stray-reviewer' });

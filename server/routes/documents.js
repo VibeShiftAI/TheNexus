@@ -45,9 +45,11 @@
  * and every review action answers 409 replacement_in_progress; a draft closed
  * by that acceptance is read-only (409 review_superseded) with its comments kept.
  * Failure or cancellation reopens the unchanged version only when the attempt
- * registered no result. A failed or cancelled attempt whose registered bytes
- * are the current revision governs it instead: those bytes take no review
- * actions (409 replacement_failed) until an explicit recovery delivers.
+ * registered no result and no failed result governs the current version. A
+ * failed or cancelled attempt whose registered bytes are the current revision
+ * governs it instead: those bytes take no review actions (409
+ * replacement_failed) until an explicit recovery delivers, and a recovery that
+ * itself ends before registering anything leaves them closed.
  *
  * Mounted behind the server's `authenticate` middleware; every review belongs
  * to the authenticated reviewer. The router never touches task status.
@@ -364,7 +366,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
 
     function notReviewable(res, gate) {
         const message = gate.reason === 'replacement_in_progress'
-            ? `Replacement work on this document is in progress (${gate.replacement.state}${gate.replacement.task_id ? `, task ${gate.replacement.task_id}` : ''}); this version is not reviewable until the new version is ready. If the work fails or is cancelled before registering a new revision, this version reopens; if it registered one first, review waits for an explicit recovery attempt (recovers_replacement_id). Nothing was recorded`
+            ? `Replacement work on this document is in progress (${gate.replacement.state}${gate.replacement.task_id ? `, task ${gate.replacement.task_id}` : ''}); this version is not reviewable until the new version is ready. If the work fails or is cancelled before registering a new revision, this version reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered a revision first, review waits for an explicit recovery attempt (recovers_replacement_id). Nothing was recorded`
             : gate.reason === 'replacement_failed'
                 ? `The current revision was registered by replacement work that ${gate.replacement.state === 'cancelled' ? 'was cancelled' : 'failed'}${gate.replacement.task_id ? ` (task ${gate.replacement.task_id})` : ''} and was never declared ready; it is not reviewable. Review reopens on a new version delivered by an explicit recovery attempt (recovers_replacement_id). Nothing was recorded`
                 : gate.reason === 'revision_not_ready'
@@ -703,7 +705,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             review_path: fmt.reviewPathFor(doc.id),
             // The governing replacement, if any: open work, or a failed or cancelled attempt whose bytes are the current revision.
             // Either way the row is `in_progress` and takes no review actions until the work is ready, ends without registering
-            // a result (the unchanged version reopens) or, once a failed attempt's bytes are current, a recovery delivers.
+            // a result over a version no failed result governs (the unchanged version reopens) or, once a failed attempt's bytes
+            // are current, a recovery delivers (a recovery ending without a result leaves them closed).
             replacement: rpId ? { id: rpId, state: rpState, task_id: rpTask || null, attempt: rpAttempt ?? 1, open: isOpenState(rpState) } : null,
             reviewable: reviewable !== false && rpId == null,
             review_state: review ? {
@@ -1498,9 +1501,11 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
     // work item. Accepting it supersedes every pending draft on the document
     // and closes the document to new reviews, decisions and edits until the
     // work declares its registered result the current ready revision, or fails
-    // or is cancelled before registering one (the unchanged version reopens).
+    // or is cancelled before registering one (the unchanged version reopens,
+    // but only when no failed result governs the current version).
     // An attempt that registered a result and then failed or was cancelled
-    // keeps those bytes closed until an explicit recovery delivers (12.5).
+    // keeps those bytes closed until an explicit recovery delivers (12.5); a
+    // recovery that ends before registering anything leaves them closed.
     // Nothing here approves, sends, publishes or changes task
     // state; chat delivery of the originating review is tracked apart from it.
     function parseReplacementSource(doc, body) {
