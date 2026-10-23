@@ -20,6 +20,7 @@ import {
     documentHref,
     documentStatusLabel,
     mediaLabel,
+    replacementStateLabel,
     reviewStateLabel,
     type DocumentListEntry,
     type DocumentReviewStatus,
@@ -92,12 +93,22 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
                 )}
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
                     <DocumentStatusBadge status={entry.review_status} />
+                    {entry.replacement && (
+                        // Replacement work in progress (contract §12): a new version is being produced, so this one takes no review actions until it is ready.
+                        <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 ${replacementStateLabel(entry.replacement.state).tone}`}
+                            data-replacement-badge={entry.replacement.state}
+                            title="A new version of this document is being produced. This version is not reviewable until the new one is ready or the work fails or is cancelled; your earlier comments and decisions are kept."
+                        >
+                            {replacementStateLabel(entry.replacement.state).text}{entry.replacement.attempt > 1 ? ` · attempt ${entry.replacement.attempt}` : ""}
+                        </span>
+                    )}
                     <span className={`rounded border px-1.5 py-px text-[10px] ${mediaTone(mediaType)}`} data-document-media="">{mediaLabel(mediaType)}{mediaType === "design" && entry.asset_count ? ` · ${entry.asset_count - 1} assets` : ""}</span>
                     {!compact && entry.kind !== mediaType && <span className="uppercase tracking-wide">{entry.kind}</span>}
                     {!compact && <span className="max-w-[16rem] truncate font-mono" title={entry.path}>{fileName(entry.path)}</span>}
                     {entry.current_revision && (
-                        <span title={entry.current_revision.content_hash} data-document-version="">
-                            rev {entry.current_revision.content_hash.slice(0, 8)}{captured && !compact ? ` · ${captured}` : ""}
+                        <span title={entry.current_revision.content_hash} data-document-version="" data-version={entry.current_revision.version ?? undefined}>
+                            {entry.current_revision.version ? `v${entry.current_revision.version} · ` : ""}rev {entry.current_revision.content_hash.slice(0, 8)}{captured && !compact ? ` · ${captured}` : ""}
                         </span>
                     )}
                     {action && (

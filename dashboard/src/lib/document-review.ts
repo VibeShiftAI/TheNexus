@@ -3,12 +3,47 @@
 // the phone shell and the Cloudflare tunnel. Types mirror the server's
 // server/routes/documents.js responses.
 
-export type ReviewStatus = 'draft' | 'submitted';
+/** `superseded`: a draft round closed read-only when replacement work on the document was accepted (contract §12); its comments are kept. */
+export type ReviewStatus = 'draft' | 'submitted' | 'superseded';
 export type DeliveryStatus = 'queued' | 'relaying' | 'delivered' | 'failed';
 export type AnchorStateName = 'intact' | 'moved' | 'orphaned' | 'document';
 /** The document's editorial state, derived by the server (contract docs/contracts/document-review-deliverables.md §3). */
 export type DocumentReviewStatus = 'needs_review' | 'changes_requested' | 'approved' | 'reference';
-export type DocumentStatusFilter = DocumentReviewStatus | 'all';
+/** List buckets: the four editorial states plus `in_progress`, documents with open replacement work (contract §12). */
+export type DocumentListBucket = DocumentReviewStatus | 'in_progress';
+export type DocumentStatusFilter = DocumentListBucket | 'all';
+
+/** Replacement work on a document (contract §12): one open item at a time, from acceptance to a ready new version or an explicit failure/cancellation. */
+export type ReplacementState = 'accepted' | 'queued' | 'held' | 'running' | 'implemented' | 'qa_passed' | 'ready' | 'failed' | 'cancelled';
+export interface DocumentReplacement {
+    id: string;
+    document_id: string;
+    state: ReplacementState;
+    open: boolean;
+    terminal: boolean;
+    detail: string | null;
+    qa_state: 'pending' | 'passed' | 'failed' | null;
+    /** The revision the work replaces and, once registered under the work's task, the revision it produced. */
+    base_revision_id: string;
+    result_revision_id: string | null;
+    task_id: string | null;
+    execution_id: string | null;
+    attempt: number;
+    recovers_replacement_id: string | null;
+    client_request_id: string;
+    source: { submission_id: string | null; review_id: string | null; decision_id: string | null; authority: string | null; submission_delivery_status: DeliveryStatus | null };
+    superseded_review_ids: string[];
+    accepted_by: string;
+    created_at: string;
+    updated_at: string;
+    completed_at: string | null;
+    links: { task_path: string | null; review_path: string; result_raw_path: string | null; self_path: string };
+}
+/** A list row's compact view of the document's open work. */
+export interface ListReplacement { id: string; state: ReplacementState; task_id: string | null; attempt: number; open: true }
+export type ReviewabilityReason = 'replacement_in_progress' | 'no_revision' | 'revision_not_ready';
+/** Whether the document takes review actions right now (a new review, a decision, an edit); separate from `review_status`. */
+export interface Reviewability { ok: boolean; reason: ReviewabilityReason | null; replacement_id: string | null }
 export type IntendedAction = 'none' | 'implement' | 'send' | 'publish';
 export type DecisionKind = 'approve' | 'request_changes';
 
@@ -147,6 +182,8 @@ export interface RevisionMeta {
     asset_count?: number;
     width?: number | null;
     height?: number | null;
+    /** 1-based version within the document (capture order); absent on an API that predates it. */
+    version?: number | null;
 }
 
 export interface ReviewComment {
@@ -208,6 +245,11 @@ export interface ReviewView {
     document_changed: boolean;
     pinned_content?: string;
     submission: SubmissionView | null;
+    /** Set when the round was closed read-only by accepted replacement work (status `superseded`). */
+    closed_at?: string | null;
+    closed_reason?: string | null;
+    replacement_id?: string | null;
+    is_current_revision?: boolean;
 }
 
 export interface DocumentSource {
@@ -258,6 +300,10 @@ export interface DocumentResponse {
     current_decision?: (DocumentDecision & { applies_to_current_revision: boolean }) | null;
     /** The reviewer this read is for; absent on an API that predates it. Unsaved review text is bound to it. */
     viewer?: { id: string } | null;
+    /** Version lifecycle (contract §12): the open or latest replacement work, whether this version takes review actions, and where it sits in the document's versions. Absent on an API that predates it. */
+    replacement?: DocumentReplacement | null;
+    reviewable?: Reviewability;
+    version?: { current_revision_id: string | null; current_version: number | null; revision_count: number };
     links: { review_url: string; raw_url: string; review_path?: string };
 }
 
@@ -271,7 +317,10 @@ export interface DocumentListEntry extends DocumentRecord {
     review_url: string;
     review_path?: string;
     review_status?: DocumentReviewStatus;
-    review_state: { review_id: string; status: ReviewStatus; updated_at: string; comment_count: number; delivery_status: DeliveryStatus | null } | null;
+    /** Open replacement work and whether this version takes review actions (contract §12); absent on an API that predates them. */
+    replacement?: ListReplacement | null;
+    reviewable?: boolean;
+    review_state: { review_id: string; status: ReviewStatus; updated_at: string; comment_count: number; delivery_status: DeliveryStatus | null; closed_reason?: string | null } | null;
 }
 
 export interface DocumentListFilters {
@@ -299,17 +348,21 @@ export interface DocumentPage {
     legacy: boolean;
 }
 
-export type DocumentCounts = Record<DocumentReviewStatus | 'all', number>;
+export type DocumentCounts = Record<DocumentListBucket | 'all', number>;
 
 export interface DocumentHistory {
     document_id: string;
     current_revision_id: string | null;
     review_status: DocumentReviewStatus;
-    revisions: RevisionMeta[];
+    /** Version lifecycle (contract §12); absent on an API that predates it. */
+    current_version?: number | null;
+    reviewable?: boolean;
+    revisions: (RevisionMeta & { is_current?: boolean })[];
     decisions: DocumentDecision[];
     registrations: { id: string; revision_id: string; content_hash: string; task_id: string | null; project_id: string | null; registered_at: string; registered_by: string | null; media_type?: MediaType; asset_count?: number }[];
     edits?: { id: string; base_revision_id: string; result_revision_id: string; actor_id: string; authority: string; summary: string; created_at: string }[];
-    reviews: { id: string; revision_id: string; reviewer_id: string; status: ReviewStatus; created_at: string; submitted_at: string | null; comment_count: number; delivery_status: DeliveryStatus | null }[];
+    reviews: { id: string; revision_id: string; reviewer_id: string; status: ReviewStatus; created_at: string; submitted_at: string | null; comment_count: number; delivery_status: DeliveryStatus | null; closed_at?: string | null; closed_reason?: string | null; replacement_id?: string | null; is_current_revision?: boolean }[];
+    replacements?: DocumentReplacement[];
 }
 
 export interface NewCommentInput {
@@ -438,7 +491,30 @@ export function stepBackOffset(page: DocumentPage | null, pageSize: number): num
 export async function countDocuments(filters: Pick<DocumentListFilters, 'task_id' | 'project_id' | 'kind' | 'q'> = {}): Promise<DocumentCounts> {
     const query = filterParams({ task_id: filters.task_id, project_id: filters.project_id, kind: filters.kind, q: filters.q }).toString();
     const data = await request<{ counts: DocumentCounts }>(`${BASE}/counts${query ? `?${query}` : ''}`, { cache: 'no-store' });
-    return data.counts;
+    // An API that predates the version lifecycle has no `in_progress` bucket: nothing is being revised there.
+    return { ...data.counts, in_progress: typeof data.counts.in_progress === 'number' ? data.counts.in_progress : 0 };
+}
+
+/** Replacement work on a document: the open item, every item newest first, and whether the current version takes review actions (contract §12). */
+export function listReplacements(documentId: string): Promise<{ document_id: string; current_revision_id: string | null; open: DocumentReplacement | null; reviewable: boolean; replacements: DocumentReplacement[] }> {
+    return request(`${BASE}/${encodeURIComponent(documentId)}/replacements`, { cache: 'no-store' });
+}
+
+const REPLACEMENT_LABELS: Record<ReplacementState, { text: string; tone: string }> = {
+    accepted: { text: 'Revision accepted', tone: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200' },
+    queued: { text: 'Revision queued', tone: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200' },
+    held: { text: 'Revision held', tone: 'border-amber-500/40 bg-amber-500/10 text-amber-200' },
+    running: { text: 'Revision in progress', tone: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200' },
+    implemented: { text: 'Revision implemented, QA pending', tone: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200' },
+    qa_passed: { text: 'Revision passed QA', tone: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200' },
+    ready: { text: 'New version ready', tone: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' },
+    failed: { text: 'Revision failed', tone: 'border-rose-500/40 bg-rose-500/10 text-rose-200' },
+    cancelled: { text: 'Revision cancelled', tone: 'border-slate-700 bg-slate-800/40 text-slate-400' },
+};
+
+/** Label and badge tone for replacement work; worded apart from the document's editorial state and the task's board status. */
+export function replacementStateLabel(state: ReplacementState): { text: string; tone: string } {
+    return REPLACEMENT_LABELS[state] ?? { text: `Revision ${String(state).replace(/_/g, ' ')}`, tone: 'border-slate-700 text-slate-400' };
 }
 
 export function getDocumentHistory(documentId: string): Promise<DocumentHistory> {
@@ -481,14 +557,29 @@ export function reviewStateLabel(entry: Pick<DocumentListEntry, 'review_state'>)
             tone: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
         };
     }
+    if (state.status === 'superseded') {
+        // The draft was closed read-only when replacement work was accepted; the comments are kept, not sent.
+        return {
+            text: `Draft feedback superseded · ${state.comment_count} comment${state.comment_count === 1 ? '' : 's'} kept`,
+            tone: 'border-slate-700 bg-slate-800/40 text-slate-400',
+        };
+    }
     const delivery = state.delivery_status;
     if (delivery === 'delivered') return { text: 'Feedback sent to Praxis', tone: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' };
     if (delivery === 'failed') return { text: 'Feedback delivery failed', tone: 'border-rose-500/40 bg-rose-500/10 text-rose-200' };
     return { text: 'Feedback delivering', tone: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200' };
 }
 
-export async function openReview(documentId: string): Promise<ReviewView> {
-    const data = await request<{ review: ReviewView }>(`${BASE}/${encodeURIComponent(documentId)}/reviews`, { method: 'POST', body: '{}' });
+/**
+ * Opens (or resumes) the caller's draft round. Passing the revision the page
+ * is showing lets the server refuse a stale tab with `stale_revision` instead
+ * of silently starting a round on a version the reader has not seen; the
+ * server also refuses with `replacement_in_progress` while a new version is
+ * being produced (contract §12). Nothing is recorded on either refusal.
+ */
+export async function openReview(documentId: string, revisionId?: string | null): Promise<ReviewView> {
+    const body = revisionId ? JSON.stringify({ revision_id: revisionId }) : '{}';
+    const data = await request<{ review: ReviewView }>(`${BASE}/${encodeURIComponent(documentId)}/reviews`, { method: 'POST', body });
     return data.review;
 }
 

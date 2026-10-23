@@ -147,5 +147,7 @@ test('a summary is restored over the server copy it was typed on or continues, a
   assert.equal(reconcileReviewDraft(summary('abc def', 'abc def'), server('abc def')).summary, null, 'nothing to restore');
   assert.equal(reconcileReviewDraft(summary('abc def', ''), server('from the phone')).summary, null, 'another device wrote a different summary');
   assert.equal(reconcileReviewDraft(summary('abc def', ''), live({ review: { id: 'review-1', status: 'submitted', summary: '', comments: [] } })).summary, null, 'a finished review takes no summary');
+  assert.deepEqual(reconcileReviewDraft(summary('abc def', ''), live({ review: { id: 'review-1', status: 'superseded', summary: '', comments: [] } })).summary, { recovered: 'abc def', reason: 'review' }, 'a round closed as superseded never sent the text: kept, not dropped');
+  assert.equal(reconcileReviewDraft(summary('abc', 'abc'), live({ review: { id: 'review-1', status: 'superseded', summary: 'abc', comments: [] } })).summary, null, 'a superseded round whose summary was saved has nothing to recover');
   assert.deepEqual(reconcileReviewDraft(summary('first thoughts', ''), live({ review: null })).summary, { restore: 'first thoughts' }, 'no review yet');
 });

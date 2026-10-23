@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, Check, ChevronDown, ChevronRight, History, Loader2, ThumbsUp, Undo2 } from "lucide-react";
 import {
     DocumentApiError,
@@ -19,10 +20,12 @@ import {
     newClientId,
     recordDecision,
     rawDocumentUrl,
+    replacementStateLabel,
     type DecisionKind,
     type DesignDirection,
     type DocumentDecision,
     type DocumentHistory,
+    type DocumentReplacement,
     type DocumentResponse,
     type RevisionMeta,
 } from "@/lib/document-review";
@@ -108,6 +111,11 @@ function refusalMessage(err: unknown, noteState: NoteState): { text: string; sta
             case "content_mismatch":
             case "revision_not_found":
                 return { text: `${sentence(err.message)} Nothing was recorded.`, stale: false, reload: true };
+            // Version lifecycle (contract §12): replacement work accepted since this page loaded, or a current revision that is not ready.
+            case "replacement_in_progress":
+                return { text: "A new version of this document is being produced, so nothing was recorded. This version takes no decision until the new version is ready or the work fails or is cancelled; the page now shows the work in progress. Your note and comments are kept.", stale: false, reload: true };
+            case "revision_not_ready":
+                return { text: sentence(err.message), stale: false, reload: true };
             default:
                 return { text: err.status >= 500 && !/no decision was recorded/i.test(err.message) ? `${sentence(err.message)} No decision was recorded.` : sentence(err.message), stale: false, reload: false };
         }
@@ -127,14 +135,17 @@ function HistoryList({ history, currentRevisionId }: { history: DocumentHistory;
         reviewsByRevision.set(review.revision_id, [...(reviewsByRevision.get(review.revision_id) ?? []), review]);
     }
     if (revisions.length === 0) return <p className="text-[11px] text-slate-500">No revisions captured yet.</p>;
+    const replacements = history.replacements ?? [];
     return (
+        <>
         <ol className="space-y-2" data-document-history="">
             {revisions.map((revision) => (
-                <li key={revision.id} className="rounded-md border border-slate-800 bg-slate-950/60 p-2 text-[11px] text-slate-400" data-history-revision={revision.id}>
+                <li key={revision.id} className="rounded-md border border-slate-800 bg-slate-950/60 p-2 text-[11px] text-slate-400" data-history-revision={revision.id} data-history-version={revision.version ?? undefined}>
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-slate-200" title={revision.content_hash}>rev {shortHash(revision.content_hash)}</span>
+                        <span className="font-mono text-slate-200" title={revision.content_hash}>{revision.version ? `v${revision.version} · ` : ""}rev {shortHash(revision.content_hash)}</span>
                         <span>captured {formatWhen(revision.captured_at)}</span>
                         {revision.id === currentRevisionId && <span className="rounded-full border border-cyan-500/40 px-1.5 text-cyan-200">current</span>}
+                        {replacements.some((rp) => rp.result_revision_id === revision.id) && <span className="rounded-full border border-emerald-500/40 px-1.5 text-emerald-200" data-history-replacement-result="">new version from revision work</span>}
                         <a href={rawDocumentUrl(history.document_id, { revision: revision.id, download: true })} className="text-cyan-300 hover:underline">Download this revision</a>
                     </div>
                     {(decisionsByRevision.get(revision.id) ?? []).map((decision) => (
@@ -152,13 +163,47 @@ function HistoryList({ history, currentRevisionId }: { history: DocumentHistory;
                     ))}
                     {(reviewsByRevision.get(revision.id) ?? []).map((review) => (
                         <p key={review.id} className="mt-1" data-history-feedback={review.status}>
-                            Feedback {review.status === "submitted" ? `sent ${formatWhen(review.submitted_at)}` : "draft"} · {review.comment_count} comment{review.comment_count === 1 ? "" : "s"}
+                            Feedback {review.status === "submitted" ? `sent ${formatWhen(review.submitted_at)}` : review.status === "superseded" ? `superseded ${formatWhen(review.closed_at)} (read-only, comments kept)` : "draft"} · {review.comment_count} comment{review.comment_count === 1 ? "" : "s"}
                             {review.delivery_status ? ` · delivery ${review.delivery_status}` : ""}
                         </p>
                     ))}
                 </li>
             ))}
         </ol>
+        {replacements.length > 0 && (
+            // Every replacement work item, newest first: what was accepted, for which version, by which task, and how it ended (contract §12).
+            <div className="mt-2" data-history-replacements="">
+                <div className="text-[11px] font-semibold text-slate-300">Revision work</div>
+                <ul className="mt-1 space-y-1">
+                    {replacements.map((rp) => (
+                        <li key={rp.id} className="text-[11px] text-slate-400" data-history-replacement={rp.state}>
+                            <span className={rp.state === "failed" ? "text-rose-200" : rp.state === "cancelled" ? "text-slate-300" : rp.open ? "text-cyan-200" : "text-emerald-200"}>{replacementStateLabel(rp.state).text}</span>
+                            {` · attempt ${rp.attempt} · accepted ${formatWhen(rp.created_at)}`}
+                            {rp.completed_at ? ` · ended ${formatWhen(rp.completed_at)}` : ""}
+                            {rp.task_id ? <> · <Link href={rp.links?.task_path ?? `/task/${encodeURIComponent(rp.task_id)}`} className="text-cyan-300 hover:underline" data-history-replacement-task="">task {rp.task_id.slice(0, 8)}</Link></> : null}
+                            {rp.detail ? <span className="text-slate-300">: {rp.detail}</span> : null}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        )}
+        </>
+    );
+}
+
+/** The work that explains why this version takes no decision, or how its last revision attempt ended; shown on the desktop rail and in the phone drawer alike. */
+function ReplacementNote({ replacement, blocked }: { replacement: DocumentReplacement; blocked: boolean }) {
+    const label = replacementStateLabel(replacement.state);
+    const taskLink = replacement.task_id
+        ? <Link href={replacement.links?.task_path ?? `/task/${encodeURIComponent(replacement.task_id)}`} className="text-cyan-200 underline" data-replacement-task="">revision task {replacement.task_id.slice(0, 8)}</Link>
+        : null;
+    return (
+        <p className={`mt-2 text-[11px] ${replacement.open ? "text-cyan-100" : replacement.state === "failed" ? "text-rose-200" : "text-slate-300"}`} data-replacement-note={replacement.state}>
+            <span className={`mr-1.5 inline-flex items-center rounded-full border px-1.5 py-px ${label.tone}`}>{label.text}{replacement.attempt > 1 ? ` · attempt ${replacement.attempt}` : ""}</span>
+            {replacement.open
+                ? <>A new version is being produced{taskLink ? <> by {taskLink}</> : null}{replacement.detail ? ` (${replacement.detail})` : ""}.{blocked ? " Decisions reopen when it is ready, or when the work fails or is cancelled." : ""}</>
+                : <>The last revision attempt {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? `: ${replacement.detail}` : ""}{taskLink ? <> ({taskLink})</> : null}. This version stays current; a retry is a new attempt, never a silent reopening of the old one.</>}
+        </p>
     );
 }
 
@@ -237,13 +282,23 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
     const appliesNow = Boolean(current?.applies_to_current_revision);
     const purpose = doc.purpose?.trim();
     const action = doc.intended_action && doc.intended_action !== "none" ? ACTION_TEXT[doc.intended_action] ?? doc.intended_action : null;
+    // Version lifecycle (contract §12): open replacement work, or a current revision that is not ready, closes this version to decisions. An API that predates the field is reviewable.
+    const gate = data.reviewable ?? null;
+    const replacement = data.replacement ?? null;
+    const workBlocks = Boolean(gate && !gate.ok);
     const blocked = !viewingCurrent
         ? "You are viewing the revision your feedback was pinned to. Switch to the current file to decide; a decision applies to the revision on screen."
-        : data.file_state !== "ok"
-            ? "The file cannot be confirmed right now, so no decision can be recorded until it can."
-            : !viewedRevision
-                ? "No captured revision to decide on yet."
-                : null;
+        : gate && !gate.ok && gate.reason === "replacement_in_progress"
+            ? `A new version of this document is being produced${replacement?.open ? ` (${replacementStateLabel(replacement.state).text.toLowerCase()}${replacement.task_id ? `, task ${replacement.task_id.slice(0, 8)}` : ""})` : ""}. This version takes no decision until the new version is ready or the work fails or is cancelled; your earlier decisions and comments are kept.`
+            : gate && !gate.ok && gate.reason === "revision_not_ready"
+                ? "The current revision is not ready (a required visual is missing), so no decision can be recorded until it is."
+                : data.file_state !== "ok"
+                    ? "The file cannot be confirmed right now, so no decision can be recorded until it can."
+                    : !viewedRevision
+                        ? "No captured revision to decide on yet."
+                        : null;
+    // The last attempt's failure or cancellation is shown while the document is still at the version it was meant to replace.
+    const showReplacement = replacement && (replacement.open || ((replacement.state === "failed" || replacement.state === "cancelled") && replacement.base_revision_id === data.revision?.id));
 
     /** Keep the note on this device as it is typed, attributed to the attempt and the revision it was written for. */
     const persist = (kind: DecisionKind, clientId: string, text: string) => {
@@ -357,10 +412,11 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
                     Nothing is sent or published from here, and the task&apos;s own status and QA verdict are not changed.
                 </p>
             )}
+            {showReplacement && replacement && <ReplacementNote replacement={replacement} blocked={workBlocks} />}
             {status === "reference" ? (
                 <p className="mt-1.5 text-[11px] text-slate-500">Reference document: kept for reading, no decision needed.</p>
             ) : blocked ? (
-                <p className="mt-2 text-[11px] text-amber-200" data-decision-blocked="">{blocked}</p>
+                <p className="mt-2 text-[11px] text-amber-200" data-decision-blocked={workBlocks && gate ? gate.reason ?? "" : ""}>{blocked}</p>
             ) : (
                 <div className="mt-2 flex flex-wrap gap-2">
                     <button

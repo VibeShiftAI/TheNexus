@@ -64,6 +64,7 @@ import {
     mediaTypeOf,
     newClientId,
     openReview,
+    replacementStateLabel,
     rawDocumentUrl,
     retryDelivery,
     saveEdit,
@@ -139,6 +140,15 @@ function messageOf(err: unknown): string {
     return err instanceof Error ? err.message : "Request failed";
 }
 
+/**
+ * Refusals that mean the version on screen no longer takes review actions (contract §12): the tab is stale, replacement
+ * work was accepted, the round was closed as superseded, or the current revision is not ready. Nothing was recorded on
+ * any of them, so the page reloads and shows the document as it is now; the reader's unsaved text stays where it is.
+ */
+function closedByVersion(err: unknown): boolean {
+    return err instanceof DocumentApiError && ["stale_revision", "replacement_in_progress", "review_superseded", "revision_not_ready"].includes(err.code ?? "");
+}
+
 /** What a stored composer draft was written for, in the words the composer header used. */
 function draftLabel(c: ComposerDraft): string {
     if (c.parent_id) return c.label ?? "Reply";
@@ -150,7 +160,7 @@ function draftLabel(c: ComposerDraft): string {
 function recoveredReasonText(reason: RecoveredReason): string {
     switch (reason) {
         case "revision": return "written for an earlier revision of this document and not moved to the current one";
-        case "review": return "written for a review that has since been finished";
+        case "review": return "written for a review that has since been finished or superseded";
         case "parent": return "a reply to a comment that is no longer in this review";
         default: return "an edit of a comment that has since changed or been removed";
     }
@@ -252,6 +262,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const summaryDebounceMs = timings?.summaryDebounceMs ?? SUMMARY_DEBOUNCE_MS;
     const [data, setData] = useState<DocumentResponse | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
+    /** Why a review action was refused by the version lifecycle (a stale tab, accepted replacement work); shown until dismissed, since the reload that follows clears loadError. */
+    const [versionNotice, setVersionNotice] = useState<string | null>(null);
     const [review, setReview] = useState<ReviewView | null>(null);
     const [submission, setSubmission] = useState<SubmissionView | null>(null);
     const [viewRevision, setViewRevision] = useState<"current" | "pinned">("current");
@@ -385,6 +397,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         setFinishError(null);
         setRecovered([]);
         setSummaryRestored(false);
+        setVersionNotice(null);
         setDraftPhase("pending");
         void load();
     }, [load]);
@@ -399,9 +412,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         return () => window.clearInterval(timer);
     }, [review, submission, pollMs]);
 
-    // Keep discovering new revisions, without replacing an unfinished review.
+    // Keep discovering new revisions, without replacing an unfinished review. A superseded round polls too: its document
+    // is getting a new version, and the page should show that version (and reopen review) when it is ready.
     useEffect(() => {
-        if (review && review.status !== "submitted") return;
+        if (review && review.status === "draft") return;
         if (editing) return;
         const refresh = () => { if (!summaryDirty.current) void load(true); };
         const timer = window.setInterval(refresh, timings?.pollMs ?? 15_000);
@@ -418,8 +432,23 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const shownRevision = showingPinned ? review?.pinned_revision ?? null : data?.revision ?? null;
     const reviewedHash = review?.pinned_revision?.content_hash.slice(0, 8) ?? "?";
     const latestHash = data?.revision?.content_hash.slice(0, 8) ?? "?";
-    const isDraft = !review || review.status === "draft";
+    // Version lifecycle (contract §12): while a new version is being produced, or the current revision is not ready, this
+    // version takes no review actions. A round the server closed as `superseded` stays readable with its comments but takes
+    // no edits. An API that predates the field is reviewable.
+    const reviewable = data?.reviewable ? data.reviewable.ok : true;
+    const replacement = data?.replacement ?? null;
+    const superseded = review?.status === "superseded";
+    const isDraft = (!review || review.status === "draft") && reviewable;
     const canAnnotate = isDraft && (!documentChanged || showingPinned) && !showSource && !editing;
+    const roundBadge = superseded
+        ? { key: "superseded", text: "Superseded", tone: "border-slate-700 bg-slate-800/40 text-slate-400" }
+        : !review || review.status === "draft"
+            ? reviewable
+                ? { key: "draft", text: "Draft", tone: "border-amber-500/40 bg-amber-500/10 text-amber-200" }
+                : { key: "closed", text: review ? "Closed to changes" : "Not open", tone: "border-slate-700 bg-slate-800/40 text-slate-400" }
+            : { key: "finished", text: "Finished", tone: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" };
+    // The last attempt's failure or cancellation is worth showing while the document is still at the version it was meant to replace.
+    const showReplacement = Boolean(replacement && (replacement.open || ((replacement.state === "failed" || replacement.state === "cancelled") && replacement.base_revision_id === data?.revision?.id)));
     const textual = ["markdown", "text", "code", "json", "html", "svg", "design"].includes(mediaType);
     const assets: RevisionAsset[] = useMemo(() => {
         const list = data?.assets ?? [];
@@ -485,10 +514,13 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     const e = plan.edit.recovered;
                     keep({ id: `edit-${e.comment_id}`, text: e.text, label: "Edit of a comment", reason: plan.edit.reason, revision_id: stored.revision_id, saved_at: now });
                 }
-                if (plan.summary) {
+                if (plan.summary && "restore" in plan.summary) {
                     summaryDirty.current = true;
                     setSummary(plan.summary.restore);
                     setSummaryRestored(true);
+                } else if (plan.summary) {
+                    // Typed for a round that was closed as superseded before the autosave landed: never sent, kept to place.
+                    keep({ id: "summary", text: plan.summary.recovered, label: "Review summary", reason: plan.summary.reason, revision_id: stored.revision_id, saved_at: now });
                 }
             }
         }
@@ -525,13 +557,20 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const ensureReview = useCallback(async (): Promise<ReviewView> => {
         const current = reviewRef.current;
         if (current && current.status === "draft") return current;
-        const opened = await openReview(documentId);
+        let opened: ReviewView;
+        try {
+            // Named revision: a tab showing an older version is refused (stale_revision) instead of given a round on bytes it has not seen.
+            opened = await openReview(documentId, dataRef.current?.revision?.id ?? null);
+        } catch (err) {
+            if (closedByVersion(err)) void load();
+            throw err;
+        }
         writeSequence.current += 1;
         reviewRef.current = opened;
         setReview(opened);
         setSubmission(opened.submission);
         return opened;
-    }, [documentId]);
+    }, [documentId, load]);
 
     const applyComment = (comment: ReviewComment) => {
         writeSequence.current += 1;
@@ -674,6 +713,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             const message = messageOf(err);
             setComposer((prev) => (prev ? { ...prev, saving: false, error: message } : prev));
             setCommentStatus({ state: "error", message, retry: () => void submitComposer() });
+            // The round was closed or the version moved on: show the document as it is now; the composer keeps its text.
+            if (closedByVersion(err)) void load();
         }
     };
 
@@ -690,6 +731,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             const message = messageOf(err);
             setEditingComment((prev) => (prev ? { ...prev, saving: false, error: message } : prev));
             setCommentStatus({ state: "error", message, retry: () => void saveCommentEdit() });
+            if (closedByVersion(err)) void load();
         }
     };
 
@@ -704,6 +746,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         } catch (err) {
             const message = messageOf(err);
             setCommentStatus({ state: "error", message, retry: () => void removeComment(comment) });
+            if (closedByVersion(err)) void load();
         }
     };
 
@@ -714,6 +757,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             applyComment({ ...updated, anchor: comment.anchor });
         } catch (err) {
             setCommentStatus({ state: "error", message: messageOf(err), retry: () => void toggleResolved(comment) });
+            if (closedByVersion(err)) void load();
         }
     };
 
@@ -731,9 +775,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             } catch (err) {
                 const message = messageOf(err);
                 setSummaryStatus({ state: "error", message, retry: () => void persistSummary(value) });
+                // The typed summary stays in the box (summaryDirty is still set); the page shows why it cannot be saved here.
+                if (closedByVersion(err)) void load();
             }
         },
-        [ensureReview],
+        [ensureReview, load],
     );
 
     const onSummaryChange = (value: string) => {
@@ -777,6 +823,16 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             try {
                 const current = await getReview(draftId);
                 if (current.status === "submitted") { adoptFinished(current, current.submission); return; }
+                if (current.status === "superseded") {
+                    // Replacement work was accepted while this round was open: the server closed it read-only (contract §12).
+                    writeSequence.current += 1;
+                    reviewRef.current = current;
+                    setReview(current);
+                    setFinishOpen(false);
+                    setFinishError("This round was closed, read-only, when revision work on this document was accepted. Nothing was sent; your comments are kept and the new version opens a fresh review.");
+                    void load();
+                    return;
+                }
                 setFinishError(`${message} — nothing was sent; your draft is intact.`);
             } catch {
                 setFinishError(`${message} — could not confirm whether the review was sent; reload this page before sending again.`);
@@ -797,15 +853,22 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const startNewReview = async () => {
         ++loadSequence.current;
         try {
-            const opened = await openReview(documentId);
+            // The round is for the revision on screen; a stale tab or accepted replacement work is refused and nothing opens.
+            const opened = await openReview(documentId, dataRef.current?.revision?.id ?? null);
             ++loadSequence.current;
             reviewRef.current = opened;
             setReview(opened);
             setSubmission(opened.submission);
             setSummary(opened.summary || "");
             setViewRevision("current");
+            setVersionNotice(null);
             await load();
         } catch (err) {
+            if (closedByVersion(err)) {
+                setVersionNotice(messageOf(err));
+                void load();
+                return;
+            }
             setLoadError(messageOf(err));
         }
     };
@@ -859,7 +922,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     // docs/human-brief.md): which project, what this is, what the reviewer
     // decides. Shown under the title; absent on documents registered before it.
     const brief = briefFromMetadata(doc?.metadata);
-    const canEdit = Boolean(data?.editable) && !showingPinned && data?.file_state === "ok" && !editing;
+    const canEdit = Boolean(data?.editable) && !showingPinned && data?.file_state === "ok" && !editing && reviewable;
 
     const saveIndicator = (() => {
         const states = [summaryStatus, commentStatus];
@@ -1087,14 +1150,37 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         <div className="space-y-3" data-review-panel="">
             {data && <DecisionCard data={data} viewedRevision={shownRevision} viewingCurrent={!showingPinned} onRefresh={load} directions={directions} compact />}
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100"><MessageSquare size={15} className="text-cyan-300" /> {documentChanged && !isDraft ? "Previous review" : "Your review"}</h2>
-                <span className={`rounded-full border px-2 py-0.5 text-[11px] ${isDraft ? "border-amber-500/40 bg-amber-500/10 text-amber-200" : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"}`}>{isDraft ? "Draft" : "Finished"}</span>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100"><MessageSquare size={15} className="text-cyan-300" /> {superseded || (documentChanged && !isDraft) ? "Previous review" : "Your review"}</h2>
+                <span className={`rounded-full border px-2 py-0.5 text-[11px] ${roundBadge.tone}`} data-review-round={roundBadge.key}>{roundBadge.text}</span>
             </div>
+            {superseded && review && (
+                // Closed read-only by accepted replacement work (contract §12): the comments stay readable here and in the history, nothing was sent.
+                <p role="status" className="rounded-md border border-slate-700 bg-slate-900/60 p-2 text-[11px] text-slate-300" data-review-superseded={review.replacement_id ?? ""}>
+                    This feedback round was closed, read-only, when revision work on this document was accepted{review.closed_at ? ` on ${formatWhen(review.closed_at)}` : ""}.
+                    {" "}Its {review.comments.length} comment{review.comments.length === 1 ? " is" : "s are"} kept and {review.comments.length === 1 ? "was" : "were"} not sent. The new version opens a fresh review.
+                </p>
+            )}
+            {superseded && summary.trim() && summary !== (review?.summary || "") && (
+                // The summary typed in this page before the round closed: never saved, never sent, and not thrown away.
+                <div role="status" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-100" data-unsaved-summary="">
+                    <p className="font-semibold">Your unsaved summary text</p>
+                    <p className="mt-0.5 text-amber-100/80">The round closed before it was saved, so it was not sent. Copy it for the new version&apos;s review.</p>
+                    <pre className="mt-1 whitespace-pre-wrap font-sans text-sm text-slate-100">{summary}</pre>
+                    <button type="button" onClick={() => { navigator.clipboard?.writeText(summary)?.catch(() => undefined); }} className="mt-1 rounded border border-slate-700 px-2 py-1 text-slate-300 hover:border-slate-500">Copy</button>
+                </div>
+            )}
             <div>{saveIndicator}</div>
             {recoveredCard}
             {submissionCard}
-            {!isDraft && (
+            {!isDraft && review && reviewable && (
                 <button type="button" onClick={() => void startNewReview()} className="text-[11px] text-cyan-300 hover:underline">Start a new review of this {mediaLabel(mediaType).toLowerCase()}</button>
+            )}
+            {!reviewable && (
+                <p className="text-[11px] text-slate-400" data-review-closed={data?.reviewable?.reason ?? ""}>
+                    {data?.reviewable?.reason === "replacement_in_progress"
+                        ? "No review can start on this version while a new version is being produced. Review reopens on the new version when it is ready, or on this one if the work fails or is cancelled."
+                        : "No review can start until the current revision is ready."}
+                </p>
             )}
             {isDraft && (!documentChanged || showingPinned) && !showSource && !editing && (
                 <button type="button" onClick={startDocumentNote} className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 hover:border-cyan-500/50">
@@ -1300,8 +1386,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                         {doc?.kind && doc.kind !== mediaType && <span className="uppercase tracking-wide">{doc.kind}</span>}
                         {asOf && <span>as of {asOf}</span>}
                         {shownRevision && (
-                            <span title={shownRevision.content_hash} data-revision-chip="">
-                                rev {shownRevision.content_hash.slice(0, 8)} · captured {formatWhen(shownRevision.captured_at)}{shownRevision.source === "nexus_edit" ? " · edited in Nexus" : ""}
+                            <span title={shownRevision.content_hash} data-revision-chip="" data-version={shownRevision.version ?? undefined}>
+                                {shownRevision.version ? `v${shownRevision.version} · ` : ""}rev {shownRevision.content_hash.slice(0, 8)} · captured {formatWhen(shownRevision.captured_at)}{shownRevision.source === "nexus_edit" ? " · edited in Nexus" : ""}
                             </span>
                         )}
                         {data?.readiness && (
@@ -1352,6 +1438,33 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                         </div>
                     )}
                     {!data && !loadError && <div className="flex min-h-[320px] items-center justify-center text-cyan-300"><Loader2 className="animate-spin" size={28} /></div>}
+                    {versionNotice && (
+                        <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100" data-version-notice="">
+                            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                            <span className="min-w-0 flex-1">{versionNotice} Nothing was recorded; the page now shows the document as it is.</span>
+                            <button type="button" onClick={() => setVersionNotice(null)} className="underline">Dismiss</button>
+                        </div>
+                    )}
+                    {data && replacement && showReplacement && (
+                        // Replacement work (contract §12), on desktop and phone alike: what is happening to this document, by which task, and what this version still takes.
+                        <div role="status" className={`mb-4 flex flex-wrap items-center gap-2 rounded-lg border p-3 text-xs ${replacement.open ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-100" : replacement.state === "failed" ? "border-rose-500/40 bg-rose-500/10 text-rose-100" : "border-slate-700 bg-slate-900/60 text-slate-300"}`} data-replacement-banner={replacement.state}>
+                            <span className={`inline-flex shrink-0 items-center rounded-full border px-1.5 py-px ${replacementStateLabel(replacement.state).tone}`}>{replacementStateLabel(replacement.state).text}{replacement.attempt > 1 ? ` · attempt ${replacement.attempt}` : ""}</span>
+                            <span className="min-w-0 flex-1">
+                                {replacement.open ? (
+                                    <>
+                                        A new version of this document is being produced
+                                        {replacement.task_id ? <> by <Link href={replacement.links?.task_path ?? `/task/${encodeURIComponent(replacement.task_id)}`} className="underline" data-replacement-task-link="">revision task {replacement.task_id.slice(0, 8)}</Link></> : null}
+                                        {replacement.detail ? ` (${replacement.detail})` : ""}. You are reading the current version{data.version?.current_version ? ` (v${data.version.current_version})` : ""}; it takes no new review, decision or edit until the new version is ready or the work fails or is cancelled. Earlier comments and decisions are kept.
+                                    </>
+                                ) : (
+                                    <>
+                                        The last attempt to produce a new version {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? `: ${replacement.detail}` : ""}
+                                        {replacement.task_id ? <> (<Link href={replacement.links?.task_path ?? `/task/${encodeURIComponent(replacement.task_id)}`} className="underline" data-replacement-task-link="">revision task {replacement.task_id.slice(0, 8)}</Link>)</> : null}. This version stays current and reviewable; a retry is a new attempt, never a silent reopening of the old one.
+                                    </>
+                                )}
+                            </span>
+                        </div>
+                    )}
                     {data && data.file_state !== "ok" && (
                         <div role="status" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100">
                             The file on disk is currently unavailable ({data.file_error || data.file_state}). Showing the last captured revision{VISUAL_NOTE(mediaType)}.
@@ -1369,7 +1482,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             <button type="button" onClick={() => setViewRevision(showingPinned ? "current" : "pinned")} className="rounded-md border border-amber-400/50 px-2 py-1 text-amber-100 hover:bg-amber-500/20">
                                 {showingPinned ? "View current file" : "View reviewed revision"}
                             </button>
-                            {!isDraft && !showingPinned && (
+                            {!isDraft && !showingPinned && reviewable && (
                                 <button type="button" onClick={() => void startNewReview()} className="rounded-md border border-cyan-400/50 px-2 py-1 text-cyan-100 hover:bg-cyan-500/20">Review this revision</button>
                             )}
                         </div>

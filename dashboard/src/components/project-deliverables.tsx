@@ -22,6 +22,8 @@ const PAGE_SIZE = 10;
 const TABS: { key: DocumentStatusFilter; label: string }[] = [
     { key: "needs_review", label: "Needs your review" },
     { key: "changes_requested", label: "Changes requested" },
+    // Replacement work in progress (contract §12): the current version takes no review actions until the new one is ready.
+    { key: "in_progress", label: "Being revised" },
     { key: "approved", label: "Approved" },
     { key: "all", label: "All" },
 ];
@@ -127,7 +129,7 @@ export function ProjectDeliverables({ projectId }: { projectId: string }) {
                     )
                 ) : documents.length === 0 ? (
                     <p className="text-xs text-slate-500" data-documents-empty="">
-                        {counts && counts.all === 0 ? "No registered deliverables for this project yet." : activeStatus === "needs_review" ? "Nothing in this project is waiting for your review." : "No deliverables in this view."}
+                        {counts && counts.all === 0 ? "No registered deliverables for this project yet." : activeStatus === "needs_review" ? "Nothing in this project is waiting for your review." : activeStatus === "in_progress" ? "Nothing in this project is being revised right now." : "No deliverables in this view."}
                     </p>
                 ) : (
                     <>

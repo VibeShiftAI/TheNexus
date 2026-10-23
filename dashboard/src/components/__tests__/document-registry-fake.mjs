@@ -6,7 +6,9 @@
 
 export const response = (data, status = 200) => ({ ok: status < 400, status, json: async () => data });
 
-const STATUSES = ['needs_review', 'changes_requested', 'approved', 'reference'];
+// The four editorial states plus `in_progress`: a document with open replacement work lists there, not under its review_status (contract §12).
+const STATUSES = ['needs_review', 'changes_requested', 'approved', 'reference', 'in_progress'];
+const bucketOf = doc => (doc.replacement ? 'in_progress' : doc.review_status);
 
 /** A synthetic registry entry shaped like the list endpoint's rows. */
 export function entry(n, overrides = {}) {
@@ -32,6 +34,8 @@ export function entry(n, overrides = {}) {
     review_path: `/documents/${id}`,
     review_status,
     review_state: null,
+    replacement: null,
+    reviewable: true,
     ...overrides,
   };
 }
@@ -54,7 +58,7 @@ export function syntheticRegistry(count = 130) {
 
 function matches(doc, q) {
   const status = q.get('status') || 'all';
-  if (status !== 'all' && doc.review_status !== status) return false;
+  if (status !== 'all' && bucketOf(doc) !== status) return false;
   if (q.get('project_id') && doc.project_id !== q.get('project_id')) return false;
   if (q.get('task_id') && doc.task_id !== q.get('task_id')) return false;
   if (q.get('kind') && doc.kind !== q.get('kind')) return false;
@@ -81,7 +85,7 @@ export function registryHandler(docs, options = {}) {
       const scope = new URLSearchParams(url.searchParams);
       scope.delete('status');
       const scoped = docs.filter(d => matches(d, scope));
-      const counts = Object.fromEntries(STATUSES.map(s => [s, scoped.filter(d => d.review_status === s).length]));
+      const counts = Object.fromEntries(STATUSES.map(s => [s, scoped.filter(d => bucketOf(d) === s).length]));
       return response({ counts: { ...counts, all: scoped.length } });
     }
     if (p === '/api/documents') {

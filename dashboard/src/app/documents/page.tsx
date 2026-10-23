@@ -40,6 +40,8 @@ const SEARCH_DEBOUNCE_MS = 300;
 const STATUS_TABS: { key: DocumentStatusFilter; label: string }[] = [
     { key: "needs_review", label: "Needs your review" },
     { key: "changes_requested", label: "Changes requested" },
+    // Documents with replacement work in progress (contract §12): a new version is being produced, so the current one takes no review actions.
+    { key: "in_progress", label: "Being revised" },
     { key: "approved", label: "Approved" },
     { key: "reference", label: "Reference" },
     { key: "all", label: "All" },
@@ -194,6 +196,7 @@ export default function DocumentsPage() {
         if (narrowed) return "No documents match these filters.";
         if (filters.status === "needs_review") return "Nothing is waiting for your review.";
         if (filters.status === "changes_requested") return "No documents are waiting on requested changes.";
+        if (filters.status === "in_progress") return "No documents are being revised right now.";
         if (filters.status === "approved") return "No approved documents yet.";
         if (filters.status === "reference") return "No reference documents.";
         return "No documents registered yet.";

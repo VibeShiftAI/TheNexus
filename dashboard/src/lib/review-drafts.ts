@@ -130,7 +130,8 @@ export interface DraftReconciliation {
     foreign: boolean;
     composer: ComposerPlan | null;
     edit: EditPlan | null;
-    summary: { restore: string } | null;
+    /** Restored into the box while the round is open; kept as recovered text when the round was closed as superseded before the autosave landed (contract §12). */
+    summary: { restore: string } | { recovered: string; reason: RecoveredReason } | null;
 }
 
 type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
@@ -368,6 +369,10 @@ export function reconcileReviewDraft(draft: ReviewDraft, live: LiveReviewState):
         const text = draft.summary.text;
         const continues = serverSummary.length > 0 && text.startsWith(serverSummary);
         if (text !== serverSummary && (draft.summary.base === serverSummary || continues)) plan.summary = { restore: text };
+    } else if (draft.summary && review?.status === "superseded" && hasText(draft.summary.text) && draft.summary.text !== (review.summary ?? "")) {
+        // The round was closed read-only by accepted replacement work before this text was saved: nothing of it was
+        // sent, so it is kept for the reader to place in the new version's review rather than dropped.
+        plan.summary = { recovered: draft.summary.text, reason: "review" };
     }
 
     return plan;
