@@ -1,0 +1,11 @@
+$ git rev-parse HEAD; git diff a359d83c10ef --stat (before the task commits; includes the untracked evidence only after git add)
+e09f3ae155742a081bad6d78623dc138aa485028
+ .../__tests__/document-replacements.test.mjs       | 52 ++++++++++++++++
+ .../components/document-review/decision-card.tsx   |  6 +-
+ .../components/document-review/deliverable-row.tsx |  2 +-
+ .../components/document-review/document-review.tsx |  4 +-
+ db/document-reviews.js                             | 12 ++--
+ docs/contracts/document-review-deliverables.md     | 12 ++++
+ server/__tests__/document-replacements.test.js     | 72 ++++++++++++++++++++++
+ server/routes/documents.js                         | 34 +++++++---
+ 8 files changed, 176 insertions(+), 18 deletions(-)

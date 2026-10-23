@@ -1,0 +1,9 @@
+$ npx jest document-replacements documents-route document-media document-deliverables document-executor-approvals document-outgoing (working tree, after)
+PASS server/__tests__/document-outgoing.test.js
+PASS server/__tests__/document-media.test.js
+PASS server/__tests__/documents-route.test.js
+PASS server/__tests__/document-replacements.test.js
+PASS server/__tests__/document-executor-approvals.test.js
+PASS server/__tests__/document-deliverables.test.js
+Test Suites: 6 passed, 6 total
+Tests:       133 passed, 133 total

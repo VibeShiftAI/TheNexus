@@ -1,0 +1,2 @@
+$ node node_modules/typescript/lib/tsc.js --noEmit -p tsconfig.json
+exit: 0

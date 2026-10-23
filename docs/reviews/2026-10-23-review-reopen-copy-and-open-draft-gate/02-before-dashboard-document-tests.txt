@@ -1,0 +1,5 @@
+Pre-change run on the working tree at dispatch (tree == QA baseline).
+$ node --import ./test/register.mjs --test src/components/__tests__/document-*.test.mjs documents-index review-documents-panel reauth-preserves-document
+ℹ tests 108
+ℹ pass 108
+ℹ fail 0

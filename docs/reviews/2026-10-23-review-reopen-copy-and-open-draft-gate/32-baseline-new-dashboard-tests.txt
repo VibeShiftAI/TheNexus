@@ -1,0 +1,26 @@
+$ node --import ./test/register.mjs --test src/components/__tests__/document-replacements.test.mjs (baseline components, new tests)
+✔ a version with replacement work in progress is read-only on the desktop reader: banner with the task, blocked decision, superseded round kept, nothing written (95.6595ms)
+✔ the phone drawer shows the same closed state as the desktop rail (31.009959ms)
+✔ a stale tab that starts a new review is refused and shown the current version; the next attempt names that version (39.347333ms)
+✔ replacement work accepted while a draft round is open: the next save is refused, the round shows superseded, unsaved text is kept (also across a reload) (125.324542ms)
+✔ a failed attempt leaves the version current and reviewable with the failure explained; an attempt on an older version is history only (51.575ms)
+✔ a failed attempt whose registered bytes are the current version closes it until recovery: banner, blocked decision and no new round, on desktop and in the phone drawer (63.430792ms)
+✔ the Reviews queue has a Being revised view whose count the other buckets exclude, and the row names the work and the version (27.976667ms)
+✔ a Being revised row closed by a failed attempt wears the failed badge and explains the closure, not work in progress (10.922916ms)
+✔ project deliverables agree: a Being revised tab with the same count, row and empty state (17.428834ms)
+✖ while work is open, every surface says failure or cancellation reopens this version only before new bytes are registered (10.846959ms)
+✖ a decision refused because work was accepted meanwhile qualifies the reopening the same way, and nothing is recorded (18.110625ms)
+✖ the Being revised row for open work qualifies the reopening in its badge title (5.815625ms)
+ℹ tests 12
+ℹ pass 9
+ℹ fail 3
+✖ failing tests:
+✖ while work is open, every surface says failure or cancellation reopens this version only before new bytes are registered (10.846959ms)
+    actual: 'Revision in progressA new version of this document is being produced by revision task task-2. You are reading the current version (v1); it takes no new review, decision or edit until the new version is ready or the work fails or is cancelled. Earlier comments and decisions are kept.',
+    expected: /until the new version is ready\. If the work fails or is cancelled before registering new bytes, this version reopens; bytes it registered first stay closed until an explicit recovery delivers\./,
+✖ a decision refused because work was accepted meanwhile qualifies the reopening the same way, and nothing is recorded (18.110625ms)
+    actual: ' A new version of this document is being produced, so nothing was recorded. This version takes no decision until the new version is ready or the work fails or is cancelled; the page now shows the work in progress. Your note and comments are kept.',
+    expected: /This version takes no decision until the new version is ready; if the work fails or is cancelled before registering new bytes, this version reopens, and bytes it registered first wait for an explicit recovery\./,
+✖ the Being revised row for open work qualifies the reopening in its badge title (5.815625ms)
+    actual: 'A new version of this document is being produced. This version is not reviewable until the new one is ready or the work fails or is cancelled; your earlier comments and decisions are kept.',
+    expected: /not reviewable until the new one is ready; it reopens if the work fails or is cancelled before registering new bytes, and bytes the work registered first wait for an explicit recovery\./,

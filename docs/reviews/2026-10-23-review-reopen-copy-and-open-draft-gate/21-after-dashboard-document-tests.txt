@@ -1,0 +1,4 @@
+$ node --import ./test/register.mjs --test src/components/__tests__/document-*.test.mjs documents-index review-documents-panel reauth-preserves-document (working tree, after)
+ℹ tests 111
+ℹ pass 111
+ℹ fail 0

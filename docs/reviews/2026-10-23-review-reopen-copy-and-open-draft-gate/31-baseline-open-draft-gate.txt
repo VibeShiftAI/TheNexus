@@ -1,0 +1,52 @@
+Same baseline, the two copy assertions removed (grep -v 'expect(inProgress.json.error)') so the stray-draft gate assertion is reached.
+
+$ npx jest --rootDir /tmp/nexus-9f44-baseline server/__tests__/document-replacements-gate-only.test.js -t 'no draft survives'
+    > 126 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+  ✕ no draft survives into open or failed work: acceptance closes a draft pinned to an older revision too, and the open route refuses even a draft that bypassed it (201 ms)
+    - Expected  -  4
+    + Received  + 39
+    -     "code": "replacement_in_progress",
+    -     "replacement": Object {
+    -       "id": "98466761-8273-4b27-afed-6de60c3a747a",
+    +     "created": false,
+    +     "review": Object {
+    +       "approval_delegated": false,
+    +       "closed_at": null,
+    +       "closed_reason": null,
+    +       "comments": Array [],
+    +       "created_at": "2026-10-23T22:48:17.306Z",
+    +       "document_changed": false,
+    +       "document_id": "1dcb1370-4274-4ee7-bf30-f632548c41d4",
+    +       "id": "14cf51be-a418-41c1-b089-a793a87f1eae",
+    +       "is_current_revision": true,
+    +       "pinned_revision": Object {
+    +         "asset_count": 1,
+    +         "byte_length": 95,
+    +         "captured_at": "2026-10-23T22:48:17.292Z",
+    +         "content_hash": "e0e51ab8b32da0a5f31ea92ea177da4a0f25b2cb1d26541ac3931ddab2f5309f",
+    +         "document_id": "1dcb1370-4274-4ee7-bf30-f632548c41d4",
+    +         "edited_by": null,
+    +         "file_mtime": "2026-10-23T22:48:17.291Z",
+    +         "height": null,
+    +         "id": "c1583831-9762-4665-a7e1-300f2e925200",
+    +         "line_count": 6,
+    +         "manifest": null,
+    +         "media_type": "markdown",
+    +         "mime_type": "text/markdown",
+    +         "source": "capture",
+    +         "version": 2,
+    +         "width": null,
+    +       },
+    +       "replacement_id": null,
+    +       "reviewer_id": "stray-reviewer",
+    +       "revision_id": "c1583831-9762-4665-a7e1-300f2e925200",
+    +       "status": "draft",
+    +       "submission": null,
+    +       "submitted_at": null,
+    +       "submitted_authority": null,
+    +       "summary": "",
+    +       "updated_at": "2026-10-23T22:48:17.306Z",
+    -   "status": 409,
+    +   "status": 200,
+    > 752 |     expect(await api('POST', `/api/documents/${document.id}/reviews`, {}, { user: 'stray-reviewer' })).toMatchObject({ status: 409, json: { code: 'replacement_in_progress', replacement: { id: rp.id } } });
+Tests:       1 failed, 14 skipped, 15 total
