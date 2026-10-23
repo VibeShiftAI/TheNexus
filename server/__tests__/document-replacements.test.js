@@ -567,3 +567,158 @@ test('lists, counts and detail agree across documents in every bucket; the in_pr
     expect((await read(open.document.id)).json.replacement.id).toBe(rp.id);
     expect((await history(open.document.id)).replacements[0].id).toBe(rp.id);
 });
+
+// ── QA repair round (2026-10-23): the concurrency and lifecycle defects an independent probe reproduced ──────────────────
+
+/** Freeze the next task lookup for `taskId` until `release()`, so a request sits between its awaits and its write while another lands. */
+function holdTaskLookup(taskId) {
+    const original = db.getTask;
+    let release;
+    let signal;
+    const gate = new Promise(resolve => { release = resolve; });
+    const entered = new Promise(resolve => { signal = resolve; });
+    let intercepted = false;
+    db.getTask = async function (id) {
+        const task = await original.call(db, id);
+        if (id === taskId && !intercepted) { intercepted = true; signal(); await gate; }
+        return task;
+    };
+    return { entered, release, restore() { db.getTask = original; } };
+}
+
+test('a review racing a result promotion cannot open on the revision it overtook: currency is re-read inside the insert', async () => {
+    const { document, file, v1, submission } = await requestedChanges('race-promotion.md');
+    const rp = (await accept(document.id, { client_request_id: 'req', source: { submission_id: submission.id }, task_id: WORK_TASK })).json.replacement;
+    // The review request is frozen in its reconcile step (the task lookup), having already captured v1 as current.
+    const hold = holdTaskLookup(WORK_TASK);
+    const pending = api('POST', `/api/documents/${document.id}/reviews`, { revision_id: v1.id });
+    await hold.entered;
+    // Meanwhile the work registers v2 and declares it ready: v2 is the current, reviewable version now.
+    fs.writeFileSync(file, V2);
+    const v2 = (await register(file, { task_id: WORK_TASK })).json.revision;
+    expect((await report(document.id, rp.id, { state: 'ready' })).json.replacement.state).toBe('ready');
+    hold.release();
+    const opened = await pending;
+    hold.restore();
+    expect(opened).toMatchObject({ status: 409, json: { code: 'stale_revision', revision_id: v1.id, current_revision: { id: v2.id, version: 2 } } });
+    // No round exists on the overtaken revision; the next attempt opens on v2.
+    expect((await history(document.id)).reviews.filter(r => r.status === 'draft')).toEqual([]);
+    expect((await api('POST', `/api/documents/${document.id}/reviews`, { revision_id: v2.id })).json.review.revision_id).toBe(v2.id);
+});
+
+test('a failed attempt whose registered bytes are the current revision closes the version until an explicit recovery delivers a new one; the recovery cites the last reviewable version', async () => {
+    const { document, file, submission, decision } = await requestedChanges('failed-result.md');
+    const rp = (await accept(document.id, { client_request_id: 'req', source: { submission_id: submission.id }, task_id: WORK_TASK })).json.replacement;
+    fs.writeFileSync(file, V2);
+    const v2 = (await register(file, { task_id: WORK_TASK })).json.revision;
+    expect(db.documentReviews.getReplacement(rp.id)).toMatchObject({ state: 'implemented', result_revision_id: v2.id });
+    // QA rejects the new bytes: the attempt fails with its result on record, and v2, never declared ready, is closed.
+    const failed = await report(document.id, rp.id, { state: 'failed', qa_state: 'failed', detail: 'QA rejected the new bytes' });
+    expect(failed).toMatchObject({ status: 200, json: { reviewable: false, replacement: { state: 'failed', qa_state: 'failed', result_revision_id: v2.id } } });
+    const detail = (await read(document.id)).json;
+    expect(detail).toMatchObject({ revision: { id: v2.id, version: 2 }, reviewable: { ok: false, reason: 'replacement_failed', replacement_id: rp.id }, replacement: { id: rp.id, state: 'failed' } });
+    // Neither a review nor a decision nor an edit touches the failed bytes; nothing is recorded.
+    expect(await api('POST', `/api/documents/${document.id}/reviews`, { revision_id: v2.id })).toMatchObject({ status: 409, json: { code: 'replacement_failed', replacement: { id: rp.id, state: 'failed' } } });
+    expect(await api('POST', `/api/documents/${document.id}/reviews`, {}, { user: 'second_reviewer' })).toMatchObject({ status: 409, json: { code: 'replacement_failed' } });
+    expect(await decide(document.id, v2.id, 'approve')).toMatchObject({ status: 409, json: { code: 'replacement_failed' } });
+    expect(await api('PUT', `/api/documents/${document.id}/content`, { content: V3, base_revision_id: v2.id, summary: 'fix' }, operator)).toMatchObject({ status: 409, json: { code: 'replacement_failed' } });
+    expect(db.documentReviews.listDecisions(document.id)).toHaveLength(1);
+    expect(await history(document.id)).toMatchObject({ reviewable: false, current_version: 2 });
+    // Lists and counts agree: the document sits in no review bucket, and its row names the failed attempt and is not reviewable.
+    expect(await counts()).toMatchObject({ in_progress: 1, needs_review: 0, changes_requested: 0, all: 1 });
+    expect((await api('GET', '/api/documents?status=in_progress')).json.documents[0]).toMatchObject({ id: document.id, reviewable: false, replacement: { id: rp.id, state: 'failed', open: false } });
+    // The old authority is not reused silently: a plain re-acceptance must name the failed attempt.
+    expect(await accept(document.id, { client_request_id: 'req-2', source: { submission_id: submission.id } })).toMatchObject({ status: 409, json: { code: 'recovery_required', replacement: { id: rp.id } } });
+    // Explicit recovery cites the same review (pinned to v1, the last reviewable version) and replaces the failed bytes: attempt 2 on base v2.
+    const recovered = await accept(document.id, { client_request_id: 'req-2', source: { submission_id: submission.id }, recovers_replacement_id: rp.id, task_id: RECOVERY_TASK });
+    expect(recovered).toMatchObject({ status: 201, json: { reviewable: false, replacement: { attempt: 2, recovers_replacement_id: rp.id, base_revision_id: v2.id, state: 'accepted', task_id: RECOVERY_TASK } } });
+    expect((await read(document.id)).json.reviewable).toMatchObject({ ok: false, reason: 'replacement_in_progress', replacement_id: recovered.json.replacement.id });
+    // Its result reopens the document on v3; v2 stays on record as the failed attempt's result.
+    fs.writeFileSync(file, V3);
+    const v3 = (await register(file, { task_id: RECOVERY_TASK })).json.revision;
+    expect(await report(document.id, recovered.json.replacement.id, { state: 'qa_passed', qa_state: 'passed' })).toMatchObject({ status: 200, json: { reviewable: true, replacement: { state: 'ready', result_revision_id: v3.id } } });
+    expect((await read(document.id)).json).toMatchObject({ revision: { id: v3.id, version: 3 }, reviewable: { ok: true }, review_status: 'needs_review' });
+    expect((await api('POST', `/api/documents/${document.id}/reviews`, { revision_id: v3.id })).json.review.revision_id).toBe(v3.id);
+    expect(await counts()).toMatchObject({ in_progress: 0, needs_review: 1, all: 1 });
+    const h = await history(document.id);
+    expect(h.revisions.map(r => [r.version, r.is_current])).toEqual([[1, false], [2, false], [3, true]]);
+    expect(h.replacements.map(r => [r.attempt, r.state, r.result_revision_id])).toEqual([[2, 'ready', v3.id], [1, 'failed', v2.id]]);
+    // Once v3 is the reviewable version, the v1 decision is stale authority and starts no further work.
+    expect(await accept(document.id, { client_request_id: 'req-3', source: { decision_id: decision.id } })).toMatchObject({ status: 409, json: { code: 'source_not_current', authority_revision_id: v3.id } });
+});
+
+test('a recovery that fails before registering anything leaves the closure with the attempt whose bytes are current: detail, refusals and the list row name that attempt, and the next recovery names the latest one', async () => {
+    const { document, file, submission } = await requestedChanges('failed-recovery.md');
+    const first = (await accept(document.id, { client_request_id: 'req', source: { submission_id: submission.id }, task_id: WORK_TASK })).json.replacement;
+    fs.writeFileSync(file, V2);
+    const v2 = (await register(file, { task_id: WORK_TASK })).json.revision;
+    expect(await report(document.id, first.id, { state: 'failed', qa_state: 'failed', detail: 'QA rejected the new bytes' })).toMatchObject({ status: 200, json: { reviewable: false } });
+    // The recovery is accepted on base v2, then fails before it registers anything.
+    const second = (await accept(document.id, { client_request_id: 'req-2', source: { submission_id: submission.id }, recovers_replacement_id: first.id, task_id: RECOVERY_TASK })).json.replacement;
+    expect(second).toMatchObject({ attempt: 2, base_revision_id: v2.id, result_revision_id: null });
+    expect(await report(document.id, second.id, { state: 'failed', detail: 'the recovery crashed before registering anything' })).toMatchObject({ status: 200, json: { reviewable: false, replacement: { id: second.id, state: 'failed', result_revision_id: null } } });
+    // v2 is still current and still closed by the first attempt: the reader, the refusals and the list row all name that attempt, not the latest one.
+    expect((await read(document.id)).json).toMatchObject({ revision: { id: v2.id, version: 2 }, reviewable: { ok: false, reason: 'replacement_failed', replacement_id: first.id }, replacement: { id: first.id, state: 'failed', result_revision_id: v2.id, attempt: 1 } });
+    expect(await api('POST', `/api/documents/${document.id}/reviews`, {})).toMatchObject({ status: 409, json: { code: 'replacement_failed', replacement: { id: first.id } } });
+    expect((await api('GET', '/api/documents?status=in_progress')).json.documents[0]).toMatchObject({ id: document.id, reviewable: false, replacement: { id: first.id, state: 'failed', open: false } });
+    expect(await counts()).toMatchObject({ in_progress: 1, needs_review: 0, changes_requested: 0, all: 1 });
+    // History keeps both attempts; the next recovery must name the latest attempt for the source (the failed recovery), not the first.
+    expect((await history(document.id)).replacements.map(r => [r.attempt, r.state, r.result_revision_id])).toEqual([[2, 'failed', null], [1, 'failed', v2.id]]);
+    expect(await accept(document.id, { client_request_id: 'req-3', source: { submission_id: submission.id }, recovers_replacement_id: first.id, task_id: OTHER_TASK })).toMatchObject({ status: 409, json: { code: 'invalid_recovery' } });
+    const third = await accept(document.id, { client_request_id: 'req-3b', source: { submission_id: submission.id }, recovers_replacement_id: second.id, task_id: OTHER_TASK });
+    expect(third).toMatchObject({ status: 201, json: { replacement: { attempt: 3, base_revision_id: v2.id, state: 'accepted' } } });
+    // With work open again the reader names the open item.
+    expect((await read(document.id)).json).toMatchObject({ reviewable: { ok: false, reason: 'replacement_in_progress', replacement_id: third.json.replacement.id }, replacement: { id: third.json.replacement.id, state: 'accepted' } });
+});
+
+test('simultaneous task links: exactly one task links, the other report is refused with the linked task, and the same task again is a no-op', async () => {
+    const { document, submission } = await requestedChanges('race-link.md');
+    const rp = (await accept(document.id, { client_request_id: 'req', source: { submission_id: submission.id } })).json.replacement;
+    // Both reports pass the pre-check (no task yet) and both pause in the task lookup; the write transaction decides.
+    const original = db.getTask;
+    let arrivals = 0;
+    let release;
+    const barrier = new Promise(resolve => { release = resolve; });
+    db.getTask = async function (id) {
+        const task = await original.call(db, id);
+        if ((id === WORK_TASK || id === OTHER_TASK) && arrivals < 2) { arrivals += 1; if (arrivals === 2) release(); await barrier; }
+        return task;
+    };
+    const results = await Promise.all([report(document.id, rp.id, { task_id: WORK_TASK }), report(document.id, rp.id, { task_id: OTHER_TASK })]);
+    db.getTask = original;
+    const won = results.find(r => r.status === 200);
+    const lost = results.find(r => r.status === 409);
+    expect(Boolean(won && lost)).toBe(true);
+    const winner = won.json.replacement.task_id;
+    expect(lost.json).toMatchObject({ code: 'task_already_linked', replacement: { id: rp.id, task_id: winner } });
+    expect(db.documentReviews.getReplacement(rp.id).task_id).toBe(winner);
+    expect(await report(document.id, rp.id, { task_id: winner })).toMatchObject({ status: 200, json: { duplicate: true, replacement: { task_id: winner } } });
+    expect(await report(document.id, rp.id, { task_id: winner === WORK_TASK ? OTHER_TASK : WORK_TASK })).toMatchObject({ status: 409, json: { code: 'task_already_linked' } });
+});
+
+test('lists and counts reconcile a completed task before any document is opened, and agree with the detail read afterwards', async () => {
+    const { document, file, submission } = await requestedChanges('reconcile-list.md');
+    const rp = (await accept(document.id, { client_request_id: 'req', source: { submission_id: submission.id }, task_id: WORK_TASK })).json.replacement;
+    fs.writeFileSync(file, V2);
+    const v2 = (await register(file, { task_id: WORK_TASK })).json.revision;
+    await db.updateTask(WORK_TASK, { status: 'completed' });
+    // Nothing has read the document since the task closed: the counts alone reconcile the work to ready.
+    const before = await counts();
+    expect(before).toMatchObject({ in_progress: 0, needs_review: 1, all: 1 });
+    expect(db.documentReviews.getReplacement(rp.id)).toMatchObject({ state: 'ready', result_revision_id: v2.id });
+    const listed = (await api('GET', '/api/documents?status=needs_review')).json.documents;
+    expect(listed.map(d => [d.id, d.reviewable, d.replacement])).toEqual([[document.id, true, null]]);
+    expect(await listIds('status=in_progress')).toEqual([]);
+    // The project view and the detail read agree, and opening the document changes no count.
+    expect(await counts(`?project_id=${PROJECT_ID}`)).toEqual(before);
+    expect((await read(document.id)).json).toMatchObject({ reviewable: { ok: true }, replacement: { id: rp.id, state: 'ready' } });
+    expect(await counts()).toEqual(before);
+
+    // A second document whose task completed without a result fails on the same list read and lists under its decision again.
+    const other = await requestedChanges('reconcile-list-2.md');
+    const rpOther = (await accept(other.document.id, { client_request_id: 'req', source: { submission_id: other.submission.id }, task_id: OTHER_TASK })).json.replacement;
+    await db.updateTask(OTHER_TASK, { status: 'completed' });
+    expect(await counts()).toMatchObject({ in_progress: 0, needs_review: 1, changes_requested: 1, all: 2 });
+    expect(db.documentReviews.getReplacement(rpOther.id)).toMatchObject({ state: 'failed' });
+    expect(await listIds('status=changes_requested')).toEqual([other.document.id]);
+});

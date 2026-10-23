@@ -125,11 +125,18 @@ const REVIEW_STATUS_SQL = `CASE
 const LATEST_DECISION_JOIN = `LEFT JOIN review_document_decisions ld ON ld.id = (
         SELECT x.id FROM review_document_decisions x WHERE x.document_id = d.id
         ORDER BY x.created_at DESC, x.rowid DESC LIMIT 1)`;
-// The document's open replacement `rp`, if any: at most one exists (partial unique index below).
-const OPEN_REPLACEMENT_JOIN = `LEFT JOIN review_document_replacements rp ON rp.id = (
-        SELECT y.id FROM review_document_replacements y WHERE y.document_id = d.id AND y.state IN (${sqlList(REPLACEMENT_OPEN_STATES)})
-        ORDER BY y.created_at DESC, y.rowid DESC LIMIT 1)`;
-/** The bucket a list row falls in, over the columns documentQuery selects: an open replacement takes it out of the decision buckets. */
+// The replacement that governs a document row `rp`, if any: its one open item (partial unique index below), else the newest
+// attempt that registered the current revision, when that attempt failed or was cancelled (a ready producer governs nothing).
+// Either way the version takes no review actions: the first until the work closes, the second until an explicit recovery
+// delivers a new version (never by reviewing failed bytes). This is the producer the route's authorityRevision starts from,
+// so a list row and the detail read agree on whether the version is closed.
+const GOVERNING_REPLACEMENT_JOIN = `LEFT JOIN review_document_replacements rp ON rp.id = COALESCE(
+        (SELECT y.id FROM review_document_replacements y WHERE y.document_id = d.id AND y.state IN (${sqlList(REPLACEMENT_OPEN_STATES)})
+         ORDER BY y.created_at DESC, y.rowid DESC LIMIT 1),
+        (SELECT CASE WHEN z.state IN ('failed', 'cancelled') THEN z.id END FROM review_document_replacements z
+         WHERE z.document_id = d.id AND z.result_revision_id = d.current_revision_id
+         ORDER BY z.created_at DESC, z.rowid DESC LIMIT 1))`;
+/** The bucket a list row falls in, over the columns documentQuery selects: a governing replacement takes it out of the decision buckets. */
 const LIST_BUCKET_SQL = `CASE WHEN replacement_id IS NULL THEN review_status ELSE 'in_progress' END`;
 
 /**
@@ -498,11 +505,11 @@ function documentQuery({ id, task_id, project_id, kind, q } = {}, blockingCountS
         where.push("(d.title LIKE ? ESCAPE '\\' OR COALESCE(d.purpose, '') LIKE ? ESCAPE '\\' OR d.path LIKE ? ESCAPE '\\')");
         params.push(like, like, like);
     }
-    // Alongside the decision-derived review_status: the open replacement (if any) and whether the row takes review actions now.
+    // Alongside the decision-derived review_status: the governing replacement (if any) and whether the row takes review actions now.
     const sql = `SELECT d.*, ${REVIEW_STATUS_SQL} AS review_status, ${blockingCountSql} AS blocking_task_count,
         rp.id AS replacement_id, rp.state AS replacement_state, rp.task_id AS replacement_task_id, rp.attempt AS replacement_attempt,
         CASE WHEN rp.id IS NULL THEN 1 ELSE 0 END AS reviewable
-        FROM review_documents d ${LATEST_DECISION_JOIN} ${OPEN_REPLACEMENT_JOIN}${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
+        FROM review_documents d ${LATEST_DECISION_JOIN} ${GOVERNING_REPLACEMENT_JOIN}${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
     return { sql, params };
 }
 
@@ -777,6 +784,10 @@ function createDocumentReviewStore(db) {
         findOpenReplacement(documentId) {
             return one(`SELECT * FROM review_document_replacements WHERE document_id = ? AND state IN (${sqlList(REPLACEMENT_OPEN_STATES)})
                 ORDER BY created_at DESC, rowid DESC LIMIT 1`, documentId);
+        },
+        /** Every open replacement across documents, oldest first: list and count reads reconcile these before querying, so a queue agrees with detail without a document being opened. */
+        listOpenReplacements() {
+            return many(`SELECT * FROM review_document_replacements WHERE state IN (${sqlList(REPLACEMENT_OPEN_STATES)}) ORDER BY created_at ASC, rowid ASC`);
         },
         /** The newest replacement of a document in any state, or null: what the reader explains when nothing is open. */
         latestReplacement(documentId) {

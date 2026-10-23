@@ -313,14 +313,42 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
     }
 
     /**
+     * The version whose reviews and decisions carry current authority. Normally
+     * the current revision. When the current revision was registered by
+     * replacement work that ended without being declared ready (failed or
+     * cancelled), those bytes are never reviewable and authority stays with the
+     * version that work set out to replace, walking back through a chain of
+     * such attempts. Returns { revision, closedBy }: `closedBy` is the item
+     * whose unaccepted result the current revision is, or null when the current
+     * revision itself carries authority.
+     */
+    function authorityRevision(doc, current) {
+        let revision = current;
+        let closedBy = null;
+        const seen = new Set();
+        while (revision && !seen.has(revision.id)) {
+            seen.add(revision.id);
+            const producer = store().findReplacementByResult(doc.id, revision.id);
+            if (!producer || producer.state === 'ready') break;
+            closedBy = closedBy || producer;
+            revision = producer.base_revision_id ? store().getRevisionMeta(producer.base_revision_id) : null;
+        }
+        return { revision, closedBy };
+    }
+
+    /**
      * Whether the document takes review actions (a new review, a decision, an
-     * edit) right now. Open replacement work closes it; a visual revision with
-     * a missing required asset is not ready. `revision` is the current revision.
+     * edit) right now. Open replacement work closes it; so does a current
+     * revision that a failed or cancelled attempt registered, until an explicit
+     * recovery delivers a new version; a visual revision with a missing required
+     * asset is not ready. `revision` is the current revision.
      */
     function reviewability(doc, revision) {
         const open = store().findOpenReplacement(doc.id);
         if (open) return { ok: false, reason: 'replacement_in_progress', replacement: replacementView(open) };
         if (!revision) return { ok: false, reason: 'no_revision', replacement: null };
+        const { closedBy } = authorityRevision(doc, revision);
+        if (closedBy) return { ok: false, reason: 'replacement_failed', replacement: replacementView(closedBy) };
         if (media.isVisualMedia(revision.media_type)) {
             const readiness = readinessView(doc, revision);
             if (!readiness.ready) return { ok: false, reason: 'revision_not_ready', replacement: null, readiness: { ready: false, required_ok: readiness.required_ok, required_total: readiness.required_total } };
@@ -331,9 +359,11 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
     function notReviewable(res, gate) {
         const message = gate.reason === 'replacement_in_progress'
             ? `Replacement work on this document is in progress (${gate.replacement.state}${gate.replacement.task_id ? `, task ${gate.replacement.task_id}` : ''}); this version is not reviewable until the new version is ready or the work fails or is cancelled. Nothing was recorded`
-            : gate.reason === 'revision_not_ready'
-                ? `The current revision is not ready (${gate.readiness.required_ok}/${gate.readiness.required_total} required assets servable); nothing was recorded`
-                : 'The document has no readable revision to review';
+            : gate.reason === 'replacement_failed'
+                ? `The current revision was registered by replacement work that ${gate.replacement.state === 'cancelled' ? 'was cancelled' : 'failed'}${gate.replacement.task_id ? ` (task ${gate.replacement.task_id})` : ''} and was never declared ready; it is not reviewable. Review reopens on a new version delivered by an explicit recovery attempt (recovers_replacement_id). Nothing was recorded`
+                : gate.reason === 'revision_not_ready'
+                    ? `The current revision is not ready (${gate.readiness.required_ok}/${gate.readiness.required_total} required assets servable); nothing was recorded`
+                    : 'The document has no readable revision to review';
         return res.status(409).json({ error: message, code: gate.reason, ...(gate.replacement ? { replacement: gate.replacement } : {}), ...(gate.readiness ? { readiness: gate.readiness } : {}) });
     }
 
@@ -384,6 +414,20 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
     }
 
     /**
+     * Lists and counts reconcile every open item first, so a queue, its counts
+     * and the detail read agree without a document being opened: a task that
+     * completed with a current result is `ready` the moment it is listed, not
+     * after someone clicks through. Open items are few (one per document with
+     * work in progress), so this is a handful of task lookups per list read.
+     */
+    async function reconcileOpenReplacements() {
+        for (const rp of store().listOpenReplacements()) {
+            // One item's failed task lookup must not take the whole queue down: that row keeps its last known state.
+            try { await reconcileReplacement({ id: rp.document_id }); } catch (err) { console.error(`[Documents] reconcile of replacement ${rp.id} (document ${rp.document_id}) failed before listing:`, err); }
+        }
+    }
+
+    /**
      * A declared registration under the replacement's task names the resulting
      * revision: record it and move the work to `implemented`. Readiness and
      * currency are checked when the work is declared ready, never assumed here;
@@ -400,9 +444,18 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         return Object.keys(patch).length ? store().updateReplacement(open.id, patch) : open;
     }
 
-    /** The current, open or latest replacement for a reader: open work first, else the newest closed item that explains the document's state. */
-    function replacementForReader(doc) {
-        return store().findOpenReplacement(doc.id) || store().latestReplacement(doc.id);
+    /**
+     * The replacement a reader is shown: open work first; else the attempt whose
+     * unaccepted result the current revision is (it closes the version, and it is
+     * the item the list row names, even when a later recovery failed without
+     * registering anything); else the newest item, which explains a failed or
+     * cancelled attempt on the version still current.
+     */
+    function replacementForReader(doc, current) {
+        const open = store().findOpenReplacement(doc.id);
+        if (open) return open;
+        const revision = current || (doc.current_revision_id ? store().getRevisionMeta(doc.current_revision_id) : null);
+        return authorityRevision(doc, revision).closedBy || store().latestReplacement(doc.id);
     }
 
     /**
@@ -642,8 +695,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             current_revision: revisionMeta(currentMeta),
             review_url: fmt.reviewUrlFor(doc.id),
             review_path: fmt.reviewPathFor(doc.id),
-            // Open replacement work, if any: the row is `in_progress` and takes no review actions until it closes.
-            replacement: rpId ? { id: rpId, state: rpState, task_id: rpTask || null, attempt: rpAttempt ?? 1, open: true } : null,
+            // The governing replacement, if any: open work, or a failed or cancelled attempt whose bytes are the current revision.
+            // Either way the row is `in_progress` and takes no review actions until the work closes or a recovery delivers.
+            replacement: rpId ? { id: rpId, state: rpState, task_id: rpTask || null, attempt: rpAttempt ?? 1, open: isOpenState(rpState) } : null,
             reviewable: reviewable !== false && rpId == null,
             review_state: review ? {
                 review_id: review.id, status: review.status, updated_at: review.updated_at,
@@ -886,6 +940,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const parsed = parseListQuery(req.query);
             if (!parsed.ok) return res.status(400).json({ error: parsed.error, code: 'invalid_query' });
             const { status, limit, offset, filters } = parsed.value;
+            await reconcileOpenReplacements();
             const page = store().listDocumentsPage({ status, limit, offset, ...filters });
             return res.json({
                 documents: page.documents.map(doc => listEntry(doc, req.user.id)),
@@ -897,10 +952,11 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         }
     });
 
-    router.get('/counts', (req, res) => {
+    router.get('/counts', async (req, res) => {
         try {
             const parsed = parseListQuery(req.query, { paging: false });
             if (!parsed.ok) return res.status(400).json({ error: parsed.error, code: 'invalid_query' });
+            await reconcileOpenReplacements();
             return res.json({ counts: store().countDocumentsByStatus(parsed.value.filters), filters: parsed.value.filters });
         } catch (err) {
             console.error('[Documents] counts failed:', err);
@@ -944,9 +1000,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 review: review ? reviewView(review, { revision: captured.revision }) : null,
                 review_status: store().getReviewStatus(doc.id),
                 current_decision: latest ? { ...latest, applies_to_current_revision: latest.revision_id === fresh.current_revision_id } : null,
-                // Version lifecycle (task 6b46dcc8): the open replacement (else the newest closed one, which explains a failed or
-                // cancelled attempt), and whether this version takes review actions now.
-                replacement: replacementView(replacementForReader(fresh)),
+                // Version lifecycle (task 6b46dcc8): the open replacement (else the attempt whose unaccepted bytes are current, else
+                // the newest closed one, which explains a failed or cancelled attempt), and whether this version takes review actions now.
+                replacement: replacementView(replacementForReader(fresh, captured.revision)),
                 reviewable: { ok: gate.ok, reason: gate.reason, replacement_id: gate.replacement?.id ?? null },
                 version: { current_revision_id: fresh.current_revision_id, current_version: captured.revision ? store().revisionVersion(captured.revision.id) : null, revision_count: store().listRevisionMeta(doc.id).length },
                 // Who this read is for: the browser binds its unsaved review text to this reviewer (task 1390fc34).
@@ -1175,10 +1231,11 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (captured.revision.id !== baseRevisionId) {
                 return res.status(409).json({ error: 'The document changed after the revision you edited; reload and edit the current revision', code: 'stale_revision', revision_id: baseRevisionId, current_revision: revisionMeta(captured.revision) });
             }
-            // Open replacement work owns the next version: an edit now would be overtaken or would strand the work (task 6b46dcc8).
+            // Open replacement work owns the next version: an edit now would be overtaken or would strand the work; the bytes of a
+            // failed attempt take no edit either, a recovery replaces them (task 6b46dcc8). A missing visual asset never blocks an edit.
             await reconcileReplacement(doc);
-            const openWork = store().findOpenReplacement(doc.id);
-            if (openWork) return notReviewable(res, { ok: false, reason: 'replacement_in_progress', replacement: replacementView(openWork) });
+            const workGate = reviewability(store().getDocument(doc.id), captured.revision);
+            if (!workGate.ok && workGate.reason !== 'revision_not_ready') return notReviewable(res, workGate);
             const newHash = sha256(bytes);
             if (newHash === captured.revision.content_hash || newHash === sha256(Buffer.from(captured.revision.content, 'utf8'))) {
                 return res.status(200).json({ edit: null, revision: revisionMeta(captured.revision), content: captured.revision.content, unchanged: true });
@@ -1355,9 +1412,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 decision = store().transaction(() => {
                     const fresh = store().getDocument(doc.id);
                     if (fresh.current_revision_id !== revision.id || !fresh.requires_review) return null;
-                    // Re-checked inside the transaction: an acceptance landing meanwhile wins over this decision.
-                    const open = store().findOpenReplacement(doc.id);
-                    if (open) { blockedBy = { ok: false, reason: 'replacement_in_progress', replacement: replacementView(open) }; return null; }
+                    // Re-checked inside the transaction: an acceptance or a failure report landing meanwhile wins over this decision.
+                    const gateNow = reviewability(fresh, revision);
+                    if (!gateNow.ok) { blockedBy = gateNow; return null; }
                     let provenance = null;
                     if (executor) {
                         // Re-resolved inside the transaction: a decision or review landing meanwhile must win.
@@ -1479,23 +1536,28 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
      * must be request_changes on the current revision and the latest decision.
      * Older authority is never reused (contract §12.2).
      */
+    // Authority is judged against the version that carries it (authorityRevision): the current revision, or, when the current
+    // revision is the unaccepted result of a failed or cancelled attempt, the version that attempt set out to replace. So a
+    // recovery cites the same review or decision the failed attempt did, and a request pinned to any other version is stale.
     function sourceAuthorizes(doc, current, { review, decision }) {
+        const authority = authorityRevision(doc, current).revision;
+        const authorityId = authority ? authority.id : null;
         const stale = (what, revisionId) => ({
             ok: false, status: 409, code: 'source_not_current',
-            error: `${what} is pinned to revision ${revisionId}, not the current revision; stale authority is not reused, ask for a new review or decision of the current version`,
-            extra: { source_revision_id: revisionId, current_revision: revisionMeta(current) },
+            error: `${what} is pinned to revision ${revisionId}, not the current reviewable revision${authorityId && authorityId !== current.id ? ` (${authorityId}; the current bytes are an unaccepted result)` : ''}; stale authority is not reused, ask for a new review or decision of the current version`,
+            extra: { source_revision_id: revisionId, authority_revision_id: authorityId, current_revision: revisionMeta(current) },
         });
         if (review) {
             if (review.status !== 'submitted' || !review.submitted_at) {
                 return { ok: false, status: 409, code: 'source_review_not_submitted', error: 'The cited review has not been finished; only a submitted review authorizes work', extra: { review_id: review.id, status: review.status } };
             }
-            if (review.revision_id !== current.id) return stale(`The cited review ${review.id}`, review.revision_id);
+            if (review.revision_id !== authorityId) return stale(`The cited review ${review.id}`, review.revision_id);
         }
         if (decision) {
             if (decision.decision !== 'request_changes') {
                 return { ok: false, status: 409, code: 'source_not_change_request', error: 'The cited decision is an approval; approval without edits creates no revision work', extra: { decision_id: decision.id } };
             }
-            if (decision.revision_id !== current.id) return stale(`The cited decision ${decision.id}`, decision.revision_id);
+            if (decision.revision_id !== authorityId) return stale(`The cited decision ${decision.id}`, decision.revision_id);
             const latest = store().latestDecision(doc.id);
             if (latest && latest.id !== decision.id) {
                 return { ok: false, status: 409, code: 'source_superseded', error: 'A later decision was recorded after the cited one; it is the current authority', extra: { decision: latest } };
@@ -1713,29 +1775,51 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             // `ready` is a verified claim: the result must be registered, current and ready as re-read now.
             const captured = await captureRevision(doc);
             const fresh = store().getDocument(doc.id);
+            const notReady = (document, result, readiness) => res.status(409).json({
+                error: readiness.reason === 'no_result'
+                    ? 'No resulting revision is registered for this replacement; register the file under its task (or send revision_id) before declaring it ready'
+                    : readiness.reason === 'result_not_current'
+                        ? `Revision ${result.id} is not the document's current revision (${document.current_revision_id}); the latest bytes win and only they can be ready`
+                        : `Revision ${result.id} is not ready: ${readiness.readiness.required_ok}/${readiness.readiness.required_total} required assets are servable`,
+                code: 'result_not_ready', reason: readiness.reason,
+                current_revision: revisionMeta(document.current_revision_id === captured.revision?.id ? captured.revision : store().getRevisionMeta(document.current_revision_id)),
+                ...(readiness.readiness ? { readiness: readiness.readiness } : {}),
+            });
             if (patch.state === 'ready') {
                 const result = resultRevision || (rp.result_revision_id ? store().getRevisionMeta(rp.result_revision_id) : null);
-                if (!result) return res.status(409).json({ error: 'No resulting revision is registered for this replacement; register the file under its task (or send revision_id) before declaring it ready', code: 'result_not_ready', reason: 'no_result' });
+                if (!result) return notReady(fresh, null, { ready: false, reason: 'no_result' });
                 if (captured.fileState !== 'ok') return res.status(409).json({ error: `The document file cannot be confirmed right now (${captured.fileState}); readiness is not declared on unconfirmed bytes`, code: 'result_not_ready', reason: 'file_unavailable', file_state: captured.fileState });
                 const readiness = resultReady(fresh, result);
-                if (!readiness.ready) {
-                    return res.status(409).json({
-                        error: readiness.reason === 'result_not_current'
-                            ? `Revision ${result.id} is not the document's current revision (${fresh.current_revision_id}); the latest bytes win and only they can be ready`
-                            : `Revision ${result.id} is not ready: ${readiness.readiness.required_ok}/${readiness.readiness.required_total} required assets are servable`,
-                        code: 'result_not_ready', reason: readiness.reason, current_revision: revisionMeta(captured.revision), ...(readiness.readiness ? { readiness: readiness.readiness } : {}),
-                    });
-                }
+                if (!readiness.ready) return notReady(fresh, result, readiness);
                 patch.completed_at = new Date().toISOString();
             } else if (patch.state === 'failed' || patch.state === 'cancelled') {
                 patch.completed_at = new Date().toISOString();
             }
+            // Everything the awaits above decided is re-read inside the write transaction: a task link that landed meanwhile
+            // keeps its task (one work item, one task), and `ready` is re-verified against the revision that is current now.
+            let linkedMeanwhile = null;
+            let staleReadiness = null;
+            let unchanged = false;
             const updated = store().transaction(() => {
                 const again = store().getReplacement(rp.id);
                 if (!again || !isOpenState(again.state)) return null;
+                if (patch.task_id !== undefined) {
+                    if (again.task_id && again.task_id !== patch.task_id) { linkedMeanwhile = again; return null; }
+                    if (again.task_id === patch.task_id) delete patch.task_id;
+                }
+                if (patch.state === 'ready') {
+                    const document = store().getDocument(doc.id);
+                    const result = store().getRevisionMeta(patch.result_revision_id || again.result_revision_id);
+                    const readiness = resultReady(document, result);
+                    if (!readiness.ready) { staleReadiness = { document, result, readiness }; return null; }
+                }
+                if (!Object.keys(patch).length) { unchanged = true; return again; }
                 return store().updateReplacement(rp.id, patch);
             });
+            if (linkedMeanwhile) return res.status(409).json({ error: `This replacement was linked to task ${linkedMeanwhile.task_id} meanwhile; one work item links to one task`, code: 'task_already_linked', replacement: replacementView(linkedMeanwhile) });
+            if (staleReadiness) return notReady(staleReadiness.document, staleReadiness.result, staleReadiness.readiness);
             if (!updated) return res.status(409).json({ error: 'This replacement closed while the report was being recorded', code: 'replacement_closed', replacement: replacementView(store().getReplacement(rp.id)) });
+            if (unchanged) return res.status(200).json({ replacement: replacementView(updated), duplicate: true, document: store().getDocument(doc.id), review_status: store().getReviewStatus(doc.id) });
             // A QA pass whose result is already current and ready completes the item.
             const reconciled = (await reconcileReplacement(doc)) || store().getReplacement(rp.id);
             console.log(`[Documents] replacement ${rp.id} of ${doc.id}: ${rp.state} → ${reconciled.state}${patch.task_id ? `, task ${patch.task_id}` : ''}${patch.result_revision_id ? `, result ${patch.result_revision_id}` : ''}`);
@@ -1769,11 +1853,17 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 const gate = reviewability(store().getDocument(doc.id), captured.revision);
                 if (!gate.ok) return notReviewable(res, gate);
                 let blocked = null;
+                let overtaken = null;
                 review = store().transaction(() => {
-                    const open = store().findOpenReplacement(doc.id);
-                    if (open) { blocked = { ok: false, reason: 'replacement_in_progress', replacement: replacementView(open) }; return null; }
+                    // Re-read inside the transaction: a registration or promotion that landed during the awaits above makes the
+                    // captured revision stale, and a round is only ever opened on the revision that is current at the insert.
+                    const fresh = store().getDocument(doc.id);
+                    if (fresh.current_revision_id !== captured.revision.id) { overtaken = store().getRevisionMeta(fresh.current_revision_id); return null; }
+                    const gateNow = reviewability(fresh, captured.revision);
+                    if (!gateNow.ok) { blocked = gateNow; return null; }
                     return store().insertReview({ document_id: doc.id, revision_id: captured.revision.id, reviewer_id: req.user.id });
                 });
+                if (overtaken) return res.status(409).json({ error: 'The document gained a newer revision while the review was being opened; reload and review the current revision', code: 'stale_revision', revision_id: captured.revision.id, current_revision: revisionMeta(overtaken) });
                 if (blocked) return notReviewable(res, blocked);
                 created = true;
             }
