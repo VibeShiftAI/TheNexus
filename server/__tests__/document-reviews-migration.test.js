@@ -169,7 +169,7 @@ test('legacy documents, revisions, comments and feedback deliveries survive migr
     const legacy = store.getDocument('doc-legacy');
     expect(legacy).toMatchObject({ requires_review: false, intended_action: 'none', purpose: null, deliverable_key: null, metadata: LEGACY_METADATA });
     expect(store.getReviewStatus('doc-legacy')).toBe('reference');
-    expect(store.countDocumentsByStatus()).toEqual({ needs_review: 0, changes_requested: 0, approved: 0, reference: 2, all: 2 });
+    expect(store.countDocumentsByStatus()).toEqual({ needs_review: 0, changes_requested: 0, approved: 0, reference: 2, in_progress: 0, all: 2 });
     const page = store.listDocumentsPage({ status: 'reference' });
     expect(page.total).toBe(2);
     expect(page.documents.map(d => d.id).sort()).toEqual(['doc-legacy', 'doc-report']);

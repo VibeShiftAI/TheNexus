@@ -83,6 +83,36 @@ const COMMENT_MEDIA_COLUMNS = [
 ];
 
 const REVIEW_STATUSES = ['needs_review', 'changes_requested', 'approved', 'reference'];
+/**
+ * List and count buckets (2026-10-23, task 6b46dcc8): the four decision
+ * statuses plus `in_progress`, a document whose replacement work is accepted
+ * and not finished. Such a document is not reviewable, so it leaves the
+ * decision buckets until its new current revision is ready (or the
+ * replacement fails or is cancelled). `review_status` itself stays one of
+ * REVIEW_STATUSES: it describes decisions, the bucket describes reviewability.
+ */
+const LIST_STATUSES = [...REVIEW_STATUSES, 'in_progress'];
+
+/**
+ * Replacement work on a document (task 6b46dcc8). One open replacement per
+ * document at a time; accepting it supersedes every pending review draft and
+ * closes the document to new reviews, decisions and edits until the work
+ * declares the new current revision ready, fails or is cancelled.
+ *
+ *   accepted    the originating change request is linked to revision work (task may follow)
+ *   queued      dispatch queued for the linked task
+ *   held        dispatch held (hold reason in `detail`)
+ *   running     the executor is working
+ *   implemented a resulting revision is registered on the document (`result_revision_id`)
+ *   qa_passed   the linked task's QA passed; the result still has to be current and ready
+ *   ready       the resulting revision is the current, ready revision: reviewable again (terminal)
+ *   failed      the work did not deliver (terminal; recovery is a new, versioned replacement)
+ *   cancelled   the work was stopped on purpose (terminal; recovery as above)
+ */
+const REPLACEMENT_STATES = ['accepted', 'queued', 'held', 'running', 'implemented', 'qa_passed', 'ready', 'failed', 'cancelled'];
+const REPLACEMENT_TERMINAL_STATES = ['ready', 'failed', 'cancelled'];
+const REPLACEMENT_OPEN_STATES = REPLACEMENT_STATES.filter(state => !REPLACEMENT_TERMINAL_STATES.includes(state));
+const sqlList = values => values.map(value => `'${value}'`).join(', ');
 
 // Review status of a document row `d` joined to its latest decision `ld`.
 // An approval or change request only counts for the revision it named.
@@ -95,6 +125,12 @@ const REVIEW_STATUS_SQL = `CASE
 const LATEST_DECISION_JOIN = `LEFT JOIN review_document_decisions ld ON ld.id = (
         SELECT x.id FROM review_document_decisions x WHERE x.document_id = d.id
         ORDER BY x.created_at DESC, x.rowid DESC LIMIT 1)`;
+// The document's open replacement `rp`, if any: at most one exists (partial unique index below).
+const OPEN_REPLACEMENT_JOIN = `LEFT JOIN review_document_replacements rp ON rp.id = (
+        SELECT y.id FROM review_document_replacements y WHERE y.document_id = d.id AND y.state IN (${sqlList(REPLACEMENT_OPEN_STATES)})
+        ORDER BY y.created_at DESC, y.rowid DESC LIMIT 1)`;
+/** The bucket a list row falls in, over the columns documentQuery selects: an open replacement takes it out of the decision buckets. */
+const LIST_BUCKET_SQL = `CASE WHEN replacement_id IS NULL THEN review_status ELSE 'in_progress' END`;
 
 /**
  * Columns added to review_document_decisions after the 2026-10-02 contract.
@@ -122,6 +158,20 @@ const REVIEW_COLUMNS = [
     ['approval_delegated', 'INTEGER NOT NULL DEFAULT 0'],
 ];
 
+/**
+ * Columns added to document_reviews for the version lifecycle (2026-10-23,
+ * task 6b46dcc8). A pending draft is closed as `superseded` when replacement
+ * work on its document is accepted: `status` becomes 'superseded' (which frees
+ * the one-open-draft slot and freezes the round), `closed_at` and
+ * `closed_reason` say when and why, `replacement_id` names the work. Comments
+ * and summary stay as they were. Legacy rows read as never closed.
+ */
+const REVIEW_LIFECYCLE_COLUMNS = [
+    ['closed_at', 'TEXT'],
+    ['closed_reason', 'TEXT'],
+    ['replacement_id', 'TEXT'],
+];
+
 function addMissingColumns(db, table, columns) {
     const present = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(column => column.name));
     for (const [name, declaration] of columns) {
@@ -139,6 +189,52 @@ function migrateDecisionColumns(db) {
 
 function migrateReviewColumns(db) {
     addMissingColumns(db, 'document_reviews', REVIEW_COLUMNS);
+}
+
+/**
+ * Version lifecycle (2026-10-23, task 6b46dcc8): replacement work items and
+ * the review closure columns. Additive: nothing existing is rewritten.
+ */
+function migrateReplacementLifecycle(db) {
+    addMissingColumns(db, 'document_reviews', REVIEW_LIFECYCLE_COLUMNS);
+    db.exec(`CREATE TABLE IF NOT EXISTS review_document_replacements (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL REFERENCES review_documents(id) ON DELETE CASCADE,
+        base_revision_id TEXT NOT NULL REFERENCES review_document_revisions(id),
+        client_request_id TEXT NOT NULL,
+        source_submission_id TEXT,
+        source_review_id TEXT,
+        source_decision_id TEXT,
+        source_authority TEXT,
+        task_id TEXT,
+        execution_id TEXT,
+        state TEXT NOT NULL CHECK (state IN (${sqlList(REPLACEMENT_STATES)})),
+        detail TEXT,
+        qa_state TEXT CHECK (qa_state IS NULL OR qa_state IN ('pending', 'passed', 'failed')),
+        result_revision_id TEXT REFERENCES review_document_revisions(id),
+        attempt INTEGER NOT NULL DEFAULT 1,
+        recovers_replacement_id TEXT,
+        accepted_by TEXT NOT NULL,
+        superseded_review_ids TEXT NOT NULL DEFAULT '[]',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        completed_at TEXT
+    );
+    -- Idempotent acceptance: the same client key on the same document is one item.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_review_document_replacements_client
+        ON review_document_replacements(document_id, client_request_id);
+    -- One open replacement per document: concurrent acceptances cannot both win.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_review_document_replacements_open
+        ON review_document_replacements(document_id) WHERE state IN (${sqlList(REPLACEMENT_OPEN_STATES)});
+    -- One live (open or ready) work item per originating submission or decision; a failed or cancelled one may be recovered by a new item.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_review_document_replacements_source_submission
+        ON review_document_replacements(document_id, source_submission_id) WHERE source_submission_id IS NOT NULL AND state NOT IN ('failed', 'cancelled');
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_review_document_replacements_source_decision
+        ON review_document_replacements(document_id, source_decision_id) WHERE source_decision_id IS NOT NULL AND state NOT IN ('failed', 'cancelled');
+    CREATE INDEX IF NOT EXISTS idx_review_document_replacements_document
+        ON review_document_replacements(document_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_review_document_replacements_task
+        ON review_document_replacements(task_id);`);
 }
 
 function migrateMediaColumns(db) {
@@ -349,13 +445,14 @@ function initializeDocumentReviews(db) {
     migrateDecisionColumns(db);
     migrateReviewColumns(db);
     migrateMediaColumns(db);
+    migrateReplacementLifecycle(db);
     initializeDocumentOutgoing(db);
 }
 
-const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest']);
+const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest', 'superseded_review_ids']);
 /** JSON columns whose absence reads as null rather than an empty object. */
 const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance', 'anchor', 'selection_json', 'manifest']);
-const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created', 'approval_delegated']);
+const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created', 'approval_delegated', 'reviewable']);
 
 function parseJson(value, fallback) {
     if (value === null || value === undefined || value === '') return fallback;
@@ -401,7 +498,11 @@ function documentQuery({ id, task_id, project_id, kind, q } = {}, blockingCountS
         where.push("(d.title LIKE ? ESCAPE '\\' OR COALESCE(d.purpose, '') LIKE ? ESCAPE '\\' OR d.path LIKE ? ESCAPE '\\')");
         params.push(like, like, like);
     }
-    const sql = `SELECT d.*, ${REVIEW_STATUS_SQL} AS review_status, ${blockingCountSql} AS blocking_task_count FROM review_documents d ${LATEST_DECISION_JOIN}${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
+    // Alongside the decision-derived review_status: the open replacement (if any) and whether the row takes review actions now.
+    const sql = `SELECT d.*, ${REVIEW_STATUS_SQL} AS review_status, ${blockingCountSql} AS blocking_task_count,
+        rp.id AS replacement_id, rp.state AS replacement_state, rp.task_id AS replacement_task_id, rp.attempt AS replacement_attempt,
+        CASE WHEN rp.id IS NULL THEN 1 ELSE 0 END AS reviewable
+        FROM review_documents d ${LATEST_DECISION_JOIN} ${OPEN_REPLACEMENT_JOIN}${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
     return { sql, params };
 }
 
@@ -460,22 +561,28 @@ function createDocumentReviewStore(db) {
          */
         listDocumentsPage({ status = 'all', limit = 100, offset = 0, ...filters } = {}) {
             const { sql, params } = queryDocuments(filters);
-            const statusClause = status && status !== 'all' ? ' WHERE review_status = ?' : '';
+            // A status is a bucket: a document with open replacement work is `in_progress` and in no decision bucket.
+            const statusClause = status && status !== 'all' ? ` WHERE ${LIST_BUCKET_SQL} = ?` : '';
             const all = statusClause ? [...params, status] : params;
             return db.transaction(() => ({
                 total: db.prepare(`SELECT COUNT(*) AS n FROM (${sql})${statusClause}`).get(...all).n,
                 documents: many(`SELECT * FROM (${sql})${statusClause} ORDER BY blocking_task_count DESC, created_at DESC, id DESC LIMIT ? OFFSET ?`, ...all, limit, offset),
             }))();
         },
-        /** Per-status counts for the same filters as listDocumentsPage; `all` is their sum. */
+        /** Per-bucket counts for the same filters as listDocumentsPage (the four statuses plus in_progress); `all` is their sum. */
         countDocumentsByStatus(filters = {}) {
             const { sql, params } = queryDocuments(filters);
-            const counts = Object.fromEntries([...REVIEW_STATUSES, 'all'].map(status => [status, 0]));
-            for (const row of db.prepare(`SELECT review_status, COUNT(*) AS n FROM (${sql}) GROUP BY review_status`).all(...params)) {
-                counts[row.review_status] = row.n;
+            const counts = Object.fromEntries([...LIST_STATUSES, 'all'].map(status => [status, 0]));
+            for (const row of db.prepare(`SELECT ${LIST_BUCKET_SQL} AS bucket, COUNT(*) AS n FROM (${sql}) GROUP BY bucket`).all(...params)) {
+                counts[row.bucket] = row.n;
                 counts.all += row.n;
             }
             return counts;
+        },
+        /** The list row of one document (review_status, bucket fields, reviewable), or null. */
+        getDocumentListRow(documentId) {
+            const { sql, params } = queryDocuments({ id: documentId });
+            return one(`SELECT * FROM (${sql})`, ...params);
         },
         getReviewStatus(documentId) {
             const { sql, params } = queryDocuments({ id: documentId });
@@ -541,6 +648,13 @@ function createDocumentReviewStore(db) {
             return many(`SELECT id, document_id, content_hash, byte_length, line_count, file_mtime, captured_at,
                 media_type, mime_type, source, edited_by, asset_count, width, height
                 FROM review_document_revisions WHERE document_id = ? ORDER BY captured_at ASC, rowid ASC`, documentId);
+        },
+        /** The 1-based version number of a revision within its document (capture order), for "v3" labels. */
+        revisionVersion(revisionId) {
+            const row = db.prepare(`SELECT COUNT(*) AS n FROM review_document_revisions r, review_document_revisions self
+                WHERE self.id = ? AND r.document_id = self.document_id
+                  AND (r.captured_at < self.captured_at OR (r.captured_at = self.captured_at AND r.rowid <= self.rowid))`).get(revisionId);
+            return row && row.n > 0 ? row.n : null;
         },
 
         // ── Revision assets (design package members and the primary asset) ─
@@ -638,6 +752,73 @@ function createDocumentReviewStore(db) {
             return this.getReview(row.id);
         },
         updateReview(id, updates) { update('document_reviews', id, updates); return this.getReview(id); },
+        /** Every pending draft of a document, any reviewer: the review requests that replacement work supersedes. */
+        listOpenDrafts(documentId) {
+            return many("SELECT * FROM document_reviews WHERE document_id = ? AND status = 'draft' ORDER BY created_at ASC, rowid ASC", documentId);
+        },
+        /**
+         * Close every pending draft of a document as superseded by `replacementId`
+         * (status 'superseded', closure columns set, comments and summary kept).
+         * Returns the ids of the drafts closed. Run inside the acceptance transaction.
+         */
+        supersedeOpenDrafts(documentId, replacementId, reason = 'superseded') {
+            const ids = this.listOpenDrafts(documentId).map(review => review.id);
+            if (ids.length) {
+                const ts = now();
+                db.prepare(`UPDATE document_reviews SET status = 'superseded', closed_at = ?, closed_reason = ?, replacement_id = ?, updated_at = ?
+                    WHERE document_id = ? AND status = 'draft'`).run(ts, reason, replacementId, ts, documentId);
+            }
+            return ids;
+        },
+
+        // ── Replacement work items (version lifecycle, task 6b46dcc8) ──────
+        getReplacement(id) { return one('SELECT * FROM review_document_replacements WHERE id = ?', id); },
+        /** The one open (non-terminal) replacement of a document, or null. */
+        findOpenReplacement(documentId) {
+            return one(`SELECT * FROM review_document_replacements WHERE document_id = ? AND state IN (${sqlList(REPLACEMENT_OPEN_STATES)})
+                ORDER BY created_at DESC, rowid DESC LIMIT 1`, documentId);
+        },
+        /** The newest replacement of a document in any state, or null: what the reader explains when nothing is open. */
+        latestReplacement(documentId) {
+            return one('SELECT * FROM review_document_replacements WHERE document_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1', documentId);
+        },
+        findReplacementByClientKey(documentId, clientRequestId) {
+            return one('SELECT * FROM review_document_replacements WHERE document_id = ? AND client_request_id = ?', documentId, clientRequestId);
+        },
+        /** The live (open or ready) work item already linked to an originating submission or decision, if any. */
+        findLiveReplacementBySource(documentId, { submission_id = null, decision_id = null } = {}) {
+            if (submission_id) {
+                const hit = one(`SELECT * FROM review_document_replacements WHERE document_id = ? AND source_submission_id = ? AND state NOT IN ('failed', 'cancelled')`, documentId, submission_id);
+                if (hit) return hit;
+            }
+            if (decision_id) {
+                return one(`SELECT * FROM review_document_replacements WHERE document_id = ? AND source_decision_id = ? AND state NOT IN ('failed', 'cancelled')`, documentId, decision_id);
+            }
+            return null;
+        },
+        /** The newest replacement for an originating submission or decision in any state (the one a recovery must name). */
+        latestReplacementBySource(documentId, { submission_id = null, decision_id = null } = {}) {
+            return one(`SELECT * FROM review_document_replacements WHERE document_id = ?
+                AND ((? IS NOT NULL AND source_submission_id = ?) OR (? IS NOT NULL AND source_decision_id = ?))
+                ORDER BY created_at DESC, rowid DESC LIMIT 1`, documentId, submission_id, submission_id, decision_id, decision_id);
+        },
+        listReplacements(documentId) {
+            return many('SELECT * FROM review_document_replacements WHERE document_id = ? ORDER BY created_at DESC, rowid DESC', documentId);
+        },
+        /** The replacement whose registered result is this revision, if any (the newest when several name it). */
+        findReplacementByResult(documentId, revisionId) {
+            return one('SELECT * FROM review_document_replacements WHERE document_id = ? AND result_revision_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1', documentId, revisionId);
+        },
+        listReplacementsForTask(taskId) {
+            return many('SELECT * FROM review_document_replacements WHERE task_id = ? ORDER BY created_at DESC, rowid DESC', taskId);
+        },
+        insertReplacement(replacement) {
+            const ts = now();
+            const row = { id: replacement.id || randomUUID(), state: 'accepted', attempt: 1, superseded_review_ids: [], ...replacement, created_at: ts, updated_at: ts };
+            insert('review_document_replacements', row);
+            return this.getReplacement(row.id);
+        },
+        updateReplacement(id, updates) { update('review_document_replacements', id, updates); return this.getReplacement(id); },
 
         // ── Comments ─────────────────────────────────────────────────────
         getComment(id) { return one('SELECT * FROM document_review_comments WHERE id = ?', id); },
@@ -683,4 +864,7 @@ function createDocumentReviewStore(db) {
     };
 }
 
-module.exports = { initializeDocumentReviews, createDocumentReviewStore, REVIEW_STATUSES };
+module.exports = {
+    initializeDocumentReviews, createDocumentReviewStore, REVIEW_STATUSES, LIST_STATUSES,
+    REPLACEMENT_STATES, REPLACEMENT_OPEN_STATES, REPLACEMENT_TERMINAL_STATES,
+};

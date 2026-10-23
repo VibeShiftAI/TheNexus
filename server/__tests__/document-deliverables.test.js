@@ -430,7 +430,8 @@ test('status filters, pagination and counts agree across 130 synthetic documents
     }
 
     const counts = (await api('GET', '/api/documents/counts')).json.counts;
-    expect(counts).toEqual({ needs_review: 55, changes_requested: 15, approved: 20, reference: 40, all: 130 });
+    // `in_progress` (replacement work open, task 6b46dcc8) is a fifth bucket; nothing here has open work, and `all` still sums every bucket.
+    expect(counts).toEqual({ needs_review: 55, changes_requested: 15, approved: 20, reference: 40, in_progress: 0, all: 130 });
 
     async function collect(query, limit = 50) {
         const seen = [];

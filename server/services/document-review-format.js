@@ -22,6 +22,11 @@ function reviewUrlFor(documentId) {
     return `${dashboardBaseUrl()}${reviewPathFor(documentId)}`;
 }
 
+/** Where replacement work for a document is linked and reported (contract §12, task 6b46dcc8). */
+function replacementsPathFor(documentId) {
+    return `/api/documents/${encodeURIComponent(documentId)}/replacements`;
+}
+
 function splitLines(content) {
     return String(content ?? '').split('\n');
 }
@@ -234,6 +239,8 @@ function buildSubmissionPayload({ submissionId, review, comments, document, revi
             project: source?.project ? { id: source.project.id, name: source.project.name || null } : null,
         },
         review_url: reviewUrlFor(document.id),
+        // Where revision work that this review leads to is linked (contract §12); a consumer that predates it ignores the field.
+        replacements_path: replacementsPathFor(document.id),
         comments: comments.map(publicComment),
     };
 }
@@ -266,6 +273,8 @@ function formatSubmissionMessage(payload) {
         ...source,
         `Review link: ${payload.review_url}`,
         `Submission id: ${payload.submission_id}`,
+        // Names where work is linked without asking for any: the decision authorizes work, this review's text does not.
+        ...(payload.replacements_path ? [`Replacement work for this review, if Robert's decision calls for any, is linked at POST ${payload.replacements_path} (source.submission_id: ${payload.submission_id}; contract §12). Linking it there closes this version to further review until the new version is ready; a chat reply does not.`] : []),
         '',
         '**Summary**',
         payload.summary && payload.summary.trim() ? payload.summary.trim() : '(no summary given)',
@@ -325,6 +334,7 @@ module.exports = {
     DEFAULT_DASHBOARD_URL,
     dashboardBaseUrl,
     reviewPathFor,
+    replacementsPathFor,
     reviewUrlFor,
     splitLines,
     verifyPassageAnchor,
