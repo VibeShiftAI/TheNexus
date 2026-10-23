@@ -114,6 +114,8 @@ function refusalMessage(err: unknown, noteState: NoteState): { text: string; sta
             // Version lifecycle (contract §12): replacement work accepted since this page loaded, or a current revision that is not ready.
             case "replacement_in_progress":
                 return { text: "A new version of this document is being produced, so nothing was recorded. This version takes no decision until the new version is ready or the work fails or is cancelled; the page now shows the work in progress. Your note and comments are kept.", stale: false, reload: true };
+            case "replacement_failed":
+                return { text: "This version was registered by a revision attempt that failed or was cancelled and was never declared ready, so nothing was recorded. A decision waits for the new version an explicit recovery delivers; the page now shows the failed attempt. Your note and comments are kept.", stale: false, reload: true };
             case "revision_not_ready":
                 return { text: sentence(err.message), stale: false, reload: true };
             default:
@@ -202,7 +204,9 @@ function ReplacementNote({ replacement, blocked }: { replacement: DocumentReplac
             <span className={`mr-1.5 inline-flex items-center rounded-full border px-1.5 py-px ${label.tone}`}>{label.text}{replacement.attempt > 1 ? ` · attempt ${replacement.attempt}` : ""}</span>
             {replacement.open
                 ? <>A new version is being produced{taskLink ? <> by {taskLink}</> : null}{replacement.detail ? ` (${replacement.detail})` : ""}.{blocked ? " Decisions reopen when it is ready, or when the work fails or is cancelled." : ""}</>
-                : <>The last revision attempt {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? `: ${replacement.detail}` : ""}{taskLink ? <> ({taskLink})</> : null}. This version stays current; a retry is a new attempt, never a silent reopening of the old one.</>}
+                : blocked
+                    ? <>The last revision attempt {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? `: ${replacement.detail}` : ""}{taskLink ? <> ({taskLink})</> : null}. These bytes are its unaccepted result and take no decision; decisions reopen on the new version an explicit recovery delivers.</>
+                    : <>The last revision attempt {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? `: ${replacement.detail}` : ""}{taskLink ? <> ({taskLink})</> : null}. This version stays current; a retry is a new attempt, never a silent reopening of the old one.</>}
         </p>
     );
 }
@@ -290,6 +294,8 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
         ? "You are viewing the revision your feedback was pinned to. Switch to the current file to decide; a decision applies to the revision on screen."
         : gate && !gate.ok && gate.reason === "replacement_in_progress"
             ? `A new version of this document is being produced${replacement?.open ? ` (${replacementStateLabel(replacement.state).text.toLowerCase()}${replacement.task_id ? `, task ${replacement.task_id.slice(0, 8)}` : ""})` : ""}. This version takes no decision until the new version is ready or the work fails or is cancelled; your earlier decisions and comments are kept.`
+            : gate && !gate.ok && gate.reason === "replacement_failed"
+            ? `This version was registered by a revision attempt that ${replacement?.state === "cancelled" ? "was cancelled" : "failed"} and was never declared ready, so it takes no decision. Decisions reopen on the new version an explicit recovery delivers; your earlier decisions and comments are kept.`
             : gate && !gate.ok && gate.reason === "revision_not_ready"
                 ? "The current revision is not ready (a required visual is missing), so no decision can be recorded until it is."
                 : data.file_state !== "ok"
@@ -297,8 +303,9 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
                     : !viewedRevision
                         ? "No captured revision to decide on yet."
                         : null;
-    // The last attempt's failure or cancellation is shown while the document is still at the version it was meant to replace.
-    const showReplacement = replacement && (replacement.open || ((replacement.state === "failed" || replacement.state === "cancelled") && replacement.base_revision_id === data.revision?.id));
+    // The last attempt's failure or cancellation is shown while the document is still at the version it was meant to replace,
+    // and while its unaccepted bytes are the current revision (closed until a recovery delivers).
+    const showReplacement = replacement && (replacement.open || gate?.reason === "replacement_failed" || ((replacement.state === "failed" || replacement.state === "cancelled") && (replacement.base_revision_id === data.revision?.id || replacement.result_revision_id === data.revision?.id)));
 
     /** Keep the note on this device as it is typed, attributed to the attempt and the revision it was written for. */
     const persist = (kind: DecisionKind, clientId: string, text: string) => {

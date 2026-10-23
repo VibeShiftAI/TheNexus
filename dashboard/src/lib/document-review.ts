@@ -39,9 +39,15 @@ export interface DocumentReplacement {
     completed_at: string | null;
     links: { task_path: string | null; review_path: string; result_raw_path: string | null; self_path: string };
 }
-/** A list row's compact view of the document's open work. */
-export interface ListReplacement { id: string; state: ReplacementState; task_id: string | null; attempt: number; open: true }
-export type ReviewabilityReason = 'replacement_in_progress' | 'no_revision' | 'revision_not_ready';
+/** A list row's compact view of the work that governs the document: open work, or a failed or cancelled attempt whose bytes are the current revision. */
+export interface ListReplacement { id: string; state: ReplacementState; task_id: string | null; attempt: number; open: boolean }
+/**
+ * Why a version takes no review actions: work in progress; the current revision
+ * registered by an attempt that failed or was cancelled and was never declared
+ * ready (closed until an explicit recovery delivers a new version); no revision;
+ * or a visual revision whose required asset is missing (contract §12.4, 12.5).
+ */
+export type ReviewabilityReason = 'replacement_in_progress' | 'replacement_failed' | 'no_revision' | 'revision_not_ready';
 /** Whether the document takes review actions right now (a new review, a decision, an edit); separate from `review_status`. */
 export interface Reviewability { ok: boolean; reason: ReviewabilityReason | null; replacement_id: string | null }
 export type IntendedAction = 'none' | 'implement' | 'send' | 'publish';

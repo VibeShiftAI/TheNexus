@@ -94,11 +94,14 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
                     <DocumentStatusBadge status={entry.review_status} />
                     {entry.replacement && (
-                        // Replacement work in progress (contract §12): a new version is being produced, so this one takes no review actions until it is ready.
+                        // The replacement that governs the row (contract §12): open work producing a new version, or a failed or cancelled
+                        // attempt whose unaccepted bytes are the current revision. Either way this version takes no review actions.
                         <span
                             className={`inline-flex items-center rounded-full border px-2 py-0.5 ${replacementStateLabel(entry.replacement.state).tone}`}
                             data-replacement-badge={entry.replacement.state}
-                            title="A new version of this document is being produced. This version is not reviewable until the new one is ready or the work fails or is cancelled; your earlier comments and decisions are kept."
+                            title={entry.replacement.open
+                                ? "A new version of this document is being produced. This version is not reviewable until the new one is ready or the work fails or is cancelled; your earlier comments and decisions are kept."
+                                : "The last attempt to produce a new version failed or was cancelled after registering these bytes; they were never declared ready, so this version is not reviewable until an explicit recovery delivers a new one. Your earlier comments and decisions are kept."}
                         >
                             {replacementStateLabel(entry.replacement.state).text}{entry.replacement.attempt > 1 ? ` · attempt ${entry.replacement.attempt}` : ""}
                         </span>

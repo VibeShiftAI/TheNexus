@@ -18,7 +18,12 @@
  * phone viewport with the Review & decide drawer. A decision attempted with a
  * verified session is refused (nothing recorded). Then the producer registers
  * v2 under the work's task and reports QA passed: the work is ready, v2 is
- * current and reviewable, and the history lists versions and the attempt. No
+ * current and reviewable, and the history lists versions and the attempt.
+ * Then (QA repair round, contract §12.5) a review of v2 becomes a second piece
+ * of work whose producer registers v3 and reports failure: v3's bytes are
+ * current but closed, the banner says so on desktop and phone, the queue keeps
+ * the document under Being revised, a plain re-acceptance is refused, and an
+ * explicit recovery citing the v2 review delivers v4 and reopens review. No
  * decision is recorded anywhere; nothing is sent beyond the synthetic receiver.
  *
  *   NEXT_DIST_DIR=.next-6b46dcc8 NEXT_PUBLIC_API_URL=http://127.0.0.1:4499 npm run build
@@ -177,6 +182,9 @@ async function open(path, readyExpr, label) {
 const record = async (extra = {}) => steps.push({ step, path: await evalJs("location.pathname"), header_chip: await headerChip(), ...extra });
 
 let exitCode = 0;
+// The second work item (registers v3, then fails) and the recovery (delivers v4): created in steps 13 and 17, named in the report.
+let WORK_TASK_2 = null;
+let WORK_TASK_3 = null;
 try {
     check(Boolean(WORK_TASK), `a running work task exists for the replacement (${workTask.status})`);
 
@@ -303,21 +311,125 @@ try {
     await shot(step);
     await record();
 
-    step = "12-no-decisions";
+    // QA repair round (contract §12.5): a review of v2 becomes a second piece of work whose producer registers v3 and then fails.
+    // v3's bytes are current but were never declared ready, so the version is closed until an explicit recovery delivers v4.
+    step = "12-finish-review-v2";
+    await clickButton(/^Start a new review/);
+    await waitFor(`${q("[data-review-round]")}?.dataset.reviewRound === 'draft'`, "a draft round on v2");
+    await clickButton(/^Add a note about the whole/);
+    await typeInto('textarea[aria-label="Comment text"]', "Synthetic comment on v2: the verified row needs a date.");
+    await clickButton("Save comment");
+    await waitFor(`(${q("[data-comment-list]")}?.textContent || '').includes('Synthetic comment on v2')`, "the saved v2 comment");
+    await click("[data-finish-button]");
+    await clickButton("Send to Praxis");
+    await waitFor(`${q("[data-review-round]")}?.dataset.reviewRound === 'finished'`, "the finished v2 round");
+    const finished2 = (await apiJson(`/api/documents/${DOC}`)).review;
+    check(finished2?.status === "submitted" && finished2.revision_id === v2.revision.id && Boolean(finished2.submission?.id), "the round on v2 is finished with a submission");
+    await record({ submission_id: finished2?.submission?.id ?? null });
+
+    step = "13-second-work-fails-after-registering-v3";
+    const workTask2 = await apiCall("/api/tasks", { method: "POST", body: JSON.stringify({ project_id: registered.project_id, name: "Revise the synthetic brief again (attempt that fails)", description: "verification fixture for scripts/replacement-browser-check.mjs", status: "in_progress", priority: 2 }) });
+    WORK_TASK_2 = workTask2.json?.id || workTask2.json?.task?.id || null;
+    check(Boolean(WORK_TASK_2), `a second running work task exists (${workTask2.status})`);
+    const accepted2 = await apiCall(`/api/documents/${DOC}/replacements`, { method: "POST", body: JSON.stringify({ client_request_id: `check-${finished2.submission.id}`, source: { submission_id: finished2.submission.id }, task_id: WORK_TASK_2, state: "running", detail: "second synthetic revision" }) });
+    check(accepted2.status === 201 && accepted2.json?.replacement?.base_revision_id === v2.revision.id && accepted2.json.replacement.attempt === 1, `the v2 review is accepted as new work on v2: ${accepted2.status} ${accepted2.json?.code ?? ""}`);
+    const RP2 = accepted2.json?.replacement?.id;
+    const v3 = await registerRevision("Revision three: registered by an attempt that then failed.", WORK_TASK_2);
+    check(v3?.receipt?.replacement?.id === RP2 && v3.receipt.replacement.state === "implemented", `v3 is the second item's result (${v3?.receipt?.replacement?.state})`);
+    const failed = await apiCall(`/api/documents/${DOC}/replacements/${RP2}`, { method: "PATCH", body: JSON.stringify({ state: "failed", qa_state: "failed", detail: "synthetic QA failure after registering v3" }) });
+    check(failed.status === 200 && failed.json?.replacement?.state === "failed" && failed.json.reviewable === false, `the attempt fails after registering v3 and the version stays closed: ${failed.status} ${failed.json?.replacement?.state} reviewable=${failed.json?.reviewable}`);
+    const closedDoc = await apiJson(`/api/documents/${DOC}`);
+    check(closedDoc.revision?.id === v3.revision.id && closedDoc.reviewable?.ok === false && closedDoc.reviewable.reason === "replacement_failed", `v3 is current but closed (${closedDoc.reviewable?.reason})`);
+    const onFailed = await apiCall(`/api/documents/${DOC}/decisions`, { method: "POST", headers: { "cf-access-jwt-assertion": sessionToken }, body: JSON.stringify({ decision: "approve", revision_id: v3.revision.id, content_hash: v3.revision.content_hash, client_decision_id: "check-refused-3" }) });
+    check(onFailed.status === 409 && onFailed.json?.code === "replacement_failed", `a decision on the failed bytes is refused: ${onFailed.status} ${onFailed.json?.code}`);
+    const roundOnFailed = await apiCall(`/api/documents/${DOC}/reviews`, { method: "POST", body: JSON.stringify({ revision_id: v3.revision.id }) });
+    check(roundOnFailed.status === 409 && roundOnFailed.json?.code === "replacement_failed", `a new round on the failed bytes is refused: ${roundOnFailed.status} ${roundOnFailed.json?.code}`);
+    await record({ replacement_id: RP2, task_id: WORK_TASK_2 });
+
+    step = "14-desktop-failed-result";
+    await open(route, `${q("[data-replacement-banner]")}?.dataset.replacementBanner === 'failed'`, "the failed-attempt banner on v3");
+    check((await headerChip())?.includes(`v3 · rev ${v3.revision.content_hash.slice(0, 8)}`), "the header names version 3, the failed bytes");
+    const bannerText = await text("[data-replacement-banner]");
+    check(Boolean(bannerText?.includes("You are reading the bytes that attempt registered (v3)") && bannerText.includes("never declared ready")), "the banner says these are the attempt's unaccepted bytes and that they take no review");
+    check(Boolean(bannerText?.includes("explicit recovery")), "the banner says review reopens only on a recovered version");
+    check((await attr("[data-replacement-banner] [data-replacement-task-link]", "href")) === `/task/${WORK_TASK_2}`, "the banner links the failed attempt's task");
+    check((await attr("[data-decision-card] [data-decision-blocked]", "data-decision-blocked")) === "replacement_failed", "the decision is blocked by the failure");
+    check((await count("[data-decision-card] [data-decision-button]")) === 0, "no decision buttons on failed bytes");
+    check((await attr("[data-decision-card] [data-replacement-note]", "data-replacement-note")) === "failed", "the decision card names the failed attempt");
+    check(!(await evalJs(`[...document.querySelectorAll('button')].some(b => /^Start a new review/.test(b.textContent.trim()))`)), "no new round can start on failed bytes");
+    check((await attr("[data-review-closed]", "data-review-closed")) === "replacement_failed", "the panel explains the closure");
+    check((await text("article"))?.includes("Revision three:"), "v3's bytes are what is on screen");
+    await shot(step);
+    await record();
+
+    step = "15-phone-failed-result";
+    await phone();
+    await send("Page.reload", { ignoreCache: false });
+    await waitFor(`${q("[data-replacement-banner]")}?.dataset.replacementBanner === 'failed'`, "the failed banner on the phone");
+    await click("[data-open-review]");
+    await waitFor(`!!${q("[data-review-drawer]")}`, "the drawer");
+    check((await attr("[data-review-drawer] [data-decision-blocked]", "data-decision-blocked")) === "replacement_failed", "the drawer's decision is blocked by the failure");
+    check((await count("[data-review-drawer] [data-decision-button]")) === 0, "no decision buttons in the drawer");
+    check((await attr("[data-review-drawer] [data-review-closed]", "data-review-closed")) === "replacement_failed", "the drawer explains the closure");
+    check((await attr("[data-review-drawer] [data-replacement-note]", "data-replacement-note")) === "failed", "the drawer's decision card names the failed attempt");
+    await shot(step);
+    await record();
+
+    step = "16-queue-failed-result";
+    await desktop();
+    await open("/documents?status=in_progress", `!!document.querySelector('[data-document-id=${JSON.stringify(DOC)}] [data-replacement-badge]')`, "the document under Being revised while closed by a failure");
+    check((await attr(`[data-document-id="${DOC}"] [data-replacement-badge]`, "data-replacement-badge")) === "failed", "the row carries the failed badge");
+    check((await text(`[data-document-id="${DOC}"] [data-document-version]`))?.startsWith("v3 · rev "), "the row names version 3");
+    check((await text("[data-status-tab='in_progress'] [data-status-count]")) === "1", "Being revised counts the closed document");
+    check((await text("[data-status-tab='needs_review'] [data-status-count]")) === "0", "Needs your review does not offer the failed bytes");
+    await shot(step);
+    await record();
+
+    step = "17-recovery-delivers-v4";
+    const plain = await apiCall(`/api/documents/${DOC}/replacements`, { method: "POST", body: JSON.stringify({ client_request_id: `check-${finished2.submission.id}-again`, source: { submission_id: finished2.submission.id }, task_id: WORK_TASK_2, state: "running" }) });
+    check(plain.status === 409 && plain.json?.code === "recovery_required", `a plain re-acceptance must name the attempt it recovers: ${plain.status} ${plain.json?.code}`);
+    const workTask3 = await apiCall("/api/tasks", { method: "POST", body: JSON.stringify({ project_id: registered.project_id, name: "Recover the synthetic brief revision", description: "verification fixture for scripts/replacement-browser-check.mjs", status: "in_progress", priority: 2 }) });
+    WORK_TASK_3 = workTask3.json?.id || workTask3.json?.task?.id || null;
+    const recovery = await apiCall(`/api/documents/${DOC}/replacements`, { method: "POST", body: JSON.stringify({ client_request_id: `check-${finished2.submission.id}-recovery`, source: { submission_id: finished2.submission.id }, recovers_replacement_id: RP2, task_id: WORK_TASK_3, state: "running", detail: "recovery after the failed v3" }) });
+    check(recovery.status === 201 && recovery.json?.replacement?.attempt === 2 && recovery.json.replacement.base_revision_id === v3.revision.id, `the recovery citing the v2 review is attempt 2 on top of v3: ${recovery.status} ${recovery.json?.code ?? ""}`);
+    const RP3 = recovery.json?.replacement?.id;
+    const v4 = await registerRevision("Revision four: delivered by the recovery and verified.", WORK_TASK_3);
+    check(v4?.receipt?.replacement?.id === RP3 && v4.receipt.replacement.state === "implemented", `v4 is the recovery's result (${v4?.receipt?.replacement?.state})`);
+    const ready2 = await apiCall(`/api/documents/${DOC}/replacements/${RP3}`, { method: "PATCH", body: JSON.stringify({ state: "qa_passed", qa_state: "passed" }) });
+    check(ready2.status === 200 && ready2.json?.replacement?.state === "ready" && ready2.json.reviewable === true, `QA passed on v4 reopens review: ${ready2.status} ${ready2.json?.replacement?.state}`);
+    const staleCite = await apiCall(`/api/documents/${DOC}/replacements`, { method: "POST", body: JSON.stringify({ client_request_id: `check-${finished2.submission.id}-stale`, source: { submission_id: finished2.submission.id }, recovers_replacement_id: RP3, task_id: WORK_TASK_3, state: "running" }) });
+    check(staleCite.status === 409 && staleCite.json?.code === "source_not_current" && staleCite.json.authority_revision_id === v4.revision.id, `once v4 is ready the v2 review no longer authorizes work: ${staleCite.status} ${staleCite.json?.code} authority=${String(staleCite.json?.authority_revision_id).slice(0, 8)}`);
+    await record({ replacement_id: RP3, task_id: WORK_TASK_3 });
+
+    step = "18-desktop-recovered";
+    await open(route, `(${q("[data-revision-chip]")}?.textContent || '').includes('v4 · rev ${v4.revision.content_hash.slice(0, 8)}')`, "the reader on v4");
+    check(!(await evalJs(`!!${q("[data-replacement-banner]")}`)), "no banner once the recovery is ready");
+    check(!(await evalJs(`!!${q("[data-decision-card] [data-decision-blocked]")}`)), "the decision is open on v4");
+    check((await count("[data-decision-card] [data-decision-button]")) === 2, "approve and request-changes are offered on v4");
+    check((await text("article"))?.includes("Revision four:"), "v4's bytes are on screen");
+    check((await evalJs(`[...document.querySelectorAll('button')].some(b => /^Start a new review/.test(b.textContent.trim()))`)), "a new round may start on v4");
+    await click("[data-decision-card] [data-history-toggle]");
+    await waitFor(`!!${q("[data-history-replacements]")}`, "the history's revision work");
+    check((await count("[data-history-version='3']")) >= 1 && (await count("[data-history-version='4']")) >= 1, "history numbers the failed version and the recovered one");
+    check((await count("[data-history-replacement='failed']")) === 1 && (await count("[data-history-replacement='ready']")) === 2, "history lists the failed attempt and both ready ones");
+    await shot(step);
+    await record();
+
+    step = "19-no-decisions";
     const history = await apiJson(`/api/documents/${DOC}/history`);
     check(history.decisions.length === 0, "no decision was recorded by this check");
-    check(history.current_version === 2 && history.revisions.length === 2, "two versions of one document, v2 current");
-    check(history.replacements.length === 1 && history.replacements[0].state === "ready" && history.replacements[0].attempt === 1, "one replacement attempt, ready");
-    check(history.reviews.some((r) => r.status === "superseded" && r.closed_reason === "superseded") && history.reviews.some((r) => r.status === "submitted"), "the finished round and the superseded round are both history");
+    check(history.current_version === 4 && history.revisions.length === 4, "four versions of one document, v4 current");
+    check(history.replacements.length === 3 && history.replacements.filter((r) => r.state === "ready").length === 2 && history.replacements.some((r) => r.state === "failed" && r.result_revision_id === v3.revision.id), "three attempts: two ready, one failed with v3 as its unaccepted result");
+    check(history.reviews.some((r) => r.status === "superseded" && r.closed_reason === "superseded") && history.reviews.filter((r) => r.status === "submitted").length === 2, "the two finished rounds and the superseded round are all history");
     check(!writes.some((w) => w.path.endsWith("/decisions")), "the browser never posted a decision");
     check(exceptions.length === 0, `no uncaught page exceptions${exceptions.length ? `: ${exceptions.join(" | ")}` : ""}`);
     const relays = await (await fetch(`http://127.0.0.1:${PRAXIS_PORT}/__relays`)).json();
-    check(relays.length === 1, `exactly one review relay reached the synthetic receiver (${relays.length})`);
+    check(relays.length === 2, `exactly two review relays reached the synthetic receiver (${relays.length})`);
 } catch (err) {
     check(false, `unexpected error: ${err?.stack || err}`);
 } finally {
     if (failures.length) exitCode = 1;
-    writeFileSync(join(OUT, "report.json"), `${JSON.stringify({ checked_at: new Date().toISOString(), base: BASE, api: API, document_id: DOC, work_task: WORK_TASK, passes, failures, steps, browser_writes: writes, exceptions }, null, 2)}\n`);
+    writeFileSync(join(OUT, "report.json"), `${JSON.stringify({ checked_at: new Date().toISOString(), base: BASE, api: API, document_id: DOC, work_task: WORK_TASK, work_task_2: WORK_TASK_2, work_task_3: WORK_TASK_3, passes, failures, steps, browser_writes: writes, exceptions }, null, 2)}\n`);
     console.log(`\n${passes.length} passed, ${failures.length} failed. Report: ${join(OUT, "report.json")}`);
     ws.close();
     stopAll();

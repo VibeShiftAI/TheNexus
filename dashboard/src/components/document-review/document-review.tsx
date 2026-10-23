@@ -447,8 +447,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 ? { key: "draft", text: "Draft", tone: "border-amber-500/40 bg-amber-500/10 text-amber-200" }
                 : { key: "closed", text: review ? "Closed to changes" : "Not open", tone: "border-slate-700 bg-slate-800/40 text-slate-400" }
             : { key: "finished", text: "Finished", tone: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" };
-    // The last attempt's failure or cancellation is worth showing while the document is still at the version it was meant to replace.
-    const showReplacement = Boolean(replacement && (replacement.open || ((replacement.state === "failed" || replacement.state === "cancelled") && replacement.base_revision_id === data?.revision?.id)));
+    // The last attempt's failure or cancellation is worth showing while the document is still at the version it was meant to
+    // replace, and while its unaccepted bytes are the current revision (the version is then closed until a recovery delivers).
+    const closedByFailure = data?.reviewable?.reason === "replacement_failed";
+    const showReplacement = Boolean(replacement && (replacement.open || closedByFailure || ((replacement.state === "failed" || replacement.state === "cancelled") && (replacement.base_revision_id === data?.revision?.id || replacement.result_revision_id === data?.revision?.id))));
     const textual = ["markdown", "text", "code", "json", "html", "svg", "design"].includes(mediaType);
     const assets: RevisionAsset[] = useMemo(() => {
         const list = data?.assets ?? [];
@@ -1179,7 +1181,9 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 <p className="text-[11px] text-slate-400" data-review-closed={data?.reviewable?.reason ?? ""}>
                     {data?.reviewable?.reason === "replacement_in_progress"
                         ? "No review can start on this version while a new version is being produced. Review reopens on the new version when it is ready, or on this one if the work fails or is cancelled."
-                        : "No review can start until the current revision is ready."}
+                        : data?.reviewable?.reason === "replacement_failed"
+                            ? "No review can start on this version: its bytes were registered by a revision attempt that failed or was cancelled and were never declared ready. Review reopens on the new version an explicit recovery delivers."
+                            : "No review can start until the current revision is ready."}
                 </p>
             )}
             {isDraft && (!documentChanged || showingPinned) && !showSource && !editing && (
@@ -1459,7 +1463,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                                 ) : (
                                     <>
                                         The last attempt to produce a new version {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? `: ${replacement.detail}` : ""}
-                                        {replacement.task_id ? <> (<Link href={replacement.links?.task_path ?? `/task/${encodeURIComponent(replacement.task_id)}`} className="underline" data-replacement-task-link="">revision task {replacement.task_id.slice(0, 8)}</Link>)</> : null}. This version stays current and reviewable; a retry is a new attempt, never a silent reopening of the old one.
+                                        {replacement.task_id ? <> (<Link href={replacement.links?.task_path ?? `/task/${encodeURIComponent(replacement.task_id)}`} className="underline" data-replacement-task-link="">revision task {replacement.task_id.slice(0, 8)}</Link>)</> : null}.{" "}
+                                        {closedByFailure
+                                            ? <>You are reading the bytes that attempt registered{data.version?.current_version ? ` (v${data.version.current_version})` : ""}; they were never declared ready, so this version takes no review, decision or edit. The previous version and its decisions stay on record in History. Review reopens on the new version an explicit recovery delivers, never by reopening this one.</>
+                                            : <>This version stays current and reviewable; a retry is a new attempt, never a silent reopening of the old one.</>}
                                     </>
                                 )}
                             </span>

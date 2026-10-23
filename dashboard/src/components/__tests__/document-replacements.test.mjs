@@ -32,7 +32,7 @@ const replacement = (over = {}) => ({
   links: { task_path: '/task/task-2', review_path: '/documents/doc-1', result_raw_path: null, self_path: '/api/documents/doc-1/replacements/rp-1' },
   ...over,
 });
-const failedReplacement = () => replacement({ state: 'failed', open: false, terminal: true, detail: 'Build broke', qa_state: 'failed', completed_at: '2026-10-23T14:40:00Z' });
+const failedReplacement = (over = {}) => replacement({ state: 'failed', open: false, terminal: true, detail: 'Build broke', qa_state: 'failed', completed_at: '2026-10-23T14:40:00Z', ...over });
 
 async function settle(ms = 0) { await act(async () => { await new Promise(resolve => setTimeout(resolve, ms)); }); }
 const button = (c, label) => [...c.querySelectorAll('button')].find(b => (label instanceof RegExp ? label.test(b.textContent.trim()) : b.textContent.trim() === label));
@@ -50,7 +50,12 @@ function server({ review, current = 'rev-1', replacement: rp = null }) {
   const base = '/api/documents/doc-1';
   const state = { current, review, replacement: rp, decisions: [], created: 0 };
   const calls = [];
-  const gate = () => (state.replacement && state.replacement.open ? { ok: false, reason: 'replacement_in_progress', replacement_id: state.replacement.id } : { ok: true, reason: null, replacement_id: null });
+  // Open work closes the version; so do the bytes of a failed or cancelled attempt while they are the current revision (contract §12.5).
+  const gate = () => (state.replacement && state.replacement.open
+    ? { ok: false, reason: 'replacement_in_progress', replacement_id: state.replacement.id }
+    : state.replacement && state.replacement.state !== 'ready' && state.replacement.result_revision_id === state.current
+      ? { ok: false, reason: 'replacement_failed', replacement_id: state.replacement.id }
+      : { ok: true, reason: null, replacement_id: null });
   const statusOf = () => {
     const latest = state.decisions.at(-1);
     if (!latest || latest.revision_id !== state.current) return 'needs_review';
@@ -94,7 +99,7 @@ function server({ review, current = 'rev-1', replacement: rp = null }) {
     }
     if (method === 'POST' && p === `${base}/reviews`) {
       if (body?.revision_id && body.revision_id !== state.current) return refuse(409, 'stale_revision', 'The document has a newer revision than the one on screen; reload to review the current version', { revision_id: body.revision_id, current_revision: revision });
-      if (!gate().ok) return refuse(409, 'replacement_in_progress', 'A new version of this document is being produced; this version takes no new review until it is ready', { replacement: state.replacement });
+      if (!gate().ok) return refuse(409, gate().reason, 'This version takes no new review: a new version is being produced, or the current bytes are the unaccepted result of a failed attempt', { replacement: state.replacement });
       state.created += 1;
       state.review = { ...baseReview(), id: `review-${state.created + 1}`, revision_id: state.current, comments: [], created_at: '2026-10-23T16:00:00Z', updated_at: '2026-10-23T16:00:00Z' };
       return response({ review: reviewView(), created: true }, 201);
@@ -105,7 +110,7 @@ function server({ review, current = 'rev-1', replacement: rp = null }) {
       return response({ review: reviewView() });
     }
     if (method === 'POST' && p === `${base}/decisions`) {
-      if (!gate().ok) return refuse(409, 'replacement_in_progress', 'A new version of this document is being produced; nothing was recorded', { replacement: state.replacement });
+      if (!gate().ok) return refuse(409, gate().reason, 'This version takes no decision; nothing was recorded', { replacement: state.replacement });
       if (body.revision_id !== state.current) return refuse(409, 'stale_revision', 'The document changed; decide on the current revision', { revision_id: body.revision_id, current_revision: revision });
       const decision = { id: `dec-${state.decisions.length + 1}`, document_id: 'doc-1', revision_id: body.revision_id, content_hash: revision.content_hash, decision: body.decision, actor_id: 'local_user', authority: 'access_user', note: body.note ?? '', client_decision_id: body.client_decision_id, intended_action: 'none', created_at: '2026-10-23T16:10:00Z' };
       state.decisions.push(decision);
@@ -286,7 +291,7 @@ test('a failed attempt leaves the version current and reviewable with the failur
     assert.equal(c.querySelector('[data-review-closed]'), null);
   } finally { t.cleanup(); }
 
-  // The failed attempt targeted v1; once v2 is current it is no longer a banner, only history.
+  // The failed attempt targeted v1 and registered nothing; once v2 is current it is no longer a banner, only history.
   const later = server({ review: submittedReview(), current: 'rev-2', replacement: failedReplacement() });
   const u = mount(later);
   try {
@@ -296,6 +301,61 @@ test('a failed attempt leaves the version current and reviewable with the failur
     assert.equal(card(c).querySelector('[data-replacement-note]'), null);
     await click(card(c).querySelector('[data-history-toggle]'));
     assert.equal(card(c).querySelector('[data-history-replacement]').dataset.historyReplacement, 'failed');
+  } finally { u.cleanup(); }
+});
+
+// QA repair round (2026-10-23): a failed attempt that did register bytes leaves those bytes as the current revision. They were never
+// declared ready, so the version is closed (reviewable.reason = replacement_failed) until an explicit recovery delivers a new one,
+// and the reader must say so even though the current revision differs from the attempt's base.
+test('a failed attempt whose registered bytes are the current version closes it until recovery: banner, blocked decision and no new round, on desktop and in the phone drawer', async () => {
+  window.localStorage.clear();
+  const closedByFailure = () => server({ review: submittedReview(), current: 'rev-2', replacement: failedReplacement({ result_revision_id: 'rev-2', links: { task_path: '/task/task-2', review_path: '/documents/doc-1', result_raw_path: '/api/documents/doc-1/raw?revision=rev-2', self_path: '/api/documents/doc-1/replacements/rp-1' } }) });
+  const srv = closedByFailure();
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const banner = c.querySelector('[data-replacement-banner]');
+    assert.equal(banner?.dataset.replacementBanner, 'failed', 'the failure is a banner even though v2, not the base v1, is current');
+    assert.match(banner.textContent, /The last attempt to produce a new version failed: Build broke/);
+    assert.match(banner.textContent, /You are reading the bytes that attempt registered \(v2\); they were never declared ready, so this version takes no review, decision or edit\./);
+    assert.match(banner.textContent, /Review reopens on the new version an explicit recovery delivers, never by reopening this one\./);
+    assert.equal(banner.querySelector('[data-replacement-task-link]').getAttribute('href'), '/task/task-2');
+    assert.match(c.querySelector('[data-revision-chip]').textContent, /v2 · rev bbbbbbbb/);
+
+    const cardNode = card(c);
+    assert.equal(cardNode.querySelector('[data-decision-blocked]')?.dataset.decisionBlocked, 'replacement_failed');
+    assert.match(cardNode.querySelector('[data-decision-blocked]').textContent, /registered by a revision attempt that failed and was never declared ready, so it takes no decision/);
+    assert.equal(cardNode.querySelectorAll('[data-decision-button]').length, 0, 'no approve or request-changes button on failed bytes');
+    const note = cardNode.querySelector('[data-replacement-note]');
+    assert.equal(note.dataset.replacementNote, 'failed');
+    assert.match(note.textContent, /These bytes are its unaccepted result and take no decision; decisions reopen on the new version an explicit recovery delivers\./);
+
+    // The finished round on v1 stays readable; no new round starts, and the reason is the closure, not work in progress.
+    assert.equal(c.querySelector('[data-review-round]').dataset.reviewRound, 'finished');
+    assert.equal(button(c, /^Start a new review/), undefined, 'no new round on the unaccepted result');
+    assert.equal(c.querySelector('[data-review-closed]').dataset.reviewClosed, 'replacement_failed');
+    assert.match(c.querySelector('[data-review-closed]').textContent, /registered by a revision attempt that failed or was cancelled and were never declared ready/);
+    await click(cardNode.querySelector('[data-history-toggle]'));
+    assert.equal(cardNode.querySelector('[data-history-replacement]').dataset.historyReplacement, 'failed');
+    assert.deepEqual(writes(srv), [], 'reading a closed version writes nothing');
+  } finally { t.cleanup(); }
+
+  // Phone: the banner sits in the article, and the drawer shows the same closure.
+  const phoneSrv = closedByFailure();
+  const u = mount(phoneSrv);
+  try {
+    await settle();
+    const c = u.container;
+    assert.equal(c.querySelector('[data-replacement-banner]').dataset.replacementBanner, 'failed');
+    await click(c.querySelector('[data-open-review]'));
+    const drawer = c.querySelector('[data-review-drawer]');
+    assert.ok(drawer, 'Review & decide opens the drawer');
+    assert.equal(drawer.querySelector('[data-decision-blocked]').dataset.decisionBlocked, 'replacement_failed');
+    assert.equal(drawer.querySelectorAll('[data-decision-button]').length, 0);
+    assert.equal(drawer.querySelector('[data-review-closed]').dataset.reviewClosed, 'replacement_failed');
+    assert.equal(drawer.querySelector('[data-replacement-note]').dataset.replacementNote, 'failed');
+    assert.deepEqual(writes(phoneSrv), []);
   } finally { u.cleanup(); }
 });
 
@@ -352,6 +412,24 @@ test('the Reviews queue has a Being revised view whose count the other buckets e
     assert.equal(tabCount(empty.container, 'in_progress'), '0');
     assert.match(empty.container.querySelector('[data-documents-empty]').textContent, /No documents are being revised right now\./);
   } finally { empty.cleanup(); }
+});
+
+// QA repair round: a document whose current bytes are a failed attempt's unaccepted result lists under Being revised too (open: false);
+// its badge and tooltip describe the closure, not work in progress.
+test('a Being revised row closed by a failed attempt wears the failed badge and explains the closure, not work in progress', async () => {
+  const closed = inProgressRegistry().map(d => (d.id === 'doc-003' ? { ...d, replacement: { id: 'rp-9', state: 'failed', task_id: 'task-9', attempt: 1, open: false } } : d));
+  const t = mountQueue(registryHandler(closed), '?status=in_progress');
+  try {
+    await settle();
+    const c = t.container;
+    assert.deepEqual(ids(c), ['doc-003'], 'the closed document is listed under Being revised');
+    const badge = c.querySelector('[data-document-id="doc-003"] [data-replacement-badge]');
+    assert.equal(badge.dataset.replacementBadge, 'failed');
+    assert.match(badge.textContent, /Revision failed/);
+    assert.match(badge.getAttribute('title'), /never declared ready/);
+    assert.match(badge.getAttribute('title'), /explicit recovery/);
+    assert.doesNotMatch(badge.getAttribute('title'), /is being produced/);
+  } finally { t.cleanup(); }
 });
 
 test('project deliverables agree: a Being revised tab with the same count, row and empty state', async () => {
