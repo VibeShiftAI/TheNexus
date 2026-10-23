@@ -464,3 +464,55 @@ test('project deliverables agree: a Being revised tab with the same count, row a
     assert.match(c2.querySelector('[data-documents-empty]').textContent, /Nothing in this project is being revised right now\./);
   } finally { act(() => r2.unmount()); c2.remove(); none.restore(); }
 });
+
+// Task 9f4477b5 (QA follow-up of 6b46dcc8): while work is open, every explanation of when this version reopens is qualified.
+// Failure or cancellation reopens the unchanged version only when the attempt registered no new bytes; bytes it did register
+// stay closed until an explicit recovery delivers (the failed-result tests above show that closure).
+const UNQUALIFIED_REOPEN = /fails or is cancelled(?! before registering new bytes)/;
+
+test('while work is open, every surface says failure or cancellation reopens this version only before new bytes are registered', async () => {
+  window.localStorage.clear();
+  const srv = server({ review: null, replacement: replacement() });
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    assert.match(c.querySelector('[data-replacement-banner]').textContent, /until the new version is ready\. If the work fails or is cancelled before registering new bytes, this version reopens; bytes it registered first stay closed until an explicit recovery delivers\./);
+    const cardNode = card(c);
+    assert.match(cardNode.querySelector('[data-decision-blocked]').textContent, /takes no decision until the new version is ready; it reopens if the work fails or is cancelled before registering new bytes, and bytes the work registered first wait for an explicit recovery\./);
+    assert.match(cardNode.querySelector('[data-replacement-note]').textContent, /Decisions reopen when it is ready, or on this version if the work fails or is cancelled before registering new bytes; bytes it registered first wait for an explicit recovery\./);
+    assert.equal(c.querySelector('[data-review-closed]').dataset.reviewClosed, 'replacement_in_progress');
+    assert.match(c.querySelector('[data-review-closed]').textContent, /or on this one if the work fails or is cancelled before registering new bytes; bytes it registered first wait for an explicit recovery\./);
+    assert.doesNotMatch(c.textContent, UNQUALIFIED_REOPEN, 'no sentence on the page promises that any failure reopens review');
+    assert.deepEqual(writes(srv), []);
+  } finally { t.cleanup(); }
+});
+
+test('a decision refused because work was accepted meanwhile qualifies the reopening the same way, and nothing is recorded', async () => {
+  window.localStorage.clear();
+  const srv = server({ review: null });
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    // Replacement work is accepted after this tab loaded the version as reviewable.
+    srv.state.replacement = replacement({ state: 'accepted' });
+    await click(card(c).querySelector('[data-decision-button="approve"]'));
+    await click(card(c).querySelector('[data-decision-submit]'));
+    assert.equal(writes(srv).at(-1).path, '/api/documents/doc-1/decisions');
+    assert.equal(srv.state.decisions.length, 0, 'the refused decision is not recorded');
+    const notice = card(c).querySelector('[data-decision-notice]');
+    assert.match(notice.textContent, /This version takes no decision until the new version is ready; if the work fails or is cancelled before registering new bytes, this version reopens, and bytes it registered first wait for an explicit recovery\./);
+    assert.doesNotMatch(notice.textContent, UNQUALIFIED_REOPEN);
+  } finally { t.cleanup(); }
+});
+
+test('the Being revised row for open work qualifies the reopening in its badge title', async () => {
+  const t = mountQueue(registryHandler(inProgressRegistry()), '?status=in_progress');
+  try {
+    await settle();
+    const title = t.container.querySelector('[data-document-id="doc-003"] [data-replacement-badge]').getAttribute('title');
+    assert.match(title, /not reviewable until the new one is ready; it reopens if the work fails or is cancelled before registering new bytes, and bytes the work registered first wait for an explicit recovery\./);
+    assert.doesNotMatch(title, UNQUALIFIED_REOPEN);
+  } finally { t.cleanup(); }
+});

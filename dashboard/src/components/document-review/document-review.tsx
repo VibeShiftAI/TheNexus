@@ -1180,7 +1180,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             {!reviewable && (
                 <p className="text-[11px] text-slate-400" data-review-closed={data?.reviewable?.reason ?? ""}>
                     {data?.reviewable?.reason === "replacement_in_progress"
-                        ? "No review can start on this version while a new version is being produced. Review reopens on the new version when it is ready, or on this one if the work fails or is cancelled."
+                        ? "No review can start on this version while a new version is being produced. Review reopens on the new version when it is ready, or on this one if the work fails or is cancelled before registering new bytes; bytes it registered first wait for an explicit recovery."
                         : data?.reviewable?.reason === "replacement_failed"
                             ? "No review can start on this version: its bytes were registered by a revision attempt that failed or was cancelled and were never declared ready. Review reopens on the new version an explicit recovery delivers."
                             : "No review can start until the current revision is ready."}
@@ -1458,7 +1458,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                                     <>
                                         A new version of this document is being produced
                                         {replacement.task_id ? <> by <Link href={replacement.links?.task_path ?? `/task/${encodeURIComponent(replacement.task_id)}`} className="underline" data-replacement-task-link="">revision task {replacement.task_id.slice(0, 8)}</Link></> : null}
-                                        {replacement.detail ? ` (${replacement.detail})` : ""}. You are reading the current version{data.version?.current_version ? ` (v${data.version.current_version})` : ""}; it takes no new review, decision or edit until the new version is ready or the work fails or is cancelled. Earlier comments and decisions are kept.
+                                        {replacement.detail ? ` (${replacement.detail})` : ""}. You are reading the current version{data.version?.current_version ? ` (v${data.version.current_version})` : ""}; it takes no new review, decision or edit until the new version is ready. If the work fails or is cancelled before registering new bytes, this version reopens; bytes it registered first stay closed until an explicit recovery delivers. Earlier comments and decisions are kept.
                                     </>
                                 ) : (
                                     <>

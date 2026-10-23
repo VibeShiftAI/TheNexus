@@ -86,9 +86,11 @@ const REVIEW_STATUSES = ['needs_review', 'changes_requested', 'approved', 'refer
 /**
  * List and count buckets (2026-10-23, task 6b46dcc8): the four decision
  * statuses plus `in_progress`, a document whose replacement work is accepted
- * and not finished. Such a document is not reviewable, so it leaves the
- * decision buckets until its new current revision is ready (or the
- * replacement fails or is cancelled). `review_status` itself stays one of
+ * and not finished, or whose current revision is the unaccepted result of a
+ * failed or cancelled attempt. Such a document is not reviewable, so it leaves
+ * the decision buckets until its new current revision is ready (or, when the
+ * attempt registered no result, until it fails or is cancelled; a registered
+ * result waits for an explicit recovery). `review_status` itself stays one of
  * REVIEW_STATUSES: it describes decisions, the bucket describes reviewability.
  */
 const LIST_STATUSES = [...REVIEW_STATUSES, 'in_progress'];
@@ -97,7 +99,9 @@ const LIST_STATUSES = [...REVIEW_STATUSES, 'in_progress'];
  * Replacement work on a document (task 6b46dcc8). One open replacement per
  * document at a time; accepting it supersedes every pending review draft and
  * closes the document to new reviews, decisions and edits until the work
- * declares the new current revision ready, fails or is cancelled.
+ * declares the new current revision ready, or fails or is cancelled before
+ * registering a result. A result registered by an attempt that then failed or
+ * was cancelled keeps the document closed until an explicit recovery delivers.
  *
  *   accepted    the originating change request is linked to revision work (task may follow)
  *   queued      dispatch queued for the linked task
