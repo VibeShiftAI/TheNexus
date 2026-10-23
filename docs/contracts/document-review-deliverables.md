@@ -788,12 +788,22 @@ comment create, edit and delete, `finish`) with 409 `review_superseded`. A
 finish that raced the acceptance and lost gets `review_superseded` too; a
 finish that won is a normal submission and the acceptance that follows cites
 it. The check is server-side, so a stale tab cannot act on an outdated
-version.
+version. The same three endpoints (`reviews`, `decisions`, `content`) are
+refused with 409 `replacement_failed` while the current revision is the
+unaccepted result of a failed or cancelled attempt (12.5); the body carries
+`replacement`.
 
 `POST /api/documents/:id/reviews` now accepts an optional `revision_id`; a
 round asked for a revision that is no longer current is refused with 409
 `stale_revision` (with `current_revision`) instead of being opened on bytes
-the reader has not seen.
+the reader has not seen. Currency is checked twice: once on entry and again
+inside the insert transaction, after the request has awaited the task board.
+A request that was current on entry but was overtaken meanwhile (another
+request registered and promoted a new revision) is refused with 409
+`stale_revision`, `revision_id` and `current_revision`, and no draft row is
+written; the reviewability gate is re-read in the same transaction. Decisions
+re-read the gate inside their own transaction as well, so a decision cannot
+land on a version that closed while it was being validated.
 
 Reporting: `PATCH /api/documents/:id/replacements/:replacementId` with any of
 `state` (any state in 12.2), `detail`, `task_id` (set once; a different task
@@ -806,6 +816,16 @@ a result (`result_not_ready`, reason `no_result`), a readable file (reason
 `file_unavailable`), the result as the current revision (reason
 `result_not_current`) and its visual readiness (reason `result_not_ready`).
 
+The task link and the `ready` verification are decided inside the update
+transaction, not from the row read on entry. Two simultaneous reports that
+assign different tasks yield exactly one 200; the other is 409
+`task_already_linked` with the linked item in `replacement`, and the stored
+`task_id` is the winner's. The same task reported again is 200 `duplicate:
+true`. A `ready` report re-verifies currency and readiness of the result in
+that transaction, so a registration that promotes a newer revision meanwhile
+turns the report into `result_not_ready` (`result_not_current`) instead of
+`ready` on bytes that are no longer current.
+
 Result linkage: a registration (`POST /api/documents`, section 1) of new
 bytes under the open replacement's `task_id` names its result
 (`result_revision_id`) and moves `accepted`/`queued`/`held`/`running` to
@@ -814,7 +834,10 @@ attempt }`. Bytes captured by a plain read are never a result, and a result
 that stops being current cannot be reported ready.
 
 Reconcile on read: every read of the document reconciles the open item with
-the task board. A completed task with a current, ready result makes the item
+the task board, and the list and count reads (12.6) reconcile every open item
+across documents before they query, so a queue and the detail it links to
+agree on what the task board says (only a detail read captures changed bytes
+on disk, as before). A completed task with a current, ready result makes the item
 `ready`; a completed task without one makes it `failed` (the document is
 still at the old version, explicitly); a cancelled, deleted or archived task
 makes it `cancelled`; a failed task makes it `failed`; `qa_passed` with a
@@ -831,38 +854,81 @@ is_latest, result_is_current, result_is_ready, result_revision,
 base_revision, current_revision, file_state, review_status, reviewable }`.
 `GET /api/documents/:id` adds `replacement` (the open item, else the latest)
 and `reviewable { ok, reason, replacement_id }` with reasons
-`replacement_in_progress`, `no_revision` or `revision_not_ready`.
+`replacement_in_progress`, `replacement_failed`, `no_revision` or
+`revision_not_ready`.
 
 ### 12.5 Failure, cancellation and recovery
 
 A failed or cancelled attempt stays represented (its row, its `attempt`, its
-result if any) and the document reopens at the version it was meant to
-replace: `reviewable.ok` is true and the reader says so. Nothing is revived
-silently: the superseded rounds stay superseded, and a new acceptance for the
-same source must name the attempt it recovers (`recovers_replacement_id` =
-the latest attempt for that source) and becomes `attempt + 1`. An acceptance
-that omits it is refused with 409 `recovery_required`; one that names the
-wrong row is 409 `invalid_recovery`. Explicit reports of `failed` or
-`cancelled` (with `detail`) are accepted at any open state.
+result if any). What the document reopens at depends on whether the attempt
+registered bytes:
+
+- **No result registered** (the usual failure): the document stays at the
+  version the attempt was meant to replace, `reviewable.ok` is true and the
+  reader says so ("this version stays current and reviewable").
+- **A result registered, then the attempt failed or was cancelled**: those
+  bytes are the current revision, but they were never declared ready, so the
+  version is closed. `reviewable` is `{ ok: false, reason:
+  'replacement_failed', replacement_id }`; `POST .../reviews`, `POST
+  .../decisions` and `PUT .../content` are refused with 409
+  `replacement_failed`; the document lists under `in_progress` with
+  `replacement.open = false` (12.6). Nothing reopens those bytes: review
+  resumes only on a new version that an explicit recovery delivers.
+
+Nothing is revived silently: the superseded rounds stay superseded, and a new
+acceptance for the same source must name the attempt it recovers
+(`recovers_replacement_id` = the latest attempt for that source) and becomes
+`attempt + 1`. An acceptance that omits it is refused with 409
+`recovery_required`; one that names the wrong row is 409 `invalid_recovery`.
+Explicit reports of `failed` or `cancelled` (with `detail`) are accepted at
+any open state.
+
+The authority a recovery cites is the last reviewable version, not the failed
+bytes: walking back from the current revision through every revision produced
+by a failed or cancelled attempt to its base, the first revision not produced
+by such an attempt is the authority revision. The review or decision named by
+the recovering acceptance must belong to it (for a failed v2 on top of a
+reviewed v1, that is the v1 decision); `source_not_current` carries
+`authority_revision_id` next to `source_revision_id` and `current_revision`.
+The recovery is an ordinary attempt otherwise: its `base_revision_id` is the
+current revision (the failed bytes stay in History as a numbered version),
+its registration, QA pass and `ready` follow 12.4, and once it is ready the
+new version takes review while the earlier decisions stay on record. A later
+acceptance that still cites the old decision is refused: the authority is now
+the ready version.
 
 ### 12.6 Lists, counts and the UI
 
 - `GET /api/documents?status=` accepts `in_progress` as a fifth bucket; a
-  document with an open replacement lists there and nowhere else. `GET
+  document with an open replacement lists there and nowhere else, and so does
+  a document whose current revision is the unaccepted result of a failed or
+  cancelled attempt (12.5), with `replacement.open = false`. `GET
   /api/documents/counts` returns `needs_review`, `changes_requested`,
   `approved`, `reference`, `in_progress` and `all` (the sum of the five).
   List rows carry `replacement { id, state, task_id, attempt, open }` (or
   null), `reviewable`, `review_state.closed_reason` and
   `current_revision.version`.
+- Both reads reconcile every open replacement with the task board before they
+  query (12.4), so a task that completed with a registered result moves its
+  document to `needs_review` in the queue and the counts without anyone
+  opening the document, and a detail read changes no count on the task
+  board's account (it still captures changed bytes on disk, which lists never
+  do). The detail's `replacement` is the same item the list row names: open
+  work, else the attempt whose unaccepted bytes are current, else the latest.
 - Dashboard: the Reviews queue and project Deliverables have a **Being
   revised** tab; rows show a replacement badge (state and attempt) and `v<n>`
   before the revision hash. The reader shows a replacement banner (open:
   state, task link, "you are reading the current version (v<n>)"; failed or
   cancelled on the current base: what happened, "this version stays current
-  and reviewable"), a version in the header chip, a disabled decision with the
-  reason, a superseded round as read-only with its comments and a note that
-  nothing was sent, no "Start a new review" while closed, and refusals for
-  stale tabs that reload into the current version without recording anything.
+  and reviewable"; failed or cancelled with its result as the current
+  revision: what happened, "you are reading the bytes that attempt registered
+  (v<n>); they were never declared ready, so this version takes no review,
+  decision or edit", review reopens only on the version an explicit recovery
+  delivers), a version in the header chip, a disabled decision with the
+  reason (`replacement_in_progress` or `replacement_failed`), a superseded
+  round as read-only with its comments and a note that nothing was sent, no
+  "Start a new review" while closed, and refusals for stale tabs that reload
+  into the current version without recording anything.
   Unsaved text is kept on screen and recovered after a reload, never dropped.
   History numbers versions, labels superseded rounds and lists every attempt
   with its task.
@@ -884,13 +950,17 @@ The states a Praxis report may claim, and the only evidence for each:
 | ready for editorial review | `state = ready` (verified by Nexus) and `reviewable.ok = true` on `GET /api/documents/:id` |
 | version superseded | a review row with `closed_reason = 'superseded'`, or `superseded_review_ids` on the replacement |
 | attempt failed / cancelled | `state = failed` or `cancelled`, with `detail` |
+| failed attempt left unreviewable bytes current | `state = failed` or `cancelled` with `result_revision_id = current_revision_id`, and `reviewable.reason = replacement_failed` on `GET /api/documents/:id`; only a recovery reopens review |
 
 Rules: use one `client_request_id` per change request (for example the
 submission or decision id) and replay freely; treat 200 `duplicate: true`
 as success; never cite a replacement for a version you did not read as
-current (`source_not_current` means re-read the document first); when a
-report returns `replacement_closed`, read the item back rather than retrying
-the transition; a failed attempt is retried only with
+current (`source_not_current` means re-read the document first, and its
+`authority_revision_id` names the version whose review or decision a recovery
+must cite); when a report returns `replacement_closed`, read the item back
+rather than retrying the transition; when a `task_id` report returns
+`task_already_linked`, the work belongs to the task in `replacement`, do not
+report under another; a failed attempt is retried only with
 `recovers_replacement_id`. Old receipt URLs stay valid as history
 (`result_raw_path`, `raw_path?revision=`); say "historical" when you cite
 them. The current version may be unreviewable while the replacement is open;
@@ -901,11 +971,22 @@ say so instead of asking Robert to review.
 `server/__tests__/document-replacements.test.js` covers the incident shape,
 concurrency and replays, the refusal matrix, result linkage and readiness,
 partial bytes, task reconciliation and recovery, the executor approval of the
-exact new revision and five-bucket agreement; `dashboard` suite
+exact new revision and five-bucket agreement, and (QA repair round,
+2026-10-23) a review racing a result promotion, a failed attempt whose
+registered bytes are current (closure, recovery citing the last reviewable
+version, authority moving to the ready version), simultaneous task links and
+lists and counts that reconcile before any detail read; `dashboard` suite
 `document-replacements.test.mjs` covers the desktop reader, the phone drawer,
 stale tabs, a round superseded mid-session (text kept across a reload), a
-failed attempt and the Being revised views. Nothing in either suite sends or
-approves anything real.
+failed attempt with and without registered bytes (the former closed on
+desktop and in the drawer) and the Being revised views, including a row
+closed by a failed attempt. `dashboard/scripts/replacement-browser-check.mjs`
+walks the lifecycle in a real browser against an isolated stack: a review of
+v1, work that delivers v2, a review of v2, a second work item that registers
+v3 and fails (closed banner on desktop and phone, queue row, refusals),
+`recovery_required`, a recovery that delivers v4, and a stale cite refused
+with `authority_revision_id`. Nothing in any of them sends or approves
+anything real.
 
 Activation: the schema change is additive and runs at API startup; the live
 :4000 serves this contract only after the Nexus API restarts on the new code.
