@@ -7,11 +7,14 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
+const { chatFilesDir } = require('../services/hitl-answer-attachments');
 
 function createChatFilesRouter() {
     const router = express.Router();
 
-    const CHAT_FILES_DIR = path.join(__dirname, '..', '..', 'data', 'chat-files');
+    // data/chat-files by default; NEXUS_CHAT_FILES_DIR points an isolated
+    // stack at its own store (the inbox answer guard reads the same setting).
+    const CHAT_FILES_DIR = chatFilesDir();
 
     // Ensure directory exists
     if (!fs.existsSync(CHAT_FILES_DIR)) {
