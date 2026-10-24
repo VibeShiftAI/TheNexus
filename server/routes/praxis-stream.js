@@ -19,6 +19,7 @@ const fs = require('fs');
 const { PRAXIS_BRIDGE_TOKEN_FILE } = require('../shared/constants');
 const { praxisFetch, praxisProxyJson, praxisStream } = require('../services/praxis-client');
 const { readUsageWaits, validDispatchSnapshot } = require('../services/focus-usage-waits');
+const { hitlAnswerAttachmentGuard } = require('../services/hitl-answer-attachments');
 
 /**
  * Praxis's full-scope bridge token, read fresh per call (it is minted on
@@ -523,7 +524,10 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     router.get('/hitl/pending', (req, res) => proxyJson(req, res, '/hitl/pending'));
     router.get('/hitl/recent', (req, res) => proxyJson(req, res, '/hitl/recent'));
     router.get('/hitl/:id', (req, res) => proxyJson(req, res, `/hitl/${encodeURIComponent(req.params.id)}`));
-    router.post('/hitl/:id/resolve', (req, res) => proxyJson(req, res, `/hitl/${encodeURIComponent(req.params.id)}/resolve`));
+    // Photo attachments on an answer (payload.attachments) are rebuilt from the
+    // chat upload store before the body reaches Praxis; text-only and choice
+    // answers pass through unchanged (services/hitl-answer-attachments.js).
+    router.post('/hitl/:id/resolve', hitlAnswerAttachmentGuard(), (req, res) => proxyJson(req, res, `/hitl/${encodeURIComponent(req.params.id)}/resolve`));
 
     // ── LLM usage log proxy ("who is calling which AI") ────────────
     router.get('/llm-log', (req, res) => {
