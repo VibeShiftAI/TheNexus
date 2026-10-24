@@ -207,6 +207,52 @@ test('an image opens in the zoomable viewer; dragging a region opens the compose
   } finally { t.cleanup(); }
 });
 
+/** A tap: pointer down and up at one spot on the image itself, the way a finger lands on a phone. */
+async function tap(container, x, y) {
+  const img = container.querySelector('img[data-image-role="after"]');
+  for (const name of ['pointerdown', 'pointerup']) {
+    await act(async () => { img.dispatchEvent(new window.MouseEvent(name, { bubbles: true, clientX: x, clientY: y, button: 0 })); });
+  }
+  await settle();
+}
+
+test('on a touch screen the image starts out of pin mode: a tap opens it full screen, and pinning is a switch', async () => {
+  const srv = server(imageDoc());
+  const hadMatchMedia = Object.prototype.hasOwnProperty.call(window, 'matchMedia');
+  const previousMatchMedia = window.matchMedia;
+  window.matchMedia = (query) => ({ matches: query.includes('coarse'), media: query, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent() { return false; } });
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const toggle = c.querySelector('[data-pin-mode]');
+    assert.ok(toggle, 'the toolbar offers Pin a note');
+    assert.equal(toggle.dataset.pinMode, 'off', 'a touch screen starts with pinning off');
+    // jsdom's style engine drops touch-action, so the finger-scrolls-the-page half is checked in the browser, not here.
+    assert.ok(!c.querySelector('[data-image-toolbar]').className.includes('absolute'), 'the toolbar sits above the image, not over it');
+
+    await tap(c, 100, 200);
+    assert.ok(!c.querySelector('[data-composer]'), 'a tap pins nothing');
+    const lightbox = document.querySelector('[data-lightbox]');
+    assert.ok(lightbox, 'a tap opens the image full screen');
+    assert.ok(lightbox.querySelector('img[data-lightbox-image][src^="/api/documents/doc-1/assets/primary"]'));
+    await act(async () => { window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' })); });
+    await settle();
+    assert.ok(!document.querySelector('[data-lightbox]'), 'Escape closes it');
+
+    await click(toggle);
+    assert.equal(c.querySelector('[data-pin-mode]').dataset.pinMode, 'on');
+    await drag(c, { x: 0.1, y: 0.2 }, { x: 0.5, y: 0.4 });
+    const composer = c.querySelector('[data-composer]');
+    assert.ok(composer, 'in pin mode a drag opens the composer');
+    assert.equal(composer.dataset.composerKind, 'region');
+    assert.ok(!document.querySelector('[data-lightbox]'), 'a drag never opens full screen');
+  } finally {
+    t.cleanup();
+    if (hadMatchMedia) window.matchMedia = previousMatchMedia; else delete window.matchMedia;
+  }
+});
+
 test('a design package shows its directions and screens, comments anchor to a screen, and approving records the selected direction', async () => {
   const srv = server(designDoc());
   const t = mount(srv);

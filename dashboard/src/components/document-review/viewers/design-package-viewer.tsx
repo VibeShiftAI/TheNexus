@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Columns3, Moon, Sun, Star } from "lucide-react";
 import { assetUrl, type DesignManifest, type Region, type RevisionAsset } from "@/lib/document-review";
 import { ImageViewer, type ImagePin } from "./image-viewer";
+import { Lightbox } from "./lightbox";
 import { PrototypeViewer, type PointPin } from "./prototype-viewer";
 
 export interface DesignPins {
@@ -50,6 +51,8 @@ export function DesignPackageViewer({ documentId, revisionId, manifest, assets, 
     const [compare, setCompare] = useState(false);
     const [tab, setTab] = useState<Tab>("screens");
     const [tokens, setTokens] = useState<string | null>(null);
+    /** Full screen runs through the visible screens, so a swipe moves to the next one and the filmstrip follows. */
+    const [fullScreen, setFullScreen] = useState(false);
 
     const visible = useMemo(() => screens.filter((s) => (direction === "all" || !s.direction || s.direction === direction) && (appearance === "all" || !s.appearance || s.appearance === appearance)), [screens, direction, appearance]);
     const active = visible.find((s) => s.asset_key === activeKey) ?? screens.find((s) => s.asset_key === activeKey) ?? visible[0] ?? screens[0] ?? null;
@@ -206,7 +209,19 @@ export function DesignPackageViewer({ documentId, revisionId, manifest, assets, 
                                 annotate={annotate}
                                 onRegion={onScreenRegion ? (region) => onScreenRegion(active.asset_key, region) : undefined}
                                 onLoadState={onLoadState}
+                                onOpenFullScreen={() => setFullScreen(true)}
                             />
+                            {fullScreen && (() => {
+                                const run = visible.some((s) => s.asset_key === active.asset_key) ? visible : [active];
+                                return (
+                                    <Lightbox
+                                        items={run.map((s) => ({ src: url(s.asset_key), alt: s.label ?? s.asset_key, label: s.label ? `${s.label} · ${screenMeta(s)}` : s.asset_key }))}
+                                        index={Math.max(0, run.findIndex((s) => s.asset_key === active.asset_key))}
+                                        onIndexChange={(i) => { const next = run[i]; if (next) setActiveKey(next.asset_key); }}
+                                        onClose={() => setFullScreen(false)}
+                                    />
+                                );
+                            })()}
                             {manifest.screens.find((s) => `screen:${s.id}` === active.asset_key)?.notes && (
                                 <p className="mt-2 rounded-md border border-slate-800 bg-slate-900/50 px-3 py-2 text-xs text-slate-300" data-design-notes="">
                                     {manifest.screens.find((s) => `screen:${s.id}` === active.asset_key)?.notes}

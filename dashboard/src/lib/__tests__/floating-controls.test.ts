@@ -114,7 +114,13 @@ test('the review page keeps Finish review above the floating controls on desktop
   assert.match(review, /root\.clientHeight \/ zoom - \(headerHeight \+ 1\.25 \* rem\) - reserve < 8 \* rem/);
   assert.match(review, /const railPosition = railsFlow\s+\? "\[&_\*\]:scroll-mt-\[var\(--review-rail-top,6rem\)\]"\s+: "sticky /);
   assert.match(review, /"--review-rail-top": `calc\(\$\{headerHeight\}px \+ 1\.25rem\)`/, 'rail top = header height + the grid padding above the rails');
-  assert.match(review, /<header ref=\{headerRef\} className="sticky top-0/);
+  // The header sticks on desktop only: on a phone it is taller than the screen once it holds the brief, so it scrolls
+  // away and a fixed bar on the floating controls' reserve keeps the navigator and the review one tap away (2026-10-24).
+  assert.match(review, /<header ref=\{headerRef\} className="[^"]*\blg:sticky lg:top-0[^"]*"/);
+  assert.doesNotMatch(review, /<header ref=\{headerRef\} className="sticky /, 'the header does not pin on a phone');
+  assert.match(review, /data-phone-bar=""/);
+  assert.match(review, /className="fixed inset-x-0 z-\[60\] [^"]*lg:hidden" style=\{\{ bottom: "var\(--nexus-floating-bottom, 0px\)" \}\}/, 'the phone bar sits on the reserve, above the ticker and voice dock');
+  assert.match(review, /max-lg:pb-20 lg:grid/, 'the content ends above the phone bar');
   for (const marker of ['data-composer-sheet=""', 'data-review-drawer=""']) {
     const line = review.split('\n').find(l => l.includes(marker)) ?? '';
     assert.match(line, /pb-\[max\([\d.]+rem,var\(--nexus-floating-overlay-bottom,0px\)\)\]/, `${marker} pads past the mini player and launcher`);
