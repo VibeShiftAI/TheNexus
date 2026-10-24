@@ -16,13 +16,21 @@
  * (filters, history, stream status), never in the card itself.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Archive, ChevronDown, ChevronRight, Loader2, Send } from "lucide-react";
+import { Archive, ChevronDown, ChevronRight, ImagePlus, Loader2, Send, X } from "lucide-react";
 import type { HITLRequest } from "@praxis/contract";
 
 import { hitlTaskMeta, parseResumeContext, PRIORITY_TONES, REASON_LABELS } from "@/lib/hitl-meta";
+import {
+  HITL_ATTACHMENT_MAX_COUNT,
+  formatBytes,
+  refuseHitlAttachment,
+  uploadHitlAttachment,
+  type HitlAnswerAttachment,
+  type PendingHitlAttachment,
+} from "@/lib/hitl-attachments";
 import { briefDetails, briefFromMetadata, briefQuestions } from "@/lib/human-brief";
 import { describeHitlAction } from "@/lib/alert-action";
 import { AlertAction, SafeAlertMarkdown } from "./alert-action";
@@ -36,7 +44,16 @@ import {
   isSkillCandidatesHitl,
 } from "./schedule-hitl-card";
 
-export type HitlResolveInput = { choice?: string; freeText?: string };
+export type HitlResolveInput = {
+  choice?: string;
+  freeText?: string;
+  /**
+   * Structured input alongside the answer. The card sets
+   * `{ attachments: HitlAnswerAttachment[] }` when photos were attached;
+   * schedule cards carry their own overrides here.
+   */
+  payload?: Record<string, unknown>;
+};
 export type HitlResolver = (requestId: string, input: HitlResolveInput) => Promise<void>;
 
 export function timeAgo(iso: string | undefined): string {
@@ -101,6 +118,23 @@ export function HitlRequestCard({
 }) {
   const [reply, setReply] = useState("");
   const [showContext, setShowContext] = useState(false);
+  // Photos picked for this answer stay on the device until Send uploads
+  // them (lib/hitl-attachments.ts). A refused file, a failed upload or a
+  // failed send is reported here and discards nothing: the typed answer and
+  // the photos remain in the card.
+  const [attachments, setAttachments] = useState<PendingHitlAttachment[]>([]);
+  const [attachNotice, setAttachNotice] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentKey = useRef(0);
+  const attachmentsRef = useRef(attachments);
+  attachmentsRef.current = attachments;
+  useEffect(
+    () => () => {
+      for (const item of attachmentsRef.current) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    },
+    [],
+  );
   const meta = hitlTaskMeta(request);
   const resume = parseResumeContext(request.originalPayload?.prompt);
   // Only offer the accordion when the payload adds something beyond the
@@ -126,19 +160,102 @@ export function HitlRequestCard({
   const showQuestionText = !brief || questions.length === 0;
   const foldQuestion = Boolean(brief) && showQuestionText && request.question.length > 700;
 
-  async function submit(choice?: string) {
-    const freeText = reply.trim();
-    await onResolve(request.id, {
-      choice,
-      freeText: freeText.length > 0 ? freeText : undefined,
-    });
-    setReply("");
+  function addFiles(files: FileList | File[] | null) {
+    if (!files) return;
+    const picked = Array.from(files);
+    if (picked.length === 0) return;
+    // Build the next list from the ref, not inside the state updater: the
+    // refusal must be known now, and updaters run later in the render.
+    const next = [...attachmentsRef.current];
+    let refusal: string | null = null;
+    for (const file of picked) {
+      const reason = refuseHitlAttachment(file, next.length);
+      if (reason) {
+        refusal = refusal ?? reason;
+        continue;
+      }
+      attachmentKey.current += 1;
+      next.push({
+        key: `photo-${attachmentKey.current}`,
+        file,
+        previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+      });
+    }
+    setAttachments(next);
+    setAttachNotice(refusal);
   }
 
-  // Park sends a deliberately EMPTY resolution — never the draft text.
+  function removeAttachment(key: string) {
+    setAttachments((current) => {
+      const removed = current.find((item) => item.key === key);
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      return current.filter((item) => item.key !== key);
+    });
+    setAttachNotice(null);
+  }
+
+  function clearAttachments() {
+    for (const item of attachmentsRef.current) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    setAttachments([]);
+    setAttachNotice(null);
+  }
+
+  /**
+   * Upload every photo that is not uploaded yet. A photo that already has a
+   * reference (an earlier send failed after its upload) is not sent twice.
+   * Throws the first failure with the message to show.
+   */
+  async function uploadPending(): Promise<HitlAnswerAttachment[]> {
+    const uploaded: HitlAnswerAttachment[] = [];
+    for (const item of attachmentsRef.current) {
+      if (item.uploaded) {
+        uploaded.push(item.uploaded);
+        continue;
+      }
+      const reference = await uploadHitlAttachment(item.file);
+      setAttachments((current) => current.map((entry) => (entry.key === item.key ? { ...entry, uploaded: reference } : entry)));
+      uploaded.push(reference);
+    }
+    return uploaded;
+  }
+
+  async function submit(choice?: string) {
+    const freeText = reply.trim();
+    let photos: HitlAnswerAttachment[] = [];
+    if (attachmentsRef.current.length > 0) {
+      setUploading(true);
+      setAttachNotice(null);
+      try {
+        photos = await uploadPending();
+      } catch (error) {
+        setAttachNotice(error instanceof Error ? error.message : "The photo could not be uploaded. Your answer and photo are still here; try again.");
+        return;
+      } finally {
+        setUploading(false);
+      }
+    }
+    try {
+      await onResolve(request.id, {
+        choice,
+        freeText: freeText.length > 0 ? freeText : undefined,
+        ...(photos.length > 0 ? { payload: { attachments: photos } } : {}),
+      });
+    } catch (error) {
+      // The inbox shows the failure too; say it on the card so the answer
+      // is visibly unsent rather than silently kept.
+      const reason = error instanceof Error ? error.message : "the request failed";
+      setAttachNotice(`Your answer was not sent (${reason}). It is still here; try again.`);
+      return;
+    }
+    setReply("");
+    clearAttachments();
+  }
+
+  // Park sends a deliberately EMPTY resolution: never the draft text or photos.
   async function park() {
     await onResolve(request.id, {});
     setReply("");
+    clearAttachments();
   }
 
   if (action.state !== 'pending') return <AlertAction action={action} inline />;
@@ -316,19 +433,92 @@ export function HitlRequestCard({
           placeholder="Type your answer… (⌘⏎ to send)"
           className="mb-2 min-h-20 w-full resize-y rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-[length:var(--hitl-fs-sm,0.875rem)] text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-500"
         />
+
+        {/* photos picked for this answer: thumbnail, name, size, remove */}
+        {attachments.length > 0 ? (
+          <ul className="mb-2 flex flex-wrap gap-2" data-hitl-attachments="">
+            {attachments.map((item) => (
+              <li
+                key={item.key}
+                data-hitl-attachment={item.file.name}
+                className="flex max-w-full items-center gap-2 rounded-md border border-slate-700 bg-slate-950 p-1.5 pr-1"
+              >
+                {item.previewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- object URL preview of a local file
+                  <img src={item.previewUrl} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />
+                ) : (
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded bg-slate-800 text-slate-500">
+                    <ImagePlus className="h-4 w-4" />
+                  </span>
+                )}
+                <span className="min-w-0">
+                  <span className="block max-w-40 truncate text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-200">{item.file.name}</span>
+                  <span className="block font-mono text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
+                    {formatBytes(item.file.size)}
+                    {item.uploaded ? " · uploaded" : ""}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${item.file.name}`}
+                  title="Remove this photo"
+                  disabled={resolving || uploading}
+                  onClick={() => removeAttachment(item.key)}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-slate-800 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {attachNotice ? (
+          <p
+            role="alert"
+            data-hitl-attach-error=""
+            className="mb-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)] leading-relaxed text-rose-200"
+          >
+            {attachNotice}
+          </p>
+        ) : null}
+
         <div className="flex gap-2">
           <button
-            disabled={resolving || reply.trim().length === 0}
+            disabled={resolving || uploading || (reply.trim().length === 0 && attachments.length === 0)}
             onClick={() => void submit()}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-cyan-500 px-3 py-2 text-[length:var(--hitl-fs-xs,0.75rem)] font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
           >
-            {resolving ? (
+            {resolving || uploading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Send className="h-3.5 w-3.5" />
             )}
-            {resolving ? "Sending…" : "Send Answer"}
+            {uploading ? "Uploading photo…" : resolving ? "Sending…" : "Send Answer"}
           </button>
+          <button
+            type="button"
+            disabled={resolving || uploading || attachments.length >= HITL_ATTACHMENT_MAX_COUNT}
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach a photo or screenshot to this answer"
+            aria-label="Add a photo"
+            data-hitl-attach-button=""
+            className="flex items-center gap-1.5 rounded-md border border-slate-700 px-3 py-2 text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-400 transition hover:border-cyan-500 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ImagePlus className="h-3.5 w-3.5" />
+            Photo
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.heic,.heif"
+            multiple
+            className="hidden"
+            data-hitl-attach-input=""
+            onChange={(event) => {
+              addFiles(event.target.files);
+              event.target.value = "";
+            }}
+          />
           {canPark ? (
             <button
               disabled={resolving}

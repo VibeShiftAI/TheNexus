@@ -30,6 +30,7 @@ import type { HITLRequest } from "@praxis/contract";
 import { useHitlInbox } from "@/hooks/use-hitl-inbox";
 import { useLiveBoardState } from "@/components/live-board-state";
 import { hitlTaskMeta } from "@/lib/hitl-meta";
+import { answerAttachments } from "@/lib/hitl-attachments";
 import { HitlCard, timeAgo } from "@/components/hitl-card";
 import { AlertAction } from "@/components/alert-action";
 import { describeHitlAction, isAlertRequest } from "@/lib/alert-action";
@@ -335,6 +336,7 @@ export default function InboxPage() {
 function HistoryRow({ request }: { request: HITLRequest }) {
   const meta = hitlTaskMeta(request);
   const answer = [request.resolution?.choice, request.resolution?.freeText].filter(Boolean).join(' · ') || "(closed without an answer)";
+  const photos = answerAttachments(request.resolution);
   return (
     <div className="flex items-start gap-2 rounded-md border border-slate-900 bg-slate-950/40 px-2.5 py-2">
       <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500/60" />
@@ -347,6 +349,15 @@ function HistoryRow({ request }: { request: HITLRequest }) {
           ↳ {answer} · {request.resolution?.resolvedBy ?? "?"} ·{" "}
           {timeAgo(request.resolution?.resolvedAt)}
         </p>
+        {photos.length > 0 ? (
+          <p className="mt-0.5 flex flex-wrap gap-x-2 font-mono text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500" data-hitl-history-photos="">
+            {photos.map((photo) => (
+              <a key={photo.fileId} href={photo.url} target="_blank" rel="noreferrer" className="underline hover:text-cyan-300">
+                📎 {photo.originalName}
+              </a>
+            ))}
+          </p>
+        ) : null}
       </div>
     </div>
   );
