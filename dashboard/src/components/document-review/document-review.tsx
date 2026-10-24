@@ -9,7 +9,7 @@
  * revision and actions; a navigator rail (headings for text, comment markers
  * for media); the stage, which is the viewer for the media type or the editor
  * when editing; and the review rail with the decision, the comment thread and
- * Finish review. On the phone the rails become drawers and the composer a
+ * Finish review. On the phone the header scrolls away, the rails become drawers opened from a fixed bottom bar, and the composer a
  * bottom sheet.
  *
  * Every piece of review state lives on the server: comments and the summary
@@ -1329,7 +1329,9 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
 
     return (
         <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30" data-document-review-page="" data-media-type={mediaType} style={headerHeight === null ? undefined : ({ "--review-rail-top": `calc(${headerHeight}px + 1.25rem)` } as CSSProperties)}>
-            <header ref={headerRef} className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
+            {/* Sticky on desktop only: on a phone a header that holds the brief is taller than the screen, and pinned it
+                hid the document completely (2026-10-24). There it scrolls away and the bottom bar below keeps the drawers reachable. */}
+            <header ref={headerRef} className="z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md lg:sticky lg:top-0">
                 {/* Row 1: where you are and what you can do. Row 2: what this is. */}
                 <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-2">
                     <div className="hidden min-w-0 sm:block">
@@ -1413,22 +1415,13 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     </div>
                     {brief && (
                         <div className="mt-2 max-w-3xl">
-                            <HumanBriefBlock brief={brief} compact />
+                            <HumanBriefBlock brief={brief} compact collapsible />
                         </div>
                     )}
                 </div>
-                {/* Phone controls: explicit buttons, no hover required. */}
-                <div className="flex gap-2 border-t border-slate-800/80 px-4 py-2 lg:hidden">
-                    <button type="button" onClick={() => setOutlineOpen(true)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 py-2 text-xs text-slate-200">
-                        <ListTree size={13} /> {navigatorTitle}
-                    </button>
-                    <button type="button" onClick={() => setReviewOpen(true)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 py-2 text-xs text-cyan-100" data-open-review="">
-                        <MessageSquare size={13} /> Review &amp; decide ({comments.length})
-                    </button>
-                </div>
             </header>
 
-            <div className="mx-auto max-w-[1600px] px-4 py-5 lg:grid lg:grid-cols-[200px_minmax(0,1fr)_380px] lg:gap-6">
+            <div className="mx-auto max-w-[1600px] px-4 py-5 max-lg:pb-20 lg:grid lg:grid-cols-[200px_minmax(0,1fr)_380px] lg:gap-6">
                 {/* Sticky or in the page flow: see railPosition. */}
                 <aside className="hidden lg:block">
                     <div className={`${railPosition} pr-2`} data-rail-position={railsFlow ? "flow" : "sticky"}>{outlinePanel}</div>
@@ -1502,6 +1495,18 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 <aside className="hidden lg:block">
                     <div className={`${railPosition} rounded-xl border border-slate-800 bg-slate-900/40 p-3`} data-rail-position={railsFlow ? "flow" : "sticky"}>{reviewPanel}</div>
                 </aside>
+            </div>
+
+            {/* Phone bar: the navigator and the review open from here, so they stay one tap away however far the page has
+                scrolled. It sits on the floating controls' reserve (lib/floating-controls), above the ticker and voice dock,
+                and under the sheets and drawers, whose overlays cover it. */}
+            <div className="fixed inset-x-0 z-[60] flex gap-2 border-t border-slate-800/80 bg-slate-950/95 px-4 py-2 backdrop-blur-md lg:hidden" style={{ bottom: "var(--nexus-floating-bottom, 0px)" }} data-phone-bar="">
+                <button type="button" onClick={() => setOutlineOpen(true)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 py-2 text-xs text-slate-200" data-open-navigator="">
+                    <ListTree size={13} /> {navigatorTitle}
+                </button>
+                <button type="button" onClick={() => setReviewOpen(true)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 py-2 text-xs text-cyan-100" data-open-review="">
+                    <MessageSquare size={13} /> Review &amp; decide ({comments.length})
+                </button>
             </div>
 
             {/* Phone sheets and drawers pad their ends past the mini player and feedback launcher, which stay on top of them;
