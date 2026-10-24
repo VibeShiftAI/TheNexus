@@ -1,0 +1,23 @@
+[SYSTEM EVENT — Questionnaire answered]
+Tag: ask-robert-391fd0c8-ec8e-4869-ab15-ef5d890f4ab4
+Nexus Task ID: `d88e7186-9e9a-4535-961c-fa24cf9e17a4`
+Praxis asked Robert these questions and they have now been answered.
+## What was asked (Status report email: Gmail screenshot (isolated fixture))
+**Project:** Praxis (system)
+**What happened:** Attach a screenshot of the Gmail rendering.
+**The problem:** Gmail app, either message: one column, no sideways scrolling, full-width buttons?
+**What I need from you:** Answer the question below.
+
+1. Gmail app, either message: one column, no sideways scrolling, full-width buttons? Attach a screenshot.
+## The answers
+q1: Gmail looks good: one column, full-width buttons, nothing sideways.
+
+Attached photo (1):
+- gmail-screenshot.png (image/png, 234 KB): file /private/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-hitl-attachments-DKJ3vn/chat-files/401c960b-f25d-4f72-8820-5ffa987a458b.png; url http://127.0.0.1:58461/api/chat/files/401c960b-f25d-4f72-8820-5ffa987a458b
+**YOUR NEXT ACTIONS:**
+1. Read the answers against the questions. They were asked to shape work — decide what work they now imply.
+2. These are the OPERATOR's answers: they are decisions, not suggestions. Implement what he chose. If he authorised something previously withheld (a paid call, a approach, a scope change), that authorisation is now given.
+3. File and dispatch the follow-up work on the Nexus board (`nexus_tasks`), against the project the task belongs to. If the answers imply NO new work, say so and file nothing.
+   When his answers change the scope of task `d88e7186-9e9a-4535-961c-fa24cf9e17a4` itself (prompt, acceptance criteria, dependencies, files), apply that change with nexus_tasks action=update and operator_decision {kind: "questionnaire", id: "ask-robert-391fd0c8-ec8e-4869-ab15-ef5d890f4ab4", instruction: <his answer>}: it is his decision, it lands authorized, and the task resumes without asking him again. Change only what he answered.
+4. Do not email anyone about this — the loop back to the human is already closed.
+5. Report back in plain language: what you read, what you decided, and what you filed or dispatched.

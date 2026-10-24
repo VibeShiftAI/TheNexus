@@ -1,0 +1,361 @@
+{
+  "when": "2026-10-24T16:47:19.077Z",
+  "ports": {
+    "fixture": 58460,
+    "api": 58461,
+    "next": 58462
+  },
+  "tmp": "/private/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-hitl-attachments-DKJ3vn",
+  "steps": [
+    {
+      "step": "setup",
+      "label": "stack_up",
+      "detail": {
+        "fixture": "http://127.0.0.1:58460",
+        "api": "http://127.0.0.1:58461",
+        "dashboard": "http://127.0.0.1:58462"
+      }
+    },
+    {
+      "step": "open",
+      "label": "card_visible",
+      "detail": {
+        "viewport": {
+          "w": 390,
+          "h": 844,
+          "dpr": 2
+        },
+        "screenshot": "01-inbox-card-phone.png"
+      }
+    },
+    {
+      "step": "pick",
+      "label": "photo_picked",
+      "detail": {
+        "chip": "gmail-screenshot.png234 KB",
+        "screenshot": "02-photo-picked.png"
+      }
+    },
+    {
+      "step": "remove",
+      "label": "photo_removed",
+      "detail": {
+        "chips": [],
+        "screenshot": "03-photo-removed.png"
+      }
+    },
+    {
+      "step": "compose",
+      "label": "ready_to_send",
+      "detail": {
+        "chips": [
+          "gmail-screenshot.png"
+        ],
+        "screenshot": "04-answer-and-photo-ready.png"
+      }
+    },
+    {
+      "step": "send",
+      "label": "history_shows_photo",
+      "detail": {
+        "link": {
+          "href": "/api/chat/files/401c960b-f25d-4f72-8820-5ffa987a458b",
+          "text": "📎 gmail-screenshot.png",
+          "target": "_blank"
+        },
+        "screenshot": "06-history-with-photo-link.png"
+      }
+    },
+    {
+      "step": "praxis",
+      "label": "praxis_saved",
+      "detail": {
+        "fileId": "401c960b-f25d-4f72-8820-5ffa987a458b",
+        "freeText": "Gmail looks good: one column, full-width buttons, nothing sideways.\n\nAttached photo (1):\n- gmail-screenshot.png (image/png, 234 KB): file /private/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-hitl-attachments-DKJ3vn/chat-files/401c960b-f25d-4f72-8820-5ffa987a458b.png; url http://127.0.0.1:58461/api/chat/files/401c960b-f25d-4f72-8820-5ffa987a458b",
+        "followUpChars": 2170,
+        "sha256": "ab60151d64b018dbd1c0d6b9a993fe3b557cc3b7b0e3577f11080e171552529a"
+      }
+    },
+    {
+      "step": "refuse",
+      "label": "client_refusals",
+      "detail": {
+        "pdf": "\"notes.pdf\" is not a photo or screenshot. Attach a PNG, JPEG, WebP, GIF or HEIC image.",
+        "oversized": "\"huge.png\" is 26.0 MB; photos up to 25.0 MB can be attached.",
+        "screenshot": "08-refused-oversized.png"
+      }
+    },
+    {
+      "step": "guard",
+      "label": "server_guard",
+      "detail": {
+        "notice": "Your answer was not sent (The attached file is not a readable image). It is still here; try again.",
+        "screenshot": "09-guard-refused-kept-answer.png"
+      }
+    },
+    {
+      "step": "text_only",
+      "label": "text_only_sent",
+      "detail": {
+        "resolution": {
+          "resolvedAt": "2026-10-24T16:47:30.090Z",
+          "resolvedBy": "robert",
+          "freeText": "The second one."
+        },
+        "screenshot": "10-text-only-sent.png"
+      }
+    },
+    {
+      "step": "choice",
+      "label": "choice_sent",
+      "detail": {
+        "resolution": {
+          "resolvedAt": "2026-10-24T16:47:31.836Z",
+          "resolvedBy": "robert",
+          "choice": "approve"
+        },
+        "screenshot": "12-choice-sent.png"
+      }
+    },
+    {
+      "step": "desktop",
+      "label": "desktop_frame",
+      "detail": {
+        "screenshot": "13-desktop-history.png"
+      }
+    },
+    {
+      "step": "isolation",
+      "label": "isolation",
+      "detail": {
+        "liveStoreFiles": 42,
+        "uploads": 2
+      }
+    }
+  ],
+  "failures": [],
+  "apiCalls": [
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/praxis/hitl/pending"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/praxis/hitl/recent"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/praxis/hitl/pending"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/praxis/dispatch-state"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/knowledge-activity"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/praxis/stream/snapshot"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/chat/active"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/praxis/voice-status"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/board-state"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/praxis/stream"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/praxis/hitl/recent"
+    },
+    {
+      "step": "open",
+      "method": "GET",
+      "path": "/api/health"
+    },
+    {
+      "step": "send",
+      "method": "POST",
+      "path": "/api/chat/files/upload"
+    },
+    {
+      "step": "send",
+      "method": "POST",
+      "path": "/api/praxis/hitl/ask-robert-391fd0c8-ec8e-4869-ab15-ef5d890f4ab4/resolve"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/praxis/hitl/recent"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/praxis/hitl/pending"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/praxis/hitl/recent"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/praxis/hitl/pending"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/praxis/dispatch-state"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/knowledge-activity"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/praxis/stream/snapshot"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/chat/active"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/praxis/voice-status"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/board-state"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/praxis/stream"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/praxis/hitl/recent"
+    },
+    {
+      "step": "send",
+      "method": "GET",
+      "path": "/api/health"
+    },
+    {
+      "step": "guard",
+      "method": "POST",
+      "path": "/api/chat/files/upload"
+    },
+    {
+      "step": "guard",
+      "method": "POST",
+      "path": "/api/praxis/hitl/ask-robert-8901b558-7680-42b2-a169-0ba4dff76da7/resolve"
+    },
+    {
+      "step": "text_only",
+      "method": "POST",
+      "path": "/api/praxis/hitl/ask-robert-8901b558-7680-42b2-a169-0ba4dff76da7/resolve"
+    },
+    {
+      "step": "text_only",
+      "method": "GET",
+      "path": "/api/praxis/hitl/recent"
+    },
+    {
+      "step": "choice",
+      "method": "POST",
+      "path": "/api/praxis/hitl/fixture-choice-qsb4rffy/resolve"
+    },
+    {
+      "step": "choice",
+      "method": "GET",
+      "path": "/api/praxis/hitl/recent"
+    },
+    {
+      "step": "choice",
+      "method": "GET",
+      "path": "/api/knowledge-activity"
+    },
+    {
+      "step": "desktop",
+      "method": "GET",
+      "path": "/api/praxis/hitl/pending"
+    },
+    {
+      "step": "desktop",
+      "method": "GET",
+      "path": "/api/praxis/hitl/recent"
+    },
+    {
+      "step": "desktop",
+      "method": "GET",
+      "path": "/api/praxis/hitl/pending"
+    },
+    {
+      "step": "desktop",
+      "method": "GET",
+      "path": "/api/praxis/dispatch-state"
+    },
+    {
+      "step": "desktop",
+      "method": "GET",
+      "path": "/api/knowledge-activity"
+    },
+    {
+      "step": "desktop",
+      "method": "GET",
+      "path": "/api/praxis/stream/snapshot"
+    },
+    {
+      "step": "desktop",
+      "method": "GET",
+      "path": "/api/chat/active"
+    },
+    {
+      "step": "desktop",
+      "method": "GET",
+      "path": "/api/praxis/voice-status"
+    },
+    {
+      "step": "desktop",
+      "method": "GET",
+      "path": "/api/board-state"
+    },
+    {
+      "step": "desktop",
+      "method": "GET",
+      "path": "/api/praxis/stream"
+    }
+  ],
+  "exceptions": [],
+  "ok": true
+}

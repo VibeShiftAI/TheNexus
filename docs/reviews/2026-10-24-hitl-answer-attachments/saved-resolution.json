@@ -1,0 +1,72 @@
+{
+  "request": {
+    "id": "ask-robert-391fd0c8-ec8e-4869-ab15-ef5d890f4ab4",
+    "taskId": "d88e7186-9e9a-4535-961c-fa24cf9e17a4",
+    "workspace": "praxis-questions",
+    "reason": "explicit_request",
+    "priority": "normal",
+    "question": "**Project:** Praxis (system)\n**What happened:** Attach a screenshot of the Gmail rendering.\n**The problem:** Gmail app, either message: one column, no sideways scrolling, full-width buttons?\n**What I need from you:** Answer the question below.\n\n1. Gmail app, either message: one column, no sideways scrolling, full-width buttons? Attach a screenshot.",
+    "requestedAt": "2026-10-24T16:47:23.647Z",
+    "metadata": {
+      "kind": "ask-robert",
+      "subject": "Status report email: Gmail screenshot (isolated fixture)",
+      "body": "Attach a screenshot of the Gmail rendering.",
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "Gmail app, either message: one column, no sideways scrolling, full-width buttons? Attach a screenshot.",
+          "kind": "text",
+          "required": false
+        }
+      ],
+      "needBindings": {},
+      "projectName": "Praxis (system)",
+      "taskTitle": "Status report email: Gmail screenshot (isolated fixture)",
+      "brief": {
+        "project": "Praxis (system)",
+        "situation": "Attach a screenshot of the Gmail rendering.",
+        "problem": "Gmail app, either message: one column, no sideways scrolling, full-width buttons?",
+        "ask": "Answer the question below."
+      },
+      "briefSource": "fallback",
+      "fingerprint": "297d0e4e060ff8fa130391943c2b705c7d187da39368d8fe31c755817b643373",
+      "continuationOwner": "feedback"
+    },
+    "resolution": {
+      "resolvedAt": "2026-10-24T16:47:26.469Z",
+      "resolvedBy": "robert",
+      "freeText": "Gmail looks good: one column, full-width buttons, nothing sideways.\n\nAttached photo (1):\n- gmail-screenshot.png (image/png, 234 KB): file /private/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-hitl-attachments-DKJ3vn/chat-files/401c960b-f25d-4f72-8820-5ffa987a458b.png; url http://127.0.0.1:58461/api/chat/files/401c960b-f25d-4f72-8820-5ffa987a458b",
+      "payload": {
+        "attachments": [
+          {
+            "fileId": "401c960b-f25d-4f72-8820-5ffa987a458b",
+            "url": "/api/chat/files/401c960b-f25d-4f72-8820-5ffa987a458b",
+            "mimeType": "image/png",
+            "originalName": "gmail-screenshot.png",
+            "size": 240088
+          }
+        ]
+      }
+    }
+  },
+  "humanQuery": {
+    "id": "ask-robert-391fd0c8-ec8e-4869-ab15-ef5d890f4ab4",
+    "tag": "ask-robert-391fd0c8-ec8e-4869-ab15-ef5d890f4ab4",
+    "to": "robert.washko@gmail.com",
+    "subject": "Status report email: Gmail screenshot (isolated fixture)",
+    "body": "**Project:** Praxis (system)\n**What happened:** Attach a screenshot of the Gmail rendering.\n**The problem:** Gmail app, either message: one column, no sideways scrolling, full-width buttons?\n**What I need from you:** Answer the question below.\n\n1. Gmail app, either message: one column, no sideways scrolling, full-width buttons? Attach a screenshot.",
+    "status": "answered",
+    "workRef": "d88e7186-9e9a-4535-961c-fa24cf9e17a4",
+    "needBindings": {},
+    "createdAt": "2026-10-24T16:47:23.647Z",
+    "answeredAt": "2026-10-24T16:47:26.469Z",
+    "answers": {
+      "token": "ask-robert-391fd0c8-ec8e-4869-ab15-ef5d890f4ab4",
+      "answers": {
+        "q1": "Gmail looks good: one column, full-width buttons, nothing sideways.\n\nAttached photo (1):\n- gmail-screenshot.png (image/png, 234 KB): file /private/var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-hitl-attachments-DKJ3vn/chat-files/401c960b-f25d-4f72-8820-5ffa987a458b.png; url http://127.0.0.1:58461/api/chat/files/401c960b-f25d-4f72-8820-5ffa987a458b"
+      },
+      "answeredAt": "2026-10-24T16:47:26.469Z"
+    },
+    "inboxActionedAt": "2026-10-24T16:47:26.705Z"
+  }
+}
