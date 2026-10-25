@@ -213,7 +213,7 @@ function UsageRollupChip({ rollup }: { rollup: UsageRollup }) {
       className="inline-flex items-center gap-1.5"
       title={
         rollup.estimatedUsd == null
-          ? `No run on this task could be priced, so its cost is unavailable — not $0. ${unknownDetail}`
+          ? `No run on this task could be priced, so its cost is unavailable, not $0. ${unknownDetail}`
           : `ESTIMATE over ${formatCoverage(rollup)} — a cache-aware blended notional rate, not a bill.${
               complete ? "" : ` Excluded from this total: ${unknownDetail}.`
             }`
@@ -970,7 +970,7 @@ function DispatchRow({
         {typeof dispatch.tokens === "number" && tokenSource !== "unavailable" ? (
           <span
             className="rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[11px] tabular-nums text-cyan-200"
-            title={`${tokenSource === "estimated" ? "~" : ""}${dispatch.tokens.toLocaleString()} tokens — ${USAGE_SOURCE_DETAIL[tokenSource]}`}
+            title={`${tokenSource === "estimated" ? "~" : ""}${dispatch.tokens.toLocaleString()} tokens: ${USAGE_SOURCE_DETAIL[tokenSource]}`}
           >
             {tokenSource === "estimated" ? "~" : ""}
             {dispatch.tokens.toLocaleString()} tok
@@ -981,7 +981,7 @@ function DispatchRow({
              a missing chip reads as "no spend", which is a different claim. */
           <span
             className="rounded border border-slate-600/50 bg-slate-700/20 px-1.5 py-0.5 text-[11px] text-slate-400"
-            title="This run left no usage record, so its token count is unavailable — not zero."
+            title="This run left no usage record, so its token count is unavailable, not zero."
           >
             tokens unavailable
           </span>

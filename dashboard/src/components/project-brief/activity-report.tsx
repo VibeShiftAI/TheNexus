@@ -47,10 +47,10 @@ function outcomeTone(outcome?: string) {
 function EventTokens({ ev }: { ev: OpsLogEvent }) {
     const source = resolveUsageSource(ev.tokens, ev.tokensSource);
     if (source === "unavailable" || typeof ev.tokens !== "number") {
-        return <span className="text-slate-500" title={`Tokens — ${USAGE_SOURCE_DETAIL.unavailable}`}>tok unavailable</span>;
+        return <span className="text-slate-500" title={`Tokens: ${USAGE_SOURCE_DETAIL.unavailable}`}>tok unavailable</span>;
     }
     return (
-        <span className="text-purple-400/80" title={`${ev.tokens.toLocaleString()} tokens — ${USAGE_SOURCE_DETAIL[source]}`}>
+        <span className="text-purple-400/80" title={`${ev.tokens.toLocaleString()} tokens: ${USAGE_SOURCE_DETAIL[source]}`}>
             {source === "estimated" ? "~" : ""}{fmtTokensShort(ev.tokens)} tok
             {source !== "measured" && ` ${USAGE_SOURCE_TAG[source]}`}
         </span>

@@ -270,7 +270,7 @@ export function CommitRow({ commit, onOpenLogs }: { commit: Activity; onOpenLogs
                                     ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
                                     : "bg-amber-500/10 border-amber-500/25 text-amber-200"
                             }`}
-                            title={`${tokenSource === "estimated" ? "~" : ""}${commit.tokens.toLocaleString()} tokens — ${USAGE_SOURCE_DETAIL[tokenSource]}`}
+                            title={`${tokenSource === "estimated" ? "~" : ""}${commit.tokens.toLocaleString()} tokens: ${USAGE_SOURCE_DETAIL[tokenSource]}`}
                         >
                             <Coins size={9} className="shrink-0" />
                             {tokenSource === "estimated" ? "~" : ""}{formatTokens(commit.tokens)}
@@ -281,7 +281,7 @@ export function CommitRow({ commit, onOpenLogs }: { commit: Activity; onOpenLogs
                     ) : (
                         <span
                             className="inline-flex items-center gap-1 rounded border border-slate-800 px-1.5 py-0.5 text-[10px] text-slate-500"
-                            title={`Tokens — ${USAGE_SOURCE_DETAIL.unavailable}`}
+                            title={`Tokens: ${USAGE_SOURCE_DETAIL.unavailable}`}
                         >
                             <Coins size={9} className="shrink-0" />unavailable
                         </span>
