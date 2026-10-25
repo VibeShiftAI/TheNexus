@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { LocalOperatorSignIn } from "../local-operator-sign-in";
 import { AlertTriangle, Check, ChevronDown, ChevronRight, History, Loader2, ThumbsUp, Undo2 } from "lucide-react";
 import {
     DocumentApiError,
@@ -86,7 +87,7 @@ function refusalMessage(err: unknown, noteState: NoteState): { text: string; sta
             case "stale_revision":
                 return { text: "A newer revision of this document was captured while you were reading, so nothing was recorded. The page has reloaded; read the current revision before deciding again. Your comments and history are kept.", stale: true, reload: true };
             case "operator_required":
-                return { text: `${sentence(err.message)} Nothing was recorded. Reading and feedback still work in this session; record the decision from the Nexus app signed in as the operator (the phone or Windows app).`, stale: false, reload: false };
+                return { text: `${sentence(err.message)} Nothing was recorded. Use Operator sign-in here on localhost, or record the decision from your signed-in tunnel, phone or Windows app. Reading and feedback still work.`, stale: false, reload: false };
             case "authentication_required":
                 return { text: `Your session has expired, so nothing was recorded. ${NOTE_GUIDANCE.authentication_required[noteState]}`, stale: false, reload: false };
             case "operator_credential_unconfigured":
@@ -400,6 +401,7 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
 
     return (
         <section className={`${compact ? "" : "mb-4"} rounded-lg border border-slate-700 bg-slate-900/50 p-3`} data-decision-card={status}>
+            <LocalOperatorSignIn />
             <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="font-semibold text-slate-200">Your decision</span>
                 <DocumentStatusBadge status={status} prefix />

@@ -3,7 +3,7 @@
  * changes). The legacy `local_user` stub the server stamps on every request is
  * not a credential: every local process, dispatched executors and the QA
  * reviewer included, reaches the documents API as that user. A decision
- * therefore needs one of the two operator proofs Nexus already trusts, or,
+ * therefore needs one of the operator proofs Nexus trusts, or,
  * for an executor-recorded approval only, the document-scoped executor
  * credential, and nothing else:
  *
@@ -13,7 +13,18 @@
  *   operator_credential          Robert's operator bearer credential
  *                                (NEXUS_OPERATOR_APPROVAL_KEY, checked by
  *                                stakeholder-authority.js) for a trusted
- *                                operator tool.
+ *                                operator tool, or the short-lived local
+ *                                session explicitly minted from that same
+ *                                credential at /operator-sign-in. Enable
+ *                                NEXUS_LOCAL_OPERATOR_SESSIONS=1 and provision
+ *                                an independent operator key; Robert signs in
+ *                                separately in his Mac app and local browser.
+ *                                Signed HttpOnly cookie + active server state,
+ *                                loopback + exact Origin, one-hour expiry.
+ *                                Logout revokes one; restart revokes all;
+ *                                disable the flag or rotate/remove the key and
+ *                                restart to revoke and prevent new sign-ins.
+ *                                docs/contracts/local-operator-session.md.
  *   document_executor_credential the document-scoped executor credential
  *                                (NEXUS_DOCUMENT_APPROVAL_KEY, task a2553798):
  *                                a different key a dispatched executor uses
@@ -39,8 +50,10 @@
  *
  * Service users, bridge/executor headers, the runtime credential and an
  * unsigned local request are refused. The Mac app on localhost:3000 carries
- * no Access session, so it can read and comment but cannot decide; that is
- * the same rule the chat restart authority follows.
+ * no Access session; it must explicitly sign in locally before deciding.
+ * The shared verifier also gates chat restart authority. The ledger retains
+ * operator_credential for a session derived from that credential, so existing
+ * downstream operator-only allowlists and delegated-review checks still apply.
  */
 const { createOperatorAuthenticator } = require('./operator-access');
 const { requireStakeholderAuthority } = require('./stakeholder-authority');
@@ -69,7 +82,9 @@ function createDocumentDecisionAuthority({ authenticateOperator } = {}) {
             checkFailed = true;
         }
         if (outcome?.operator) {
-            return { ok: true, actor: { id: req.user.id, authority: outcome.identity === 'device' ? 'access_device' : 'access_user' } };
+            const authority = outcome.identity === 'local' ? 'operator_credential'
+                : outcome.identity === 'device' ? 'access_device' : 'access_user';
+            return { ok: true, actor: { id: req.user.id, authority } };
         }
         // No verified session. A bearer, if one was sent, has to be the operator
         // credential or the document executor credential (a different key, so

@@ -1,7 +1,7 @@
 /**
  * Authenticate the human behind a chat turn, independently of the legacy
  * local_user/admin stub. Two sessions of the pinned Cloudflare Access
- * application count, and nothing else:
+ * application count, plus an explicitly credentialed local session:
  *
  *   user    the identity-provider (one-time PIN) session of the configured
  *           operator email: what a browser holds after the Access login.
@@ -12,9 +12,19 @@
  *           page, so this session is Robert's only identity there (2026-09-25).
  *           The shell's updater and roster pulls ride the same token, but only
  *           an interactive chat POST reaches this authenticator.
+ *   local   Robert explicitly exchanges NEXUS_OPERATOR_APPROVAL_KEY at
+ *           /operator-sign-in on http://localhost:3000 (Mac webview or browser).
+ *           Requires NEXUS_LOCAL_OPERATOR_SESSIONS=1 and an independently
+ *           configured operator key. A signed HttpOnly cookie plus an active
+ *           one-hour server session is checked by local-operator-session.js;
+ *           loopback and the exact dashboard Origin are constraints, never
+ *           proof. Logout revokes that session; restart revokes all; disabling
+ *           the flag or rotating/removing the key and restarting revokes all.
+ *           No shell, executor or bridge is provisioned with a credential.
+ *           Provisioning/revocation: docs/contracts/local-operator-session.md.
  *
  * Service tokens presented as request headers, bridge credentials, email
- * headers, cookies and request JSON never establish identity. Every refusal
+ * headers, arbitrary cookies and request JSON never establish identity. Every refusal
  * is logged as a fixed category plus a fixed check name; claims and token
  * values are never logged or returned.
  *
@@ -31,6 +41,7 @@
  * https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/application-token/
  */
 const { createPublicKey, verify } = require('node:crypto');
+const { localOperatorSessions, COOKIE } = require('./local-operator-session');
 
 // A Cloudflare service-token Client ID looks like `<32 hex>.access`; the shape
 // check only rejects obvious garbage so a typo is reported, not trusted.
@@ -126,6 +137,11 @@ function createOperatorAuthenticator() {
      * first check that failed. Nothing from the token is ever copied out.
      */
     async function evaluate(req) {
+        // Keep Access's validation and precedence unchanged. Only a request
+        // without an Access assertion can enter the explicit local-session path.
+        if (!req.get('cf-access-jwt-assertion') && req.get('cookie')?.split(';').some(part => part.trim().startsWith(`${COOKIE}=`))) {
+            return localOperatorSessions.inspect(req);
+        }
         if (!configured) return { ok: false, category: 'config-missing' };
         // Executor-style credentials never ride with a human session; a request
         // carrying them is machine traffic even when a session token is present.

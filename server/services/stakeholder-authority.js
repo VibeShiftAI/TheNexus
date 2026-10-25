@@ -29,7 +29,7 @@ const ROLES = {
     document_executor: { env: 'NEXUS_DOCUMENT_APPROVAL_KEY', label: 'document executor' },
 };
 
-function requireStakeholderAuthority(req, role) {
+function stakeholderCredential(role) {
     const spec = ROLES[role];
     if (!spec) throw Object.assign(new Error(`Unknown credential role: ${role}`), { status: 500 });
     const key = process.env[spec.env];
@@ -37,6 +37,12 @@ function requireStakeholderAuthority(req, role) {
     if (!key || key.length < 32 || others.includes(key)) {
         throw Object.assign(new Error(`${role} stakeholder credential is not configured independently (minimum 32 characters)`), { status: 503 });
     }
+    return key;
+}
+
+function requireStakeholderAuthority(req, role) {
+    const key = stakeholderCredential(role);
+    const spec = ROLES[role];
     const supplied = Buffer.from(req.get('Authorization') || '');
     const expected = Buffer.from(`Bearer ${key}`);
     if (req.get('x-praxis-bridge-token') || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
@@ -44,4 +50,4 @@ function requireStakeholderAuthority(req, role) {
     }
     return `${role}_credential`;
 }
-module.exports = { requireStakeholderAuthority };
+module.exports = { requireStakeholderAuthority, stakeholderCredential };
