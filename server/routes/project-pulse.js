@@ -176,6 +176,8 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
             // Explicit markers (services/usage-source.js). tokens7d/tokens24h
             // are null, not 0, once assembled with no contributing run.
             tokensCounted24h: 0, tokensEstimatedRuns7d: 0, tokensEstimatedRuns24h: 0,
+            // Contributing runs whose row never recorded measured-vs-estimated.
+            tokensUnflaggedRuns7d: 0, tokensUnflaggedRuns24h: 0,
             tokens7dSource: 'unavailable', tokens24hSource: 'unavailable',
         };
     }
@@ -218,11 +220,14 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
                 if (typeof d.tokens === 'number') {
                     c.tokens7d += d.tokens;
                     c.tokensCounted7d++;
+                    const unflagged = d.tokens_estimated == null;
                     if (d.tokens_estimated === 1) { c.tokensEstimated = true; c.tokensEstimatedRuns7d++; }
+                    if (unflagged) c.tokensUnflaggedRuns7d++;
                     if (nowMs - startedMs <= DAY_MS) {
                         c.tokens24h += d.tokens;
                         c.tokensCounted24h++;
                         if (d.tokens_estimated === 1) c.tokensEstimatedRuns24h++;
+                        if (unflagged) c.tokensUnflaggedRuns24h++;
                     }
                 }
             }
@@ -230,8 +235,8 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
         // A window with no contributing run has no figure: null + 'unavailable',
         // never a 0 that reads as "this project used no tokens".
         for (const c of crew.values()) {
-            c.tokens7dSource = aggregateTokenSource({ counted: c.tokensCounted7d, estimated: c.tokensEstimatedRuns7d });
-            c.tokens24hSource = aggregateTokenSource({ counted: c.tokensCounted24h, estimated: c.tokensEstimatedRuns24h });
+            c.tokens7dSource = aggregateTokenSource({ counted: c.tokensCounted7d, estimated: c.tokensEstimatedRuns7d, unknown: c.tokensUnflaggedRuns7d });
+            c.tokens24hSource = aggregateTokenSource({ counted: c.tokensCounted24h, estimated: c.tokensEstimatedRuns24h, unknown: c.tokensUnflaggedRuns24h });
             if (!c.tokensCounted7d) c.tokens7d = null;
             if (!c.tokensCounted24h) c.tokens24h = null;
         }

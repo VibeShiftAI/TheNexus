@@ -167,6 +167,19 @@ describe('every attribution surface marks every figure', () => {
         ins.run({ id: 'd-missing', executor: 'codex', model: 'gpt-5.5', tokens: null, flag: 0, outcome: 'failure', started: iso(26 * H), completed: iso(25 * H) });
         ins.run({ id: 'd-unflagged', executor: 'codex', model: 'gpt-5.5', tokens: 300, flag: null, outcome: 'success', started: iso(5 * H), completed: iso(4 * H) });
         ins.run({ id: 'd-running', executor: 'claude-code', model: 'claude-opus-5', tokens: null, flag: 0, outcome: 'running', started: iso(60_000), completed: null });
+        // Pulse aggregates with no estimated contributor, so an unknown-source
+        // run is the only thing that can keep them off 'measured'.
+        db.prepare('INSERT INTO projects VALUES (?, ?, ?)').run('proj-unknown', 'Only unflagged usage', 'active');
+        db.prepare('INSERT INTO projects VALUES (?, ?, ?)').run('proj-mixed', 'Measured plus unflagged usage', 'active');
+        db.prepare(`INSERT INTO tasks (id, project_id, name, status, updated_at) VALUES ('task-unknown', 'proj-unknown', 'Unflagged usage task', 'in_progress', ?)`).run(iso(0));
+        db.prepare(`INSERT INTO tasks (id, project_id, name, status, updated_at) VALUES ('task-mixed', 'proj-mixed', 'Mixed provenance task', 'in_progress', ?)`).run(iso(0));
+        const insFor = db.prepare(`
+            INSERT INTO task_dispatches (id, task_id, project_id, executor, model, tokens, tokens_estimated, outcome, started_at, completed_at)
+            VALUES (@id, @task, @project, 'codex', 'gpt-5.5', @tokens, @flag, 'success', @started, @completed)
+        `);
+        insFor.run({ id: 'u-only', task: 'task-unknown', project: 'proj-unknown', tokens: 300, flag: null, started: iso(5 * H), completed: iso(4 * H) });
+        insFor.run({ id: 'm-measured', task: 'task-mixed', project: 'proj-mixed', tokens: 5000, flag: 0, started: iso(6 * H), completed: iso(5 * H) });
+        insFor.run({ id: 'm-unflagged', task: 'task-mixed', project: 'proj-mixed', tokens: 300, flag: null, started: iso(3 * H), completed: iso(2 * H) });
         db.close();
 
         // A real repo for the activity feed: one estimated trailer, one
@@ -183,8 +196,13 @@ describe('every attribution surface marks every figure', () => {
         git('commit', '-q', '--allow-empty', '-m', 'measured work', '-m', 'Model: claude-opus-5\nTokens: 12,345');
 
         const project = { id: 'proj-1', name: 'Attribution', path: repoDir, status: 'active' };
+        const pulseOnly = ['proj-unknown', 'proj-mixed'].map((id) => {
+            fs.mkdirSync(path.join(tmpDir, id));
+            return { id, name: id, path: path.join(tmpDir, id), status: 'active' };
+        });
         const getAllProjects = async () => [project];
-        const getProjectById = async (_root, id) => (id === project.id ? project : null);
+        const getPulseProjects = async () => [project, ...pulseOnly];
+        const getProjectById = async (_root, id) => [project, ...pulseOnly].find(p => p.id === id) ?? null;
 
         const projectsRouter = createProjectsRouter({
             db: {}, PROJECT_ROOT: tmpDir, getAllProjects, getProjectById,
@@ -202,7 +220,7 @@ describe('every attribution surface marks every figure', () => {
             praxisUrl: 'http://127.0.0.1:9',
         }));
         app.use('/api/routing-economics', createRoutingEconomicsRouter({ dbPath }));
-        app.use('/api/projects', createProjectPulseRouter({ PROJECT_ROOT: tmpDir, getAllProjects, getProjectById, dbPath }));
+        app.use('/api/projects', createProjectPulseRouter({ PROJECT_ROOT: tmpDir, getAllProjects: getPulseProjects, getProjectById, dbPath }));
         app.get('/api/activity', projectsRouter.getActivityHandler);
         handle = await listen(app);
     });
@@ -254,5 +272,19 @@ describe('every attribution surface marks every figure', () => {
         expect(bySubject['estimated work'].tokensSource).toBe('estimated');
         expect(bySubject['plain commit, no trailers'].tokens).toBeNull();
         expect(bySubject['plain commit, no trailers'].tokensSource).toBe('unavailable');
+    });
+
+    test.each([
+        ['only unknown-source usage', 'proj-unknown'],
+        ['measured and unknown-source usage, no estimate', 'proj-mixed'],
+    ])('pulse keeps "unknown" for %s (%s)', async (_name, id) => {
+        const detail = (await getJson(`${handle.baseUrl}/api/projects/${id}/pulse`)).body;
+        const all = (await getJson(`${handle.baseUrl}/api/projects/pulse`)).body;
+        const listed = all.pulses[id];
+        for (const { crew } of [detail, listed]) {
+            expect(crew.tokensEstimated).toBe(false);
+            expect(crew.tokens7dSource).toBe('unknown');
+            expect(crew.tokens24hSource).toBe('unknown');
+        }
     });
 });

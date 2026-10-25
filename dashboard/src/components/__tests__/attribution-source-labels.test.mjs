@@ -120,6 +120,19 @@ test('mission brief: an estimated 24h figure is tagged even when the 7d label is
   } finally { await h.dispose(); }
 });
 
+// The payload project-pulse now sends for measured plus unflagged runs with
+// no estimate: tokensEstimated stays false, so only the marker carries it.
+test('mission brief: unknown-source usage keeps "source unknown" with no estimated run', async () => {
+  const h = await mount(React.createElement(MissionBrief, {
+    project, brief: brief(crew({ tokens7dSource: 'unknown', tokens24hSource: 'unknown', tokensEstimated: false })),
+  }));
+  try {
+    assert.match(h.text(), /Tokens · 7d \(source unknown\)/);
+    assert.match(h.text(), /5\.0k source unknown in 24h/);
+    assert.doesNotMatch(h.text(), /\best\b/);
+  } finally { await h.dispose(); }
+});
+
 test('mission brief: a null 7d sum reads unavailable', async () => {
   const h = await mount(React.createElement(MissionBrief, {
     project,
