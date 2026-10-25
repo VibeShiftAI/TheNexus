@@ -20,6 +20,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { openRaw, resolveNexusDbPath } = require('../../db/raw');
+const { tokenSource, aggregateTokenSource } = require('../services/usage-source');
 
 const DEFAULT_DB_PATH = resolveNexusDbPath();
 
@@ -269,7 +270,9 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
         SELECT COALESCE(SUM(tokens), 0) AS total,
                COUNT(tokens) AS counted,
                COUNT(*) AS rows_total,
-               MAX(COALESCE(tokens_estimated, 0)) AS estimated
+               MAX(COALESCE(tokens_estimated, 0)) AS estimated,
+               SUM(CASE WHEN tokens IS NOT NULL AND tokens_estimated = 1 THEN 1 ELSE 0 END) AS estimated_runs,
+               SUM(CASE WHEN tokens IS NOT NULL AND tokens_estimated IS NULL THEN 1 ELSE 0 END) AS unflagged_runs
         FROM task_dispatches WHERE task_id = ?
     `);
     // The tasks table lives in the same DB but isn't owned by this router (and
@@ -304,6 +307,12 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
                     // cumulative tokens for THIS task; null when nothing recorded yet
                     tokens: counted > 0 ? tok.total : null,
                     tokensEstimated: counted > 0 ? Boolean(tok.estimated) : false,
+                    // measured | estimated | unavailable | unknown for the sum.
+                    tokensSource: aggregateTokenSource({
+                        counted,
+                        estimated: tok.estimated_runs || 0,
+                        unknown: tok.unflagged_runs || 0,
+                    }),
                     // Coverage of that sum: how many of the task's dispatch rows
                     // actually carried a usage record.
                     tokensCountedRuns: counted,
@@ -338,6 +347,9 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
                 const target = db.prepare('SELECT * FROM task_dispatches WHERE task_id = ? AND id = ?').get(taskId, includeId);
                 if (target) rows.push(target);
             }
+            // Each raw row carries its token figure's provenance marker so the
+            // task console never infers it from a missing/zero flag.
+            for (const row of rows) row.tokens_source = tokenSource(row.tokens, row.tokens_estimated);
             res.json({ dispatches: rows });
         } catch (err) {
             console.error('[Dispatches] list failed:', err.message);

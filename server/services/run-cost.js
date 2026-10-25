@@ -1,3 +1,5 @@
+const { costSource } = require('./usage-source');
+
 // Notional $/1M-token rates, mirrored from Praxis/src/usage/usage-monitor.ts
 // PRICE_PER_MTOK (subscription families don't bill per token — this is the
 // API-equivalent value of the work). Dispatch rows carry one total token
@@ -135,6 +137,8 @@ function summarizeRunUsage(rows) {
         // Every priced figure is a notional blended estimate, never a bill.
         estimatedUsd: pricedRuns > 0 ? Math.round(subtotal * 1000) / 1000 : null,
         estimated: true,
+        // estimatedUsd's marker: 'unavailable' when no run could be priced.
+        source: costSource(pricedRuns > 0 ? subtotal : null),
         coverage: totalRuns > 0 ? Math.round((pricedRuns / totalRuns) * 1000) / 1000 : null,
     };
 }

@@ -408,7 +408,7 @@ describe('dispatch-insight route', () => {
         expect(byId['disp-old'].overdue).toBe(false);
         // 1M tokens of opus-5 at the cache-aware blended notional rate:
         // 5 × 0.205 + 25 × 0.05 = $2.275, flagged as an estimate.
-        expect(byId['disp-old'].cost).toEqual({ usd: 2.275, estimated: true });
+        expect(byId['disp-old'].cost).toEqual({ usd: 2.275, estimated: true, source: 'estimated' });
         expect(byId['disp-running'].cost).toBeNull(); // no tokens yet
         // The verification record (2.5h ago) lands on the run it followed:
         // disp-old started before it, and disp-running started after it.
@@ -726,7 +726,7 @@ describe('dispatch-insight route', () => {
         // A run that WAS priced carries no unknown reason.
         const priced = body.runs.find((r) => r.dispatchId === 'disp-priced');
         expect(priced.usageUnknown).toBeNull();
-        expect(priced.cost).toEqual({ usd: 2.275, estimated: true });
+        expect(priced.cost).toEqual({ usd: 2.275, estimated: true, source: 'estimated' });
     });
 
     test('a task where NOTHING could be priced aggregates to unknown, not $0', async () => {
@@ -809,7 +809,7 @@ describe('dispatch-insight route', () => {
         const zero = body.runs.find((r) => r.dispatchId === 'disp-zero');
         expect(zero.tokens).toBe(0);
         expect(zero.usageUnknown).toBeNull();
-        expect(zero.cost).toEqual({ usd: 0, estimated: true });
+        expect(zero.cost).toEqual({ usd: 0, estimated: true, source: 'estimated' });
         // Fully covered: the one run on this task reported its usage.
         expect(body.usageRollup).toMatchObject({
             totalRuns: 1, pricedRuns: 1, unknownRuns: 0, estimatedUsd: 0, coverage: 1,
@@ -885,11 +885,11 @@ describe('dispatch-insight route', () => {
         // 1M tokens of Fable 5.1 at its own $0.25/MTok cache-read rate:
         // 0.25×0.85 + 10×0.02 + 10×1.25×0.08 + 50×0.05 = $3.913 (not the
         // generic-10% $4.550 the old claude-fable-5 row produced).
-        expect(byId['disp-fable'].cost).toEqual({ usd: 3.913, estimated: true });
+        expect(byId['disp-fable'].cost).toEqual({ usd: 3.913, estimated: true, source: 'estimated' });
         // Control: a non-Fable model's blended rate is untouched by the
         // cache-read override — same 1M tokens, same 10% default, same
         // $2.275 as the pre-existing opus-5 assertion above.
-        expect(byId['disp-opus-control'].cost).toEqual({ usd: 2.275, estimated: true });
+        expect(byId['disp-opus-control'].cost).toEqual({ usd: 2.275, estimated: true, source: 'estimated' });
     });
 
     // A real disposable process group, faithful to a detached run's shape: a

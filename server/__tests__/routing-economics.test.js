@@ -15,8 +15,8 @@ test('aggregates all attempts, median/worst latency, tokens and completed/failed
     const g = group(data, 'gpt-5.6-sol');
     expect(g.runCount).toBe(3);
     expect(g.latency).toEqual({ medianMs: 20000, worstMs: 30000, runs: 2 });
-    expect(g.tokens).toEqual({ total: 2e6, runs: 2, estimatedRuns: 1 });
-    expect(g.cost).toMatchObject({ usd: 5.05, runs: 2, provenance: 'estimated', estimatedRuns: 2, meteredRuns: 0, unknownRuns: 1 });
+    expect(g.tokens).toEqual({ total: 2e6, runs: 2, estimatedRuns: 1, source: 'estimated' });
+    expect(g.cost).toMatchObject({ usd: 5.05, runs: 2, provenance: 'estimated', source: 'estimated', estimatedRuns: 2, meteredRuns: 0, unknownRuns: 1 });
     expect(g.outcomes).toMatchObject({ completed: 1, failed: 1, runs: 2, completionRate: 0.5, unfinished: 1 });
     expect(g.runs.find(r => r.id === '2').href).toBe('/task/task-1#dispatch-2');
     expect(data.lanes.find(g => g.lane === 'cloud').runCount).toBe(3);

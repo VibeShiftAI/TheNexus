@@ -44,6 +44,8 @@
  * Praxis's run-events spine) without either learning the other's storage.
  */
 
+const { tokenSource } = require('./usage-source');
+
 /** Bump when a field is added, removed, or its meaning changes. */
 const RUN_TRACE_VERSION = 1;
 
@@ -207,7 +209,8 @@ function traceCompleteness(fields, { terminal = true } = {}) {
  * @param {string|null} input.model        Resolved model id, the versioned identifier.
  * @param {string|null} input.outcome      Dispatch outcome ('running' while in flight).
  * @param {number|null} input.tokens       Blended token TOTAL, attached as near-miss evidence only.
- * @param {boolean} input.tokensEstimated  Whether that total is an estimate.
+ * @param {boolean|number|null} input.tokensEstimated  Whether that total is an estimate
+ *        (the row's raw 0/1 flag is accepted; null means provenance unrecorded).
  * @param {{attempt:number,priorAttempts:number}|null} input.attempts
  *        This run's place in the task's COMPLETE dispatch history, or null
  *        when the caller only holds a page of it.
@@ -272,7 +275,11 @@ function buildRunTrace(input = {}) {
     fields.modelCalls = unknown(
         'not_instrumented',
         typeof input.tokens === 'number' && Number.isFinite(input.tokens) && input.tokens >= 0
-            ? { tokensTotal: input.tokens, tokensEstimated: input.tokensEstimated === true }
+            ? {
+                tokensTotal: input.tokens,
+                tokensEstimated: input.tokensEstimated === true || input.tokensEstimated === 1,
+                tokensTotalSource: tokenSource(input.tokens, input.tokensEstimated),
+            }
             : null,
     );
 

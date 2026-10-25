@@ -38,6 +38,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const simpleGit = require('simple-git');
 const { buildRunTrace } = require('../services/run-trace');
+const { tokenSource } = require('../services/usage-source');
 
 // Names/emails that mark a commit trailer as belonging to an AI executor, so
 // the Recent Activity Feed can attribute a commit to the model that authored it.
@@ -52,10 +53,11 @@ const AI_COAUTHOR_HINT = /claude|gpt|gemini|codex|llama|opus|sonnet|haiku|fable|
  * from the commit subject + body and returns { model, tokens, tokensEstimated },
  * using nulls when a commit has no such data (hand-authored or system commits)
  * so the UI can show a neutral placeholder instead of guessing. A ~ prefix on
- * the token count ("Tokens: ~12345") marks it as an estimate.
+ * the token count ("Tokens: ~12345") marks it as an estimate; `tokensSource`
+ * names the provenance outright (services/usage-source.js).
  *
  * @param {{ message?: string, body?: string }} commit
- * @returns {{ model: string|null, tokens: number|null, tokensEstimated: boolean }}
+ * @returns {{ model: string|null, tokens: number|null, tokensEstimated: boolean, tokensSource: string }}
  */
 function deriveActivityAttribution(commit) {
     const text = `${commit?.message || ''}\n${commit?.body || ''}`;
@@ -95,7 +97,7 @@ function deriveActivityAttribution(commit) {
         }
     }
 
-    return { model, tokens, tokensEstimated };
+    return { model, tokens, tokensEstimated, tokensSource: tokenSource(tokens, tokensEstimated) };
 }
 
 // When a dispatch row carries no explicit `model` (Codex/Antigravity writers
@@ -138,11 +140,15 @@ const MAX_OPEN_DISPATCH_CLAIM_MS = 6 * 60 * 60 * 1000; // 6 h
  *
  * @param {Date} commitDate
  * @param {Array} dispatches — rows for the SAME project, any order
- * @returns {{ model: string|null, tokens: number|null, tokensEstimated: boolean, modelInferred: boolean, dispatchId: string|null, taskId: string|null }}
+ * @returns {{ model: string|null, tokens: number|null, tokensEstimated: boolean, tokensSource: string, modelInferred: boolean, dispatchId: string|null, taskId: string|null }}
  */
+function noDispatchMatch() {
+    return { model: null, tokens: null, tokensEstimated: false, tokensSource: 'unavailable', modelInferred: false, dispatchId: null, taskId: null };
+}
+
 function correlateDispatch(commitDate, dispatches) {
     const t = commitDate.getTime();
-    if (!Number.isFinite(t) || !Array.isArray(dispatches)) return { model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null };
+    if (!Number.isFinite(t) || !Array.isArray(dispatches)) return noDispatchMatch();
     // Two tiers: a completed dispatch whose window contains the commit always
     // beats a still-running row. An open row used to match ANY later commit at
     // distance 0 (its "end" defaulted to the commit time), so one ghost row —
@@ -171,7 +177,7 @@ function correlateDispatch(commitDate, dispatches) {
         }
         if (tier < bestTier || (tier === bestTier && dist < bestDist)) { bestTier = tier; bestDist = dist; best = d; }
     }
-    if (!best) return { model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null };
+    if (!best) return noDispatchMatch();
     const hasTokens = typeof best.tokens === 'number' && Number.isFinite(best.tokens);
     // Explicit model on the dispatch row wins; otherwise derive one from the
     // executor so the row still names the agent that did the work.
@@ -181,6 +187,9 @@ function correlateDispatch(commitDate, dispatches) {
         model,
         tokens: hasTokens ? best.tokens : null,
         tokensEstimated: hasTokens ? !!best.tokens_estimated : false,
+        // The raw flag, not the coerced boolean: a count whose row never
+        // recorded its provenance is 'unknown', not silently 'measured'.
+        tokensSource: tokenSource(hasTokens ? best.tokens : null, best.tokens_estimated),
         modelInferred: !explicitModel && !!model,
         // The dispatch (and its task) that produced this commit — the drill-down
         // handle the feed hands to the Dispatch Console log viewer.
@@ -225,7 +234,7 @@ function activityRunTrace(run, trailerModel = null) {
         model: trailerModel || run.model || null,
         outcome: run.outcome || null,
         tokens: typeof run.tokens === 'number' ? run.tokens : null,
-        tokensEstimated: !!run.tokens_estimated,
+        tokensEstimated: run.tokens_estimated ?? null,
         attempts: null,
         approvalChannelReadable: false,
         approvalChannelReason: 'not_queried',
@@ -970,6 +979,9 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                     // Trailer counts are exact unless ~-prefixed; dispatch-sourced counts may be estimated.
                     const tokens = trailer.tokens ?? matched.tokens;
                     const tokensEstimated = trailer.tokens != null ? trailer.tokensEstimated : matched.tokensEstimated;
+                    // measured | estimated | unavailable | unknown, from whichever
+                    // signal supplied the count (services/usage-source.js).
+                    const tokensSource = trailer.tokens != null ? trailer.tokensSource : matched.tokensSource;
                     // Drill-down handle: when the commit correlates to a dispatch,
                     // carry its task/dispatch id so the feed row can open that run's
                     // logs. Null when nothing matched → the row has no logs to show.
@@ -981,7 +993,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                         dispatchId ? dispatchById.get(dispatchId) : null,
                         trailer.model,
                     );
-                    activities.push({ projectId: project.id, projectName: project.name, type: 'commit', hash: commit.hash, message: commit.message, author: commit.author_name, date: commit.date, model, modelInferred, tokens, tokensEstimated, dispatchId, taskId, runTrace });
+                    activities.push({ projectId: project.id, projectName: project.name, type: 'commit', hash: commit.hash, message: commit.message, author: commit.author_name, date: commit.date, model, modelInferred, tokens, tokensEstimated, tokensSource, dispatchId, taskId, runTrace });
                 }
             } catch (error) {
                 if (!error.message?.includes('does not have any commits')) console.warn(`[Activity] Could not get log for ${project.name}: ${error.message}`);

@@ -19,6 +19,7 @@ describe('deriveActivityAttribution', () => {
             model: 'Claude Fable 5',
             tokens: null,
             tokensEstimated: false,
+            tokensSource: 'unavailable',
         });
     });
 
@@ -35,12 +36,14 @@ describe('deriveActivityAttribution', () => {
         expect(deriveActivityAttribution({ body: 'Tokens-Used: 12k' }).tokens).toBe(12000);
         expect(deriveActivityAttribution({ body: 'Token-Count: 2M' }).tokens).toBe(2000000);
         expect(deriveActivityAttribution({ body: 'Tokens: 12,345' }).tokensEstimated).toBe(false);
+        expect(deriveActivityAttribution({ body: 'Tokens: 12,345' }).tokensSource).toBe('measured');
     });
 
     it('flags a ~-prefixed token trailer as estimated', () => {
         const out = deriveActivityAttribution({ body: 'Tokens: ~9,000' });
         expect(out.tokens).toBe(9000);
         expect(out.tokensEstimated).toBe(true);
+        expect(out.tokensSource).toBe('estimated');
     });
 
     it('ignores human co-authors', () => {
@@ -48,17 +51,17 @@ describe('deriveActivityAttribution', () => {
             message: 'chore: EOD auto-commit',
             body: 'Co-Authored-By: Robert Washko <robert.washko@gmail.com>',
         };
-        expect(deriveActivityAttribution(commit)).toEqual({ model: null, tokens: null, tokensEstimated: false });
+        expect(deriveActivityAttribution(commit)).toEqual({ model: null, tokens: null, tokensEstimated: false, tokensSource: 'unavailable' });
     });
 
     it('returns nulls for a plain commit with no attribution', () => {
         expect(deriveActivityAttribution({ message: 'chore: remove retired AG bridge', body: '' }))
-            .toEqual({ model: null, tokens: null, tokensEstimated: false });
+            .toEqual({ model: null, tokens: null, tokensEstimated: false, tokensSource: 'unavailable' });
     });
 
     it('does not crash on missing/empty input', () => {
-        expect(deriveActivityAttribution(undefined)).toEqual({ model: null, tokens: null, tokensEstimated: false });
-        expect(deriveActivityAttribution({})).toEqual({ model: null, tokens: null, tokensEstimated: false });
+        expect(deriveActivityAttribution(undefined)).toEqual({ model: null, tokens: null, tokensEstimated: false, tokensSource: 'unavailable' });
+        expect(deriveActivityAttribution({})).toEqual({ model: null, tokens: null, tokensEstimated: false, tokensSource: 'unavailable' });
     });
 });
 
@@ -67,33 +70,34 @@ describe('correlateDispatch', () => {
     const run = {
         model: 'claude-opus-4-8',
         tokens: 48200,
+        tokens_estimated: 0,
         started_at: '2026-07-08T10:00:00.000Z',
         completed_at: '2026-07-08T10:05:00.000Z',
     };
 
     it('attributes a commit made during the dispatch window', () => {
         const commit = new Date('2026-07-08T10:04:30.000Z');
-        expect(correlateDispatch(commit, [run])).toEqual({ model: 'claude-opus-4-8', tokens: 48200, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
+        expect(correlateDispatch(commit, [run])).toEqual({ model: 'claude-opus-4-8', tokens: 48200, tokensEstimated: false, tokensSource: 'measured', modelInferred: false, dispatchId: null, taskId: null });
     });
 
     it('attributes a commit made just after completion (within grace)', () => {
         const commit = new Date('2026-07-08T10:06:00.000Z'); // 1 min after completed_at
-        expect(correlateDispatch(commit, [run])).toEqual({ model: 'claude-opus-4-8', tokens: 48200, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
+        expect(correlateDispatch(commit, [run])).toEqual({ model: 'claude-opus-4-8', tokens: 48200, tokensEstimated: false, tokensSource: 'measured', modelInferred: false, dispatchId: null, taskId: null });
     });
 
     it('flags an estimated token count from the matched dispatch', () => {
         const est = { model: 'codex', tokens: 9000, tokens_estimated: 1, started_at: '2026-07-08T10:00:00.000Z', completed_at: '2026-07-08T10:05:00.000Z' };
-        expect(correlateDispatch(new Date('2026-07-08T10:03:00.000Z'), [est])).toEqual({ model: 'codex', tokens: 9000, tokensEstimated: true, modelInferred: false, dispatchId: null, taskId: null });
+        expect(correlateDispatch(new Date('2026-07-08T10:03:00.000Z'), [est])).toEqual({ model: 'codex', tokens: 9000, tokensEstimated: true, tokensSource: 'estimated', modelInferred: false, dispatchId: null, taskId: null });
     });
 
     it('does not attribute a commit long after the run finished', () => {
         const commit = new Date('2026-07-08T11:00:00.000Z'); // 55 min after completion
-        expect(correlateDispatch(commit, [run])).toEqual({ model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
+        expect(correlateDispatch(commit, [run])).toEqual({ model: null, tokens: null, tokensEstimated: false, tokensSource: 'unavailable', modelInferred: false, dispatchId: null, taskId: null });
     });
 
     it('does not attribute a commit made before the run began', () => {
         const commit = new Date('2026-07-08T09:50:00.000Z');
-        expect(correlateDispatch(commit, [run])).toEqual({ model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
+        expect(correlateDispatch(commit, [run])).toEqual({ model: null, tokens: null, tokensEstimated: false, tokensSource: 'unavailable', modelInferred: false, dispatchId: null, taskId: null });
     });
 
     it('picks the dispatch whose completion is closest to the commit', () => {
@@ -118,18 +122,18 @@ describe('correlateDispatch', () => {
 
     it('returns null tokens when the matched dispatch has none recorded', () => {
         const noTokens = { model: 'local-llama', tokens: null, started_at: '2026-07-08T10:00:00.000Z', completed_at: '2026-07-08T10:05:00.000Z' };
-        expect(correlateDispatch(new Date('2026-07-08T10:03:00.000Z'), [noTokens])).toEqual({ model: 'local-llama', tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
+        expect(correlateDispatch(new Date('2026-07-08T10:03:00.000Z'), [noTokens])).toEqual({ model: 'local-llama', tokens: null, tokensEstimated: false, tokensSource: 'unavailable', modelInferred: false, dispatchId: null, taskId: null });
     });
 
     it('derives a model label from the executor when the dispatch omits one (real Codex/AG rows)', () => {
         // Production Codex/Antigravity rows routinely ship with model = null.
-        const codexRun = { executor: 'codex', model: null, tokens: 5000, started_at: '2026-07-08T10:00:00.000Z', completed_at: '2026-07-08T10:05:00.000Z' };
+        const codexRun = { executor: 'codex', model: null, tokens: 5000, tokens_estimated: 0, started_at: '2026-07-08T10:00:00.000Z', completed_at: '2026-07-08T10:05:00.000Z' };
         expect(correlateDispatch(new Date('2026-07-08T10:03:00.000Z'), [codexRun]))
-            .toEqual({ model: 'Codex', tokens: 5000, tokensEstimated: false, modelInferred: true, dispatchId: null, taskId: null });
+            .toEqual({ model: 'Codex', tokens: 5000, tokensEstimated: false, tokensSource: 'measured', modelInferred: true, dispatchId: null, taskId: null });
 
         const agRun = { executor: 'antigravity', model: null, tokens: null, started_at: '2026-07-08T10:00:00.000Z', completed_at: '2026-07-08T10:05:00.000Z' };
         expect(correlateDispatch(new Date('2026-07-08T10:03:00.000Z'), [agRun]))
-            .toEqual({ model: 'Gemini', tokens: null, tokensEstimated: false, modelInferred: true, dispatchId: null, taskId: null });
+            .toEqual({ model: 'Gemini', tokens: null, tokensEstimated: false, tokensSource: 'unavailable', modelInferred: true, dispatchId: null, taskId: null });
     });
 
     it('prefers an explicit dispatch model over the executor-derived label', () => {
@@ -142,12 +146,12 @@ describe('correlateDispatch', () => {
     it('leaves model null when neither an explicit model nor a known executor is present', () => {
         const unknown = { executor: 'mystery-runner', model: null, tokens: 10, started_at: '2026-07-08T10:00:00.000Z', completed_at: '2026-07-08T10:05:00.000Z' };
         expect(correlateDispatch(new Date('2026-07-08T10:03:00.000Z'), [unknown]))
-            .toEqual({ model: null, tokens: 10, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
+            .toEqual({ model: null, tokens: 10, tokensEstimated: false, tokensSource: 'unknown', modelInferred: false, dispatchId: null, taskId: null });
     });
 
     it('handles empty/invalid input without throwing', () => {
-        expect(correlateDispatch(new Date('2026-07-08T10:00:00.000Z'), [])).toEqual({ model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
-        expect(correlateDispatch(new Date('invalid'), [run])).toEqual({ model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
+        expect(correlateDispatch(new Date('2026-07-08T10:00:00.000Z'), [])).toEqual({ model: null, tokens: null, tokensEstimated: false, tokensSource: 'unavailable', modelInferred: false, dispatchId: null, taskId: null });
+        expect(correlateDispatch(new Date('invalid'), [run])).toEqual({ model: null, tokens: null, tokensEstimated: false, tokensSource: 'unavailable', modelInferred: false, dispatchId: null, taskId: null });
     });
 
     // Ghost rows: a run that crashed before its completion callback sits at
@@ -173,7 +177,7 @@ describe('correlateDispatch', () => {
 
         it('an open row older than the claim window matches nothing (stale ghost)', () => {
             const commit = new Date('2026-07-08T20:00:00.000Z'); // 12 h after the ghost started
-            expect(correlateDispatch(commit, [ghost])).toEqual({ model: null, tokens: null, tokensEstimated: false, modelInferred: false, dispatchId: null, taskId: null });
+            expect(correlateDispatch(commit, [ghost])).toEqual({ model: null, tokens: null, tokensEstimated: false, tokensSource: 'unavailable', modelInferred: false, dispatchId: null, taskId: null });
         });
     });
 });

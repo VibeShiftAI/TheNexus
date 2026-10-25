@@ -49,6 +49,7 @@ const { execFile } = require('child_process');
 const { isTaskDone, TaskBoardStatusSchema, LEGACY_TASK_STATUS_MAP, TASK_AUTO_START_STATUSES } = require('@praxis/contract');
 const { praxisFetch } = require('../services/praxis-client');
 const { buildRunTrace, summarizeTraceQuality } = require('../services/run-trace');
+const { tokenSource, costSource } = require('../services/usage-source');
 const { createCouncilBallotReader, DEFAULT_COUNCIL_SESSIONS_DIR } = require('../services/council-ballots');
 const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 const { readSlateLifecycle } = require('../services/slate-lifecycle');
@@ -1232,7 +1233,7 @@ function createDispatchInsightRouter({
                 model: d.model,
                 outcome: d.outcome,
                 tokens: typeof d.tokens === 'number' ? d.tokens : null,
-                tokensEstimated: d.tokens_estimated === 1,
+                tokensEstimated: d.tokens_estimated ?? null,
                 attempts: attempt != null
                     ? { attempt, priorAttempts: attempt - 1 }
                     : null,
@@ -1281,13 +1282,17 @@ function createDispatchInsightRouter({
                 overdue: running && elapsedMs != null && elapsedMs > runCeiling.ms,
                 cost: (() => {
                     const usd = estimateRunCostUsd(d.tokens, d.model);
-                    return usd != null ? { usd, estimated: true } : null;
+                    return usd != null ? { usd, estimated: true, source: costSource(usd) } : null;
                 })(),
+                // The cost figure's own marker, present whether or not `cost`
+                // is: 'estimated' when priced, 'unavailable' when null.
+                costSource: costSource(estimateRunCostUsd(d.tokens, d.model)),
                 // Token provenance, so the surface can separate a MEASURED
                 // count from a text-volume guess instead of showing both as
                 // bare numbers. Null tokens stay null — never coerced to 0.
                 tokens: typeof d.tokens === 'number' ? d.tokens : null,
                 tokensEstimated: d.tokens_estimated === 1,
+                tokensSource: tokenSource(d.tokens, d.tokens_estimated),
                 // Present only when `cost` is null: why the figure is missing.
                 usageUnknown: (() => {
                     const reason = usageUnknownReason(d.tokens, d.model);

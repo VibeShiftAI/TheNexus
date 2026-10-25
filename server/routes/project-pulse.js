@@ -22,6 +22,7 @@ const fs = require('fs');
 const simpleGit = require('simple-git');
 const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 const { TASK_START_STATUSES } = require('@praxis/contract');
+const { tokenSource, aggregateTokenSource } = require('../services/usage-source');
 
 const DEFAULT_DB_PATH = resolveNexusDbPath();
 
@@ -172,6 +173,10 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
             // count. Without these the sum laundered guesses and silently
             // dropped unrecorded runs into one confident-looking number.
             tokensCounted7d: 0, tokensEstimated: false,
+            // Explicit markers (services/usage-source.js). tokens7d/tokens24h
+            // are null, not 0, once assembled with no contributing run.
+            tokensCounted24h: 0, tokensEstimatedRuns7d: 0, tokensEstimatedRuns24h: 0,
+            tokens7dSource: 'unavailable', tokens24hSource: 'unavailable',
         };
     }
 
@@ -203,6 +208,7 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
                 c.last = {
                     executor: d.executor, model: d.model, outcome: d.outcome,
                     taskName: d.task_name, at: d.started_at, tokens: d.tokens,
+                    tokensSource: tokenSource(d.tokens, d.tokens_estimated),
                 };
             }
             if (!startedMs) continue;
@@ -212,17 +218,29 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
                 if (typeof d.tokens === 'number') {
                     c.tokens7d += d.tokens;
                     c.tokensCounted7d++;
-                    if (d.tokens_estimated === 1) c.tokensEstimated = true;
-                    if (nowMs - startedMs <= DAY_MS) c.tokens24h += d.tokens;
+                    if (d.tokens_estimated === 1) { c.tokensEstimated = true; c.tokensEstimatedRuns7d++; }
+                    if (nowMs - startedMs <= DAY_MS) {
+                        c.tokens24h += d.tokens;
+                        c.tokensCounted24h++;
+                        if (d.tokens_estimated === 1) c.tokensEstimatedRuns24h++;
+                    }
                 }
             }
+        }
+        // A window with no contributing run has no figure: null + 'unavailable',
+        // never a 0 that reads as "this project used no tokens".
+        for (const c of crew.values()) {
+            c.tokens7dSource = aggregateTokenSource({ counted: c.tokensCounted7d, estimated: c.tokensEstimatedRuns7d });
+            c.tokens24hSource = aggregateTokenSource({ counted: c.tokensCounted24h, estimated: c.tokensEstimatedRuns24h });
+            if (!c.tokensCounted7d) c.tokens7d = null;
+            if (!c.tokensCounted24h) c.tokens24h = null;
         }
         return { tasks, crew };
     }
 
     function assemblePulse(project, git, taskRoll, crewRoll) {
         const { lastTouchMs, ...tasks } = taskRoll ?? emptyTasks();
-        const crew = crewRoll ?? emptyCrew();
+        const crew = crewRoll ?? { ...emptyCrew(), tokens7d: null, tokens24h: null };
         const candidates = [
             git.lastCommit ? toMs(git.lastCommit.date) : null,
             lastTouchMs,
@@ -299,6 +317,7 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
                     title: d.task_name || 'Ad-hoc dispatch',
                     meta: [d.executor, d.model].filter(Boolean).join(' · '),
                     outcome: d.outcome, tokens: d.tokens,
+                    tokensSource: tokenSource(d.tokens, d.tokens_estimated),
                 });
             }
             for (const t of doneTasksStmt.all(project.id)) {

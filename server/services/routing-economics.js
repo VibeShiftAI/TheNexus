@@ -1,5 +1,6 @@
 const { estimateRunCostUsdRaw, usageUnknownReason } = require('./run-cost');
 const { isTerminalOutcome } = require('./run-trace');
+const { aggregateTokenSource } = require('./usage-source');
 
 const LOCAL = new Set(['local', 'ollama', 'lmstudio', 'lm-studio', 'mlx', 'llama.cpp']);
 const CLOUD = new Set(['claude-code', 'codex', 'antigravity', 'openrouter', 'anthropic', 'openai', 'google', 'gemini', 'xai']);
@@ -23,7 +24,7 @@ function laneFor(row, models) {
 
 function summarize(rows, identity) {
     const durations = [];
-    let tokens = 0, tokenRuns = 0, estimatedTokenRuns = 0, usd = 0, costRuns = 0;
+    let tokens = 0, tokenRuns = 0, estimatedTokenRuns = 0, unflaggedTokenRuns = 0, usd = 0, costRuns = 0;
     const unknownByReason = {};
     const outcomes = { completed: 0, failed: 0, needsInput: 0, cancelled: 0, unfinished: 0, runs: 0, completionRate: null };
     for (const row of rows) {
@@ -34,7 +35,8 @@ function summarize(rows, identity) {
         if (validNumber(row.tokens)) {
             tokens += row.tokens;
             tokenRuns++;
-            if (row.tokens_estimated) estimatedTokenRuns++;
+            if (row.tokens_estimated === null || row.tokens_estimated === undefined) unflaggedTokenRuns++;
+            else if (row.tokens_estimated) estimatedTokenRuns++;
         }
         const reason = identity.lane === 'local' ? null : identity.lane === 'unknown' ? 'unknown_lane' : usageUnknownReason(row.tokens, row.model);
         if (reason) unknownByReason[reason] = (unknownByReason[reason] || 0) + 1;
@@ -64,10 +66,16 @@ function summarize(rows, identity) {
             worstMs: durations.length ? durations[durations.length - 1] : null,
             runs: durations.length,
         },
-        tokens: { total: tokenRuns ? tokens : null, runs: tokenRuns, estimatedRuns: estimatedTokenRuns },
+        tokens: {
+            total: tokenRuns ? tokens : null, runs: tokenRuns, estimatedRuns: estimatedTokenRuns,
+            source: aggregateTokenSource({ counted: tokenRuns, estimated: estimatedTokenRuns, unknown: unflaggedTokenRuns }),
+        },
         cost: {
             usd: costRuns ? Math.round(usd * 1000) / 1000 : null,
             provenance: !costRuns ? 'unknown' : identity.lane === 'local' ? 'local_zero' : 'estimated',
+            // A local lane's $0 is not an approximation: no provider fee is
+            // charged for local inference (costBasis states what it excludes).
+            source: !costRuns ? 'unavailable' : identity.lane === 'local' ? 'measured' : 'estimated',
             runs: costRuns, estimatedRuns: identity.lane === 'cloud' ? costRuns : 0,
             meteredRuns: 0, unknownRuns: rows.length - costRuns, unknownByReason,
         },

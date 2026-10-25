@@ -68,7 +68,7 @@ describe('buildRunTrace', () => {
         expect(trace.fields.modelCalls.known).toBe(false);
         expect(trace.fields.modelCalls.reason).toBe('not_instrumented');
         // The total is present, under the unknown, and clearly not the field.
-        expect(trace.fields.modelCalls.evidence).toEqual({ tokensTotal: 48200, tokensEstimated: false });
+        expect(trace.fields.modelCalls.evidence).toEqual({ tokensTotal: 48200, tokensEstimated: false, tokensTotalSource: 'measured' });
     });
 
     it('does not accept the executor name as a version', () => {
