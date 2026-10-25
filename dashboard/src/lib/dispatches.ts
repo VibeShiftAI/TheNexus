@@ -6,6 +6,8 @@
  * server to Praxis (:4000 /api/praxis/* → :54322).
  */
 
+import type { UsageSource } from './usage-source';
+
 export type DispatchOutcome =
     | 'running'
     | 'success'
@@ -28,6 +30,8 @@ export interface TaskDispatch {
     tokens?: number | null;
     /** 1 when `tokens` is an estimate from text volume rather than an exact count. */
     tokens_estimated?: number | null;
+    /** measured | estimated | unavailable | unknown, as the server marks `tokens`. */
+    tokens_source?: UsageSource;
     prompt: string | null;
     instructions: string | null;
     output: string | null;

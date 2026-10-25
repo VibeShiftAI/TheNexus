@@ -8,6 +8,7 @@ import { getActivity, getActivityEvents, Activity, ActivityEvent } from "@/lib/n
 import { useLiveRefetch } from "@/components/live-board-state";
 import { GitCommit, Clock, Cpu, Coins, ChevronRight, FileX2, User, Radio, AlertTriangle, Siren, ChevronDown, ListChecks } from "lucide-react";
 import { formatTraceCompleteness, describeTraceGaps } from "@/lib/run-trace";
+import { resolveUsageSource, USAGE_SOURCE_DETAIL, USAGE_SOURCE_TAG } from "@/lib/usage-source";
 import { useAlertActionState } from "@/hooks/use-alert-action-state";
 import { describeAlertAction, type AlertEvidence } from "@/lib/alert-action";
 import { readChatDraft, writeChatDraft } from "@/lib/chat-draft";
@@ -191,8 +192,9 @@ export function EventRow({ event, onOpenTask, evidence, history = [] }: { event:
     );
 }
 
-function CommitRow({ commit, onOpenLogs }: { commit: Activity; onOpenLogs: (a: Activity) => void }) {
+export function CommitRow({ commit, onOpenLogs }: { commit: Activity; onOpenLogs: (a: Activity) => void }) {
     const hasLogs = Boolean(commit.taskId);
+    const tokenSource = resolveUsageSource(commit.tokens, commit.tokensSource, commit.tokensEstimated);
     return (
         <div
             className={`flex items-start gap-3 group rounded-lg -mx-2 px-2 py-1 transition-colors ${
@@ -258,25 +260,30 @@ function CommitRow({ commit, onOpenLogs }: { commit: Activity; onOpenLogs: (a: A
                             <Cpu size={9} className="shrink-0" />—
                         </span>
                     )}
-                    {/* Token usage — neutral placeholder when not recorded */}
-                    {typeof commit.tokens === "number" ? (
+                    {/* Token usage. An estimate carries a visible "est" tag, a
+                        count with no recorded provenance says so, and a missing
+                        count reads "unavailable", never a dash or a zero. */}
+                    {tokenSource !== "unavailable" && typeof commit.tokens === "number" ? (
                         <span
-                            className="inline-flex items-center gap-1 rounded bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300 tabular-nums"
-                            title={
-                                commit.tokensEstimated
-                                    ? `~${commit.tokens.toLocaleString()} tokens (estimated from text volume)`
-                                    : `${commit.tokens.toLocaleString()} tokens`
-                            }
+                            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${
+                                tokenSource === "measured"
+                                    ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
+                                    : "bg-amber-500/10 border-amber-500/25 text-amber-200"
+                            }`}
+                            title={`${tokenSource === "estimated" ? "~" : ""}${commit.tokens.toLocaleString()} tokens — ${USAGE_SOURCE_DETAIL[tokenSource]}`}
                         >
                             <Coins size={9} className="shrink-0" />
-                            {commit.tokensEstimated ? "~" : ""}{formatTokens(commit.tokens)}
+                            {tokenSource === "estimated" ? "~" : ""}{formatTokens(commit.tokens)}
+                            {tokenSource !== "measured" && (
+                                <span className="font-normal opacity-80">{USAGE_SOURCE_TAG[tokenSource]}</span>
+                            )}
                         </span>
                     ) : (
                         <span
-                            className="inline-flex items-center gap-1 rounded border border-slate-800 px-1.5 py-0.5 text-[10px] text-slate-600"
-                            title="No token count recorded for this activity"
+                            className="inline-flex items-center gap-1 rounded border border-slate-800 px-1.5 py-0.5 text-[10px] text-slate-500"
+                            title={`Tokens — ${USAGE_SOURCE_DETAIL.unavailable}`}
                         >
-                            <Coins size={9} className="shrink-0" />—
+                            <Coins size={9} className="shrink-0" />unavailable
                         </span>
                     )}
                     {/* How completely this activity's run is traced, against the

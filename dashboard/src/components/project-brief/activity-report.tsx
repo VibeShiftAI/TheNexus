@@ -11,6 +11,7 @@ import { HudPanel } from "@/components/bridge/hud";
 import { timeAgo } from "@/components/pulse-visuals";
 import { fmtTokensShort } from "@/components/project-brief/mission-brief";
 import { Activity, GitCommit, Send, CheckCircle2 } from "lucide-react";
+import { resolveUsageSource, USAGE_SOURCE_DETAIL, USAGE_SOURCE_TAG } from "@/lib/usage-source";
 
 type Filter = "all" | OpsLogEvent["type"];
 
@@ -38,6 +39,24 @@ function outcomeTone(outcome?: string) {
     }
 }
 
+/**
+ * A dispatch event's token figure with its source: estimates carry "est", a
+ * count with no recorded provenance says so, and a run with no usage record
+ * reads "unavailable" instead of vanishing (which read as "no spend").
+ */
+function EventTokens({ ev }: { ev: OpsLogEvent }) {
+    const source = resolveUsageSource(ev.tokens, ev.tokensSource);
+    if (source === "unavailable" || typeof ev.tokens !== "number") {
+        return <span className="text-slate-500" title={`Tokens — ${USAGE_SOURCE_DETAIL.unavailable}`}>tok unavailable</span>;
+    }
+    return (
+        <span className="text-purple-400/80" title={`${ev.tokens.toLocaleString()} tokens — ${USAGE_SOURCE_DETAIL[source]}`}>
+            {source === "estimated" ? "~" : ""}{fmtTokensShort(ev.tokens)} tok
+            {source !== "measured" && ` ${USAGE_SOURCE_TAG[source]}`}
+        </span>
+    );
+}
+
 function EventRow({ ev }: { ev: OpsLogEvent }) {
     const icon =
         ev.type === "commit" ? <GitCommit size={12} className="text-cyan-400" />
@@ -52,9 +71,7 @@ function EventRow({ ev }: { ev: OpsLogEvent }) {
                     {ev.meta && <span className="text-slate-500">{ev.meta}</span>}
                     {ev.by && <span>{ev.by}</span>}
                     {ev.outcome && <span className={outcomeTone(ev.outcome)}>{ev.outcome}</span>}
-                    {typeof ev.tokens === "number" && ev.tokens > 0 && (
-                        <span className="text-purple-400/80">{fmtTokensShort(ev.tokens)} tok</span>
-                    )}
+                    {ev.type === "dispatch" && <EventTokens ev={ev} />}
                 </div>
             </div>
             <span className="shrink-0 pt-0.5 font-mono text-[10px] text-slate-600">Δ {timeAgo(ev.at)}</span>

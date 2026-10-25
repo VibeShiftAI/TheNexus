@@ -4,6 +4,7 @@ import { API_URL, authFetch } from './shared';
 import type { Task } from './tasks';
 import type { ProjectCommsSettings, ReportTemplate } from '@praxis/contract';
 import type { RunTrace } from '../run-trace';
+import type { UsageSource } from '../usage-source';
 
 // ═══════════════════════════════════════════════════════════════
 // PROJECT TYPES
@@ -164,9 +165,13 @@ export interface PulseCrew {
         taskName: string | null;
         at: string;
         tokens: number | null;
+        tokensSource?: UsageSource;
     } | null;
-    tokens24h: number;
-    tokens7d: number;
+    /** Null (source 'unavailable') when no run in the window reported usage. */
+    tokens24h: number | null;
+    tokens7d: number | null;
+    tokens24hSource?: UsageSource;
+    tokens7dSource?: UsageSource;
     dispatches7d: number;
     /** How many of `dispatches7d` actually reported a usage record. */
     tokensCounted7d: number;
@@ -190,6 +195,7 @@ export interface OpsLogEvent {
     by?: string;
     outcome?: string;
     tokens?: number | null;
+    tokensSource?: UsageSource;
 }
 
 export interface ProjectBrief extends ProjectPulse {
@@ -286,6 +292,8 @@ export interface Activity {
     tokens?: number | null;
     /** True when `tokens` is an approximation (from text volume) rather than an exact count. */
     tokensEstimated?: boolean;
+    /** measured | estimated | unavailable | unknown, as the server marks `tokens`. */
+    tokensSource?: UsageSource;
     /**
      * The dispatch that produced this activity, when the commit correlates to a
      * recorded run. Present alongside `taskId`; both null when no dispatch

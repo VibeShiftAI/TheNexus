@@ -7,6 +7,7 @@
  */
 
 import type { RunTrace, TraceQuality } from "./run-trace";
+import type { UsageSource } from "./usage-source";
 
 export type EligibilityReasonCode =
   | "queued"
@@ -106,11 +107,15 @@ export interface RunInsight {
    */
   ceiling: { ms: number; source: "praxis_run_record" | "default_assumed" };
   overdue: boolean;
-  cost: { usd: number; estimated: boolean } | null;
+  cost: { usd: number; estimated: boolean; source?: UsageSource } | null;
+  /** The cost figure's marker: 'estimated' when priced, 'unavailable' when `cost` is null. */
+  costSource?: UsageSource;
   /** Measured token count, or null when the run left no usage record. */
   tokens: number | null;
   /** True when `tokens` is a text-volume guess rather than a measured count. */
   tokensEstimated: boolean;
+  /** measured | estimated | unavailable | unknown, as the server marks `tokens`. */
+  tokensSource?: UsageSource;
   /** Present only when `cost` is null — why this run carries no figure. */
   usageUnknown: { reason: UsageUnknownReason; detail: string } | null;
   verification: RunVerification | null;

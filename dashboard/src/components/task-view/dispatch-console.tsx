@@ -76,6 +76,7 @@ import type {
   CredentialProviderLane,
 } from "@/lib/model-control";
 import { updateTaskById } from "@/lib/nexus";
+import { resolveUsageSource, USAGE_SOURCE_DETAIL, USAGE_SOURCE_TAG } from "@/lib/usage-source";
 import { CouncilBallots } from "./council-ballots";
 import { normalizeMarkdown } from "@/lib/normalizeMarkdown";
 
@@ -201,7 +202,7 @@ function VerdictChip({ verification }: { verification: RunVerification }) {
  * be big enough to reverse the ordering it is used to justify — the failure
  * arXiv:2609.11987 §5.1 documents, where 58 unrecorded runs left a billed cost
  * ordering unresolved. So the coverage sits beside the number, and a total
- * over zero priced runs is "unknown", not "$0".
+ * over zero priced runs is "unavailable", not "$0".
  */
 function UsageRollupChip({ rollup }: { rollup: UsageRollup }) {
   if (!rollup || rollup.totalRuns === 0) return null;
@@ -212,7 +213,7 @@ function UsageRollupChip({ rollup }: { rollup: UsageRollup }) {
       className="inline-flex items-center gap-1.5"
       title={
         rollup.estimatedUsd == null
-          ? `No run on this task could be priced, so its cost is unknown — not $0. ${unknownDetail}`
+          ? `No run on this task could be priced, so its cost is unavailable — not $0. ${unknownDetail}`
           : `ESTIMATE over ${formatCoverage(rollup)} — a cache-aware blended notional rate, not a bill.${
               complete ? "" : ` Excluded from this total: ${unknownDetail}.`
             }`
@@ -220,7 +221,7 @@ function UsageRollupChip({ rollup }: { rollup: UsageRollup }) {
     >
       Run cost{" "}
       {rollup.estimatedUsd == null ? (
-        <span className="font-semibold text-slate-400">unknown</span>
+        <span className="font-semibold text-slate-400">unavailable</span>
       ) : (
         <span className="font-semibold text-slate-200">{formatCostUsd(rollup.estimatedUsd)} est</span>
       )}
@@ -910,6 +911,7 @@ function DispatchRow({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const isFollowUp = dispatch.kind === "follow_up";
+  const tokenSource = resolveUsageSource(dispatch.tokens, dispatch.tokens_source, dispatch.tokens_estimated);
   const duration = formatDuration(dispatch.started_at, dispatch.completed_at);
   const articleRef = useRef<HTMLElement>(null);
 
@@ -965,27 +967,23 @@ function DispatchRow({
             {dispatch.model}
           </span>
         )}
-        {typeof dispatch.tokens === "number" ? (
+        {typeof dispatch.tokens === "number" && tokenSource !== "unavailable" ? (
           <span
             className="rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[11px] tabular-nums text-cyan-200"
-            title={
-              dispatch.tokens_estimated
-                ? `~${dispatch.tokens.toLocaleString()} tokens — ESTIMATED from text volume, not a measured count`
-                : `${dispatch.tokens.toLocaleString()} tokens — measured from the run's own usage record`
-            }
+            title={`${tokenSource === "estimated" ? "~" : ""}${dispatch.tokens.toLocaleString()} tokens — ${USAGE_SOURCE_DETAIL[tokenSource]}`}
           >
-            {dispatch.tokens_estimated ? "~" : ""}
+            {tokenSource === "estimated" ? "~" : ""}
             {dispatch.tokens.toLocaleString()} tok
-            <span className="ml-1 text-cyan-400/70">{dispatch.tokens_estimated ? "est" : "measured"}</span>
+            <span className="ml-1 text-cyan-400/70">{USAGE_SOURCE_TAG[tokenSource]}</span>
           </span>
         ) : (
-          /* A run with no usage record is reported as unknown, never omitted:
+          /* A run with no usage record is reported as unavailable, never omitted:
              a missing chip reads as "no spend", which is a different claim. */
           <span
             className="rounded border border-slate-600/50 bg-slate-700/20 px-1.5 py-0.5 text-[11px] text-slate-400"
-            title="This run left no usage record, so its token count is unknown — not zero."
+            title="This run left no usage record, so its token count is unavailable — not zero."
           >
-            tokens unknown
+            tokens unavailable
           </span>
         )}
         {insight?.cost ? (
@@ -1001,7 +999,7 @@ function DispatchRow({
             title={insight.usageUnknown?.detail
               ?? "No cost figure is available for this run."}
           >
-            cost unknown
+            cost unavailable
           </span>
         ) : null}
         <OutcomeChip outcome={dispatch.outcome} />

@@ -100,7 +100,7 @@ test('estimated tokens are visibly marked, never shown as a measurement', async 
   }
 });
 
-test('runs that reported no usage read as unknown, never as a zero', async () => {
+test('runs that reported no usage read as unavailable, never as a zero', async () => {
   const node = document.createElement('div');
   document.body.append(node);
   const brief = baseBrief({
@@ -109,7 +109,7 @@ test('runs that reported no usage read as unknown, never as a zero', async () =>
   });
   const root = await render(node, React.createElement(MissionBrief,{project,brief}));
   try {
-    assert.match(node.textContent, /unknown/);
+    assert.match(node.textContent, /Tokens · 7dunavailable/);
     assert.match(node.textContent, /no usage reported \(0 of 6 runs\)/);
     // The defect this replaces: "0" presented as a measured token count.
     assert.doesNotMatch(node.textContent, /Tokens · 7d0/);
@@ -123,7 +123,7 @@ import {TaskDispatchConsole} from '../task-view/dispatch-console.tsx';
 
 const run = (id, over) => ({
   id, task_id:'t1', project_id:null, kind:'dispatch', parent_id:null,
-  executor:'claude-code', model:'claude-opus-5', prompt:null, instructions:null,
+  executor:'claude-code', model:'claude-opus-5', tokens_estimated:0, prompt:null, instructions:null,
   output:null, error:null, outcome:'success', session_id:null, workspace:null,
   log_path:null, started_at:new Date(Date.now()-3600_000).toISOString(),
   completed_at:new Date().toISOString(), ...over,
@@ -178,7 +178,7 @@ test('the task cost aggregate is never shown without its coverage', async () => 
   }
 });
 
-test('runs with no usage record read as unknown instead of vanishing', async () => {
+test('runs with no usage record read as unavailable instead of vanishing', async () => {
   const node = document.createElement('div'); document.body.append(node);
   const dispatches = [run('d2')];
   const insight = {
@@ -192,10 +192,10 @@ test('runs with no usage record read as unknown instead of vanishing', async () 
   const {root, restore} = await renderConsole(node,{dispatches,insight});
   try {
     // Before: both chips were simply omitted, which reads as "no spend".
-    assert.match(node.textContent, /tokens unknown/);
-    assert.match(node.textContent, /cost unknown/);
-    // A task with nothing priced reports unknown, never $0.00.
-    assert.match(node.textContent, /Run cost.*unknown/s);
+    assert.match(node.textContent, /tokens unavailable/);
+    assert.match(node.textContent, /cost unavailable/);
+    // A task with nothing priced reports unavailable, never $0.00.
+    assert.match(node.textContent, /Run cost.*unavailable/s);
     assert.doesNotMatch(node.textContent, /\$0\.00/);
   } finally {
     await act(async()=>root.unmount()); node.remove(); restore();
@@ -288,13 +288,13 @@ test('the now strip adds no coverage caveat when every run reported usage', asyn
   }
 });
 
-test('the now strip says unknown, not a dash, when no run reported usage', async () => {
+test('the now strip says unavailable, not a dash, when no run reported usage', async () => {
   const h = await mountWith(
     React.createElement(NowStrip),
     activeFetch(activeDispatch({tokens: null, tokensCountedRuns: 0, tokensTotalRuns: 5})),
   );
   try {
-    assert.match(h.node.textContent, /unknown/);
+    assert.match(h.node.textContent, /unavailable/);
   } finally {
     await h.dispose();
   }

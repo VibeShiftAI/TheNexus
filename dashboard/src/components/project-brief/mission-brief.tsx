@@ -13,6 +13,7 @@ import { checkpointView } from "@/lib/project-checkpoints";
 import { CornerBrackets } from "@/components/bridge/hud";
 import { ActivityLed, activityBand, BAND_STYLES, timeAgo } from "@/components/pulse-visuals";
 import { Crosshair, ListChecks, CircleAlert, Tag, Flag } from "lucide-react";
+import { resolveUsageSource, USAGE_SOURCE_TAG } from "@/lib/usage-source";
 
 function Readout({ label, value, tone, sub }: { label: string; value: React.ReactNode; tone?: string; sub?: string }) {
     return (
@@ -34,8 +35,12 @@ function tokenCoverageSub(crew: PulseCrew): string {
     if (dispatches7d === 0) return "no runs in 7d";
     if (tokensCounted7d === 0) return `no usage reported (0 of ${dispatches7d} runs)`;
     const coverage = `${tokensCounted7d} of ${dispatches7d} runs reported`;
-    return tokens24h > 0
-        ? `${tokensEstimated ? "~" : ""}${fmtTokensShort(tokens24h)} in 24h · ${coverage}`
+    // An older payload has no 24h marker; fall back to the 7d estimate flag.
+    const source24h = resolveUsageSource(tokens24h, crew.tokens24hSource, tokensEstimated);
+    return tokens24h != null && tokens24h > 0
+        ? `${source24h === "estimated" ? "~" : ""}${fmtTokensShort(tokens24h)}${
+            source24h === "measured" ? "" : ` ${USAGE_SOURCE_TAG[source24h]}`
+        } in 24h · ${coverage}`
         : coverage;
 }
 
@@ -55,6 +60,10 @@ export function MissionBrief({ project, brief }: { project: Project; brief: Proj
         ? n.status !== "dropped" && !knowledgeSatisfied(n, project.end_state_updated_at)
         : n.status === "open");
     const crew = brief?.crew;
+    // Zero counted runs is unavailable even on a payload whose sum still reads 0.
+    const source7d = crew
+        ? resolveUsageSource(crew.tokensCounted7d > 0 ? crew.tokens7d : null, crew.tokens7dSource, crew.tokensEstimated)
+        : "unavailable";
     // Checkpoint sequence under the directive: the current checkpoint is what
     // the crew works toward now; the directive itself stays the long-term goal.
 
@@ -201,14 +210,16 @@ export function MissionBrief({ project, brief }: { project: Project; brief: Proj
                             coverage and its provenance instead of reading as a
                             complete measurement. */}
                         <Readout
-                            label={crew?.tokensEstimated ? "Tokens · 7d (est)" : "Tokens · 7d"}
+                            label={source7d === "estimated" ? "Tokens · 7d (est)"
+                                : source7d === "unknown" ? "Tokens · 7d (source unknown)"
+                                    : "Tokens · 7d"}
                             value={
                                 !crew ? "—"
-                                    : crew.tokensCounted7d === 0 ? "unknown"
-                                        : `${crew.tokensEstimated ? "~" : ""}${fmtTokensShort(crew.tokens7d)}`
+                                    : source7d === "unavailable" || crew.tokens7d == null ? "unavailable"
+                                        : `${source7d === "estimated" ? "~" : ""}${fmtTokensShort(crew.tokens7d)}`
                             }
                             sub={crew ? tokenCoverageSub(crew) : undefined}
-                            tone={crew && crew.tokensCounted7d === 0 ? "text-slate-500" : "text-purple-300"}
+                            tone={crew && source7d === "unavailable" ? "text-slate-500" : "text-purple-300"}
                         />
                     </div>
 

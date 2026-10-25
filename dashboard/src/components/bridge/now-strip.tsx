@@ -14,6 +14,7 @@
 
 import { Cpu, Coins } from "lucide-react";
 import { useActiveWork } from "@/hooks/use-active-work";
+import { USAGE_SOURCE_DETAIL, USAGE_SOURCE_TAG } from "@/lib/usage-source";
 import { coreStyle } from "@/components/bridge/core-canvas";
 
 // Compact token count: 12345 → "12.3k", 2_000_000 → "2M".
@@ -30,7 +31,7 @@ export function NowStrip({ bare = false }: { bare?: boolean } = {}) {
     taskLabel,
     model,
     tokens,
-    tokensEstimated,
+    tokensSource,
     tokensCountedRuns,
     tokensTotalRuns,
     connected,
@@ -99,16 +100,16 @@ export function NowStrip({ bare = false }: { bare?: boolean } = {}) {
             <Cpu size={9} className="shrink-0" />—
           </span>
         )}
-        {tokens != null ? (
+        {tokens != null && tokensSource !== "unavailable" ? (
           <span
             className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${
               partialCoverage
                 ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
                 : "border-cyan-500/25 bg-cyan-500/10 text-cyan-200"
             }`}
-            title={`${tokensEstimated ? "~" : ""}${tokens.toLocaleString()} tokens for this task${
-              tokensEstimated ? " (estimated)" : ""
-            }${
+            title={`${tokensSource === "estimated" ? "~" : ""}${tokens.toLocaleString()} tokens for this task (${
+              USAGE_SOURCE_DETAIL[tokensSource]
+            })${
               partialCoverage
                 ? `, ${coverageNote}. The other ${
                     tokensTotalRuns - tokensCountedRuns
@@ -119,8 +120,11 @@ export function NowStrip({ bare = false }: { bare?: boolean } = {}) {
             }`}
           >
             <Coins size={9} className="shrink-0" />
-            {tokensEstimated ? "~" : ""}
+            {tokensSource === "estimated" ? "~" : ""}
             {fmtTokens(tokens)}
+            {tokensSource !== "measured" && (
+              <span className="font-normal opacity-80">{USAGE_SOURCE_TAG[tokensSource]}</span>
+            )}
             {partialCoverage && (
               <span className="font-normal text-amber-300/80">
                 · {tokensCountedRuns}/{tokensTotalRuns} runs
@@ -134,14 +138,16 @@ export function NowStrip({ bare = false }: { bare?: boolean } = {}) {
               tokensTotalRuns > 0
                 ? `No usage recorded for any of this task's ${tokensTotalRuns} run${
                     tokensTotalRuns === 1 ? "" : "s"
-                  }, so its token count is unknown (not zero).`
+                  }, so its token count is unavailable (not zero).`
                 : running
                 ? "Token count pending (reported at completion)"
                 : "No token usage recorded"
             }
           >
             <Coins size={9} className="shrink-0" />
-            {tokensTotalRuns > 0 ? <span>unknown</span> : "—"}
+            {/* Idle has no task, so no figure to qualify; anything in flight
+                without a usage record reads "unavailable", never a zero. */}
+            {running || tokensTotalRuns > 0 ? <span>unavailable</span> : "—"}
           </span>
         )}
       </div>

@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLiveBoardState, useLiveRefetch } from "@/components/live-board-state";
 import { useCrewActivity } from "./use-crew-activity";
 import type { PresenceActivity } from "@praxis/contract";
+import { resolveUsageSource, type UsageSource } from "@/lib/usage-source";
 
 /** One in-flight, task-correlated dispatch row from /api/dispatches/active. */
 interface ActiveDispatch {
@@ -36,6 +37,8 @@ interface ActiveDispatch {
   model: string | null;
   tokens: number | null;
   tokensEstimated: boolean;
+  /** measured | estimated | unavailable | unknown for the task's token sum. */
+  tokensSource?: UsageSource;
   /**
    * How many of this task's dispatch rows actually carried a usage record,
    * and how many rows it has in total. Optional on the wire: an older API
@@ -69,6 +72,8 @@ export interface ActiveWork {
   tokens: number | null;
   /** whether `tokens` is an estimate (text-volume) rather than an exact count */
   tokensEstimated: boolean;
+  /** Where `tokens` came from; 'unavailable' whenever it is null. */
+  tokensSource: UsageSource;
   /**
    * Coverage of `tokens`: how many of the task's dispatch rows contributed to
    * that sum, out of how many exist. A cumulative total drawn from 1 of 8 runs
@@ -134,6 +139,7 @@ export function useActiveWork(): ActiveWork {
     let model: string | null = null;
     let tokens: number | null = null;
     let tokensEstimated = false;
+    let tokensSource: UsageSource = "unavailable";
     let tokensCountedRuns = 0;
     let tokensTotalRuns = 0;
     let executor: string | null = null;
@@ -144,6 +150,7 @@ export function useActiveWork(): ActiveWork {
       model = dispatch.model;
       tokens = dispatch.tokens;
       tokensEstimated = dispatch.tokensEstimated;
+      tokensSource = resolveUsageSource(dispatch.tokens, dispatch.tokensSource, dispatch.tokensEstimated);
       // /dispatches/active reports these; dropping them here is what let the
       // strip show a partial sum as if it covered the whole task.
       tokensCountedRuns = dispatch.tokensCountedRuns ?? 0;
@@ -167,6 +174,7 @@ export function useActiveWork(): ActiveWork {
       model,
       tokens,
       tokensEstimated,
+      tokensSource,
       tokensCountedRuns,
       tokensTotalRuns,
       executor,

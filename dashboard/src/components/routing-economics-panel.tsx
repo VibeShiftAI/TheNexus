@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { EconomicsSummary, RoutingEconomics } from "@/lib/routing-economics";
+import { resolveUsageSource, USAGE_SOURCE_TAG } from "@/lib/usage-source";
 
 const laneLabel = { local: "Local", cloud: "Cloud", unknown: "Unknown lane" };
 const reasons: Record<string, string> = {
@@ -21,6 +22,7 @@ function Coverage({ runs, total }: { runs: number; total: number }) {
 }
 function SummaryRow({ group, lane = false }: { group: EconomicsSummary; lane?: boolean }) {
   const label = lane ? `${laneLabel[group.lane]} lane` : group.model || "Model not recorded";
+  const tokenSource = resolveUsageSource(group.tokens.total, group.tokens.source, group.tokens.estimatedRuns > 0);
   return <tr className={lane ? "border-b border-slate-700 bg-slate-800/70" : "border-b border-slate-800"}>
     <th scope="row" className="p-3 text-left align-top font-medium">
       <span className="block max-w-64 break-words text-slate-100">{label}</span>
@@ -41,12 +43,16 @@ function SummaryRow({ group, lane = false }: { group: EconomicsSummary; lane?: b
         <Coverage runs={group.latency.runs} total={group.runCount} />
       </td>
       <td className="p-3 align-top">
-        {group.tokens.total === null ? "No data" : group.tokens.total.toLocaleString("en-US")}
+        {/* The sum is an estimate when any run behind it was; a sum over
+            no reporting run is unavailable, not 0. */}
+        {tokenSource === "unavailable" || group.tokens.total === null ? <span className="text-slate-400">Unavailable</span>
+          : tokenSource === "measured" ? group.tokens.total.toLocaleString("en-US")
+            : <span className="text-amber-300">{tokenSource === "estimated" ? "~" : ""}{group.tokens.total.toLocaleString("en-US")} {USAGE_SOURCE_TAG[tokenSource]}</span>}
         {group.tokens.estimatedRuns > 0 && <span className="block text-xs text-amber-300">includes {group.tokens.estimatedRuns} estimated runs</span>}
         <Coverage runs={group.tokens.runs} total={group.runCount} />
       </td>
       <td className="p-3 align-top">
-        {group.cost.usd === null ? "Unknown cost" : <span className={group.cost.provenance === "estimated" ? "text-amber-300" : "text-slate-200"}>
+        {group.cost.usd === null ? <span className="text-slate-400">Cost unavailable</span> : <span className={group.cost.provenance === "estimated" ? "text-amber-300" : "text-slate-200"}>
           ${group.cost.usd.toFixed(3)} {group.cost.provenance === "estimated" ? "estimate" : "local provider fees"}
         </span>}
         <Coverage runs={group.cost.runs} total={group.runCount} />
