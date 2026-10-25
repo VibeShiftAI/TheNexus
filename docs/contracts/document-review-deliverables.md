@@ -524,9 +524,9 @@ Nexus records authority and state; Praxis owns the delivery operation.
   `content_hash`) of the revision on screen, plus a fresh
   `client_decision_id` per click. On `409 stale_revision`, reload and show the
   new revision; on `409 file_unavailable`, show the file problem; on
-  `403 operator_required`, explain that decisions need the tunnel, phone or
-  travel session (the Mac app cannot decide). There is no capability probe
-  endpoint in v1; the 403 is the signal.
+  `403 operator_required`, offer explicit local Operator sign-in, or the
+  existing tunnel, phone or travel session. The local sign-in dialog checks
+  its own cookie through `/api/operator-session`; it never retries a decision.
 - Send no `Authorization` header with document requests from a browser
   session: the session is the proof, and a bearer turns a refusal into a
   credential problem (`operator_credential_unconfigured`).

@@ -1,0 +1,160 @@
+{
+  "task_id": "5f15ca0f-17b1-48a7-aa93-61f212fcabf6",
+  "baseline": "13a75c9e6e80e69c772efd67f6221eb057266cc1",
+  "server": {
+    "command": "npx jest server/__tests__/local-operator-session.test.js server/__tests__/local-operator-flows.test.js server/__tests__/document-deliverables.test.js server/__tests__/document-executor-approvals.test.js server/__tests__/document-outgoing.test.js server/__tests__/mail-draft-auth-mount.test.js server/__tests__/mail-draft-relay.test.js server/__tests__/praxis-operator-provenance.test.js server/__tests__/mcp-boundary-security.test.js server/__tests__/praxis-mind-stateless-conformance.test.js --runInBand --silent",
+    "result": "10 suites passed; 308 tests passed",
+    "output": [
+      "PASS server/__tests__/praxis-operator-provenance.test.js",
+      "PASS server/__tests__/document-deliverables.test.js",
+      "PASS server/__tests__/document-executor-approvals.test.js",
+      "PASS server/__tests__/document-outgoing.test.js",
+      "PASS server/__tests__/mcp-boundary-security.test.js",
+      "PASS server/__tests__/local-operator-session.test.js",
+      "PASS server/__tests__/local-operator-flows.test.js",
+      "PASS server/__tests__/praxis-mind-stateless-conformance.test.js",
+      "PASS server/__tests__/mail-draft-auth-mount.test.js",
+      "PASS server/__tests__/mail-draft-relay.test.js",
+      "",
+      "Test Suites: 10 passed, 10 total",
+      "Tests:       308 passed, 308 total",
+      "Snapshots:   0 total",
+      "Time:        7.08 s, estimated 9 s"
+    ]
+  },
+  "dashboard": {
+    "command": "cd dashboard && node --import ./test/register.mjs --test src/components/__tests__/local-operator-sign-in.test.mjs src/components/__tests__/mail-drafts.test.mjs src/components/__tests__/document-decisions.test.mjs",
+    "result": "62 passed; 0 failed"
+  },
+  "build": {
+    "command": "cd dashboard && NEXT_DIST_DIR=.next-local-operator-verify npm run build",
+    "result": "exit 0; compiled successfully; generated 30/30 static pages",
+    "observation": [
+      "✓ Compiled successfully in 3.6s",
+      "  Generating static pages using 15 workers (0/30) ...",
+      "  Generating static pages using 15 workers (7/30) ",
+      "  Generating static pages using 15 workers (14/30) ",
+      "  Generating static pages using 15 workers (22/30) ",
+      "✓ Generating static pages using 15 workers (30/30) in 377.8ms"
+    ],
+    "cleanup": "Removed only build-added .next-local-operator-verify entries from tsconfig.json; no tsconfig diff remains"
+  },
+  "browser": {
+    "command": "node dashboard/scripts/local-operator-browser-check.cjs",
+    "result": {
+      "synthetic": true,
+      "origin": "http://localhost:3000",
+      "checks": [
+        "real browser sign-in, HttpOnly cookie hidden from document.cookie",
+        "mail dialog preserves unsaved edit and recognizes session after navigation",
+        "approve and request changes recorded in isolated document ledger; dialog preserves notes",
+        "browser logout revokes subsequent document decisions: 403 operator_required"
+      ],
+      "mailActions": [
+        {
+          "actor": "operator:mail-drafts",
+          "action": "edit"
+        },
+        {
+          "actor": "operator:mail-drafts",
+          "action": "approve_send"
+        },
+        {
+          "actor": "operator:mail-drafts",
+          "action": "cancel"
+        }
+      ],
+      "decisions": [
+        {
+          "decision": "approve",
+          "authority": "operator_credential",
+          "recorded_by": "operator",
+          "actor_id": "local_user"
+        },
+        {
+          "decision": "request_changes",
+          "authority": "operator_credential",
+          "recorded_by": "operator",
+          "actor_id": "local_user"
+        }
+      ],
+      "errors": []
+    }
+  },
+  "live": {
+    "at": "2026-10-25T15:18:15.467Z",
+    "origin": "http://localhost:3000",
+    "observations": [
+      {
+        "label": "local status",
+        "status": 200,
+        "code": null,
+        "operator": false
+      },
+      {
+        "label": "placeholder sign-in",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "foreign origin",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "unsigned document decision",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "unsigned mail decision",
+        "status": 403,
+        "code": "operator_required"
+      }
+    ],
+    "initialMissingDocumentProbe": {
+      "status": 404,
+      "explanation": "Nonexistent document is rejected before authority; repeated against an existing document without credentials."
+    }
+  },
+  "baseline_failure": {
+    "suite": "server/__tests__/client-access.test.js",
+    "command_current": "Initial 11-suite security run including client-access.test.js --runInBand --silent",
+    "current_outcome": "23 failed in client-access setup; 303 passed elsewhere before five added regressions",
+    "command_baseline": "git archive 13a75c9e6e80 | tar -x -C /tmp/nexus-local-operator-baseline; symlink current node_modules; run jest server/__tests__/client-access.test.js --runInBand --silent in archive",
+    "baseline_outcome": "23 failed, same setup error and same test names",
+    "error": "New information needs require structured knowledge with question, purpose and resolution",
+    "location": "db/knowledge-lifecycle.js:71 via server/__tests__/client-access.test.js:73",
+    "matching_test_names": [
+      "granting access needs Robert's operator credential: the cockpit stub, the runtime key, a wrong key, the bridge header and an unconfigured key all fail closed",
+      "a grant requires an existing, active member who is already linked to that project; it never creates membership",
+      "an entitled member reads requirements, progress, checkpoints and links, and nothing internal leaves the server",
+      "the client surface accepts only the runtime credential: no key, the cockpit stub, the operator key, a wrong key and the bridge header are all refused",
+      "another member, another project, unknown ids and the decision-maker flag alone are denied with one indistinguishable shape",
+      "revoking the entitlement, unlinking the member, dormancy, an identity edit and deletion each deny every scoped operation, including replay of an earlier decision; a fresh grant restores it",
+      "publishing binds one exact version; duplicates, foreign documents, bad links, unknown checkpoints and foreign tasks are refused",
+      "reviews need a live session assertion and the exact version; acceptance is replay-safe, final per version and distinct from comments",
+      "acceptance changes nothing else: tasks, checkpoints, gates and reserved proposals are untouched, and the runtime credential cannot grant or decide",
+      "links reach a client only as credential-free http(s) URLs: project settings are filtered on projection, publication refuses anything else, and a stored row is re-checked on read",
+      "every acknowledged client_decision_id is reserved against its payload: a second accept key resolves to the one acceptance and can never be reused for a different review",
+      "upgrade path: a review written before client_review_keys existed is backfilled by initialization, idempotently, and its key then rejects conflicting reuse",
+      "an identical publish retry returns the existing version even when it supersedes; competing successors and conflicting predecessors are refused",
+      "an entitlement lookup that cannot run denies every scoped operation with 503 entitlement_unavailable and serves no stored content",
+      "every ledger table is append-only at the SQLite level",
+      "list, workspace, artifact detail and review responses conform to @praxis/contract",
+      "an unavailable database fails closed with 503 on both surfaces",
+      "artifact detail preserves captured BOM and CRLF bytes covered by the immutable hash",
+      "published designs expose only safe media descriptors and protected version-bound assets",
+      "design direction is required, recorded and bound to review idempotency",
+      "review room: pinned notes are validated against the published revision, recorded beside the decision and bound into idempotency",
+      "legacy design acceptances without selection remain replayable after the media upgrade",
+      "asset reads reject corrupt bytes, expired sessions, withdrawal and supersession"
+    ]
+  },
+  "activation": {
+    "configuration": "Appended NEXUS_LOCAL_OPERATOR_SESSIONS=1 to ignored .env; all pre-existing bytes preserved",
+    "restart": "TERM supervised Nexus API child 67815; supervisor respawned PID 23056 on port 4000; Praxis and dashboard not restarted",
+    "credential": "No production operator key retrieved or supplied; no real decision or mail delivery performed"
+  },
+  "remaining": "Robert must sign into actual Mac app and local browser himself and verify intended live decisions. Criterion 1 remains blocked."
+}

@@ -108,6 +108,8 @@ function authenticate(req, res, next) {
 ].forEach(prefix => app.use(prefix, authenticate));
 
 app.use('/api/write-leases', require('./routes/write-leases')({ db }));
+// Explicit local sign-in has its own credential and same-origin boundary.
+app.use('/api/operator-session', require('./routes/operator-session')());
 
 // ─── Shared Dependencies (injected into route factories) ────────────────────
 const deps = { db, io, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, pushService };
