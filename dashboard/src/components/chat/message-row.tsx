@@ -107,11 +107,17 @@ export function MessageRow({
     playNextQueuedVoice,
     saveVoiceMemo,
 }: MessageRowProps) {
+    const timestamp = (
+        <time dateTime={msg.timestamp.toISOString()} title={msg.timestamp.toLocaleString()}
+            className="text-[10px] text-slate-500 mt-1 block">
+            {msg.timestamp.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' })}
+        </time>
+    );
     const displayReport = displayReportSummary(msg);
     if (displayReport) return (
         <div key={rowKey} data-message-row="display-report" className="flex items-center gap-2 py-1 px-2" title="Sent to Praxis by this device's display relay">
             <div className="w-3 h-3 flex items-center justify-center flex-shrink-0"><div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50" /></div>
-            <span className="text-xs text-slate-400">{displayReport}</span>
+            <span className="text-xs text-slate-400">{displayReport}{timestamp}</span>
         </div>
     );
     return msg.role === 'system' ? (
@@ -124,6 +130,7 @@ export function MessageRow({
                 </div>
                 <div className="min-w-0 flex-1 rounded-lg px-4 py-3 bg-slate-800/60 border border-cyan-500/20 text-slate-200">
                     <MarkdownMessage content={msg.content} />
+                    {timestamp}
                 </div>
             </div>
         ) : (
@@ -136,7 +143,7 @@ export function MessageRow({
                         <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50" />
                     </div>
                 )}
-                <span className="text-xs text-slate-400"><TaskLinkedText text={msg.content} /></span>
+                <span className="text-xs text-slate-400"><TaskLinkedText text={msg.content} />{timestamp}</span>
             </div>
         )
     ) : (
@@ -569,9 +576,7 @@ export function MessageRow({
                     );
                 })}
 
-                <span className="text-[10px] text-slate-500 mt-1 block">
-                    {msg.timestamp.toLocaleTimeString()}
-                </span>
+                {timestamp}
             </div>
         </div>
     );

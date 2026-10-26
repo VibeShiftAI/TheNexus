@@ -79,14 +79,28 @@ function createDocumentOutgoingRouter({ store, captureRevision, authorizeDecisio
         const revision = await capture(doc, input.revision_id);
         res.json({ outgoing: store().prepareOutgoing(doc.id, revision, input) });
     }));
+    router.post('/edit', route(async (req, res, doc) => {
+        if (req.get('sec-fetch-site') === 'cross-site') fail(403, 'cross_site', 'Same-origin requests only');
+        const auth = await authorizeDecision(req);
+        if (!auth?.ok) return res.status(auth?.status || 403).json({ error: auth?.error || 'Operator required', code: auth?.code || 'operator_required' });
+        if (!OPERATORS.has(auth.actor?.authority)) fail(403, 'operator_required', 'Only the operator may edit outgoing messages');
+        const input = req.body;
+        snapshot(input, ['subject', 'text']);
+        string(input.subject, 'subject', 998);
+        if (typeof input.text !== 'string' || !input.text.trim() || input.text.length > 100000 || input.text.includes('\u0000')) invalid('text must be the nonempty exact message body');
+        await capture(doc, input.revision_id);
+        res.json({ outgoing: store().editOutgoing(doc.id, input, auth.actor) });
+    }));
     router.post('/decision', route(async (req, res, doc) => {
         if (req.get('sec-fetch-site') === 'cross-site') fail(403, 'cross_site', 'Same-origin requests only');
         const auth = await authorizeDecision(req);
         if (!auth?.ok) return res.status(auth?.status || 403).json({ error: auth?.error || 'Operator required', code: auth?.code || 'operator_required' });
         if (!OPERATORS.has(auth.actor?.authority)) fail(403, 'operator_required', 'Only a direct operator decision can authorize or cancel sending');
         const input = req.body;
-        snapshot(input, ['decision']);
-        if (!['approve_send', 'cancel'].includes(input.decision)) invalid('decision must be approve_send or cancel');
+        snapshot(input, ['decision', 'comments']);
+        if (!['approve_send', 'cancel', 'return_to_praxis'].includes(input.decision)) invalid('decision must be approve_send, cancel or return_to_praxis');
+        if (input.decision === 'return_to_praxis' && (typeof input.comments !== 'string' || !input.comments.trim() || input.comments.length > 20000 || input.comments.includes('\u0000'))) invalid('comments must be nonempty text of at most 20000 characters');
+        if (input.decision !== 'return_to_praxis' && input.comments !== undefined) invalid('comments are only supported when returning to Praxis');
         // A missing or superseded file must not prevent the operator cancelling.
         if (input.decision === 'approve_send') await capture(doc, input.revision_id);
         res.json({ outgoing: store().decideOutgoing(doc.id, input, auth.actor) });

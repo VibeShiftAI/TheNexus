@@ -40,18 +40,22 @@ function initializeDocumentOutgoing(db) {
     CREATE TRIGGER IF NOT EXISTS review_document_outgoing_events_no_delete
         BEFORE DELETE ON review_document_outgoing_events
         BEGIN SELECT RAISE(ABORT, 'outgoing events are append-only'); END;`);
+    const columns = new Set(db.prepare('PRAGMA table_info(review_document_outgoing)').all().map(row => row.name));
+    for (const name of ['operator_edit', 'feedback']) {
+        if (!columns.has(name)) db.exec(`ALTER TABLE review_document_outgoing ADD COLUMN ${name} TEXT`);
+    }
 }
 
 function createDocumentOutgoingStore(db) {
     function getOutgoing(id) {
         const row = db.prepare('SELECT * FROM review_document_outgoing WHERE document_id = ?').get(id);
         if (!row) return null;
-        for (const key of ['envelope', 'provenance', 'grant', 'receipt']) row[key] = row[key] ? JSON.parse(row[key]) : null;
+        for (const key of ['envelope', 'provenance', 'grant', 'receipt', 'operator_edit', 'feedback']) row[key] = row[key] ? JSON.parse(row[key]) : null;
         return row;
     }
     function save(row, event, actor = { id: 'runtime', authority: 'runtime_credential' }) {
         const data = { ...row };
-        for (const key of ['envelope', 'provenance', 'grant', 'receipt']) data[key] = data[key] == null ? null : JSON.stringify(data[key]);
+        for (const key of ['envelope', 'provenance', 'grant', 'receipt', 'operator_edit', 'feedback']) data[key] = data[key] == null ? null : JSON.stringify(data[key]);
         const keys = Object.keys(data);
         db.prepare(`INSERT INTO review_document_outgoing (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})
             ON CONFLICT(document_id) DO UPDATE SET ${keys.filter(k => k !== 'document_id').map(k => `${k}=excluded.${k}`).join(',')}`)
@@ -88,6 +92,30 @@ function createDocumentOutgoingStore(db) {
     }
     return {
         getOutgoing,
+        listMailDrafts(folder = 'drafts') {
+            return db.transaction(() => {
+                const rows = db.prepare("SELECT document_id, status FROM review_document_outgoing WHERE status != 'sent' ORDER BY updated_at DESC, document_id").all();
+                return {
+                    counts: { drafts: rows.filter(row => row.status !== 'cancelled').length, cancelled: rows.filter(row => row.status === 'cancelled').length },
+                    outgoing: rows.filter(row => folder === 'cancelled' ? row.status === 'cancelled' : row.status !== 'cancelled').map(row => getOutgoing(row.document_id)),
+                };
+            })();
+        },
+        editOutgoing: db.transaction((id, input, actor) => {
+            if (!operators.has(actor?.authority)) fail('operator_required', 'Only the operator may edit outgoing messages');
+            const row = getOutgoing(id);
+            exact(row, input);
+            if (!['draft', 'approved'].includes(row.status)) fail('delivery_locked', 'Only unclaimed, uncancelled drafts can be edited');
+            fresh(row);
+            const tags = value => value.match(/\[PX-[^\]\r\n]+\]/g) || [];
+            if (JSON.stringify(tags(row.envelope.subject)) !== JSON.stringify(tags(input.subject))) fail('trace_tag_changed', 'Preserve the existing Praxis trace tag exactly');
+            return save({ ...row, envelope: { ...row.envelope, subject: input.subject, text: input.text },
+                envelope_hash: createHash('sha256').update(randomUUID()).digest('hex'), status: 'draft', grant: null, feedback: null,
+                operator_edit: { authority: actor.authority, actor_id: actor.id,
+                    base_envelope_hash: row.operator_edit?.base_envelope_hash || row.envelope_hash,
+                    base_subject: row.operator_edit?.base_subject ?? row.envelope.subject,
+                    base_text: row.operator_edit?.base_text ?? row.envelope.text }, updated_at: now() }, 'operator_edited', actor);
+        }),
         listOutgoingEvents,
         invalidateOutgoing,
         prepareOutgoing: db.transaction((id, revision, input) => {
@@ -114,7 +142,7 @@ function createDocumentOutgoingStore(db) {
                 if (same) return existing;
                 fail('outgoing_cancelled', 'Cancellation is permanent for this document');
             }
-            if (same && !existing.invalidated_at) return existing;
+            if (same && !existing.invalidated_at && !existing.feedback) return existing;
             if (existing && input.expected_envelope_hash !== existing.envelope_hash) fail('outgoing_conflict', 'Replacing a message requires its expected_envelope_hash');
             const deliveryId = existing?.delivery_id || randomUUID();
             // Include an unguessable version nonce: A -> B -> A never revives A's grant.
@@ -124,7 +152,7 @@ function createDocumentOutgoingStore(db) {
             const ts = now();
             return save({ document_id: id, delivery_id: deliveryId, revision_id: revision.id, content_hash: revision.content_hash,
                 envelope_hash: envelopeHash, envelope: input.envelope, provenance: input.provenance,
-                status: 'draft', grant: null, invalidated_at: null, invalidation_reason: null, claimed_at: null, receipt: null,
+                status: 'draft', grant: null, operator_edit: null, feedback: null, invalidated_at: null, invalidation_reason: null, claimed_at: null, receipt: null,
                 created_at: existing?.created_at || ts, updated_at: ts }, 'prepared');
         }),
         decideOutgoing: db.transaction((id, input, actor) => {
@@ -137,7 +165,16 @@ function createDocumentOutgoingStore(db) {
                 return save({ ...row, status: 'cancelled', grant: null, updated_at: now() }, 'cancelled', actor);
             }
             if (row.status === 'cancelled') fail('outgoing_cancelled', 'Cancellation is permanent for this document');
+            if (input.decision === 'return_to_praxis') {
+                const ts = now();
+                return save({ ...row, status: 'draft', grant: null, envelope_hash: createHash('sha256').update(randomUUID()).digest('hex'),
+                    operator_edit: row.operator_edit || { authority: actor.authority, actor_id: actor.id,
+                        base_envelope_hash: row.envelope_hash, base_subject: row.envelope.subject, base_text: row.envelope.text },
+                    feedback: { status: 'changes_requested', comments: input.comments, returned_at: ts, actor_id: actor.id, authority: actor.authority },
+                    updated_at: ts }, 'returned_to_praxis', actor);
+            }
             fresh(row);
+            if (row.feedback) fail('changes_requested', 'Revise the message before approving it');
             if (!row.envelope.cc.length) fail('operator_copy_missing', 'The operator copy address must be configured and included in the reviewed message before sending');
             if (row.status === 'approved') return row;
             const ts = now();

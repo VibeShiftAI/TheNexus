@@ -41,6 +41,11 @@ function isActivityOnlyChatMessage(row) {
     }
     return false;
 }
+// Spoken updates remain archived in Activity and are also visible in chat.
+function isChatVisibleMessage(row) {
+    return (row.role === 'assistant' && metadataOf(row).voiceAnnouncement === true)
+        || !isActivityOnlyChatMessage(row);
+}
 function isConversationalChatMessage(row) {
     return (row.role === 'user' || row.role === 'assistant') && !isActivityOnlyChatMessage(row);
 }
@@ -57,4 +62,4 @@ function chatMessageActivityEvent(row) {
         requires_action: Boolean(metadata.requiresAction || metadata.requires_action),
     };
 }
-module.exports = { BACKGROUND_EVENT_TYPES, metadataOf, isActivityOnlyChatMessage, isConversationalChatMessage, chatMessageActivityEvent };
+module.exports = { BACKGROUND_EVENT_TYPES, metadataOf, isChatVisibleMessage, isActivityOnlyChatMessage, isConversationalChatMessage, chatMessageActivityEvent };

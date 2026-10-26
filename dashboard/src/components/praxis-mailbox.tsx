@@ -1,5 +1,7 @@
 "use client";
 
+import { MailDrafts } from '@/components/mail-drafts';
+import { getMailDrafts, type DraftCounts, type DraftFolder } from '@/lib/mail-drafts';
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -32,11 +34,19 @@ function failure(error: unknown) {
 }
 
 export function PraxisMailbox() {
-  const [folder, setFolder] = useState<MailboxFolder>('all');
+  const [folder, setFolder] = useState<MailboxFolder | DraftFolder>('all');
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('folder') === 'cancelled') setFolder('cancelled');
+    else if (query.get('folder') === 'sent') setFolder('sent');
+    else if (query.get('folder') === 'drafts' || query.has('draft')) setFolder('drafts');
+  }, []);
+  const [counts, setCounts] = useState<DraftCounts | null>(null);
+  useEffect(() => { const controller = new AbortController(); void getMailDrafts('drafts', controller.signal).then(data => { if (!controller.signal.aborted) setCounts(data.counts); }); return () => controller.abort(); }, []);
   const [inboxFolder, setInboxFolder] = useState<'all' | 'inbox' | 'feedback'>('all');
-  const [outboxFolder, setOutboxFolder] = useState<'pending' | 'sent'>('pending');
   const [account, setAccount] = useState<string | null>(null);
-  const outbox = folder === 'sent' || folder === 'pending';
+  const inbox = ['all', 'inbox', 'feedback'].includes(folder);
+  const draftFolder = folder === 'drafts' || folder === 'cancelled';
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-8" style={{ backgroundImage: 'radial-gradient(ellipse at top left, rgba(34,211,238,0.07), transparent 55%)' }}>
       <div className="mx-auto max-w-7xl">
@@ -47,19 +57,15 @@ export function PraxisMailbox() {
             <p className="mt-2 text-sm text-slate-400">{account ?? 'Dedicated Praxis mailbox'}</p>
           </div>
         </header>
-        <nav aria-label="Mail folders" className="mb-4 flex gap-2">
-          <button className={`${buttonClass} ${!outbox ? selectedClass : ''}`} aria-pressed={!outbox} onClick={() => setFolder(inboxFolder)}><Inbox size={16} />Inbox</button>
-          <button className={`${buttonClass} ${outbox ? selectedClass : ''}`} aria-pressed={outbox} onClick={() => setFolder(outboxFolder)}><Send size={16} />Outbox</button>
+        <nav aria-label="Mail folders" className="mb-4 flex flex-wrap gap-2">
+          <button className={`${buttonClass} ${inbox ? selectedClass : ''}`} aria-pressed={inbox} onClick={() => setFolder(inboxFolder)}><Inbox size={16} />Inbox</button>
+          {(['drafts', 'sent', 'cancelled'] as const).map(value => <button key={value} className={`${buttonClass} ${folder === value ? selectedClass : ''}`} aria-pressed={folder === value} onClick={() => setFolder(value)}>{value === 'sent' && <Send size={16} />}{value === 'drafts' ? `Drafts (${counts?.drafts ?? '…'})` : value === 'cancelled' ? `Cancelled (${counts?.cancelled ?? '…'})` : 'Sent'}</button>)}
         </nav>
-        {!outbox && <div className="mb-4 flex flex-wrap items-center gap-2" aria-label="Inbox filters">
+        {inbox && <div className="mb-4 flex flex-wrap items-center gap-2" aria-label="Inbox filters">
           {(['all', 'inbox', 'feedback'] as const).map(value => <button key={value} className={`${buttonClass} ${folder === value ? selectedClass : ''}`} aria-pressed={folder === value} onClick={() => { setInboxFolder(value); setFolder(value); }}>{value === 'all' ? 'All' : value === 'inbox' ? 'Email' : 'Feedback'}</button>)}
           <p className="ml-1 text-xs text-slate-400">Email, feedback requests, and their conversations.</p>
         </div>}
-        {outbox && <div className="mb-4 flex flex-wrap items-center gap-2" aria-label="Outbox filters">
-          {(['pending', 'sent'] as const).map(value => <button key={value} className={`${buttonClass} ${folder === value ? selectedClass : ''}`} aria-pressed={folder === value} onClick={() => { setOutboxFolder(value); setFolder(value); }}>{value === 'pending' ? 'Pending' : 'Sent'}</button>)}
-          <p className="ml-1 text-xs text-slate-400">{folder === 'pending' ? 'Praxis drafts that have not been sent.' : 'Messages in the Praxis Sent folder.'}</p>
-        </div>}
-        <MailboxFolderView key={folder} folder={folder} onAccount={setAccount} />
+        {draftFolder ? <MailDrafts key={folder} folder={folder as DraftFolder} onCounts={setCounts} /> : <MailboxFolderView key={folder} folder={folder as MailboxFolder} onAccount={setAccount} />}
       </div>
     </main>
   );
@@ -158,7 +164,7 @@ function MessageDetail({ folder, id }: { folder: MailboxFolder; id: string }) {
   return <article className="p-5 sm:p-7" aria-label="Message detail">
     <div className="mb-3 flex flex-wrap items-center gap-3">
       <span className={`rounded-full border px-2.5 py-1 text-xs ${message.status === 'pending' ? 'border-amber-500/30 text-amber-300' : 'border-slate-700 text-slate-400'}`}>{mailStatus(message)}</span>
-      {message.approvalId && message.approvalState === 'pending' && <Link href={`/inbox#${encodeURIComponent(message.approvalId)}`} className="text-sm text-cyan-300 underline underline-offset-4">Review approval</Link>}
+      {message.approvalId && message.approvalState === 'pending' && <Link href={message.approvalId.startsWith('hitl-humanquery-') ? `/mail?draft=${encodeURIComponent(message.approvalId.slice('hitl-humanquery-'.length))}` : '/mail?folder=drafts'} className="text-sm text-cyan-300 underline underline-offset-4">Review in Drafts</Link>}
     </div>
     <h2 className="mb-5 break-words text-xl font-semibold">{message.subject || '(No subject)'}</h2>
     <dl className="grid grid-cols-[4rem_minmax(0,1fr)] gap-x-3 gap-y-2 border-b border-slate-800 pb-5 text-sm">
@@ -197,7 +203,7 @@ function FeedbackConversation({ message }: { message: MailboxDetail }) {
           <div className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-200">{entry.body || 'No text was recorded.'}</div>
           {entry.truncated && <p className="mt-3 text-xs text-amber-300">This entry is shortened by the viewer’s size limit.</p>}
           {entry.attachments.length > 0 && <ul aria-label="Attachment information" className="mt-4 space-y-1 text-xs text-slate-400">{entry.attachments.map((attachment, index) => <li key={`${attachment.filename}-${index}`} className="flex items-start gap-2 break-all"><Paperclip className="shrink-0" size={13} />{attachment.filename} · {attachment.contentType} · File information only</li>)}</ul>}
-          {entry.approvalId && entry.approvalState === 'pending' && <Link href={`/inbox#${encodeURIComponent(entry.approvalId)}`} className="mt-4 inline-block text-sm text-cyan-300 underline underline-offset-4">Review approval</Link>}
+          {entry.approvalId && entry.approvalState === 'pending' && <Link href={entry.approvalId.startsWith('hitl-humanquery-') ? `/mail?draft=${encodeURIComponent(entry.approvalId.slice('hitl-humanquery-'.length))}` : '/mail?folder=drafts'} className="mt-4 inline-block text-sm text-cyan-300 underline underline-offset-4">Review in Drafts</Link>}
         </li>;
       })}
     </ol>

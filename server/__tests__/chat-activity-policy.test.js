@@ -71,18 +71,19 @@ test('real sync retries return canonical voice receipts once in Activity and his
             expect(response.status).toBe(200);
             expect((await response.json()).messages[0].content).toBe(announcement.content);
         }
-        expect(io.emit).toHaveBeenCalledTimes(1);
+        expect(io.emit).toHaveBeenCalledTimes(2);
+        expect(io.emit).toHaveBeenCalledWith('chat-message', expect.objectContaining({ message: expect.objectContaining({ id: announcement.id }) }));
         expect(io.emit).toHaveBeenCalledWith('activity:event', expect.objectContaining({ event_type: 'voice_announcement' }));
         expect((await db.getAgEvents({ limit: 100 })).filter(r => r.metadata.chatMessageId === announcement.id)).toHaveLength(1);
         const active = await (await fetch(`${base}/active?limit=2`)).json();
-        expect(active.messages.map(r => r.id)).toEqual(['turn-1', 'turn-2']);
-        expect(active).toMatchObject({ total_count: 3, hasMore: true });
+        expect(active.messages.map(r => r.id)).toEqual(['turn-2', announcement.id]);
+        expect(active).toMatchObject({ total_count: 4, hasMore: true });
         const history = await (await fetch(`${base}/history?conversationId=${conversation.id}&limit=2&before=2026-10-13T01:01:00Z`)).json();
         expect(history.messages.map(r => r.id)).toEqual(['turn-0']);
         expect(history.hasMore).toBe(false);
         const switched = await (await fetch(`${base}/conversations/${conversation.id}/switch?limit=2`, { method: 'PUT' })).json();
-        expect(switched.messages.map(r => r.id)).toEqual(['turn-1', 'turn-2']);
-        expect(switched.total_count).toBe(3);
+        expect(switched.messages.map(r => r.id)).toEqual(['turn-2', announcement.id]);
+        expect(switched.total_count).toBe(4);
     } finally { server.closeAllConnections(); await new Promise(r => server.close(r)); }
 });
 
@@ -124,7 +125,7 @@ test('startup migrates legacy rows with their original dates and a second startu
     sqlite.prepare('INSERT INTO chat_messages (id, conversation_id, role, content, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?)').run('legacy-boot', conversation.id, 'assistant', 'Original historical announcement', JSON.stringify({ voiceAnnouncement: true }), '2025-05-01T12:00:00Z');
     let reloaded;
     jest.isolateModules(() => { reloaded = require('../../db'); });
-    expect((await reloaded.getChatMessages(conversation.id, { chatVisibleOnly: true }))).toEqual([]);
+    expect((await reloaded.getChatMessages(conversation.id, { chatVisibleOnly: true })).map(r => r.id)).toEqual(['legacy-boot']);
     const event = sqlite.prepare("SELECT * FROM ag_events WHERE json_extract(metadata, '$.chatMessageId') = 'legacy-boot'").get();
     expect(event.created_at).toBe('2025-05-01T12:00:00Z');
     expect(event.message).toBe('Original historical announcement');

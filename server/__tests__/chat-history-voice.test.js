@@ -58,7 +58,8 @@ describe('voice exchange archival', () => {
         const retry = await post({ conversationId: 'selected', messages: [{ ...announcement, content: 'Different generated words.' }] });
         expect(retry.status).toBe(200);
         expect(retry.body.messages[0].content).toBe('Original announcement.');
-        expect(rows.size).toBe(1); expect(io.emit).toHaveBeenCalledTimes(1);
+        expect(rows.size).toBe(1); expect(io.emit).toHaveBeenCalledTimes(2);
+        expect(io.emit).toHaveBeenCalledWith('chat-message', expect.objectContaining({ message: expect.objectContaining({ id: announcement.id }) }));
         expect(io.emit).toHaveBeenCalledWith('activity:event', expect.objectContaining({ event_type: 'voice_announcement' }));
         expect(db.recordAgEvent.mock.calls[0][0]).toEqual(db.recordAgEvent.mock.calls[1][0]);
     });
@@ -68,7 +69,8 @@ describe('voice exchange archival', () => {
         const retry = await post({ messages: [{ ...announcement, content: 'Regenerated announcement.' }] });
         expect(retry.status).toBe(200);
         expect(retry.body.messages[0]).toMatchObject({ content: 'Original announcement.', conversation_id: 'selected' });
-        expect(rows.size).toBe(1); expect(io.emit).toHaveBeenCalledTimes(1);
+        expect(rows.size).toBe(1); expect(io.emit).toHaveBeenCalledTimes(2);
+        expect(io.emit).toHaveBeenCalledWith('chat-message', expect.objectContaining({ message: expect.objectContaining({ id: announcement.id }) }));
         expect(io.emit).toHaveBeenCalledWith('activity:event', expect.objectContaining({ event_type: 'voice_announcement' }));
         expect(db.recordAgEvent.mock.calls[0][0]).toEqual(db.recordAgEvent.mock.calls[1][0]);
     });

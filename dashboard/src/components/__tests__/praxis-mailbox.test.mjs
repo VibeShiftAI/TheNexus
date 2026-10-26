@@ -17,6 +17,7 @@ function setup(handler) {
   globalThis.fetch = async (url, options = {}) => {
     const parsed = new URL(String(url), 'http://localhost');
     calls.push({ path: parsed.pathname, method: options.method ?? 'GET', query: parsed.searchParams });
+    if (parsed.pathname.endsWith('/mail-drafts') || parsed.pathname.endsWith('/drafts-review')) return response({items:[], counts:{drafts:0,cancelled:0}});
     return handler(parsed, options);
   };
   const container = document.createElement('div');
@@ -40,23 +41,16 @@ test('opens complete mail as plain text and performs only reads', async () => {
   } finally { t.cleanup(); }
 });
 
-test('Outbox separates pending approval from actual sent mail', async () => {
-  const draft = { ...summary('draft', 'pending'), approvalId: 'hitl-humanquery-draft', approvalState: 'pending' };
-  const t = setup(url => {
-    if (!url.pathname.endsWith('/mailbox')) return response({ ...detail('draft'), ...draft });
-    const folder = url.searchParams.get('folder');
-    return response(page(folder, folder === 'pending' ? [draft] : folder === 'sent' ? [summary('delivered', 'sent')] : []));
-  });
+test('main navigation exposes Drafts, Sent, and permanent Cancelled folder', async () => {
+  const t = setup(url => response(page(url.searchParams.get('folder'), [summary('delivered', 'sent')])));
   try {
     await settle();
-    await click(button(t.container, 'Outbox'));
-    await click(t.container.querySelector('[data-message-id="draft"]'));
-    assert.match(t.container.textContent, /Awaiting approval/);
-    assert.equal(t.container.querySelector('a[href="/inbox#hitl-humanquery-draft"]').textContent, 'Review approval');
+    await click(button(t.container, 'Drafts (0)'));
+    assert.match(t.container.textContent, /No drafts awaiting review/);
+    await click(button(t.container, 'Cancelled (0)'));
+    assert.match(t.container.textContent, /cannot be sent again/);
     await click(button(t.container, 'Sent'));
     assert.ok(t.container.querySelector('[data-message-id="delivered"]'));
-    assert.ok(!t.container.querySelector('a[href*="humanquery"]'));
-    assert.ok(t.calls.some(c => c.query.get('folder') === 'sent'));
   } finally { t.cleanup(); }
 });
 
@@ -88,7 +82,7 @@ test('a delayed message cannot replace the current selection or leak into anothe
     assert.match(t.container.textContent, /Full body new/);
     await act(async () => finishOld());
     assert.doesNotMatch(t.container.textContent, /Full body old/);
-    await click(button(t.container, 'Outbox'));
+    await click(button(t.container, 'Sent'));
     assert.doesNotMatch(t.container.textContent, /Full body new/);
   } finally { t.cleanup(); }
 });
@@ -137,7 +131,7 @@ test('combined Inbox filters email and feedback and opens the complete feedback 
   });
   try {
     await settle();
-    assert.equal(t.calls[0].query.get('folder'), 'all');
+    assert.ok(t.calls.some(c => c.path.endsWith('/mailbox') && c.query.get('folder') === 'all'));
     assert.equal(t.container.querySelectorAll('[data-message-id]').length, 2);
     await click(t.container.querySelector('[data-message-id="feedback-PX-MM-1"]'));
     const conversation = t.container.querySelector('[aria-label="Feedback conversation"]');
@@ -149,7 +143,7 @@ test('combined Inbox filters email and feedback and opens the complete feedback 
     assert.match(conversation.textContent, /Awaiting approval/);
     assert.ok(!conversation.querySelector('script'));
     assert.ok(conversation.querySelector('a[href="/task/task-123"]'));
-    assert.ok(conversation.querySelector('a[href="/inbox#hitl-humanquery-followup"]'));
+    assert.ok(conversation.querySelector('a[href="/mail?draft=followup"]'));
     await click(button(t.container, 'Email'));
     assert.equal(t.container.querySelectorAll('[data-message-id]').length, 1);
     assert.ok(!t.container.querySelector('[aria-label="Feedback conversation"]'));

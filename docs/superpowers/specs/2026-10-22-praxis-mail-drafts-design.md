@@ -1,0 +1,5 @@
+# Praxis Mail draft review
+
+Approved by Robert in chat October 22, 2026: consolidate every email awaiting review into Praxis Mail Drafts, with counts, exact-envelope approval, direct subject/body editing, Return to Praxis comments, Cancel send and a Cancelled folder. Show project, task, recipient, CC, source context and lifecycle timestamps. Existing documents and legacy human queries retain identity, history, cancellation and one-shot delivery protections. General document review no longer counts prepared emails. No migration grants sending.
+
+Use existing document outgoing records for prepared stakeholder email and durable human query records for older/general outreach, presented together by the mail interface. Editing creates a fresh version and revokes previous authority. Return comments hold delivery and go through the existing review submission/runtime task channel. Claiming delivery locks edits/cancel; uncertain delivery never retries automatically. Preserve reply routing tags and project bindings.

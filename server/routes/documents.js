@@ -212,12 +212,14 @@ function parseListQuery(query, { paging = true } = {}) {
         return { ok: true, value };
     };
     const read = {};
-    for (const name of ['status', 'limit', 'offset', 'task_id', 'project_id', 'kind', 'q']) {
+    for (const name of ['status', 'limit', 'offset', 'task_id', 'project_id', 'kind', 'q', 'include_mail']) {
         const result = single(name);
         if (!result.ok) return result;
         read[name] = result.value;
     }
     const filters = {};
+    if (read.include_mail !== undefined && !['0', '1'].includes(read.include_mail)) return { ok: false, error: 'include_mail must be 0 or 1' };
+    if (read.include_mail === '1') filters.include_mail = true;
     for (const name of ['task_id', 'project_id']) {
         if (!read[name]) continue;
         if (read[name].length > 120) return { ok: false, error: `${name} must be a short string` };
@@ -959,6 +961,24 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         } catch (err) {
             console.error('[Documents] list failed:', err);
             return res.status(500).json({ error: 'Failed to list documents' });
+        }
+    });
+
+    router.get('/mail-drafts', async (req, res) => {
+        res.set('Cache-Control', 'no-store');
+        const folder = req.query.folder === undefined ? 'drafts' : req.query.folder;
+        if (!['drafts', 'cancelled'].includes(folder)) return res.status(400).json({ code: 'invalid_query', error: 'folder must be drafts or cancelled' });
+        try {
+            const result = store().listMailDrafts(folder);
+            const items = await Promise.all(result.outgoing.map(async outgoing => {
+                const document = store().getDocument(outgoing.document_id);
+                const source = await sourceSummary({ ...document, project_id: outgoing.provenance.project_id, task_id: outgoing.provenance.task_id });
+                return { document, outgoing, project_name: source.project?.name || null, task_name: source.task?.title || null };
+            }));
+            return res.json({ items, counts: result.counts });
+        } catch (err) {
+            console.error('[Documents] mail drafts failed:', err);
+            return res.status(500).json({ error: 'Failed to list mail drafts' });
         }
     });
 

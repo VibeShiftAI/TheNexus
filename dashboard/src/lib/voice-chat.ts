@@ -156,7 +156,7 @@ async function archiveVoiceRows(messages: unknown[], conversationId: string | un
 export function mergeVoiceMessages(previous: Message[], saved: SavedVoiceMessage[]): Message[] {
   const ids = new Set(previous.map(message => message.id));
   const missing = saved.filter(message => {
-    if (message.metadata?.voiceAnnouncement || message.metadata?.voiceDeliveryNotice || message.metadata?.activityOnly) return false;
+    if (message.metadata?.voiceDeliveryNotice || message.metadata?.activityOnly) return false;
     if (ids.has(message.id)) return false;
     ids.add(message.id); return true;
   });

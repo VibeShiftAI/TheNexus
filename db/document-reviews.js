@@ -489,10 +489,11 @@ function rowOut(row) {
 }
 
 /** Shared FROM/WHERE for the document list, its total and the per-status counts, so all three agree. */
-function documentQuery({ id, task_id, project_id, kind, q } = {}, blockingCountSql = '0') {
+function documentQuery({ id, task_id, project_id, kind, q, include_mail } = {}, blockingCountSql = '0') {
     const where = [];
     const params = [];
     if (id) { where.push('d.id = ?'); params.push(id); }
+    if (!id && !include_mail) where.push('NOT EXISTS (SELECT 1 FROM review_document_outgoing mail WHERE mail.document_id = d.id)');
     if (task_id) {
         // A document belongs to a task it was first registered under, or to any task whose declared registration reused it.
         where.push('(d.task_id = ? OR d.id IN (SELECT r.document_id FROM review_document_registrations r WHERE r.task_id = ?) OR EXISTS (SELECT 1 FROM json_each(d.blocking_task_ids) WHERE value = ?))');

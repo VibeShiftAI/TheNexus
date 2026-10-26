@@ -3,7 +3,7 @@
  * Conversation management, message history, and cross-platform sync.
  */
 const express = require('express');
-const { isActivityOnlyChatMessage, chatMessageActivityEvent } = require('../../db/chat-message-policy');
+const { isChatVisibleMessage, isActivityOnlyChatMessage, chatMessageActivityEvent } = require('../../db/chat-message-policy');
 const { resolveChatConversation } = require('../chat-conversation');
 
 function createChatHistoryRouter({ db, io }) {
@@ -164,7 +164,7 @@ function createChatHistoryRouter({ db, io }) {
                         }
                     }
                     stored.push(formatted);
-                    if (inserted && !activityOnly && io) {
+                    if (inserted && isChatVisibleMessage(savedMessage) && io) {
                         io.emit('chat-message', buildChatMessageEvent(savedMessage));
                         if (msg.role === 'assistant' && formatted.metadata?.attachments?.length > 0) {
                             io.emit('cortex-artifact', { type: 'CHAT_RESPONSE', data: { content: msg.content, attachments: formatted.metadata.attachments } });

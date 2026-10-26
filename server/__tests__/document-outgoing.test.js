@@ -43,7 +43,7 @@ beforeEach(async () => {
     store = createDocumentReviewStore(raw);
     const project = { id: 'project-1', name: 'Synthetic', path: root };
     const task = { id: 'task-1', project_id: project.id, name: 'Draft' };
-    const db = { documentReviews: store, getProjects: async () => [project], getProject: async id => id === project.id ? project : null, getTask: async id => id === task.id ? task : null };
+    const db = { documentReviews: store, getProjects: async () => [project], getProject: async id => id === project.id ? project : id === 'other-project' ? { id, name: 'Stakeholder project' } : null, getTask: async id => id === task.id ? task : null };
     const authorizeDecision = createDocumentDecisionAuthority({ authenticateOperator: { inspect: async req => ({ operator: Boolean(req.get('x-test-access')), identity: req.get('x-test-access') === 'access_device' ? 'device' : 'user' }) } });
     const app = express();
     app.use(express.json());
@@ -405,4 +405,100 @@ test.each(['dot', 'trimmed-identity', 'directory-symlink', 'file-symlink'])('fai
     expect((await api('POST', '/', registration)).status).toBe(404);
     fs.writeFileSync(file, original, 'utf8');
     expect((await claim(outgoing)).status).toBe(409);
+});
+
+const edit = (outgoing, extra = {}, role = 'operator') => api('POST', url('/edit'), { revision_id: outgoing.revision_id, envelope_hash: outgoing.envelope_hash, subject: 'Edited subject', text: 'Edited body', ...extra }, role);
+const returnDraft = (outgoing, extra = {}, role = 'operator') => api('POST', url('/decision'), { revision_id: outgoing.revision_id, envelope_hash: outgoing.envelope_hash, decision: 'return_to_praxis', comments: 'Please revise the introduction.', ...extra }, role);
+
+test('operator editing revokes approval, rotates version and preserves trusted original binding through consecutive edits', async () => {
+    const first = (await prepare()).json.outgoing;
+    await approve(first);
+    const result = await edit(first);
+    expect(result.status).toBe(200);
+    const second = result.json.outgoing;
+    expect(second).toMatchObject({ status: 'draft', grant: null, provenance, operator_edit: { authority: 'operator_credential', actor_id: 'local_user', base_envelope_hash: first.envelope_hash, base_subject: envelope.subject, base_text: envelope.text } });
+    expect(second.envelope_hash).not.toBe(first.envelope_hash);
+    expect(second.envelope).toEqual({ ...envelope, subject: 'Edited subject', text: 'Edited body' });
+    expect((await edit(first)).status).toBe(409);
+    expect((await approve(first)).status).toBe(409);
+    const third = (await edit(second, { text: 'Third body' })).json.outgoing;
+    expect(third.operator_edit).toEqual(second.operator_edit);
+    expect(store.listOutgoingEvents(document.id).at(-1).event).toBe('operator_edited');
+    const replaced = await prepare({ expected_envelope_hash: third.envelope_hash });
+    expect(replaced.json.outgoing.operator_edit).toBeNull();
+});
+test.each(['runtime', 'executor', 'unsigned', 'service'])('%s cannot edit or return drafts', async role => {
+    const outgoing = (await prepare()).json.outgoing;
+    expect((await edit(outgoing, {}, role)).status).toBe(403);
+    expect((await returnDraft(outgoing, {}, role)).status).toBe(403);
+});
+test('editing rejects forged metadata, invalid content, modified trace tags and changed source', async () => {
+    const outgoing = (await prepare({ envelope: { ...envelope, subject: '[PX-abc123] Review invitation' } })).json.outgoing;
+    for (const extra of [{ operator_edit: {} }, { provenance }, { text: '' }, { subject: 'a\nb' }, {}]) expect((await edit(outgoing, extra)).status).toBeGreaterThanOrEqual(400);
+    expect((await edit(outgoing, { subject: '[PX-abc123] Edited' })).status).toBe(200);
+    const current = store.getOutgoing(document.id);
+    fs.writeFileSync(file, '# Changed source');
+    expect((await edit(current, { subject: '[PX-abc123] Edited' })).status).toBe(409);
+});
+test.each(['cancelled', 'delivering'])('editing and returning %s messages is refused', async state => {
+    const outgoing = (await prepare()).json.outgoing;
+    if (state === 'cancelled') await api('POST', url('/decision'), { decision: 'cancel', revision_id: revision.id, envelope_hash: outgoing.envelope_hash }, 'operator');
+    else { await approve(outgoing); await claim(outgoing); }
+    expect((await edit(outgoing)).status).toBe(409);
+    expect((await returnDraft(outgoing)).status).toBe(409);
+});
+test('return holds exact draft durably until preparation or operator edit clears feedback', async () => {
+    const outgoing = (await prepare()).json.outgoing;
+    await approve(outgoing);
+    expect((await returnDraft(outgoing, { comments: '' })).status).toBe(400);
+    const result = await returnDraft(outgoing);
+    expect(result.status).toBe(200);
+    const returned = result.json.outgoing;
+    expect(returned).toMatchObject({ status: 'draft', grant: null, feedback: { status: 'changes_requested', comments: 'Please revise the introduction.', authority: 'operator_credential' } });
+    expect(returned.envelope_hash).not.toBe(outgoing.envelope_hash);
+    expect((await approve(returned)).status).toBe(409);
+    expect((await returnDraft(outgoing)).status).toBe(409);
+    const refreshed = (await prepare({ expected_envelope_hash: returned.envelope_hash })).json.outgoing;
+    expect(refreshed.feedback).toBeNull();
+    const returnedAgain = (await returnDraft(refreshed)).json.outgoing;
+    const edited = (await edit(returnedAgain)).json.outgoing;
+    expect(edited.feedback).toBeNull();
+    expect((await approve(edited)).status).toBe(200);
+});
+test('mail folders include all prepared states except sent and exclude mail from general documents by default', async () => {
+    const outgoing = (await prepare()).json.outgoing;
+    const listed = await api('GET', '/mail-drafts?folder=drafts');
+    expect(listed.status).toBe(200);
+    expect(listed.json).toMatchObject({ counts: { drafts: 1, cancelled: 0 }, items: [{ document: { id: document.id }, outgoing, project_name: 'Synthetic', task_name: 'Draft' }] });
+    expect((await api('GET', '/')).json.total).toBe(0);
+    expect((await api('GET', '/counts')).json.counts.all).toBe(0);
+    expect((await api('GET', '/?include_mail=1')).json.total).toBe(1);
+    expect((await api('GET', '/counts?include_mail=1')).json.counts.all).toBe(1);
+    expect((await api('GET', `/${document.id}`)).status).toBe(200);
+    await approve(outgoing); await claim(outgoing);
+    expect((await api('GET', '/mail-drafts')).json.counts.drafts).toBe(1);
+    await api('POST', url('/receipt'), { delivery_id: outgoing.delivery_id, status: 'sent' });
+    expect((await api('GET', '/mail-drafts')).json.items).toEqual([]);
+    expect((await api('GET', '/mail-drafts?folder=invalid')).status).toBe(400);
+});
+test('cancelled mail has its own folder and counts', async () => {
+    const outgoing = (await prepare()).json.outgoing;
+    await api('POST', url('/decision'), { decision: 'cancel', revision_id: revision.id, envelope_hash: outgoing.envelope_hash }, 'operator');
+    expect((await api('GET', '/mail-drafts?folder=cancelled')).json).toMatchObject({ counts: { drafts: 0, cancelled: 1 }, items: [{ outgoing: { status: 'cancelled' } }] });
+});
+
+test('return then edit retains the original runtime binding hash across the feedback hold', async () => {
+    const original = (await prepare()).json.outgoing;
+    const returned = (await returnDraft(original)).json.outgoing;
+    const edited = (await edit(returned)).json.outgoing;
+    expect(edited.operator_edit).toMatchObject({ base_envelope_hash: original.envelope_hash, base_subject: envelope.subject, base_text: envelope.text });
+});
+
+test('mail list names the stakeholder project rather than the producing task project and is never cached', async () => {
+    store.updateDocument(document.id, { metadata: { stakeholder_project_id: 'other-project', member_id: 'member-1' } });
+    await prepare({ provenance: { ...provenance, project_id: 'other-project' } });
+    const listed = await api('GET', '/mail-drafts');
+    expect(listed.json.items[0].project_name).toBe('Stakeholder project');
+    const response = await fetch(base + '/mail-drafts');
+    expect(response.headers.get('cache-control')).toBe('no-store');
 });

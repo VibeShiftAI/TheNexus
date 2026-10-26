@@ -43,90 +43,14 @@ async function mount(options = {}) {
   return { container, calls, async cleanup() { await act(async () => root.unmount()); container.remove(); globalThis.fetch = originalFetch; } };
 }
 
-test('the reviewer shows the exact envelope and sends only an explicit snapshot-bound approval', async () => {
+test('document outgoing card directs all mail decisions to canonical Drafts', async () => {
   const t = await mount();
   try {
-    const card = t.container.querySelector('[data-outgoing-card]');
-    assert.ok(card);
-    for (const expected of ['member@example.test', 'operator@example.test', 'Exact subject', 'Attachments: none', 'synthetic:source-1']) assert.ok(card.textContent.includes(expected));
-    assert.equal(card.querySelector('[data-outgoing-body]').textContent, outgoing.envelope.text);
-    assert.match(t.container.querySelector('[data-decision-card]').textContent, /Sending requires a separate/);
-    assert.equal(t.calls.filter(c => c.method === 'POST').length, 0);
-    await click(button(card, 'Approve and send'));
-    const calls = t.calls.filter(c => c.method === 'POST');
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].pathname, '/api/documents/doc-send/outgoing/decision');
-    assert.deepEqual(calls[0].body, { decision: 'approve_send', revision_id: revision.id, envelope_hash: outgoing.envelope_hash });
-    assert.equal(calls[0].credentials, 'include');
-    assert.equal(calls[0].headers.Authorization, undefined);
-    assert.equal(t.container.querySelector('[data-outgoing-card]').getAttribute('data-outgoing-card'), 'approved');
-    assert.equal(button(t.container, 'Approve and send'), undefined);
-  } finally { await t.cleanup(); }
-});
-
-test('Cancel send records permanent cancellation and removes send controls', async () => {
-  const t = await mount();
-  try {
-    await click(button(t.container.querySelector('[data-outgoing-card]'), 'Cancel send'));
-    assert.equal(t.calls.find(c => c.method === 'POST').body.decision, 'cancel');
-    assert.match(t.container.querySelector('[data-outgoing-card]').textContent, /Cancelled permanently/);
-    assert.equal(button(t.container, 'Approve and send'), undefined);
-  } finally { await t.cleanup(); }
-});
-
-for (const [name, deny, expected] of [
-  ['operator refusal', { status: 403, code: 'operator_required', error: 'Operator sign-in required' }, /Operator sign-in required/],
-  ['stale snapshot', { status: 409, code: 'outgoing_conflict', error: 'Outgoing message changed' }, /changed.*review/i],
-  ['server failure', { status: 503, error: 'Operator verification unavailable' }, /verification unavailable/i],
-]) test(`send control displays ${name} without another action`, async () => {
-  const t = await mount({ deny });
-  try {
-    await click(button(t.container, 'Approve and send'));
-    assert.match(t.container.querySelector('[data-outgoing-notice]').textContent, expected);
-    assert.equal(t.calls.filter(c => c.method === 'POST').length, 1);
-  } finally { await t.cleanup(); }
-});
-
-for (const status of ['delivering', 'sent', 'uncertain', 'cancelled']) test(`${status} cannot be approved or cancelled again`, async () => {
-  const t = await mount({ outgoing: { status } });
-  try {
-    assert.ok(t.container.querySelector('[data-outgoing-card]'));
-    assert.equal(button(t.container, 'Approve and send'), undefined);
-    assert.equal(button(t.container, 'Cancel send'), undefined);
-    assert.equal(t.calls.filter(c => c.method === 'POST').length, 0);
-  } finally { await t.cleanup(); }
-});
-
-for (const options of [
-  { fileState: 'not_found' }, { outgoing: { invalidated_at: '2026-10-05T00:01:00Z' } },
-  { outgoing: { revision_id: 'older-revision' } }, { outgoing: { envelope: { ...outgoing.envelope, cc: [] } } },
-]) test(`unavailable, stale, or missing-copy draft is held: ${JSON.stringify(options)}`, async () => {
-  const t = await mount(options);
-  try {
-    assert.ok(button(t.container, 'Approve and send').disabled);
-    assert.ok(t.container.querySelector('[data-outgoing-blocked]'));
-    assert.equal(t.calls.filter(c => c.method === 'POST').length, 0);
-  } finally { await t.cleanup(); }
-});
-
-
-test('pending delivery polls read-only status and stops once sent', async () => {
-  const container = document.createElement('div');
-  const root = createRoot(container);
-  let refreshes = 0;
-  const data = { document: { id: 'doc-send' }, revision, file_state: 'ok', outgoing: { ...outgoing, status: 'approved' } };
-  const onRefresh = async () => {
-    refreshes += 1;
-    await act(async () => root.render(createElement(OutgoingCard, { data: { ...data, outgoing: { ...data.outgoing, status: 'sent' } }, viewingCurrent: true, onRefresh, pollMs: 10 })));
-  };
-  try {
-    await act(async () => root.render(createElement(OutgoingCard, { data, viewingCurrent: true, onRefresh, pollMs: 10 })));
-    for (let attempt = 0; attempt < 20 && refreshes === 0; attempt += 1) {
-      await act(async () => { await new Promise(resolve => setTimeout(resolve, 5)); });
-    }
-    assert.equal(refreshes, 1);
-    assert.equal(container.querySelector('[data-outgoing-card]').getAttribute('data-outgoing-card'), 'sent');
-    await act(async () => { await new Promise(resolve => setTimeout(resolve, 30)); });
-    assert.equal(refreshes, 1);
-  } finally { await act(async () => root.unmount()); }
+    const card=t.container.querySelector('[data-outgoing-card]');
+    assert.ok(card.querySelector('a[href="/mail?draft=doc-send"]'));
+    assert.equal(button(card,'Approve and send'),undefined);
+    assert.equal(button(card,'Cancel send'),undefined);
+    assert.equal(t.calls.filter(c=>c.method==='POST').length,0);
+    assert.match(card.textContent,/Exact subject/);
+  } finally {await t.cleanup();}
 });

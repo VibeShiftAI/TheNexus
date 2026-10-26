@@ -104,7 +104,10 @@ function authenticate(req, res, next) {
 // Apply auth to protected route prefixes
 ['/api/projects', '/api/tasks', '/api/ai', '/api/pins', '/api/models', '/api/model-control',
  '/api/activity', '/api/dashboard', '/api/mcp', '/api/initiatives', '/api/local-queue',
- '/api/skill-candidates', '/api/documents', '/api/write-leases'
+ '/api/skill-candidates', '/api/documents', '/api/write-leases',
+ // Mail decisions use the same request context as document decisions. The
+ // decision authority still verifies the operator JWT; this stub is not proof.
+ '/api/praxis/mailbox/drafts-review'
 ].forEach(prefix => app.use(prefix, authenticate));
 
 app.use('/api/write-leases', require('./routes/write-leases')({ db }));

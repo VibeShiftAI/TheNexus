@@ -462,6 +462,7 @@ for (const mode of ['success', 'synthesis-failure', 'blocked', 'cue-failure', 'd
   let checks = 0;
   const { getClientId } = await import('../active-client');
   const f = await mount(t, false, async url => {
+    if (url.split('?')[0] === '/api/tasks/task-1') return Response.json({ status: 'failed' });
     if (url === '/api/presence/active-client') return Response.json({ active: { clientId: ++checks > 1 && mode === 'device-skip' ? 'other-device' : getClientId() } });
     if (url.endsWith('/speak')) return new Promise(resolve => finish = resolve);
   }, true);
@@ -470,7 +471,7 @@ for (const mode of ['success', 'synthesis-failure', 'blocked', 'cue-failure', 'd
     __sockets.at(-1).__emit('praxis:event', { type: 'task.failed', eventId: `delivery-${mode}`, taskId: 'task-1', error: 'Build failed', at: new Date().toISOString() });
     await tick(); await tick();
   });
-  assert.equal(cortexTestStore.messages.some(m => m.metadata?.voiceAnnouncement), false);
+  assert.equal(cortexTestStore.messages.some(m => m.metadata?.voiceAnnouncement), true);
   assert.ok(f.requests.some(r => r.url.endsWith('/sync') && r.body.messages[0].metadata?.voiceAnnouncement));
   assert.doesNotMatch(f.host.textContent ?? '', /Fresh spoken response|voice channel/);
   if (mode !== 'device-skip') {

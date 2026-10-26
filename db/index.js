@@ -26,7 +26,7 @@ const { initializeDocumentReviews, createDocumentReviewStore } = require('./docu
 const { initializeClientAccess, createClientAccess } = require('./client-access');
 const { initializeWorkAdmission, createWorkAdmission } = require('./work-admission');
 const { initializeActivityEvents, recordActivityEvent, readActivityEvents } = require('./activity-events');
-const { isActivityOnlyChatMessage, chatMessageActivityEvent } = require('./chat-message-policy');
+const { isActivityOnlyChatMessage, isChatVisibleMessage, chatMessageActivityEvent } = require('./chat-message-policy');
 
 /**
  * Write-side backstop for the canonical task-status enum (@praxis/contract
@@ -69,6 +69,7 @@ try {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
+    db.function('chat_visible', { deterministic: true }, (role, metadata) => Number(isChatVisibleMessage({ role, metadata })));
     db.function('chat_activity_only', { deterministic: true }, (role, metadata) => Number(isActivityOnlyChatMessage({ role, metadata })));
 
     // Auto-create tables if the DB is brand new
@@ -2998,7 +2999,8 @@ async function getChatMessages(conversationId, options = {}) {
         }
         
         if (options.conversationalOnly) sql += " AND role IN ('user', 'assistant')";
-        if (options.conversationalOnly || options.chatVisibleOnly) sql += ' AND chat_activity_only(role, metadata) = 0';
+        if (options.conversationalOnly) sql += ' AND chat_activity_only(role, metadata) = 0';
+        else if (options.chatVisibleOnly) sql += ' AND chat_visible(role, metadata) = 1';
         sql += ' ORDER BY created_at DESC, rowid DESC LIMIT ?';
         params.push(limit);
         
@@ -3017,7 +3019,8 @@ async function countChatMessages(conversationId, options = {}) {
     if (!db) return 0;
     let sql = 'SELECT COUNT(*) AS count FROM chat_messages WHERE conversation_id = ?';
     if (options.conversationalOnly) sql += " AND role IN ('user', 'assistant')";
-    if (options.conversationalOnly || options.chatVisibleOnly) sql += ' AND chat_activity_only(role, metadata) = 0';
+    if (options.conversationalOnly) sql += ' AND chat_activity_only(role, metadata) = 0';
+    else if (options.chatVisibleOnly) sql += ' AND chat_visible(role, metadata) = 1';
     return db.prepare(sql).get(conversationId).count;
 }
 
