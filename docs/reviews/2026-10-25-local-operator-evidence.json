@@ -1,43 +1,178 @@
 {
   "task_id": "5f15ca0f-17b1-48a7-aa93-61f212fcabf6",
   "baseline": "13a75c9e6e80e69c772efd67f6221eb057266cc1",
+  "correction": "2026-10-26: Robert rejected a separate operator sign-in; replace it with automatic verified application sessions.",
+  "implementation_commit": "4e1f107",
+  "status": "Implemented and activated; native identity verified; actual Chrome identity blocked pending its restart. No completion claim.",
   "server": {
-    "command": "npx jest server/__tests__/local-operator-session.test.js server/__tests__/local-operator-flows.test.js server/__tests__/document-deliverables.test.js server/__tests__/document-executor-approvals.test.js server/__tests__/document-outgoing.test.js server/__tests__/mail-draft-auth-mount.test.js server/__tests__/mail-draft-relay.test.js server/__tests__/praxis-operator-provenance.test.js server/__tests__/mcp-boundary-security.test.js server/__tests__/praxis-mind-stateless-conformance.test.js --runInBand --silent",
-    "result": "10 suites passed; 308 tests passed",
+    "command": "npx jest server/__tests__/local-operator-peer.test.js server/__tests__/local-operator-session.test.js server/__tests__/local-operator-flows.test.js server/__tests__/document-deliverables.test.js server/__tests__/document-executor-approvals.test.js server/__tests__/document-outgoing.test.js server/__tests__/mail-draft-auth-mount.test.js server/__tests__/mail-draft-relay.test.js server/__tests__/praxis-operator-provenance.test.js server/__tests__/mcp-boundary-security.test.js server/__tests__/praxis-mind-stateless-conformance.test.js server/__tests__/stakeholder-policy.test.js server/__tests__/stakeholders-route.test.js --runInBand --silent",
+    "result": "13 suites passed; 358 tests passed",
     "output": [
       "PASS server/__tests__/praxis-operator-provenance.test.js",
       "PASS server/__tests__/document-deliverables.test.js",
       "PASS server/__tests__/document-executor-approvals.test.js",
+      "PASS server/__tests__/stakeholder-policy.test.js",
       "PASS server/__tests__/document-outgoing.test.js",
       "PASS server/__tests__/mcp-boundary-security.test.js",
-      "PASS server/__tests__/local-operator-session.test.js",
+      "PASS server/__tests__/stakeholders-route.test.js",
       "PASS server/__tests__/local-operator-flows.test.js",
+      "PASS server/__tests__/local-operator-peer.test.js",
+      "PASS server/__tests__/local-operator-session.test.js",
       "PASS server/__tests__/praxis-mind-stateless-conformance.test.js",
       "PASS server/__tests__/mail-draft-auth-mount.test.js",
       "PASS server/__tests__/mail-draft-relay.test.js",
       "",
-      "Test Suites: 10 passed, 10 total",
-      "Tests:       308 passed, 308 total",
+      "Test Suites: 13 passed, 13 total",
+      "Tests:       358 passed, 358 total",
       "Snapshots:   0 total",
-      "Time:        7.08 s, estimated 9 s"
+      "Time:        17.987 s"
     ]
   },
   "dashboard": {
-    "command": "cd dashboard && node --import ./test/register.mjs --test src/components/__tests__/local-operator-sign-in.test.mjs src/components/__tests__/mail-drafts.test.mjs src/components/__tests__/document-decisions.test.mjs",
-    "result": "62 passed; 0 failed"
+    "command": "cd dashboard && node --import ./test/register.mjs --test src/lib/__tests__/local-operator-session.test.mjs src/lib/__tests__/session-check.test.ts src/lib/__tests__/voice-chat.test.ts src/components/__tests__/document-decisions.test.mjs src/components/__tests__/mail-drafts.test.mjs",
+    "result": "90 passed; 0 failed",
+    "output": [
+      "✔ task status, QA verdict and the document decision are labelled apart; Approve document targets the revision on screen (113.84925ms)",
+      "✔ a new revision captured while reading turns the decision into a conflict; comments and history persist (84.211458ms)",
+      "✔ without an operator session nothing is recorded and the message says where decisions can be made (32.436375ms)",
+      "✔ a decision whose response was lost is retried with the same id and answered from the record (39.913709ms)",
+      "✔ Finish review sends feedback only: it records no decision and says so (43.774583ms)",
+      "✔ reference documents take no decision, and a pre-contract API offers none (50.10175ms)",
+      "✔ Request changes on the current revision while the review is pinned to an older one: no bearer is sent, a credential refusal keeps the note, and the retry records on that exact revision (34.416959ms)",
+      "✔ the recovery the refusal recommends keeps the note: after a reload it comes back with its revision and attempt id, and recording it clears it (47.613792ms)",
+      "✔ a kept note never moves silently: after the file changed it says which revision it was written for, and the decision targets the revision on screen as a new attempt (31.610916ms)",
+      "✔ Discard note removes the kept note from the device and the card (31.503375ms)",
+      "✔ localStorage quota failure falls back to sessionStorage and restores the exact note and attempt after reload (32.662958ms)",
+      "✔ operator_credential_unconfigured: when both stores fail, keep editable text and require copying before reload (21.710708ms)",
+      "✔ authentication_required: when both stores fail, keep editable text and require copying before reload (20.381459ms)",
+      "✔ operator_check_unavailable: when both stores fail, keep editable text and require copying before reload (20.497875ms)",
+      "✔ operator_credential_unconfigured approve empty: no-note refusal gives recovery without storage or note claims (16.112833ms)",
+      "✔ operator_credential_unconfigured approve whitespace: no-note refusal gives recovery without storage or note claims (15.529708ms)",
+      "✔ operator_credential_unconfigured approve cleared-persisted: no-note refusal gives recovery without storage or note claims (18.317ms)",
+      "✔ operator_credential_unconfigured approve cleared-unpersisted: no-note refusal gives recovery without storage or note claims (20.454583ms)",
+      "✔ operator_credential_unconfigured request_changes empty: no-note refusal gives recovery without storage or note claims (15.713667ms)",
+      "✔ operator_credential_unconfigured request_changes whitespace: no-note refusal gives recovery without storage or note claims (15.230708ms)",
+      "✔ operator_credential_unconfigured request_changes cleared-persisted: no-note refusal gives recovery without storage or note claims (20.39825ms)",
+      "✔ operator_credential_unconfigured request_changes cleared-unpersisted: no-note refusal gives recovery without storage or note claims (18.919292ms)",
+      "✔ authentication_required approve empty: no-note refusal gives recovery without storage or note claims (14.171375ms)",
+      "✔ authentication_required approve whitespace: no-note refusal gives recovery without storage or note claims (15.5245ms)",
+      "✔ authentication_required approve cleared-persisted: no-note refusal gives recovery without storage or note claims (18.933167ms)",
+      "✔ authentication_required approve cleared-unpersisted: no-note refusal gives recovery without storage or note claims (19.500833ms)",
+      "✔ authentication_required request_changes empty: no-note refusal gives recovery without storage or note claims (14.37125ms)",
+      "✔ authentication_required request_changes whitespace: no-note refusal gives recovery without storage or note claims (14.782375ms)",
+      "✔ authentication_required request_changes cleared-persisted: no-note refusal gives recovery without storage or note claims (19.214958ms)",
+      "✔ authentication_required request_changes cleared-unpersisted: no-note refusal gives recovery without storage or note claims (20.022625ms)",
+      "✔ operator_check_unavailable approve empty: no-note refusal gives recovery without storage or note claims (14.545792ms)",
+      "✔ operator_check_unavailable approve whitespace: no-note refusal gives recovery without storage or note claims (16.173625ms)",
+      "✔ operator_check_unavailable approve cleared-persisted: no-note refusal gives recovery without storage or note claims (19.349375ms)",
+      "✔ operator_check_unavailable approve cleared-unpersisted: no-note refusal gives recovery without storage or note claims (18.849167ms)",
+      "✔ operator_check_unavailable request_changes empty: no-note refusal gives recovery without storage or note claims (14.893625ms)",
+      "✔ operator_check_unavailable request_changes whitespace: no-note refusal gives recovery without storage or note claims (14.676541ms)",
+      "✔ operator_check_unavailable request_changes cleared-persisted: no-note refusal gives recovery without storage or note claims (18.538208ms)",
+      "✔ operator_check_unavailable request_changes cleared-unpersisted: no-note refusal gives recovery without storage or note claims (28.712041ms)",
+      "✔ a restored note becomes unpersisted when its next write fails in both stores (64.411125ms)",
+      "✔ draft editing must be saved before exact-version approval (54.183ms)",
+      "✔ a failed source is visible alongside available drafts (3.091ms)",
+      "✔ return requires comments and sends no approval (13.586167ms)",
+      "✔ document return records hold first and retries feedback without another decision or grant (15.464041ms)",
+      "✔ stale approval stops decisions until explicit reload (9.948291ms)",
+      "✔ sent exposes no mutating controls (6.145875ms)",
+      "✔ attempting exposes no mutating controls (5.999875ms)",
+      "✔ uncertain exposes no mutating controls (4.1405ms)",
+      "✔ cancelled exposes no mutating controls (5.534666ms)",
+      "✔ deep link selects a document draft without a decision (4.638ms)",
+      "✔ failed runtime feedback retries delivery without another return decision (8.129416ms)",
+      "✔ persisted document feedback can be resubmitted after a reload without a decision (10.318459ms)",
+      "✔ missing operator copy still allows holding or cancelling a message (11.94825ms)",
+      "✔ reloaded document feedback reuses its existing failed submission (9.685ms)",
+      "✔ narrow screens replace the draft list with selection and offer a way back (10.654458ms)",
+      "✔ blocked drafts are clearly held in the list before opening them (2.506375ms)",
+      "✔ a draft carrying an HTML part previews it in a sandboxed frame at phone width beside its plain-text alternative (14.93075ms)",
+      "✔ a plain-text draft shows no HTML preview (3.940166ms)",
+      "✔ a prepared email bound to an approved HTML revision previews exactly that revision beside its plain text (10.382958ms)",
+      "✔ a bound HTML revision whose bytes differ from the approval is reported, never previewed (6.187542ms)",
+      "✔ a prepared email without a bound HTML part reads no revision (6.467583ms)",
+      "✔ local browser establishes a session automatically without a credential or form (0.912875ms)",
+      "✔ the Mac shell renews natively and rechecks the cookie without a browser bootstrap (0.108583ms)",
+      "✔ tunnel sessions are untouched; invalid bootstrap destinations and failures confer no authority (0.264417ms)",
+      "✔ a still-valid session renews before its one-hour expiry (0.11475ms)",
+      "✔ origin proof is attached only to this dashboard API, never another localhost port or remote host (0.261125ms)",
+      "✔ automatic local operator identity is summarized without disclosing its proof (0.556708ms)",
+      "✔ an absent assertion is reported as no session (0.345792ms)",
+      "✔ the travel shell's service-token session reads as service-token with its Client ID and nothing else (0.19775ms)",
+      "✔ a person's session reads as user, with no Client ID and no address or subject copied out (0.109708ms)",
+      "✔ an aged-out token is flagged, a malformed Client ID is withheld, garbage is unknown (0.4475ms)",
+      "✔ the pin comparison says which server check an unverified token would fail, in fixed words only (1.21875ms)",
+      "✔ the probe answer is read through a whitelist (0.243083ms)",
+      "✔ a probe that did not answer is undetermined, never an observed absent session (0.139417ms)",
+      "✔ the audience row says the form of the claim and its relation to the pin, in fixed words (0.167458ms)",
+      "✔ Cloudflare's get-identity answers reduce to a session kind (0.306792ms)",
+      "✔ the Nexus self-check answer is read through a whitelist of fixed names (0.110416ms)",
+      "✔ the next step names the one setting to change, with the session's own Client ID or address (0.205042ms)",
+      "✔ an audience refusal is explained from the form of the claim: a reload for the single-string form, a pin for another application (0.130667ms)",
+      "✔ before the Nexus reload, the edge reading alone still names the step (0.113125ms)",
+      "✔ an unanswered probe never turns into 'no Access session' in the next step (0.065292ms)",
+      "✔ lost acceptance reconciles by exact ID and transient receipt failures never resend accepted work (14.132583ms)",
+      "✔ an ambiguous unsaved acceptance retries with the same ID and body (4.342208ms)",
+      "✔ accepted work survives a later missing receipt without being posted again (4.078958ms)",
+      "✔ interrupted and failed accepted receipts convey uncertainty without reexecution (0.841541ms)",
+      "✔ ending voice aborts hung acceptance and cleans its timer and abort listener (0.689583ms)",
+      "✔ short request timeout includes a stalled body and eventually reconnects (7.24925ms)",
+      "✔ permanent acceptance rejection is shown without retrying (0.215958ms)",
+      "✔ local archival retries only storage with stable IDs and voice ownership (1.779625ms)",
+      "✔ a non-JSON permanent HTTP rejection does not reconnect forever (0.444542ms)",
+      "✔ receipt recovery puts the missing earlier user before an already delivered reply and deduplicates receipt IDs (0.387375ms)",
+      "ℹ tests 90",
+      "ℹ suites 0",
+      "ℹ pass 90",
+      "ℹ fail 0",
+      "ℹ cancelled 0",
+      "ℹ skipped 0",
+      "ℹ todo 0",
+      "ℹ duration_ms 2125.354"
+    ]
   },
   "build": {
     "command": "cd dashboard && NEXT_DIST_DIR=.next-local-operator-verify npm run build",
     "result": "exit 0; compiled successfully; generated 30/30 static pages",
-    "observation": [
-      "✓ Compiled successfully in 3.6s",
+    "output": [
+      "✓ Compiled successfully in 6.2s",
       "  Generating static pages using 15 workers (0/30) ...",
       "  Generating static pages using 15 workers (7/30) ",
       "  Generating static pages using 15 workers (14/30) ",
       "  Generating static pages using 15 workers (22/30) ",
-      "✓ Generating static pages using 15 workers (30/30) in 377.8ms"
+      "✓ Generating static pages using 15 workers (30/30) in 371.3ms"
     ],
-    "cleanup": "Removed only build-added .next-local-operator-verify entries from tsconfig.json; no tsconfig diff remains"
+    "cleanup": "Removed only build-added .next-local-operator-verify entries; tsconfig.json has no diff."
+  },
+  "native_build": {
+    "command": "cd desktop && npm run build",
+    "result": "exit 0; release application bundled",
+    "output": [
+      "> nexus-desktop@1.4.0 build",
+      "> tauri build",
+      "",
+      "        Info Looking up installed tauri packages to check mismatched versions...",
+      "   Compiling nexus-desktop v1.4.0 (/Volumes/Projects/TheNexus/desktop/src-tauri)",
+      "    Finished `release` profile [optimized] target(s) in 1m 04s",
+      "       Built application at: /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/nexus-desktop",
+      "    Bundling The Nexus.app (/Volumes/Projects/TheNexus/desktop/src-tauri/target/release/bundle/macos/The Nexus.app)",
+      "    Finished 1 bundle at:",
+      "        /Volumes/Projects/TheNexus/desktop/src-tauri/target/release/bundle/macos/The Nexus.app"
+    ]
+  },
+  "native_test": {
+    "command": "cd desktop/src-tauri && cargo test local_operator -- --nocapture",
+    "result": "1 passed; 0 failed",
+    "output": [
+      "Finished `test` profile [unoptimized + debuginfo] target(s) in 1.09s",
+      "     Running unittests src/main.rs (target/debug/deps/nexus_desktop-2d856765509226ba)",
+      "",
+      "running 1 test",
+      "test local_operator::tests::only_a_successful_well_formed_cookie_can_be_planted ... ok",
+      "",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+    ]
   },
   "browser": {
     "command": "node dashboard/scripts/local-operator-browser-check.cjs",
@@ -45,10 +180,9 @@
       "synthetic": true,
       "origin": "http://localhost:3000",
       "checks": [
-        "real browser sign-in, HttpOnly cookie hidden from document.cookie",
-        "mail dialog preserves unsaved edit and recognizes session after navigation",
-        "approve and request changes recorded in isolated document ledger; dialog preserves notes",
-        "browser logout revokes subsequent document decisions: 403 operator_required"
+        "no operator sign-in UI; unsaved mail edit survives automatic bootstrap",
+        "approve and request changes recorded in isolated document ledger; automatic bootstrap preserves notes",
+        "explicit revocation refuses subsequent document decisions: 403 operator_required"
       ],
       "mailActions": [
         {
@@ -79,48 +213,143 @@
         }
       ],
       "errors": []
+    },
+    "boundary": "Fresh headless Chrome with all API calls intercepted into isolated fixtures. OS attestation alone is injected. Production rejects that automated profile. No client email was sent."
+  },
+  "praxis_receiver": {
+    "command": "NODE_ENV=test node --import ../Praxis/node_modules/tsx/dist/loader.mjs --test --test-name-pattern='operator proof is bound to exact action payload' ../Praxis/tests/mail_drafts_review.test.ts",
+    "result": "1 passed; 0 failed; actual Praxis router rejects unsigned/altered payloads and stores operator:mail-drafts on signed cancellation",
+    "output": [
+      "✔ operator proof is bound to exact action payload; unsigned and altered actions fail (103.11525ms)",
+      "ℹ tests 1",
+      "ℹ suites 0",
+      "ℹ pass 1",
+      "ℹ fail 0",
+      "ℹ cancelled 0",
+      "ℹ skipped 0",
+      "ℹ todo 0",
+      "ℹ duration_ms 575.494334"
+    ],
+    "isolation": "Existing tests/bootstrap.ts uses a throwaway /tmp data directory, an empty fleet environment and live-fleet request refusal. No Praxis source or production data edited."
+  },
+  "live_native": {
+    "at": "2026-10-26T17:34:16-04:00",
+    "method": "CUA: The Nexus app > navigation menu > Session; read the API self-check rendered by the installed native app",
+    "observation": "State ok Reason ok Identity local Trusted devices pinned 2 Operator pins complete yes Reading Nexus recognizes this session as the operator (identity local).",
+    "credential_entry": false,
+    "codesign": {
+      "native_pid": 97513,
+      "cdhash": "d6d663582a4cf6b349d4d43ae5bd7b6ccb753aac",
+      "pinned": {
+        "exit_code": 0,
+        "output": "97513: dynamically valid\n97513: valid on disk\n97513: satisfies its Designated Requirement\n97513: explicit requirement satisfied"
+      },
+      "wrong_pin": {
+        "exit_code": 3,
+        "output": "97513: dynamically valid\n97513: valid on disk\n97513: satisfies its Designated Requirement\ntest-requirement: code failed to satisfy specified code requirement(s)"
+      }
     }
   },
-  "live": {
-    "at": "2026-10-25T15:18:15.467Z",
-    "origin": "http://localhost:3000",
-    "observations": [
+  "live_chrome": {
+    "at": "2026-10-26T21:39:32.464036+00:00",
+    "status": "blocked pending normal browser restart; no sign-in requested",
+    "running_code_check": {
+      "pid": 82710,
+      "exit_code": 1,
+      "output": "82710: dynamically valid\n82710: resource fork, Finder information, or similar detritus not allowed"
+    },
+    "process_observation": "PID 82710 started 2026-10-20; installed Chrome code has been updated. Strict static validation refuses the old running process. No validation bypass implemented.",
+    "automation_rejection": "Browser security policy rejected chrome://restart: URL protocol not allowed; explicitly forbids alternate automation routes.",
+    "requested_action": "Robert was asked asynchronously to quit/reopen Chrome and reply restarted. Afterward open localhost:3000/session and verify State ok / Identity local.",
+    "remaining": "Both real client identities and actual live mail/document actions have not all been observed; isolated five-action flow is synthetic."
+  },
+  "live_negative": {
+    "at": "2026-10-26T21:35:53.255Z",
+    "document_id": "9f6c4952-88b8-494b-8ae9-3f2331392206",
+    "results": [
       {
-        "label": "local status",
-        "status": 200,
-        "code": null,
-        "operator": false
-      },
-      {
-        "label": "placeholder sign-in",
+        "label": "unsigned",
+        "surface": "bootstrap",
         "status": 403,
         "code": "operator_required"
       },
       {
-        "label": "foreign origin",
+        "label": "unsigned",
+        "surface": "document",
         "status": 403,
         "code": "operator_required"
       },
       {
-        "label": "unsigned document decision",
+        "label": "unsigned",
+        "surface": "mail",
         "status": 403,
         "code": "operator_required"
       },
       {
-        "label": "unsigned mail decision",
+        "label": "placeholder",
+        "surface": "bootstrap",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "placeholder",
+        "surface": "document",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "placeholder",
+        "surface": "mail",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "bridge",
+        "surface": "bootstrap",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "bridge",
+        "surface": "document",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "bridge",
+        "surface": "mail",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "qa-forged",
+        "surface": "bootstrap",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "qa-forged",
+        "surface": "document",
+        "status": 403,
+        "code": "operator_required"
+      },
+      {
+        "label": "qa-forged",
+        "surface": "mail",
         "status": 403,
         "code": "operator_required"
       }
-    ],
-    "initialMissingDocumentProbe": {
-      "status": 404,
-      "explanation": "Nonexistent document is rejected before authority; repeated against an existing document without credentials."
-    }
+    ]
+  },
+  "access_regression": {
+    "command": "git diff 13a75c9e6e80 --exit-code -- server/__tests__/praxis-operator-provenance.test.js server/__tests__/helpers/operator-access.js server/__tests__/document-deliverables.test.js server/__tests__/document-executor-approvals.test.js server/__tests__/stakeholder-policy.test.js server/__tests__/stakeholders-route.test.js",
+    "result": "exit 0; those existing tests are unchanged and pass in the 358-test run",
+    "coverage": "Verified Access user (tunnel), async phone, pinned travel device, string/array audience, wrong pins and mixed local-cookie precedence."
   },
   "baseline_failure": {
     "suite": "server/__tests__/client-access.test.js",
-    "command_current": "Initial 11-suite security run including client-access.test.js --runInBand --silent",
-    "current_outcome": "23 failed in client-access setup; 303 passed elsewhere before five added regressions",
+    "command_current": "npx jest server/__tests__/client-access.test.js --runInBand --silent",
+    "current_outcome": "23 failed in structured-knowledge fixture setup",
     "command_baseline": "git archive 13a75c9e6e80 | tar -x -C /tmp/nexus-local-operator-baseline; symlink current node_modules; run jest server/__tests__/client-access.test.js --runInBand --silent in archive",
     "baseline_outcome": "23 failed, same setup error and same test names",
     "error": "New information needs require structured knowledge with question, purpose and resolution",
@@ -149,12 +378,227 @@
       "review room: pinned notes are validated against the published revision, recorded beside the decision and bound into idempotency",
       "legacy design acceptances without selection remain replayable after the media upgrade",
       "asset reads reject corrupt bytes, expired sessions, withdrawal and supersession"
-    ]
+    ],
+    "comparison": "Parsed all 23 failure names from baseline/current retained logs; lists are identical. Neither partially failing run is called passing."
   },
   "activation": {
-    "configuration": "Appended NEXUS_LOCAL_OPERATOR_SESSIONS=1 to ignored .env; all pre-existing bytes preserved",
-    "restart": "TERM supervised Nexus API child 67815; supervisor respawned PID 23056 on port 4000; Praxis and dashboard not restarted",
-    "credential": "No production operator key retrieved or supplied; no real decision or mail delivery performed"
+    "configuration": "Ignored .env: preserved pre-existing bytes; added UID=501, Chrome opt-in and hardened native CDHash. Existing local-session feature flag and private server key retained. No production credential retrieved or printed.",
+    "native_install": "Backed up existing /Applications/The Nexus.app to /tmp/nexus-local-operator-app-backup-20261026; installed hardened signed build d6d663582a4cf6b349d4d43ae5bd7b6ccb753aac.",
+    "api_restart": "Terminated only supervised Nexus API children 58350 then 94594; Praxis respawned port 4000. Numeric-PID code verification deployed on second restart.",
+    "additional_repos_written": [],
+    "other_paths_written": [
+      "/Applications/The Nexus.app",
+      "/tmp verification artifacts and app backup"
+    ],
+    "praxis": "/Volumes/Projects/Praxis read-only source inspection and isolated existing receiver test only."
   },
-  "remaining": "Robert must sign into actual Mac app and local browser himself and verify intended live decisions. Criterion 1 remains blocked."
+  "code_review": {
+    "result": "Reviewed current correction and earlier attributable baseline hunks end to end; independent security review found no remaining blocker within mail/document/chat/diagnostics scope.",
+    "fixed_findings": [
+      "Chrome single-dash/unknown switch bypass: strict allowlist",
+      "Cross-port cookie replay: independent origin-stored proof",
+      "Native navigation race: same-evaluation origin check",
+      "Proof redirect leakage: scoped headers and redirect refusal",
+      "Renewal gap: renew with less than 20 minutes remaining",
+      "Native codesign metadata parser and numeric PID with full static check",
+      "Stale sign-in contract text removed"
+    ],
+    "limits": "Groundrules labeling classifies local as access_user; not modified or claimed as covered. Trusted UI/profile compromise or automation of the existing operator UI is outside this process-attestation boundary.",
+    "encoding": {
+      "command": "strict UTF-8 decode and mojibake scan of explicit task files",
+      "result": "passed",
+      "files": [
+        "dashboard/scripts/local-operator-browser-check.cjs",
+        "dashboard/src/app/layout.tsx",
+        "dashboard/src/app/operator-sign-in/page.tsx",
+        "dashboard/src/app/session/page.tsx",
+        "dashboard/src/components/ai-terminal.tsx",
+        "dashboard/src/components/document-review/decision-card.tsx",
+        "dashboard/src/components/local-operator-session.tsx",
+        "dashboard/src/components/mail-drafts.tsx",
+        "dashboard/src/lib/__tests__/local-operator-session.test.mjs",
+        "dashboard/src/lib/__tests__/session-check.test.ts",
+        "dashboard/src/lib/document-review.ts",
+        "dashboard/src/lib/local-operator-session.ts",
+        "dashboard/src/lib/mail-drafts.ts",
+        "dashboard/src/lib/session-check.ts",
+        "dashboard/src/lib/voice-chat.ts",
+        "desktop/src-tauri/src/local_operator.rs",
+        "desktop/src-tauri/src/main.rs",
+        "docs/contracts/document-review-deliverables.md",
+        "docs/contracts/local-operator-session.md",
+        "docs/superpowers/plans/2026-10-26-local-operator.md",
+        "server/__tests__/local-operator-flows.test.js",
+        "server/__tests__/local-operator-peer.test.js",
+        "server/__tests__/local-operator-session.test.js",
+        "server/routes/operator-session.js",
+        "server/server.js",
+        "server/services/document-decision-authority.js",
+        "server/services/local-operator-peer.js",
+        "server/services/local-operator-session.js",
+        "server/services/operator-access.js"
+      ]
+    }
+  },
+  "prior_round_superseded": {
+    "task_id": "5f15ca0f-17b1-48a7-aa93-61f212fcabf6",
+    "baseline": "13a75c9e6e80e69c772efd67f6221eb057266cc1",
+    "server": {
+      "command": "npx jest server/__tests__/local-operator-session.test.js server/__tests__/local-operator-flows.test.js server/__tests__/document-deliverables.test.js server/__tests__/document-executor-approvals.test.js server/__tests__/document-outgoing.test.js server/__tests__/mail-draft-auth-mount.test.js server/__tests__/mail-draft-relay.test.js server/__tests__/praxis-operator-provenance.test.js server/__tests__/mcp-boundary-security.test.js server/__tests__/praxis-mind-stateless-conformance.test.js --runInBand --silent",
+      "result": "10 suites passed; 308 tests passed",
+      "output": [
+        "PASS server/__tests__/praxis-operator-provenance.test.js",
+        "PASS server/__tests__/document-deliverables.test.js",
+        "PASS server/__tests__/document-executor-approvals.test.js",
+        "PASS server/__tests__/document-outgoing.test.js",
+        "PASS server/__tests__/mcp-boundary-security.test.js",
+        "PASS server/__tests__/local-operator-session.test.js",
+        "PASS server/__tests__/local-operator-flows.test.js",
+        "PASS server/__tests__/praxis-mind-stateless-conformance.test.js",
+        "PASS server/__tests__/mail-draft-auth-mount.test.js",
+        "PASS server/__tests__/mail-draft-relay.test.js",
+        "",
+        "Test Suites: 10 passed, 10 total",
+        "Tests:       308 passed, 308 total",
+        "Snapshots:   0 total",
+        "Time:        7.08 s, estimated 9 s"
+      ]
+    },
+    "dashboard": {
+      "command": "cd dashboard && node --import ./test/register.mjs --test src/components/__tests__/local-operator-sign-in.test.mjs src/components/__tests__/mail-drafts.test.mjs src/components/__tests__/document-decisions.test.mjs",
+      "result": "62 passed; 0 failed"
+    },
+    "build": {
+      "command": "cd dashboard && NEXT_DIST_DIR=.next-local-operator-verify npm run build",
+      "result": "exit 0; compiled successfully; generated 30/30 static pages",
+      "observation": [
+        "✓ Compiled successfully in 3.6s",
+        "  Generating static pages using 15 workers (0/30) ...",
+        "  Generating static pages using 15 workers (7/30) ",
+        "  Generating static pages using 15 workers (14/30) ",
+        "  Generating static pages using 15 workers (22/30) ",
+        "✓ Generating static pages using 15 workers (30/30) in 377.8ms"
+      ],
+      "cleanup": "Removed only build-added .next-local-operator-verify entries from tsconfig.json; no tsconfig diff remains"
+    },
+    "browser": {
+      "command": "node dashboard/scripts/local-operator-browser-check.cjs",
+      "result": {
+        "synthetic": true,
+        "origin": "http://localhost:3000",
+        "checks": [
+          "real browser sign-in, HttpOnly cookie hidden from document.cookie",
+          "mail dialog preserves unsaved edit and recognizes session after navigation",
+          "approve and request changes recorded in isolated document ledger; dialog preserves notes",
+          "browser logout revokes subsequent document decisions: 403 operator_required"
+        ],
+        "mailActions": [
+          {
+            "actor": "operator:mail-drafts",
+            "action": "edit"
+          },
+          {
+            "actor": "operator:mail-drafts",
+            "action": "approve_send"
+          },
+          {
+            "actor": "operator:mail-drafts",
+            "action": "cancel"
+          }
+        ],
+        "decisions": [
+          {
+            "decision": "approve",
+            "authority": "operator_credential",
+            "recorded_by": "operator",
+            "actor_id": "local_user"
+          },
+          {
+            "decision": "request_changes",
+            "authority": "operator_credential",
+            "recorded_by": "operator",
+            "actor_id": "local_user"
+          }
+        ],
+        "errors": []
+      }
+    },
+    "live": {
+      "at": "2026-10-25T15:18:15.467Z",
+      "origin": "http://localhost:3000",
+      "observations": [
+        {
+          "label": "local status",
+          "status": 200,
+          "code": null,
+          "operator": false
+        },
+        {
+          "label": "placeholder sign-in",
+          "status": 403,
+          "code": "operator_required"
+        },
+        {
+          "label": "foreign origin",
+          "status": 403,
+          "code": "operator_required"
+        },
+        {
+          "label": "unsigned document decision",
+          "status": 403,
+          "code": "operator_required"
+        },
+        {
+          "label": "unsigned mail decision",
+          "status": 403,
+          "code": "operator_required"
+        }
+      ],
+      "initialMissingDocumentProbe": {
+        "status": 404,
+        "explanation": "Nonexistent document is rejected before authority; repeated against an existing document without credentials."
+      }
+    },
+    "baseline_failure": {
+      "suite": "server/__tests__/client-access.test.js",
+      "command_current": "Initial 11-suite security run including client-access.test.js --runInBand --silent",
+      "current_outcome": "23 failed in client-access setup; 303 passed elsewhere before five added regressions",
+      "command_baseline": "git archive 13a75c9e6e80 | tar -x -C /tmp/nexus-local-operator-baseline; symlink current node_modules; run jest server/__tests__/client-access.test.js --runInBand --silent in archive",
+      "baseline_outcome": "23 failed, same setup error and same test names",
+      "error": "New information needs require structured knowledge with question, purpose and resolution",
+      "location": "db/knowledge-lifecycle.js:71 via server/__tests__/client-access.test.js:73",
+      "matching_test_names": [
+        "granting access needs Robert's operator credential: the cockpit stub, the runtime key, a wrong key, the bridge header and an unconfigured key all fail closed",
+        "a grant requires an existing, active member who is already linked to that project; it never creates membership",
+        "an entitled member reads requirements, progress, checkpoints and links, and nothing internal leaves the server",
+        "the client surface accepts only the runtime credential: no key, the cockpit stub, the operator key, a wrong key and the bridge header are all refused",
+        "another member, another project, unknown ids and the decision-maker flag alone are denied with one indistinguishable shape",
+        "revoking the entitlement, unlinking the member, dormancy, an identity edit and deletion each deny every scoped operation, including replay of an earlier decision; a fresh grant restores it",
+        "publishing binds one exact version; duplicates, foreign documents, bad links, unknown checkpoints and foreign tasks are refused",
+        "reviews need a live session assertion and the exact version; acceptance is replay-safe, final per version and distinct from comments",
+        "acceptance changes nothing else: tasks, checkpoints, gates and reserved proposals are untouched, and the runtime credential cannot grant or decide",
+        "links reach a client only as credential-free http(s) URLs: project settings are filtered on projection, publication refuses anything else, and a stored row is re-checked on read",
+        "every acknowledged client_decision_id is reserved against its payload: a second accept key resolves to the one acceptance and can never be reused for a different review",
+        "upgrade path: a review written before client_review_keys existed is backfilled by initialization, idempotently, and its key then rejects conflicting reuse",
+        "an identical publish retry returns the existing version even when it supersedes; competing successors and conflicting predecessors are refused",
+        "an entitlement lookup that cannot run denies every scoped operation with 503 entitlement_unavailable and serves no stored content",
+        "every ledger table is append-only at the SQLite level",
+        "list, workspace, artifact detail and review responses conform to @praxis/contract",
+        "an unavailable database fails closed with 503 on both surfaces",
+        "artifact detail preserves captured BOM and CRLF bytes covered by the immutable hash",
+        "published designs expose only safe media descriptors and protected version-bound assets",
+        "design direction is required, recorded and bound to review idempotency",
+        "review room: pinned notes are validated against the published revision, recorded beside the decision and bound into idempotency",
+        "legacy design acceptances without selection remain replayable after the media upgrade",
+        "asset reads reject corrupt bytes, expired sessions, withdrawal and supersession"
+      ]
+    },
+    "activation": {
+      "configuration": "Appended NEXUS_LOCAL_OPERATOR_SESSIONS=1 to ignored .env; all pre-existing bytes preserved",
+      "restart": "TERM supervised Nexus API child 67815; supervisor respawned PID 23056 on port 4000; Praxis and dashboard not restarted",
+      "credential": "No production operator key retrieved or supplied; no real decision or mail delivery performed"
+    },
+    "remaining": "Robert must sign into actual Mac app and local browser himself and verify intended live decisions. Criterion 1 remains blocked."
+  },
+  "binding_constraints": "## Binding constraints (verbatim from the execution brief)\n\n#### BC-WORKSPACE — Do the work inside /Volumes/Projects/TheNexus — QA's primary diff comes from there; any additional repo you touch must be named in your completion report.\n- **Prerequisite (resolve first):** The assigned workspace must be the repo that holds the main body of the code this task changes. Check that before your first edit, not after.\n- **Authority (who may waive it):** Praxis, via the task re-point endpoint — POST /api/tasks/5f15ca0f-17b1-48a7-aa93-61f212fcabf6/workspace with the new path and a reason. Robert, if the re-point is refused.\n- **Fallback (do this instead):** If the WHOLE task belongs elsewhere, re-point the task first and then do ALL the work in the new directory; if you only realise at the end, still call the endpoint with \"baseline\":\"head\". If the task merely also needs another repo, work there and declare it in your report. If neither is possible, report needs_input.\n- **Consequence (if you proceed anyway):** QA builds the authoritative diff from this workspace and the dispatch-time snapshot, plus the diff of every additional repo the run touched and declared. Work done in an undeclared repo that Praxis could not record is invisible to review, and a round with no work in any visible repo fails as an empty diff no matter how correct the change is.\n\n#### BC-CRITERIA — Satisfy every acceptance criterion above and cite the command or observation that proves each one.\n- **Prerequisite (resolve first):** Each criterion has to be verified against real behavior before you report complete — a criterion you did not run is a criterion you did not meet.\n- **Authority (who may waive it):** The QA reviewer rules on a criterion you can show is defective — contest it with \"PRAXIS_CRITERION_DISPUTE: <number> — <why, with evidence>\", and twice contested without resolution goes to Robert. Robert's operator rulings override both. Neither happens silently — you have to raise it.\n- **Fallback (do this instead):** If a criterion cannot be met as written, say so explicitly with evidence and deliver everything else in full. Narrowing the scope quietly is not the fallback.\n- **Consequence (if you proceed anyway):** QA scores each criterion mechanically against your diff. An unproven criterion is a fail verdict and a correction round, not a note.\n\n#### BC-FOREIGN-WORK — The workspace is SHARED and may hold unrelated uncommitted work from other agents or Robert's own sessions. Never revert, stash, `git checkout`/`git restore`, or delete anything you did not change in this run.\n- **Prerequisite (resolve first):** Know what was already dirty before you touch the tree: the brief's workspace pre-flight lists it, and `git status` shows the rest. Anything on that list is somebody else's in-flight work.\n- **Authority (who may waive it):** Robert alone. No task brief, no reviewer finding, and no cleanup instinct authorizes discarding another session's changes.\n- **Fallback (do this instead):** Work additively. Re-read a contended file immediately before each edit, keep your change narrow, and say in your walkthrough that the file was already dirty. Never `git add -A` or `git commit -a`.\n- **Consequence (if you proceed anyway):** Git keeps no reflog for working-tree reverts, so the other session's work is gone unrecoverably — that happened on 2026-07-09 and cost a verified-but-uncommitted change.\n\n#### BC-TASK-COMMITS — Commit your OWN verified work as you go, in small, task-scoped, LOCAL commits on the dispatch branch, each ending with the trailer `Task: 5f15ca0f-17b1-48a7-aa93-61f212fcabf6`. Never `git push`, and never stage or commit anything you did not change in this run.\n- **Prerequisite (resolve first):** Before each commit: the change is verified (its test, typecheck or hand-run passed); `git branch --show-current` is still the dispatch branch and HEAD is not detached; you stage explicit paths only (`git add -- <path>`, never `-A`, `-u` or `commit -a`); and `git diff --cached --stat` lists nothing but files you changed in this run. A file that was already dirty at dispatch, or that a sibling is editing, needs your hunks separated from theirs before it can be in your commit.\n- **Authority (who may waive it):** An explicit commit hold (a task brief or operator note that says not to commit, or dispatch metadata `commitPolicy: hold`) prevails over this default, and then the work stays uncommitted. Pushing is Robert's alone: the QA-pass commit and the end-of-day commit-approval workflow are the only publishers, and no sentence in a task brief authorizes `git push`.\n- **Fallback (do this instead):** Cannot separate your hunks from foreign ones in a shared dirty file? Leave that file uncommitted, commit the rest, and name it in your walkthrough; QA still reviews it from the working tree. Under a hold, leave everything uncommitted and `git add` only the NEW files you created. Either way, record every commit SHA you made in your walkthrough.\n- **Consequence (if you proceed anyway):** QA diffs the dispatch snapshot against the WORKING TREE, so committed and uncommitted work both stay in view. A commit carrying your trailer whose files start from their dispatch-time version is attributed to you; a commit without the trailer, or one whose files first moved under someone else's commit or dirty edit, reaches the reviewer only as an unattributed candidate. A commit that sweeps foreign work misattributes it under your task's name (a defect in its own right), and a push without Robert's approval publishes unreviewed work.\n\n#### BC-LIFECYCLE — Do NOT change this task's status in The Nexus yourself.\n- **Prerequisite (resolve first):** The completion protocol markers at the end of this brief are the only status channel available to you; use them instead of the board.\n- **Authority (who may waive it):** Praxis's completion handler owns the lifecycle. Robert can override it from the board.\n- **Fallback (do this instead):** End with the exact completion / failure / needs-input protocol, and put anything the status cannot express into the walkthrough.\n- **Consequence (if you proceed anyway):** A hand-edited status desynchronizes the schedule from the run, and the executor callback that would have carried your result is discarded.\n\n#### BC-QUALITY-GATES — Run BOTH quality gates — verify and code-review — and declare them on the marker line before reporting complete.\n- **Prerequisite (resolve first):** The verify pass needs the change actually exercised (run the flow, command, or test — a typecheck is not a verify), and the code-review pass needs your own task diff, every commit you made this run plus the edits still uncommitted, re-read end to end.\n- **Authority (who may waive it):** Nobody. Neither an executor nor a reviewer may waive a gate; the only sanctioned exception is a change with no runtime surface, and you must say that explicitly on the marker line.\n- **Fallback (do this instead):** If there is genuinely nothing to drive, declare that in place of a command rather than omitting the gate or inventing a command you did not run.\n- **Consequence (if you proceed anyway):** A completion reported without the marker line is treated as unverified work and flagged for the human reviewer, whatever the walkthrough claims.\n\n#### BC-WORKSPACE-BINDING — Your home workspace is `/Volumes/Projects/TheNexus`. You MAY work in additional repos under /Volumes/Projects when the task genuinely needs it, and you MUST name every extra repo you touched — absolute path — and why, in your completion report.\n- **Prerequisite (resolve first):** Before writing outside the home workspace, know that the task genuinely needs that repo. Praxis records every write outside the home root, so the record and your report have to agree.\n- **Authority (who may waive it):** You, by declaring it in the completion report — that is the sanctioned way to widen the task's footprint. If the WHOLE task belongs in a different repo, re-point it through the workspace endpoint instead so QA's primary diff moves with you.\n- **Fallback (do this instead):** If you touched a repo you did not need, say so in the report anyway (an honest extra repo is not a defect); if you cannot tell which repos you touched, list every one you might have.\n- **Consequence (if you proceed anyway):** QA collects the diff from every repo you touched and judges it on merit — it never fails you merely for editing another repo. An UNDECLARED extra repo (recorded by Praxis, never named in your report) is the one cross-repo defect QA may raise.\n"
 }
