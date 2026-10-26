@@ -1,7 +1,7 @@
 /**
  * Authenticate the human behind a chat turn, independently of the legacy
  * local_user/admin stub. Two sessions of the pinned Cloudflare Access
- * application count, plus an explicitly credentialed local session:
+ * application count, plus an automatically verified local application session:
  *
  *   user    the identity-provider (one-time PIN) session of the configured
  *           operator email: what a browser holds after the Access login.
@@ -12,15 +12,19 @@
  *           page, so this session is Robert's only identity there (2026-09-25).
  *           The shell's updater and roster pulls ride the same token, but only
  *           an interactive chat POST reaches this authenticator.
- *   local   Robert explicitly exchanges NEXUS_OPERATOR_APPROVAL_KEY at
- *           /operator-sign-in on http://localhost:3000 (Mac webview or browser).
- *           Requires NEXUS_LOCAL_OPERATOR_SESSIONS=1 and an independently
- *           configured operator key. A signed HttpOnly cookie plus an active
- *           one-hour server session is checked by local-operator-session.js;
- *           loopback and the exact dashboard Origin are constraints, never
- *           proof. Logout revokes that session; restart revokes all; disabling
- *           the flag or rotating/removing the key and restarting revokes all.
- *           No shell, executor or bridge is provisioned with a credential.
+ *   local   The pinned Mac app / signed default-profile Chrome bootstraps
+ *           silently via its actual TCP peer, running-code signature and
+ *           pinned console UID (local-operator-peer.js), never headers alone.
+ *           Provision NEXUS_LOCAL_OPERATOR_SESSIONS=1, an independent operator
+ *           key, NEXUS_LOCAL_OPERATOR_UID, and the Chrome opt-in / hardened
+ *           desktop CDHash pin. The server mints a one-hour signed HttpOnly
+ *           cookie plus a separate random origin-stored proof header; both
+ *           and live server state are mandatory. Loopback/exact Origin only
+ *           constrain use. Delete revokes one; restart revokes all. Disable
+ *           the flag or remove/rotate the key or pins and restart to revoke
+ *           and stop reissuance. No operator key is given to client code.
+ *           This trusts the pinned UI process, not an arbitrary local process;
+ *           it does not defend already-compromised UI/profile/server code.
  *           Provisioning/revocation: docs/contracts/local-operator-session.md.
  *
  * Service tokens presented as request headers, bridge credentials, email
@@ -138,7 +142,7 @@ function createOperatorAuthenticator() {
      */
     async function evaluate(req) {
         // Keep Access's validation and precedence unchanged. Only a request
-        // without an Access assertion can enter the explicit local-session path.
+        // without an Access assertion can enter the local-session path.
         if (!req.get('cf-access-jwt-assertion') && req.get('cookie')?.split(';').some(part => part.trim().startsWith(`${COOKIE}=`))) {
             return localOperatorSessions.inspect(req);
         }

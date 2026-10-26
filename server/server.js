@@ -111,7 +111,7 @@ function authenticate(req, res, next) {
 ].forEach(prefix => app.use(prefix, authenticate));
 
 app.use('/api/write-leases', require('./routes/write-leases')({ db }));
-// Explicit local sign-in has its own credential and same-origin boundary.
+// Automatic local sessions require OS peer proof plus the same-origin boundary.
 app.use('/api/operator-session', require('./routes/operator-session')());
 
 // ─── Shared Dependencies (injected into route factories) ────────────────────

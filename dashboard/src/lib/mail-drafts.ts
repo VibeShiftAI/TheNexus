@@ -1,3 +1,4 @@
+import { ensureLocalOperatorSession, localOperatorHeaders } from "./local-operator-session";
 import {
   DocumentApiError,
   openReview,
@@ -131,12 +132,15 @@ async function request<T>(
   body?: unknown,
   signal?: AbortSignal,
 ): Promise<T> {
+  if (body) await ensureLocalOperatorSession();
+  const localHeaders = localOperatorHeaders(url);
   const response = await fetch(url, {
     method: body ? "POST" : "GET",
     credentials: "include",
     cache: "no-store",
+    ...(Object.keys(localHeaders).length ? { redirect: "error" as const } : {}),
     signal,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...localHeaders },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const data = await response.json().catch(() => null);

@@ -24,6 +24,7 @@ import { Bot, Loader2, MessageSquare, Paperclip, Download } from "lucide-react";
 import { useParams } from "next/navigation";
 
 import { getAuthHeader } from "@/lib/auth";
+import { ensureLocalOperatorSession, localOperatorHeaders } from "@/lib/local-operator-session";
 import { noteChatSend } from "@/hooks/use-chat-activity";
 import { readPraxisEventStream } from "@/lib/read-praxis-event-stream";
 import { useCortex } from "@/components/cortex-provider";
@@ -371,12 +372,16 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
 
             for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
                 try {
+                    await ensureLocalOperatorSession();
+                    const localHeaders = localOperatorHeaders('/api/ai/chat');
                     response = await fetch(`/api/ai/chat?_cb=${Date.now()}`, {
                         method: 'POST',
                         credentials: 'include',
+                        ...(Object.keys(localHeaders).length ? { redirect: 'error' as const } : {}),
                         headers: {
                             ...(canStreamPraxis ? { Accept: 'text/event-stream' } : {}),
                             ...authHeader as any,
+                            ...localHeaders,
                         },
                         body: requestBody,
                     });

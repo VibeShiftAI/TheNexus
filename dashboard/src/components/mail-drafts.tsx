@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { LocalOperatorSignIn } from "./local-operator-sign-in";
 import {
   actOnDraft,
   getBoundHtml,
@@ -87,7 +86,6 @@ export function MailDrafts({
   const draft = items.find((d) => d.key === selected);
   return (
     <section aria-label={folder === "drafts" ? "Drafts" : "Cancelled mail"}>
-      <LocalOperatorSignIn />
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm text-slate-400">
           {folder === "drafts"

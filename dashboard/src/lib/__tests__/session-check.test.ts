@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+test('automatic local operator identity is summarized without disclosing its proof', () => {
+  const result = summarizeOperatorIdentity(200, { operator: true, identity: 'local', reason: 'ok', proof: 'never-display-this' });
+  assert.equal(result.identity, 'local');
+  assert.equal(result.state, 'ok');
+  assert.ok(!JSON.stringify(result).includes('never-display-this'));
+});
+
 import {
   compareAssertion,
   describeAssertion,

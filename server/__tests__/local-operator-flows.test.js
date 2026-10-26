@@ -1,4 +1,8 @@
-/** Real local sign-in, authority, document ledger and signed mail relay; synthetic data only. */
+/** Automatic local bootstrap (OS peer fixture), authority, document ledger and signed mail relay; synthetic data only. */
+jest.mock('../services/local-operator-peer', () => ({
+    ...jest.requireActual('../services/local-operator-peer'),
+    createLocalOperatorPeerVerifier: () => async () => 'mac-chrome',
+}));
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -12,13 +16,16 @@ const KEY = 'synthetic-operator-'.repeat(4);
 const RELAY_KEY = 'synthetic-relay-'.repeat(4);
 const ORIGIN = 'http://localhost:3000';
 let server, base, raw, root, store, doc, revision, calls, originalEnv;
+const clientProofs = new Map();
 async function api(method, url, body, headers = {}) {
-    const response = await fetch(base + url, { method, headers: { 'content-type': 'application/json', origin: ORIGIN, ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const response = await fetch(base + url, { method, headers: { 'content-type': 'application/json', origin: ORIGIN, ...(headers.cookie && clientProofs.has(headers.cookie) ? { 'x-nexus-local-proof': clientProofs.get(headers.cookie) } : {}), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
     return { status: response.status, json: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] };
 }
 beforeEach(async () => {
     originalEnv = { ...process.env };
     process.env.NEXUS_LOCAL_OPERATOR_SESSIONS = '1';
+    process.env.NEXUS_LOCAL_OPERATOR_UID = '501';
+    process.env.NEXUS_LOCAL_OPERATOR_CHROME = '1';
     process.env.NEXUS_OPERATOR_APPROVAL_KEY = KEY;
     process.env.NEXUS_DOCUMENT_APPROVAL_KEY = 'synthetic-executor-'.repeat(4);
     process.env.NEXUS_STAKEHOLDER_RUNTIME_KEY = 'synthetic-runtime-'.repeat(4);
@@ -58,12 +65,12 @@ beforeEach(async () => {
 afterEach(async () => {
     await new Promise(resolve => server.close(resolve)); raw.close(); fs.rmSync(root, { recursive: true, force: true }); process.env = originalEnv;
 });
-async function signIn() {
-    const result = await api('POST', '/api/operator-session', undefined, { authorization: `Bearer ${KEY}` });
-    expect(result.status).toBe(201); return result.cookie;
+async function bootstrap() {
+    const result = await api('POST', '/api/operator-session/bootstrap', undefined);
+    expect(result.status).toBe(201); clientProofs.set(result.cookie, result.json.proof); return result.cookie;
 }
 test.each(['approve', 'request_changes'])('local session records %s as a direct operator decision in the real ledger', async decision => {
-    const cookie = await signIn();
+    const cookie = await bootstrap();
     const result = await api('POST', `/api/documents/${doc.id}/decisions`, { revision_id: revision.id, decision, note: 'Synthetic decision' }, { cookie, authorization: 'Bearer local-dev-token' });
     expect(result.status).toBe(201);
     expect(result.json.decision).toMatchObject({ authority: 'operator_credential', recorded_by: 'operator', actor_id: 'local_user' });
@@ -71,12 +78,12 @@ test.each(['approve', 'request_changes'])('local session records %s as a direct 
     expect(read.json.current_decision.id).toBe(result.json.decision.id);
 });
 test.each(['edit', 'approve_send', 'cancel'])('local session %s reaches the mail relay with a valid body-bound operator:mail-drafts proof', async action => {
-    const cookie = await signIn();
+    const cookie = await bootstrap();
     const result = await api('POST', '/api/praxis/mailbox/drafts-review/md_fixture', { action, version: 'fixture', subject: 'Synthetic', body: 'Not sent' }, { cookie });
     expect(result.status).toBe(200); expect(result.json.decision.actor).toBe('operator:mail-drafts'); expect(calls).toEqual([action]);
 });
 test('shared chat authenticator accepts the signed local session and refuses it after logout', async () => {
-    const cookie = await signIn();
+    const cookie = await bootstrap();
     expect((await api('POST', '/chat-authority', {}, { cookie })).json.operator).toBe(true);
     await api('DELETE', '/api/operator-session', undefined, { cookie });
     expect((await api('POST', '/chat-authority', {}, { cookie })).json.operator).toBe(false);
@@ -96,7 +103,7 @@ test.each([
 });
 
 test('an invalid Access assertion cannot fall back to a valid local cookie', async () => {
-    const cookie = await signIn();
+    const cookie = await bootstrap();
     const result = await api('POST', `/api/documents/${doc.id}/decisions`, { decision: 'approve', revision_id: revision.id }, { cookie, 'cf-access-jwt-assertion': 'forged' });
     expect(result.status).toBe(403); expect(result.json.code).toBe('operator_required');
 });

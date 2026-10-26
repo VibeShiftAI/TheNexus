@@ -1,12 +1,13 @@
 /**
- * Explicit local sign-in, never automatic trust in localhost, the OS user or
- * the desktop shell. Robert supplies the operator credential to the sign-in
- * endpoint. A random, HMAC-authenticated cookie refers to a one-hour in-memory
+ * Automatic local sessions after a pinned macOS application passes the kernel
+ * peer/code-signing check. Localhost, the local_user stub and headers alone
+ * never qualify. A random, HMAC-authenticated cookie refers to a one-hour in-memory
  * session. Neither the operator key nor session tokens are logged or stored
  * in browser JS storage. See docs/contracts/local-operator-session.md.
  */
 const { createHash, createHmac, randomBytes, timingSafeEqual } = require('node:crypto');
-const { stakeholderCredential, requireStakeholderAuthority } = require('./stakeholder-authority');
+const { stakeholderCredential } = require('./stakeholder-authority');
+const { createLocalOperatorPeerVerifier, localPeerPolicy } = require('./local-operator-peer');
 
 const ORIGIN = 'http://localhost:3000';
 const COOKIE = 'nexus_local_operator';
@@ -16,17 +17,17 @@ const hash = value => createHash('sha256').update(value, 'utf8').digest('hex');
 const sign = (key, id) => createHmac('sha256', key).update(`nexus-local-operator/v1\n${id}`, 'utf8').digest('hex');
 const refusal = () => ({ ok: false, category: 'claim-rejected', check: 'local-session' });
 
-function localRequest(req) {
+function localRequest(req, bootstrap = false) {
     // Never use req.ip / forwarded headers: the global server trusts a proxy.
     if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket?.remoteAddress)) return false;
     if (req.user?.is_service || req.get('x-praxis-bridge-token')
         || req.get('cf-access-client-id') || req.get('cf-access-client-secret')) return false;
     const site = req.get('sec-fetch-site');
-    if (site && site !== 'same-origin') return false;
+    if (site && site !== 'same-origin' && !(bootstrap && site === 'same-site')) return false;
     const origin = req.get('origin');
     if (origin) return origin === ORIGIN;
     // Browsers omit Origin on same-origin GETs. Referer is sufficient ONLY for
-    // reads; every mutation, including sign-in and logout, requires Origin.
+    // reads; every mutation, including bootstrap and revocation, requires Origin.
     if (!['GET', 'HEAD'].includes(req.method)) return false;
     try { return new URL(req.get('referer')).origin === ORIGIN; } catch { return false; }
 }
@@ -47,7 +48,7 @@ function localKey() {
     return stakeholderCredential('operator');
 }
 
-function createLocalOperatorSessions({ now = Date.now } = {}) {
+function createLocalOperatorSessions({ now = Date.now, verifyPeer = createLocalOperatorPeerVerifier() } = {}) {
     const sessions = new Map();
     function prune() {
         for (const [id, session] of sessions) if (session.expiresAt <= now()) sessions.delete(id);
@@ -59,8 +60,14 @@ function createLocalOperatorSessions({ now = Date.now } = {}) {
         prune();
         const session = sessions.get(hash(token));
         if (!session) return refusal();
+        const proof = req.get('x-nexus-local-proof');
+        // Cookies are shared across localhost ports. This independent secret
+        // lives only in localhost:3000 origin storage, never in a cookie/URL.
+        if (typeof proof !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(proof)
+            || !timingSafeEqual(Buffer.from(hash(proof), 'hex'), Buffer.from(session.proofHash, 'hex'))) return refusal();
         try {
             const key = localKey();
+            if (session.policy !== localPeerPolicy().fingerprint) return refusal();
             const [id, signature] = token.split('.');
             if (!timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(sign(key, id), 'hex'))) {
                 sessions.delete(hash(token));
@@ -72,22 +79,29 @@ function createLocalOperatorSessions({ now = Date.now } = {}) {
             return refusal();
         }
     }
-    function mint(req) {
-        if (!localRequest(req)) throw Object.assign(new Error('Use the local Nexus dashboard'), { status: 403 });
+    async function mint(req) {
+        if (!localRequest(req, true) || req.get('authorization') || req.get('cf-access-jwt-assertion')) {
+            throw Object.assign(new Error('Local application proof required'), { status: 403 });
+        }
         const key = localKey();
-        requireStakeholderAuthority(req, 'operator');
+        const policy = localPeerPolicy().fingerprint;
+        const device = await verifyPeer(req);
+        if (!['mac-desktop', 'mac-chrome'].includes(device)) {
+            throw Object.assign(new Error('Local application proof required'), { status: 403 });
+        }
         prune();
         const old = cookieToken(req);
         // Bound memory; do not evict Robert's existing sessions for a new one.
         if (sessions.size >= 64 && (!old || !sessions.has(hash(old)))) {
-            throw Object.assign(new Error('Too many local sessions; sign out or wait for expiry'), { status: 429 });
+            throw Object.assign(new Error('Too many local sessions; revoke one or wait for expiry'), { status: 429 });
         }
         const id = randomBytes(32).toString('base64url');
         const token = `${id}.${sign(key, id)}`;
+        const proof = randomBytes(32).toString('base64url');
         const expiresAt = now() + TTL_MS;
         if (old) sessions.delete(hash(old));
-        sessions.set(hash(token), { expiresAt });
-        return { token, expiresAt };
+        sessions.set(hash(token), { expiresAt, policy, device, proofHash: hash(proof) });
+        return { token, proof, expiresAt };
     }
     function revoke(req) {
         const token = cookieToken(req);
@@ -96,6 +110,6 @@ function createLocalOperatorSessions({ now = Date.now } = {}) {
     return { inspect, mint, revoke };
 }
 
-// One server-owned store shared by the sign-in route and all authenticators.
+// One server-owned store shared by bootstrap and all authenticators.
 const localOperatorSessions = createLocalOperatorSessions();
 module.exports = { createLocalOperatorSessions, localOperatorSessions, localRequest, COOKIE, COOKIE_OPTIONS, TTL_MS };

@@ -26,6 +26,11 @@ const report = { synthetic: true, origin: ORIGIN, checks: [], mailActions: [], d
 let server, chrome, ws, raw, root;
 async function main() {
     process.env.NEXUS_LOCAL_OPERATOR_SESSIONS = '1';
+    process.env.NEXUS_LOCAL_OPERATOR_UID = '501';
+    process.env.NEXUS_LOCAL_OPERATOR_CHROME = '1';
+    // Only OS attestation is substituted. Real production rejects this
+    // headless/CDP profile; peer.test and live probes check that boundary.
+    require(path.join(REPO, 'server/services/local-operator-peer')).createLocalOperatorPeerVerifier = () => async () => 'mac-chrome';
     process.env.NEXUS_OPERATOR_APPROVAL_KEY = KEY;
     process.env.NEXUS_DOCUMENT_APPROVAL_KEY = 'browser-fixture-executor-'.repeat(3);
     process.env.NEXUS_STAKEHOLDER_RUNTIME_KEY = 'browser-fixture-runtime-'.repeat(3);
@@ -41,6 +46,7 @@ async function main() {
         subject: `Synthetic ${id}`, body: 'Synthetic body; never transported.', status: 'draft', version: `v${index}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     }));
     const app = express(); app.use(express.json());
+    app.use(require('cors')({ origin: ORIGIN }));
     app.use((req, _res, next) => { req.user = { id: 'local_user', is_service: false }; next(); });
     app.use('/api/operator-session', require(path.join(REPO, 'server/routes/operator-session'))());
     app.use('/api/documents', require(path.join(REPO, 'server/routes/documents'))({ db }));
@@ -123,22 +129,15 @@ async function main() {
     const click = async label => { await wait(`!!${button(label)} && !${button(label)}.disabled`, label); await evaluate(`${button(label)}.click()`); };
     const input = async (selector, value) => evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event('input', {bubbles:true})); })()`);
     const navigate = async route => { await send('Page.navigate', { url: ORIGIN + route }); await wait('document.readyState === "complete"', route); };
-    await navigate('/operator-sign-in');
-    await wait('document.querySelector("input[type=password]")', 'sign-in form');
-    await input('input[type=password]', KEY); await click('Sign in as Robert');
-    await wait('document.body.innerText.includes("Signed in as Robert until")', 'signed-in state');
-    assert.equal(await evaluate('document.cookie.includes("nexus_local_operator")'), false);
-    report.checks.push('real browser sign-in, HttpOnly cookie hidden from document.cookie');
+    // The root session component establishes proof without any sign-in UI.
     await navigate('/mail?folder=drafts');
     await wait(`document.querySelector('[data-draft-id="runtime:md_fixture_0"]')`, 'mail draft fixture');
     await evaluate(`document.querySelector('[data-draft-id="runtime:md_fixture_0"]').click()`);
     await wait('document.querySelector("[aria-label=Subject]")', 'mail editor');
     await input('[aria-label=Subject]', 'Edited synthetic subject');
-    await click('Operator sign-in'); await wait('document.querySelector("dialog[open]")', 'sign-in dialog');
-    await wait('document.querySelector("dialog").innerText.includes("Signed in as Robert")', 'shared cookie status');
-    await click('Close');
+    assert.equal(await evaluate('!!document.querySelector("input[type=password]") || [...document.querySelectorAll("button")].some(b => b.textContent === "Operator sign-in")'), false);
     assert.equal(await evaluate('document.querySelector("[aria-label=Subject]").value'), 'Edited synthetic subject');
-    report.checks.push('mail dialog preserves unsaved edit and recognizes session after navigation');
+    report.checks.push('no operator sign-in UI; unsaved mail edit survives automatic bootstrap');
     await click('Save changes'); await wait('!document.body.innerText.includes("Saving") && !!document.querySelector("[aria-label=Subject]") && [...document.querySelectorAll("button")].some(b=>b.textContent.trim()==="Approve and send" && !b.disabled)', 'saved mail');
     await click('Approve and send'); await wait(`!document.querySelector('[data-draft-id="runtime:md_fixture_0"]')`, 'synthetic sent draft removed');
     await evaluate(`document.querySelector('[data-draft-id="runtime:md_fixture_1"]').click()`); await click('Cancel send');
@@ -148,20 +147,19 @@ async function main() {
         await wait(`document.querySelector('[data-decision-button="${kind}"]')`, 'document decision');
         await evaluate(`document.querySelector('[data-decision-button="${kind}"]').click()`);
         await wait('document.querySelector("#decision-note")', 'decision note');
-        await input('#decision-note', 'Synthetic note retained through sign-in dialog');
-        await click('Operator sign-in'); await wait('document.querySelector("dialog[open]")', 'document sign-in dialog'); await click('Close');
-        assert.equal(await evaluate('document.querySelector("#decision-note").value'), 'Synthetic note retained through sign-in dialog');
+        await input('#decision-note', 'Synthetic note retained through automatic bootstrap');
+        assert.equal(await evaluate('document.querySelector("#decision-note").value'), 'Synthetic note retained through automatic bootstrap');
         await evaluate('document.querySelector("[data-decision-submit]").click()');
         await wait('document.querySelector("[data-decision-notice=ok]")', 'recorded document decision');
     }
     report.decisions = raw.prepare('SELECT decision, authority, recorded_by, actor_id FROM review_document_decisions ORDER BY created_at').all();
     assert.equal(report.decisions.length, 2);
     assert.ok(report.decisions.every(d => d.authority === 'operator_credential' && d.recorded_by === 'operator'));
-    report.checks.push('approve and request changes recorded in isolated document ledger; dialog preserves notes');
-    await navigate('/operator-sign-in'); await click('Sign out'); await wait('document.body.innerText.includes("Signed out")', 'logout');
-    const refused = await evaluate(`fetch('/api/documents/${docs[0]}/decisions', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decision:'approve'})}).then(async r => ({status:r.status,body:await r.json()}))`);
+    report.checks.push('approve and request changes recorded in isolated document ledger; automatic bootstrap preserves notes');
+    await evaluate("fetch('/api/operator-session', {method:'DELETE',headers:{'X-Nexus-Local-Proof':localStorage.getItem('nexus:local-operator-proof')}}).then(r => r.json())");
+    const refused = await evaluate(`fetch('/api/documents/${docs[0]}/decisions', {method:'POST',headers:{'Content-Type':'application/json','X-Nexus-Local-Proof':localStorage.getItem('nexus:local-operator-proof')},body:JSON.stringify({decision:'approve'})}).then(async r => ({status:r.status,body:await r.json()}))`);
     assert.equal(refused.status, 403); assert.equal(refused.body.code, 'operator_required');
-    report.checks.push('browser logout revokes subsequent document decisions: 403 operator_required');
+    report.checks.push('explicit revocation refuses subsequent document decisions: 403 operator_required');
     assert.deepEqual(report.mailActions.map(a => a.action), ['edit', 'approve_send', 'cancel']);
     assert.equal(report.errors.length, 0);
 }
@@ -172,6 +170,10 @@ main().catch(error => { report.errors.push(error.message); process.exitCode = 1;
     raw?.close();
     const output = process.env.CHECK_REPORT || '/tmp/nexus-local-operator-browser.json';
     fs.writeFileSync(output, JSON.stringify(report, null, 2) + '\n', 'utf8');
-    if (root) fs.rmSync(root, { recursive: true, force: true });
+    if (root) {
+        // Chrome's helper processes can finish flushing after its main exit.
+        await sleep(300);
+        fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    }
     console.log(JSON.stringify(report, null, 2));
 });

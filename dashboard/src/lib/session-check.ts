@@ -72,7 +72,7 @@ export interface OperatorSummary {
     status: number;
     state: OperatorState;
     operator: boolean;
-    identity: "user" | "device" | null;
+    identity: "user" | "device" | "local" | null;
     /** Fixed category from the API (`ok`, `assertion-missing`, `claim-rejected`, ...). */
     reason: string | null;
     /** Fixed check name from the API (`service-identity`, `identity-email`, ...). */
@@ -347,7 +347,7 @@ export function summarizeOperatorIdentity(status: number, body: unknown): Operat
     const record = asRecord(body);
     if (status !== 200 || !record) return { ...base, note: `The Nexus API answered ${status} without a verdict.` };
     const configured = asRecord(record.configured);
-    const identity = record.identity === "user" || record.identity === "device" ? record.identity : null;
+    const identity = record.identity === "user" || record.identity === "device" || record.identity === "local" ? record.identity : null;
     const operator = record.operator === true;
     return {
         ...base,

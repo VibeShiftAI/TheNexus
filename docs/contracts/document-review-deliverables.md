@@ -281,7 +281,7 @@ decision needs one of the proofs Nexus trusts:
 |---|---|---|
 | `access_user` | a verified Cloudflare Access login session for `NEXUS_OPERATOR_EMAIL` (tunnel browser, phone shell) | Robert's direct decisions, and the approve-after-changes grant on Finish review |
 | `access_device` | the Windows travel shell's verified Access device session, pinned by `NEXUS_OPERATOR_DEVICE_IDS` | the same |
-| `operator_credential` | `Authorization: Bearer <NEXUS_OPERATOR_APPROVAL_KEY>` from a trusted operator tool, or a short-lived local session explicitly established with that credential | the same; local provisioning and revocation: `docs/contracts/local-operator-session.md`; this key is also Robert's stakeholder approval authority (`docs/contracts/stakeholder-policy.md`) and no executor holds it |
+| `operator_credential` | `Authorization: Bearer <NEXUS_OPERATOR_APPROVAL_KEY>` from a trusted operator tool, or a short-lived local session signed by the server after a pinned Mac application passes OS peer verification | the same; local provisioning and revocation: `docs/contracts/local-operator-session.md`; this key is also Robert's stakeholder approval authority (`docs/contracts/stakeholder-policy.md`) and no executor holds it |
 | `document_executor_credential` | `Authorization: Bearer <NEXUS_DOCUMENT_APPROVAL_KEY>` from `scripts/record-document-approval.js` | an executor-recorded approval only (below): it needs the `executor` block citing a review Robert finished with the grant, it cannot decide directly or grant, and every stakeholder endpoint refuses it |
 
 The session is checked first, whatever `Authorization` header the request
@@ -302,14 +302,19 @@ the API as `local_user` with no operator proof, so they cannot decide on
 their own authority and cannot grant; since 2026-10-04 an executor may
 record Robert's own "approve with changes" instruction with the document
 executor credential, and only when Robert granted it (next paragraphs). The
-Mac app on `localhost:3000` has no Access session: it can read and comment,
-and can decide after Robert explicitly signs in with his operator credential
-at `/operator-sign-in`. The local browser uses the same sign-in with its own
-cookie store. Local sessions require `NEXUS_LOCAL_OPERATOR_SESSIONS=1`, expire
-after one hour and are revoked by logout or API restart; disabling the flag
-or rotating/removing the key and restarting prevents reuse. The shared chat
-restart authenticator checks the same proof. See
-`docs/contracts/local-operator-session.md` for the complete boundary.
+Mac app on `localhost:3000` has no Access session. It and the pinned local
+Chrome browser establish their operator sessions automatically, without a
+separate sign-in. The server verifies the actual TCP peer's running code,
+console UID and application pins before issuing a signed HttpOnly cookie plus
+a separate random proof stored only in the dashboard origin. Every local
+decision requires both, active server state, loopback and the exact dashboard
+Origin. A captured cookie alone cannot authorize another local process.
+Local sessions require `NEXUS_LOCAL_OPERATOR_SESSIONS=1` plus configured
+application pins, expire after one hour and renew before expiry. API restart
+revokes all; disable the flag or remove/rotate the key or pins and restart to
+prevent reissuance. The shared chat restart authenticator checks the same
+proof. See `docs/contracts/local-operator-session.md` for provisioning,
+revocation, supported clients and the bounded threat model.
 
 ### Executor-recorded approvals (2026-10-04, task a2553798)
 
@@ -524,9 +529,10 @@ Nexus records authority and state; Praxis owns the delivery operation.
   `content_hash`) of the revision on screen, plus a fresh
   `client_decision_id` per click. On `409 stale_revision`, reload and show the
   new revision; on `409 file_unavailable`, show the file problem; on
-  `403 operator_required`, offer explicit local Operator sign-in, or the
-  existing tunnel, phone or travel session. The local sign-in dialog checks
-  its own cookie through `/api/operator-session`; it never retries a decision.
+  `403 operator_required`, explain that the local automatic session could
+  not be verified; reopening the pinned Mac app or restarting updated Chrome
+  renews it. The tunnel, phone and travel sessions remain available. Automatic
+  session establishment never retries a failed decision.
 - Send no `Authorization` header with document requests from a browser
   session: the session is the proof, and a bearer turns a refusal into a
   credential problem (`operator_credential_unconfigured`).

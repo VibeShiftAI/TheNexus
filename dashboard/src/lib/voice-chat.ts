@@ -1,4 +1,5 @@
 import type { Message, MessageAttachment } from '@/components/cortex-provider';
+import { ensureLocalOperatorSession, localOperatorHeaders } from './local-operator-session';
 
 export interface VoiceChatTurn {
   clientMessageId: string;
@@ -83,8 +84,11 @@ export async function sendVoiceChat(turn: VoiceChatTurn, options: RequestOptions
     // An ambiguous POST always reconciles by GET before another POST is allowed.
     post = false;
     try {
+      if (wasPost) await ensureLocalOperatorSession();
+      checkAbort(options.signal);
+      const localHeaders = localOperatorHeaders('/api/ai/chat');
       result = await voiceChatRequest<VoiceChatReceipt>(wasPost ? '/api/ai/chat' : `/api/ai/chat/requests/${encodeURIComponent(turn.clientMessageId)}`,
-        wasPost ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body } : { cache: 'no-store' }, options);
+        wasPost ? { method: 'POST', ...(Object.keys(localHeaders).length ? { redirect: 'error' as const } : {}), headers: { 'Content-Type': 'application/json', ...localHeaders }, body } : { cache: 'no-store' }, options);
       checkAbort(options.signal);
       if (!result.ok) {
         if (!wasPost && result.status === 404) {

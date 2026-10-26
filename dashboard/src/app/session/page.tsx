@@ -16,6 +16,7 @@
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { ensureLocalOperatorSession, localOperatorHeaders } from "@/lib/local-operator-session";
 import {
     describeAudience,
     nextStep,
@@ -38,7 +39,9 @@ interface Result {
 
 async function read(path: string): Promise<{ status: number; body: unknown }> {
     try {
-        const response = await fetch(path, { cache: "no-store", credentials: "same-origin", headers: { Accept: "application/json" } });
+        const localHeaders = localOperatorHeaders(path);
+        const response = await fetch(path, { cache: "no-store", credentials: "same-origin",
+            ...(Object.keys(localHeaders).length ? { redirect: "error" as const } : {}), headers: { Accept: "application/json", ...localHeaders } });
         let body: unknown = null;
         try {
             body = await response.json();
@@ -82,6 +85,7 @@ export default function SessionPage() {
 
     const check = useCallback(async () => {
         setChecking(true);
+        await ensureLocalOperatorSession();
         const [probe, edge, api] = await Promise.all([
             read("/session/probe"),
             read("/cdn-cgi/access/get-identity"),
@@ -120,7 +124,7 @@ export default function SessionPage() {
                             <ShieldCheck size={16} className="text-emerald-300" /> Session check
                         </h1>
                         <p className="mt-0.5 text-[11px] text-slate-500">
-                            Whether the session this app already holds is the one Nexus chat recognizes as you. Nothing here signs you in, and no token is shown or sent anywhere.
+                            Whether this app’s session is recognized as you. Local sessions renew automatically. No credential is shown.
                         </p>
                     </div>
                     <button

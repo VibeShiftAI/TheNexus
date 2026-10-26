@@ -30,6 +30,8 @@ mod presentation;
 mod presentation_policy;
 #[cfg(target_os = "windows")]
 mod presentation_wire;
+#[cfg(target_os = "macos")]
+mod local_operator;
 
 use std::sync::Mutex;
 
@@ -164,11 +166,25 @@ fn build_bridge_window(app: &tauri::App) -> tauri::Result<()> {
     // the [STATUS REPORT] cards in chat) open in the system default
     // browser. Without a handler WKWebView's new-window request goes
     // nowhere and the click is a silent no-op.
+    let operator_app = app.handle().clone();
     WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("The Nexus")
         .inner_size(1512.0, 945.0)
         .min_inner_size(900.0, 600.0)
         .theme(Some(tauri::Theme::Dark))
+        .initialization_script(local_operator::INIT)
+        .on_navigation(move |url| {
+            if url.scheme() == "nexus-shell" && url.host_str() == Some("local-operator") {
+                // Only the existing local main view may request this fixed
+                // renewal. Remote pages get neither IPC nor a supplied URL.
+                if operator_app.get_webview_window("main").and_then(|view| view.url().ok())
+                    .is_some_and(|current| current.origin().ascii_serialization() == "http://localhost:3000") {
+                    local_operator::renew(operator_app.clone());
+                }
+                return false;
+            }
+            true
+        })
         .on_new_window(|url, _features| {
             let scheme = url.scheme();
             if scheme == "http" || scheme == "https" {

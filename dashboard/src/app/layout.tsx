@@ -10,6 +10,7 @@ import { LiveBoardStateProvider } from "@/components/live-board-state";
 import { ConnectionBanner } from "@/components/connection-banner";
 import { MobileShellBridge } from "@/components/mobile-shell-bridge";
 import { TravelPresentationLauncher } from "@/components/presentation/presentation-controller";
+import { LocalOperatorSession } from "@/components/local-operator-session";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,6 +45,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <LocalOperatorSession />
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: 'max(7rem, var(--nexus-floating-bottom, 0px))' }}>
           <DisplayScaleProvider>
           <CortexProvider>

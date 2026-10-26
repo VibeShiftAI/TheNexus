@@ -14,16 +14,18 @@
  *                                (NEXUS_OPERATOR_APPROVAL_KEY, checked by
  *                                stakeholder-authority.js) for a trusted
  *                                operator tool, or the short-lived local
- *                                session explicitly minted from that same
- *                                credential at /operator-sign-in. Enable
- *                                NEXUS_LOCAL_OPERATOR_SESSIONS=1 and provision
- *                                an independent operator key; Robert signs in
- *                                separately in his Mac app and local browser.
- *                                Signed HttpOnly cookie + active server state,
- *                                loopback + exact Origin, one-hour expiry.
- *                                Logout revokes one; restart revokes all;
- *                                disable the flag or rotate/remove the key and
- *                                restart to revoke and prevent new sign-ins.
+ *                                session automatically issued by the server
+ *                                after verifying the actual TCP peer's pinned
+ *                                macOS app code and console UID. No extra login.
+ *                                Enable NEXUS_LOCAL_OPERATOR_SESSIONS=1; pin
+ *                                NEXUS_LOCAL_OPERATOR_UID and Chrome opt-in /
+ *                                the hardened desktop build's CDHash. Signed
+ *                                HttpOnly cookie + origin-stored random proof
+ *                                header + active server state are all needed;
+ *                                loopback/exact Origin only constrain use.
+ *                                One-hour expiry; delete revokes one; restart
+ *                                revokes all. Disable/rotate key or app pins
+ *                                and restart to revoke and stop reissuance.
  *                                docs/contracts/local-operator-session.md.
  *   document_executor_credential the document-scoped executor credential
  *                                (NEXUS_DOCUMENT_APPROVAL_KEY, task a2553798):
@@ -50,9 +52,9 @@
  *
  * Service users, bridge/executor headers, the runtime credential and an
  * unsigned local request are refused. The Mac app on localhost:3000 carries
- * no Access session; it must explicitly sign in locally before deciding.
+ * no Access session; its native connection bootstraps the proof automatically.
  * The shared verifier also gates chat restart authority. The ledger retains
- * operator_credential for a session derived from that credential, so existing
+ * operator_credential for a session signed by the operator authority, so existing
  * downstream operator-only allowlists and delegated-review checks still apply.
  */
 const { createOperatorAuthenticator } = require('./operator-access');

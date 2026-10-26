@@ -2,6 +2,7 @@
 // through the dashboard's /api proxy so the same code works on the desktop,
 // the phone shell and the Cloudflare tunnel. Types mirror the server's
 // server/routes/documents.js responses.
+import { ensureLocalOperatorSession, localOperatorHeaders } from './local-operator-session';
 
 /** `superseded`: a draft round closed read-only when replacement work on the document was accepted (contract §12); its comments are kept. */
 export type ReviewStatus = 'draft' | 'submitted' | 'superseded';
@@ -406,11 +407,14 @@ export class DocumentApiError extends Error {
  * cache-buster mirrors that helper.
  */
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
+    if (options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) await ensureLocalOperatorSession();
     const target = `${url}${url.includes('?') ? '&' : '?'}_cb=${Date.now()}`;
+    const localHeaders = localOperatorHeaders(target);
     const res = await fetch(target, {
         ...options,
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        ...(Object.keys(localHeaders).length ? { redirect: 'error' as const } : {}),
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}), ...localHeaders },
     });
     let data: unknown = null;
     try { data = await res.json(); } catch { data = null; }
