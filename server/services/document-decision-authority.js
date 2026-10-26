@@ -53,6 +53,8 @@
  * Service users, bridge/executor headers, the runtime credential and an
  * unsigned local request are refused. The Mac app on localhost:3000 carries
  * no Access session; its native connection bootstraps the proof automatically.
+ * Chrome's fixed proof policy verifies signatures/resources and strict symlinks
+ * while permitting sideband metadata; the native app retains full strictness.
  * The shared verifier also gates chat restart authority. The ledger retains
  * operator_credential for a session signed by the operator authority, so existing
  * downstream operator-only allowlists and delegated-review checks still apply.

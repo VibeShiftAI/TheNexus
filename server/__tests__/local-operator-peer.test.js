@@ -11,13 +11,13 @@ beforeEach(() => {
     process.env.NEXUS_LOCAL_OPERATOR_DESKTOP_CDHASH = 'a'.repeat(40);
 });
 afterEach(() => { process.env = env; });
-function fixture({ kind = 'chrome', flags = '', uid = 501, parent = 1, valid = true, changed = false } = {}) {
+function fixture({ kind = 'chrome', flags = '', uid = 501, parent = 1, valid = true, invalidPid, changed = false } = {}) {
     let lookups = 0;
     const run = jest.fn(async (file, args) => {
         if (file.endsWith('lsof')) return { stdout: `p900\nn[::1]:4000->[::1]:53210\np${changed && lookups++ ? 901 : 100}\nn[::1]:53210->[::1]:4000\n` };
         const pid = file.endsWith('ps') ? args[2] : args.at(-1);
         if (file.endsWith('ps')) return { stdout: `${kind === 'chrome' && pid === '100' ? 99 : parent} ${uid} ${date} ${kind === 'chrome' ? chrome : native} ${pid === '100' && kind === 'chrome' ? '--utility-sub-type=network.mojom.NetworkService' : flags}` };
-        if (args[0] === '--verify') { if (!valid) throw new Error('untrusted'); return { stdout: '', stderr: '' }; }
+        if (args[0] === '--verify') { if (!valid || pid === invalidPid) throw new Error('untrusted'); return { stdout: '', stderr: '' }; }
         return { stderr: `Executable=${kind === 'chrome' ? (pid === '100' ? '/Applications/Google Chrome.app/Contents/Frameworks/Helper' : chrome) : kind === 'native' ? native : '/usr/local/bin/node'}\nIdentifier=${pid === '100' && kind === 'chrome' ? 'com.google.Chrome.helper' : 'com.google.Chrome'}\nCodeDirectory v=20500 size=765 flags=0x10002(adhoc,runtime) hashes=13+7 location=embedded\n` };
     });
     return { run, verify: createLocalOperatorPeerVerifier({ run, platform: 'darwin', consoleUid: () => 501 }) };
@@ -27,7 +27,21 @@ test.each(['chrome', 'native'])('kernel peer plus configured running %s code qua
     expect(await verify({ socket })).toBe(kind === 'chrome' ? 'mac-chrome' : 'mac-desktop');
     const validations = run.mock.calls.filter(([file, args]) => file.endsWith('codesign') && args[0] === '--verify');
     expect(validations).toHaveLength(kind === 'chrome' ? 2 : 1);
-    expect(validations.every(([, args]) => args.includes('--strict') && args.includes('--verbose=1') && /^\d+$/.test(args.at(-1)))).toBe(true);
+    const strict = kind === 'chrome' ? '--strict=symlinks' : '--strict';
+    expect(validations.every(([, args]) => args.includes(strict) && args.includes('--verbose=1') && /^\d+$/.test(args.at(-1)))).toBe(true);
+    if (kind === 'chrome') {
+        expect(validations.map(([, args]) => args[args.indexOf('-R') + 1])).toEqual([
+            '=identifier "com.google.Chrome.helper" and anchor apple generic and certificate leaf[subject.OU] = "EQHXZ8M8AV"',
+            '=identifier "com.google.Chrome" and anchor apple generic and certificate leaf[subject.OU] = "EQHXZ8M8AV"',
+        ]);
+    }
+});
+test.each([['helper', '100', 1], ['main', '99', 2]])('invalid Chrome %s code is refused without a weaker fallback', async (_name, invalidPid, count) => {
+    const { run, verify } = fixture({ invalidPid });
+    expect(await verify({ socket })).toBeNull();
+    const validations = run.mock.calls.filter(([file, args]) => file.endsWith('codesign') && args[0] === '--verify');
+    expect(validations).toHaveLength(count);
+    expect(validations.every(([, args]) => args.includes('--strict=symlinks') && args.includes('--verbose=1') && args.includes('-R'))).toBe(true);
 });
 test.each(['--headless=new', '-headless -user-data-dir=/tmp/qa -remote-debugging-port=0', '--unknown-switch', '--remote-debugging-port=9222', '--remote-debugging-pipe', '--enable-automation', '--user-data-dir=/tmp/qa', '--profile-directory=QA', '--load-extension=/tmp/e', '--no-sandbox'])('automated/custom browser %s is refused', async flags => {
     expect(await fixture({ flags }).verify({ socket })).toBeNull();

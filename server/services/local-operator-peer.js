@@ -82,8 +82,8 @@ function createLocalOperatorPeerVerifier({ run = command, platform = process.pla
             // Numeric PID requests dynamic validation; verbosity additionally
             // requires a full static check (codesign(1), OPERATION). The +PID
             // spelling fails for this hardened app on current macOS.
-            const validate = (pid, requirement) => run('/usr/bin/codesign',
-                ['--verify', '--verbose=1', '--strict', '-R', `=${requirement}`, String(pid)]);
+            const validate = (pid, requirement, strict = '--strict') => run('/usr/bin/codesign',
+                ['--verify', '--verbose=1', strict, '-R', `=${requirement}`, String(pid)]);
             const pid = await owner();
             if (!pid) return null;
             const before = await info(pid);
@@ -98,12 +98,16 @@ function createLocalOperatorPeerVerifier({ run = command, platform = process.pla
                 && signing.Executable?.startsWith('/Applications/Google Chrome.app/Contents/Frameworks/')
                 && before.command.includes('--utility-sub-type=network.mojom.NetworkService')) {
                 const google = 'anchor apple generic and certificate leaf[subject.OU] = "EQHXZ8M8AV"';
-                await validate(pid, `identifier "com.google.Chrome.helper" and ${google}`);
+                // Keep dynamic identity, full static resource validation and
+                // sealed symlink checks. Chrome's FinderInfo/ResourceFork
+                // sideband metadata is not identity proof (codesign(1), --strict).
+                // This is a fixed Chrome policy, never a signature-error fallback.
+                await validate(pid, `identifier "com.google.Chrome.helper" and ${google}`, '--strict=symlinks');
                 parent = before.ppid;
                 parentBefore = await info(parent);
                 if (!parentBefore || parentBefore.ppid !== 1 || parentBefore.uid !== policy.uid
                     || !interactiveChrome(parentBefore.command) || (await code(parent)).Executable !== CHROME) return null;
-                await validate(parent, `identifier "com.google.Chrome" and ${google}`);
+                await validate(parent, `identifier "com.google.Chrome" and ${google}`, '--strict=symlinks');
                 device = 'mac-chrome';
             } else return null;
             // Recheck the live tuple and process generation after signing checks.

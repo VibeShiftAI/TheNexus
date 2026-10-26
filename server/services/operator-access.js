@@ -15,6 +15,8 @@
  *   local   The pinned Mac app / signed default-profile Chrome bootstraps
  *           silently via its actual TCP peer, running-code signature and
  *           pinned console UID (local-operator-peer.js), never headers alone.
+ *           Chrome retains full signature/resource and strict symlink checks;
+ *           only sideband metadata is permitted. Native pins use full strictness.
  *           Provision NEXUS_LOCAL_OPERATOR_SESSIONS=1, an independent operator
  *           key, NEXUS_LOCAL_OPERATOR_UID, and the Chrome opt-in / hardened
  *           desktop CDHash pin. The server mints a one-hour signed HttpOnly

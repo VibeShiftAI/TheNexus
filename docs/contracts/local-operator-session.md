@@ -10,11 +10,20 @@ redirect home. The tunnel, phone and Windows travel shell still use Access.
 
 The server verifies the **actual client end of the live TCP connection** with
 macOS `lsof`, then the peer's UID, start time, parent and running code using
-`ps` and `codesign --verify --verbose=1 --strict -R <pinned requirement> PID`.
+`ps` and `codesign --verify --verbose=1 -R <pinned requirement> PID`, with
+`--strict` for the native app and `--strict=symlinks` for Chrome.
 A numeric PID selects dynamic validation; verbosity also requires a full static
 check (macOS `codesign(1)`, OPERATION; [Apple code-signing guide](https://developer.apple.com/library/archive/documentation/Security/Conceptual/CodeSigningGuide/Procedures/Procedures.html)). The exact
 socket tuple and process generation are rechecked afterward. Neither a PID
 header, Origin, User-Agent, loopback address nor `local_user` grants authority.
+
+Chrome's fixed policy permits sideband FinderInfo and ResourceFork metadata,
+which can remain after an ordinary browser restart. It retains dynamic code
+validation, full static signature/resource checks, the Google signing
+requirements, and strict sealed-symlink checks. Apple's [resource validator](https://github.com/apple-oss-distributions/Security/blob/main/OSX/libsecurity_codesigning/lib/StaticCode.cpp#L1720-L1797)
+keeps these integrity checks separate from optional sideband rejection. No
+signature failure triggers a weaker fallback. The native app retains all
+strictness checks.
 
 Eligible peers are the explicitly pinned, hardened `/Applications/The Nexus.app`
 executable launched through the desktop, or the signed Google Chrome network
