@@ -39,8 +39,10 @@ limit explicitly rather than claiming that a process check proves a human click.
       add behavior tests and update the existing isolated browser check.
 - [x] Run security suites, dashboard build/browser flow and native build/tests.
 - [x] Verify actual native identity on /session without sending client mail.
-- [ ] Verify actual Chrome identity after its required restart. Browser policy
-      blocked automated restart; Robert was asked only to restart Chrome.
+- [x] Verify actual Chrome identity after Robert restarted it: State ok / Identity
+      local at 18:14:32. Fixed Chrome sideband-metadata strictness while preserving
+      dynamic/static signatures, Google requirements and sealed-symlink checks.
+      Native identity reverified at 18:15:48; no separate sign-in.
 - [x] Update existing contract/header comments, retain exact evidence and all
       caveats, review attributable baseline diff, scan encoding, commit only
       verified own changes with the task trailer, register reference artifacts.

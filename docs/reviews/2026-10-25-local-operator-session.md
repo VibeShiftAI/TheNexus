@@ -1,182 +1,149 @@
-# Automatic local operator sessions — correction and verification
+# Automatic local operator sessions — verified
 
 Task: `5f15ca0f-17b1-48a7-aa93-61f212fcabf6`.
 QA baseline: `13a75c9e6e80e69c772efd67f6221eb057266cc1`.
-Implementation commit: `4e1f107` (local only, task trailer present).
+Local implementation commits: `4e1f107`, `d0ba169`; prior evidence commit `e779bc0`.
 
-The separate sign-in is removed in accordance with Robert's 2026-10-26 ruling.
-The installed Mac app now establishes operator identity automatically: its
-Session Check displayed **State ok · Identity local**, without credential entry
-(`docs/reviews/2026-10-25-local-operator-evidence.json:238`). Chrome verification
-remains blocked pending a normal browser restart; this is not a completion claim
-(`docs/reviews/2026-10-25-local-operator-evidence.json:255`).
+The installed Mac app and Robert's restarted Chrome now establish operator
+identity automatically. Their Session Check pages displayed **State ok · Reason
+ok · Identity local** at 18:15:48 and 18:14:32 respectively, with no credential
+entry (docs/reviews/2026-10-25-local-operator-evidence.json:621, :628). This implements Robert's ruling
+against a separate sign-in. The five requested actions pass the shared dashboard
+flow: edit, approve/send, cancel, approve document and request changes
+(docs/reviews/2026-10-25-local-operator-evidence.json:681, :697). No real client email or business approval was
+made for verification; actual client identity and isolated action/ledger evidence
+are separate checks (docs/reviews/2026-10-25-local-operator-evidence.json:851).
 
 ## What changed and why
 
-The server now verifies the exact live TCP peer, console UID, process ancestry,
-installed application path and running code before minting authority
-(`server/services/local-operator-peer.js:62`). It accepts the explicitly pinned,
-hardened native app or the signed ordinary Google Chrome profile; an argument
-allowlist rejects automated/custom-profile browsers
-(`server/services/local-operator-peer.js:17`, `:93`). macOS's numeric PID form
-with `--verbose=1` checks running code and full static integrity. The real native
-process passed the configured CDHash and failed an all-zero pin
-(`docs/reviews/2026-10-25-local-operator-evidence.json:245`, `:249`).
+The earlier implementation verifies the live TCP peer, console UID, process
+ancestry, installed application path and running code before minting authority
+(`server/services/local-operator-peer.js:62`). Every local decision then requires
+an HMAC-authenticated HttpOnly cookie, a separate random origin-scoped proof,
+active one-hour server state and the permitted local origin
+(`server/services/local-operator-session.js:56`). The native app uses a fixed
+Rust TCP bootstrap and plants its own cookie/proof; the browser bootstraps
+silently. Mail/documents and chat retain the dashboard API proxy
+(`desktop/src-tauri/src/local_operator.rs:35`,
+`dashboard/src/lib/local-operator-session.ts:45`,
+`dashboard/src/lib/mail-drafts.ts:135`, `dashboard/src/lib/document-review.ts:410`).
 
-Each request needs both a signed HttpOnly cookie and a separate random proof
-kept in the localhost:3000 origin, plus an active one-hour server entry. A cookie
-captured by a different localhost port is insufficient
-(`server/services/local-operator-session.js:56`). The browser silently renews;
-the native shell makes its own fixed TCP request and plants the cookie and
-origin-scoped proof (`dashboard/src/lib/local-operator-session.ts:45`,
-`desktop/src-tauri/src/local_operator.rs:38`). No credential form remains;
-old sign-in URLs redirect home (`dashboard/src/app/operator-sign-in/page.tsx:1`).
-Mail, document and chat mutations preflight the automatic session, retain their
-normal /api proxy, and never retry a failed decision just because a session was
-established (`dashboard/src/lib/mail-drafts.ts:135`,
-`dashboard/src/lib/document-review.ts:410`, `dashboard/src/components/ai-terminal.tsx:375`).
+Robert's Chrome restart exposed an overly strict metadata check in this task's
+implementation. The new process and installed Chrome had matching code hashes,
+but full `--strict` still rejected FinderInfo on its framework. The earlier
+old-process hypothesis was insufficient (docs/reviews/2026-10-25-local-operator-evidence.json:608).
+A narrow attempt to remove that metadata returned `Operation not permitted`
+before changing anything; the attributes and Chrome code were left intact
+(docs/reviews/2026-10-25-local-operator-evidence.json:612).
 
-Access keeps its prior validation and precedence
-(`server/services/operator-access.js:143`). Document decisions retain
-`operator_credential` and `recorded_by: operator`; the fixture's actor id is the
-existing Robert dashboard id `local_user`, which still grants nothing alone
-(`server/services/document-decision-authority.js:86`,
-`docs/reviews/2026-10-25-local-operator-evidence.json:203`). Mail retains the
-body-bound `mail-drafts` surface (`server/routes/mail-draft-review.js:30`).
+The correction uses the fixed Chrome-only `--strict=symlinks` policy, retaining
+both Google signature requirements, dynamic and full static validation, sealed
+resource hashes and strict symlink checks. It permits FinderInfo and ResourceFork
+sideband metadata. Apple's [resource validator](https://github.com/apple-oss-distributions/Security/blob/main/OSX/libsecurity_codesigning/lib/StaticCode.cpp#L1720-L1797)
+separates those metadata checks from resource integrity checks. Native validation
+retains full `--strict`; a failed Chrome helper or main signature never triggers
+a weaker fallback (`server/services/local-operator-peer.js:85`,
+`server/__tests__/local-operator-peer.test.js:25`). Real Chrome accepted the
+correct Google requirement (exit 0) and rejected the wrong team (exit 3)
+(docs/reviews/2026-10-25-local-operator-evidence.json:733). Only the supervised Nexus API child was
+restarted, PID 96627 to 67202 (docs/reviews/2026-10-25-local-operator-evidence.json:633).
 
-## Activation and remaining check
-
-Only non-secret pins were added to the ignored server .env: console UID 501,
-Chrome opt-in, and native CDHash `d6d663582a4cf6b349d4d43ae5bd7b6ccb753aac`.
-The previous installed app was backed up to
-`/tmp/nexus-local-operator-app-backup-20261026`; the hardened build was installed
-at `/Applications/The Nexus.app`. Only the supervised Nexus API child was
-restarted for activation (`docs/reviews/2026-10-25-local-operator-evidence.json:385`).
-
-Chrome PID 82710 began on October 20 and its installed code has since been
-updated. Its current strict running-code check exits 1 with “resource fork,
-Finder information, or similar detritus not allowed”
-(`docs/reviews/2026-10-25-local-operator-evidence.json:259`). No signature check
-was weakened. The browser tool rejected `chrome://restart` because its URL
-policy disallows that protocol and forbids alternate automation routes
-(`docs/reviews/2026-10-25-local-operator-evidence.json:262`). Robert was asked only
-to quit/reopen Chrome, not to sign in. On resume, verify localhost:3000/session
-shows **State ok · Identity local**, then finish criterion 1 against the retained
-flow evidence. Do not repeat implementation or retrieve an operator credential.
-
-The five-action browser run uses synthetic drafts/documents and injected OS
-attestation. It proves edit, approve/send and cancel relay behavior, both document
-ledger decisions, note preservation and revocation. It is not a claim that a real
-client email was sent or a real business document approved
-(`docs/reviews/2026-10-25-local-operator-evidence.json:178`, `:217`). Both actual
-clients and real live decision receipts have not all been observed, so criterion
-1 remains blocked under its full wording.
+The document ledger retains `operator_credential`, `recorded_by: operator` and
+Robert's existing dashboard actor id `local_user`; that stub still confers no
+authority alone. Mail retains the body-bound `mail-drafts` provenance and Praxis
+records `operator:mail-drafts` (docs/reviews/2026-10-25-local-operator-evidence.json:698, :715).
+Access validation and precedence remain unchanged
+(`server/services/operator-access.js:145`, docs/reviews/2026-10-25-local-operator-evidence.json:840).
+Proof, provisioning and revocation are documented in both authority headers and
+the contract (`server/services/operator-access.js:15`,
+`server/services/document-decision-authority.js:16`,
+`docs/contracts/local-operator-session.md:11`, :75, :110).
 
 ## Verification
 
-- Final focused server command and output: **13 suites / 358 tests passed**,
-  including operator/session, document/executor, stakeholder, mail/provenance and
-  MCP security (`docs/reviews/2026-10-25-local-operator-evidence.json:8`).
-- Dashboard behavior tests: **90 passed, 0 failed**; build compiled and generated
-  **30/30 pages** (`docs/reviews/2026-10-25-local-operator-evidence.json:32`, `:137`).
-- `node dashboard/scripts/local-operator-browser-check.cjs`: all five synthetic
-  actions passed, all mail actors `operator:mail-drafts`, both document decisions
-  recorded by operator, `errors: []`
-  (`docs/reviews/2026-10-25-local-operator-evidence.json:189`, `:203`, `:215`).
-- Native release build and parser test passed (**1 passed, 0 failed**)
-  (`docs/reviews/2026-10-25-local-operator-evidence.json:149`, `:165`).
-- The unchanged Praxis receiver test passed and stored the signed cancellation
-  actor as `operator:mail-drafts` in isolated durable state
-  (`docs/reviews/2026-10-25-local-operator-evidence.json:220`).
-- Twelve live negative probes, across bootstrap/mail/documents for unsigned,
-  placeholder bearer, forged reviewer and bridge requests, all returned
-  **403 operator_required**; the document probe used existing id
-  `9f6c4952-88b8-494b-8ae9-3f2331392206`
-  (`docs/reviews/2026-10-25-local-operator-evidence.json:268`). Executor-key-specific
-  `executor_provenance_required` and runtime-key refusal are also asserted in
-  `server/__tests__/local-operator-flows.test.js:90`.
-- Existing Access user, async phone and pinned travel-device tests are unchanged
-  against the QA baseline and pass. Mixed Access/local-cookie precedence passes
-  too (`docs/reviews/2026-10-25-local-operator-evidence.json:345`).
-- The broader client-access suite still has **23 baseline fixture failures** at
-  structured knowledge setup. Baseline and current commands, all matching names
-  and both outcomes are retained; this suite is not counted as passing
-  (`docs/reviews/2026-10-25-local-operator-evidence.json:351`).
+- `npx jest` with the 13 named security/authority suites: **360 tests passed**.
+  The full command and output are retained at docs/reviews/2026-10-25-local-operator-evidence.json:648.
+  The peer regression was written first: **3 failed / 18 passed** before the
+  correction, then **21 passed** (docs/reviews/2026-10-25-local-operator-evidence.json:643).
+- `node dashboard/scripts/local-operator-browser-check.cjs`: all five actions
+  passed; all mail actions carried `operator:mail-drafts`, both document
+  decisions were recorded by operator, and `errors: []`
+  (docs/reviews/2026-10-25-local-operator-evidence.json:675, :683, :698, :709). Only OS attestation is
+  injected; data and email transport are synthetic. Production rejects the
+  test's headless/custom profile.
+- The actual Praxis tests selected by `migration is idempotent|cancel is
+  permanent|operator proof is bound to exact action payload`: **3 passed**.
+  They prove edited bytes are sent once through a stub transport, cancellation
+  persists, unsigned/altered actions are refused, and the real router stores
+  `operator:mail-drafts` (docs/reviews/2026-10-25-local-operator-evidence.json:714).
+- Twelve live probes across bootstrap, mail and documents for unsigned,
+  placeholder-bearer, bridge and forged-executor requests returned **403
+  operator_required** (docs/reviews/2026-10-25-local-operator-evidence.json:763). Document probes used
+  the reference contract's existing id with an empty body, so even an authority
+  regression could not record a decision. An initial absent-id probe returned
+  404 before authority and was correctly excluded (docs/reviews/2026-10-25-local-operator-evidence.json:838).
+  Executor-credential `executor_provenance_required` and runtime-key refusal
+  pass in `server/__tests__/local-operator-flows.test.js:90`.
+- Existing Access user/tunnel, phone, travel-device, document and stakeholder
+  tests remain byte-for-byte unchanged against the QA baseline (`git diff
+  13a75c9e6e80 --exit-code --` the six paths listed in docs/reviews/2026-10-25-local-operator-evidence.json:841
+  exited 0). They pass in the 360-test run, including both JWT audience shapes;
+  mixed local/Access precedence also passes.
+- Retained earlier-round gates: **90 dashboard tests**, **30/30-page production
+  build**, native release build and native parser test (**1 passed**)
+  (docs/reviews/2026-10-25-local-operator-evidence.json:32, :137, :149, :165). This resumed correction
+  changed server verification and documentation only, so no dashboard/native
+  rebuild was needed.
+- The broader client-access suite has **23 pre-existing fixture failures** at
+  structured-knowledge setup. The baseline revision, commands, both outcomes and
+  all matching names are retained at docs/reviews/2026-10-25-local-operator-evidence.json:336. It is not
+  counted as passing or changed by this task.
 
-The verify and code-review gates were run explicitly. The implementation diff
-was reread, independent security review findings were fixed, `git diff --check`
-passed, and strict UTF-8 plus mojibake scans passed. Review fixes and the bounded
-threat model are retained at
-`docs/reviews/2026-10-25-local-operator-evidence.json:396`.
+The verify and code-review gates both passed. The attributable authority,
+session, client and native changes were reread against the QA baseline, along
+with the full resumed patch. Independent security review found no remaining
+blocker and reran all 21 peer tests. Strict UTF-8, mojibake scans and
+`git diff --check` passed (docs/reviews/2026-10-25-local-operator-evidence.json:845).
 
-## Scope and ownership
+## Scope, assumptions and limits
 
-TheNexus contains the primary API, dashboard and native-shell changes
-(`server/routes/operator-session.js:1`, `dashboard/src/lib/local-operator-session.ts:1`,
-`desktop/src-tauri/src/local_operator.rs:1`). `git diff 13a75c9e6e80 --stat`
-is nonempty; it also includes unrelated shared changes, so its aggregate is not
-an ownership claim. The earlier task-owned paths were extended in place. This
-round's local commit `4e1f107` contains only the correction's reviewed hunks.
-The mail implementation predates this correction: only its session hooks and
-removal of this task's sign-in controls are claimed here.
+The assigned workspace contains the main API, dashboard and native shell;
+`git diff 13a75c9e6e80 --stat` is nonempty. Its shared aggregate includes
+unrelated work and is not an ownership claim. The resumed implementation commit
+`d0ba169` contains **5 files, 39 insertions, 8 deletions**, as printed by the
+reviewed staged diff and commit. The earlier task-owned changes were extended
+in place. No additional repository was edited. `/Volumes/Projects/Praxis` was
+read for the consumer contract and its existing isolated tests were run.
+The brief's missing-path checks were false negatives:
+`../Praxis/src/operator-provenance.ts:158` verifies provenance and
+`../Praxis/src/feedback/mail-drafts.ts:163` enforces it before actor attribution.
+The original unsigned-local refusal remains intentional; the current live
+negative probes and real UI verdicts prove the distinction
+(docs/reviews/2026-10-25-local-operator-evidence.json:621, :628, :763).
 
-No additional repository was edited. `/Volumes/Projects/Praxis` was inspected
-read-only and its existing isolated receiver test was run. Both paths the brief's
-mechanical lookup missed do exist: `../Praxis/src/operator-provenance.ts:158`
-verifies provenance, and `../Praxis/src/feedback/mail-drafts.ts:163` checks it
-before recording `operator:<surface>`. The original refusal remains deliberate:
-the plain-local probes still fail while the actual native session succeeds
-(`docs/reviews/2026-10-25-local-operator-evidence.json:238`, `:268`).
+The foreign `.env.example`, `dashboard/src/app/page.tsx`, schedule-layout
+report directory and schedule-layout plan were preserved. Earlier deployment
+wrote the ignored local configuration, installed native app and /tmp backups;
+this resume wrote only /tmp diagnostics outside the repo. Chrome attributes
+were not changed (docs/reviews/2026-10-25-local-operator-evidence.json:371, :612).
 
-The foreign .env.example, dashboard/src/app/page.tsx, schedule-layout report
-folder and schedule-layout plan were left untouched and uncommitted. The only
-outside-workspace writes were the installed app and /tmp verification artifacts
-and backup (`docs/reviews/2026-10-25-local-operator-evidence.json:388`).
-
-The process proof trusts the operator UI; it cannot establish a human click if
-that UI, profile, extension, OS account or server is already controlled. Other
-browsers are not enabled. Groundrules labeling's separate local-identity mapping
-remains outside scope (`docs/contracts/local-operator-session.md:57`,
-`server/services/groundrules-labeling/authority.js:48`). Provisioning and revocation
-are documented in both authority headers and the contract
-(`server/services/operator-access.js:15`, `server/services/document-decision-authority.js:16`,
-`docs/contracts/local-operator-session.md:66`, `:101`).
+This proof trusts the configured operator UI, not a human click. Compromise or
+automation of that existing UI/profile, or unrestricted modification of server
+configuration/code, is outside its boundary. Other browsers are not enabled.
+Groundrules labeling's separate local-identity mapping stays outside this task
+(`docs/contracts/local-operator-session.md:66`,
+`server/services/groundrules-labeling/authority.js:48`).
 
 ## Files touched:
 
-- dashboard/scripts/local-operator-browser-check.cjs
-- dashboard/src/app/layout.tsx
-- dashboard/src/app/operator-sign-in/page.tsx
-- dashboard/src/app/session/page.tsx
-- dashboard/src/components/__tests__/local-operator-sign-in.test.mjs
-- dashboard/src/components/ai-terminal.tsx
-- dashboard/src/components/document-review/decision-card.tsx
-- dashboard/src/components/local-operator-session.tsx
-- dashboard/src/components/local-operator-sign-in.tsx
-- dashboard/src/components/mail-drafts.tsx
-- dashboard/src/lib/__tests__/local-operator-session.test.mjs
-- dashboard/src/lib/__tests__/session-check.test.ts
-- dashboard/src/lib/document-review.ts
-- dashboard/src/lib/local-operator-session.ts
-- dashboard/src/lib/mail-drafts.ts
-- dashboard/src/lib/session-check.ts
-- dashboard/src/lib/voice-chat.ts
-- desktop/src-tauri/src/local_operator.rs
-- desktop/src-tauri/src/main.rs
-- docs/contracts/document-review-deliverables.md
+- server/services/local-operator-peer.js
+- server/__tests__/local-operator-peer.test.js
+- server/services/operator-access.js
+- server/services/document-decision-authority.js
 - docs/contracts/local-operator-session.md
 - docs/reviews/2026-10-25-local-operator-evidence.json
 - docs/reviews/2026-10-25-local-operator-session.md
 - docs/superpowers/plans/2026-10-26-local-operator.md
-- server/__tests__/local-operator-flows.test.js
-- server/__tests__/local-operator-peer.test.js
-- server/__tests__/local-operator-session.test.js
-- server/routes/operator-session.js
-- server/server.js
-- server/services/document-decision-authority.js
-- server/services/local-operator-peer.js
-- server/services/local-operator-session.js
-- server/services/operator-access.js
 
 ## Binding constraints (verbatim from the execution brief)
 
