@@ -107,7 +107,7 @@ function authenticate(req, res, next) {
  '/api/skill-candidates', '/api/documents', '/api/write-leases',
  // Mail decisions use the same request context as document decisions. The
  // decision authority still verifies the operator JWT; this stub is not proof.
- '/api/praxis/mailbox/drafts-review', '/api/praxis/project-maintenance'
+ '/api/praxis/mailbox/drafts-review', '/api/praxis/project-maintenance', '/api/praxis/dispatch/task'
 ].forEach(prefix => app.use(prefix, authenticate));
 
 app.use('/api/write-leases', require('./routes/write-leases')({ db }));

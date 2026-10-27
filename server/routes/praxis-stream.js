@@ -257,6 +257,7 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
 
     function proxyJson(req, res, upstreamPath) {
         const options = { method: req.method, headers: { Accept: 'application/json' } };
+        if (upstreamPath === '/api/dispatch/task' && req.taskDispatchProof) Object.assign(options.headers, req.taskDispatchProof);
         if (req.method !== 'GET' && req.method !== 'HEAD') {
             options.headers['Content-Type'] = 'application/json';
             options.body = JSON.stringify(req.body ?? {});
@@ -642,7 +643,7 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
     // "Force dispatch" override works unchanged.
     router.use('/dispatch/automatic-start', require('./automatic-start')());
 
-    router.post('/dispatch/task', async (req, res) => {
+    router.post('/dispatch/task', require('../services/task-dispatch-proof')(), async (req, res) => {
         const body = req.body || {};
         if (!body.force) {
             const executor = typeof body.executor === 'string' ? body.executor.trim() : null;
