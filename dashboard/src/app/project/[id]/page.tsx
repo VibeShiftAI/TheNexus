@@ -10,6 +10,7 @@ import { AITerminal } from "@/components/ai-terminal";
 import { TaskManager } from "@/components/task-manager";
 import { TaskArchive } from "@/components/task-archive";
 import { ProjectSettings } from "@/components/project-settings";
+import { ProjectMaintenance } from "@/components/project-maintenance";
 import { ProjectContextManager } from "@/components/project-context-manager";
 import { ArtifactsList } from "@/components/artifacts-list";
 import { ProjectNotes } from "@/components/project-notes";
@@ -367,6 +368,7 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Configuration + context — the editable underbelly of the brief */}
+                <div className="hud-boot hud-boot-4"><ProjectMaintenance projectId={projectId} /></div>
                 <div className="hud-boot hud-boot-4">
                     <HudPanel icon={<Settings2 size={16} />} title="Project Configuration" accent="purple">
                         <div className="overflow-hidden rounded-lg">

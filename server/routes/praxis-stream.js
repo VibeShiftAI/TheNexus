@@ -589,6 +589,7 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
         return proxyJson(req, res, `/api/comms${qs}`);
     });
     router.use('/mailbox/drafts-review', require('./mail-draft-review')());
+    router.use('/project-maintenance', require('./project-maintenance')());
     router.get('/mailbox', (req, res) => {
         res.setHeader('Cache-Control', 'no-store');
         const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
