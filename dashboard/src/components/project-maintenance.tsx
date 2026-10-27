@@ -18,6 +18,7 @@ type Policy = {
 type Settings = { policy: Policy | null; project: { id: string; name: string; workspace?: string }; contacts: { id: string; name: string; email?: string | null }[];
   batches?: { id: string; stage: string; commentCount: number; dueAt: string; summary?: string; lastError?: string }[] };
 const inputClass = "mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 disabled:opacity-50";
+const batchLabel: Record<string, string> = { complete: "reviewed", held: "needs attention", reviewing: "reviewing", planned: "preparing tasks", notifying: "preparing update", reporting: "preparing update" };
 
 export function ProjectMaintenance({ projectId }: { projectId: string }) {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -66,9 +67,9 @@ export function ProjectMaintenance({ projectId }: { projectId: string }) {
     {saved && <p role="status" className="mb-3 text-sm text-emerald-300">{saved}</p>}
     {!!settings?.batches?.length && <div className="mb-4 space-y-2 rounded border border-slate-800 p-3 text-sm text-slate-300">
       <p className="font-medium">Recent feedback batches</p>
-      {settings.batches.slice(0, 3).map(batch => <p key={batch.id}>{batch.commentCount} comment{batch.commentCount === 1 ? "" : "s"} · {batch.stage === "collecting" ? `review after ${new Date(batch.dueAt).toLocaleString()}` : batch.stage}{batch.lastError ? ` · ${batch.lastError}` : batch.summary ? ` · ${batch.summary}` : ""}</p>)}
+      {settings.batches.slice(0, 3).map(batch => <p key={batch.id}>{batch.commentCount} comment{batch.commentCount === 1 ? "" : "s"} · {batch.stage === "collecting" ? `review after ${new Date(batch.dueAt).toLocaleString()}` : (batchLabel[batch.stage] ?? batch.stage)}{batch.lastError ? ` · ${batch.lastError}` : batch.summary ? ` · ${batch.summary}` : ""}</p>)}
     </div>}
-    {!draft ? <button type="button" disabled={busy} onClick={() => void load()} className={inputClass}>{busy ? "Loading…" : "Reload settings"}</button> : <form onSubmit={event => { event.preventDefault(); void save(); }}>
+    {!draft ? <button type="button" disabled={busy} onClick={() => void load()} className={inputClass}>{busy ? "Loading…" : "Reload settings"}</button> : <form noValidate={draft.mode === "off"} onSubmit={event => { event.preventDefault(); void save(); }}>
       <fieldset disabled={busy} className="space-y-4">
         <label className="flex items-center gap-2 text-sm text-slate-100"><input type="checkbox" checked={draft.mode === "maintenance"} onChange={e => change("mode", e.target.checked ? "maintenance" : "off")} /> Enable maintenance for this project</label>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -76,7 +77,7 @@ export function ProjectMaintenance({ projectId }: { projectId: string }) {
           <label className="text-sm text-slate-300">Simple work<select className={inputClass} value={draft.taskAutonomy} onChange={e => change("taskAutonomy", e.target.value as Policy["taskAutonomy"])}><option value="draft">Draft tasks for my review</option><option value="schedule">Add to schedule; wait for approval</option><option value="execute_simple">Schedule and start when idle</option></select></label>
           <label className="text-sm text-slate-300">Client reports and follow-up questions<select className={inputClass} value={draft.communicationAutonomy} onChange={e => change("communicationAutonomy", e.target.value as Policy["communicationAutonomy"])}><option value="draft">Hold drafts for my review</option><option value="send_status">Send recent-request updates automatically</option></select></label>
           <label className="text-sm text-slate-300">When requests include major work<select className={inputClass} value={draft.mixedBatch} onChange={e => change("mixedBatch", e.target.value as Policy["mixedBatch"])}><option value="independent">Proceed with independent simple fixes</option><option value="hold_all">Hold the entire batch for me</option></select></label>
-          <label className="text-sm text-slate-300">Client contact<select required className={inputClass} value={draft.contact.memberId} onChange={e => { const person = settings?.contacts.find(p => p.id === e.target.value); if (person?.email) change("contact", { memberId: person.id, email: person.email }); }}><option value="">Choose a project member</option>{settings?.contacts.filter(p => p.email).map(p => <option key={p.id} value={p.id}>{p.name} — {p.email}</option>)}</select></label>
+          <label className="text-sm text-slate-300">Client contact<select required={draft.mode === "maintenance"} className={inputClass} value={draft.contact.memberId} onChange={e => { const person = settings?.contacts.find(p => p.id === e.target.value); if (person?.email) change("contact", { memberId: person.id, email: person.email }); }}><option value="">Choose a project member</option>{settings?.contacts.filter(p => p.email).map(p => <option key={p.id} value={p.id}>{p.name} — {p.email}</option>)}</select></label>
           <label className="text-sm text-slate-300">Maximum simple task estimate (minutes)<input type="number" min={5} max={240} required className={inputClass} value={draft.maxTaskMinutes} onChange={e => change("maxTaskMinutes", Number(e.target.value))} /></label>
         </div>
         <p className="text-xs text-slate-400">Each new comment resets the quiet period. Reports cover the recent batch and copy Robert. Changing permissions holds queued work from the previous policy for review. Turning maintenance off revokes future automatic work and sending; it does not undo work already running.</p>
