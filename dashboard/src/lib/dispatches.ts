@@ -8,6 +8,7 @@
 
 import type { UsageSource } from './usage-source';
 import { authFetch } from './nexus/shared';
+import { operatorFetch } from './local-operator-session';
 
 export type DispatchOutcome =
     | 'running'
@@ -100,7 +101,7 @@ export interface DispatchTaskResult {
 
 /** Immediately dispatch a task to a CLI executor via Praxis. */
 export async function dispatchTask(input: DispatchTaskInput): Promise<DispatchTaskResult> {
-    const res = await authFetch('/api/praxis/dispatch/task', {
+    const res = await (input.operator ? operatorFetch : authFetch)('/api/praxis/dispatch/task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

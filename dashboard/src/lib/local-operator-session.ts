@@ -94,3 +94,21 @@ export function createLocalOperatorSessionClient({
 }
 
 export const ensureLocalOperatorSession = createLocalOperatorSessionClient();
+
+/** Operator UI requests use Access cookies or the verified local session,
+ * never the legacy machine bearer used by the general Nexus API client. */
+export async function operatorFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    const current = typeof window === 'undefined' ? undefined : window.location;
+    const target = current ? new URL(url, current.href) : undefined;
+    if (!current || target?.origin !== current.origin || !/^\/api(?:\/|$)/.test(target.pathname)) {
+        throw new Error('Operator requests require a same-origin API destination.');
+    }
+    if (!['GET', 'HEAD'].includes((options.method ?? 'GET').toUpperCase())) {
+        await ensureLocalOperatorSession();
+    }
+    const headers = new Headers(options.headers);
+    headers.delete('Authorization');
+    headers.delete('X-Nexus-Local-Proof');
+    for (const [key, value] of Object.entries(localOperatorHeaders(url))) headers.set(key, value);
+    return fetch(url, { ...options, headers, credentials: 'include', cache: 'no-store', redirect: 'error' });
+}

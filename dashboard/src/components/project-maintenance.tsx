@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Settings2 } from "lucide-react";
 import { HudPanel } from "@/components/bridge/hud";
-import { authFetch } from "@/lib/nexus/shared";
+import { operatorFetch } from "@/lib/local-operator-session";
 
 type Policy = {
   schemaVersion: 1; projectId: string; mode: "off" | "maintenance"; workspace: string;
@@ -29,7 +29,7 @@ export function ProjectMaintenance({ projectId }: { projectId: string }) {
   const load = useCallback(async () => {
     setBusy(true); setError("");
     try {
-      const response = await authFetch(`/api/praxis/project-maintenance/${encodeURIComponent(projectId)}`);
+      const response = await operatorFetch(`/api/praxis/project-maintenance/${encodeURIComponent(projectId)}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not load maintenance settings.");
       const state = data as Settings;
@@ -50,7 +50,7 @@ export function ProjectMaintenance({ projectId }: { projectId: string }) {
     setBusy(true); setError(""); setSaved("");
     try {
       const { revision: _revision, updatedAt: _updatedAt, updatedBy: _updatedBy, ...policy } = draft;
-      const response = await authFetch(`/api/praxis/project-maintenance/${encodeURIComponent(projectId)}`, {
+      const response = await operatorFetch(`/api/praxis/project-maintenance/${encodeURIComponent(projectId)}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ policy, expectedRevision: settings?.policy?.revision ?? null }),
       });
