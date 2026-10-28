@@ -38,5 +38,5 @@ test('yellow executor alert uses amber styling and exposes both hold and transfe
   const html=renderToStaticMarkup(React.createElement(HitlRequestCard,{request:{id:'yellow1',taskId:'task',reason:'explicit_request',priority:'high',requestedAt:'2026-10-28T12:00:00Z',question:'🟡 YELLOW ALERT — reduced capacity. Original session retained.',options:['Hold for original executor','Send to similar-tier executor'],metadata:{kind:'yellow-alert'}},resolving:false,onResolve:async()=>{}}));
   assert.match(html,/bg-amber-400/);assert.match(html,/YELLOW ALERT/);
   assert.match(html,/Hold for original executor/);assert.match(html,/Send to similar-tier executor/);
-  assert.match(html,/automatically retry/);
+  assert.doesNotMatch(html,/automatically retry|reschedules it|Hold keeps/);
 });
