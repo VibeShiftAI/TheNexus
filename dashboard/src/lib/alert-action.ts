@@ -87,6 +87,7 @@ export function describeHitlAction(request: AlertRequest, inline = false): Alert
     ? 'Choose one of the listed options, or type your answer and select Send Answer.'
     : 'Type your answer to the question and select Send Answer.';
   if (kind === 'red-alert') instruction = 'Select “acknowledged” to confirm you have seen this alert. This does not repair the underlying issue. Add any notes before acknowledging.';
+  if (kind === 'yellow-alert') instruction = 'Hold keeps the selected executor and will automatically retry when it is available. Transfer sends the unfinished work to an available similar-tier executor and reschedules it if its slot has passed.';
   if (kind === 'task-answer-held') instruction = 'Your answer is already saved. Choose “retry delivery now” or “keep it saved for the next run”; you do not need to answer the original question again.';
   const predictiveRestart = request.id.startsWith('hitl-predictive-action-') && request.question.includes('infra_restart_service');
   if (predictiveRestart) instruction = 'Review current system status before approving this older request and confirm a restart is still needed. Approval may restart the service. This card does not provide a safe dismiss-only action; “Reject and re-plan” resumes agent planning.';
@@ -94,17 +95,17 @@ export function describeHitlAction(request: AlertRequest, inline = false): Alert
   if (predictiveRestart || kind === 'red-alert') relatedLinks.push({ href: '/system-monitor', label: 'Review current system status' });
   if (request.taskId && /return_to_authorized|contract.decision/.test(request.question)) relatedLinks.push({ href: `/task/${encodeURIComponent(request.taskId)}#contract-hold`, label: 'Review task contract decision' });
   return {
-    state: 'pending', label: predictiveRestart ? 'Restart proposal needs revalidation' : kind === 'red-alert' ? 'Acknowledgment requested' : kind === 'task-answer-held' ? 'Delivery decision needed' : 'Your input is needed',
+    state: 'pending', label: predictiveRestart ? 'Restart proposal needs revalidation' : kind === 'yellow-alert' ? 'Executor decision needed' : kind === 'red-alert' ? 'Acknowledgment requested' : kind === 'task-answer-held' ? 'Delivery decision needed' : 'Your input is needed',
     instruction: `${inline ? '' : 'Open this request in Inbox. '}${instruction}`,
     question: request.question,
     reason: typeof request.metadata?.holdReason === 'string' ? request.metadata.holdReason : undefined,
     answer: kind === 'task-answer-held' && typeof request.metadata?.answer === 'string' ? request.metadata.answer : undefined,
-    href, linkLabel: kind === 'red-alert' ? 'Acknowledge in Inbox' : kind === 'task-answer-held' ? 'Choose answer delivery' : 'Answer in Inbox',
+    href, linkLabel: kind === 'yellow-alert' ? 'Hold or transfer in Inbox' : kind === 'red-alert' ? 'Acknowledge in Inbox' : kind === 'task-answer-held' ? 'Choose answer delivery' : 'Answer in Inbox',
     // Only guidance that says something the card's controls do not: an
     // acknowledgment that repairs nothing, a saved answer awaiting delivery,
     // a stale restart proposal. The generic "type your answer" line is not
     // shown on the card (2026-10-21: Robert asked for the box to go).
-    ...(kind === 'red-alert' || kind === 'task-answer-held' || predictiveRestart ? { guidance: instruction } : {}),
+    ...(kind === 'yellow-alert' || kind === 'red-alert' || kind === 'task-answer-held' || predictiveRestart ? { guidance: instruction } : {}),
     ...(relatedLinks.length ? { relatedLinks } : {}),
   };
 }
