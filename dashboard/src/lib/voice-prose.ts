@@ -15,6 +15,7 @@ export async function composeVoiceProse(session: VoiceSession, input: VoiceProse
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
   }, { signal: session.signal, requestTimeoutMs: 35_000 });
   check();
-  if (!result.ok || typeof result.data.text !== 'string' || !result.data.text.trim()) throw new Error('Spoken wording unavailable');
+  if (!result.ok) throw new Error(`Spoken wording unavailable (HTTP ${result.status})`);
+  if (typeof result.data.text !== 'string' || !result.data.text.trim()) throw new Error('Spoken wording unavailable: empty response');
   return result.data.text;
 }

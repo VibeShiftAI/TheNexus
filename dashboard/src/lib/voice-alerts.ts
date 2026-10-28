@@ -3,6 +3,7 @@ import { isThisClientActive } from './active-client';
 import { speechOwner } from './speech-ownership';
 import { pairVoiceAlerts, type BlockedEvent, type VoiceAlert } from './voice-alert-pairing';
 import { describeHitlAction, isAlertRequest, isAlertRequestExpired, safeAlertHref } from './alert-action';
+import { briefFromMetadata, briefQuestions, renderHumanBrief } from './human-brief';
 export type AlertMode = 'off' | 'attention' | 'conversational';
 export const ALERT_MODE_KEY = 'nexus.voice.alertMode';
 export const ALERT_STORE_KEY = 'nexus.voice.announcedEvents';
@@ -34,9 +35,10 @@ export function eligibleAlert(e: StreamEvent, mode: AlertMode): boolean {
 }
 export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | undefined = () => undefined, blocked?: BlockedEvent): Record<string, unknown> {
   const taskId = e.type === 'hitl.created' ? e.request?.taskId : 'taskId' in e ? e.taskId : undefined;
-  const candidate = taskId ? titleFor(taskId)?.trim() : undefined;
+  const candidate = (taskId ? titleFor(taskId)?.trim() : undefined)
+    || (e.type === 'hitl.created' && typeof e.request.metadata?.taskTitle === 'string' ? e.request.metadata.taskTitle.trim() : undefined);
   const title = candidate && candidate !== taskId && !/qa--|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i.test(candidate) ? candidate : undefined;
-  const task = taskId ? { taskId, ...(title ? { title } : {}) } : {};
+  const task = { ...(taskId ? { taskId } : {}), ...(title ? { title } : {}) };
   switch (e.type) {
     case 'task.qa-passed': {
       // The speech API rejects >12k characters. Full findings stay in chat;
@@ -53,9 +55,14 @@ export function alertFacts(e: StreamEvent, titleFor: (id: string) => string | un
     case 'task.blocked': return { ...task, status: 'blocked', reason: e.reason, action: 'Review the current task and its open input request before acting.', actionHref: e.blockedOnHitlId ? `/inbox#${encodeURIComponent(e.blockedOnHitlId)}` : `/task/${encodeURIComponent(e.taskId)}`, actionLabel: e.blockedOnHitlId ? 'Review request in Inbox' : 'Review current task' };
     case 'hitl.created': {
       const action = isAlertRequest(e.request) ? describeHitlAction(e.request) : undefined;
-      return { ...task, status: blocked ? 'blocked' : 'attention', ...(blocked ? { reason: blocked.reason } : {}), question: e.request?.question,
+      const brief = briefFromMetadata(e.request.metadata);
+      const questions = briefQuestions(e.request.metadata);
+      return { ...task, status: blocked ? 'blocked' : 'attention', ...(blocked ? { reason: blocked.reason } : {}),
+        ...(brief ? { brief } : {}), ...(questions.length ? { questions } : {}),
+        ...(!brief || !questions.length ? { question: e.request.question } : {}),
+        ...(e.request.options?.length ? { options: e.request.options } : {}),
         ...(action ? { action: action.instruction, actionHref: action.href, actionLabel: action.linkLabel,
-          actionStatus: action.state, deliveryInstruction: 'State the exact question or decision and where to answer it. Do not imply acknowledgment repairs an issue or a saved answer was delivered.' } : {}) };
+          actionStatus: action.state } : {}) };
     }
     default: return task;
   }
@@ -83,18 +90,34 @@ export async function currentVoiceAlert(event: StreamEvent, fetcher: (url: strin
   } catch { return null; }
 }
 
+/** Only collapse an exact text twin; a different or additional question remains evidence. */
+function voiceAlertQuestion(facts: Record<string, unknown>): string | undefined {
+  if (typeof facts.question !== 'string') return undefined;
+  const brief = briefFromMetadata({ brief: facts.brief });
+  const normalized = (value: string) => value.replace(/\*\*(Project|What happened|The problem|What I need from you|My recommendation|If you do nothing):\*\*/g, '$1:').replace(/\s+/g, ' ').trim();
+  return brief && normalized(facts.question) === normalized(renderHumanBrief(brief)) ? undefined : facts.question;
+}
 export function voiceAlertSpeech(text: string, facts: Record<string, unknown>): string {
-  const parts = [text];
-  if (typeof facts.question === 'string' && !text.includes(facts.question)) {
-    parts.push(facts.question.length <= 1600 ? facts.question : 'The full question and diagnostic details are in Inbox.');
+  const brief = briefFromMetadata({ brief: facts.brief });
+  const parts = [brief ? renderHumanBrief(brief) : text];
+  const add = (value: string) => { if (value.trim() && !parts.some(part => part.includes(value))) parts.push(value); };
+  if (Array.isArray(facts.questions)) facts.questions.forEach(question => { if (typeof question === 'string') add(question); });
+  const question = voiceAlertQuestion(facts);
+  if (question && !parts.some(part => part.includes(question))) {
+    parts.push(question.length <= 1600 ? question : 'The full question and diagnostic details are in Inbox.');
   }
-  if (typeof facts.action === 'string' && !text.includes(facts.action)) parts.push(facts.action);
-  return parts.join('\n\n');
+  if (Array.isArray(facts.options)) {
+    const options = facts.options.filter((value): value is string => typeof value === 'string');
+    if (options.length && !parts.some(part => part.includes(options.join(' / ')))) add(`Options: ${options.join(' / ')}.`);
+  }
+  if (typeof facts.action === 'string') add(facts.action);
+  return parts.filter(Boolean).join('\n\n');
 }
 /** Keep the full exact ask and deterministic link alongside generated prose. */
 export function voiceAlertArchive(text: string, facts: Record<string, unknown>): string {
   const parts = [voiceAlertSpeech(text, facts)];
-  if (typeof facts.question === 'string' && facts.question.length > 1600) parts.push(facts.question);
+  const question = voiceAlertQuestion(facts);
+  if (question && question.length > 1600) parts.push(question);
   if (typeof facts.actionHref === 'string' && safeAlertHref(facts.actionHref)) {
     const label = typeof facts.actionLabel === 'string' ? facts.actionLabel : 'Review request';
     parts.push(`[${label.replace(/[\[\]\\]/g, '')}](${facts.actionHref})`);

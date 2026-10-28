@@ -15,6 +15,6 @@ export function pendingRequestTickerText(request: HITLRequest): string {
   const meta = hitlTaskMeta(request);
   const brief = briefFromMetadata(request.metadata);
   const project = brief?.project ?? meta.projectName;
-  const subject = brief?.ask ?? action.guidance ?? meta.taskTitle ?? request.question.split("\n").find(l => l.trim()) ?? action.label;
+  const subject = (brief ? brief.ask || brief.situation : undefined) ?? action.guidance ?? meta.taskTitle ?? request.question.split("\n").find(l => l.trim()) ?? action.label;
   return project && !subject.startsWith(project) ? `${project}: ${subject}` : subject;
 }

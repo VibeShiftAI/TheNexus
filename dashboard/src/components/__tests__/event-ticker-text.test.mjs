@@ -4,6 +4,11 @@ import { pendingRequestTickerText } from '../../lib/ticker-text.ts';
 
 const base = { id: 'q1', reason: 'explicit_request', requestedAt: '2026-10-21T21:18:44.829Z' };
 
+test('an update uses its situation when there is no ask', () => {
+  const text = pendingRequestTickerText({ ...base, question: 'Raw record.', metadata: { brief: { kind: 'update', project: 'Praxis', situation: 'The quality review finished.', problem: '', ask: '' } } });
+  assert.equal(text, 'Praxis: The quality review finished.');
+});
+
 test('the bridge strip names the project and the ask when the card has a brief', () => {
   const text = pendingRequestTickerText({ ...base, question: '**Project:** TheCortex\n\n1. Option (c)?', metadata: { kind: 'ask-robert',
     brief: { project: 'TheCortex', situation: 'The evaluation ran.', problem: 'A choice was recorded as yours.', ask: 'Answer the two questions below.' } } });

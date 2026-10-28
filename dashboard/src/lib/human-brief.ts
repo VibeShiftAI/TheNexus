@@ -10,6 +10,7 @@
  * back to the rendering it had before the brief existed. Nothing here throws.
  */
 export interface HumanBrief {
+  kind?: "update";
   project: string;
   situation: string;
   problem: string;
@@ -20,7 +21,7 @@ export interface HumanBrief {
 }
 
 /** Field labels, shared with Praxis's text rendering so chat, email and the dashboard say the same thing. */
-export const BRIEF_LABELS: Record<Exclude<keyof HumanBrief, "options">, string> = {
+export const BRIEF_LABELS: Record<Exclude<keyof HumanBrief, "options" | "kind">, string> = {
   project: "Project",
   situation: "What happened",
   problem: "The problem",
@@ -41,20 +42,30 @@ export function briefFromMetadata(metadata: unknown): HumanBrief | undefined {
   const raw = (metadata as Record<string, unknown>).brief;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const b = raw as Record<string, unknown>;
+  if (b.kind !== undefined && b.kind !== "update") return undefined;
   const project = field(b.project);
   const situation = field(b.situation);
-  const problem = field(b.problem);
-  const ask = field(b.ask);
-  if (!project || !situation || !problem || !ask) return undefined;
+  const optionalUpdateField = (value: unknown) => value === undefined || (typeof value === "string" && !value.trim()) ? "" : field(value);
+  const problem = b.kind === "update" ? optionalUpdateField(b.problem) : field(b.problem);
+  const ask = b.kind === "update" ? optionalUpdateField(b.ask) : field(b.ask);
+  if (!project || !situation || problem === undefined || ask === undefined) return undefined;
   const options = Array.isArray(b.options) ? b.options.filter((o): o is string => typeof o === "string" && !!o.trim()).slice(0, 4) : [];
   const recommendation = field(b.recommendation);
   const ifIgnored = field(b.ifIgnored);
   return {
+    ...(b.kind === "update" ? { kind: "update" as const } : {}),
     project, situation, problem, ask,
     ...(options.length ? { options } : {}),
     ...(recommendation ? { recommendation } : {}),
     ...(ifIgnored ? { ifIgnored } : {}),
   };
+}
+
+/** Same labelled text as Praxis's renderer; empty update rows carry no obligation. */
+export function renderHumanBrief(brief: HumanBrief): string {
+  const values = { ...brief, ask: brief.ask && brief.options?.length ? `${brief.ask} Options: ${brief.options.join(" / ")}.` : brief.ask };
+  return (Object.keys(BRIEF_LABELS) as (keyof typeof BRIEF_LABELS)[])
+    .flatMap(key => values[key] ? [`${BRIEF_LABELS[key]}: ${values[key]}`] : []).join("\n");
 }
 
 /** The numbered questions an `ask_robert` card carries, when it does. */

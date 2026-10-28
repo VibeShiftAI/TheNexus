@@ -36,9 +36,9 @@ export function HumanBriefBlock({ brief, compact = false, collapsible = false }:
       {...(collapsible ? { "data-brief-collapsed": expanded ? "false" : "true" } : {})}
     >
       {row("project", brief.project)}
-      {row("situation", brief.situation)}
+      {row("situation", brief.situation, !brief.ask)}
       {row("problem", brief.problem)}
-      {row("ask", brief.options?.length ? `${brief.ask} Options: ${brief.options.join(" / ")}.` : brief.ask, true)}
+      {row("ask", brief.ask && brief.options?.length ? `${brief.ask} Options: ${brief.options.join(" / ")}.` : brief.ask, true)}
       {row("recommendation", brief.recommendation)}
       {row("ifIgnored", brief.ifIgnored)}
       {collapsible && (

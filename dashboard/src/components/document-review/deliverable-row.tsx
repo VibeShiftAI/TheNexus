@@ -75,7 +75,7 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
     // The row's one-line description: the brief's ask when Praxis registered
     // one (what the reader decides), else the declared purpose.
     const brief = briefFromMetadata(entry.metadata);
-    const blurb = brief ? `${brief.problem} ${brief.ask}` : entry.purpose;
+    const blurb = brief ? [brief.kind === 'update' ? brief.situation : '', brief.problem, brief.ask].filter(Boolean).join(' ') : entry.purpose;
 
     return (
         <li className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2.5" data-document-id={entry.id} data-media-type={mediaType}>

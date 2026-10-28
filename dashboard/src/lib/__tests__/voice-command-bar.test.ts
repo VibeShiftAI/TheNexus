@@ -49,6 +49,72 @@ async function mount(t: Parameters<Parameters<typeof test>[1]>[0], deferredSpeak
   const click = async (label: string) => { const button = host.querySelector(`[aria-label="${label}"]`) as HTMLButtonElement; assert.ok(button, label); await act(async () => { button.click(); await tick(); }); };
   return { host, click, requests, unmount, tracksStopped: () => tracksStopped };
 }
+
+test('a current brief is archived and spoken without another prose generation or technical wrapper', async t => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 9, 28, 12).getTime() });
+  t.mock.method(document, 'hasFocus', () => true);
+  const originalEventSource = globalThis.EventSource;
+  Object.assign(globalThis, { EventSource: class { addEventListener() {} close() {} } });
+  t.after(() => Object.assign(globalThis, { EventSource: originalEventSource }));
+  const request = { id: 'brief-question', question: 'Technical question wrapper executor_id=123', reason: 'explicit_request', requestedAt: new Date().toISOString(), metadata: { brief: { project: 'Praxis', situation: 'The quality review needs a test set.', problem: 'The old test set is unavailable.', ask: 'Choose a replacement.' }, questions: [{ prompt: 'Which test set?', options: ['Fresh examples', 'Previous examples'] }] } };
+  const f = await mount(t, false, async url => url.split('?')[0] === '/api/praxis/hitl/brief-question' ? Response.json(request) : undefined, true);
+  await act(async () => { t.mock.timers.tick(1); __sockets.at(-1).__emit('praxis:event', { type: 'hitl.created', eventId: 'brief-event', at: new Date().toISOString(), request }); await tick(); await tick(); });
+  await act(async () => { t.mock.timers.tick(10000); await tick(); await tick(); });
+  assert.equal(f.requests.filter(r => r.url.endsWith('/voice-prose')).length, 0);
+  const archive = f.requests.find(r => r.url.endsWith('/sync') && r.body.messages[0].metadata?.voiceAnnouncement)?.body.messages[0].content;
+  assert.ok(archive, JSON.stringify(f.requests.map(request => request.url)));
+  assert.equal(archive?.split(request.metadata.brief.situation).length - 1, 1);
+  assert.match(archive, /Which test set\? \(Fresh examples \/ Previous examples\)/);
+  assert.match(archive, /\/inbox#brief-question/);
+  assert.doesNotMatch(archive, /executor_id|Send Answer|Open this request/);
+  assert.match(f.requests.find(r => r.url.endsWith('/speak'))?.body.text, /Which test set/);
+});
+
+for (const stage of ['preparation', 'archive', 'synthesis', 'playback']) test(`a voice failure identifies the update and recorded ${stage} stage without exposing raw errors`, async t => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 9, 28, 12).getTime() });
+  t.mock.method(document, 'hasFocus', () => true);
+  const originalEventSource = globalThis.EventSource;
+  Object.assign(globalThis, { EventSource: class { addEventListener() {} close() {} } });
+  t.after(() => Object.assign(globalThis, { EventSource: originalEventSource }));
+  const f = await mount(t, false, async (url, body) => {
+    if (stage === 'preparation' && url.endsWith('/voice-prose')) return Response.json({ error: 'secret=do-not-disclose /private/raw-path' }, { status: 503 });
+    if (stage === 'archive' && url.endsWith('/sync') && body.messages[0].metadata?.voiceAnnouncement) return Response.json({ error: 'secret=do-not-disclose' }, { status: 400 });
+    if (stage === 'synthesis' && url.endsWith('/speak')) return Response.json({ error: 'secret=do-not-disclose' }, { status: 503 });
+  }, true);
+  await act(async () => { t.mock.timers.tick(1); __sockets.at(-1).__emit('praxis:event', { type: 'task.qa-passed', eventId: `failure-${stage}`, taskId: '11223344-1122-1122-1122-112233445566', title: 'Check whether quality reviews catch mistakes', at: new Date().toISOString() }); await tick(); await tick(); await tick(); });
+  if (stage === 'playback') await act(async () => { FakeAudio.all[0].onerror?.(); await tick(); await tick(); });
+  const notice = f.requests.find(r => r.url.endsWith('/sync') && r.body.messages[0].metadata?.voiceDeliveryNotice)?.body.messages[0];
+  assert.ok(notice);
+  assert.match(notice.content, /Check whether quality reviews catch mistakes/);
+  assert.equal(notice.metadata.voiceFailure.stage, stage === 'synthesis' ? 'preparation' : stage);
+  assert.equal(notice.metadata.voiceFailure.httpStatus, stage === 'playback' ? undefined : stage === 'archive' ? 400 : 503);
+  assert.doesNotMatch(notice.content, /11223344|secret=|private\/raw-path/);
+  if (stage === 'playback' || stage === 'synthesis') assert.match(notice.content, /text is saved in Recent Activity/);
+  else assert.doesNotMatch(notice.content, /text is saved|update is in Recent Activity/);
+  assert.match(notice.content, stage === 'preparation' || stage === 'synthesis' ? /could not be prepared/ : stage === 'archive' ? /could not be saved/ : /could not finish playing/);
+});
+
+for (const storedSpeech of [true, false]) test(`replayed long archives never become spoken diagnostics (recorded speech: ${storedSpeech})`, async t => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout', 'setInterval'], now: new Date(2026, 9, 28, 12).getTime() });
+  t.mock.method(document, 'hasFocus', () => true);
+  const originalEventSource = globalThis.EventSource;
+  Object.assign(globalThis, { EventSource: class { addEventListener() {} close() {} } });
+  t.after(() => Object.assign(globalThis, { EventSource: originalEventSource }));
+  const f = await mount(t, false, async (url, body) => {
+    if (url.endsWith('/sync') && body.messages[0].metadata?.voiceAnnouncement) return Response.json({ ok: true, synced: 1, messages: [{ ...body.messages[0], content: 'Earlier summary.\n\n' + 'worker=qa--123 diagnostic detail. '.repeat(60), metadata: { voiceAnnouncement: true, ...(storedSpeech ? { voiceSpeechText: 'The previously spoken brief.' } : {}) } }] });
+  }, true);
+  await act(async () => { t.mock.timers.tick(1); __sockets.at(-1).__emit('praxis:event', { type: 'task.qa-passed', eventId: 'replayed-long-archive', title: 'Quality review', taskId: 'task-1', at: new Date().toISOString() }); await tick(); await tick(); });
+  const save = f.requests.find(r => r.url.endsWith('/sync') && r.body.messages[0].metadata?.voiceAnnouncement);
+  assert.equal(save?.body.messages[0].metadata.voiceSpeechText, 'Fresh spoken response 1.');
+  const spoken = f.requests.find(r => r.url.endsWith('/speak'))?.body.text;
+  if (storedSpeech) assert.equal(spoken, 'The previously spoken brief.');
+  else {
+    assert.equal(spoken, undefined);
+    const notice = f.requests.find(r => r.url.endsWith('/sync') && r.body.messages[0].metadata?.voiceDeliveryNotice)?.body.messages[0];
+    assert.match(notice.content, /saved record has no spoken version/);
+    assert.match(notice.content, /text is saved in Recent Activity/);
+  }
+});
 test('voice chat identifies spoken conversation and uses provided audio without resynthesis', async t => {
   const f = await mount(t); await f.click('Start voice command'); await f.click('Stop recording');
   assert.equal(f.requests.find(r => r.url.endsWith('/chat'))?.body.voiceConversation, true);
@@ -292,12 +358,15 @@ test('two eligible live alerts each compose once and replayed event IDs stay ded
   const originalEventSource = globalThis.EventSource;
   Object.assign(globalThis, { EventSource: class { addEventListener() {} close() {} } });
   t.after(() => Object.assign(globalThis, { EventSource: originalEventSource }));
-  const f = await mount(t, false, undefined, true);
+  const f = await mount(t, false, async url => url.split('?')[0] === '/api/tasks/task-1' ? Response.json({ status: 'failed' }) : undefined, true);
   const socket = __sockets.at(-1);
   const first = { type: 'task.failed', eventId: 'fresh-alert-first', taskId: 'task-1', error: 'Build failed', at: new Date(Date.now() + 1).toISOString() };
   await act(async () => { t.mock.timers.tick(1); socket.__emit('praxis:event', first); await tick(); await tick(); });
   assert.equal(f.requests.filter(r => r.url.endsWith('/voice-prose')).length, 1);
-  assert.deepEqual(f.requests.find(r => r.url.endsWith('/voice-prose'))?.body, { kind: 'alert', facts: { taskId: 'task-1', status: 'failed', reason: 'Build failed' } });
+  const composed = f.requests.find(r => r.url.endsWith('/voice-prose'))?.body;
+  const { action, actionHref, actionLabel, ...facts } = composed.facts;
+  assert.deepEqual({ kind: composed.kind, facts }, { kind: 'alert', facts: { taskId: 'task-1', status: 'failed', reason: 'Build failed' } });
+  assert.equal(actionHref, '/task/task-1'); assert.ok(actionLabel);
   assert.doesNotMatch(f.host.textContent ?? '', /Fresh spoken response 1./);
   assert.equal(FakeAudio.all[0].src, '/audio/tng-combadge.mp3');
   assert.equal(FakeAudio.all.length, 1, 'speech waits for the combadge');
@@ -305,7 +374,7 @@ test('two eligible live alerts each compose once and replayed event IDs stay ded
   assert.equal(FakeAudio.all.length, 2); assert.match(FakeAudio.all[1].src, /synthetic/);
   await act(async () => { FakeAudio.all[1].onended?.(); await tick(); t.mock.timers.tick(120000); socket.__emit('praxis:event', first); socket.__emit('praxis:event', { ...first, type: 'task.qa-passed', eventId: 'fresh-alert-second', at: new Date().toISOString() }); await tick(); await tick(); });
   assert.equal(f.requests.filter(r => r.url.endsWith('/voice-prose')).length, 2);
-  assert.deepEqual(f.requests.filter(r => r.url.endsWith('/speak')).map(r => r.body.text), ['Fresh spoken response 1.', 'Fresh spoken response 2.']);
+  assert.deepEqual(f.requests.filter(r => r.url.endsWith('/speak')).map(r => r.body.text), [`Fresh spoken response 1.\n\n${action}`, 'Fresh spoken response 2.']);
   assert.doesNotMatch(f.host.textContent ?? '', /Fresh spoken response 2./);
   await act(async () => { FakeAudio.all[2].onended?.(); await tick(); });
   assert.match(f.host.textContent ?? '', /Fresh spoken response 2./);
@@ -430,7 +499,8 @@ test('a repeated announcement speaks its saved wording and does not copy another
   Object.assign(globalThis, { EventSource: class { addEventListener() {} close() {} } });
   t.after(() => Object.assign(globalThis, { EventSource: originalEventSource }));
   const f = await mount(t, false, async (url, body) => {
-    if (url.endsWith('/sync')) return Response.json({ ok: true, synced: 1, messages: [{ ...body.messages[0], conversation_id: 'original-conversation', content: 'The previously saved announcement.' }] });
+    if (url.split('?')[0] === '/api/tasks/task-1') return Response.json({ status: 'failed' });
+    if (url.endsWith('/sync')) return Response.json({ ok: true, synced: 1, messages: [{ ...body.messages[0], conversation_id: 'original-conversation', content: 'The previously saved announcement.', metadata: { voiceAnnouncement: true } }] });
   }, true);
   await act(async () => {
     t.mock.timers.tick(1);
@@ -504,7 +574,8 @@ test('a blocked task and its question produce one complete spoken announcement',
   const originalEventSource = globalThis.EventSource;
   Object.assign(globalThis, { EventSource: class { addEventListener() {} close() {} } });
   t.after(() => Object.assign(globalThis, { EventSource: originalEventSource }));
-  const f = await mount(t, false, undefined, true);
+  const f = await mount(t, false, async url => url.split('?')[0] === '/api/praxis/hitl/pair-card'
+    ? Response.json({ id: 'pair-card', taskId: 'task-pair', question: 'Which connection should I use?', metadata: { kind: 'task-question' } }) : undefined, true);
   await act(async () => {
     t.mock.timers.tick(1);
     __sockets.at(-1).__emit('praxis:event', { type: 'task.blocked', eventId: 'paired-block', taskId: 'task-pair', reason: 'Connection is missing', at: new Date().toISOString() });
@@ -539,6 +610,7 @@ test('recomposed question uses a fresh archive identity instead of replaying que
   let proseCalls = 0;
   const saved = new Map<string, any>();
   const f = await mount(t, false, async (url, body) => {
+    if (url.split('?')[0] === '/api/praxis/hitl/late-block-card') return Response.json({ id: 'late-block-card', taskId: 'late-block-task', question: 'Which connection?', metadata: { kind: 'task-question' } });
     if (url.endsWith('/voice-prose')) {
       if (++proseCalls === 1) return new Promise(resolve => finish = resolve);
       return Response.json({ text: `Blocked because ${body.facts.reason}. ${body.facts.question}` });

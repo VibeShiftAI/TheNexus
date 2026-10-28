@@ -1,5 +1,6 @@
 import type { Message, MessageAttachment } from '@/components/cortex-provider';
 import { ensureLocalOperatorSession, localOperatorHeaders } from './local-operator-session';
+import type { VoiceAlertFailure } from './voice-alert-delivery';
 
 export interface VoiceChatTurn {
   clientMessageId: string;
@@ -126,15 +127,15 @@ export async function archiveVoiceExchange(turn: VoiceChatTurn, outcome?: string
 }
 
 /** Save the exact spoken announcement before playback, without inventing a user turn. */
-export function archiveVoiceAnnouncement(eventId: string, text: string, conversationId?: string, options: RequestOptions = {}) {
+export function archiveVoiceAnnouncement(eventId: string, text: string, conversationId?: string, options: RequestOptions & { speechText?: string } = {}) {
   return archiveVoiceRows([{ id: `voice-alert:${eventId}`, role: 'assistant', content: text,
-    metadata: { eventId, voiceAnnouncement: true, playbackOwner: 'voice', suppressVoice: true } }], conversationId, options);
+    metadata: { eventId, voiceAnnouncement: true, playbackOwner: 'voice', suppressVoice: true, ...(options.speechText ? { voiceSpeechText: options.speechText } : {}) } }], conversationId, options);
 }
 
 /** Delivery diagnostics are durable Activity receipts and never trigger speech. */
-export function archiveVoiceDeliveryNotice(eventId: string, text: string, conversationId?: string, options: RequestOptions = {}) {
+export function archiveVoiceDeliveryNotice(eventId: string, text: string, conversationId?: string, options: RequestOptions & { failure?: VoiceAlertFailure } = {}) {
   return archiveVoiceRows([{ id: `voice-delivery:${eventId}`, role: 'assistant', content: text,
-    metadata: { eventId, voiceDeliveryNotice: true, playbackOwner: 'voice', suppressVoice: true } }], conversationId, options);
+    metadata: { eventId, voiceDeliveryNotice: true, playbackOwner: 'voice', suppressVoice: true, ...(options.failure ? { voiceFailure: options.failure } : {}) } }], conversationId, options);
 }
 
 async function archiveVoiceRows(messages: unknown[], conversationId: string | undefined, options: RequestOptions): Promise<SavedVoiceMessage[]> {
@@ -145,8 +146,8 @@ async function archiveVoiceRows(messages: unknown[], conversationId: string | un
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
       }, options);
       if (result.ok && result.data.ok && result.data.synced === messages.length && Array.isArray(result.data.messages)) return result.data.messages;
-      if (permanent(result.status)) throw new ChatRejected(result.data.error || 'Chat archival rejected');
-      throw new Error('Chat archival unavailable');
+      if (permanent(result.status)) throw new ChatRejected(`Chat archival rejected (HTTP ${result.status})`);
+      throw new Error(result.ok ? 'Chat archival receipt is incomplete' : `Chat archival unavailable (HTTP ${result.status})`);
     } catch (error) {
       checkAbort(options.signal);
       if (error instanceof ChatRejected || attempt === 2) throw error;

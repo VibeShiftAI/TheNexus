@@ -70,33 +70,31 @@ export function alertHitlId(event: AlertEvent): string | undefined {
 export function savedAlertAnswer(request: AlertRequest): string | undefined {
   return [request.resolution?.choice, request.resolution?.freeText].filter(Boolean).join('\n\n') || undefined;
 }
-export function describeHitlAction(request: AlertRequest, inline = false): AlertActionView {
+export function describeHitlAction(request: AlertRequest, _inline = false): AlertActionView {
   const kind = request.metadata?.kind;
   const href = `/inbox#${encodeURIComponent(request.id)}`;
   if (request.resolution) return {
     state: 'resolved', label: 'Request closed',
-    instruction: kind === 'yellow-alert' ? '' : 'This request is closed. Its recorded response is shown below. Check the task or system status for the outcome.',
+    instruction: kind === 'yellow-alert' ? '' : savedAlertAnswer(request) ? 'Response recorded. Task outcome is not confirmed by this response.' : 'Request closed without a recorded answer.',
     question: request.question, answer: savedAlertAnswer(request) ?? '(Closed without an answer.)', href, linkLabel: 'View recorded response',
   };
   if (isAlertRequestExpired(request)) return {
     state: 'historical', label: 'Request expired',
-    instruction: 'This request has passed its decision deadline. Ask Praxis for a current request before approving or answering it.',
+    instruction: 'The decision deadline has passed.',
     question: request.question, href, linkLabel: 'View expired request',
   };
-  let instruction = request.options?.length
-    ? 'Choose one of the listed options, or type your answer and select Send Answer.'
-    : 'Type your answer to the question and select Send Answer.';
-  if (kind === 'red-alert') instruction = 'Select “acknowledged” to confirm you have seen this alert. This does not repair the underlying issue. Add any notes before acknowledging.';
+  let instruction = '';
+  if (kind === 'red-alert') instruction = 'Acknowledgment records that you have seen the alert; it does not repair the issue.';
   if (kind === 'yellow-alert') instruction = '';
-  if (kind === 'task-answer-held') instruction = 'Your answer is already saved. Choose “retry delivery now” or “keep it saved for the next run”; you do not need to answer the original question again.';
+  if (kind === 'task-answer-held') instruction = 'Your answer is saved; delivery is still pending.';
   const predictiveRestart = request.id.startsWith('hitl-predictive-action-') && request.question.includes('infra_restart_service');
-  if (predictiveRestart) instruction = 'Review current system status before approving this older request and confirm a restart is still needed. Approval may restart the service. This card does not provide a safe dismiss-only action; “Reject and re-plan” resumes agent planning.';
+  if (predictiveRestart) instruction = 'The need for a restart is unverified. Approval may restart the service. “Reject and re-plan” resumes agent planning; it does not simply dismiss the request.';
   const relatedLinks: { href: string; label: string }[] = [];
   if (predictiveRestart || kind === 'red-alert') relatedLinks.push({ href: '/system-monitor', label: 'Review current system status' });
   if (request.taskId && /return_to_authorized|contract.decision/.test(request.question)) relatedLinks.push({ href: `/task/${encodeURIComponent(request.taskId)}#contract-hold`, label: 'Review task contract decision' });
   return {
     state: 'pending', label: predictiveRestart ? 'Restart proposal needs revalidation' : kind === 'yellow-alert' ? 'Executor decision needed' : kind === 'red-alert' ? 'Acknowledgment requested' : kind === 'task-answer-held' ? 'Delivery decision needed' : 'Your input is needed',
-    instruction: kind === 'yellow-alert' ? '' : `${inline ? '' : 'Open this request in Inbox. '}${instruction}`,
+    instruction,
     question: request.question,
     reason: typeof request.metadata?.holdReason === 'string' ? request.metadata.holdReason : undefined,
     answer: kind === 'task-answer-held' && typeof request.metadata?.answer === 'string' ? request.metadata.answer : undefined,
@@ -124,16 +122,16 @@ export function describeAlertAction(event: AlertEvent, evidence: AlertEvidence =
   const hitl = hitlId ? evidence.hitls[hitlId] : undefined;
   if (hitl) return describeHitlAction(hitl);
   const destination = hitlId ? { href: `/inbox#${encodeURIComponent(hitlId)}`, linkLabel: 'Check this request in Inbox' } : reviewDestination(event);
-  if (event.action_taken) return { state: 'resolved', label: 'Action recorded', instruction: 'An action was recorded for this historical alert. Review its destination for the current state.', ...destination };
+  if (event.action_taken) return { state: 'resolved', label: 'Action recorded', instruction: 'An action was recorded. The current outcome is unknown.', ...destination };
   const status = event.task_id ? evidence.tasks[event.task_id]?.status : undefined;
   // A task's terminal state only supersedes its own lifecycle signal. It says
   // nothing about fleet health, third-party replies, or other independent work.
   if (!hitlId && TASK_LIFECYCLE.test(event.event_type) && status && ['completed', 'cancelled', 'archived'].includes(status)) {
-    return { state: 'historical', label: 'Historical task alert', instruction: `This task is now ${status}. The text below records an earlier interruption; it is not a new request to repeat that action.`, ...destination };
+    return { state: 'historical', label: 'Historical task alert', instruction: `This task is now ${status}.`, ...destination };
   }
   return {
     state: 'unknown', label: 'Current action status unverified',
-    instruction: 'This event recorded a request for attention. Check the current destination before acting; the event alone does not establish that the request is still open.',
+    instruction: hitlId ? 'Current request status is unavailable.' : 'Current outcome is unknown.',
     ...destination,
   };
 }

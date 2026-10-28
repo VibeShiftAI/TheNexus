@@ -5,6 +5,14 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { HitlRequestCard } from '../hitl-card.tsx';
 import { DeliverableRow } from '../document-review/deliverable-row.tsx';
 import { briefFromMetadata, briefQuestions } from '../../lib/human-brief.ts';
+import { HumanBriefBlock } from '../human-brief.tsx';
+
+test('a collapsed update keeps the situation visible and omits empty decision rows', () => {
+  const html = renderToStaticMarkup(React.createElement(HumanBriefBlock, { brief: { kind: 'update', project: 'Praxis', situation: 'The review passed.', problem: '', ask: '' }, collapsible: true }));
+  assert.match(html, /data-brief-field="situation"/);
+  assert.doesNotMatch(html, /max-lg:hidden[^>]*data-brief-field="situation"/);
+  assert.doesNotMatch(html, /The problem|What I need from you/);
+});
 
 const brief = {
   project: 'TheCortex',
@@ -63,4 +71,6 @@ test('a deliverable row describes the document by its brief when one is register
   assert.match(html, /The plan cannot start until you have read it\. Approve it or request changes\./);
   const plain = renderToStaticMarkup(React.createElement(DeliverableRow, { entry: { ...entry, metadata: {} } }));
   assert.match(plain, /Review the launch plan/);
+  const update = renderToStaticMarkup(React.createElement(DeliverableRow, { entry: { ...entry, metadata: { brief: { kind: 'update', project: 'Praxis', situation: 'The launch plan now includes the delivery dates.', problem: '', ask: '' } } } }));
+  assert.match(update, /The launch plan now includes the delivery dates/);
 });

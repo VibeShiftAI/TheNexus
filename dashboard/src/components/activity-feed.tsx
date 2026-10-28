@@ -10,7 +10,9 @@ import { GitCommit, Clock, Cpu, Coins, ChevronRight, FileX2, User, Radio, AlertT
 import { formatTraceCompleteness, describeTraceGaps } from "@/lib/run-trace";
 import { resolveUsageSource, USAGE_SOURCE_DETAIL, USAGE_SOURCE_TAG } from "@/lib/usage-source";
 import { useAlertActionState } from "@/hooks/use-alert-action-state";
-import { describeAlertAction, type AlertEvidence } from "@/lib/alert-action";
+import { alertMetadata, describeAlertAction, type AlertEvidence } from "@/lib/alert-action";
+import { briefFromMetadata } from "@/lib/human-brief";
+import { HumanBriefBlock } from "@/components/human-brief";
 import { readChatDraft, writeChatDraft } from "@/lib/chat-draft";
 import { AlertAction, SafeAlertMarkdown } from "@/components/alert-action";
 
@@ -125,6 +127,10 @@ export function EventRow({ event, onOpenTask, evidence, history = [] }: { event:
     // The full card is what the chat used to carry; keep it one click away
     // rather than on screen by default.
     const detail = event.message?.trim();
+    const metadata = alertMetadata(event);
+    const brief = briefFromMetadata(metadata);
+    const taskTitle = typeof metadata.taskTitle === 'string' && metadata.taskTitle.trim() ? metadata.taskTitle.trim() : 'View task';
+    const documents = [...new Map(Array.from((event.message ?? '').matchAll(/\[([^\]\n]+)\]\((\/documents\/[a-zA-Z0-9-]+)\)/g), match => [match[2], { href: match[2], label: match[1] }])).values()];
     const router = useRouter();
     const askPraxis = () => {
         const text = `Please explain this Recent Activity item and whether I need to do anything:\n\n${event.title}\nEvent ${event.id} (${event.event_type}), ${event.created_at}${event.task_id ? `\nTask: /task/${event.task_id}` : ''}\n\n${event.message ?? ''}`;
@@ -147,22 +153,24 @@ export function EventRow({ event, onOpenTask, evidence, history = [] }: { event:
                     <span className="text-xs text-slate-600">{formatRelativeTime(event.created_at)}</span>
                 </div>
                 <p className="text-sm text-slate-300 break-words" title={event.title}>{event.title}</p>
-                {Boolean(event.requires_action) && <AlertAction action={describeAlertAction(event, evidence)} />}
-                <div className="mt-1 flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-600 font-mono truncate max-w-[10rem]" title={event.source}>
+                {brief && <div className="mt-2"><HumanBriefBlock brief={brief} compact /></div>}
+                {Boolean(event.requires_action) && <AlertAction action={describeAlertAction(event, evidence)} showQuestion={!brief} />}
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <span className="shrink-0 text-[10px] text-slate-600 font-mono truncate max-w-[10rem]" title={event.source}>
                         {event.source}
                     </span>
                     {event.task_id && (
                         <button
                             type="button"
                             onClick={() => onOpenTask(event.task_id!)}
-                            className="inline-flex items-center gap-0.5 rounded border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
-                            title={`Open task ${event.task_id}`}
+                            className="inline-flex max-w-full items-center gap-0.5 rounded border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 text-left text-[10px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                            title={taskTitle}
                         >
-                            Task
+                            {taskTitle}
                             <ChevronRight size={10} className="shrink-0" />
                         </button>
                     )}
+                    {documents.map(document => <Link key={document.href} href={document.href} className="text-[10px] text-cyan-300 hover:underline">{document.label}</Link>)}
                     <button type="button" onClick={askPraxis} className="text-[10px] text-cyan-300 hover:underline">Ask Praxis</button>
                     {history.length > 1 && <span className="text-[10px] text-slate-500">{history.length} updates</span>}
                     {(detail || history.length > 1) && (

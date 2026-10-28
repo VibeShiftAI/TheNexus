@@ -10,7 +10,7 @@ test('verified pending request exposes the exact question and specific inbox des
   assert.equal(action.state, 'pending');
   assert.equal(action.question, request().question);
   assert.equal(action.href, '/inbox#question-1');
-  assert.match(action.instruction, /answer|choose/i);
+  assert.equal(action.instruction, '');
 });
 test('answered event preserves choice and notes without claiming the task resumed', () => {
   const answer = { resolvedAt: '2026-10-06T00:00:00Z', choice: 'keep it saved for the next run', freeText: 'Use staging only.' };
@@ -34,21 +34,31 @@ test('completed task makes its old blocked signal historical but not unrelated i
 });
 test('red alert acknowledgment is distinguished from repairing the incident', () => {
   const action = describeHitlAction(request({ metadata: { kind: 'red-alert' }, options: ['acknowledged'] }));
-  assert.match(action.instruction, /acknowledged/i);
+  assert.match(action.instruction, /acknowledg/i);
   assert.match(action.instruction, /does not (repair|fix)/i);
 });
 test('saved predictive restart proposals require current-state review before a decision', () => {
   const action = describeHitlAction(request({ id: 'hitl-predictive-action-123', question: 'Praxis paused infra_restart_service.', options: ['Approve this exact action', 'Reject and re-plan'] }));
-  assert.match(action.instruction, /current system status/);
-  assert.match(action.instruction, /still needed/);
+  assert.match(action.instruction, /restart.*(unverified|not confirmed)/i);
+  assert.match(action.instruction, /Approval may restart the service/);
+  assert.match(action.instruction, /Reject and re-plan.*resumes/);
   assert.deepEqual(action.relatedLinks, [{ href: '/system-monitor', label: 'Review current system status' }]);
 });
 test('saved answer holds ask only for delivery choice and preserve the answer', () => {
   const action = describeHitlAction(request({ metadata: { kind: 'task-answer-held', answer: 'Approved staging only', holdReason: 'Contract review pending' } }));
-  assert.match(action.instruction, /retry delivery now/);
-  assert.match(action.instruction, /keep it saved for the next run/);
+  assert.match(action.instruction, /answer is saved.*delivery/i);
   assert.equal(action.answer, 'Approved staging only');
   assert.equal(action.reason, 'Contract review pending');
+});
+
+test('action copy states known state without generic button tutorials or invented outcomes', () => {
+  assert.equal(describeHitlAction(request({ options: ['yes', 'no'] })).instruction, '');
+  assert.equal(describeHitlAction(request({ resolution: { choice: 'yes' } })).instruction, 'Response recorded. Task outcome is not confirmed by this response.');
+  assert.equal(describeAlertAction(event({ action_taken: 1 })).instruction, 'An action was recorded. The current outcome is unknown.');
+  assert.equal(describeAlertAction(event()).instruction, 'Current request status is unavailable.');
+  const historical = describeAlertAction(event({ metadata: {} }), { hitls: {}, tasks: { 'task-1': { status: 'completed' } } });
+  assert.equal(historical.instruction, 'This task is now completed.');
+  assert.equal(describeHitlAction(request({ resolution: {} })).instruction, 'Request closed without a recorded answer.');
 });
 test('safe destinations reject active protocols, protocol-relative URLs and encoded controls', () => {
   for (const url of ['javascript:alert(1)', 'data:text/html,bad', '//evil.test', '/\\evil.test', 'https://ok.test\n@evil.test', '/%0aevil']) assert.equal(safeAlertHref(url), undefined, url);

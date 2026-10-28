@@ -35,6 +35,8 @@ import { VoiceSpeech, type VoiceSession, type VoiceState } from "@/lib/voice-spe
 import { composeVoiceProse, type VoiceProseInput } from "@/lib/voice-prose";
 import { VoiceConversation } from "@/lib/voice-conversation";
 import { VoiceAlerts, alertFacts, currentVoiceAlert, voiceAlertArchive, voiceAlertSpeech, readAlertMode, ALERT_MODE_KEY, type AlertMode } from "@/lib/voice-alerts";
+import { voiceAlertSubject, voiceAlertFailureReason, voiceAlertFailureText, type VoiceAlertFailure } from "@/lib/voice-alert-delivery";
+import { briefFromMetadata, renderHumanBrief } from "@/lib/human-brief";
 import { authFetch } from "@/lib/nexus/shared";
 import { checkMicrophone, INITIAL_MICROPHONE_CHECK, microphoneCapability, microphoneConstraints, microphoneError, MISSING_MICROPHONE, readMicrophonePreference, saveMicrophonePreference, VOICE_SETUP_EVENT, type MicrophoneCheck } from "@/lib/voice-input";
 
@@ -582,7 +584,7 @@ export function VoiceCommandBar() {
       speech.setState(session, 'working');
       return (async () => {
         let deliveryConversationId = announcementConversationId || undefined;
-        let failure = 'Voice update could not be prepared or saved to Recent Activity.';
+        let failure: VoiceAlertFailure = { stage: 'preparation', subject: voiceAlertSubject(factsFor(event)), textSaved: false, code: 'unknown' };
         let delivered = false;
         let noCurrentRequest = false;
         const mergeSaved = (saved: SavedVoiceMessage[]) => {
@@ -594,28 +596,42 @@ export function VoiceCommandBar() {
           const current = await currentVoiceAlert(event, authFetch, session.signal);
           if (!current) { noCurrentRequest = true; return; }
           const facts = factsFor(current);
-          const text = await composeVoiceProse(session, { kind: 'alert', facts });
-          if (!session.owns()) { failure = 'Voice update was canceled before playback.'; return; }
+          failure.subject = voiceAlertSubject(facts);
+          const brief = briefFromMetadata({ brief: facts.brief });
+          const text = brief ? renderHumanBrief(brief) : await composeVoiceProse(session, { kind: 'alert', facts });
+          if (!session.owns()) { failure.code = 'canceled'; return; }
           const rechecked = await currentVoiceAlert(current, authFetch, session.signal);
-          if (!rechecked || (current.type === 'hitl.created' && rechecked.type === 'hitl.created' && rechecked.request.question !== current.request.question)) { noCurrentRequest = true; return; }
-          const saved = await archiveVoiceAnnouncement(announcementId, voiceAlertArchive(text, facts), deliveryConversationId, { signal: session.signal });
+          if (!rechecked || (current.type === 'hitl.created' && rechecked.type === 'hitl.created'
+            && (rechecked.request.question !== current.request.question || JSON.stringify(factsFor(rechecked)) !== JSON.stringify(facts)))) { noCurrentRequest = true; return; }
+          failure.stage = 'archive';
+          const archiveText = voiceAlertArchive(text, facts);
+          const preparedSpeech = voiceAlertSpeech(text, facts);
+          const saved = await archiveVoiceAnnouncement(announcementId, archiveText, deliveryConversationId, { signal: session.signal, speechText: preparedSpeech });
           const archived = saved.find(message => message.id === `voice-alert:${announcementId}`);
           if (!archived?.content) throw new Error('Announcement receipt is missing its text');
           deliveryConversationId = archived.conversation_id || deliveryConversationId;
           mergeSaved(saved);
-          failure = 'Voice update was skipped or interrupted before playback finished. The update is in Recent Activity.';
+          failure = { ...failure, stage: 'preparation', textSaved: true, code: 'interrupted' };
+          // Replays use the exact saved speech, never a long diagnostic archive.
+          const recordedSpeech = archived.metadata?.voiceSpeechText;
+          const spokenText = typeof recordedSpeech === 'string' && recordedSpeech.trim() ? recordedSpeech
+            : archived.content === archiveText ? preparedSpeech
+              : archived.content.length <= 1600 && !/\[[^\]]+\]\(|```/.test(archived.content) ? archived.content : undefined;
+          if (!spokenText) { failure.code = 'speech-record-unavailable'; return; }
           const mayPlay = async () => {
             const latest = await currentVoiceAlert(current, authFetch, session.signal);
-            if (!latest || (current.type === 'hitl.created' && latest.type === 'hitl.created' && latest.request.question !== current.request.question)) return false;
+            if (!latest || (current.type === 'hitl.created' && latest.type === 'hitl.created'
+              && (latest.request.question !== current.request.question || JSON.stringify(factsFor(latest)) !== JSON.stringify(facts)))) return false;
             return alerts.canPlay(event, session.signal, () => session.owns() && !settingsOpenRef.current && !document.hidden, blocked);
           };
           if (!await mayPlay()) return;
-          const outcome = await speech.speak(session, voiceAlertSpeech(text, facts), undefined, notice => {
-            failure = `Voice update failed: ${notice.replace(' The full response remains in the voice panel.', '')} The update is in Recent Activity.`;
+          const outcome = await speech.speak(session, spokenText, undefined, notice => {
+            failure = { ...failure, ...voiceAlertFailureReason(notice) };
           }, false, async () => {
+            failure.stage = 'playback';
             if (!await mayPlay()) return false;
             if (!await playAnnouncementCue(session.signal)) {
-              failure = 'Voice update could not play its announcement sound. The update is in Recent Activity.';
+              failure.code = 'cue-failed';
               return false;
             }
             return mayPlay();
@@ -626,20 +642,21 @@ export function VoiceCommandBar() {
             }
           });
           delivered = outcome === 'completed';
-        } catch {
-          if (session.signal.aborted) failure = 'Voice update was canceled before playback finished.';
+        } catch (error) {
+          failure = { ...failure, ...voiceAlertFailureReason(error), ...(session.signal.aborted ? { code: 'canceled' as const } : {}) };
         } finally {
           speech.finish(session);
           if (!delivered && !noCurrentRequest) {
-            if (mountedRef.current) setSpeechNotice(failure);
+            const notice = voiceAlertFailureText(failure);
+            if (mountedRef.current) setSpeechNotice(notice);
             // Speech completion releases/aborts its session. Archival needs its own lifetime.
             try {
-              mergeSaved(await archiveVoiceDeliveryNotice(announcementId, failure, deliveryConversationId));
+              mergeSaved(await archiveVoiceDeliveryNotice(announcementId, notice, deliveryConversationId, { failure }));
             } catch {
               mergeSaved([{ id: `voice-delivery:${announcementId}`, role: 'assistant',
-                content: `${failure} This notice could not be saved; it is shown locally.`,
+                content: `${notice} This notice could not be saved; it is shown locally.`,
                 conversation_id: deliveryConversationId,
-                metadata: { eventId: announcementId, voiceDeliveryNotice: true, playbackOwner: 'voice', suppressVoice: true } }]);
+                metadata: { eventId: announcementId, voiceDeliveryNotice: true, playbackOwner: 'voice', suppressVoice: true, voiceFailure: failure } }]);
             }
           }
         }
