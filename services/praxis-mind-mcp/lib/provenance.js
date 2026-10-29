@@ -55,6 +55,10 @@ function classifySource(source) {
   const s = String(source || '').trim().toLowerCase();
   if (!s) return 'external';
   if (['user', 'operator', 'manual', 'human', 'robert', 'dashboard'].includes(s)) return 'operator';
+  // Server-verified "Robert filed this" task labels: agent tier, matching
+  // server/lib/provenance.js (OPERATOR_ORIGIN_SOURCES), so a task Robert filed
+  // is not rendered to an MCP reader as untrusted external text.
+  if (s === 'operator:board' || s === 'operator:chat') return 'agent';
   if (
     s.startsWith('coding-agents-') || s.startsWith('workflow:')
     || ['praxis', 'praxis-agent', 'praxis-chat', 'praxis-mind-mcp', 'interactive-session',

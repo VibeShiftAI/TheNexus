@@ -2,6 +2,7 @@ import type { InitiativeValidation } from './initiatives';
 import type { TaskBoardStatus } from '@praxis/contract';
 import { TaskBoardStatusSchema } from '@praxis/contract';
 import { API_URL, authFetch } from './shared';
+import { operatorFetch } from '../local-operator-session';
 import type { BoardProject } from '../task-board';
 
 // ═══════════════════════════════════════════════════════════════
@@ -103,11 +104,17 @@ export async function addTask(
         /** The single task to auto-start after this one completes. */
         successor_id?: string | null;
     },
-): Promise<{ success: boolean; task: Task }> {
-    const res = await authFetch(`${API_URL}/${id}/tasks`, {
+): Promise<{ success: boolean; task: Task; operator_origin?: { verified: boolean; reason?: string } }> {
+    // Robert's own board create. `operator: true` asks the server to record
+    // the task as his (`operator:board`); the server grants that only when
+    // this request carries his verified session, which operatorFetch supplies
+    // (Access cookie or the local session proof). The cache-buster mirrors
+    // authFetch, which this call used before.
+    const res = await operatorFetch(`${API_URL}/${id}/tasks?_cb=${Date.now()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+            operator: true,
             title,
             description,
             model_assignment,
