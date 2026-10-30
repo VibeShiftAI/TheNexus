@@ -1,5 +1,5 @@
 const yaml = require('js-yaml');
-const { buildClaudeSkill, selectClaudeSkills, ALWAYS_MIRROR } = require('../lib/claude-skills-sync');
+const { buildClaudeSkill, selectClaudeSkills, syncClaudeSkills, ALWAYS_MIRROR } = require('../lib/claude-skills-sync');
 
 describe('Claude skill manifests', () => {
   test.each([
@@ -46,5 +46,31 @@ describe('Claude skill mirror selection', () => {
   test('VAULT_CLAUDE_SKILLS_MIRROR=all restores the full mirror', () => {
     const ledgerText = line(['plan-day-yourself'], '2026-10-20T00:00:00Z');
     expect(selectClaudeSkills(active, { ledgerText, now, mode: 'all' }).selected).toHaveLength(active.length);
+  });
+
+  test('the sync manifest lists skills left out on purpose as withheld', () => {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-sync-'));
+    const vault = path.join(tmp, 'vault');
+    for (const e of active) {
+      fs.mkdirSync(path.dirname(path.join(vault, e.relPath)), { recursive: true });
+      fs.writeFileSync(path.join(vault, e.relPath), `---\nname: ${e.id}\n---\nBody\n`);
+    }
+    // Explicit folders: never let this test reach the real ~/.claude/skills.
+    const skillsDir = path.join(tmp, 'skills');
+    const manifestPath = path.join(skillsDir, '.vault-sync-manifest.json');
+    try {
+      const ledgerText = line(['plan-day-yourself'], '2026-10-20T00:00:00Z');
+      syncClaudeSkills(active, { ledgerText, now, mode: undefined, skillsDir, manifestPath, vault });
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      expect(manifest.synced.sort()).toEqual(['plan-day-yourself', ...ALWAYS_MIRROR].sort());
+      expect(manifest.withheld.sort()).toEqual(['implement-unused-pattern', 'premortem', 'qa-review-content']);
+      expect(fs.existsSync(path.join(skillsDir, 'plan-day-yourself', 'SKILL.md'))).toBe(true);
+      expect(fs.existsSync(path.join(skillsDir, 'premortem'))).toBe(false);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });

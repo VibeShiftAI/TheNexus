@@ -76,18 +76,22 @@ function selectClaudeSkills(active, { ledgerText = '', now = Date.now(), mode = 
  * Candidates (skills/_candidates/) and archived skills are never synced.
  */
 function syncClaudeSkills(active, options = {}) {
-  fs.mkdirSync(CLAUDE_SKILLS_DIR, { recursive: true });
+  // Folders are injectable so tests never touch the real ~/.claude/skills:
+  // Jest hands tests a copy of process.env, so changing HOME there does not
+  // move os.homedir().
+  const { skillsDir = CLAUDE_SKILLS_DIR, manifestPath = SYNC_MANIFEST, vault = VAULT } = options;
+  fs.mkdirSync(skillsDir, { recursive: true });
   const ledgerText = options.ledgerText !== undefined ? options.ledgerText : readFileSafe(SKILL_USAGE_LEDGER);
   const { selected, reason } = selectClaudeSkills(active, { ...options, ledgerText });
   log(`skill-sync: mirroring ${reason}`);
-  const manifest = readJsonSafe(SYNC_MANIFEST) || { synced: [] };
+  const manifest = readJsonSafe(manifestPath) || { synced: [] };
   const previouslySynced = new Set(manifest.synced);
   const nowSynced = [];
 
   for (const entry of selected) {
-    const raw = readFileSafe(path.join(VAULT, entry.relPath));
+    const raw = readFileSafe(path.join(vault, entry.relPath));
     if (!raw) continue;
-    const dir = path.join(CLAUDE_SKILLS_DIR, entry.id);
+    const dir = path.join(skillsDir, entry.id);
     const target = path.join(dir, 'SKILL.md');
     // Never overwrite a user-authored skill that we didn't install.
     if (fs.existsSync(target) && !previouslySynced.has(entry.id)) {
@@ -109,14 +113,19 @@ function syncClaudeSkills(active, options = {}) {
   const nowSyncedSet = new Set(nowSynced);
   for (const id of previouslySynced) {
     if (nowSyncedSet.has(id)) continue;
-    const target = path.join(CLAUDE_SKILLS_DIR, id, 'SKILL.md');
+    const target = path.join(skillsDir, id, 'SKILL.md');
     if (fs.existsSync(target) && readFileSafe(target).includes(SYNC_MARKER)) {
-      fs.rmSync(path.join(CLAUDE_SKILLS_DIR, id), { recursive: true, force: true });
+      fs.rmSync(path.join(skillsDir, id), { recursive: true, force: true });
       log(`skill-sync: removed ${id} (not active or not selected for the mirror)`);
     }
   }
 
-  fs.writeFileSync(SYNC_MANIFEST, JSON.stringify({ synced: nowSynced, lastSync: new Date().toISOString() }, null, 2));
+  // Active skills the selection left out on purpose. Praxis's "skill bus"
+  // health check (Praxis/src/maintenance/fleet-preflight.ts) reads this list
+  // so it does not report them as missing installs.
+  const selectedIds = new Set(selected.map((entry) => entry.id));
+  const withheld = active.filter((entry) => !selectedIds.has(entry.id)).map((entry) => entry.id);
+  fs.writeFileSync(manifestPath, JSON.stringify({ synced: nowSynced, withheld, lastSync: new Date().toISOString() }, null, 2));
   return nowSynced.length;
 }
 
