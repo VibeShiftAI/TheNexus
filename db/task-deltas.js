@@ -32,17 +32,17 @@ function appendRuling(task, input) {
         if (provenance.instructed_at !== undefined) string(provenance.instructed_at, 'provenance.instructed_at', 100);
     }
     const source = [input.source, provenance ? `${provenance.kind} ${provenance.id}${provenance.instructed_at ? ` answered at ${provenance.instructed_at}` : ''}` : ''].filter(Boolean).join('; ');
-    const clipped = text.length > 1200 ? `${text.slice(0, 1200)}…` : text;
-    const id = sha(text).slice(0, 16);
-    const stamp = [source, text.length > 1200 ? `clipped from ${text.length} chars, full-text id ${id}` : ''].filter(Boolean).join('; ');
-    const entry = stamp ? `${clipped}  (${stamp})` : clipped;
+    // Stored whole (2026-10-30). Older entries were clipped to 1,200 characters
+    // with a "full-text id" stamp; they never equal a complete text, so a repeat
+    // of one is stored again, whole. Mirrors Praxis orchestrator/operator-ruling.ts.
+    const entry = source ? `${text}  (${source})` : text;
     const payload = payloadOf(task);
     const existing = Array.isArray(payload.operator_rulings) ? payload.operator_rulings : [];
     const audit = task.metadata?.work_admission?.operator_answers || [];
     const duplicate = existing.some((value, index) => {
         if (typeof value !== 'string') return false;
         const stored = storedParts(value.trim());
-        if (stored.text !== clipped || (text.length > 1200 && /full-text id ([0-9a-f]{16})/.exec(stored.stamp)?.[1] !== id)) return false;
+        if (stored.text !== text) return false;
         if (provenance) {
             const key = `${provenance.kind} ${provenance.id}`;
             if (stored.stamp.split('; ').some(part => part === key || part.startsWith(`${key} answered at `))) return true;

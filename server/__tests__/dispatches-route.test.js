@@ -95,6 +95,23 @@ describe('dispatches route', () => {
         expect(row.kind).toBe('dispatch');
     });
 
+    test('stores a long output whole, so the verdict line at its end survives', async () => {
+        const created = await requestJson(`${handle.baseUrl}/api/dispatches`, {
+            method: 'POST',
+            body: JSON.stringify({ task_id: 'task-long', executor: 'codex' }),
+        });
+        // Longer than the old 64,000-character cut, verdict last as in a real run.
+        const output = `${'log line\n'.repeat(9_000)}PRAXIS_QA_VERDICT: pass`;
+        expect(output.length).toBeGreaterThan(64_000);
+        await requestJson(`${handle.baseUrl}/api/dispatches/${created.body.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ outcome: 'success', output }),
+        });
+
+        const listed = await requestJson(`${handle.baseUrl}/api/dispatches?task_id=task-long`);
+        expect(listed.body.dispatches[0].output).toBe(output);
+    });
+
     test('persists token counts on create and completion, and exposes them via listRecentDispatches', async () => {
         // tokens can arrive at dispatch start...
         const created = await requestJson(`${handle.baseUrl}/api/dispatches`, {

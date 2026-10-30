@@ -27,14 +27,11 @@ const DEFAULT_DB_PATH = resolveNexusDbPath();
 const OUTCOMES = new Set(['running', 'success', 'failure', 'timeout', 'needs_input', 'cancelled']);
 const KINDS = new Set(['dispatch', 'follow_up']);
 
-// Prompts embed full execution briefs and outputs can be whole walkthroughs —
-// keep rows bounded so the board DB never bloats on a runaway transcript.
-const MAX_TEXT_CHARS = 64_000;
-
-function clampText(value) {
-    if (typeof value !== 'string') return null;
-    if (value.length <= MAX_TEXT_CHARS) return value;
-    return `${value.slice(0, MAX_TEXT_CHARS)}\n… (truncated, ${value.length} chars total)`;
+// Stored whole. The QA verdict and quality-gate lines sit at the END of a
+// run's output, and task-evidence.js reads them back from this column, so a
+// head cut would drop exactly the evidence the row exists to keep.
+function text(value) {
+    return typeof value === 'string' ? value : null;
 }
 
 function str(value) {
@@ -127,8 +124,8 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
             executor,
             model: str(body.model),
             tokens: num(body.tokens),
-            prompt: clampText(body.prompt),
-            instructions: clampText(body.instructions),
+            prompt: text(body.prompt),
+            instructions: text(body.instructions),
             session_id: str(body.session_id),
             workspace: str(body.workspace),
             log_path: str(body.log_path),
@@ -152,8 +149,8 @@ function createDispatchesRouter({ dbPath = DEFAULT_DB_PATH } = {}) {
         return {
             updates: {
                 outcome,
-                output: clampText(body.output),
-                error: clampText(body.error),
+                output: text(body.output),
+                error: text(body.error),
                 session_id: str(body.session_id),
                 model: str(body.model),
                 tokens: num(body.tokens),

@@ -63,7 +63,7 @@ test.each([null, 'external-feed', 'user'])('answer append preserves raw canonica
     expect(duplicate.data.task.version).toBe(after.version);
     expect((await db.getTask(before.id)).antigravity_payload.operator_rulings).toHaveLength(1);
 });
-test('unverified provenance stays unverified, while distinct source answers and clipped tails survive', async () => {
+test('unverified provenance stays unverified, while distinct source answers and long answers that differ only at the end survive', async () => {
     const before = await task(); const endpoint = `/${before.id}/operator-rulings`;
     const head = 'x'.repeat(1300);
     for (const input of [{ ruling: head + 'A', source: 'external respondent', source_scoped: true },
@@ -73,6 +73,7 @@ test('unverified provenance stays unverified, while distinct source answers and 
     }
     const after = await db.getTask(before.id);
     expect(after.antigravity_payload.operator_rulings).toHaveLength(3);
+    expect(after.antigravity_payload.operator_rulings[1]).toBe(`${head}B  (external respondent)`);
     expect(receipt(after).operator_answers.every(answer => answer.origin === 'unverified')).toBe(true);
 });
 test('interleaved stale readers cannot erase answers or an independently authorized scope edit', async () => {
