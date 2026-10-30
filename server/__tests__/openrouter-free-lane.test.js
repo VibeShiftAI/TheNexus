@@ -94,14 +94,22 @@ describe('shared-pool cooldown is not a credential fault', () => {
 });
 
 describe('free-lane cost accounting', () => {
-    test('free slugs cost zero rather than falling through to the default rate', () => {
-        // A missing PRICING row bills a $0 call at the $1/$4 default, which
-        // would inflate every ledger and budget gate that reads this table.
-        expect(calculateCost('stealth/ox-alpha', 1_000_000, 1_000_000)).toBe(0);
-        expect(calculateCost('z-ai/glm-5.2:free', 500_000, 500_000)).toBe(0);
-        expect(calculateCost('minimax/minimax-m3:free', 1_000_000, 1_000_000)).toBe(0);
-        // An unknown model still falls through to the default, as before.
-        expect(calculateCost('mystery/model', 1_000_000, 1_000_000)).toBeGreaterThan(0);
+    test('free slugs cost zero at the catalog rate', () => {
+        expect(calculateCost('nvidia/nemotron-3-ultra-550b-a55b:free', 1_000_000, 1_000_000)).toBe(0);
+        expect(calculateCost('openrouter/free', 500_000, 500_000)).toBe(0);
+    });
+
+    test('a model the catalog does not price is unpriced, never billed at a default rate', () => {
+        // The old $1/$4 default billed withdrawn free slugs and local models at
+        // a made-up price, inflating every ledger and budget gate.
+        expect(calculateCost('minimax/minimax-m3:free', 1_000_000, 1_000_000)).toBeNull();
+        expect(calculateCost('mystery/model', 1_000_000, 1_000_000)).toBeNull();
+        expect(calculateCost('google/gemma-4-31b-qat', 1_000_000, 1_000_000)).toBeNull();
+    });
+
+    test('paid models use the catalog rate', () => {
+        // Sonnet 5.5 is $2 in / $10 out per million tokens in the fixture catalog.
+        expect(calculateCost('claude-sonnet-5-5', 1_000_000, 1_000_000)).toBe(12);
     });
 });
 

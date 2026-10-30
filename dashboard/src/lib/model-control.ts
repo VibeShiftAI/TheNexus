@@ -86,6 +86,17 @@ export interface ModelControlOptionsResponse {
      * serves). Pickers read the whole registry through getAvailableModels.
      */
     codexModels?: CodexModelOption[];
+    /** Every current CLI model as a role assignment, from the model registry. */
+    cliAssignments?: CliAssignmentOption[];
+}
+
+/** A `cli:<backend>[/<model>]` role assignment the role picker can offer. */
+export interface CliAssignmentOption {
+    value: string;
+    label: string;
+    backend: string;
+    /** Efforts the CLI accepts for this model ([] for the bare CLI default). */
+    efforts: string[];
 }
 
 /** One Codex model the dropdowns can offer and the codex CLI will accept as --model. */

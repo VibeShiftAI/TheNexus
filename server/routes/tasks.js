@@ -36,7 +36,7 @@ function requireValidStatus(res, rawStatus) {
     return canonical;
 }
 
-function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, runDeepResearch, validateInitiativeRequest, pushService }) {
+function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, validateInitiativeRequest, pushService }) {
     const router = express.Router();
     router.use(boardRequestLease(db));
 

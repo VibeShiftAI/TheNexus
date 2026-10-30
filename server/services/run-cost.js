@@ -1,54 +1,32 @@
 const { costSource } = require('./usage-source');
+const { priceForModel } = require('./model-prices');
 
-// Notional $/1M-token rates, mirrored from Praxis/src/usage/usage-monitor.ts
-// PRICE_PER_MTOK (subscription families don't bill per token — this is the
-// API-equivalent value of the work). Dispatch rows carry one total token
-// count with no input/output split, so the estimate blends the two rates.
-// `cacheRead` overrides the 10%-of-input cache-read default below for a model
-// that prices cache reads differently (Fable 5.1 reads cache at $0.25/MTok —
-// 2.5% of input, not 10% — mirrored from Praxis/src/usage/usage-monitor.ts).
-const PRICE_PER_MTOK = {
-    'claude-fable-5-1': { in: 10, out: 50, cacheRead: 0.25 },
-    'claude-opus-5': { in: 5, out: 25 },
-    'claude-opus-4-8': { in: 5, out: 25 },
-    'claude-sonnet-5': { in: 3, out: 15 },
-    'claude-haiku-4-5': { in: 1, out: 5 },
-    'gpt-5.6-sol': { in: 5, out: 30 },
-    'gpt-5.6-terra': { in: 2.5, out: 15 },
-    'gpt-5.6-luna': { in: 1, out: 6 },
-    'gpt-5.5': { in: 1.25, out: 10 },
-    // gpt-6-astra (codex roster leader since 2026-09-06) has NO row on
-    // purpose: no public $/MTok was verifiable when it was added, and an
-    // invented rate would silently mis-state spend. priceFor() returns null
-    // for it (no key here is a prefix or substring of "gpt-6-astra"), so its
-    // runs report cost: null — "unknown", never a $0 that under-reports.
-};
+// Notional $/1M-token rates come from OpenRouter's catalog, which Praxis keeps
+// in data/openrouter-catalog.json (see ./model-prices.js). Subscription
+// families don't bill per token; this is the API-equivalent value of the
+// work. Dispatch rows carry one total token count with no input/output split,
+// so the estimate blends the rates.
+//
 // A dispatch row carries ONE total token count, and for claude-code that
-// total sums every usage category — including cache reads, which dominate
-// agentic runs and are priced at 10% of input by default (cache writes at
-// 125%). The blend assumes a typical CLI-run mix and applies Praxis's
-// category pricing:
+// total sums every usage category, including cache reads, which dominate
+// agentic runs. The blend assumes a typical CLI-run mix:
 //   cache-read 85% · fresh input 2% · cache-write 8% · output 5%
-// → effective $/MTok = in × (0.85×cacheReadRate + 0.02 + 0.08×1.25) + out × 0.05
-//   where cacheReadRate = price.cacheRead / price.in when set, else 0.1
+// Each category uses the model's own catalog rate; when the catalog lists no
+// cache rate, a cache read costs 10% of input and a cache write 125%.
 const BLEND = { cacheReadShare: 0.85, inputShare: 0.02, cacheWriteShare: 0.08, outputShare: 0.05 };
 
 function priceFor(model) {
-    const m = String(model || '').toLowerCase();
-    if (!m) return null;
-    for (const [key, price] of Object.entries(PRICE_PER_MTOK)) {
-        if (m.startsWith(key) || m.includes(key)) return price;
-    }
-    if (m.includes('opus')) return PRICE_PER_MTOK['claude-opus-5'];
-    if (m.includes('sonnet')) return PRICE_PER_MTOK['claude-sonnet-5'];
-    if (m.includes('fable') || m.includes('mythos')) return PRICE_PER_MTOK['claude-fable-5-1'];
-    if (m.includes('haiku')) return PRICE_PER_MTOK['claude-haiku-4-5'];
-    return null;
+    return priceForModel(model);
 }
 
-/** Cache-read $/MTok fraction of input — the model's own rate, else the 10% default. */
-function cacheReadShareOfInput(price) {
-    return typeof price.cacheRead === 'number' ? price.cacheRead / price.in : 0.1;
+/** Blended $/MTok for one price row under the CLI-run mix above. */
+function blendedRate(price) {
+    const cacheRead = typeof price.cacheRead === 'number' ? price.cacheRead : price.in * 0.1;
+    const cacheWrite = typeof price.cacheWrite === 'number' ? price.cacheWrite : price.in * 1.25;
+    return BLEND.cacheReadShare * cacheRead
+        + BLEND.inputShare * price.in
+        + BLEND.cacheWriteShare * cacheWrite
+        + BLEND.outputShare * price.out;
 }
 
 // ── Missing-usage attribution ────────────────────────────────────────────
@@ -60,7 +38,7 @@ function cacheReadShareOfInput(price) {
 // the absence and let the surface say "unknown" with its reason.
 const USAGE_UNKNOWN_REASONS = {
     no_model: 'No model was recorded for this run, so no rate applies.',
-    unpriced_model: 'This model has no verified $/MTok rate — inventing one would mis-state spend.',
+    unpriced_model: 'The OpenRouter catalog lists no $/MTok rate for this model, and inventing one would mis-state spend.',
     no_token_record: 'This run left no usage record, so its token count is unknown.',
 };
 
@@ -92,10 +70,7 @@ function usageUnknownReason(tokens, model) {
  */
 function estimateRunCostUsdRaw(tokens, model) {
     if (usageUnknownReason(tokens, model)) return null;
-    const price = priceFor(model);
-    const blended = price.in * (BLEND.cacheReadShare * cacheReadShareOfInput(price) + BLEND.inputShare + BLEND.cacheWriteShare * 1.25)
-        + price.out * BLEND.outputShare;
-    return (tokens / 1e6) * blended;
+    return (tokens / 1e6) * blendedRate(priceFor(model));
 }
 
 /** Preserve existing per-run display precision; aggregates use the raw value. */

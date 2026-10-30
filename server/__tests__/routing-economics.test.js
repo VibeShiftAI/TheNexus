@@ -16,7 +16,7 @@ test('aggregates all attempts, median/worst latency, tokens and completed/failed
     expect(g.runCount).toBe(3);
     expect(g.latency).toEqual({ medianMs: 20000, worstMs: 30000, runs: 2 });
     expect(g.tokens).toEqual({ total: 2e6, runs: 2, estimatedRuns: 1, source: 'estimated' });
-    expect(g.cost).toMatchObject({ usd: 5.05, runs: 2, provenance: 'estimated', source: 'estimated', estimatedRuns: 2, meteredRuns: 0, unknownRuns: 1 });
+    expect(g.cost).toMatchObject({ usd: 3.64, runs: 2, provenance: 'estimated', source: 'estimated', estimatedRuns: 2, meteredRuns: 0, unknownRuns: 1 });
     expect(g.outcomes).toMatchObject({ completed: 1, failed: 1, runs: 2, completionRate: 0.5, unfinished: 1 });
     expect(g.runs.find(r => r.id === '2').href).toBe('/task/task-1#dispatch-2');
     expect(data.lanes.find(g => g.lane === 'cloud').runCount).toBe(3);
@@ -40,10 +40,10 @@ test('one local run has zero provider fees labelled local, even when tokens are 
 });
 
 test('cloud has explicit estimates, never metered telemetry; unpriced and unattributed runs stay unknown', () => {
-    const data = aggregateRoutingEconomics([run('a'), run('b', { model: 'gpt-6-astra' }), run('c', { model: null }),
+    const data = aggregateRoutingEconomics([run('a'), run('b', { model: 'gpt-9-unlisted' }), run('c', { model: null }),
         run('d', { executor: 'mystery', model: 'unknown' })]);
     expect(group(data, 'gpt-5.6-sol').cost.provenance).toBe('estimated');
-    expect(group(data, 'gpt-6-astra').cost).toMatchObject({ usd: null, runs: 0, provenance: 'unknown', unknownByReason: { unpriced_model: 1 } });
+    expect(group(data, 'gpt-9-unlisted').cost).toMatchObject({ usd: null, runs: 0, provenance: 'unknown', unknownByReason: { unpriced_model: 1 } });
     expect(group(data, null).cost.unknownByReason).toEqual({ no_model: 1 });
     expect(group(data, 'unknown', 'unknown').cost.usd).toBeNull();
 });
@@ -111,5 +111,5 @@ test('run click-through includes a requested old dispatch beyond the history pag
 
 test('cloud subtotals round once after summing small run estimates', () => {
     const g = group(aggregateRoutingEconomics(Array.from({ length: 61 }, (_, i) => run(String(i), { tokens: 100 }))), 'gpt-5.6-sol');
-    expect(g.cost.usd).toBe(0.015);
+    expect(g.cost.usd).toBe(0.011);
 });

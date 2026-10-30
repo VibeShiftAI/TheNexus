@@ -108,7 +108,6 @@ TheNexus/                           # Flat monorepo
 │       └── lib/nexus.ts            # Centralized API client
 ├── cortex/                         # Python AI Brain (Pipeline orchestrator)
 ├── config/                         # Centralized configuration
-│   ├── model_registry.yaml         # LLM model configs
 │   └── prompts.yaml                # System prompts
 ├── db/                             # SQLite schema & migrations
 ├── .context/                       # Project context docs (for AI agents)

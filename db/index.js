@@ -365,6 +365,72 @@ function ensureColumn(sqlite, tableName, columnName, definition) {
     }
 }
 
+/**
+ * One-time: mark the retired per-token API model rows inactive. Keyed in
+ * model_control_settings like cli_lane_roles_v1, and records what it changed.
+ */
+function applyStaleApiModelRowsV1(sqlite) {
+    const done = sqlite
+        .prepare("SELECT key FROM model_control_settings WHERE key = 'stale_api_model_rows_v1'")
+        .get();
+    if (done) return;
+
+    const candidates = [
+        'google-gemini-pro', 'google-gemini-flash', 'openai-gpt', 'openai-gpt-6-astra', 'xai-grok',
+        'openrouter-ox-alpha', 'openrouter-minimax-m3', 'openrouter-glm',
+        ...sqlite.prepare("SELECT id FROM models WHERE id LIKE 'anthropic-%'").all().map(r => r.id),
+    ];
+
+    const roleAssignments = sqlite.prepare('SELECT assignment FROM model_roles').all().map(r => String(r.assignment || ''));
+    const aliases = sqlite.prepare('SELECT alias, target FROM model_aliases').all();
+    const usedAliases = new Set(roleAssignments.filter(a => a.startsWith('alias:')).map(a => a.slice('alias:'.length)));
+    const named = new Set(roleAssignments.filter(a => a.startsWith('model:')).map(a => a.slice('model:'.length)));
+    for (const a of aliases) {
+        if (usedAliases.has(a.alias) && String(a.target).startsWith('model:')) named.add(String(a.target).slice('model:'.length));
+    }
+    if (tableExists(sqlite, 'project_model_aliases')) {
+        for (const row of sqlite.prepare('SELECT target FROM project_model_aliases').all()) {
+            if (String(row.target).startsWith('model:')) named.add(String(row.target).slice('model:'.length));
+        }
+    }
+    if (tableExists(sqlite, 'tasks') && columnExists(sqlite, 'tasks', 'model_assignment')) {
+        const open = sqlite.prepare(
+            "SELECT DISTINCT model_assignment AS a FROM tasks WHERE model_assignment IS NOT NULL AND model_assignment != '' " +
+            "AND COALESCE(status, '') NOT IN ('completed', 'done', 'archived', 'cancelled', 'canceled', 'failed')"
+        ).all().map(r => String(r.a));
+        for (const a of open) {
+            if (a.startsWith('model:')) named.add(a.slice('model:'.length));
+            if (a.startsWith('alias:')) usedAliases.add(a.slice('alias:'.length));
+        }
+        for (const a of aliases) {
+            if (usedAliases.has(a.alias) && String(a.target).startsWith('model:')) named.add(String(a.target).slice('model:'.length));
+        }
+    }
+
+    const deactivateModel = sqlite.prepare("UPDATE models SET is_active = 0, updated_at = datetime('now') WHERE id = ? AND is_active != 0");
+    const deactivated = [];
+    const kept = [];
+    for (const id of candidates) {
+        if (named.has(id)) { kept.push(id); continue; }
+        if (deactivateModel.run(id).changes) deactivated.push(id);
+    }
+
+    const deactivateAlias = sqlite.prepare("UPDATE model_aliases SET is_active = 0, updated_at = datetime('now') WHERE alias = ? AND is_active != 0");
+    const retiredAliases = [];
+    const retired = new Set(candidates.filter(id => !named.has(id)));
+    for (const a of aliases) {
+        if (usedAliases.has(a.alias) || !String(a.target).startsWith('model:')) continue;
+        if (retired.has(String(a.target).slice('model:'.length)) && deactivateAlias.run(a.alias).changes) retiredAliases.push(a.alias);
+    }
+
+    sqlite.prepare(
+        "INSERT OR IGNORE INTO model_control_settings (key, value) VALUES ('stale_api_model_rows_v1', ?)"
+    ).run(JSON.stringify({ appliedAt: new Date().toISOString(), deactivated, retiredAliases, kept }));
+    if (deactivated.length || retiredAliases.length) {
+        console.log(`[Database] Retired API model rows: ${deactivated.join(', ') || 'none'}; aliases: ${retiredAliases.join(', ') || 'none'}`);
+    }
+}
+
 function runModelControlMigrations(sqlite) {
     try {
         [
@@ -453,56 +519,62 @@ function runModelControlMigrations(sqlite) {
             );
         `);
 
-        // Seed the OpenRouter FREE lane's models (2026-08-25). These are the
-        // $0 roster Praxis's src/llm/openrouter-free.ts guards — models no
-        // subscription CLI offers, reachable without reopening per-token spend.
+        // Seed the rows Praxis can serve as `model:` assignments: the local
+        // model and the free OpenRouter lane. Refreshed 2026-10-30 from
+        // Praxis's free roster checked against OpenRouter's catalog; after
+        // boot, syncModelSources() keeps the OpenRouter rows current from
+        // Praxis/data/openrouter-catalog.json. Subscription CLI models are
+        // `cli:` assignments from the model registry, not rows.
         //
         // `default_parameters.max_tokens` is deliberately generous and is NOT a
-        // cap: every one of these is a REASONING model that emits its thinking
-        // into a separate field while OpenRouter bills it as completion tokens.
-        // Measured 2026-08-25 on stealth/ox-alpha — a one-sentence prompt at
+        // cap: these are reasoning models that emit their thinking into a
+        // separate field while OpenRouter bills it as completion tokens.
+        // Measured 2026-08-25 on stealth/ox-alpha: a one-sentence prompt at
         // max_tokens 128 returned empty content with finish_reason "length",
-        // and answered normally at 256. The floor buys room to think AND
-        // answer; tune it here rather than in code.
+        // and answered normally at 256. Tune it here rather than in code.
         //
         // INSERT OR IGNORE, so re-seeding never clobbers operator tuning.
         sqlite.exec(`
             INSERT OR IGNORE INTO models
               (id, name, provider, api_model_id, display_name, family, version_sort,
                is_active, availability_status, sort_order, capabilities, default_parameters) VALUES
-              ('openrouter-ox-alpha', 'Ox Alpha', 'openrouter', 'stealth/ox-alpha',
-               'Ox Alpha (free)', 'Ox', '1.0', 1, 'available', 10,
-               '{"reasoning":true,"tools":true,"vision":true,"contextWindow":1048576}',
-               '{"max_tokens":4096}'),
+              ('local-gemma-4-31b', 'Gemma 4 31B QAT', 'local', 'google/gemma-4-31b-qat',
+               'Gemma 4 31B QAT (local)', 'Gemma', '4', 1, 'available', 0,
+               '{"chat":true,"reasoning":true,"local":true}', '{}'),
               ('openrouter-nemotron-ultra', 'Nemotron 3 Ultra', 'openrouter',
                'nvidia/nemotron-3-ultra-550b-a55b:free', 'Nemotron 3 Ultra 550B (free)',
                'Nemotron', '3.0', 1, 'available', 11,
                '{"reasoning":true,"tools":true,"contextWindow":1000000}',
                '{"max_tokens":4096}'),
-              ('openrouter-minimax-m3', 'MiniMax M3', 'openrouter', 'minimax/minimax-m3:free',
-               'MiniMax M3 (free)', 'MiniMax', '3.0', 1, 'available', 12,
-               '{"reasoning":true,"tools":true,"vision":true,"contextWindow":1048576}',
+              ('openrouter-laguna-s', 'Laguna S 2.1', 'openrouter', 'poolside/laguna-s-2.1:free',
+               'Laguna S 2.1 (free)', 'Laguna', '2.1', 1, 'available', 12,
+               '{"tools":true,"contextWindow":262144}',
                '{"max_tokens":4096}'),
-              ('openrouter-glm', 'GLM 5.2', 'openrouter', 'z-ai/glm-5.2:free',
-               'GLM 5.2 (free)', 'GLM', '5.2', 1, 'available', 13,
-               '{"reasoning":true,"tools":true,"contextWindow":256000}',
+              ('openrouter-north-mini-code', 'North Mini Code', 'openrouter', 'cohere/north-mini-code:free',
+               'North Mini Code (free)', 'North', '1.0', 1, 'available', 13,
+               '{"tools":true,"contextWindow":256000}',
+               '{"max_tokens":4096}'),
+              ('openrouter-auto-free', 'OpenRouter Auto', 'openrouter', 'openrouter/free',
+               'OpenRouter Auto (free)', 'OpenRouter', '1.0', 1, 'available', 14,
+               '{"tools":true,"contextWindow":200000}',
                '{"max_tokens":4096}');
         `);
 
-        // Seed repointable online aliases (one place to change "which Gemini")
-        // and the canonical call-site roles (local-first, with a small Gemini
-        // allowlist). INSERT OR IGNORE never clobbers a value the user has tuned.
+        // Seed the local alias and the canonical call-site roles as they stand
+        // (2026-10-30): bulk and background roles on the local model, the rest
+        // on the subscription CLIs. INSERT OR IGNORE never clobbers a value the
+        // operator has tuned through PUT /roles.
         sqlite.exec(`
             INSERT OR IGNORE INTO model_aliases (alias, target, description) VALUES
-              ('gemini_default', 'model:google-gemini-pro',   'Default online model (Gemini Pro) for quality/latency-sensitive roles'),
-              ('gemini_fast',    'model:google-gemini-flash', 'Fast online model (Gemini Flash) for classify/plan roles');
+              ('local_default', 'model:local-gemma-4-31b', 'Local model (LM Studio) for bulk and background roles');
 
             INSERT OR IGNORE INTO model_roles (role, assignment, description) VALUES
-              ('ingestion.extract',       'alias:local_default',  'Nightly Pass-1 entity/factoid extraction'),
-              ('ingestion.refine',        'alias:local_default',  'Pass-2 refinement'),
+              ('ingestion.extract',       'cli:antigravity/gemini-4-argon@high', 'Nightly Pass-1 entity/factoid extraction'),
+              ('ingestion.refine',        'cli:antigravity/gemini-4-argon@high', 'Pass-2 refinement'),
               ('ingestion.journal',       'alias:local_default',  'Overnight journal reflection'),
-              ('ingestion.graphiti',      'cli:antigravity/gemini-3.7-flash@low', 'TheCortex Graphiti memory extraction via the Praxis /v1/llm gateway — Gemini 3.7 Flash on the antigravity CLI (Robert 2026-08-20: no per-token API fallback)'),
-              ('ingestion.summary',       'cli:claude-code/claude-sonnet-5@medium', 'Nightly AI-intelligence briefing narrative'),
+              ('ingestion.graphiti',      'cli:antigravity/gemini-3.8-flash@low', 'TheCortex Graphiti memory extraction via the Praxis /v1/llm gateway, on the antigravity CLI (Robert 2026-08-20: no per-token API fallback)'),
+              ('ingestion.summary',       'cli:antigravity/gemini-4-argon@high', 'Nightly AI-intelligence briefing narrative'),
+              ('ingestion.evidence',      'cli:antigravity/gemini-4-argon@high', 'Full-source evidence extraction prepared overnight with source checkpoints'),
               ('report.upload',           'alias:local_default',  'Report-upload chunk summaries'),
               ('maintenance.synthesis',   'alias:local_default',  'Nightly synthesis'),
               ('maintenance.lars',        'alias:local_default',  'LARS analysis'),
@@ -513,25 +585,25 @@ function runModelControlMigrations(sqlite) {
               ('morning.goalgen',         'alias:local_default',  'Morning goal regression'),
               ('morning.self_assess',     'alias:local_default',  'Morning self-assessment'),
               ('morning.archive_audit',   'alias:local_default',  'Morning archive audit (obsolete/done task recommendations)'),
-              ('trading.council',         'alias:local_default',  'Trading council'),
+              ('trading.council',         'cli:codex/gpt-6-astra@high', 'Trading council'),
               ('youtube.research',        'alias:local_default',  'YouTube story research'),
               ('agent.consolidate',       'alias:local_default',  'Tool-output fusion / compression'),
               ('rag.counter_query',       'alias:local_default',  'Counter-evidence query rewrite'),
               ('memory.prune',            'alias:local_default',  'Conversation context summarization'),
-              ('agent.interactive',       'cli:claude-code/claude-sonnet-5@low',    'Human-facing interactive chat replies'),
-              ('agent.intermediate_eval', 'cli:claude-code/claude-haiku-4-5@low',   'Agent intermediate rubric self-check'),
-              ('agent.skill_rank',        'cli:claude-code/claude-haiku-4-5@low',   'Skill ranking / selection'),
-              ('memory.multimodal',       'cli:claude-code/claude-sonnet-5@low',    'Image description (vision; image paths ride the CLI seat)'),
-              ('research.deep',           'cli:claude-code/claude-opus-5@high',     'Deep-research worker (SOTA reasoning)'),
-              ('agent.self_consistency',  'alias:gemini_default', 'Multi-path reasoning sampler (stays on the Gemini API — parallel samples suit an API, not a CLI)'),
-              ('agent.epistemic',         'alias:gemini_default', 'Trust-gap / epistemic evaluation (stays on the Gemini API — parallel samples suit an API, not a CLI)'),
-              ('brain.chat',              'cli:claude-code/claude-opus-5@high',     'External reasoning offload (praxis-mind brain_chat + Nexus ai-service relays)'),
-              ('router.classify',         'cli:claude-code/claude-haiku-4-5@low',   'Turn classifier (fast; low = CLI effort floor, latency-guarded)'),
-              ('context.plan',            'cli:claude-code/claude-haiku-4-5@low',   'Context planner (fast; low = CLI effort floor, latency-guarded)'),
+              ('agent.interactive',       'cli:claude-code/claude-sonnet-5-5@low',    'Human-facing interactive chat replies'),
+              ('agent.intermediate_eval', 'cli:claude-code/claude-haiku-5-5@low',     'Agent intermediate rubric self-check'),
+              ('agent.skill_rank',        'cli:claude-code/claude-haiku-5-5@low',     'Skill ranking / selection'),
+              ('memory.multimodal',       'cli:claude-code/claude-sonnet-5-5@low',    'Image description (vision; image paths ride the CLI seat)'),
+              ('research.deep',           'cli:claude-code/claude-opus-5-5@high',     'Deep-research worker (SOTA reasoning)'),
+              ('agent.self_consistency',  'cli:claude-code/claude-sonnet-5-5@medium', 'Multi-path reasoning sampler (CLI lane since 2026-08-06: no per-token APIs)'),
+              ('agent.epistemic',         'cli:claude-code/claude-sonnet-5-5@medium', 'Trust-gap / epistemic evaluation (CLI lane since 2026-08-06: no per-token APIs)'),
+              ('brain.chat',              'cli:claude-code/claude-opus-5-5@high',     'External reasoning offload (praxis-mind brain_chat + Nexus ai-service relays)'),
+              ('router.classify',         'cli:claude-code/claude-haiku-5-5@low',     'Turn classifier (fast; low = CLI effort floor, latency-guarded)'),
+              ('context.plan',            'cli:claude-code/claude-haiku-5-5@low',     'Context planner (fast; low = CLI effort floor, latency-guarded)'),
               ('feedback.triage',            'alias:local_default',  'Feedback gateway: classify + route an end-user submission'),
-              ('feedback.council_voice',     'cli:claude-code/claude-sonnet-5@low',  'Feedback gateway: council voice deliberation (vision; reads the marked-up screenshot off disk)'),
-              ('feedback.council_synthesis', 'cli:claude-code/claude-sonnet-5@high', 'Feedback gateway: fuse council theses into an implementation plan'),
-              ('feedback.reply',             'cli:claude-code/claude-sonnet-5@low',  'Feedback gateway: compose outbound email prose to submitters');
+              ('feedback.council_voice',     'cli:codex/gpt-6-astra@high', 'Feedback gateway: council voice deliberation (vision; reads the marked-up screenshot off disk)'),
+              ('feedback.council_synthesis', 'cli:codex/gpt-6-astra@high', 'Feedback gateway: fuse council theses into an implementation plan'),
+              ('feedback.reply',             'cli:claude-code/claude-sonnet-5-5@low',  'Feedback gateway: compose outbound email prose to submitters');
         `);
 
         // 2026-07-18 (task 0a62d8a6): one-time migration of the Gemini-allowlist
@@ -559,8 +631,10 @@ function runModelControlMigrations(sqlite) {
                 'feedback.council_synthesis': 'cli:claude-code/claude-sonnet-5@high',
                 'feedback.reply':             'cli:claude-code/claude-sonnet-5@low',
             };
+            // Value-guarded since 2026-10-30: it only moves rows still on the old
+            // Gemini aliases, so a fresh database keeps the current seeds above.
             const updateRole = sqlite.prepare(
-                "UPDATE model_roles SET assignment = ?, updated_at = datetime('now') WHERE role = ?"
+                "UPDATE model_roles SET assignment = ?, updated_at = datetime('now') WHERE role = ? AND assignment LIKE 'alias:gemini_%'"
             );
             for (const [role, assignment] of Object.entries(CLI_LANE_ROLES_V1)) {
                 updateRole.run(assignment, role);
@@ -587,6 +661,17 @@ function runModelControlMigrations(sqlite) {
                 "INSERT OR IGNORE INTO model_control_settings (key, value) VALUES ('opus5_default_roles_v1', ?)"
             ).run(JSON.stringify({ appliedAt: new Date().toISOString() }));
         }
+
+        // 2026-10-30: per-token API model rows retired. Praxis serves no OpenAI,
+        // Anthropic or xAI provider any more, its "google" provider is the
+        // Antigravity CLI (offered as cli:antigravity/...), and OpenRouter
+        // withdrew three free seeds. Mark those rows inactive (reversible: set
+        // is_active back to 1) so the role picker stops offering models a role
+        // would silently fall back from. A row a role, a project alias, an
+        // alias a role uses, or an open task still names is left alone. Aliases
+        // that pointed only at rows retired here, and that no role uses, are
+        // marked inactive too.
+        applyStaleApiModelRowsV1(sqlite);
     } catch (err) {
         console.warn('[Database] model-control migration skipped:', err.message);
     }

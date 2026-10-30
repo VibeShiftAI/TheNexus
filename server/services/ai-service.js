@@ -9,10 +9,9 @@
  * provider/model pin or a model-control role — Praxis
  * normalizes response_format per provider, enforces budget/semaphore,
  * logs usage to the shared llm_calls ledger, and cascades on provider
- * failure. runDeepResearch keeps its own Gemini client: it drives the
- * long-poll interactions API, which has no completions equivalent.
+ * failure. (runDeepResearch, the last direct Gemini client here, had no
+ * caller and was removed 2026-10-30.)
  */
-const { GoogleGenAI } = require('@google/genai');
 const fs = require('fs');
 const path = require('path');
 
@@ -230,69 +229,8 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
     return result.text;
 }
 
-// Helper for Deep Research Agent with polling & resume capability
-async function runDeepResearch(prompt, apiKey, callbacks, existingInteractionId = null) {
-    const { onStart, onComplete, onFail, onLog } = callbacks;
-    const client = new GoogleGenAI({ apiKey });
-    const log = onLog || console.log;
-
-    try {
-        let interactionId = existingInteractionId;
-
-        if (!interactionId) {
-            // Start new interaction
-            const interaction = await client.interactions.create({
-                agent: 'deep-research-pro-preview-12-2025',
-                input: prompt,
-                background: true
-            });
-            interactionId = interaction.id;
-            if (onStart) onStart(interactionId);
-            log(`[Deep Research] Started: ${interactionId}`);
-        } else {
-            log(`[Deep Research] Resuming interaction: ${interactionId}`);
-        }
-
-        const maxTime = 4 * 60 * 60 * 1000;
-        const startTime = Date.now();
-        const pollInterval = 10000;
-
-        while (Date.now() - startTime < maxTime) {
-            try {
-                const check = await client.interactions.get(interactionId);
-
-                if (check.status === 'completed') {
-                    const content = check.outputs[check.outputs.length - 1].text;
-                    log(`[Deep Research] Completed: ${interactionId}`);
-                    if (onComplete) onComplete(content);
-                    return content;
-                } else if (check.status === 'failed') {
-                    const errorMsg = check.error?.message || 'Research failed';
-                    log(`[Deep Research] Failed: ${errorMsg}`);
-                    throw new Error(errorMsg);
-                }
-
-                log(`[Deep Research] Polling ${interactionId}: ${check.status}...`);
-
-            } catch (pollError) {
-                if (pollError.message.includes('Research failed')) throw pollError;
-                console.warn(`[Deep Research] Transient poll error: ${pollError.message}`);
-            }
-
-            await new Promise(resolve => setTimeout(resolve, pollInterval));
-        }
-
-        throw new Error('Research timed out after 4 hours');
-
-    } catch (error) {
-        if (onFail) onFail(error);
-        throw error;
-    }
-}
-
 module.exports = {
     getAIModelConfig,
     callAI,
-    callPraxisBrain,
-    runDeepResearch
+    callPraxisBrain
 };

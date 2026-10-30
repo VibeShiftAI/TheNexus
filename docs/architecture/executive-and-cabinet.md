@@ -4,6 +4,8 @@
 **Status:** Active  
 **Last Updated:** 2026-05-01  
 
+> **Note (2026-10-30):** `config/model_registry.yaml` and `cortex/llm_factory.py`, which the configuration sections below describe, are gone from this repository. Model routing now lives in the model-control roles (`model_roles`), resolved by `server/services/model-control.js`; the models the CLIs offer come from `Praxis/data/model-registry.json` and prices and the free OpenRouter list from `Praxis/data/openrouter-catalog.json`. The sections below are kept as the design record.
+
 ---
 
 ## 1. Overview

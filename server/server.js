@@ -22,7 +22,7 @@ const tokenTracker = require('./utils/token-tracker');
 const { isCriticEnabled, setCriticEnabled } = require('./services/critic');
 const contextSync = require('./services/context-sync');
 const pushService = require('./push-service');
-const { discoverModels, discoverModelRegistry, getModels } = require('./services/model-discovery');
+const { syncModelSources, getModels } = require('./services/model-discovery');
 const db = require('../db');
 const { callAI } = require('./services/ai-service');
 const { validateInitiativeRequest } = require('./services/initiative-router');
@@ -163,7 +163,7 @@ const createFleetRouter     = require('./routes/fleet');
 app.use('/api/health',    createHealthRouter());
 app.use('/api/fleet',     createFleetRouter());
 app.use('/api/models',    createModelsRouter({ db, getModels }));
-app.use('/api/model-control', createModelControlRouter({ db, io, discoverModelRegistry, callAI }));
+app.use('/api/model-control', createModelControlRouter({ db, io, syncModelSources, callAI }));
 app.use('/api/settings',  createSettingsRouter());
 app.use('/api/dashboard', createDashboardRouter({ db }));
 app.use('/api',        createSystemRouter({ db, systemMonitor, tokenTracker, isCriticEnabled, setCriticEnabled }));
@@ -302,10 +302,11 @@ server.listen(PORT, async () => {
     // Calendar firing moved to Praxis (calendar-dispatch.ts poller,
     // 2026-07-06 consolidation) — calendar_events is viewport data here.
 
-    // Model discovery (non-blocking)
-    discoverModels({ db }).then(models => {
-        console.log(`Model Discovery: ${models.length} latest models ready`);
+    // Model rows from the files Praxis writes (registry and OpenRouter
+    // catalog). Local reads only: no vendor model-listing call at boot.
+    syncModelSources({ db }).then(result => {
+        console.log(`Model Sources: ${JSON.stringify(result.summary)}`);
     }).catch(err => {
-        console.warn(`Model Discovery: failed (using fallbacks) - ${err.message}`);
+        console.warn(`Model Sources: sync failed - ${err.message}`);
     });
 });

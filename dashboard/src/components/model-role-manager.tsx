@@ -10,10 +10,25 @@ import {
     type ModelControlOptionsResponse,
 } from "@/lib/model-control";
 
+interface AssignmentOption {
+    value: string;
+    label: string;
+    efforts?: string[];
+}
+
+interface AssignmentGroup {
+    label: string;
+    options: AssignmentOption[];
+}
+
+/** Model rows Praxis can serve as a `model:` assignment: local and the free OpenRouter lane. */
+const ROW_PROVIDERS: Record<string, string> = { local: "Local", openrouter: "Free OpenRouter" };
+
 /**
- * Call-site role manager — the single place to see and control which model
- * each Praxis function (role) runs on. Local-first by default with a Gemini
- * allowlist; flip any role to a different alias/model from here.
+ * Call-site role manager: the single place to see and control which model
+ * each Praxis function (role) runs on. Offers every current subscription CLI
+ * model (from the model registry Praxis writes), the local model and the free
+ * OpenRouter models (rows synced from Praxis's OpenRouter catalog).
  */
 export function ModelRoleManager({ compact = false }: { compact?: boolean }) {
     const [roles, setRoles] = useState<ModelControlRole[]>([]);
@@ -33,11 +48,29 @@ export function ModelRoleManager({ compact = false }: { compact?: boolean }) {
         load().catch(err => { setError(err.message); setLoading(false); });
     }, []);
 
-    const assignmentOptions = useMemo(() => {
+    const assignmentGroups = useMemo<AssignmentGroup[]>(() => {
+        const rowsFor = (provider: string) => (state.models || [])
+            .filter(m => String(m.provider || "").toLowerCase() === provider)
+            .map(m => ({ value: `model:${m.id}`, label: m.display_name || m.name || m.id }));
         const aliases = (state.aliases || []).map(a => ({ value: `alias:${a.alias}`, label: `alias:${a.alias}` }));
-        const models = (state.models || []).map(m => ({ value: `model:${m.id}`, label: m.display_name || m.name || m.id }));
-        return [...aliases, ...models];
+        const groups: AssignmentGroup[] = [
+            { label: "Subscription CLIs", options: (state.cliAssignments || []).map(o => ({ value: o.value, label: o.label, efforts: o.efforts })) },
+            { label: ROW_PROVIDERS.local, options: [...aliases.filter(a => a.value === "alias:local_default"), ...rowsFor("local")] },
+            { label: ROW_PROVIDERS.openrouter, options: rowsFor("openrouter") },
+            { label: "Aliases", options: aliases.filter(a => a.value !== "alias:local_default") },
+        ];
+        return groups.filter(g => g.options.length > 0);
     }, [state]);
+
+    const assignmentOptions = useMemo(() => assignmentGroups.flatMap(g => g.options), [assignmentGroups]);
+
+    /** Keep the role's thinking level when it moves to another CLI model that accepts it. */
+    const withThinking = (current: string, next: string): string => {
+        if (!next.startsWith("cli:") || next.includes("@")) return next;
+        const level = current.startsWith("cli:") ? current.match(/@([a-z]+)$/)?.[1] : undefined;
+        const efforts = assignmentOptions.find(o => o.value === next)?.efforts || [];
+        return level && efforts.includes(level) ? `${next}@${level}` : next;
+    };
 
     const changeAssignment = async (role: string, assignment: string) => {
         setSavingRole(role);
@@ -77,14 +110,18 @@ export function ModelRoleManager({ compact = false }: { compact?: boolean }) {
                                 <select
                                     value={r.assignment}
                                     disabled={savingRole === r.role}
-                                    onChange={e => changeAssignment(r.role, e.target.value)}
+                                    onChange={e => changeAssignment(r.role, withThinking(r.assignment, e.target.value))}
                                     className="max-w-[44%] rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-white outline-none focus:border-cyan-500 disabled:opacity-50"
                                 >
                                     {!assignmentOptions.some(o => o.value === r.assignment) && (
                                         <option value={r.assignment}>{r.assignment}</option>
                                     )}
-                                    {assignmentOptions.map(o => (
-                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                    {assignmentGroups.map(g => (
+                                        <optgroup key={g.label} label={g.label}>
+                                            {g.options.map(o => (
+                                                <option key={o.value} value={o.value}>{o.label}</option>
+                                            ))}
+                                        </optgroup>
                                     ))}
                                 </select>
                             </div>

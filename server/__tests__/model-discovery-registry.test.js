@@ -1,104 +1,98 @@
-function jsonResponse(body) {
+/**
+ * Model rows come from the files Praxis writes (CLI registry and OpenRouter
+ * catalog fixtures here); no vendor model-listing API is called.
+ */
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+function fakeDb(rows) {
+    const byId = new Map(rows.map(r => [r.id, { ...r }]));
     return {
-        ok: true,
-        json: jest.fn(async () => body)
+        rows: byId,
+        getModels: jest.fn(async () => [...byId.values()].map(r => ({ ...r }))),
+        upsertModel: jest.fn(async record => {
+            const merged = { ...(byId.get(record.id) || {}), ...record };
+            byId.set(record.id, merged);
+            return { ...merged };
+        }),
     };
 }
 
-describe('model discovery registry upsert', () => {
-    const originalEnv = process.env;
+const STALE_AND_CURRENT_ROWS = [
+    { id: 'openrouter-ox-alpha', name: 'Ox Alpha', provider: 'openrouter', api_model_id: 'stealth/ox-alpha', is_active: 1, created_at: '2026-08-25' },
+    { id: 'openrouter-nemotron-ultra', name: 'Nemotron 3 Ultra', display_name: 'Nemotron 3 Ultra 550B (free)', provider: 'openrouter',
+      api_model_id: 'nvidia/nemotron-3-ultra-550b-a55b:free', family: 'Nemotron', sort_order: 11, is_active: 1,
+      capabilities: { reasoning: true, tools: true }, default_parameters: { max_tokens: 4096 }, discovered_at: '2026-08-25', created_at: '2026-08-25' },
+    { id: 'openrouter-glm', name: 'GLM 5.2', provider: 'openrouter', api_model_id: 'z-ai/glm-5.2:free', is_active: 1 },
+    { id: 'local-gemma-4-31b', name: 'Gemma 4 31B QAT', provider: 'local', api_model_id: 'google/gemma-4-31b-qat', is_active: 1 },
+];
+
+describe('model source sync', () => {
     const originalFetch = global.fetch;
+    let cleanupRegistry;
 
     beforeEach(() => {
         jest.resetModules();
-        process.env = {
-            ...originalEnv,
-            GOOGLE_API_KEY: 'google-key',
-            OPENAI_API_KEY: 'openai-key',
-            ANTHROPIC_API_KEY: 'anthropic-key',
-            XAI_API_KEY: 'xai-key'
-        };
-        global.fetch = jest.fn()
-            .mockResolvedValueOnce(jsonResponse({ models: [{ name: 'models/gemini-3-pro' }, { name: 'models/gemini-2-pro' }] }))
-            .mockResolvedValueOnce(jsonResponse({ data: [{ id: 'gpt-5' }, { id: 'gpt-4.1-mini' }] }))
-            .mockResolvedValueOnce(jsonResponse({ data: [{ id: 'claude-sonnet-4-6' }] }))
-            .mockResolvedValueOnce(jsonResponse({ data: [{ id: 'grok-4' }] }));
+        global.fetch = jest.fn(async () => { throw new Error('no network in this test'); });
+        cleanupRegistry = require('./fixtures/model-registry').useModelRegistryFixture();
     });
 
     afterEach(() => {
-        process.env = originalEnv;
+        cleanupRegistry();
         global.fetch = originalFetch;
     });
 
-    test('upserts discovered models with durable registry fields', async () => {
-        const db = {
-            getModel: jest.fn(async () => null),
-            upsertModel: jest.fn(async record => record)
-        };
-        const { discoverModels, discoverModelRegistry } = require('../services/model-discovery');
+    test('upserts the free lane, marks withdrawn OpenRouter rows inactive, and calls no vendor API', async () => {
+        const db = fakeDb(STALE_AND_CURRENT_ROWS);
+        const { syncModelSources, getModels } = require('../services/model-discovery');
 
-        const models = await discoverModels({ db });
+        const result = await syncModelSources({ db });
 
-        expect(models.length).toBeGreaterThan(0);
-        expect(db.upsertModel).toHaveBeenCalledWith(expect.objectContaining({
-            id: 'google-gemini-pro',
-            provider: 'google',
-            api_model_id: 'gemini-3-pro',
-            display_name: 'Gemini 3 Pro',
-            family: 'Gemini Pro',
-            capabilities: expect.objectContaining({ chat: true }),
-            default_parameters: expect.any(Object),
-            availability_status: 'available',
-            is_active: 1,
-            discovered_at: expect.any(String),
-            last_seen_at: expect.any(String)
-        }));
-
-        global.fetch = jest.fn()
-            .mockResolvedValueOnce(jsonResponse({ models: [{ name: 'models/gemini-3-pro' }] }))
-            .mockResolvedValueOnce(jsonResponse({ data: [{ id: 'gpt-5' }] }))
-            .mockResolvedValueOnce(jsonResponse({ data: [{ id: 'claude-sonnet-4-6' }] }))
-            .mockResolvedValueOnce(jsonResponse({ data: [{ id: 'grok-4' }] }));
-
-        const result = await discoverModelRegistry({ db });
-
-        expect(result.models.length).toBeGreaterThan(0);
+        expect(global.fetch).not.toHaveBeenCalled();
         expect(result.providers).toEqual(expect.arrayContaining([
-            expect.objectContaining({ provider: 'google', status: 'ok', rawCount: 1, modelCount: 1 }),
-            expect.objectContaining({ provider: 'openai', status: 'ok', rawCount: 1, modelCount: 1 }),
-            expect.objectContaining({ provider: 'anthropic', status: 'ok', rawCount: 1, modelCount: 1 }),
-            expect.objectContaining({ provider: 'xai', status: 'ok', rawCount: 1, modelCount: 1 }),
+            expect.objectContaining({ provider: 'cli registry', status: 'ok' }),
+            expect.objectContaining({ provider: 'openrouter', status: 'ok', rawCount: 4, modelCount: 4 }),
         ]));
-        expect(result.summary.google).toBe('1 models (from 1 raw)');
-        expect(result.elapsedMs).toEqual(expect.any(Number));
-        expect(result.discoveredAt).toEqual(expect.any(String));
+        expect(result.deactivated).toBe(2);
+
+        // The existing row is reused by slug, keeping its tuning and display name.
+        expect(db.rows.get('openrouter-nemotron-ultra')).toMatchObject({
+            is_active: 1, name: 'Nemotron 3 Ultra', display_name: 'Nemotron 3 Ultra 550B (free)',
+            default_parameters: { max_tokens: 4096 }, created_at: '2026-08-25',
+        });
+        // New free models get rows.
+        expect(db.rows.get('openrouter-poolside-laguna-s-2-1')).toMatchObject({
+            provider: 'openrouter', api_model_id: 'poolside/laguna-s-2.1:free', name: 'Laguna S 2.1', is_active: 1,
+        });
+        expect(db.rows.get('openrouter-openrouter-free')).toMatchObject({ api_model_id: 'openrouter/free', is_active: 1 });
+        // Withdrawn slugs are kept but inactive; local rows are untouched.
+        expect(db.rows.get('openrouter-ox-alpha')).toMatchObject({ is_active: 0, created_at: '2026-08-25' });
+        expect(db.rows.get('openrouter-glm').is_active).toBe(0);
+        expect(db.rows.get('local-gemma-4-31b').is_active).toBe(1);
+        // GET /api/models serves what the sync produced.
+        expect(getModels().map(m => m.apiModelId)).toEqual([
+            'nvidia/nemotron-3-ultra-550b-a55b:free', 'poolside/laguna-s-2.1:free', 'cohere/north-mini-code:free', 'openrouter/free',
+        ]);
     });
 
-    test('attaches per-model reasoning-effort tiers to every roster entry', async () => {
-        const db = { getModel: jest.fn(async () => null), upsertModel: jest.fn(async r => r) };
-        const { discoverModels } = require('../services/model-discovery');
-
-        const models = await discoverModels({ db });
-
-        // Every entry carries tiers, always led by the "no flag" sentinel.
-        expect(models.length).toBeGreaterThan(0);
-        for (const model of models) {
-            expect(Array.isArray(model.thinkingTiers)).toBe(true);
-            expect(model.thinkingTiers[0]).toBe('default');
+    test('a catalog without a free-lane list leaves the rows alone', async () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-sync-'));
+        const file = path.join(dir, 'catalog.json');
+        fs.writeFileSync(file, JSON.stringify({ fetchedAt: 1793242992632, verdicts: {} }));
+        const previous = process.env.PRAXIS_OPENROUTER_CATALOG_PATH;
+        process.env.PRAXIS_OPENROUTER_CATALOG_PATH = file;
+        try {
+            const db = fakeDb(STALE_AND_CURRENT_ROWS);
+            const { syncModelSources } = require('../services/model-discovery');
+            const result = await syncModelSources({ db });
+            expect(db.upsertModel).not.toHaveBeenCalled();
+            expect(result.providers.find(p => p.provider === 'openrouter')).toMatchObject({ status: 'skipped' });
+            expect(result.deactivated).toBe(0);
+        } finally {
+            process.env.PRAXIS_OPENROUTER_CATALOG_PATH = previous;
+            fs.rmSync(dir, { recursive: true, force: true });
         }
-
-        // Sonnet 4.6 predates the extended tiers. "gpt-5" is not a slug codex
-        // can run at all, so it gets the conservative set rather than a
-        // sibling's — offering an unsupported effort 400s the turn.
-        const sonnet = models.find(m => m.family === 'Claude Sonnet');
-        expect(sonnet.thinkingTiers).toEqual(['default', 'low', 'medium', 'high']);
-        const gpt = models.find(m => m.family === 'GPT');
-        expect(gpt.thinkingTiers).toEqual(['default', 'low', 'medium', 'high']);
-
-        // Tiers persist into the registry so db readers see them too.
-        expect(db.upsertModel).toHaveBeenCalledWith(expect.objectContaining({
-            capabilities: expect.objectContaining({ thinkingTiers: expect.any(Array) })
-        }));
     });
 
     test('maps free-text model slugs to the right tier set', () => {

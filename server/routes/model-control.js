@@ -276,7 +276,7 @@ function safeRoutingState() {
     }
 }
 
-function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
+function createModelControlRouter({ db, syncModelSources, callAI, io }) {
     const router = express.Router();
 
     // ─── STATE.md trigger ─────────────────────────────────────────────────
@@ -331,6 +331,9 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
                 // Real Codex roster (slugs + display names + efforts) for the
                 // per-slot / task / chat model dropdowns — see listCodexModels.
                 codexModels: listCodexModels(),
+                // Every current CLI model as a role assignment (cli:<backend>/<id>),
+                // from the registry; the role picker offers these.
+                cliAssignments: modelRegistry.cliAssignmentOptions(),
                 agentBackend: await getAgentBackendConfig(db),
                 chatBackend: await getChatBackend(db),
                 chatConfig: await getChatConfig(db),
@@ -752,15 +755,17 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
         }
     });
 
+    // The dashboard's sync button: re-read the CLI registry and the OpenRouter
+    // catalog Praxis writes and bring the model rows in line. No vendor calls.
     router.post('/discover', async (_req, res) => {
         try {
-            if (typeof discoverModelRegistry !== 'function') {
-                return res.status(503).json({ error: 'Model discovery is not configured' });
+            if (typeof syncModelSources !== 'function') {
+                return res.status(503).json({ error: 'Model source sync is not configured' });
             }
-            res.json(await discoverModelRegistry({ db }));
+            res.json(await syncModelSources({ db }));
         } catch (error) {
-            console.error('[Model Control] Failed to run model discovery:', error);
-            res.status(500).json({ error: 'Failed to run model discovery: ' + error.message });
+            console.error('[Model Control] Failed to sync model sources:', error);
+            res.status(500).json({ error: 'Failed to sync model sources: ' + error.message });
         }
     });
 

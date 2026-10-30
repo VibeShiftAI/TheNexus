@@ -108,6 +108,25 @@ function antigravityDisplayNames() {
     });
 }
 
+const CLI_LABELS = { 'claude-code': 'Claude Code', codex: 'Codex', antigravity: 'Antigravity' };
+
+/**
+ * Role assignments for every current CLI model, as the role picker offers
+ * them: the bare `cli:<backend>` (the CLI's own default) first, then
+ * `cli:<backend>/<id>`. `efforts` lets the picker keep a role's `@thinking`.
+ */
+function cliAssignmentOptions() {
+    return EXECUTORS.flatMap((backend) => [
+        { value: `cli:${backend}`, label: `${CLI_LABELS[backend]} (CLI default)`, backend, efforts: [] },
+        ...registryModels(backend, { currentOnly: true }).map((m) => ({
+            value: `cli:${backend}/${m.id}`,
+            label: `${m.label || m.id} (${CLI_LABELS[backend]})`,
+            backend,
+            efforts: Array.isArray(m.efforts) ? m.efforts : [],
+        })),
+    ]);
+}
+
 /** Where the registry came from, for route responses and diagnostics. */
 function registrySource(executor) {
     const registry = readModelRegistry();
@@ -127,6 +146,7 @@ module.exports = {
     registryEfforts,
     codexPickerModels,
     antigravityDisplayNames,
+    cliAssignmentOptions,
     registrySource,
     resetModelRegistryCache,
 };

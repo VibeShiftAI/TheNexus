@@ -232,7 +232,8 @@ async function getBudgetStatus(db, policy) {
         const provider = inferProviderFromModelName(row.model);
         if (!byProvider[provider]) byProvider[provider] = { dailyTokensUsed: 0, dailyCostUsed: 0 };
         acc.dailyTokensUsed += total;
-        const cost = calculateCost(row.model || 'default', input, output);
+        // Unpriced models add nothing; the catalog has no rate to invent from.
+        const cost = calculateCost(row.model, input, output) ?? 0;
         acc.dailyCostUsed += cost;
         byProvider[provider].dailyTokensUsed += total;
         byProvider[provider].dailyCostUsed += cost;

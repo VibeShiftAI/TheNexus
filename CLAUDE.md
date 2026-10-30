@@ -21,7 +21,12 @@ cockpit surface.
   Codex and Antigravity CLIs offer. Model pickers, effort tiers and the
   `/codex-models`, `/antigravity-models` and `/available-models` routes use it;
   do not add hand-kept model lists. Tests point `PRAXIS_MODEL_REGISTRY_PATH` at
-  a fixture (`server/__tests__/fixtures/model-registry.js`).
+  a fixture (`server/__tests__/fixtures/model-registry.js`). Model prices and
+  the free OpenRouter list come the same way, from
+  `Praxis/data/openrouter-catalog.json` via `server/services/model-prices.js`
+  (no hand-kept price tables; tests use `fixtures/openrouter-catalog.json`).
+  The role picker offers the registry's `cli:` models, the local model and the
+  free OpenRouter rows that `syncModelSources()` keeps in `models`.
 - `db/index.js` — SQLite facade (not a raw `better-sqlite3` connection), using
   `NEXUS_DB_PATH` or `nexus.db` and WAL mode. Route code needing raw SQL should
   follow `server/routes/fleet.js` and open its own connection.

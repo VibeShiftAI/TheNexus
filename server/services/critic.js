@@ -15,17 +15,19 @@ const { runAgyPrompt, extractJsonSlice } = require('../utils/agy-client');
  * No longer uses database - critic is a built-in atomic node
  */
 function getCriticConfig() {
-    // Critic configuration now comes from environment variables
-    // CRITIC_ENABLED: "true" or "false" (default: true)
-    // CRITIC_MODEL: model ID (default: "gemini-2.5-flash")
-
+    // CRITIC_ENABLED: "true" or "false" (default: true). The review runs on
+    // the Antigravity CLI's own default model; there is no model setting.
     const enabled = process.env.CRITIC_ENABLED !== 'false'; // Default to enabled
 
     return {
         enabled,
-        defaultModel: process.env.CRITIC_MODEL || 'gemini-2.5-flash',
         systemPrompt: null, // Use built-in prompt
     };
+}
+
+/** The verdict when no review could run: reject by default, saying why. */
+function unavailableReview(reason, error) {
+    return { approved: false, issues: [`Critic review unavailable: ${reason}`], suggestions: [], error };
 }
 
 /**
@@ -55,7 +57,6 @@ async function reviewCode(filepath, content, projectContext = '') {
     console.log(`[Critic] Reviewing code for ${path.basename(filepath)}...`);
 
     try {
-        const modelId = config.defaultModel || 'gemini-3-flash';
         const systemPrompt = config.systemPrompt || `
 You are a Code Critic reviewing code before it is written to the filesystem.
 
@@ -87,90 +88,37 @@ ${content.substring(0, 10000)} ${content.length > 10000 ? '\n[TRUNCATED - ' + co
 Review this code and respond with JSON only.
 `;
 
-        // Primary path: the Antigravity CLI (agy) — subscription-authed Gemini,
-        // no per-token API spend. Falls back to the direct Gemini API below
-        // only when agy can't answer (not installed, wedged, quota).
+        // The Antigravity CLI (agy): subscription-authed Gemini, no per-token
+        // spend. There is no API fallback (Robert's 2026-08-11 rule: no direct
+        // Gemini API anywhere); when agy cannot answer, the review is
+        // unavailable and the write is rejected by default, as it was when no
+        // API key was set.
         const agy = await runAgyPrompt(
             `${systemPrompt}\n\n${reviewPrompt}\n\nRespond with ONLY the JSON object (no prose, no code fences).`,
         );
-        if (agy.ok) {
-            const slice = extractJsonSlice(agy.text);
-            if (slice) {
-                try {
-                    const review = JSON.parse(slice);
-                    // Subscription CLI — no token counts exist; record the call at zero.
-                    trackUsage({ provider: 'antigravity', model: 'agy-default', inputTokens: 0, outputTokens: 0, task: 'critic' });
-                    console.log(`[Critic] Review complete via agy: ${review.approved ? 'APPROVED' : 'ISSUES FOUND'}`);
-                    if (review.issues?.length > 0) {
-                        console.log(`[Critic] Issues: ${review.issues.join(', ')}`);
-                    }
-                    return review;
-                } catch (parseError) {
-                    console.warn('[Critic] agy reply carried unparseable JSON - falling back to the Gemini API');
-                }
-            } else {
-                console.warn('[Critic] agy reply carried no JSON - falling back to the Gemini API');
-            }
-        } else {
-            console.warn(`[Critic] agy unavailable (${agy.error}) - falling back to the Gemini API`);
+        if (!agy.ok) {
+            console.warn(`[Critic] agy unavailable (${agy.error}) - rejecting by default`);
+            return unavailableReview(`the Antigravity CLI could not answer (${agy.error})`, 'agy_unavailable');
         }
-
-        const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-            console.error('[Critic] No API key configured - rejecting by default');
-            return { approved: false, issues: ['Critic API key not configured'], suggestions: [], error: 'api_key_missing' };
+        const slice = extractJsonSlice(agy.text);
+        if (!slice) {
+            console.warn('[Critic] agy reply carried no JSON - rejecting by default');
+            return unavailableReview('the reply carried no JSON verdict', 'parse_error');
         }
-
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [
-                    { role: 'user', parts: [{ text: systemPrompt + '\n\n' + reviewPrompt }] }
-                ],
-                generationConfig: {
-                    responseMimeType: 'application/json'
-                }
-            })
-        });
-
-        const data = await response.json();
-
-        // Track usage regardless of success/failure
-        const usageMeta = data.usageMetadata || {};
-        trackUsage({
-            provider: 'google',
-            model: modelId,
-            inputTokens: usageMeta.promptTokenCount || 0,
-            outputTokens: usageMeta.candidatesTokenCount || 0,
-            task: 'critic'
-        });
-
-        if (data.error) {
-            console.error('[Critic] API error:', data.error.message);
-            return { approved: false, issues: ['Critic API returned an error: ' + data.error.message], suggestions: [], error: data.error.message };
-        }
-
-        const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!textContent) {
-            console.error('[Critic] No response from API');
-            return { approved: false, issues: ['Critic received no response from API'], suggestions: [], error: 'no_response' };
-        }
-
-        // Parse JSON response
+        let review;
         try {
-            const review = JSON.parse(textContent);
-            console.log(`[Critic] Review complete: ${review.approved ? 'APPROVED' : 'ISSUES FOUND'}`);
-            if (review.issues?.length > 0) {
-                console.log(`[Critic] Issues: ${review.issues.join(', ')}`);
-            }
-            return review;
+            review = JSON.parse(slice);
         } catch (parseError) {
-            console.error('[Critic] Failed to parse response:', textContent.substring(0, 200));
-            return { approved: false, issues: ['Critic failed to parse API response'], suggestions: [], error: 'parse_error' };
+            console.warn('[Critic] agy reply carried unparseable JSON - rejecting by default');
+            return unavailableReview('the reply carried unparseable JSON', 'parse_error');
         }
+        // Subscription CLI: no token counts exist; record the call at zero.
+        trackUsage({ provider: 'antigravity', model: 'agy-default', inputTokens: 0, outputTokens: 0, task: 'critic' });
+        console.log(`[Critic] Review complete via agy: ${review.approved ? 'APPROVED' : 'ISSUES FOUND'}`);
+        if (review.issues?.length > 0) {
+            console.log(`[Critic] Issues: ${review.issues.join(', ')}`);
+        }
+        return review;
 
     } catch (error) {
         console.error('[Critic] Review failed:', error.message);

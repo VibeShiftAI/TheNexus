@@ -300,7 +300,7 @@ export default function ModelControlPage() {
         };
     }, [state, history]);
 
-    const providerStatuses: ModelDiscoveryProviderStatus[] = discovery?.providers || ["google", "openai", "anthropic", "xai"].map(provider => ({
+    const providerStatuses: ModelDiscoveryProviderStatus[] = discovery?.providers || ["local", "openrouter"].map(provider => ({
         provider,
         status: (state.models || []).some(model => model.provider === provider) ? "registry" : "unknown",
         rawCount: 0,
@@ -424,7 +424,7 @@ export default function ModelControlPage() {
             setDiscovery(result);
             await load();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to run model discovery");
+            setError(err instanceof Error ? err.message : "Failed to sync model sources");
         } finally {
             setDiscovering(false);
         }
@@ -571,13 +571,16 @@ export default function ModelControlPage() {
                                 <Sparkles size={18} />
                             </div>
                             <div>
-                                <div className="font-semibold text-white">Model Discovery</div>
+                                <div className="font-semibold text-white">Model Sources</div>
                                 <div className="text-sm text-slate-500">
                                     {discovery
-                                        ? `Last manual scan ${formatDate(discovery.discoveredAt)} in ${discovery.elapsedMs}ms`
+                                        ? `Last sync ${formatDate(discovery.discoveredAt)} in ${discovery.elapsedMs}ms`
                                         : stats.lastSeen
                                             ? `Registry last saw a model ${formatDate(stats.lastSeen)}`
-                                            : "Registry has not recorded a discovery scan"}
+                                            : "No model source sync recorded yet"}
+                                </div>
+                                <div className="text-xs text-slate-600">
+                                    CLI models come from the Praxis model registry; free OpenRouter models from its OpenRouter catalog.
                                 </div>
                             </div>
                         </div>
@@ -591,7 +594,7 @@ export default function ModelControlPage() {
                                 className="inline-flex items-center gap-2 rounded border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50"
                             >
                                 {discovering ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-                                Discover Now
+                                Sync Now
                             </button>
                         </div>
                     </div>

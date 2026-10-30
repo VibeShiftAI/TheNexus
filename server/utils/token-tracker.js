@@ -6,53 +6,26 @@
 
 const db = require('../../db');
 
-// Pricing per 1M tokens (input/output) in USD - approximate values
-const PRICING = {
-    // API model names (Node.js path writes these)
-    'gemini-3-flash-preview': { input: 0.075, output: 0.30 },
-    'gemini-3-pro-preview': { input: 1.25, output: 5.00 },
-    'claude-opus-4-5-20251101': { input: 15.00, output: 75.00 },
-    'claude-sonnet-4-20250514': { input: 3.00, output: 15.00 },
-    'gpt-4o': { input: 2.50, output: 10.00 },
-    'gpt-4o-mini': { input: 0.15, output: 0.60 },
-    'grok-3': { input: 3.00, output: 15.00 },
-    'grok-3-mini': { input: 0.30, output: 0.50 },
-    // Registry model IDs (Cortex/Python path writes these)
-    'grok-4.1': { input: 3.00, output: 15.00 },
-    'gpt-5-mini': { input: 1.50, output: 6.00 },
-    'gpt-5.2': { input: 5.00, output: 15.00 },
-    'gpt-5.2-codex': { input: 5.00, output: 15.00 },
-    'claude-opus': { input: 15.00, output: 75.00 },
-    'claude-sonnet': { input: 3.00, output: 15.00 },
-    'gemini-pro': { input: 1.25, output: 5.00 },
-    'gemini-flash': { input: 0.075, output: 0.30 },
-    // OpenRouter FREE lane (2026-08-25). Explicit zeros, not an omission: a
-    // missing row falls through to `default` below and would bill a $0 call at
-    // $1/$4 per million, quietly inflating every cost ledger and budget gate
-    // that reads this table.
-    'stealth/ox-alpha': { input: 0, output: 0 },
-    'nvidia/nemotron-3-ultra-550b-a55b:free': { input: 0, output: 0 },
-    'minimax/minimax-m3:free': { input: 0, output: 0 },
-    'thinkingmachines/inkling:free': { input: 0, output: 0 },
-    'z-ai/glm-5.2:free': { input: 0, output: 0 },
-    'poolside/laguna-s-2.1:free': { input: 0, output: 0 },
-    'cohere/north-mini-code:free': { input: 0, output: 0 },
-    'openrouter/free': { input: 0, output: 0 },
-    // Default fallback
-    'default': { input: 1.00, output: 4.00 }
-};
+const { priceForModel } = require('../services/model-prices');
 
 /**
- * Calculate estimated cost for token usage
- * @param {string} model - Model name
+ * Estimated cost in USD for token usage, or null when the model is unpriced.
+ *
+ * Rates come from OpenRouter's catalog, which Praxis keeps in
+ * data/openrouter-catalog.json (see ../services/model-prices.js). A model the
+ * catalog does not price returns null rather than a default rate: the old
+ * $1/$4 fallback billed free and local calls at a made-up price and inflated
+ * every ledger and budget gate that read it.
+ * @param {string} model - Model name as recorded
  * @param {number} inputTokens - Input token count
  * @param {number} outputTokens - Output token count
- * @returns {number} Estimated cost in USD
+ * @returns {number|null} Estimated cost in USD, or null when unpriced
  */
 function calculateCost(model, inputTokens, outputTokens) {
-    const pricing = PRICING[model] || PRICING['default'];
-    const inputCost = (inputTokens / 1000000) * pricing.input;
-    const outputCost = (outputTokens / 1000000) * pricing.output;
+    const price = priceForModel(model);
+    if (!price) return null;
+    const inputCost = (inputTokens / 1000000) * price.in;
+    const outputCost = (outputTokens / 1000000) * price.out;
     return Math.round((inputCost + outputCost) * 1000000) / 1000000; // 6 decimal places
 }
 
@@ -69,7 +42,8 @@ function calculateCost(model, inputTokens, outputTokens) {
  */
 function trackUsage({ provider, model, inputTokens, outputTokens, projectId = null, task = null }) {
     const totalTokens = inputTokens + outputTokens;
-    const cost = calculateCost(model, inputTokens, outputTokens);
+    const priced = calculateCost(model, inputTokens, outputTokens);
+    const cost = priced ?? 0;
 
     // Record to database (async, fire-and-forget)
     if (db.isDatabaseEnabled()) {
@@ -78,7 +52,7 @@ function trackUsage({ provider, model, inputTokens, outputTokens, projectId = nu
         });
     }
 
-    console.log(`[TokenTracker] ${provider}/${model}: ${inputTokens}+${outputTokens}=${totalTokens} tokens ($${cost.toFixed(6)})`);
+    console.log(`[TokenTracker] ${provider}/${model}: ${inputTokens}+${outputTokens}=${totalTokens} tokens (${priced === null ? 'unpriced' : `$${cost.toFixed(6)}`})`);
 
     return {
         timestamp: new Date().toISOString(),
@@ -88,6 +62,7 @@ function trackUsage({ provider, model, inputTokens, outputTokens, projectId = nu
         outputTokens,
         totalTokens,
         cost,
+        priced: priced !== null,
         projectId,
         task
     };
@@ -117,7 +92,7 @@ function getProviderFromModel(model) {
 async function getUsageStats(options = {}) {
     if (!db.isDatabaseEnabled()) {
         return {
-            totals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, estimatedCostUSD: 0 },
+            totals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, estimatedCostUSD: 0, unpricedRequests: 0 },
             byProvider: {},
             byModel: {},
             recentUsage: [],
@@ -133,7 +108,9 @@ async function getUsageStats(options = {}) {
         const rawStats = await db.getUsageStats(startDate, endDate);
 
         // Aggregate the stats
-        let totals = { inputTokens: 0, outputTokens: 0, totalTokens: 0, requestCount: 0 };
+        // Unpriced rows add $0 to the estimate and are counted, so a total
+        // with unpriced calls in it is never read as complete.
+        let totals = { inputTokens: 0, outputTokens: 0, totalTokens: 0, requestCount: 0, unpricedRequests: 0 };
         const byModel = {};
         const byProvider = {};
 
@@ -143,16 +120,19 @@ async function getUsageStats(options = {}) {
             const totalTokens = row.total_tokens || 0;
             const requestCount = row.request_count || 0;
             const provider = getProviderFromModel(row.model);
-            const cost = calculateCost(row.model, inputTokens, outputTokens);
+            const priced = calculateCost(row.model, inputTokens, outputTokens);
+            const cost = priced ?? 0;
+            const unpriced = priced === null ? requestCount : 0;
 
             totals.inputTokens += inputTokens;
             totals.outputTokens += outputTokens;
             totals.totalTokens += totalTokens;
             totals.requestCount += requestCount;
+            totals.unpricedRequests += unpriced;
 
             // Aggregate by model
             if (!byModel[row.model]) {
-                byModel[row.model] = { inputTokens: 0, outputTokens: 0, totalTokens: 0, callCount: 0, cost: 0 };
+                byModel[row.model] = { inputTokens: 0, outputTokens: 0, totalTokens: 0, callCount: 0, cost: 0, priced: priced !== null };
             }
             byModel[row.model].inputTokens += inputTokens;
             byModel[row.model].outputTokens += outputTokens;
@@ -162,30 +142,35 @@ async function getUsageStats(options = {}) {
 
             // Aggregate by provider
             if (!byProvider[provider]) {
-                byProvider[provider] = { inputTokens: 0, outputTokens: 0, totalTokens: 0, callCount: 0, cost: 0 };
+                byProvider[provider] = { inputTokens: 0, outputTokens: 0, totalTokens: 0, callCount: 0, cost: 0, unpricedCalls: 0 };
             }
             byProvider[provider].inputTokens += inputTokens;
             byProvider[provider].outputTokens += outputTokens;
             byProvider[provider].totalTokens += totalTokens;
             byProvider[provider].callCount += requestCount;
             byProvider[provider].cost += cost;
+            byProvider[provider].unpricedCalls += unpriced;
         }
 
         // Calculate total cost
         totals.estimatedCostUSD = Object.values(byModel).reduce((sum, m) => sum + m.cost, 0);
 
         // Transform recentUsage to match TokenUsageEntry interface expected by frontend
-        const recentUsage = rawStats.slice(0, 100).map(row => ({
-            timestamp: row.date || new Date().toISOString(),
-            provider: getProviderFromModel(row.model),
-            model: row.model || 'unknown',
-            inputTokens: row.input_tokens || 0,
-            outputTokens: row.output_tokens || 0,
-            totalTokens: row.total_tokens || 0,
-            cost: calculateCost(row.model, row.input_tokens || 0, row.output_tokens || 0),
-            projectId: row.project_id || null,
-            task: row.task || null
-        }));
+        const recentUsage = rawStats.slice(0, 100).map(row => {
+            const priced = calculateCost(row.model, row.input_tokens || 0, row.output_tokens || 0);
+            return {
+                timestamp: row.date || new Date().toISOString(),
+                provider: getProviderFromModel(row.model),
+                model: row.model || 'unknown',
+                inputTokens: row.input_tokens || 0,
+                outputTokens: row.output_tokens || 0,
+                totalTokens: row.total_tokens || 0,
+                cost: priced ?? 0,
+                priced: priced !== null,
+                projectId: row.project_id || null,
+                task: row.task || null
+            };
+        });
 
         return {
             totals,
@@ -197,7 +182,7 @@ async function getUsageStats(options = {}) {
     } catch (error) {
         console.error('[TokenTracker] Error fetching stats:', error);
         return {
-            totals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, estimatedCostUSD: 0 },
+            totals: { inputTokens: 0, outputTokens: 0, totalTokens: 0, estimatedCostUSD: 0, unpricedRequests: 0 },
             byProvider: {},
             byModel: {},
             recentUsage: [],
@@ -244,6 +229,5 @@ module.exports = {
     resetUsageStats,
     clearCache,
     loadUsageData,
-    calculateCost,
-    PRICING
+    calculateCost
 };

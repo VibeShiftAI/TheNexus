@@ -600,13 +600,13 @@ describe('dispatch-insight route', () => {
         expect(body.council.reason).toMatch(/unknown, not absent/);
     });
 
-    test('a run on an unpriced model (gpt-6-astra) reports cost null — unknown, never a silent $0', async () => {
+    test('a run on a model the catalog does not price reports cost null: unknown, never a silent $0', async () => {
         await boot();
         await requestJson(`${handle.baseUrl}/api/dispatches`, {
             method: 'POST',
             body: JSON.stringify({
                 id: 'disp-astra', task_id: 'task-running', executor: 'codex',
-                model: 'gpt-6-astra', started_at: new Date(Date.now() - 4 * HOUR).toISOString(),
+                model: 'gpt-9-unlisted', started_at: new Date(Date.now() - 4 * HOUR).toISOString(),
             }),
         });
         await requestJson(`${handle.baseUrl}/api/dispatches/disp-astra`, {
@@ -617,10 +617,9 @@ describe('dispatch-insight route', () => {
         });
         const { body } = await requestJson(`${handle.baseUrl}/api/dispatch-insight/task/task-running`);
         const astra = body.runs.find((r) => r.dispatchId === 'disp-astra');
-        expect(astra.model).toBe('gpt-6-astra');
-        // No public $/MTok for gpt-6-astra was verifiable on 2026-09-06, so it
-        // has no PRICE_PER_MTOK row on purpose: the estimate is withheld
-        // (cost: null) rather than invented or reported as $0.
+        expect(astra.model).toBe('gpt-9-unlisted');
+        // The OpenRouter catalog (fixture) lists no rate for this model, so the
+        // estimate is withheld (cost: null) rather than invented or reported as $0.
         expect(astra.cost).toBeNull();
     });
 
@@ -645,7 +644,7 @@ describe('dispatch-insight route', () => {
             method: 'POST',
             body: JSON.stringify({
                 id: 'disp-astra2', task_id: 'task-running', executor: 'codex',
-                model: 'gpt-6-astra', started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+                model: 'gpt-9-unlisted', started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
             }),
         });
         await requestJson(`${handle.baseUrl}/api/dispatches/disp-astra2`, {
@@ -735,7 +734,7 @@ describe('dispatch-insight route', () => {
             method: 'POST',
             body: JSON.stringify({
                 id: 'disp-allunknown', task_id: 'task-queued', executor: 'codex',
-                model: 'gpt-6-astra', started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
+                model: 'gpt-9-unlisted', started_at: new Date(Date.now() - 5 * HOUR).toISOString(),
             }),
         });
         await requestJson(`${handle.baseUrl}/api/dispatches/disp-allunknown`, {
@@ -824,7 +823,7 @@ describe('dispatch-insight route', () => {
             { id: 'disp-inv-ok', model: 'claude-opus-5', tokens: 1_000 },
             { id: 'disp-inv-zero', model: 'claude-opus-5', tokens: 0 },
             { id: 'disp-inv-nomodel', model: null, tokens: 1_000 },
-            { id: 'disp-inv-unpriced', model: 'gpt-6-astra', tokens: 1_000 },
+            { id: 'disp-inv-unpriced', model: 'gpt-9-unlisted', tokens: 1_000 },
             { id: 'disp-inv-norecord', model: 'claude-opus-5', tokens: null },
         ];
         for (const c of cases) {

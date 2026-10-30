@@ -98,7 +98,6 @@ TheNexus/                       # Flat monorepo
 │   ├── blackboard/             # Research blackboard
 │   └── llm_factory.py          # Multi-provider LLM routing
 ├── config/                     # Merged configuration
-│   ├── model_registry.yaml     # LLM model configs
 │   ├── prompts.yaml            # System prompts
 │   └── nexus/                  # Nexus-specific config
 ├── db/                         # SQLite schema & database
@@ -195,9 +194,9 @@ CORTEX_API_URL=http://localhost:8100
 NEXUS_SERVICE_KEY=...
 ```
 
-### Model Configuration (`config/model_registry.yaml` & `agent-config.json`)
+### Model Configuration (model-control roles & `agent-config.json`)
 
-The system uses role-based model assignments, configurable via the Agent Manager UI. 
+The system uses role-based model assignments (`model_roles` in the database), configurable from the Model Control page. Which models exist comes from the files Praxis writes: the CLI model registry (`Praxis/data/model-registry.json`) and the OpenRouter catalog (`Praxis/data/openrouter-catalog.json`). `config/model_registry.yaml` was removed on 2026-10-30; no code read it.
 
 ---
 

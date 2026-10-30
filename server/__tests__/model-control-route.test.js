@@ -83,6 +83,12 @@ describe('model control route', () => {
                     codexDefault: '',
                     antigravityDefault: '',
                     codexModels: expect.any(Array),
+                    // Without a registry only each CLI's own default is offered.
+                    cliAssignments: [
+                        { value: 'cli:claude-code', label: 'Claude Code (CLI default)', backend: 'claude-code', efforts: [] },
+                        { value: 'cli:codex', label: 'Codex (CLI default)', backend: 'codex', efforts: [] },
+                        { value: 'cli:antigravity', label: 'Antigravity (CLI default)', backend: 'antigravity', efforts: [] },
+                    ],
                     localOnly: { enabled: false, reason: null },
                     policy: { enabled: false, reason: null },
                     projectPolicy: {
@@ -610,47 +616,31 @@ describe('model control route', () => {
         });
     });
 
-    test('runs manual model discovery for the control center', async () => {
+    test('runs the manual model source sync for the control center', async () => {
         const db = {};
-        const discoverModelRegistry = jest.fn(async ({ db: injectedDb }) => ({
-            models: [{ id: 'anthropic-claude-sonnet', provider: 'Anthropic', apiModelId: 'claude-sonnet-4-6' }],
+        const syncModelSources = jest.fn(async ({ db: injectedDb }) => ({
+            models: [{ id: 'openrouter-nemotron-ultra', provider: 'OpenRouter', apiModelId: 'nvidia/nemotron-3-ultra-550b-a55b:free' }],
             providers: [
-                { provider: 'anthropic', status: 'ok', rawCount: 1, modelCount: 1 },
-                { provider: 'openai', status: 'skipped', rawCount: 0, modelCount: 0, message: 'no API key' }
+                { provider: 'cli registry', status: 'ok', rawCount: 20, modelCount: 18 },
+                { provider: 'openrouter', status: 'ok', rawCount: 1, modelCount: 1 }
             ],
-            summary: {
-                anthropic: '1 models (from 1 raw)',
-                openai: 'SKIPPED (no key)'
-            },
+            summary: { 'cli registry': '18 current CLI models', openrouter: '1 free models' },
+            deactivated: 0,
             elapsedMs: 12,
-            discoveredAt: '2026-05-22T12:00:00.000Z',
+            discoveredAt: '2026-10-30T12:00:00.000Z',
             dbInjected: injectedDb === db
         }));
         const createModelControlRouter = require('../routes/model-control');
         const app = express();
         app.use(express.json());
-        app.use('/api/model-control', createModelControlRouter({ db, discoverModelRegistry }));
+        app.use('/api/model-control', createModelControlRouter({ db, syncModelSources }));
         handle = await listen(app);
 
-        await expect(requestJson(`${handle.baseUrl}/api/model-control/discover`, { method: 'POST' }))
-            .resolves.toEqual({
-                status: 200,
-                body: {
-                    models: [{ id: 'anthropic-claude-sonnet', provider: 'Anthropic', apiModelId: 'claude-sonnet-4-6' }],
-                    providers: [
-                        { provider: 'anthropic', status: 'ok', rawCount: 1, modelCount: 1 },
-                        { provider: 'openai', status: 'skipped', rawCount: 0, modelCount: 0, message: 'no API key' }
-                    ],
-                    summary: {
-                        anthropic: '1 models (from 1 raw)',
-                        openai: 'SKIPPED (no key)'
-                    },
-                    elapsedMs: 12,
-                    discoveredAt: '2026-05-22T12:00:00.000Z',
-                    dbInjected: true
-                }
-            });
-        expect(discoverModelRegistry).toHaveBeenCalledWith({ db });
+        const { status, body } = await requestJson(`${handle.baseUrl}/api/model-control/discover`, { method: 'POST' });
+        expect(status).toBe(200);
+        expect(body.dbInjected).toBe(true);
+        expect(body.providers.map(p => p.provider)).toEqual(['cli registry', 'openrouter']);
+        expect(syncModelSources).toHaveBeenCalledWith({ db });
     });
 
     test('returns budget status from the existing usage ledger', async () => {
