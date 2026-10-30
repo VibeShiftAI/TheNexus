@@ -79,7 +79,6 @@ graph TD
 TheNexus/                       # Flat monorepo
 ├── server/                     # Node.js Express backend
 │   ├── server.js               # Main API server
-│   ├── scanner.js              # Project discovery engine
 │   ├── mcp.js                  # MCP Server (stdio)
 │   ├── agent/                  # Multi-provider AI agent
 │   ├── services/               # Supervisor, critic, system monitor
@@ -162,7 +161,7 @@ Dashboard-level initiatives now run through the Node/Praxis task flow. The forme
 | Component | Purpose |
 |-----------|---------|
 | **server.js** | Main Express API server. |
-| **scanner.js** | Priority-based filesystem scanner to detect and index projects in `PROJECT_ROOT`. |
+| **utils/project-manager.js** | Reads projects from the database and scans `PROJECT_ROOT` for new ones. |
 | **supervisor.js** | Orchestrates the Task Manager, routing intents to specific workers. |
 | **scheduler.js** | Cron-based automation engine for recurring tasks (e.g., dependency audits). |
 | **mcp.js** | Model Context Protocol server exposing Nexus capabilities to external AI clients. |

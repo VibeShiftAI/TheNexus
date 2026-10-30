@@ -179,7 +179,7 @@ number that can be up to a full interval stale.
 | `app/council/page.tsx` `LiveSessionPanel` | 1s | Clock tick (elapsed-time label). |
 | `components/schedule-timeline.tsx`, `bridge/event-ticker.tsx`, `bridge/dispatch-station.tsx` (:351), `hooks/use-core-state.ts`, `hooks/use-crew-activity.ts`, `components/usage-routing-panel.tsx` | 1s–30s | Clock ticks — `setNow(Date.now())` / re-render cursors, no fetch. |
 | `app/task-board/page.tsx`, `app/task/[id]/page.tsx`, `bridge/ambient-mode.tsx`, `bridge/dispatch-station.tsx` (:324) | 5s–30s | Out of D-1's scope — first-tranche surfaces owned by other sessions. Still on plain intervals; fold in when that work lands. |
-| `components/task-manager.tsx` | 10s ×2 | Not a steady-state poller: a **bounded completion poll** started by an auto-research run and cleared the moment the run leaves `researching` (with a 5-minute cap). `useLiveRefetch` has no start-on-action / stop-on-condition semantics, and wrapping it would turn a self-terminating loop into a permanent subscription. Revisit if a `research.completed` frame ever exists. |
+| `components/task-manager.tsx` | (removed) | The bounded auto-research completion poll was removed with the Auto Research button on 2026-10-30. |
 | `components/bridge/voice-command-bar.tsx`, `hooks/use-voice-recorder.ts` | sub-second | Audio silence detection and a recording timer. |
 | `hooks/use-board-state.ts`, `use-dispatch-state.ts`, `use-autonomy.ts`, `use-qa-holds.ts` | 20s–60s | Module-level shared stores, already migrated in the first tranche: the store's own timer IS the fallback, so their `useLiveRefetch` passes `fallbackPollMs: 0`. |
 

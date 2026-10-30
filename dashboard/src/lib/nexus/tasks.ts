@@ -353,37 +353,6 @@ export async function addWalkthroughFeedback(projectId: string, taskId: string, 
 }
 
 // ═══════════════════════════════════════════════════════════════
-// AUTO-RESEARCH API
-// ═══════════════════════════════════════════════════════════════
-
-export interface ResearchStatus {
-    status: 'idle' | 'researching' | 'completed' | 'error';
-    error: string | null;
-    lastResearchDate: string | null;
-}
-
-export async function researchTasks(projectId: string): Promise<{ success: boolean; message: string; status: string }> {
-    const res = await authFetch(`${API_URL}/${projectId}/tasks/research`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-    });
-    if (!res.ok && res.status !== 202) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to start research');
-    }
-    return res.json();
-}
-
-export async function getResearchStatus(projectId: string): Promise<ResearchStatus> {
-    const res = await authFetch(`${API_URL}/${projectId}/tasks/research/status`);
-    if (!res.ok) {
-        throw new Error('Failed to get research status');
-    }
-    return res.json();
-}
-
-
-// ═══════════════════════════════════════════════════════════════
 // TASK EDITING API
 // ═══════════════════════════════════════════════════════════════
 

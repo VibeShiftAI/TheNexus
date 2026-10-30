@@ -17,7 +17,6 @@ const fs = require('fs');
 
 // ─── Core Dependencies ──────────────────────────────────────────────────────
 const { scanProjects, getAllProjects, getProjectById } = require('./utils/project-manager');
-const { setupResearchRoutes } = require('./auto-research');
 const systemMonitor = require('./services/system-monitor');
 const tokenTracker = require('./utils/token-tracker');
 const { isCriticEnabled, setCriticEnabled } = require('./services/critic');
@@ -276,9 +275,6 @@ app.use('/api/chat/files', createChatFilesRouter());
 // Push & events
 app.use('/api/push',      createPushRouter({ db, pushService }));
 app.use('/api/broadcast', createBroadcastRouter({ io }));
-
-// ─── Legacy Research Routes (uses app.post directly) ────────────────────────
-setupResearchRoutes(app, getProjectById, PROJECT_ROOT);
 
 // ─── Server Startup ─────────────────────────────────────────────────────────
 server.listen(PORT, async () => {

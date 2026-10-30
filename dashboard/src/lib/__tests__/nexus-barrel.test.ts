@@ -42,8 +42,14 @@ function preSplitExports(): Set<string> {
     throw new Error(`No revision of ${TRACKED} declares exports`);
 }
 
+/**
+ * Names removed on purpose after the split, so they are no longer expected.
+ * 2026-10-30: the Auto Research button was retired with its client calls.
+ */
+const RETIRED = new Set(["ResearchStatus", "getResearchStatus", "researchTasks"]);
+
 test("the barrel re-exports exactly the pre-split export surface", () => {
-    const expected = preSplitExports();
+    const expected = new Set([...preSplitExports()].filter((n) => !RETIRED.has(n)));
     assert.ok(expected.size > 100, `expected a large pre-split surface, got ${expected.size}`);
 
     // Runtime exports cover values; types are erased, so read the type

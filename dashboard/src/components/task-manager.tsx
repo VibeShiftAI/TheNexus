@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Task, TaskStatus, addTask, deleteTask, researchTasks, getResearchStatus, updateTask, updateTaskDetails } from "@/lib/nexus";
+import { useState } from "react";
+import { Task, TaskStatus, addTask, deleteTask, updateTask, updateTaskDetails } from "@/lib/nexus";
 import { TASK_AUTO_START_STATUSES, normalizeTaskBoardStatus } from "@praxis/contract";
 import { Lightbulb, Plus, Search, Rocket, CheckCircle2, Clock, Loader2, ChevronRight, Sparkles, XCircle, Undo2, Pencil, Bug, HelpCircle, AlertTriangle, Fingerprint, Pause, ClipboardCopy, Check } from "lucide-react";
 import { copyClaudeDispatch } from "@/lib/claude-dispatch";
@@ -36,9 +36,6 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
     const [newTaskPredecessors, setNewTaskPredecessors] = useState<string[]>([]);
     const [newTaskSuccessor, setNewTaskSuccessor] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [researchingId, setResearchingId] = useState<string | null>(null);
-    const [isAutoResearching, setIsAutoResearching] = useState(false);
-    const [researchError, setResearchError] = useState<string | null>(null);
     const [showAliasManager, setShowAliasManager] = useState(false);
     const [copiedDispatchTaskId, setCopiedDispatchTaskId] = useState<string | null>(null);
 
@@ -49,84 +46,6 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
     const [editModelAssignment, setEditModelAssignment] = useState<string>('');
     const [isEditSaving, setIsEditSaving] = useState(false);
     const [editError, setEditError] = useState<string | null>(null);
-
-    // Check research status on mount
-    useEffect(() => {
-        let pollInterval: NodeJS.Timeout | null = null;
-
-        const checkStatus = async () => {
-            try {
-                const status = await getResearchStatus(projectId);
-                if (status.status === 'researching') {
-                    setIsAutoResearching(true);
-                    setResearchError(null);
-                    return true;
-                } else if (status.status === 'error') {
-                    setIsAutoResearching(false);
-                    setResearchError(status.error);
-                } else {
-                    setIsAutoResearching(false);
-                }
-                return false;
-            } catch (err) {
-                return false;
-            }
-        };
-
-        checkStatus().then(isResearching => {
-            if (isResearching) {
-                pollInterval = setInterval(async () => {
-                    const stillResearching = await checkStatus();
-                    if (!stillResearching) {
-                        if (pollInterval) clearInterval(pollInterval);
-                        onTasksChange();
-                    }
-                }, 10000); // Poll every 10 seconds to reduce log noise
-            }
-        });
-
-        return () => {
-            if (pollInterval) clearInterval(pollInterval);
-        };
-    }, [projectId, onTasksChange]);
-
-
-
-    const handleAutoResearch = async () => {
-        setIsAutoResearching(true);
-        setResearchError(null);
-
-        try {
-            await researchTasks(projectId);
-
-            const pollInterval = setInterval(async () => {
-                try {
-                    const status = await getResearchStatus(projectId);
-                    if (status.status !== 'researching') {
-                        clearInterval(pollInterval);
-                        setIsAutoResearching(false);
-                        if (status.status === 'error') {
-                            setResearchError(status.error);
-                        } else {
-                            onTasksChange();
-                        }
-                    }
-                } catch (err) {
-                    clearInterval(pollInterval);
-                    setIsAutoResearching(false);
-                }
-            }, 10000); // Poll every 10 seconds to reduce log noise
-
-            setTimeout(() => {
-                clearInterval(pollInterval);
-                setIsAutoResearching(false);
-            }, 300000);
-
-        } catch (err) {
-            setIsAutoResearching(false);
-            setResearchError(err instanceof Error ? err.message : 'Failed to start research');
-        }
-    };
 
     const handleAddTask = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -219,27 +138,6 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                 </h2>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={handleAutoResearch}
-                        disabled={isAutoResearching}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-all ${isAutoResearching
-                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 border-purple-500/30 hover:border-purple-500/50'
-                            }`}
-                        title="Use AI to research and suggest new tasks for this project"
-                    >
-                        {isAutoResearching ? (
-                            <>
-                                <Loader2 size={16} className="animate-spin" />
-                                <span>Researching...</span>
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles size={16} />
-                                <span>Auto Research</span>
-                            </>
-                        )}
-                    </button>
-                    <button
                         onClick={() => setShowAliasManager(!showAliasManager)}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all"
                     >
@@ -254,13 +152,6 @@ export function TaskManager({ projectId, tasks, onTasksChange, onTaskSelect }: T
                     </button>
                 </div>
             </div>
-
-            {/* Research Error */}
-            {researchError && (
-                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                    <p className="text-sm text-red-400">Research failed: {researchError}</p>
-                </div>
-            )}
 
             {showAliasManager && (
                 <div className="mb-4">

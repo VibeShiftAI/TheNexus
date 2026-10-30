@@ -94,7 +94,6 @@ From your idea to deployed code — the **8-node Project Plan Generator** orches
 TheNexus/                           # Flat monorepo
 ├── server/                         # Node.js Express backend
 │   ├── server.js                   # Main API server
-│   ├── scanner.js                  # Project discovery engine
 │   ├── agent/                      # Multi-provider AI agent
 │   ├── routes/                     # Modular route handlers
 │   ├── services/                   # Business logic services
