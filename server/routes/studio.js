@@ -320,14 +320,15 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
         let created = 0;
         for (const item of rows) {
           if (!item?.title) continue;
+          // 2026-10-30: these fields used to be cut to 100 / 220 / 2,000 / 1,200 / 120 characters.
           insert.run({
             id: uuid(),
             channel_id: channelId,
-            source: String(item.source || 'ai-suggested').slice(0, 100),
-            title: String(item.title).slice(0, 220),
-            angle: String(item.angle || '').slice(0, 2000),
-            build_promise: String(item.build_promise || '').slice(0, 1200),
-            category: String(item.category || 'Suggested').slice(0, 120),
+            source: String(item.source || 'ai-suggested'),
+            title: String(item.title),
+            angle: String(item.angle || ''),
+            build_promise: String(item.build_promise || ''),
+            category: String(item.category || 'Suggested'),
             ts: now(),
           });
           created++;
@@ -380,7 +381,8 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
 
         const status = ['suggested', 'approved'].includes(idea.status) ? 'scripted' : idea.status;
         const checklist = Array.isArray(idea.checklist) ? idea.checklist : [];
-        for (const note of notes.slice(0, 8)) checklist.push({ label: `Critic: ${String(note).slice(0, 200)}`, done: false });
+        // 2026-10-30: used to keep 8 critic notes of 200 characters each.
+        for (const note of notes) checklist.push({ label: `Critic: ${String(note)}`, done: false });
         if (!params.hasObjects) checklist.push({ label: 'Attach object records so the script can be grounded in real parameters.', done: false });
         sql.prepare('UPDATE studio_ideas SET script = ?, script_model = ?, status = ?, checklist = ?, updated_at = ? WHERE id = ?')
           .run(String(finalScript), `${modelLabel} (writer+critic)`, status, JSON.stringify(checklist), now(), ideaId);
@@ -427,7 +429,8 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
       apply({ ideaId }, text) {
         const idea = getIdea(ideaId);
         const checklist = Array.isArray(idea.checklist) ? idea.checklist : [];
-        checklist.push({ label: `Physics rigor pass: ${String(text).slice(0, 180)}`, done: false });
+        // 2026-10-30: used to keep only the first 180 characters of the answer.
+        checklist.push({ label: `Physics rigor pass: ${String(text)}`, done: false });
         sql.prepare('UPDATE studio_ideas SET checklist = ?, updated_at = ? WHERE id = ?')
           .run(JSON.stringify(checklist), now(), ideaId);
         return { summary: 'Physics rigor notes added to checklist', ideaId };
@@ -510,7 +513,8 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
       apply({ ideaId }, text) {
         const idea = getIdea(ideaId);
         const checklist = Array.isArray(idea.checklist) ? idea.checklist : [];
-        checklist.push({ label: `Source pack: ${String(text).slice(0, 180)}`, done: false });
+        // 2026-10-30: used to keep only the first 180 characters of the answer.
+        checklist.push({ label: `Source pack: ${String(text)}`, done: false });
         sql.prepare('UPDATE studio_ideas SET checklist = ?, updated_at = ? WHERE id = ?')
           .run(JSON.stringify(checklist), now(), ideaId);
         return { summary: 'Source/citation notes added to checklist', ideaId };
@@ -537,10 +541,11 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
         if (!item || !item.title) throw new Error('Model did not return a usable idea.');
         const id = uuid();
         const ts = now();
+        // 2026-10-30: these fields used to be cut to 220 / 2,000 / 1,200 / 120 characters.
         sql.prepare(
           `INSERT INTO studio_ideas (id, channel_id, source, title, angle, build_promise, category, status, checklist, created_at, updated_at)
            VALUES (?, ?, 'object-interaction', ?, ?, ?, ?, 'suggested', '[]', ?, ?)`
-        ).run(id, channelId, String(item.title).slice(0, 220), String(item.angle || '').slice(0, 2000), String(item.build_promise || '').slice(0, 1200), String(item.category || 'Object system').slice(0, 120), ts, ts);
+        ).run(id, channelId, String(item.title), String(item.angle || ''), String(item.build_promise || ''), String(item.category || 'Object system'), ts, ts);
         // Link every selected object to the new episode.
         const link = sql.prepare('INSERT OR IGNORE INTO studio_episode_objects (episode_id, object_id, role, notes) VALUES (?, ?, ?, ?)');
         for (const objId of parseObjectIds(objectIds)) {

@@ -399,6 +399,75 @@ describe('studio route', () => {
     expect(callAI.mock.calls[0][0]).toEqual(expect.objectContaining({ provider: 'local' }));
   });
 
+  // The parsers used to cut idea fields to 100 / 220 / 2,000 / 1,200 / 120
+  // characters, keep 8 critic notes of 200 characters, and keep only the first
+  // 180 characters of the physics and source passes.
+  test('model answers are stored whole: idea fields, every critic note, and the full physics and source passes', async () => {
+    const channelId = 'impossible-worlds-field-guide';
+    const base = `${handle.baseUrl}/api/studio/${channelId}`;
+    const long = (word, n) => `${`${word} `.repeat(n)}END`;
+    const ideaFields = (word) => ({
+      title: long(`${word}-title`, 40),
+      angle: long(`${word}-angle`, 400),
+      build_promise: long(`${word}-promise`, 200),
+      category: long(`${word}-category`, 20),
+    });
+
+    // suggest_topics: long fields and every row survive.
+    const suggested = [
+      { ...ideaFields('first'), source: long('source', 30) },
+      { ...ideaFields('second'), source: 'test' },
+    ];
+    expect(suggested[0].title.length).toBeGreaterThan(220);
+    expect(suggested[0].angle.length).toBeGreaterThan(2000);
+    expect(suggested[0].build_promise.length).toBeGreaterThan(1200);
+    expect(suggested[0].category.length).toBeGreaterThan(120);
+    expect(suggested[0].source.length).toBeGreaterThan(100);
+    callAI.mockResolvedValueOnce({ text: JSON.stringify(suggested) });
+    const topics = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'suggest_topics', mode: 'local' }) });
+    expect(topics.status).toBe(200);
+    expect(topics.body.result.created).toBe(2);
+    const board = await json(`${handle.baseUrl}/api/studio?channelId=${channelId}`);
+    for (const want of suggested) {
+      const stored = board.body.ideas.find((idea) => idea.title === want.title);
+      expect(stored).toEqual(expect.objectContaining(want));
+    }
+
+    // interaction_idea: long fields survive.
+    const obj = await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({ name: 'Object Gamma', object_kind: 'exoplanet' }) });
+    const interaction = ideaFields('interaction');
+    callAI.mockResolvedValueOnce({ text: JSON.stringify(interaction) });
+    const made = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'interaction_idea', objectIds: [obj.body.id], mode: 'local' }) });
+    expect(made.status).toBe(200);
+    expect(made.body.idea).toEqual(expect.objectContaining(interaction));
+
+    // write_script: every critic note is kept, the long one whole.
+    const idea = await json(`${base}/ideas`, { method: 'POST', body: JSON.stringify({ title: 'Standing on Gamma', status: 'approved' }) });
+    const notes = Array.from({ length: 10 }, (_, i) => `note ${i + 1}`);
+    notes[9] = long('caveat', 60);
+    expect(notes[9].length).toBeGreaterThan(200);
+    callAI.mockResolvedValueOnce({ text: 'Writer draft that is long enough to stand as a script on its own.' });
+    callAI.mockResolvedValueOnce({ text: JSON.stringify({ script: 'Critic revision that is long enough to replace the writer draft.', notes }) });
+    const scripted = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'write_script', ideaId: idea.body.id, mode: 'local' }) });
+    expect(scripted.status).toBe(200);
+    const criticLabels = scripted.body.idea.checklist.map((item) => item.label).filter((label) => label.startsWith('Critic: '));
+    expect(criticLabels).toEqual(notes.map((note) => `Critic: ${note}`));
+
+    // physics_rigor_pass and source_citation_pack: the whole answer is kept.
+    const physics = long('physics-note', 40);
+    expect(physics.length).toBeGreaterThan(180);
+    callAI.mockResolvedValueOnce({ text: physics });
+    const rigor = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'physics_rigor_pass', ideaId: idea.body.id, mode: 'local' }) });
+    expect(rigor.status).toBe(200);
+    const sources = long('source-note', 40);
+    callAI.mockResolvedValueOnce({ text: sources });
+    const pack = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'source_citation_pack', ideaId: idea.body.id, mode: 'local' }) });
+    expect(pack.status).toBe(200);
+    const labels = pack.body.idea.checklist.map((item) => item.label);
+    expect(labels).toContain(`Physics rigor pass: ${physics}`);
+    expect(labels).toContain(`Source pack: ${sources}`);
+  });
+
   test('unreal_environment and physics_analysis prompts include the selected objects', async () => {
     const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
     const obj = await json(`${base}/objects`, {
