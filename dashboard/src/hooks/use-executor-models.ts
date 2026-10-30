@@ -4,9 +4,11 @@
  * useExecutorModelOptions — the per-executor model dropdown data used by every
  * dispatch surface (morning-plan HITL card, task-screen dispatch panel).
  *
- * Claude/codex options come from the discovered model roster; antigravity
- * options are the `agy models` display names (the only values the agy CLI
- * actually pins on). The operator-set defaults label the "(default)" option.
+ * Claude Code, Codex and Antigravity options come from the model registry
+ * (useAvailableModels), current models first and older ones flagged; the
+ * Antigravity values are agy display names, the only form agy pins. OpenRouter
+ * options still come from the discovered roster. The operator-set defaults
+ * label the "(default)" option.
  *
  * Key-aware routing rides along: each executor carries the live state of the
  * credential it spends, and each model option carries its own block when the
@@ -14,20 +16,21 @@
  * route is how a dead key gets discovered at the 402 instead of before the run.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { dispatchModelKeyProvider } from "@/lib/dispatch-model-key-lane";
 import { useLiveRefetch } from "@/components/live-board-state";
+import { useAvailableModels } from "@/hooks/use-available-models";
 import {
   apiModelIdOf,
-  filterClaudeModels,
-  filterCodexModels,
   filterOpenRouterModels,
-  getAntigravityModels,
   getCredentialRouting,
   getModelControlState,
+  registryPickerOptions,
+  type AvailableModels,
   type CredentialExecutorLane,
   type CredentialModelBlock,
   type CredentialProviderLane,
+  type RegistryExecutor,
 } from "@/lib/model-control";
 
 export type ExecutorName = "antigravity" | "codex" | "claude-code" | "openrouter";
@@ -62,25 +65,25 @@ export const DEFAULT_EXECUTOR: ExecutorName = "claude-code";
  *  minute scale (a usage window resets at a stated time), not the second. */
 const CREDENTIAL_POLL_MS = 60_000;
 
-/**
- * Claude models on Praxis's routing ladder (GET /api/praxis/models/ladder-settings).
- * The registry keeps one row per family ("Claude Opus"), so a ladder model that
- * shares a family with another (Opus 5.5 beside Opus 5) never reaches it. Merging
- * the ladder in keeps every model the router can pick assignable by hand.
- */
-const LADDER_SETTINGS_ENDPOINT = "/api/praxis/models/ladder-settings";
-const LADDER_MODEL_LABELS: Record<string, string> = {
-  "claude-opus-5-5": "Claude Opus 5.5",
-  "claude-opus-5": "Claude Opus 5",
-  "claude-fable-5-1": "Claude Fable 5.1",
+/** Provider identity for a pinned model on each CLI; agy has none of its own. */
+const REGISTRY_PROVIDERS: Record<RegistryExecutor, string | undefined> = {
+  "claude-code": "anthropic",
+  codex: "openai",
+  antigravity: undefined,
 };
 
-function withLadderModels(
-  registry: ExecutorModelOption[],
-  ladder: ExecutorModelOption[],
+/** One CLI's dropdown options from the model registry. */
+function registryExecutorOptions(
+  registry: AvailableModels | null,
+  executor: RegistryExecutor,
 ): ExecutorModelOption[] {
-  const seen = new Set(registry.map((option) => option.id));
-  return [...registry, ...ladder.filter((option) => !seen.has(option.id))];
+  const provider = REGISTRY_PROVIDERS[executor];
+  return registryPickerOptions(registry, executor).map((option) => ({
+    id: option.value,
+    label: option.label,
+    ...(provider ? { provider } : {}),
+    ...(option.older ? { older: true } : {}),
+  }));
 }
 
 export interface ExecutorModelOption {
@@ -88,6 +91,8 @@ export interface ExecutorModelOption {
   label: string;
   /** Provider identity retained for key-aware dispatch of a pinned model. */
   provider?: string;
+  /** An older model the CLI still accepts; pickers list it after the current ones. */
+  older?: boolean;
   /** Set when the provider has this specific model on a cooldown. */
   blocked?: CredentialModelBlock | null;
 }
@@ -96,6 +101,8 @@ export interface ExecutorModelChoices {
   options: ExecutorModelOption[];
   /** The operator-set default model id ("" = the CLI's own default). */
   fallback: string;
+  /** True when the model registry has loaded but offers nothing for this executor. */
+  listMissing: boolean;
   /** Which credential the run spends — shown in dropdown titles. */
   note: string;
   /**
@@ -125,12 +132,12 @@ export function useExecutorModelOptions(): {
   /** Re-read credential state now (e.g. right after a dispatch attempt). */
   refreshCredentials: () => void;
 } {
-  const [claudeModels, setClaudeModels] = useState<ExecutorModelOption[]>([]);
-  const [ladderClaudeModels, setLadderClaudeModels] = useState<ExecutorModelOption[]>([]);
-  const [claudeDefault, setClaudeDefault] = useState<string>("claude-opus-5-5");
-  const [codexModels, setCodexModels] = useState<ExecutorModelOption[]>([]);
+  const { registry, loaded: registryLoaded } = useAvailableModels();
+  const claudeModels = useMemo(() => registryExecutorOptions(registry, "claude-code"), [registry]);
+  const codexModels = useMemo(() => registryExecutorOptions(registry, "codex"), [registry]);
+  const antigravityModels = useMemo(() => registryExecutorOptions(registry, "antigravity"), [registry]);
+  const [claudeDefault, setClaudeDefault] = useState<string>("");
   const [codexDefault, setCodexDefault] = useState<string>("");
-  const [antigravityModels, setAntigravityModels] = useState<ExecutorModelOption[]>([]);
   const [antigravityDefault, setAntigravityDefault] = useState<string>("");
   const [openrouterModels, setOpenRouterModels] = useState<ExecutorModelOption[]>([]);
   const [lanes, setLanes] = useState<CredentialExecutorLane[]>([]);
@@ -146,19 +153,6 @@ export function useExecutorModelOptions(): {
           label: m.display_name || m.name || m.id,
           provider: m.provider?.toLowerCase(),
         });
-        setClaudeModels(filterClaudeModels(state.models).map(toOption));
-        // Codex: the real roster (sol / terra / luna …) rides the options
-        // payload; the family registry's single "GPT" row is only a fallback.
-        const roster = Array.isArray(state.codexModels) ? state.codexModels : [];
-        setCodexModels(
-          roster.length > 0
-            ? roster.map((m) => ({
-                id: m.id,
-                label: m.deprecated && m.upgradeTo ? `${m.label} (deprecated → ${m.upgradeTo})` : m.label,
-                provider: "openai",
-              }))
-            : filterCodexModels(state.models).map(toOption),
-        );
         setOpenRouterModels(filterOpenRouterModels(state.models).map(toOption));
         if (state.claudeDefault) setClaudeDefault(state.claudeDefault);
         if (state.codexDefault) setCodexDefault(state.codexDefault);
@@ -167,26 +161,6 @@ export function useExecutorModelOptions(): {
         // provider identity and its key verdict arrive together.
         if (state.credentials?.executors) setLanes(state.credentials.executors);
         if (state.credentials?.providers) setProviderKeys(state.credentials.providers);
-      })
-      .catch(() => {
-        /* dropdown falls back to the default-only option */
-      });
-    fetch(LADDER_SETTINGS_ENDPOINT)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((body: { models?: unknown } | null) => {
-        if (cancelled || !Array.isArray(body?.models)) return;
-        setLadderClaudeModels(
-          body.models
-            .filter((id): id is string => typeof id === "string" && id.startsWith("claude-"))
-            .map((id) => ({ id, label: LADDER_MODEL_LABELS[id] || id, provider: "anthropic" })),
-        );
-      })
-      .catch(() => {
-        /* registry options alone still render */
-      });
-    getAntigravityModels()
-      .then((names) => {
-        if (!cancelled) setAntigravityModels(names.map((name) => ({ id: name, label: name })));
       })
       .catch(() => {
         /* dropdown falls back to the default-only option */
@@ -224,7 +198,7 @@ export function useExecutorModelOptions(): {
     const { options, fallback, note, spendNote } =
       executor === "claude-code"
         ? {
-            options: withLadderModels(claudeModels, ladderClaudeModels),
+            options: claudeModels,
             fallback: claudeDefault,
             note: "Claude",
             spendNote: "billed to the Claude subscription",
@@ -284,6 +258,7 @@ export function useExecutorModelOptions(): {
     return {
       options: options.map((option) => ({ ...option, blocked: blockFor(option) })),
       fallback,
+      listMissing: registryLoaded && executor !== "openrouter" && options.length === 0,
       note,
       spendNote,
       credential,

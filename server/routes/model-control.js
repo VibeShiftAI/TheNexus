@@ -1,8 +1,5 @@
 const express = require('express');
-const { spawn } = require('child_process');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+const modelRegistry = require('../services/model-registry');
 const {
     resolveModelAssignment,
     mergePolicies,
@@ -73,111 +70,19 @@ async function getCliDefaultModel(db, key) {
 }
 
 /**
- * The model list the antigravity selector offers — ground truth is the local
- * `agy models` output (node-api runs on the same machine as the CLI). Cached
- * 10 minutes; falls back to the last-known list when the CLI is unavailable.
+ * The Codex and Antigravity pickers read the model registry Praxis builds from
+ * each CLI's own model list (server/services/model-registry.js). Until
+ * 2026-10-30 this file read ~/.codex/models_cache.json and shelled `agy models`
+ * itself, with hand-kept fallback lists that had gone stale (Gemini 3.1 Pro,
+ * GPT-5.5). Antigravity values are display names ("Gemini 4 Argon (High)"),
+ * the form The Nexus stores and agy pins.
  */
-const AGY_MODELS_FALLBACK = [
-    'Gemini 3.5 Flash (Medium)',
-    'Gemini 3.5 Flash (High)',
-    'Gemini 3.5 Flash (Low)',
-    'Gemini 3.1 Pro (Low)',
-    'Gemini 3.1 Pro (High)',
-    'Claude Sonnet 4.6 (Thinking)',
-    'Claude Opus 4.6 (Thinking)',
-    'GPT-OSS 120B (Medium)'
-];
-let agyModelsCache = null; // { models, expiresAt }
-// ─── Codex model roster ───────────────────────────────────────────────
-// The model registry is FAMILY-level (one "GPT" row whose api_model_id is
-// whatever discovery saw last — 2026-08-21 it was gpt-5.6-luna), so a Codex
-// dropdown built from it offered a single "GPT-5.6" that silently meant Luna.
-// The codex CLI caches the real roster it was issued (slugs, display names,
-// reasoning efforts, deprecation upgrades) in ~/.codex/models_cache.json; that
-// file is the source of truth here. Hidden entries (gpt-reserve,
-// codex-auto-review) are not offered. Static fallback mirrors the 2026-09-06
-// roster (codex 0.153.4, cache fetched 2026-09-06T23:19:19Z) so the dropdown
-// never goes empty: gpt-6-astra now leads at priority 1 with the six efforts
-// it reports (default medium), gpt-5.4 has left the roster, and every label
-// below is exactly what readCodexModelsCacheFile() renders from the cache's
-// display name ("GPT-6-Astra" → "GPT-6 Astra"). gpt-5.3-codex-spark is listed
-// but carries supported_in_api=false. Keep this in the roster's priority order.
-const CODEX_MODELS_FALLBACK = [
-    { id: 'gpt-6-astra',         label: 'GPT-6 Astra',         defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
-    { id: 'gpt-5.6-sol',         label: 'GPT-5.6 Sol',         defaultEffort: 'low',    efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
-    { id: 'gpt-5.6-terra',       label: 'GPT-5.6 Terra',       defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
-    { id: 'gpt-5.6-luna',        label: 'GPT-5.6 Luna',        defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh', 'max'] },
-    { id: 'gpt-5.5',             label: 'GPT-5.5',             defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh'] },
-    { id: 'gpt-5.4-mini',        label: 'GPT-5.4 Mini',        defaultEffort: 'medium', efforts: ['low', 'medium', 'high', 'xhigh'] },
-    { id: 'gpt-5.3-codex-spark', label: 'GPT-5.3 Codex-Spark', defaultEffort: 'high',   efforts: ['low', 'medium', 'high', 'xhigh'] },
-];
-const CODEX_MODELS_CACHE_FILE = process.env.CODEX_MODELS_CACHE_FILE
-    || path.join(os.homedir(), '.codex', 'models_cache.json');
-let codexModelsCache = null;
-
-function readCodexModelsCacheFile(file = CODEX_MODELS_CACHE_FILE) {
-    const raw = JSON.parse(fs.readFileSync(file, 'utf-8'));
-    const entries = Array.isArray(raw?.models) ? raw.models : [];
-    const models = entries
-        .filter((m) => m && typeof m.slug === 'string' && m.slug && (m.visibility ?? 'list') === 'list')
-        .sort((a, b) => (Number(a.priority) || 999) - (Number(b.priority) || 999))
-        .map((m) => ({
-            id: m.slug,
-            label: typeof m.display_name === 'string' && m.display_name
-                ? m.display_name.replace(/^GPT-(\d+(?:\.\d+)?)-/, 'GPT-$1 ')
-                : m.slug,
-            defaultEffort: typeof m.default_reasoning_level === 'string' ? m.default_reasoning_level : null,
-            efforts: Array.isArray(m.supported_reasoning_levels)
-                ? m.supported_reasoning_levels.map((e) => (typeof e === 'string' ? e : e?.effort)).filter(Boolean)
-                : [],
-            ...(m.upgrade && typeof m.upgrade === 'object' && m.upgrade.model
-                ? { deprecated: true, upgradeTo: m.upgrade.model }
-                : {}),
-        }));
-    return { models, fetchedAt: typeof raw?.fetched_at === 'string' ? raw.fetched_at : null };
-}
-
 function listCodexModels() {
-    if (codexModelsCache && codexModelsCache.expiresAt > Date.now()) return codexModelsCache.models;
-    let models = CODEX_MODELS_FALLBACK;
-    let source = 'fallback';
-    try {
-        const read = readCodexModelsCacheFile();
-        if (read.models.length) { models = read.models; source = `models_cache.json (${read.fetchedAt || 'undated'})`; }
-    } catch (error) {
-        console.warn('[Model Control] codex models_cache.json unavailable, using fallback list:', error.message);
-    }
-    codexModelsCache = { models, source, expiresAt: Date.now() + 10 * 60 * 1000 };
-    return models;
+    return modelRegistry.codexPickerModels();
 }
 
 function listAntigravityModels() {
-    if (agyModelsCache && agyModelsCache.expiresAt > Date.now()) {
-        return Promise.resolve(agyModelsCache.models);
-    }
-    return new Promise((resolve) => {
-        const agyBin = process.env.AGY_BIN || '/opt/homebrew/bin/agy';
-        const finish = (stdout, failure) => {
-            const parsed = !failure && stdout
-                ? stdout.split('\n').map(line => line.trim()).filter(Boolean)
-                : [];
-            const models = parsed.length ? parsed : AGY_MODELS_FALLBACK;
-            agyModelsCache = { models, expiresAt: Date.now() + 10 * 60 * 1000 };
-            if (failure) console.warn('[Model Control] agy models unavailable, using fallback list:', failure);
-            resolve(models);
-        };
-        let child;
-        try {
-            // stdin must be 'ignore' — agy errors out on a pipe stdin.
-            child = spawn(agyBin, ['models'], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 10000 });
-        } catch (error) {
-            return finish('', error.message);
-        }
-        let stdout = '';
-        child.stdout.on('data', (chunk) => { stdout += chunk; });
-        child.on('error', (error) => finish('', error.message));
-        child.on('close', (code) => finish(stdout, code === 0 ? null : `agy models exited with code ${code}`));
-    });
+    return Promise.resolve(modelRegistry.antigravityDisplayNames());
 }
 
 /**
@@ -266,9 +171,8 @@ async function getChatConfig(db) {
  * Who accepts what:
  *   - claude-code CLI `--effort`      → low | medium | high | xhigh | max
  *   - codex `model_reasoning_effort`  → minimal | low | medium | high | xhigh | max
- *     (per-slug; see OPENAI_MODEL_EFFORT_TIERS in model-discovery.js —
- *     gpt-5.5/5.4-mini stop at xhigh, 5.6-luna adds max, and gpt-6-astra,
- *     5.6-sol and 5.6-terra add ultra, which Praxis forwards in chat but
+ *     (per model, from the model registry: each codex model lists its own
+ *     efforts, and some add ultra, which Praxis forwards in chat but
  *     deliberately does not forward for autonomous dispatch)
  *   - antigravity (agy) has NO reasoning-effort knob: its thinking level is
  *     baked into the model DISPLAY name ("Gemini 3.1 Pro (High)"), so no entry
@@ -550,20 +454,27 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
         }
     });
 
-    // The model names the antigravity selector can offer (`agy models` output;
-    // display names are the only values the agy CLI actually pins on).
+    // Codex and Antigravity picker entries, from the model registry.
     router.get('/codex-models', (_req, res) => {
         try {
-            res.json({ models: listCodexModels(), source: codexModelsCache?.source || 'fallback' });
+            res.json({ models: listCodexModels(), source: modelRegistry.registrySource('codex') });
         } catch (error) {
             console.error('[Model Control] Failed to list codex models:', error);
             res.status(500).json({ error: 'Failed to list codex models: ' + error.message });
         }
     });
 
+    // The whole registry: every model each executor CLI offers (Praxis
+    // src/models/registry.ts). The dashboard's model pickers read this.
+    router.get('/available-models', (_req, res) => {
+        const registry = modelRegistry.readModelRegistry();
+        if (!registry) return res.status(404).json({ error: modelRegistry.registrySource('codex') });
+        res.json(registry);
+    });
+
     router.get('/antigravity-models', async (_req, res) => {
         try {
-            res.json({ models: await listAntigravityModels() });
+            res.json({ models: await listAntigravityModels(), source: modelRegistry.registrySource('antigravity') });
         } catch (error) {
             console.error('[Model Control] Failed to list antigravity models:', error);
             res.status(500).json({ error: 'Failed to list antigravity models: ' + error.message });
@@ -958,7 +869,5 @@ function createModelControlRouter({ db, discoverModelRegistry, callAI, io }) {
 }
 
 module.exports = createModelControlRouter;
-// Test/operator seams for the Codex roster (pure file readers, no router needed).
+// Test/operator seam for the Codex roster (reads the model registry, no router needed).
 module.exports.listCodexModels = listCodexModels;
-module.exports.readCodexModelsCacheFile = readCodexModelsCacheFile;
-module.exports.CODEX_MODELS_FALLBACK = CODEX_MODELS_FALLBACK;

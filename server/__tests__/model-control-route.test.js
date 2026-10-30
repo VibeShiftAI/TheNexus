@@ -30,6 +30,10 @@ async function requestJson(url, options = {}) {
 }
 
 describe('model control route', () => {
+    // Tests that need the CLIs' model lists install a registry fixture here.
+    let registryCleanup = null;
+    const useRegistry = () => { registryCleanup = require('./fixtures/model-registry').useModelRegistryFixture(); };
+    afterEach(() => { if (registryCleanup) registryCleanup(); registryCleanup = null; });
     let handle;
 
     afterEach(async () => {
@@ -317,6 +321,7 @@ describe('model control route', () => {
     });
 
     test('reads and updates the chat config (backend + models + thinking level)', async () => {
+        useRegistry();
         const settings = {};
         const db = {
             getModelControlSetting: jest.fn(async (key) => settings[key] ?? null),
@@ -409,6 +414,7 @@ describe('model control route', () => {
     });
 
     test('an unnameable codex model falls back to the conservative tier floor', async () => {
+        useRegistry();
         const settings = {};
         const db = {
             getModelControlSetting: jest.fn(async (key) => settings[key] ?? null),
@@ -457,62 +463,26 @@ describe('model control route', () => {
         });
     });
 
-    test('codex roster: the fallback leads with gpt-6-astra and the live cache renders its label', () => {
-        const os = require('os');
-        const fs = require('fs');
-        const path = require('path');
-        const originalCacheFile = process.env.CODEX_MODELS_CACHE_FILE;
-        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-models-cache-'));
-        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    test('codex roster comes from the model registry, in the CLI order, without hidden models', () => {
+        const { useModelRegistryFixture } = require('./fixtures/model-registry');
+        const { listCodexModels } = require('../routes/model-control');
+        // No registry yet: nothing to offer rather than a stale hand-kept list.
+        expect(listCodexModels()).toEqual([]);
+        const cleanup = useModelRegistryFixture();
         try {
-            // No readable cache → the static fallback, which mirrors the
-            // 2026-09-06 roster: astra first, with the six efforts the model
-            // itself reports and its own default of medium; gpt-5.4 is gone.
-            process.env.CODEX_MODELS_CACHE_FILE = path.join(dir, 'missing.json');
-            jest.resetModules();
-            const fallbackOnly = require('../routes/model-control');
-            const fallback = fallbackOnly.listCodexModels();
-            expect(fallback).toBe(fallbackOnly.CODEX_MODELS_FALLBACK);
-            expect(fallback[0]).toEqual({
-                id: 'gpt-6-astra', label: 'GPT-6 Astra', defaultEffort: 'medium',
-                efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
-            });
-            expect(fallback.map((m) => m.id)).toEqual([
+            const live = listCodexModels();
+            expect(live.map((m) => m.id)).toEqual([
                 'gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna',
-                'gpt-5.5', 'gpt-5.4-mini', 'gpt-5.3-codex-spark',
+                'gpt-5.4-mini', 'gpt-5.3-codex-spark', 'gpt-5.5',
             ]);
-
-            // The live path: a cache shaped like ~/.codex/models_cache.json as
-            // read on 2026-09-06 sorts astra to the top by priority, drops the
-            // hidden gpt-reserve, and turns the display name "GPT-6-Astra"
-            // into exactly "GPT-6 Astra".
-            const cacheFile = path.join(dir, 'models_cache.json');
-            const levels = (efforts) => efforts.map((effort) => ({ effort }));
-            fs.writeFileSync(cacheFile, JSON.stringify({
-                fetched_at: '2026-09-06T23:19:19.137093Z',
-                models: [
-                    { slug: 'gpt-5.6-sol', display_name: 'GPT-5.6-Sol', priority: 6, visibility: 'list',
-                      default_reasoning_level: 'low', supported_reasoning_levels: levels(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) },
-                    { slug: 'gpt-reserve', display_name: 'GPT-Reserve', priority: 3, visibility: 'hide',
-                      default_reasoning_level: 'medium', supported_reasoning_levels: levels(['low', 'medium', 'high', 'xhigh', 'max']) },
-                    { slug: 'gpt-6-astra', display_name: 'GPT-6-Astra', priority: 1, visibility: 'list', upgrade: null,
-                      default_reasoning_level: 'medium', supported_reasoning_levels: levels(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']) },
-                ],
-            }));
-            process.env.CODEX_MODELS_CACHE_FILE = cacheFile;
-            jest.resetModules();
-            const live = require('../routes/model-control').listCodexModels();
-            expect(live.map((m) => m.id)).toEqual(['gpt-6-astra', 'gpt-5.6-sol']);
             expect(live[0]).toEqual({
                 id: 'gpt-6-astra', label: 'GPT-6 Astra', defaultEffort: 'medium',
-                efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+                efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'], current: true,
             });
+            // A model the CLI marks for upgrade is listed last and says where to go.
+            expect(live.at(-1)).toEqual(expect.objectContaining({ id: 'gpt-5.5', current: false, deprecated: true, upgradeTo: 'gpt-5.6-sol' }));
         } finally {
-            warn.mockRestore();
-            if (originalCacheFile === undefined) delete process.env.CODEX_MODELS_CACHE_FILE;
-            else process.env.CODEX_MODELS_CACHE_FILE = originalCacheFile;
-            fs.rmSync(dir, { recursive: true, force: true });
-            jest.resetModules();
+            cleanup();
         }
     });
 
@@ -523,20 +493,26 @@ describe('model control route', () => {
         app.use('/api/model-control', createModelControlRouter({ db: {} }));
         handle = await listen(app);
 
-        // Point at a nonexistent binary so the fallback list is exercised
-        // deterministically (no dependency on the local agy install in tests).
-        const previousAgyBin = process.env.AGY_BIN;
-        process.env.AGY_BIN = '/nonexistent/agy-for-tests';
+        const { useModelRegistryFixture } = require('./fixtures/model-registry');
+        const cleanup = useModelRegistryFixture();
         try {
             const res = await requestJson(`${handle.baseUrl}/api/model-control/antigravity-models`);
             expect(res.status).toBe(200);
-            expect(Array.isArray(res.body.models)).toBe(true);
-            expect(res.body.models.length).toBeGreaterThan(0);
-            expect(res.body.models.every((m) => typeof m === 'string')).toBe(true);
+            // Display names, the form The Nexus stores and agy pins, in the CLI's order.
+            expect(res.body.models).toEqual([
+                'Gemini 4 Argon (Medium)', 'Gemini 4 Argon (High)', 'Gemini 4 Argon (Low)', 'GPT-OSS 120B (Medium)',
+            ]);
+            expect(res.body.source).toMatch(/^model registry /);
+
+            const all = await requestJson(`${handle.baseUrl}/api/model-control/available-models`);
+            expect(all.status).toBe(200);
+            expect(Object.keys(all.body.executors)).toEqual(['claude-code', 'codex', 'antigravity']);
         } finally {
-            if (previousAgyBin === undefined) delete process.env.AGY_BIN;
-            else process.env.AGY_BIN = previousAgyBin;
+            cleanup();
         }
+        // Without a registry the route says so instead of serving a stale list.
+        const missing = await requestJson(`${handle.baseUrl}/api/model-control/available-models`);
+        expect(missing.status).toBe(404);
     });
 
     test('updates global and project role aliases', async () => {

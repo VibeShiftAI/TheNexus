@@ -16,6 +16,12 @@ cockpit surface.
   `server/routes/dispatches.js` — task-board, project, and dispatch APIs.
   `server/routes/praxis-stream.js` and the small proxy routes are the cockpit's
   seams to Praxis.
+- `server/services/model-registry.js` — reads the model registry Praxis writes
+  (`Praxis/data/model-registry.json`): the one list of models the Claude Code,
+  Codex and Antigravity CLIs offer. Model pickers, effort tiers and the
+  `/codex-models`, `/antigravity-models` and `/available-models` routes use it;
+  do not add hand-kept model lists. Tests point `PRAXIS_MODEL_REGISTRY_PATH` at
+  a fixture (`server/__tests__/fixtures/model-registry.js`).
 - `db/index.js` — SQLite facade (not a raw `better-sqlite3` connection), using
   `NEXUS_DB_PATH` or `nexus.db` and WAL mode. Route code needing raw SQL should
   follow `server/routes/fleet.js` and open its own connection.

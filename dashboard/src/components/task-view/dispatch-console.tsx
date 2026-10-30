@@ -501,7 +501,8 @@ function DispatchBar({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ tone: "ok" | "refused" | "error"; text: string } | null>(null);
 
-  const { options, fallback, spendNote, credential, fallbackBlocked, keyLane } = optionsFor(executor);
+  const { options, fallback, spendNote, credential, fallbackBlocked, keyLane, listMissing } = optionsFor(executor);
+  const olderOptions = options.filter((o) => o.older);
   // Human-readable model for the collapsed summary — the pinned model's label,
   // or the executor default when nothing is pinned.
   const selectedOption = model ? options.find((o) => o.id === model) : undefined;
@@ -680,11 +681,27 @@ function DispatchBar({
                 <option value="" title={fallbackBlocked?.reason || undefined}>
                   default ({fallback || "CLI default"}){blockSuffix(fallbackBlocked)}
                 </option>
-                {options.map((m) => (
+                {options.filter((m) => !m.older).map((m) => (
                   <option key={m.id} value={m.id} title={m.blocked?.reason || undefined}>
                     {m.label}{blockSuffix(m.blocked ?? null)}
                   </option>
                 ))}
+                {olderOptions.length > 0 && (
+                  <optgroup label="Older models">
+                    {olderOptions.map((m) => (
+                      <option key={m.id} value={m.id} title={m.blocked?.reason || undefined}>
+                        {m.label}{blockSuffix(m.blocked ?? null)}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {/* Keep the task's saved model selectable even if the registry no longer offers it */}
+                {model && !selectedOption && <option value={model}>{model}</option>}
+                {listMissing && (
+                  <option disabled value="__model-list-missing">
+                    Model list not available yet
+                  </option>
+                )}
               </select>
             </label>
 

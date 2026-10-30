@@ -4,13 +4,15 @@ import { useState, useEffect } from "react";
 import { Loader2, MessageSquare, CheckCircle2, AlertTriangle } from "lucide-react";
 import { ChatBackend, CHAT_BACKENDS, CHAT_THINKING_LABELS } from "@/lib/model-control";
 import { useChatConfig } from "@/hooks/use-chat-config";
+import { useAvailableModels } from "@/hooks/use-available-models";
 import {
     CHAT_BACKEND_SWITCH_WARNING,
     CHAT_CONFIG_APPLY_NOTICE,
     CHAT_MODEL_PLACEHOLDER,
-    CHAT_MODEL_SUGGESTIONS,
     chatBackendOptionLabel,
+    chatModelChoices,
     chatModelField,
+    chatModelSuggestions,
     chatThinkingTiers,
 } from "@/lib/chat-config-store";
 
@@ -27,6 +29,7 @@ import {
  */
 export function ChatSettingsSection({ reloadKey }: { reloadKey: boolean }) {
     const { config, saving, error, savedAt, apply } = useChatConfig(reloadKey);
+    const { registry, loaded: registryLoaded } = useAvailableModels();
     const [modelDraft, setModelDraft] = useState("");
     const [pendingBackend, setPendingBackend] = useState<ChatBackend | null>(null);
 
@@ -159,11 +162,12 @@ export function ChatSettingsSection({ reloadKey }: { reloadKey: boolean }) {
                             className="w-full px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-all font-mono disabled:opacity-60"
                         />
                         <datalist id="chat-model-suggestions">
-                            {CHAT_MODEL_SUGGESTIONS[activeBackend].map(m => <option key={m} value={m} />)}
+                            {chatModelChoices(registry, config).map(m => <option key={m} value={m} />)}
                         </datalist>
                         <p className="mt-1 text-xs text-slate-500">
                             Chat-only override — leave empty to follow the dispatch default model. Any slug is
                             accepted here; the viewer header offers the common ones.
+                            {registryLoaded && !chatModelSuggestions(registry, activeBackend).length && " Model list not available yet."}
                         </p>
                     </div>
 

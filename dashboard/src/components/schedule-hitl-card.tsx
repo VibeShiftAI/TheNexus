@@ -509,7 +509,8 @@ export function ScheduleHitlCard({
                           ))}
                         </select>
                         {(() => {
-                          const { options, fallback, spendNote } = modelOptionsFor(currentExec);
+                          const { options, fallback, spendNote, listMissing } = modelOptionsFor(currentExec);
+                          const olderOptions = options.filter((m) => m.older);
                           const chosen = models[slot.nexusTaskId] ?? "";
                           // The morning router's pick — pre-selected via
                           // slot.modelOverride, and labelled here so it stays
@@ -543,11 +544,25 @@ export function ScheduleHitlCard({
                                   ? "Router decides at dispatch"
                                   : `CLI default${fallback ? ` (${fallback})` : ""}`}
                               </option>
-                              {options.map((m) => (
+                              {options.filter((m) => !m.older).map((m) => (
                                 <option key={m.id} value={m.id}>
                                   {recommendedLabel(m.id, m.label)}
                                 </option>
                               ))}
+                              {olderOptions.length > 0 && (
+                                <optgroup label="Older models">
+                                  {olderOptions.map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                      {recommendedLabel(m.id, m.label)}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              {listMissing && (
+                                <option disabled value="__model-list-missing">
+                                  Model list not available yet
+                                </option>
+                              )}
                               {/* Keep a Praxis-proposed / router-recommended
                                   value selectable even if it isn't in this
                                   executor's option list */}

@@ -11,14 +11,17 @@
  *
  * Transport stays in `@/lib/model-control` (`getChatConfig`/`saveChatConfig`
  * → /api/model-control/chat-config); this module owns the cached snapshot,
- * the option lists, and the label formatting.
+ * the option lists, and the label formatting. The model suggestions come from
+ * the model registry (`useAvailableModels`), the same list every picker reads.
  */
 import {
     getChatConfig,
     saveChatConfig,
     formatClaudeModelName,
+    registryModels,
     LEGACY_CHAT_THINKING_LEVELS,
     CHAT_BACKEND_LABELS,
+    type AvailableModels,
     type ChatConfig,
     type ChatBackend,
     type ChatThinkingLevel,
@@ -28,28 +31,28 @@ import {
 export type ChatCliBackend = Exclude<ChatBackend, "off">;
 
 /**
- * Suggested slugs per backend — the ONLY list; both surfaces render from it.
- * Free text stays possible in the settings modal, so an unlisted slug is never
+ * Suggested slugs for a backend: the current models its CLI offers, from the
+ * model registry; [] without a registry. Both surfaces render from this. Free
+ * text stays possible in the settings modal, so an unlisted slug is never
  * unreachable.
- *
- * `claude-fable-5-1` is the dash form the Claude CLI accepts; the dotted
- * `claude-fable-5.1` is OpenRouter-only and the CLI rejects it. `claude-fable-5`
- * is kept because it has not been shown to be dead.
  */
-export const CHAT_MODEL_SUGGESTIONS: Record<ChatCliBackend, string[]> = {
-    "claude-code": [
-        "claude-fable-5-1",
-        "claude-fable-5",
-        "claude-opus-5-5",
-        "claude-opus-5",
-        "claude-opus-4-8",
-        "claude-sonnet-5",
-        "claude-haiku-4-5-20251001",
-    ],
-    // Roster order as of 2026-09-06 (~/.codex/models_cache.json): gpt-6-astra
-    // leads at priority 1; gpt-5.4 has left the roster.
-    codex: ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"],
-};
+export function chatModelSuggestions(
+    registry: AvailableModels | null | undefined,
+    backend: ChatCliBackend,
+): string[] {
+    return registryModels(registry, backend, { currentOnly: true }).map((model) => model.id);
+}
+
+/** Suggestions for the config's backend with the configured slug always present (first when unlisted). */
+export function chatModelChoices(
+    registry: AvailableModels | null | undefined,
+    config: ChatConfig,
+): string[] {
+    if (config.backend === "off") return [];
+    const suggestions = chatModelSuggestions(registry, config.backend);
+    const current = activeChatModel(config);
+    return current && !suggestions.includes(current) ? [current, ...suggestions] : suggestions;
+}
 
 export const CHAT_MODEL_PLACEHOLDER: Record<ChatCliBackend, string> = {
     "claude-code": "Default (follows dispatch claude-default)",

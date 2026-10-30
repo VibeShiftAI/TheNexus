@@ -5,6 +5,7 @@
  * Normalizes results into a unified schema and filters to only the latest model per family.
  */
 
+const modelRegistry = require('./model-registry');
 const MODEL_FAMILIES = {
     google: [
         { family: 'Gemini Pro', pattern: /^models\/gemini-(\d+(?:\.\d+)?)-pro/, display: (v) => `Gemini ${v} Pro` },
@@ -54,40 +55,13 @@ const EXTENDED_EFFORT_TIERS = ['low', 'medium', 'high', 'xhigh', 'max'];
 const BASIC_EFFORT_TIERS = ['low', 'medium', 'high'];
 
 /**
- * EXACT per-slug OpenAI capability rules. Sourced from the codex CLI's own
- * model metadata (`~/.codex/models_cache.json` → supported_reasoning_levels),
- * which is what the backend actually validates against.
- *
- * Version-range guessing was wrong here in both directions and is deliberately
- * not used: gpt-5.5/5.4-mini stop at xhigh (offering them "max" gets the turn
- * rejected), 5.6-sol/terra and 6-astra go one PAST max to "ultra", and
- * "minimal"/"none" — though valid in the API's global enum — are offered by no
- * current model.
- *
- * To refresh: read supported_reasoning_levels out of models_cache.json.
- * Last refreshed 2026-09-06 (codex 0.153.4, cache fetched
- * 2026-09-06T23:19:19Z): gpt-6-astra arrived at priority 1 with the full six
- * tiers, and gpt-5.4 left the roster entirely — its row is gone, so a stale
- * "gpt-5.4" pin now gets the conservative set rather than a tier set nobody
- * can vouch for any more. Hidden entries (visibility=hide: gpt-reserve,
- * codex-auto-review) are never offered in the roster dropdown but keep exact
- * rows here so a slug typed by hand still gets the tiers its backend really
- * validates against.
+ * Exact efforts for any model an executor CLI offers come from the model
+ * registry (./model-registry.js), which Praxis builds from the CLIs' own
+ * model lists, e.g. Codex's supported_reasoning_levels. This replaced a
+ * hand-refreshed per-slug table (last refreshed 2026-09-06) that never learned
+ * of gpt-6.1-sol or Sonnet 5.5. Codex hard-rejects an unsupported effort, so an
+ * unknown gpt-* slug still gets only the conservative set.
  */
-const OPENAI_MODEL_EFFORT_TIERS = {
-    'gpt-6-astra': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
-    'gpt-reserve': ['low', 'medium', 'high', 'xhigh', 'max'],
-    'gpt-5.6-sol': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
-    'gpt-5.6-terra': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
-    'gpt-5.6-luna': ['low', 'medium', 'high', 'xhigh', 'max'],
-    'gpt-5.5': ['low', 'medium', 'high', 'xhigh'],
-    'gpt-5.4-mini': ['low', 'medium', 'high', 'xhigh'],
-    // supported_in_api=false in the cache: the ChatGPT-account codex lists it,
-    // but an API-keyed run cannot reach it. The tiers are still its own.
-    'gpt-5.3-codex-spark': ['low', 'medium', 'high', 'xhigh'],
-    'codex-auto-review': ['low', 'medium', 'high', 'xhigh', 'max'],
-};
-
 /**
  * Claude tiers still gate on family + version: the claude CLI takes the same
  * five levels for every model it accepts, so the only question is which
@@ -109,7 +83,7 @@ const THINKING_TIER_RULES = [
  * reasoning model on both backends accepts.
  */
 function thinkingTiersFor(family, version, slug) {
-    const exact = OPENAI_MODEL_EFFORT_TIERS[String(slug || '').trim()];
+    const exact = slug ? modelRegistry.registryEfforts(String(slug).trim(), ['codex', 'claude-code']) : null;
     if (exact) return ['default', ...exact];
     const numericVersion = typeof version === 'number' ? version : parseVersion(String(version || ''));
     const rule = THINKING_TIER_RULES.find(r => r.family === family && numericVersion >= r.minVersion);
@@ -126,9 +100,10 @@ function thinkingTiersFor(family, version, slug) {
 function thinkingTiersForModelId(modelId) {
     const slug = String(modelId || '').trim();
     if (!slug) return null;
-    // Exact OpenAI capability rules first — the roster's GPT pattern skips
-    // codex/mini variants, but those are exactly what the codex backend runs.
-    if (OPENAI_MODEL_EFFORT_TIERS[slug]) return ['default', ...OPENAI_MODEL_EFFORT_TIERS[slug]];
+    // The CLI's own efforts first: the registry covers every model the codex and
+    // claude CLIs offer, including the codex/mini variants the GPT pattern skips.
+    const exact = modelRegistry.registryEfforts(slug, ['codex', 'claude-code']);
+    if (exact) return ['default', ...exact];
     // An unrecognised gpt-* slug must NOT inherit a sibling's tiers — OpenAI
     // 400s an unsupported effort, so stay conservative rather than guess.
     if (/^gpt-/.test(slug)) return ['default', ...BASIC_EFFORT_TIERS];
@@ -142,26 +117,19 @@ function thinkingTiersForModelId(modelId) {
 }
 
 /**
- * The floor every reasoning model on both backends accepts — every entry in
- * OPENAI_MODEL_EFFORT_TIERS includes low/medium/high, and so does claude
- * --effort. Use this whenever the effective model can't be NAMED (e.g. codex
+ * The floor every reasoning model on both backends accepts: every codex model
+ * in the registry lists low/medium/high, and so does claude --effort. Use this whenever the effective model can't be NAMED (e.g. codex
  * with no --model flag, where the CLI picks its own default): offering the
  * full union there would hand Praxis a tier the API may 400 on.
  */
 const CONSERVATIVE_THINKING_TIERS = ['default', ...BASIC_EFFORT_TIERS];
 
 /**
- * Every tier any model could report — the validation whitelist. Derived from
- * the maps above so a capability edit can't leave validation behind.
+ * Every tier name the CLIs use: the validation whitelist for stored levels.
+ * It is the effort vocabulary, not a model list; "ultra" is codex's tier above
+ * max (gpt-6-astra, gpt-6.1-sol). Per-model narrowing comes from the registry.
  */
-const ALL_THINKING_TIERS = [
-    'default',
-    ...new Set([
-        ...EXTENDED_EFFORT_TIERS,
-        ...BASIC_EFFORT_TIERS,
-        ...Object.values(OPENAI_MODEL_EFFORT_TIERS).flat(),
-    ]),
-];
+const ALL_THINKING_TIERS = ['default', ...new Set([...EXTENDED_EFFORT_TIERS, ...BASIC_EFFORT_TIERS, 'ultra'])];
 
 // Provider display names
 const PROVIDER_DISPLAY = {

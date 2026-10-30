@@ -39,11 +39,8 @@ import {
     setCodexDefaultModel,
     setAntigravityDefaultModel,
     setThinkingLevel,
-    filterClaudeModels,
-    filterCodexModels,
     thinkingLevelOptions,
-    getAntigravityModels,
-    apiModelIdOf,
+    registryPickerOptions,
     setAgentBackend,
     setChatBackend,
     AGENT_BACKENDS,
@@ -61,8 +58,10 @@ import {
     type ModelControlModel,
     type ModelControlOptionsResponse,
     type ModelExecutionSnapshot,
+    type RegistryPickerOption,
     type ResolvedModelControl,
 } from "@/lib/model-control";
+import { useAvailableModels } from "@/hooks/use-available-models";
 import { getProjects, type Project } from "@/lib/nexus";
 
 const ROLE_ALIASES = ["local_default", "coder", "planner", "researcher", "reviewer", "summarizer"];
@@ -136,6 +135,39 @@ function StatCard({ icon, label, value }: { icon: ReactNode; label: string; valu
     );
 }
 
+/**
+ * A default-model select's entries from the model registry: current models,
+ * older ones the CLI still accepts, then the saved value if the registry no
+ * longer offers it.
+ */
+function RegistryModelOptions({ options, saved }: { options: RegistryPickerOption[]; saved?: string }) {
+    const current = options.filter(option => !option.older);
+    const older = options.filter(option => option.older);
+    return (
+        <>
+            {current.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+            {older.length > 0 && (
+                <optgroup label="Older models">
+                    {older.map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                </optgroup>
+            )}
+            {saved && !options.some(option => option.value === saved) && (
+                <option value={saved}>{options.length ? `${saved} (no longer offered)` : saved}</option>
+            )}
+        </>
+    );
+}
+
+/** Shown beside a model picker when the registry has nothing to offer. */
+function ModelListMissing({ show }: { show: boolean }) {
+    if (!show) return null;
+    return <span className="text-xs text-slate-500">Model list not available yet</span>;
+}
+
 function ExecutionRow({ snapshot }: { snapshot: ModelExecutionSnapshot }) {
     return (
         <div className="grid gap-3 border-b border-slate-900 px-4 py-3 text-sm last:border-0 lg:grid-cols-[150px_minmax(0,1.3fr)_minmax(0,1fr)_120px_110px]">
@@ -184,7 +216,6 @@ export default function ModelControlPage() {
     const [savingClaudeDefault, setSavingClaudeDefault] = useState(false);
     const [savingCodexDefault, setSavingCodexDefault] = useState(false);
     const [savingAntigravityDefault, setSavingAntigravityDefault] = useState(false);
-    const [antigravityModels, setAntigravityModels] = useState<string[]>([]);
     const [savingAgentBackend, setSavingAgentBackend] = useState(false);
     const [savingChatBackend, setSavingChatBackend] = useState(false);
     const [discovering, setDiscovering] = useState(false);
@@ -233,11 +264,23 @@ export default function ModelControlPage() {
         load();
     }, [load]);
 
-    // The agy CLI's model roster (display names) — loaded once; independent of
-    // the project filter.
-    useEffect(() => {
-        getAntigravityModels().then(setAntigravityModels).catch(() => setAntigravityModels([]));
-    }, []);
+    // Every CLI picker on this page reads the model registry; it does not
+    // depend on the project filter.
+    const { registry, loaded: registryLoaded } = useAvailableModels();
+    const claudeOptions = useMemo(() => registryPickerOptions(registry, "claude-code"), [registry]);
+    const codexOptions = useMemo(() => registryPickerOptions(registry, "codex"), [registry]);
+    const antigravityOptions = useMemo(() => registryPickerOptions(registry, "antigravity"), [registry]);
+    // Thinking rows: the current Claude and Codex models, plus any model that
+    // already has a stored level, so a saved value can always be changed.
+    const thinkingRows = useMemo(() => {
+        const known = [...claudeOptions, ...codexOptions];
+        const rows = known.filter(option => !option.older).map(option => ({ id: option.value, label: option.label }));
+        for (const id of Object.keys(state.thinkingLevels || {})) {
+            if (rows.some(row => row.id === id)) continue;
+            rows.push({ id, label: known.find(option => option.value === id)?.label || id });
+        }
+        return rows;
+    }, [claudeOptions, codexOptions, state.thinkingLevels]);
 
     const stats = useMemo(() => {
         const models = state.models || [];
@@ -716,22 +759,14 @@ export default function ModelControlPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <ModelListMissing show={registryLoaded && !claudeOptions.length} />
                             <select
-                                value={state.claudeDefault || "claude-opus-5-5"}
+                                value={state.claudeDefault || ""}
                                 onChange={(event) => void updateClaudeDefault(event.target.value)}
                                 disabled={savingClaudeDefault || loading}
                                 className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-purple-500 disabled:opacity-50"
                             >
-                                {filterClaudeModels(state.models).map(model => (
-                                    <option key={model.id} value={apiModelIdOf(model)}>
-                                        {model.display_name || model.name || model.id}
-                                    </option>
-                                ))}
-                                {/* Keep the current value selectable even if discovery hasn't listed it */}
-                                {state.claudeDefault &&
-                                    !filterClaudeModels(state.models).some(m => apiModelIdOf(m) === state.claudeDefault) && (
-                                        <option value={state.claudeDefault}>{state.claudeDefault}</option>
-                                    )}
+                                <RegistryModelOptions options={claudeOptions} saved={state.claudeDefault} />
                             </select>
                             {savingClaudeDefault && <Loader2 size={15} className="animate-spin text-slate-400" />}
                         </div>
@@ -753,6 +788,7 @@ export default function ModelControlPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <ModelListMissing show={registryLoaded && !codexOptions.length} />
                             <select
                                 value={state.codexDefault || ""}
                                 onChange={(event) => void updateCodexDefault(event.target.value)}
@@ -760,16 +796,7 @@ export default function ModelControlPage() {
                                 className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-emerald-500 disabled:opacity-50"
                             >
                                 <option value="">CLI default</option>
-                                {filterCodexModels(state.models).map(model => (
-                                    <option key={model.id} value={apiModelIdOf(model)}>
-                                        {model.display_name || model.name || model.id}
-                                    </option>
-                                ))}
-                                {/* Keep the current value selectable even if discovery hasn't listed it */}
-                                {state.codexDefault &&
-                                    !filterCodexModels(state.models).some(m => apiModelIdOf(m) === state.codexDefault) && (
-                                        <option value={state.codexDefault}>{state.codexDefault}</option>
-                                    )}
+                                <RegistryModelOptions options={codexOptions} saved={state.codexDefault} />
                             </select>
                             {savingCodexDefault && <Loader2 size={15} className="animate-spin text-slate-400" />}
                         </div>
@@ -792,6 +819,7 @@ export default function ModelControlPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <ModelListMissing show={registryLoaded && !antigravityOptions.length} />
                             <select
                                 value={state.antigravityDefault || ""}
                                 onChange={(event) => void updateAntigravityDefault(event.target.value)}
@@ -799,14 +827,7 @@ export default function ModelControlPage() {
                                 className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-500 disabled:opacity-50"
                             >
                                 <option value="">CLI default</option>
-                                {antigravityModels.map(model => (
-                                    <option key={model} value={model}>{model}</option>
-                                ))}
-                                {/* Keep the current value selectable even if the agy roster changed */}
-                                {state.antigravityDefault &&
-                                    !antigravityModels.includes(state.antigravityDefault) && (
-                                        <option value={state.antigravityDefault}>{state.antigravityDefault}</option>
-                                    )}
+                                <RegistryModelOptions options={antigravityOptions} saved={state.antigravityDefault} />
                             </select>
                             {savingAntigravityDefault && <Loader2 size={15} className="animate-spin text-slate-400" />}
                         </div>
@@ -829,14 +850,17 @@ export default function ModelControlPage() {
                             </div>
                         </div>
                     </div>
+                    {registryLoaded && !claudeOptions.length && !codexOptions.length && (
+                        <p className="mb-2 text-xs text-slate-500">Model list not available yet; only models with a saved level are shown.</p>
+                    )}
                     <div className="grid gap-2 sm:grid-cols-2">
-                        {[...filterClaudeModels(state.models), ...filterCodexModels(state.models)].map(model => {
-                            const id = apiModelIdOf(model);
+                        {thinkingRows.map(({ id, label }) => {
                             const current = state.thinkingLevels?.[id] || "";
+                            const levels = thinkingLevelOptions(id, registry);
                             return (
-                                <div key={`thinking-${model.id}`} className="flex items-center justify-between gap-2 rounded border border-slate-800 bg-slate-900/40 px-3 py-2">
+                                <div key={`thinking-${id}`} className="flex items-center justify-between gap-2 rounded border border-slate-800 bg-slate-900/40 px-3 py-2">
                                     <span className="truncate text-sm text-slate-300" title={id}>
-                                        {model.display_name || model.name || id}
+                                        {label}
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <select
@@ -846,11 +870,11 @@ export default function ModelControlPage() {
                                             className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200 outline-none focus:border-amber-500 disabled:opacity-50"
                                         >
                                             <option value="">CLI default</option>
-                                            {thinkingLevelOptions(id, state.codexModels).map(level => (
+                                            {levels.map(level => (
                                                 <option key={level} value={level}>{level}</option>
                                             ))}
-                                            {/* Keep a stored value selectable even if the roster shifted */}
-                                            {current && !thinkingLevelOptions(id, state.codexModels).includes(current) && (
+                                            {/* Keep a stored value selectable even if the registry changed */}
+                                            {current && !levels.includes(current) && (
                                                 <option value={current}>{current}</option>
                                             )}
                                         </select>

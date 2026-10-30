@@ -82,10 +82,8 @@ export interface ModelControlOptionsResponse {
     /** Key-aware routing: which dispatch routes have a live credential right now. */
     credentials?: CredentialRoutingState | null;
     /**
-     * Real Codex roster (from the codex CLI's own models_cache.json via the
-     * Nexus API) — slugs + display names + reasoning efforts. The family-level
-     * registry only carries one "GPT" row, which is why Codex dropdowns used to
-     * offer a single entry (2026-08-21).
+     * Codex entries from the model registry (the same list /codex-models
+     * serves). Pickers read the whole registry through getAvailableModels.
      */
     codexModels?: CodexModelOption[];
 }
@@ -288,16 +286,6 @@ export async function getModelControlState(projectId?: string | null): Promise<M
     return response.json();
 }
 
-/** Anthropic entries from the discovered roster, for Claude model dropdowns. */
-export function filterClaudeModels(models: ModelControlModel[] | undefined): ModelControlModel[] {
-    return (models || []).filter(m => (m.provider || "").toLowerCase() === "anthropic");
-}
-
-/** OpenAI entries from the discovered roster, for Codex model dropdowns. */
-export function filterCodexModels(models: ModelControlModel[] | undefined): ModelControlModel[] {
-    return (models || []).filter(m => (m.provider || "").toLowerCase() === "openai");
-}
-
 /**
  * OpenRouter entries from the roster — the FREE lane's models.
  *
@@ -310,30 +298,152 @@ export function filterOpenRouterModels(models: ModelControlModel[] | undefined):
     return (models || []).filter(m => (m.provider || "").toLowerCase() === "openrouter");
 }
 
-/** Codex models the dropdowns can offer — GET /api/model-control/codex-models. */
-export async function getCodexModels(): Promise<CodexModelOption[]> {
-    const response = await fetch(`/api/model-control/codex-models`, {
+// ─── Model registry ───────────────────────────────────────────────────────
+// The one list of models each executor CLI offers. Praxis builds it from each
+// CLI's own model list (data/model-registry.json); the Nexus serves it whole at
+// /api/model-control/available-models. Every Claude Code, Codex and
+// Antigravity picker reads it; none keeps a model list of its own.
+
+export type RegistryExecutor = "claude-code" | "codex" | "antigravity";
+export const REGISTRY_EXECUTORS: RegistryExecutor[] = ["claude-code", "codex", "antigravity"];
+
+/** One model a CLI offers, as the registry records it. */
+export interface RegistryModel {
+    id: string;
+    label: string;
+    efforts: string[];
+    /** false: the CLI hides it, so it is never offered. */
+    listed: boolean;
+    /** false: an older model the CLI still accepts. */
+    current?: boolean;
+    defaultEffort?: string;
+    minCliVersion?: string;
+    upgradeTo?: string;
+    priority?: number;
+    /** Antigravity: effort to the display name agy pins ("Gemini 4 Argon (High)"). */
+    displayByEffort?: Record<string, string>;
+}
+
+export interface RegistryExecutorEntry {
+    executor: RegistryExecutor;
+    cliVersion?: string;
+    source: string;
+    fetchedAt?: string;
+    /** Set when Praxis could not refresh this CLI's list; says why. */
+    stale?: string;
+    models: RegistryModel[];
+}
+
+export interface AvailableModels {
+    schemaVersion: 1;
+    generatedAt: string;
+    executors: Partial<Record<RegistryExecutor, RegistryExecutorEntry>>;
+}
+
+/** The whole registry, or null when Praxis has not written one yet (404). */
+export async function getAvailableModels(): Promise<AvailableModels | null> {
+    const response = await fetch(`/api/model-control/available-models`, {
         credentials: "include",
         headers: { ...getAuthHeader() as any },
+        cache: "no-store",
     });
-    if (!response.ok) throw new Error(`Failed to load codex models: ${response.status}`);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`Failed to load available models: ${response.status}`);
     const data = await response.json();
-    return Array.isArray(data?.models) ? data.models : [];
+    return data?.schemaVersion === 1 && data.executors && typeof data.executors === "object"
+        ? (data as AvailableModels)
+        : null;
+}
+
+/** Offerable models for one CLI, current ones first, hidden ones removed; [] without a registry. */
+export function registryModels(
+    registry: AvailableModels | null | undefined,
+    executor: RegistryExecutor,
+    { currentOnly = false }: { currentOnly?: boolean } = {},
+): RegistryModel[] {
+    const models = registry?.executors?.[executor]?.models;
+    if (!Array.isArray(models)) return [];
+    const visible = models.filter(m => m && m.listed !== false && (!currentOnly || m.current !== false));
+    return [...visible.filter(m => m.current !== false), ...visible.filter(m => m.current === false)];
+}
+
+/** Claude ids name a version line; a dated id ("claude-haiku-4-5-20251001") is the same model. */
+function claudeVersionKey(id: string): string | null {
+    const match = id.match(/^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?$/);
+    return match ? `${match[1]}:${Number(match[2])}.${Number(match[3] || 0)}` : null;
+}
+
+/** The registry entry an id names (exact id, or a dated Claude alias), searching CLIs in order. */
+export function findRegistryModel(
+    registry: AvailableModels | null | undefined,
+    id: string,
+    executors: RegistryExecutor[] = REGISTRY_EXECUTORS,
+): RegistryModel | null {
+    const text = (id || "").trim();
+    if (!text || !registry) return null;
+    for (const executor of executors) {
+        const models = registry.executors?.[executor]?.models || [];
+        const exact = models.find(m => m.id === text);
+        if (exact) return exact;
+        if (executor === "claude-code") {
+            const key = claudeVersionKey(text);
+            const alias = key ? models.find(m => claudeVersionKey(m.id) === key) : undefined;
+            if (alias) return alias;
+        }
+    }
+    return null;
+}
+
+/** Display name for a model id, or null when the registry does not know it. */
+export function registryModelLabel(
+    registry: AvailableModels | null | undefined,
+    id: string,
+    executors?: RegistryExecutor[],
+): string | null {
+    return findRegistryModel(registry, id, executors)?.label || null;
+}
+
+/** Efforts the CLI reports for a model, or null when the registry cannot say. */
+export function registryModelEfforts(
+    registry: AvailableModels | null | undefined,
+    id: string,
+    executors: RegistryExecutor[] = ["claude-code", "codex"],
+): string[] | null {
+    const efforts = findRegistryModel(registry, id, executors)?.efforts;
+    return Array.isArray(efforts) && efforts.length ? efforts : null;
+}
+
+/** One entry for a model dropdown: `value` is what the executor stores. */
+export interface RegistryPickerOption {
+    value: string;
+    label: string;
+    /** An older model the CLI still accepts; pickers list these after the current ones. */
+    older: boolean;
 }
 
 /**
- * Model names the antigravity selector can offer — the local `agy models`
- * output served by the Nexus API. These are display names ("Gemini 3.1 Pro
- * (High)"); slug ids do NOT pin in the agy CLI.
+ * Dropdown entries for one CLI, current models first. Claude labels read
+ * "Claude Opus 5.5"; Antigravity values are agy display names, one per effort,
+ * because agy pins display names, not ids.
  */
-export async function getAntigravityModels(): Promise<string[]> {
-    const response = await fetch(`/api/model-control/antigravity-models`, {
-        credentials: "include",
-        headers: { ...getAuthHeader() as any },
+export function registryPickerOptions(
+    registry: AvailableModels | null | undefined,
+    executor: RegistryExecutor,
+): RegistryPickerOption[] {
+    return registryModels(registry, executor).flatMap(model => {
+        const older = model.current === false;
+        const label = model.label || model.id;
+        if (executor === "antigravity") {
+            const names = Object.values(model.displayByEffort || {});
+            return (names.length ? names : [label]).map(name => ({ value: name, label: name, older }));
+        }
+        const named = executor === "claude-code" && !/^claude\b/i.test(label) ? `Claude ${label}` : label;
+        return [{
+            value: model.id,
+            label: model.upgradeTo ? `${named} (deprecated → ${model.upgradeTo})` : named,
+            older,
+        }];
     });
-    if (!response.ok) throw new Error(`Failed to load antigravity models: ${response.status}`);
-    const data = await response.json();
-    return Array.isArray(data.models) ? data.models : [];
 }
 
 /** API model id for a roster entry (dropdown value used for dispatch). */
@@ -700,11 +810,11 @@ export function formatResolvedModel(resolved?: ResolvedModelControl | null): str
     return label;
 }
 
-/** Use the live Codex capabilities instead of guessing effort support by version. */
-export function thinkingLevelOptions(modelId: string, codexModels: CodexModelOption[] = []): string[] {
-    const slug = (modelId || "").trim().toLowerCase();
-    const model = codexModels.find(candidate => candidate.id === slug);
-    if (model?.efforts?.length) return model.efforts;
-    if (slug.includes("claude")) return ["low", "medium", "high", "xhigh", "max"];
-    return ["low", "medium", "high"];
+/**
+ * Efforts to offer for a model: the CLI's own list from the registry. A model
+ * the registry cannot describe gets low/medium/high, which every Claude and
+ * Codex reasoning model accepts and the server never rejects.
+ */
+export function thinkingLevelOptions(modelId: string, registry: AvailableModels | null = null): string[] {
+    return registryModelEfforts(registry, modelId) ?? ["low", "medium", "high"];
 }

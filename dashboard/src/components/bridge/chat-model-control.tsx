@@ -21,13 +21,15 @@ import { createPortal } from "react-dom";
 import { AlertTriangle, Check, ChevronDown, Cpu, Loader2 } from "lucide-react";
 
 import { useChatConfig } from "@/hooks/use-chat-config";
+import { useAvailableModels } from "@/hooks/use-available-models";
 import {
     CHAT_BACKEND_SHORT_LABELS,
     CHAT_BACKEND_SWITCH_WARNING,
     CHAT_CONFIG_APPLY_NOTICE,
-    CHAT_MODEL_SUGGESTIONS,
     activeChatModel,
+    chatModelChoices,
     chatModelField,
+    chatModelSuggestions,
     chatModelIndicatorLabel,
     chatThinkingTiers,
     formatChatModelName,
@@ -38,16 +40,9 @@ const OPTION_BASE = "rounded border px-1.5 py-1 text-[10px] transition-colors di
 const OPTION_ON = "border-cyan-500/50 bg-cyan-500/15 text-cyan-200";
 const OPTION_OFF = "border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-200";
 
-/** Suggestions for a backend, plus the configured slug when it isn't one of them. */
-function modelChoices(config: ChatConfig): string[] {
-    if (config.backend === "off") return [];
-    const suggestions = CHAT_MODEL_SUGGESTIONS[config.backend];
-    const current = activeChatModel(config);
-    return current && !suggestions.includes(current) ? [current, ...suggestions] : suggestions;
-}
-
 export function ChatModelControl() {
     const { config, loading, saving, error, savedAt, apply, reload } = useChatConfig();
+    const { registry, loaded: registryLoaded } = useAvailableModels();
     const [open, setOpen] = useState(false);
     const [pendingBackend, setPendingBackend] = useState<ChatBackend | null>(null);
     const [anchor, setAnchor] = useState<{ top: number; right: number } | null>(null);
@@ -243,8 +238,11 @@ export function ChatModelControl() {
                                 {config.backend !== "off" && (
                                     <div>
                                         <div className="mb-1 text-[9px] uppercase tracking-wide text-slate-500">Model</div>
+                                        {registryLoaded && !chatModelSuggestions(registry, config.backend).length && (
+                                            <p className="mb-1 text-[10px] text-slate-500">Model list not available yet</p>
+                                        )}
                                         <div className="grid grid-cols-2 gap-1">
-                                            {modelChoices(config).map((slug) => (
+                                            {chatModelChoices(registry, config).map((slug) => (
                                                 <button
                                                     key={slug}
                                                     type="button"

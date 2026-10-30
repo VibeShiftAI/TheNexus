@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 
 type Settings = { routine: string; advanced: string; apex: string };
-const labels: Record<string, string> = { 'claude-opus-5-5': 'Opus 5.5', 'claude-opus-5': 'Opus 5', 'claude-fable-5-1': 'Fable 5.1', 'gpt-6-astra': 'GPT-6 Astra' };
 const roles = [ ['apex', 'Top tier · complexity 5'], ['advanced', 'Advanced work · complexity 4'], ['routine', 'Bulk of the work · complexity 1–3'] ] as const;
 const endpoint = '/api/praxis/models/ladder-settings';
 
@@ -11,6 +10,8 @@ export function ModelLadderSettings() {
     const [settings, setSettings] = useState<Settings | null>(null);
     const [models, setModels] = useState<string[]>([]);
     const [modelsByRole, setModelsByRole] = useState<Record<string, string[]>>({});
+    // Display names from the model registry, served with the ladder; raw id when absent.
+    const [labels, setLabels] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [saved, setSaved] = useState(false);
@@ -19,7 +20,7 @@ export function ModelLadderSettings() {
         fetch(endpoint).then(async response => {
             const body = await response.json();
             if (!response.ok) throw new Error(body.error || 'Unable to load model ladder');
-            if (!cancelled) { setSettings(body.settings); setModels(body.models); setModelsByRole(body.modelsByRole || {}); }
+            if (!cancelled) { setSettings(body.settings); setModels(body.models); setModelsByRole(body.modelsByRole || {}); setLabels(body.labels || {}); }
         }).catch(error => { if (!cancelled) setError(String(error.message || error)); });
         return () => { cancelled = true; };
     }, []);

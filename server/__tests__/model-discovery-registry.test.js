@@ -103,6 +103,9 @@ describe('model discovery registry upsert', () => {
 
     test('maps free-text model slugs to the right tier set', () => {
         const { thinkingTiersForModelId, ALL_THINKING_TIERS } = require('../services/model-discovery');
+        // Codex efforts come from the model registry Praxis builds from the CLI's own list.
+        const cleanup = require('./fixtures/model-registry').useModelRegistryFixture();
+        try {
 
         const CLAUDE_EXTENDED = ['default', 'low', 'medium', 'high', 'xhigh', 'max'];
         const CONSERVATIVE = ['default', 'low', 'medium', 'high'];
@@ -138,8 +141,7 @@ describe('model discovery registry upsert', () => {
             .toEqual(['default', 'low', 'medium', 'high', 'xhigh', 'max']);
         expect(thinkingTiersForModelId('gpt-5.3-codex-spark'))
             .toEqual(['default', 'low', 'medium', 'high', 'xhigh']);
-        // The validation whitelist derives from the maps: adding astra needed
-        // no manual edit, and "ultra" was already in it.
+        // The validation whitelist is the CLIs' effort vocabulary.
         expect(ALL_THINKING_TIERS).toEqual(['default', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
         // No current model offers "minimal", despite the API enum allowing it.
         for (const slug of ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.5', 'gpt-5.4']) {
@@ -153,5 +155,8 @@ describe('model discovery registry upsert', () => {
         expect(thinkingTiersForModelId('')).toBeNull();
         // Unknown slugs stay conservative — never offer a tier we can't vouch for.
         expect(thinkingTiersForModelId('some-unknown-model')).toEqual(CONSERVATIVE);
+        } finally {
+            cleanup();
+        }
     });
 });

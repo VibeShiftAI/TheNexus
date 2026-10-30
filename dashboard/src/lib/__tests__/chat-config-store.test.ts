@@ -6,16 +6,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-    CHAT_MODEL_SUGGESTIONS,
     activeChatModel,
     applyChatConfig,
+    chatModelChoices,
     chatModelIndicatorLabel,
+    chatModelSuggestions,
     getChatConfigState,
     loadChatConfig,
     resetChatConfigStore,
     subscribeChatConfig,
 } from "../chat-config-store";
 import type { ChatConfig } from "../model-control";
+import { MODEL_REGISTRY } from "../../../test/fixtures/model-registry.mjs";
 
 const OPUS: ChatConfig = {
     backend: "claude-code",
@@ -48,17 +50,32 @@ function installFetch(handler: (call: Call) => { ok: boolean; status?: number; j
     return { calls, restore: () => { globalThis.fetch = original; } };
 }
 
-test("the shared suggestion list carries the dash-form Fable 5.1 slug", () => {
-    const claude = CHAT_MODEL_SUGGESTIONS["claude-code"];
+test("suggestions are the current models each CLI offers, from the model registry", () => {
+    assert.deepEqual(
+        chatModelSuggestions(MODEL_REGISTRY, "claude-code"),
+        ["claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5-5"],
+        "current Claude models only; older ones stay reachable by free text",
+    );
+    // Registry order: the codex roster leader first, hidden models never.
+    assert.deepEqual(
+        chatModelSuggestions(MODEL_REGISTRY, "codex"),
+        ["gpt-6.1-sol", "gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra"],
+    );
+    assert.deepEqual(chatModelSuggestions(null, "claude-code"), [], "no registry, no invented list");
+});
 
-    assert.ok(claude.includes("claude-fable-5-1"), "claude-fable-5-1 is offerable");
-    // The dotted form is OpenRouter-only and the Claude CLI rejects it.
-    assert.ok(!claude.includes("claude-fable-5.1"), "the dotted OpenRouter form is never offered");
-    assert.ok(claude.includes("claude-fable-5"), "claude-fable-5 stays until it is shown to be dead");
-    assert.ok(claude.includes("claude-opus-5"));
-    assert.ok(CHAT_MODEL_SUGGESTIONS.codex.includes("gpt-5.6-sol"));
-    // 2026-09-06 roster: astra is the codex roster leader, so it is offered first.
-    assert.equal(CHAT_MODEL_SUGGESTIONS.codex[0], "gpt-6-astra");
+test("the configured slug is always a choice, even when the registry does not offer it", () => {
+    assert.deepEqual(
+        chatModelChoices(MODEL_REGISTRY, OPUS),
+        ["claude-opus-5", "claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5-5"],
+    );
+    assert.deepEqual(
+        chatModelChoices(MODEL_REGISTRY, { ...OPUS, claudeModel: "claude-fable-5-1" }),
+        ["claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5-5"],
+        "a listed slug is not repeated",
+    );
+    assert.deepEqual(chatModelChoices(null, OPUS), ["claude-opus-5"], "without a registry only the saved value shows");
+    assert.deepEqual(chatModelChoices(MODEL_REGISTRY, { ...OPUS, backend: "off" }), []);
 });
 
 test("indicator labels are short and readable, per backend", () => {

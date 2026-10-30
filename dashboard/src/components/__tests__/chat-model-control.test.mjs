@@ -2,7 +2,8 @@
 // against a fake /api/model-control/chat-config. The point of these tests is
 // the "one source of truth" contract: the header control and the settings
 // modal's ChatSettingsSection are two views of one state, so a change in one
-// must land in the other with no reload and no second endpoint.
+// must land in the other with no reload and no second endpoint. The model
+// choices come from the model registry (/api/model-control/available-models).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createElement, act } from "react";
@@ -11,6 +12,15 @@ import { createRoot } from "react-dom/client";
 import { ChatModelControl } from "../bridge/chat-model-control.tsx";
 import { ChatSettingsSection } from "../chat-settings-section.tsx";
 import { resetChatConfigStore } from "../../lib/chat-config-store.ts";
+import { resetAvailableModels } from "../../hooks/use-available-models.ts";
+import { MODEL_REGISTRY } from "../../../test/fixtures/model-registry.mjs";
+
+const REGISTRY_URL = "/api/model-control/available-models";
+
+/** Requests other than the registry read, i.e. the chat-config traffic. */
+function configCalls(calls) {
+    return calls.filter((c) => c.url !== REGISTRY_URL);
+}
 
 const BASE_CONFIG = {
     backend: "claude-code",
@@ -23,9 +33,10 @@ const BASE_CONFIG = {
 /**
  * Stands in for the chat-config route: GET returns the current server state,
  * PUT merges the patch (or fails when `failWrites` is set) and returns the new
- * config, exactly as server/routes/model-control.js does.
+ * config, exactly as server/routes/model-control.js does. The registry route
+ * serves `registry`, or 404s when it is null (Praxis has not written one).
  */
-function installChatConfigApi({ failWrites = false } = {}) {
+function installChatConfigApi({ failWrites = false, registry = MODEL_REGISTRY } = {}) {
     let server = { ...BASE_CONFIG };
     const calls = [];
     const original = globalThis.fetch;
@@ -36,6 +47,11 @@ function installChatConfigApi({ failWrites = false } = {}) {
             body: init.body ? JSON.parse(init.body) : undefined,
         };
         calls.push(call);
+        if (call.url === REGISTRY_URL) {
+            return registry
+                ? { ok: true, status: 200, json: async () => registry }
+                : { ok: false, status: 404, json: async () => ({ error: "no model registry yet" }) };
+        }
         if (call.method === "PUT") {
             if (failWrites) return { ok: false, status: 500, json: async () => ({}) };
             server = { ...server, ...call.body };
@@ -93,6 +109,7 @@ function openPicker(container) {
 
 function setup(options) {
     resetChatConfigStore();
+    resetAvailableModels();
     return installChatConfigApi(options);
 }
 
@@ -100,6 +117,7 @@ function teardown(api, ...mounted) {
     for (const m of mounted) m.unmount();
     api.restore();
     resetChatConfigStore();
+    resetAvailableModels();
 }
 
 test("the header shows which model is answering as Praxis without a click", async () => {
@@ -113,7 +131,7 @@ test("the header shows which model is answering as Praxis without a click", asyn
         const trigger = view.container.querySelector('button[aria-haspopup="dialog"]');
         assert.match(trigger.getAttribute("aria-label"), /Praxis chat model: Opus 5/);
         assert.equal(trigger.getAttribute("aria-expanded"), "false");
-        assert.deepEqual(api.calls.map((c) => c.url), ["/api/model-control/chat-config"]);
+        assert.deepEqual(configCalls(api.calls).map((c) => c.url), ["/api/model-control/chat-config"]);
     } finally {
         teardown(api, view);
     }
@@ -136,9 +154,9 @@ test("picking a model saves through the shared chat-config helpers and repaints 
         assert.equal(writes[0].url, "/api/model-control/chat-config", "no new endpoint");
         assert.deepEqual(writes[0].body, { claudeModel: "claude-fable-5-1" });
         assert.deepEqual(
-            [...new Set(api.calls.map((c) => c.url))],
+            [...new Set(configCalls(api.calls).map((c) => c.url))],
             ["/api/model-control/chat-config"],
-            "every request went to the one chat-config route",
+            "every config request went to the one chat-config route",
         );
 
         assert.equal(indicator(header.container).textContent, "Fable 5.1");
@@ -333,6 +351,7 @@ test("the picker stops taking clicks while a save is in flight", async () => {
 
 test("clicking the trigger after a failed load actually retries, as its tooltip promises", async () => {
     resetChatConfigStore();
+    resetAvailableModels();
     // First GET fails, so the control sits on "Chat model unavailable — click
     // to retry". That tooltip has to be true: opening the picker must re-fetch.
     let failNextLoad = true;
@@ -346,7 +365,7 @@ test("clicking the trigger after a failed load actually retries, as its tooltip 
     const header = mount(createElement(ChatModelControl));
     try {
         await settle();
-        assert.equal(calls.length, 1, "the initial load was attempted");
+        assert.equal(configCalls(calls).length, 1, "the initial load was attempted");
         const trigger = header.container.querySelector('button[aria-haspopup="dialog"]');
         assert.equal(trigger.getAttribute("title"), "Chat model unavailable — click to retry");
 
@@ -354,8 +373,8 @@ test("clicking the trigger after a failed load actually retries, as its tooltip 
         click(trigger);
         await settle();
 
-        assert.equal(calls.length, 2, "opening the picker re-fetched the config");
-        assert.equal(calls[1].method, "GET");
+        assert.equal(configCalls(calls).length, 2, "opening the picker re-fetched the config");
+        assert.equal(configCalls(calls)[1].method, "GET");
         assert.equal(
             indicator(header.container).textContent,
             "Opus 5",
@@ -365,6 +384,7 @@ test("clicking the trigger after a failed load actually retries, as its tooltip 
         header.unmount();
         globalThis.fetch = original;
         resetChatConfigStore();
+        resetAvailableModels();
     }
 });
 
@@ -382,5 +402,40 @@ test("the picker is keyboard-dismissable with Escape", async () => {
         assert.equal(popover(), null, "Escape closes the popover");
     } finally {
         teardown(api, header);
+    }
+});
+
+test("the model choices are the registry's current models plus the configured slug", async () => {
+    const api = setup();
+    const header = mount(createElement(ChatModelControl));
+    const settings = mount(createElement(ChatSettingsSection, { reloadKey: true }));
+    try {
+        await settle();
+        const dialog = openPicker(header.container);
+        const offered = [...dialog.querySelectorAll("[data-model]")].map((b) => b.getAttribute("data-model"));
+        assert.deepEqual(offered, ["claude-opus-5", "claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5-5"]);
+        assert.ok(!/Model list not available yet/.test(dialog.textContent));
+
+        const datalist = [...settings.container.querySelectorAll("#chat-model-suggestions option")].map((o) => o.value);
+        assert.deepEqual(datalist, offered, "the settings modal suggests the same list");
+        assert.equal(api.calls.filter((c) => c.url === REGISTRY_URL).length, 1, "both surfaces share one registry read");
+    } finally {
+        teardown(api, header, settings);
+    }
+});
+
+test("without a registry the picker keeps the configured slug and says the list is missing", async () => {
+    const api = setup({ registry: null });
+    const header = mount(createElement(ChatModelControl));
+    const settings = mount(createElement(ChatSettingsSection, { reloadKey: true }));
+    try {
+        await settle();
+        const dialog = openPicker(header.container);
+        const offered = [...dialog.querySelectorAll("[data-model]")].map((b) => b.getAttribute("data-model"));
+        assert.deepEqual(offered, ["claude-opus-5"], "no invented list, only the saved value");
+        assert.match(dialog.textContent, /Model list not available yet/);
+        assert.match(settings.container.textContent, /Model list not available yet/);
+    } finally {
+        teardown(api, header, settings);
     }
 });
