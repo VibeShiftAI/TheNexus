@@ -16,6 +16,7 @@
  *   - voice queue / autoplay timing                   → hooks/use-chat-audio
  *   - attachment selection / preview / removal        → hooks/use-file-attachments
  *   - scrollback, DOM window, history panel state     → hooks/use-chat-history
+ *   - file upload + voice clip encoding for a send   → lib/chat-uploads
  * See docs/ai-terminal-map.md for the full inventory.
  */
 
@@ -31,6 +32,7 @@ import { useCortex } from "@/components/cortex-provider";
 import { dispatchMorningKickoff } from "@/components/bridge/bridge-fx";
 import { executeDisplayDirective, readIssuedDirective, renderDisplayReport } from "@/lib/presentation-chat-relay";
 import { currentOpenDocument } from "@/lib/presentation-open-document";
+import { prepareChatFiles, voiceClipBase64 } from "@/lib/chat-uploads";
 import { useChatAudio } from "@/hooks/use-chat-audio";
 import { useChatHistory, messageKey } from "@/hooks/use-chat-history";
 import { useFileAttachments } from "@/hooks/use-file-attachments";
@@ -295,58 +297,9 @@ export const AITerminal = forwardRef<AITerminalHandle, AITerminalProps>(function
         try {
             const authHeader = await getAuthHeader();
 
-            // Upload files to the Nexus file endpoint
-            let fileContents: { name: string; content: string; type: string }[] = [];
-            let uploadedAttachments: { fileId: string; url: string; mimeType: string; originalName: string; size: number }[] = [];
-            if (filesToUpload.length > 0) {
-                const authHeader = await getAuthHeader();
-                // Upload binary files (images, audio, etc.) to the file endpoint
-                // and read text files inline for context
-                const uploadPromises = filesToUpload.map(async (file) => {
-                    const isTextFile = file.type.startsWith('text/') || /\.(txt|md|json|py|js|ts|tsx|jsx|yaml|yml|csv|xml|html|css|sql|sh|bat|log|cfg|ini|toml|env)$/i.test(file.name);
-                    
-                    if (isTextFile && file.size < 512 * 1024) {
-                        // Small text files: read inline for LLM context
-                        const content = await file.text();
-                        fileContents.push({ name: file.name, content, type: file.type || 'text/plain' });
-                    }
-
-                    // All files: upload to file storage for persistence and serving
-                    try {
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        const uploadRes = await fetch('/api/chat/files/upload', {
-                            method: 'POST',
-                            credentials: 'include',
-                            body: formData,
-                        });
-                        if (uploadRes.ok) {
-                            const data = await uploadRes.json();
-                            uploadedAttachments.push(data);
-                        } else {
-                            console.error(`[Praxis Terminal] File upload failed for ${file.name}:`, await uploadRes.text());
-                        }
-                    } catch (err) {
-                        console.error(`[Praxis Terminal] File upload error for ${file.name}:`, err);
-                    }
-                });
-                await Promise.all(uploadPromises);
-            }
-
-            // Read audio blob to base64
-            let base64Audio = undefined;
-            if (currentAudioBlob) {
-                // We use Buffer in the browser via a polyfill if needed, but arrayBuffer -> base64 can be done via btoa:
-                const buffer = await currentAudioBlob.arrayBuffer();
-                const bytes = new Uint8Array(buffer);
-                let binary = '';
-                // Chunked processing to avoid call stack limits on huge arrays
-                const CHUNK_SIZE = 32768;
-                for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
-                  binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK_SIZE)));
-                }
-                base64Audio = btoa(binary);
-            }
+            // Inline text files and uploaded attachments; the voice clip as base64 (lib/chat-uploads).
+            const { fileContents, uploadedAttachments } = await prepareChatFiles(filesToUpload);
+            const base64Audio = await voiceClipBase64(currentAudioBlob);
 
             // Retry-on-connection-reset wrapper: Next.js Fast Refresh (HMR) full reloads
             // destroy all in-flight proxy connections, causing ECONNRESET / "socket hang up".

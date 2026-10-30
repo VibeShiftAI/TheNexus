@@ -72,7 +72,9 @@ beforeEach(async () => {
     });
     await db.updateProject(project.id, {
         needs: [{ kind: 'information', description: 'Receive the specification', notes: 'INTERNAL: contact by email, CC Robert',
-            knowledge: { question: 'What does the specification require?', satisfaction_test: 'Specification retained', blocking: true, tags: [] } }],
+            // purpose and resolution are required on new information needs since the 2026-10-18 knowledge lifecycle.
+            knowledge: { question: 'What does the specification require?', purpose: 'Scope the prototype build', resolution: { method: 'human' },
+                satisfaction_test: 'Specification retained', blocking: true, tags: [] } }],
         end_state_criteria: [{ id: 'launch-accepted', kind: 'manual', description: 'Client lead accepted the exact release candidate' }],
         checkpoints: [{ title: 'Clickable prototype accepted', goal: 'The client accepted the exact prototype version',
             criteria: [{ id: 'proto-acceptance', kind: 'manual', description: 'A client-attributed decision references the exact prototype version' }] }],

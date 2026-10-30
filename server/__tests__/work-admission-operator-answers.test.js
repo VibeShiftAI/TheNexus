@@ -134,11 +134,10 @@ test('repeated and duplicate answers keep full ordered provenance without a hold
 // execution it is recorded, with or without an answer, and admission compares
 // the edited contract at dispatch. The full matrix lives in
 // work-admission-contract-origin.test.js.
-test('real scope, acceptance and workspace changes are held during execution, with or without an answer', async () => {
+test('real scope and acceptance changes are held during execution, with or without an answer', async () => {
     const edits = [
         payload => ({ antigravity_payload: { ...payload, operator_rulings: [ANSWER], prompt: 'Also launch a paid membership checkout.' } }),
         payload => ({ antigravity_payload: { ...payload, acceptance_criteria: ['Checkout accepts payments.'] } }),
-        payload => ({ antigravity_payload: { ...payload, operator_rulings: [ANSWER], workspace: '/tmp/synthetic-other' } }),
         () => ({ description: 'Build the members area instead.' }),
     ];
     for (const edit of edits) {
@@ -152,6 +151,16 @@ test('real scope, acceptance and workspace changes are held during execution, wi
         // The appended answer is still recorded as an answer alongside the hold.
         if (edit(task.antigravity_payload).antigravity_payload?.operator_rulings) expect(receipt(changed.data.task).operator_answers).toHaveLength(1);
     }
+    // A workspace-only change during execution is a recorded warning since Robert's
+    // 2026-10-21 policy (b5d10a1, docs/work-admission.md); the answer still lands.
+    raw.exec('DELETE FROM tasks');
+    const running = await approved(await db.createTask(groundrules({ status: 'in_progress' })));
+    const moved = await api('PATCH', `/${running.id}`, { antigravity_payload: { ...running.antigravity_payload, operator_rulings: [ANSWER], workspace: '/tmp/synthetic-other' } });
+    expect(moved.status).toBe(200);
+    expect(receipt(moved.data.task).decision).toBe('new_work');
+    expect(receipt(moved.data.task).contract_hold).toBeUndefined();
+    expect(receipt(moved.data.task).contract_changes.at(-1)).toMatchObject({ warning: 'workspace_change', outcome: 'recorded' });
+    expect(receipt(moved.data.task).operator_answers).toHaveLength(1);
     raw.exec('DELETE FROM tasks');
     const pending = await approved(await db.createTask(groundrules()));
     const recorded = await api('PATCH', `/${pending.id}`, { description: 'Build the members area instead.' });

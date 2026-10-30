@@ -107,7 +107,7 @@ Classification key: **T** transport · **R** rendering · **A** audio/voice ·
 | `startRecording` / `stopRecording` / `clearAudio` | voice memo capture | A | `hooks/use-voice-recorder.ts` |
 | `handleSend` | synchronous accept/reject decision, `/ingest` slash command, optimistic user row | T | `ai-terminal.tsx` |
 | `runIngest` | `POST /api/ingest` | T | `ai-terminal.tsx` |
-| `runSend` | file upload, base64 audio, retry-once fetch, SSE-vs-JSON response, error banners | T | `ai-terminal.tsx` |
+| `runSend` | file upload and base64 audio (via `lib/chat-uploads.ts` since 2026-10-30), retry-once fetch, SSE-vs-JSON response, error banners | T | `ai-terminal.tsx` |
 | `renderTerminalContent` | the shared inline/modal body | Y | `ai-terminal.tsx` |
 
 ### Inline subcomponents (JSX rendered in place, no component boundary)
@@ -131,7 +131,7 @@ Classification key: **T** transport · **R** rendering · **A** audio/voice ·
 
 | File | Lines | Owns |
 |---|---:|---|
-| `src/components/ai-terminal.tsx` | 698 | composition + transport (`readPraxisEventStream`, `handleSend`, `runIngest`, `runSend`), modal/inline shell |
+| `src/components/ai-terminal.tsx` | 668 | composition + transport (`readPraxisEventStream`, `handleSend`, `runIngest`, `runSend`), modal/inline shell |
 | `src/components/chat/markdown-message.tsx` | 142 | `MarkdownMessage`, `TaskLinkedText`, `MESSAGE_PROSE`, `TASK_LINK_CLASS` — both memoized |
 | `src/components/chat/message-row.tsx` | 550 | one transcript row: bubbles, artifacts, briefing player, voice notes |
 | `src/components/chat/plan-review-modal.tsx` | 277 | fullscreen plan review (keeps its own roomier prose scale — deliberate) |
@@ -143,6 +143,7 @@ Classification key: **T** transport · **R** rendering · **A** audio/voice ·
 | `src/hooks/use-chat-history.ts` | 204 | DOM render window, stick-to-bottom, reveal-then-paginate, history panel toggle |
 | `src/hooks/use-file-attachments.ts` | 190 | `attachmentsReducer` (pure) + selection / drag-drop / preview / removal |
 | `src/hooks/use-voice-recorder.ts` | 91 | MediaRecorder capture and the memo preview |
+| `src/lib/chat-uploads.ts` | 52 | a send's inline text files, uploaded attachments and base64 voice clip (moved out 2026-10-30 when the terminal reached its line budget) |
 
 ## 3. Autoplay timing rules (unchanged, now stated once)
 

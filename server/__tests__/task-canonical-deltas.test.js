@@ -89,7 +89,9 @@ test('interleaved stale readers cannot erase answers or an independently authori
     expect(after.antigravity_payload.prompt).toBe(before.antigravity_payload.prompt);
     expect(receipt(after).contract_hold).toBeUndefined();
 });
-test('workspace delta merges current roots/history and preserves unrelated fields; unauthorized drift remains held', async () => {
+// Since Robert's 2026-10-21 policy (b5d10a1, docs/work-admission.md) an unauthorized
+// workspace-only change is recorded with a workspace_change warning instead of a hold.
+test('workspace delta merges current roots/history and preserves unrelated fields; unauthorized workspace drift is recorded as a warning', async () => {
     const before = await task();
     await api('POST', `/${before.id}/operator-rulings`, { ruling: 'Keep this answer' }, runtime);
     const moved = await api('POST', `/${before.id}/workspace-delta`, { workspace: '/tmp/canonical-b', workspace_roots: ['/tmp/canonical-a', '/tmp/canonical-b'],
@@ -98,9 +100,12 @@ test('workspace delta merges current roots/history and preserves unrelated field
     const after = await db.getTask(before.id);
     expect(after.antigravity_payload).toMatchObject({ ...before.antigravity_payload, workspace: '/tmp/canonical-b', operator_rulings: ['Keep this answer'] });
     expect(after.source).toBeNull();
-    expect(receipt(after).hold_kind).toBe('contract_drift');
-    expect(receipt(after).contract_hold.drifted_fields).toEqual(expect.arrayContaining(['payload.workspace', 'payload.workspace_roots']));
-    expect(receipt(after).contract_hold.drifted_fields).not.toContain('payload.prompt');
+    expect(receipt(after).hold_kind).toBeUndefined();
+    expect(receipt(after).contract_hold).toBeUndefined();
+    const change = receipt(after).contract_changes.at(-1);
+    expect(change).toMatchObject({ warning: 'workspace_change', outcome: 'recorded' });
+    expect(change.fields.map(f => f.field)).toEqual(expect.arrayContaining(['payload.workspace', 'payload.workspace_roots']));
+    expect(change.fields.map(f => f.field)).not.toContain('payload.prompt');
 });
 test('delta CAS, leases and unknown-field validation refuse without changing a row', async () => {
     const before = await task();
