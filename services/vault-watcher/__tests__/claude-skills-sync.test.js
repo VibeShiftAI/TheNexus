@@ -1,5 +1,5 @@
 const yaml = require('js-yaml');
-const { buildClaudeSkill } = require('../lib/claude-skills-sync');
+const { buildClaudeSkill, selectClaudeSkills, ALWAYS_MIRROR } = require('../lib/claude-skills-sync');
 
 describe('Claude skill manifests', () => {
   test.each([
@@ -13,8 +13,38 @@ describe('Claude skill manifests', () => {
     const parsed = yaml.load(frontmatter);
     expect(parsed.name).toBe(entry.id);
     expect(parsed.description).toContain(summary);
-    expect(parsed.description).toContain(entry.relPath);
+    // Provenance is in the body, not the shared description budget (2026-10-29).
+    expect(parsed.description).not.toContain(entry.relPath);
+    expect(parsed.description).not.toMatch(/canonical/);
+    expect(manifest).toContain(entry.relPath);
     for (const tag of tags) expect(parsed.description).toContain(tag);
     expect(manifest).toContain('## Procedure\nAsk one question.');
+  });
+});
+
+describe('Claude skill mirror selection', () => {
+  const now = Date.parse('2026-10-29T12:00:00Z');
+  const entry = (id) => ({ id, relPath: `skills/operations/${id}.md`, summary: id, tags: [] });
+  const active = ['plan-day-yourself', 'qa-review-content', 'implement-unused-pattern', 'premortem', ...ALWAYS_MIRROR].map(entry);
+  const line = (skillIds, settledAt) => JSON.stringify({ taskId: 't', skillIds, outcome: 'success', settledAt });
+
+  test('mirrors skills used in the last 90 days plus the always-mirrored ones', () => {
+    const ledgerText = [
+      line(['plan-day-yourself', 'qa-review-content'], '2026-10-20T00:00:00Z'),
+      line(['premortem'], '2026-06-01T00:00:00Z'), // outside the window
+      'not json',
+    ].join('\n');
+    const { selected } = selectClaudeSkills(active, { ledgerText, now, mode: undefined });
+    expect(selected.map((e) => e.id).sort()).toEqual(['plan-day-yourself', 'qa-review-content', ...ALWAYS_MIRROR].sort());
+  });
+
+  test('an empty or unreadable ledger mirrors everything instead of removing skills', () => {
+    expect(selectClaudeSkills(active, { ledgerText: '', now, mode: undefined }).selected).toHaveLength(active.length);
+    expect(selectClaudeSkills(active, { ledgerText: 'garbage', now, mode: undefined }).selected).toHaveLength(active.length);
+  });
+
+  test('VAULT_CLAUDE_SKILLS_MIRROR=all restores the full mirror', () => {
+    const ledgerText = line(['plan-day-yourself'], '2026-10-20T00:00:00Z');
+    expect(selectClaudeSkills(active, { ledgerText, now, mode: 'all' }).selected).toHaveLength(active.length);
   });
 });

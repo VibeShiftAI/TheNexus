@@ -24,6 +24,10 @@ const vaultRoot = (() => {
 const VAULT = vaultRoot();
 const CLAUDE_SKILLS_DIR = path.join(os.homedir(), '.claude', 'skills');
 const SYNC_MANIFEST = path.join(CLAUDE_SKILLS_DIR, '.vault-sync-manifest.json');
+// Praxis's settled skill-use ledger (Praxis/src/skills/skill-attribution.ts):
+// one JSON line per settled task with the skillIds its brief carried.
+const SKILL_USAGE_LEDGER = process.env.VAULT_SKILL_USAGE_LEDGER
+  || '/Volumes/Projects/Praxis/data/skill-attribution-settled.jsonl';
 const GENERATED_BASENAMES = new Set([
   'MEMORY.md',
   'AGENTS.md',
@@ -41,6 +45,7 @@ module.exports = {
   VAULT,
   CLAUDE_SKILLS_DIR,
   SYNC_MANIFEST,
+  SKILL_USAGE_LEDGER,
   GENERATED_BASENAMES,
   log,
 };
