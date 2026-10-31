@@ -25,6 +25,8 @@ const pushService = require('./push-service');
 const { syncModelSources, getModels } = require('./services/model-discovery');
 const db = require('../db');
 const { callAI } = require('./services/ai-service');
+// The window of the model a callAI call reaches, asked of Praxis (unknown when it cannot say).
+const { contextWindowFor } = require('./services/context-window');
 const { validateInitiativeRequest } = require('./services/initiative-router');
 
 // ─── Crash Handlers ─────────────────────────────────────────────────────────
@@ -200,7 +202,7 @@ app.use('/api/skill-candidates', require('./routes/skill-candidates')());
 app.use('/api/skill-wiki', require('./routes/skill-wiki')());
 app.use('/api/knowledge-activity', require('./routes/knowledge-activity')());
 app.use('/api/ingestion-control', createIngestionControlRouter());
-app.use('/api/studio',    createStudioRouter({ db, callAI }));
+app.use('/api/studio',    createStudioRouter({ db, callAI, contextWindowFor }));
 const dispatchesRouter = createDispatchesRouter();
 app.use('/api/dispatches', dispatchesRouter);
 // Eligibility + containment: why waiting tasks aren't running, per-run
@@ -226,7 +228,7 @@ app.use('/api/groundrules-labeling', authenticate, require('./routes/groundrules
 // Pulse first: the projects router's GET /:id would otherwise swallow /pulse.
 const createProjectPulseRouter = require('./routes/project-pulse');
 app.use('/api/projects', createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById }));
-const projectsRouter = createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, getRecentDispatches: dispatchesRouter.listRecentDispatches });
+const projectsRouter = createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextWindowFor, contextSync, getRecentDispatches: dispatchesRouter.listRecentDispatches });
 app.use('/api/projects', projectsRouter);
 // Mount non-prefix routes from projects
 app.get('/api/activity', projectsRouter.getActivityHandler);

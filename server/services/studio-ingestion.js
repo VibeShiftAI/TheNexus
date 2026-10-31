@@ -15,12 +15,19 @@
 
 const astro = require('./astro-parameters');
 const crypto = require('crypto');
+const { fitToWindow } = require('./context-window');
 
-const CHUNK_CHARS = 12000; // keep each local-LLM call comfortably within context
+// A source goes to extraction whole when it fits half of the local model's
+// context window (it used to be cut to its first 12,000 characters, silently).
+// Half, because the source is the subject but shares a local model's context
+// with the instructions, the spec key list and the JSON answer, which can run
+// to a record per object. A source past that is cut with a note, and its whole
+// text is kept under data/model-inputs (services/context-window.js).
+const SOURCE_SHARE = 0.5;
 // callAI returns `truncated: true` when the model stopped at its output limit.
 const OUTPUT_LIMIT_NOTE = 'The model stopped at its output limit (finish_reason "length"), so this answer is cut short.';
 
-function createStudioIngestion({ sql, callAI, uuid, now, helpers, listSources, deps = {} }) {
+function createStudioIngestion({ sql, callAI, contextWindowFor, uuid, now, helpers, listSources, deps = {} }) {
   const { upsertSpecValues, insertWonderPoints, extractJSON } = helpers;
   // Injectable for tests; default to the real network-backed implementations.
   const youtube = deps.youtube || require('./youtube-api');
@@ -60,7 +67,7 @@ function createStudioIngestion({ sql, callAI, uuid, now, helpers, listSources, d
       item.url ? `SOURCE URL: ${item.url}` : null,
       '',
       'SOURCE CONTENT:',
-      text.slice(0, CHUNK_CHARS),
+      text,
       '',
       'Extract a JSON object with this shape:',
       `{
@@ -98,7 +105,10 @@ function createStudioIngestion({ sql, callAI, uuid, now, helpers, listSources, d
   async function runLocalExtraction(channel, item, text) {
     if (!callAI) throw new Error('AI service is not available for local extraction.');
     const model = localModel();
-    const full = await callAI(model, extractionUser(item, text), extractionSystem(channel), [], { returnFullResult: true });
+    // No window lookup wired (or an unknown window): the source goes whole.
+    const window = contextWindowFor ? await contextWindowFor(model) : null;
+    const fit = fitToWindow(text, { window, share: SOURCE_SHARE, label: `Source "${item.title || item.url || 'untitled'}"` });
+    const full = await callAI(model, extractionUser(item, fit.text), extractionSystem(channel), [], { returnFullResult: true });
     const truncated = Boolean(full?.truncated);
     let parsed;
     try {
@@ -108,7 +118,8 @@ function createStudioIngestion({ sql, callAI, uuid, now, helpers, listSources, d
       throw truncated ? new Error(`${e.message} ${OUTPUT_LIMIT_NOTE}`) : e;
     }
     const objects = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.objects) ? parsed.objects : []);
-    return { objects, model: `${model.provider}/${model.model}`, truncated };
+    const input = fit.whole ? null : { originalChars: fit.originalChars, shownChars: fit.shownChars, fullTextPath: fit.fullTextPath };
+    return { objects, model: `${model.provider}/${model.model}`, truncated, input };
   }
 
   function findObjectByName(channelId, name) {
@@ -286,7 +297,7 @@ function createStudioIngestion({ sql, callAI, uuid, now, helpers, listSources, d
       const text = fetched.content || '';
       if (!text || text.trim().length < 40) { setItemStatus(sourceItemId, 'empty', 'No usable content.'); return { objects: 0, expanded: 0 }; }
       setItemStatus(sourceItemId, 'extracting');
-      const { objects, truncated } = await runLocalExtraction(channel, { ...item, title: fetched.title || item.title }, text);
+      const { objects, truncated, input } = await runLocalExtraction(channel, { ...item, title: fetched.title || item.title }, text);
       let created = 0;
       const upsertedIds = [];
       const tx = sql.transaction(() => {
@@ -296,7 +307,10 @@ function createStudioIngestion({ sql, callAI, uuid, now, helpers, listSources, d
         }
       });
       tx();
-      setItemStatus(sourceItemId, 'done', `Extracted ${created} object(s).${truncated ? ` ${OUTPUT_LIMIT_NOTE} Objects later in this source may be missing.` : ''}`);
+      const inputNote = input
+        ? ` Extraction saw the first ${input.shownChars.toLocaleString('en-US')} of ${input.originalChars.toLocaleString('en-US')} characters of this source, all that fit the local model's context window, so objects later in it may be missing; ${input.fullTextPath ? `the whole text is in ${input.fullTextPath}` : 'the whole text could not be kept on disk'}.`
+        : '';
+      setItemStatus(sourceItemId, 'done', `Extracted ${created} object(s).${truncated ? ` ${OUTPUT_LIMIT_NOTE} Objects later in this source may be missing.` : ''}${inputNote}`);
       return { objects: created, upsertedIds };
     } catch (e) {
       setItemStatus(sourceItemId, 'failed', e.message);

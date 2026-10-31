@@ -167,3 +167,85 @@ describe('AI service Praxis relay', () => {
         ).rejects.toThrow(/503.*praxis down.*end of body/s);
     });
 });
+
+describe('context window lookup (services/context-window.js)', () => {
+    const originalEnv = process.env;
+    const originalFetch = global.fetch;
+
+    function windowResponse(body, status = 200) {
+        return { ok: status >= 200 && status < 300, status, json: jest.fn(async () => body), text: jest.fn(async () => JSON.stringify(body)) };
+    }
+
+    beforeEach(() => {
+        jest.resetModules();
+        process.env = { ...originalEnv, PRAXIS_URL: 'http://praxis.test' };
+        global.fetch = jest.fn();
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        process.env = originalEnv;
+        global.fetch = originalFetch;
+        console.warn.mockRestore();
+        jest.dontMock('../../db');
+    });
+
+    test('asks Praxis for the role a task-type call rides, and for the pin of a direct call', async () => {
+        jest.doMock('../../db', () => ({
+            getDefaultModelForTask: jest.fn(async () => ({ provider: 'anthropic', id: 'claude-sonnet-4-6', api_model_id: 'claude-sonnet-4-6' })),
+            isDatabaseEnabled: () => false
+        }));
+        global.fetch.mockResolvedValue(windowResponse({ window: { tokens: 200000, maxOutputTokens: 64000, source: 'claude-code claude-sonnet-4-6 run report' }, charsPerToken: 3 }));
+        const { contextWindowFor } = require('../services/context-window');
+
+        await expect(contextWindowFor('quick')).resolves.toEqual({ tokens: 200000, maxOutputTokens: 64000, source: 'claude-code claude-sonnet-4-6 run report', charsPerToken: 3 });
+        expect(global.fetch.mock.calls[0][0]).toBe('http://praxis.test/v1/llm/context-window?role=brain.chat');
+
+        await contextWindowFor({ provider: 'local', model: 'gemma4' });
+        expect(global.fetch.mock.calls[1][0]).toBe('http://praxis.test/v1/llm/context-window?provider=local&model=gemma4');
+
+        // Cached briefly: the same target does not ask again.
+        await contextWindowFor({ provider: 'local', model: 'gemma4' });
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    test('a Praxis 404 (not restarted onto the route), a null window, an error or a missing charsPerToken is unknown', async () => {
+        const { contextWindowFor } = require('../services/context-window');
+        global.fetch.mockResolvedValueOnce(windowResponse({ error: 'not found' }, 404));
+        await expect(contextWindowFor({ provider: 'local', model: 'a' })).resolves.toBeNull();
+
+        global.fetch.mockResolvedValueOnce(windowResponse({ window: null, charsPerToken: 3 }));
+        await expect(contextWindowFor({ provider: 'local', model: 'b' })).resolves.toBeNull();
+
+        global.fetch.mockRejectedValueOnce(Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' }));
+        await expect(contextWindowFor({ provider: 'local', model: 'c' })).resolves.toBeNull();
+
+        global.fetch.mockResolvedValueOnce(windowResponse({ window: { tokens: 8192, source: 'LM Studio d loaded context' } }));
+        await expect(contextWindowFor({ provider: 'local', model: 'd' })).resolves.toBeNull();
+    });
+
+    test('a call target that cannot be resolved is unknown, not an error', async () => {
+        const { contextWindowFor } = require('../services/context-window');
+        const resolveCallTarget = jest.fn(async () => { throw new Error('No model configuration found'); });
+        await expect(contextWindowFor('quick', { resolveCallTarget })).resolves.toBeNull();
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    test('fitToWindow keeps a text whole when it fits or the window is unknown, and cuts it with a note and the whole text on disk when not', () => {
+        const fs = require('fs');
+        const { fitToWindow } = require('../services/context-window');
+        const text = 'a'.repeat(5000) + 'TAIL';
+
+        expect(fitToWindow(text, { window: null, share: 0.5, label: 'Thing' })).toEqual(expect.objectContaining({ text, whole: true }));
+        expect(fitToWindow(text, { window: { tokens: 10000, source: 's', charsPerToken: 3 }, share: 0.5, label: 'Thing' })).toEqual(expect.objectContaining({ text, whole: true }));
+
+        const cut = fitToWindow(text, { window: { tokens: 1000, source: 'LM Studio test loaded context', charsPerToken: 3 }, share: 0.5, label: 'Thing' });
+        expect(cut.whole).toBe(false);
+        expect(cut.text.length).toBeLessThanOrEqual(1500);
+        expect(cut.text).not.toContain('TAIL');
+        expect(cut.text).toMatch(/\[Thing: 5,004 characters, too large for this model's context window \(1,000 tokens, LM Studio test loaded context\) alongside the rest of the request\. The first [\d,]+ are above; the whole text is in .+\.\]$/);
+        expect(cut.fullTextPath.startsWith(process.env.NEXUS_MODEL_INPUTS_DIR)).toBe(true);
+        expect(fs.readFileSync(cut.fullTextPath, 'utf8')).toBe(text);
+        expect(cut.text).toContain(cut.fullTextPath);
+    });
+});

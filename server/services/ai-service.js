@@ -199,6 +199,39 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
 }
 
 /**
+ * What callAI will ask Praxis for: a model-control `role`, or a
+ * `provider` + `modelId` pin. One place, so the context-window lookup
+ * (services/context-window.js) asks about the same model the call reaches.
+ *
+ * @param {string|Object} taskOrConfig - as for callAI
+ * @returns {Promise<{ provider: string, modelId: string, role: string|undefined, kind: 'task'|'direct' }>}
+ */
+async function resolveCallTarget(taskOrConfig) {
+    if (typeof taskOrConfig === 'string') {
+        // Task-based lookup from DB
+        const taskConfig = await getAIModelConfig(taskOrConfig);
+        const provider = normalizeProvider(taskConfig.provider);
+        const modelId = taskConfig.api_model_id || taskConfig.apiModelId || taskConfig.model;
+        // Task-type pins that resolve to a per-token API provider ride
+        // Praxis's brain.chat role instead (task 0a62d8a6) — model-control
+        // now routes that role through the subscription CLI lane, with the
+        // local/Gemini chain (and the pin below) as Praxis-side fallback.
+        // Local pins stay pinned: local is already free.
+        const role = provider === 'local' ? undefined : 'brain.chat';
+        return { provider, modelId, role, kind: 'task' };
+    }
+    // Direct config provided (studio picks, model-control probes) keeps
+    // its explicit pin: the caller chose a specific model on purpose.
+    const config = taskOrConfig || {};
+    return {
+        provider: normalizeProvider(config.provider || 'google'),
+        modelId: config.apiModelId || config.api_model_id || config.model,
+        role: undefined,
+        kind: 'direct'
+    };
+}
+
+/**
  * Unified AI call router - THE SINGLE ENTRY POINT for all AI calls
  *
  * Supports two calling patterns:
@@ -221,26 +254,10 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
  *   answer with `truncated: true` instead.
  */
 async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], options = {}) {
-    let provider, modelId, role;
-
-    // Determine if this is a task name or direct config
-    if (typeof taskOrConfig === 'string') {
-        // Task-based lookup from DB
-        const taskConfig = await getAIModelConfig(taskOrConfig);
-        provider = normalizeProvider(taskConfig.provider);
-        modelId = taskConfig.api_model_id || taskConfig.apiModelId || taskConfig.model;
-        // Task-type pins that resolve to a per-token API provider ride
-        // Praxis's brain.chat role instead (task 0a62d8a6) — model-control
-        // now routes that role through the subscription CLI lane, with the
-        // local/Gemini chain (and the pin below) as Praxis-side fallback.
-        // Local pins stay pinned: local is already free.
-        role = provider === 'local' ? undefined : 'brain.chat';
+    const { provider, modelId, role, kind } = await resolveCallTarget(taskOrConfig);
+    if (kind === 'task') {
         console.log(`[callAI] Task: ${taskOrConfig}, Provider: ${provider}, Model: ${modelId}${role ? `, Role: ${role}` : ''} (via Praxis)`);
     } else {
-        // Direct config provided (studio picks, model-control probes) keeps
-        // its explicit pin — the caller chose a specific model on purpose.
-        provider = normalizeProvider(taskOrConfig.provider || 'google');
-        modelId = taskOrConfig.apiModelId || taskOrConfig.api_model_id || taskOrConfig.model;
         console.log(`[callAI] Direct: Provider: ${provider}, Model: ${modelId} (via Praxis)`);
     }
 
@@ -262,6 +279,7 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
 
 module.exports = {
     getAIModelConfig,
+    resolveCallTarget,
     callAI,
     callPraxisBrain
 };

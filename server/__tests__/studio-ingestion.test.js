@@ -25,7 +25,7 @@ async function waitForRun(baseUrl, channelId, runId) {
 }
 
 describe('studio ingestion worker', () => {
-  let tmpDir; let handle; let callAI;
+  let tmpDir; let handle; let callAI; let contextWindowFor; let sourceBody;
   const channelId = 'impossible-worlds-field-guide';
 
   beforeEach(async () => {
@@ -53,15 +53,18 @@ describe('studio ingestion worker', () => {
       }),
     }));
 
+    sourceBody = `Synthetic article body about Testus Prime b. ${'x'.repeat(200)}`;
+    // Unknown window unless a test says otherwise: sources go whole.
+    contextWindowFor = jest.fn(async () => null);
     const ingestionDeps = {
       youtube: { hasKey: () => false, searchVideos: async () => [], channelUploads: async () => [] },
-      fetchSourceContent: async (url) => ({ content: `Synthetic article body about Testus Prime b. ${'x'.repeat(200)}`, title: 'Synthetic', contentType: 'article', url }),
+      fetchSourceContent: async (url) => ({ content: sourceBody, title: 'Synthetic', contentType: 'article', url }),
     };
 
     const createStudioRouter = require('../routes/studio');
     const app = express();
     app.use(express.json({ limit: '5mb' }));
-    app.use('/api/studio', createStudioRouter({ callAI, ingestionDeps }));
+    app.use('/api/studio', createStudioRouter({ callAI, contextWindowFor, ingestionDeps }));
     handle = await listen(app);
   });
 
@@ -129,5 +132,56 @@ describe('studio ingestion worker', () => {
     const items = (await json(`${handle.baseUrl}/api/studio/${channelId}/ingestion/runs/${run.body.run.id}`)).body.items;
     const done = items.find((item) => item.ingestion_status === 'done');
     expect(done.excerpt).toMatch(/^Extracted 1 object\(s\)\. The model stopped at its output limit.*may be missing\.$/);
+  });
+
+  async function runOneSource(slug) {
+    const sources = (await json(`${handle.baseUrl}/api/studio/${channelId}/sources`)).body;
+    for (const s of sources) {
+      await json(`${handle.baseUrl}/api/studio/${channelId}/sources/${s.id}`, { method: 'PATCH', body: JSON.stringify({ enabled: false }) });
+    }
+    await json(`${handle.baseUrl}/api/studio/${channelId}/sources`, {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Long source', source_type: 'web', url: `https://example.com/${slug}` }),
+    });
+    const run = await json(`${handle.baseUrl}/api/studio/${channelId}/ingestion/run`, { method: 'POST', body: JSON.stringify({ trigger: 'unit' }) });
+    const finished = await waitForRun(handle.baseUrl, channelId, run.body.run.id);
+    expect(finished.status).toBe('complete');
+    return (await json(`${handle.baseUrl}/api/studio/${channelId}/ingestion/runs/${run.body.run.id}`)).body.items;
+  }
+
+  test('a long source reaches extraction whole when it fits the local model window, or the window is unknown', async () => {
+    // 40,000 characters: past the old 12,000 cut, inside half of a 32k-token window.
+    sourceBody = `Testus Prime b opens the article. ${'Middle of a long source. '.repeat(1600)}LAST LINE about Testus Prime c.`;
+    contextWindowFor.mockResolvedValue({ tokens: 32768, source: 'LM Studio gemma4 loaded context', charsPerToken: 3 });
+    await runOneSource('long-fits');
+    expect(contextWindowFor).toHaveBeenCalledWith(expect.objectContaining({ provider: 'local' }));
+    const prompt = callAI.mock.calls[0][1];
+    expect(prompt).toContain(sourceBody);
+    expect(prompt).not.toMatch(/too large for this model's context window/);
+
+    // Unknown window: whole, too.
+    callAI.mockClear();
+    contextWindowFor.mockResolvedValue(null);
+    sourceBody = `${sourceBody} One more paragraph so the hash differs.`;
+    await runOneSource('long-unknown');
+    expect(callAI.mock.calls[0][1]).toContain(sourceBody);
+  });
+
+  test('a source past its share of the window is cut with a note, its whole text kept, and the item says so', async () => {
+    sourceBody = `Testus Prime b opens the article. ${'Middle of a long source. '.repeat(1600)}LAST LINE about Testus Prime c.`;
+    // 4,096 tokens x 0.5 x 3 characters = 6,144 characters for the source.
+    contextWindowFor.mockResolvedValue({ tokens: 4096, source: 'LM Studio gemma4 loaded context', charsPerToken: 3 });
+    const items = await runOneSource('long-cut');
+    const prompt = callAI.mock.calls[0][1];
+    expect(prompt).toContain('Testus Prime b opens the article.');
+    expect(prompt).not.toContain('LAST LINE');
+    const note = prompt.match(/\[Source "Synthetic": ([\d,]+) characters, too large for this model's context window \(4,096 tokens, LM Studio gemma4 loaded context\) alongside the rest of the request\. The first ([\d,]+) are above; the whole text is in (\S+)\.\]/);
+    expect(note).not.toBeNull();
+    expect(Number(note[1].replace(/,/g, ''))).toBe(sourceBody.length);
+    expect(fs.readFileSync(note[3], 'utf8')).toBe(sourceBody);
+
+    const done = items.find((item) => item.ingestion_status === 'done');
+    expect(done.excerpt).toContain(`Extraction saw the first ${note[2]} of ${note[1]} characters of this source`);
+    expect(done.excerpt).toContain(note[3]);
   });
 });

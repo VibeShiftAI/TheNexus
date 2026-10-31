@@ -13,3 +13,6 @@ process.env.PRAXIS_OPENROUTER_CATALOG_PATH = path.join(__dirname, 'fixtures', 'o
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-tests-db-')), 'nexus.db');
 global.__NEXUS_TEST_DB_PATH__ = testDbPath;
 if (!process.env.NEXUS_DB_PATH) process.env.NEXUS_DB_PATH = testDbPath;
+// Whole texts that fitToWindow keeps when a model input is cut go to a
+// throwaway folder, never the live data/model-inputs.
+process.env.NEXUS_MODEL_INPUTS_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-tests-model-inputs-'));

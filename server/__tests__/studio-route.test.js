@@ -82,6 +82,7 @@ describe('studio route', () => {
   let tmpDir;
   let handle;
   let callAI;
+  let contextWindowFor;
 
   beforeEach(async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-studio-test-'));
@@ -92,10 +93,13 @@ describe('studio route', () => {
       usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
     }));
 
+    // Unknown window unless a test says otherwise: prompts carry the whole catalog.
+    contextWindowFor = jest.fn(async () => null);
+
     const createStudioRouter = require('../routes/studio');
     const app = express();
     app.use(express.json({ limit: '5mb' }));
-    app.use('/api/studio', createStudioRouter({ callAI }));
+    app.use('/api/studio', createStudioRouter({ callAI, contextWindowFor }));
     handle = await listen(app);
   });
 
@@ -104,6 +108,69 @@ describe('studio route', () => {
     handle = null;
     delete process.env.NEXUS_DB_PATH;
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  // The catalog context used to be the 8 most recently updated objects, 5 specs each.
+  async function seedCatalog(base, count) {
+    const specKeys = ['bulk.mass_earth', 'bulk.radius_earth', 'atmosphere.pressure_bar', 'atmosphere.composition', 'energy.stellar_flux_earth', 'orbit.period_days', 'orbit.semi_major_axis_au'];
+    // Created first, so it is the least recently updated, and last by name too.
+    await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({
+      name: 'Zeta Relevant World', object_kind: 'exoplanet', field_guide_summary: 'A tidally locked world of eternal noon and permanent night.',
+      specs: specKeys.map((spec_key, i) => ({ spec_key, value_number: 100 + i, status: 'known' })),
+    }) });
+    for (let n = 1; n < count; n += 1) {
+      await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({
+        name: `Catalog Object ${String(n).padStart(2, '0')}`, object_kind: 'exoplanet', field_guide_summary: `Filler object number ${n} with a plain summary.`,
+        specs: specKeys.map((spec_key, i) => ({ spec_key, value_number: n * 1000 + i, status: 'estimated' })),
+      }) });
+    }
+    return specKeys;
+  }
+
+  test('Studio prompts carry every catalog object and every spec when they fit, or the window is unknown', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    const specKeys = await seedCatalog(base, 12);
+
+    await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'suggest_topics', mode: 'local' }) });
+    contextWindowFor.mockResolvedValueOnce({ tokens: 200000, source: 'claude-code claude-sonnet-4-6 run report', charsPerToken: 3 });
+    await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'suggest_topics', mode: 'cloud' }) });
+
+    expect(contextWindowFor).toHaveBeenNthCalledWith(1, expect.objectContaining({ provider: 'local' }));
+    expect(contextWindowFor).toHaveBeenNthCalledWith(2, expect.objectContaining({ provider: 'anthropic' }));
+    for (const [, prompt] of callAI.mock.calls) {
+      expect(prompt).toContain('Zeta Relevant World');
+      for (let n = 1; n < 12; n += 1) expect(prompt).toContain(`Catalog Object ${String(n).padStart(2, '0')}`);
+      for (const key of specKeys) expect(prompt.split(`${key}:`).length - 1).toBe(12);
+      expect(prompt).not.toMatch(/more exist beyond these/);
+    }
+
+    // A prompt copied out for a model of Robert's choosing has no known window: whole.
+    const copied = await json(`${base}/prompt?type=suggest_topics`);
+    expect(copied.body.user.split('orbit.semi_major_axis_au:').length - 1).toBe(12);
+  });
+
+  test('a catalog past its share of the window keeps the most relevant objects and says how many exist beyond', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    await seedCatalog(base, 12);
+    const idea = await json(`${base}/ideas`, { method: 'POST', body: JSON.stringify({ title: 'Standing on Zeta Relevant World', angle: 'Eternal noon against permanent night.', status: 'approved' }) });
+    // 1,000 tokens x 0.4 x 3 characters = 1,200 characters for the catalog.
+    contextWindowFor.mockResolvedValue({ tokens: 1000, source: 'LM Studio llama3.2 loaded context', charsPerToken: 3 });
+    callAI.mockResolvedValueOnce({ text: 'Rigor notes.' });
+    const rigor = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'physics_rigor_pass', ideaId: idea.body.id, mode: 'local' }) });
+    expect(rigor.status).toBe(200);
+
+    const prompt = callAI.mock.calls[0][1];
+    // The object the idea names comes first, though it is the least recently updated.
+    expect(prompt).toMatch(/Catalog:\n- Zeta Relevant World/);
+    const note = prompt.match(/\[Catalog: 12 objects, too many for this model's context window \(1,000 tokens, LM Studio llama3\.2 loaded context\) alongside the rest of the request\. The (\d+) above are ranked by how closely each matches this job; (\d+) more exist beyond these; the whole text is in (\S+)\.\]/);
+    expect(note).not.toBeNull();
+    const shown = Number(note[1]);
+    expect(shown).toBeGreaterThan(0);
+    expect(shown + Number(note[2])).toBe(12);
+    expect((prompt.match(/^- /gm) || []).length).toBe(shown);
+    const whole = fs.readFileSync(note[3], 'utf8');
+    expect(whole).toContain('Zeta Relevant World');
+    for (let n = 1; n < 12; n += 1) expect(whole).toContain(`Catalog Object ${String(n).padStart(2, '0')}`);
   });
 
   test('seeds editable Praxis and Impossible Worlds channel profiles', async () => {

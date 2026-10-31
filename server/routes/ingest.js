@@ -39,8 +39,11 @@ function createIngestRouter({ db }) {
 
             // Cortex fire-and-forget
             const CORTEX_GATEWAY_URL = process.env.CORTEX_GATEWAY_URL || 'http://localhost:8100';
-            const MAX_CORTEX_CHARS = 15000;
-            const cortexText = content.length > MAX_CORTEX_CHARS ? `${autoTitle}\n\n${content.substring(0, MAX_CORTEX_CHARS)}\n\n[Content truncated]` : `${autoTitle}\n\n${content}`;
+            // The whole text (2026-10-31: it was cut to its first 15,000
+            // characters). Cortex is not a model; its extraction pipeline
+            // chunks a long text itself (SemanticChunker, then paragraph
+            // chunks past its window) and sizes each chunk to its own models.
+            const cortexText = `${autoTitle}\n\n${content}`;
             const noteId = note?.id;
 
             fetch(`${CORTEX_GATEWAY_URL}/api/memory/ingest`, {

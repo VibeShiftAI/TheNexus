@@ -110,3 +110,5 @@ data/travel-tabs.json
 .nexus-shared-src/
 data/review-blobs/
 data/presentation-captures/
+# Whole texts of model inputs cut to fit a context window (server/services/context-window.js)
+data/model-inputs/

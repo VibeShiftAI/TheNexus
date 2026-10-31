@@ -4,6 +4,7 @@ const fs = require('fs');
 const multer = require('multer');
 const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 const createStudioIngestion = require('../services/studio-ingestion');
+const { budgetChars, keepWholeText, wholeTextWhere } = require('../services/context-window');
 const createAstroNightly = require('../services/astro-nightly');
 const { startNightlyScheduler } = createAstroNightly;
 const horizons = require('../services/horizons');
@@ -34,8 +35,10 @@ const EDITABLE_CHANNEL_FIELDS = [
   'prompt_guardrails',
 ];
 
-function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
+function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps } = {}) {
   const router = express.Router();
+  // No window lookup wired (tests, or an unknown window): prompts carry the whole catalog and sources.
+  const windowFor = typeof contextWindowFor === 'function' ? contextWindowFor : async () => null;
   // Resolved per router instance (tests point NEXUS_DB_PATH at temp files).
   const sql = openRaw(resolveNexusDbPath());
   setupSchema(sql);
@@ -47,7 +50,7 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
   const now = () => new Date().toISOString();
 
   const ingestion = createStudioIngestion({
-    sql, callAI, uuid, now,
+    sql, callAI, contextWindowFor: windowFor, uuid, now,
     helpers: { upsertSpecValues, insertWonderPoints, extractJSON, stringifyMaybe, slugify },
     listSources,
     deps: ingestionDeps,
@@ -224,17 +227,87 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
     ].filter(Boolean).join('\n');
   }
 
-  function objectContext(channelId) {
-    const objects = listObjects(channelId).slice(0, 8);
+  function catalogLine(obj) {
+    const summary = obj.field_guide_summary || obj.description || '';
+    const specs = (obj.spec_values || []).map((spec) => {
+      const value = spec.value_text || spec.value_number || spec.value_min || spec.value_max || 'unknown';
+      return `${spec.spec_key}: ${value}${spec.unit ? ` ${spec.unit}` : ''} (${spec.status || 'unknown'})`;
+    });
+    return `- ${obj.name} [${obj.object_kind || 'object'}, ${obj.reality_status || 'unknown'}]: ${summary}${specs.length ? ` Specs: ${specs.join('; ')}` : ''}`;
+  }
+
+  // What a job is about, for ranking catalog objects by relevance.
+  function ideaFocus(idea) {
+    return idea ? [idea.title, idea.angle, idea.build_promise, idea.category, idea.script].filter(Boolean).join('\n') : '';
+  }
+
+  function terms(text) {
+    return new Set(String(text || '').toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}-]*/gu) || []);
+  }
+
+  /**
+   * Catalog objects most relevant to `focus` first: an object whose name the
+   * job mentions, then by the shared words, each weighted by how rare it is in
+   * the catalog (a word every object uses counts for nothing), then the
+   * catalog's own order (most recently updated first). No focus keeps that order.
+   */
+  function rankByRelevance(objects, focus) {
+    const focusText = String(focus || '').toLowerCase();
+    const focusTerms = terms(focusText);
+    const docs = objects.map((obj) => terms([obj.name, obj.aliases, obj.object_kind, obj.subtype, obj.field_guide_summary, obj.description, obj.sensory_impression].filter(Boolean).join(' ')));
+    const df = new Map();
+    for (const doc of docs) for (const t of doc) if (focusTerms.has(t)) df.set(t, (df.get(t) || 0) + 1);
+    return objects
+      .map((obj, index) => {
+        const named = Boolean(focusText) && [obj.name, ...String(obj.aliases || '').split(',')]
+          .map((n) => String(n || '').trim().toLowerCase())
+          .some((n) => n && new RegExp(`(^|[^\\p{L}\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}\\p{N}])`, 'u').test(focusText));
+        let score = 0;
+        for (const t of docs[index]) if (df.has(t)) score += Math.log(objects.length / df.get(t));
+        return { obj, index, named, score };
+      })
+      .sort((a, b) => (Number(b.named) - Number(a.named)) || (b.score - a.score) || (a.index - b.index));
+  }
+
+  // The catalog's share of a Studio prompt's context window. It is background
+  // for the job (the script, channel profile and the answer need the rest), so
+  // it may take 0.4 of the window.
+  const CATALOG_SHARE = 0.4;
+
+  /**
+   * Every catalog object with every spec (2026-10-31: it was the 8 most
+   * recently updated objects, 5 specs each) when they fit the catalog's share
+   * of the model's window, or the window is unknown (no lookup, or a prompt
+   * copied out for a model of Robert's choosing). Past that, the objects most
+   * relevant to the job that fit, and a note saying how many exist beyond
+   * them and where the whole catalog is.
+   */
+  function objectContext(channelId, { window = null, focus = '' } = {}) {
+    const objects = listObjects(channelId);
     if (!objects.length) return 'No catalog objects attached yet.';
-    return objects.map((obj) => {
-      const summary = obj.field_guide_summary || obj.description || '';
-      const specs = (obj.spec_values || []).slice(0, 5).map((spec) => {
-        const value = spec.value_text || spec.value_number || spec.value_min || spec.value_max || 'unknown';
-        return `${spec.spec_key}: ${value}${spec.unit ? ` ${spec.unit}` : ''} (${spec.status || 'unknown'})`;
-      });
-      return `- ${obj.name} [${obj.object_kind || 'object'}, ${obj.reality_status || 'unknown'}]: ${summary}${specs.length ? ` Specs: ${specs.join('; ')}` : ''}`;
-    }).join('\n');
+    const lines = new Map(objects.map((obj) => [obj.id, catalogLine(obj)]));
+    const whole = objects.map((obj) => lines.get(obj.id)).join('\n');
+    const budget = budgetChars(window, CATALOG_SHARE);
+    if (budget === null || whole.length <= budget) return whole;
+
+    const kept = keepWholeText(whole, `Studio catalog ${channelId}`);
+    const order = focus ? 'ranked by how closely each matches this job' : 'the most recently updated';
+    const note = (shown) =>
+      `\n[Catalog: ${objects.length.toLocaleString('en-US')} objects, too many for this model's context window ` +
+      `(${window.tokens.toLocaleString('en-US')} tokens, ${window.source}) alongside the rest of the request. ` +
+      `The ${shown.toLocaleString('en-US')} above are ${order}; ${(objects.length - shown).toLocaleString('en-US')} more exist beyond these; ` +
+      `${wholeTextWhere(kept)}.]`;
+    const room = budget - note(objects.length).length;
+    const shown = [];
+    let used = 0;
+    for (const { obj } of rankByRelevance(objects, focus)) {
+      const line = lines.get(obj.id);
+      if (used + line.length + 1 > room) continue;
+      shown.push(line);
+      used += line.length + 1;
+    }
+    console.log(`[Studio] catalog for ${channelId}: ${shown.length} of ${objects.length} objects fit ${window.source}; ${wholeTextWhere(kept)}`);
+    return shown.join('\n') + note(shown.length);
   }
 
   // Full parameter dump for the objects attached to a specific episode — feeds the
@@ -303,9 +376,9 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
     suggest_topics: {
       label: 'Suggest episodes',
       needsIdea: false,
-      build({ channel, channelId, count = 6 }) {
+      build({ channel, channelId, count = 6, window }) {
         const existing = listIdeas(channelId).map((idea) => idea.title).join(', ');
-        const objects = objectContext(channelId);
+        const objects = objectContext(channelId, { window });
         return {
           system: buildChannelSystem(channel, 'Output strict JSON only.'),
           user:
@@ -398,7 +471,7 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
         return cutNote ? { summary: `${summary}. ${cutNote}`, ideaId, truncated: true, warning: cutNote } : { summary, ideaId };
       },
       // Prompt-mode + paste fallback (single pass).
-      build({ channel, channelId, ideaId }) {
+      build({ channel, channelId, ideaId, window }) {
         const idea = getIdea(ideaId);
         if (!idea) throw new Error('Idea not found.');
         const params = episodeObjectContext(channelId, ideaId);
@@ -408,7 +481,7 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
             `Write a full ready-to-record first-person script in the channel's recurring field-guide format.\n\n` +
             `Episode: ${idea.title}\nAngle: ${idea.angle || ''}\nPromise: ${idea.build_promise || ''}\nCategory: ${idea.category || ''}\n\n` +
             `Attached object parameters:\n${params.text}\n\n` +
-            `Channel catalog context:\n${objectContext(channelId)}\n\n` +
+            `Channel catalog context:\n${objectContext(channelId, { window, focus: ideaFocus(idea) })}\n\n` +
             `Sensory focus: what you SEE (sky color from scattering), HEAR (wind), and FEEL (gravity, temperature, immediate biological hazards). Clear assumptions, actual physics, uncertainty labels, Robert on camera, no hype.`,
         };
       },
@@ -424,14 +497,14 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
     physics_rigor_pass: {
       label: 'Physics rigor pass',
       needsIdea: true,
-      build({ channel, channelId, ideaId }) {
+      build({ channel, channelId, ideaId, window }) {
         const idea = getIdea(ideaId);
         if (!idea) throw new Error('Idea not found.');
         return {
           system: buildChannelSystem(channel, 'You are checking physics rigor and uncertainty labeling.'),
           user:
             `Review this episode for unsupported claims, missing assumptions, and places where uncertainty should be explicit.\n\n` +
-            `Title: ${idea.title}\nScript:\n${idea.script || '(no script yet)'}\n\nCatalog:\n${objectContext(channelId)}\n\n` +
+            `Title: ${idea.title}\nScript:\n${idea.script || '(no script yet)'}\n\nCatalog:\n${objectContext(channelId, { window, focus: ideaFocus(idea) })}\n\n` +
             `Return concise notes grouped as: fixes, assumptions, disputed/unknown, source needs.`,
         };
       },
@@ -468,13 +541,13 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
     image_prompts: {
       label: 'Image prompt pack',
       needsIdea: true,
-      build({ channel, channelId, ideaId }) {
+      build({ channel, channelId, ideaId, window }) {
         const idea = getIdea(ideaId);
         if (!idea) throw new Error('Idea not found.');
         return {
           system: buildChannelSystem(channel, 'You plan reference images and image-generation prompts. Output strict JSON only.'),
           user:
-            `Create 4-6 reference image prompts for "${idea.title}".\n\nCatalog:\n${objectContext(channelId)}\n\n` +
+            `Create 4-6 reference image prompts for "${idea.title}".\n\nCatalog:\n${objectContext(channelId, { window, focus: ideaFocus(idea) })}\n\n` +
             `JSON array only. Each item: label, prompt, negative_prompt, intended_use.`,
         };
       },
@@ -508,7 +581,7 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
     source_citation_pack: {
       label: 'Source/citation pack',
       needsIdea: true,
-      build({ channel, channelId, ideaId }) {
+      build({ channel, channelId, ideaId, window }) {
         const idea = getIdea(ideaId);
         if (!idea) throw new Error('Idea not found.');
         const sources = listSources(channelId).filter((source) => source.enabled).map((source) => `- ${source.name}: ${source.url || source.query_template || source.source_type}`).join('\n');
@@ -516,7 +589,7 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
           system: buildChannelSystem(channel, 'You are preparing a source trail.'),
           user:
             `Prepare a citation/source pack for "${idea.title}" using accepted source configs and catalog context.\n\n` +
-            `Sources:\n${sources || 'none'}\n\nCatalog:\n${objectContext(channelId)}\n\nReturn source needs, likely citations, and fact-check questions.`,
+            `Sources:\n${sources || 'none'}\n\nCatalog:\n${objectContext(channelId, { window, focus: ideaFocus(idea) })}\n\nReturn source needs, likely citations, and fact-check questions.`,
         };
       },
       apply({ ideaId }, text) {
@@ -635,7 +708,10 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
     if (typeof def.custom === 'function') {
       return def.custom({ ...params, channel, model, modelLabel });
     }
-    const built = def.build({ ...params, channel });
+    // The window of the model this job reaches sizes the catalog context; set
+    // after the spread so a request body cannot supply its own.
+    const window = await windowFor(model);
+    const built = def.build({ ...params, channel, window });
     const full = await callAI(model, built.user, built.system, [], { returnFullResult: true });
     if (!full?.truncated) return def.apply({ ...params, model: modelLabel }, full.text || full);
     // Cut answer: apply what came back, but never as if it were whole.

@@ -38,6 +38,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const simpleGit = require('simple-git');
 const { buildRunTrace } = require('../services/run-trace');
+const { fitToWindow } = require('../services/context-window');
 const { tokenSource } = require('../services/usage-source');
 
 // Names/emails that mark a commit trailer as belonging to an AI executor, so
@@ -243,8 +244,10 @@ function activityRunTrace(run, trailerModel = null) {
     });
 }
 
-function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextSync, getRecentDispatches }) {
+function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, scanProjects, callAI, contextWindowFor, contextSync, getRecentDispatches }) {
     const router = express.Router();
+    // No window lookup wired (tests, or an unknown window): texts go to the model whole.
+    const windowFor = typeof contextWindowFor === 'function' ? contextWindowFor : async () => null;
     router.use(boardRequestLease(db));
     if ('writeLeases' in db) router.use(requestLease(db, async req => {
         if (req.method === 'POST' && ['/', '/scaffold'].includes(req.path) && typeof req.body?.name === 'string') {
@@ -794,15 +797,12 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             let diff = '';
             try { diff = await git.diff(); } catch (e) { /* ignore */ }
             if (status.files.length === 0) return res.json({ message: 'No changes to commit' });
-            const fileChanges = status.files.map(f => `${f.index || f.working_dir} ${f.path}`).join('\n');
-            const diffPreview = diff.substring(0, 2000);
             let walkthroughContent = '';
             if (taskId) {
                 try {
                     const task = await db.getTask(taskId);
                     if (task?.walkthrough) {
-                        const wt = typeof task.walkthrough === 'string' ? task.walkthrough : task.walkthrough.content || JSON.stringify(task.walkthrough);
-                        walkthroughContent = wt.substring(0, 3000);
+                        walkthroughContent = typeof task.walkthrough === 'string' ? task.walkthrough : task.walkthrough.content || JSON.stringify(task.walkthrough);
                     }
                 } catch (e) { /* ignore */ }
             }
@@ -817,15 +817,42 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                 });
                 return res.json({ message: `Update ${types.size > 0 ? Array.from(types).join(', ') : 'code'}: ${status.files.length} file(s) changed`, generated: false, note: 'Add an AI API key for smarter commit messages' });
             }
-            const prompt = `Generate a concise git commit message (max 72 chars for first line) for these changes:\n\nFiles changed:\n${fileChanges}\n${walkthroughContent ? `\nImplementation Summary (from walkthrough):\n${walkthroughContent}\n` : ''}Diff preview:\n${diffPreview}\n\nFollow conventional commits format (feat:, fix:, docs:, refactor:, etc). Return ONLY the commit message, nothing else.`;
+            // The whole diff, walkthrough and file list when they fit the
+            // window of the model this call reaches (2026-10-31: the message
+            // was written from the first 2,000 characters of the diff and
+            // 3,000 of the walkthrough). Past that, each is cut with a note in
+            // the prompt and its whole text is kept under data/model-inputs.
+            //   diff 0.6: it is what the message describes, so it gets most;
+            //   walkthrough 0.2: the task's account of why, background to the diff;
+            //   file list 0.1: one short line per file, room for a large change;
+            // the last tenth holds the instructions and the one-line answer.
+            const window = await windowFor('quick');
+            const files = fitToWindow(status.files.map(f => `${f.index || f.working_dir} ${f.path}`).join('\n'), { window, share: 0.1, label: 'Changed file list' });
+            const walkthrough = walkthroughContent ? fitToWindow(walkthroughContent, { window, share: 0.2, label: 'Task walkthrough' }) : null;
+            const diffFit = fitToWindow(diff, { window, share: 0.6, label: 'Diff' });
+            const cut = [['diff', diffFit], ['walkthrough', walkthrough], ['file list', files]].filter(([, f]) => f && !f.whole);
+            const fileChanges = files.text;
+            const diffText = diffFit.text;
+            walkthroughContent = walkthrough ? walkthrough.text : '';
+            const prompt = `Generate a concise git commit message (max 72 chars for first line) for these changes:\n\nFiles changed:\n${fileChanges}\n${walkthroughContent ? `\nImplementation Summary (from walkthrough):\n${walkthroughContent}\n` : ''}Diff:\n${diffText}\n\nFollow conventional commits format (feat:, fix:, docs:, refactor:, etc). Return ONLY the commit message, nothing else.`;
+            // Said in the response too, so a reader knows the message saw only part of the change.
+            const partialInput = cut.length ? cut.map(([what, f]) => ({ what, originalChars: f.originalChars, shownChars: f.shownChars, fullTextPath: f.fullTextPath })) : null;
+            const inputNote = partialInput
+                ? `This message was written from part of the change: ${partialInput.map(p => `the first ${p.shownChars.toLocaleString('en-US')} of ${p.originalChars.toLocaleString('en-US')} characters of the ${p.what}`).join('; ')}, all that fit the model's context window (${window.tokens.toLocaleString('en-US')} tokens, ${window.source}). The whole texts are in ${partialInput.map(p => p.fullTextPath || '(could not be kept on disk)').join(', ')}.`
+                : null;
             try {
                 const ai = await callAI('quick', prompt, 'You are a git commit message generator.', [], { returnFullResult: true });
                 const aiMessage = typeof ai === 'string' ? ai : ai?.text;
-                if (aiMessage && ai?.truncated) {
-                    return res.json({ message: aiMessage.trim(), generated: true, truncated: true,
-                        note: 'The model stopped at its output limit, so this message may be incomplete.' });
+                if (aiMessage) {
+                    const outputNote = ai?.truncated ? 'The model stopped at its output limit, so this message may be incomplete.' : null;
+                    const note = [outputNote, inputNote].filter(Boolean).join(' ');
+                    return res.json({
+                        message: aiMessage.trim(), generated: true,
+                        ...(ai?.truncated ? { truncated: true } : {}),
+                        ...(partialInput ? { partialInput } : {}),
+                        ...(note ? { note } : {}),
+                    });
                 }
-                if (aiMessage) return res.json({ message: aiMessage.trim(), generated: true });
             } catch (e) { /* fall through */ }
             res.json({ message: `Update: ${status.files.length} file(s) changed`, generated: false });
         } catch (error) {

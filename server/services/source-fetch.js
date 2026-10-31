@@ -4,10 +4,18 @@
  * Extracted from server/routes/ingest.js so the URL/YouTube fetch+clean logic has
  * a single implementation reused by the Studio ingestion worker. Handles YouTube
  * (oEmbed title + transcript), JSON, plain text, and HTML (stripped to text).
+ *
+ * The content comes back whole (2026-10-31: it was cut to its first 50,000
+ * characters and stored that way as the ingest note, with only a trailing
+ * marker). That cut never guarded anything: the whole body had already been
+ * read. The guard at the edge is the 15-second clock on a page fetch, which
+ * covers reading the body too: a page that does not finish in time fails the
+ * fetch, so nothing partial is stored or handed on as if it were the page. Callers
+ * that feed a model size the text to that model's window themselves
+ * (services/context-window.js).
  */
 
 const YT_RE = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/;
-const MAX_CHARS = 50000;
 
 function youtubeId(url) {
   const m = String(url || '').match(YT_RE);
@@ -96,9 +104,7 @@ async function fetchSourceContent(url, { userTitle = '' } = {}) {
   if (!url) throw new Error('url is required');
   const videoId = youtubeId(url);
   const result = videoId ? await fetchYouTube(videoId, url, userTitle) : await fetchWeb(url, userTitle);
-  let content = result.content || '';
-  if (content.length > MAX_CHARS) content = `${content.slice(0, MAX_CHARS)}\n\n[... truncated — content exceeded ${MAX_CHARS} characters]`;
-  return { ...result, content, url, videoId };
+  return { ...result, content: result.content || '', url, videoId };
 }
 
 module.exports = { fetchSourceContent, youtubeId, watchUrl };
