@@ -1617,8 +1617,9 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (body.execution_id !== undefined && body.execution_id !== null && !executionId) return res.status(400).json({ error: 'execution_id must be a short string', code: 'invalid_replacement' });
             const state = body.state === undefined ? 'accepted' : body.state;
             if (!ACCEPT_STATES.has(state)) return res.status(400).json({ error: `state at acceptance must be one of ${[...ACCEPT_STATES].join(', ')}`, code: 'invalid_replacement' });
-            const detail = body.detail === undefined || body.detail === null ? null : typeof body.detail === 'string' && body.detail.length <= LIMITS.editSummary ? body.detail.trim() || null : false;
-            if (detail === false) return res.status(400).json({ error: `detail must be a string of at most ${LIMITS.editSummary} characters`, code: 'invalid_replacement' });
+            // Replacement detail carries whole evidence (a QA reason, Robert's hold words): any length, stored as sent; the JSON body limit bounds the request.
+            const detail = body.detail === undefined || body.detail === null ? null : typeof body.detail === 'string' ? body.detail.trim() || null : false;
+            if (detail === false) return res.status(400).json({ error: 'detail must be a string', code: 'invalid_replacement' });
             const recovers = body.recovers_replacement_id === undefined || body.recovers_replacement_id === null ? null : text(String(body.recovers_replacement_id), 120);
             if (body.recovers_replacement_id !== undefined && body.recovers_replacement_id !== null && !recovers) return res.status(400).json({ error: 'recovers_replacement_id must be a short string', code: 'invalid_replacement' });
             const parsedSource = parseReplacementSource(doc, body);
@@ -1767,7 +1768,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 patch.state = body.state;
             }
             if (body.detail !== undefined) {
-                if (body.detail !== null && (typeof body.detail !== 'string' || body.detail.length > LIMITS.editSummary)) return res.status(400).json({ error: `detail must be a string of at most ${LIMITS.editSummary} characters`, code: 'invalid_replacement' });
+                // Any length, as at acceptance: a whole QA reason is the evidence for qa_passed and is never refused for its size.
+                if (body.detail !== null && typeof body.detail !== 'string') return res.status(400).json({ error: 'detail must be a string', code: 'invalid_replacement' });
                 patch.detail = body.detail === null ? null : body.detail.trim() || null;
             }
             if (body.qa_state !== undefined) {

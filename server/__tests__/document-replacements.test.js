@@ -310,7 +310,7 @@ test('only current, change-requesting authority opens work; stale, approving, un
     expect(await accept(document.id, { client_request_id: 'k', source: { decision_id: decision.id }, bogus: 1 })).toMatchObject(invalid);
     expect(await accept(document.id, { client_request_id: 'k', source: { decision_id: decision.id, extra: 1 } })).toMatchObject(invalid);
     expect(await accept(document.id, { client_request_id: 'k', source: { decision_id: decision.id }, state: 'ready' })).toMatchObject(invalid);
-    expect(await accept(document.id, { client_request_id: 'k', source: { decision_id: decision.id }, detail: 'x'.repeat(2001) })).toMatchObject(invalid);
+    expect(await accept(document.id, { client_request_id: 'k', source: { decision_id: decision.id }, detail: { text: 'not a string' } })).toMatchObject(invalid);
     expect(await accept(document.id, { client_request_id: 'k', source: { decision_id: decision.id }, task_id: 'no-such-task' })).toMatchObject({ status: 404, json: { code: 'task_not_found' } });
     expect(await accept(document.id, { client_request_id: 'k', source: { decision_id: 'no-such-decision' } })).toMatchObject({ status: 404, json: { code: 'source_not_found' } });
     expect(await accept(document.id, { client_request_id: 'k', source: { submission_id: 'no-such-submission' } })).toMatchObject({ status: 404, json: { code: 'source_not_found' } });
@@ -350,6 +350,24 @@ test('only current, change-requesting authority opens work; stale, approving, un
     expect(await counts()).toMatchObject({ in_progress: 0, changes_requested: 2, all: 2 });
     // The decision on the current version does authorize work.
     expect(await accept(document.id, { client_request_id: 'k', source: { decision_id: changesOnV2.json.decision.id }, task_id: WORK_TASK })).toMatchObject({ status: 201, json: { replacement: { base_revision_id: v2.id, superseded_review_ids: [draft.id] } } });
+});
+
+test('replacement detail is stored whole at any length: a long hold reason at acceptance and a long QA reason on report survive to every read', async () => {
+    const { document, submission, decision } = await requestedChanges('long-detail.md');
+    // Longer than the 2000 characters the route used to refuse, with a distinct tail so a cut anywhere shows.
+    const hold = `Held by Robert's instruction: ${'Wait until I have added the client notes to the appendix. '.repeat(60)}END OF HOLD`;
+    const accepted = await accept(document.id, { client_request_id: 'long', source: { submission_id: submission.id, decision_id: decision.id }, task_id: WORK_TASK, state: 'held', detail: hold });
+    expect(accepted.status).toBe(201);
+    expect(hold.length).toBeGreaterThan(3000);
+    expect(accepted.json.replacement.detail).toBe(hold);
+    const qa = `Independent QA passed (codex): ${'Criterion verified against the diff and the rendered file. '.repeat(200)}END OF QA REASON`;
+    expect(qa.length).toBeGreaterThan(10000);
+    const reported = await report(document.id, accepted.json.replacement.id, { state: 'held', qa_state: 'failed', detail: qa });
+    expect(reported.status).toBe(200);
+    expect(reported.json.replacement.detail).toBe(qa);
+    expect(db.documentReviews.getReplacement(accepted.json.replacement.id).detail).toBe(qa);
+    expect((await read(document.id)).json.replacement.detail).toBe(qa);
+    expect(await report(document.id, accepted.json.replacement.id, { detail: 42 })).toMatchObject({ status: 400, json: { code: 'invalid_replacement' } });
 });
 
 test('a registration under the work task names the result; a QA pass on the current ready result completes the work and only the new version is reviewable', async () => {

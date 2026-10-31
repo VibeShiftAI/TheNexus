@@ -746,7 +746,9 @@ Body: `client_request_id` (required, 1 to 120 characters, the idempotency key
 for this document); `source` (required object) with at least one of
 `submission_id`, `review_id`, `decision_id`; optional `task_id` (must exist),
 `execution_id`, `state` (default `accepted`; `accepted`, `queued`, `held` or
-`running`), `detail` (up to 2000 characters) and `recovers_replacement_id`
+`running`), `detail` (a string of any length, stored whole: it carries
+Robert's hold words and whole QA reasons, so it is never cut or refused for
+its size; only the request body limit bounds it) and `recovers_replacement_id`
 (12.5). Unknown fields are refused with 400 `invalid_replacement`.
 
 Authority: the source must be current, change-requesting authority on the
@@ -828,7 +830,8 @@ is returned with `created: false`, pinned to its own revision
 replacement source it is refused with `source_not_current`.
 
 Reporting: `PATCH /api/documents/:id/replacements/:replacementId` with any of
-`state` (any state in 12.2), `detail`, `task_id` (set once; a different task
+`state` (any state in 12.2), `detail` (any length, as at acceptance; a
+non-string is 400 `invalid_replacement`), `task_id` (set once; a different task
 is 409 `task_already_linked`), `execution_id`, `qa_state`, `revision_id` (the
 result; must be this document's revision, 404 `revision_not_found`, and not
 the base, 409 `result_is_base`). An empty or identical patch is 200
@@ -958,6 +961,9 @@ the ready version.
   round as read-only with its comments and a note that nothing was sent, no
   "Start a new review" while closed, and refusals for stale tabs that reload
   into the current version without recording anything.
+  A replacement `detail` longer than one short line (the banner, the rail
+  note and History alike) shows its opening and a "show all N characters"
+  toggle that reveals the whole text; the stored detail is never cut.
   Unsaved text is kept on screen and recovered after a reload, never dropped.
   History numbers versions, labels superseded rounds and lists every attempt
   with its task.

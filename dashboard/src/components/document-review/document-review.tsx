@@ -86,7 +86,7 @@ import {
 import { readReviewDraft, reconcileReviewDraft, writeReviewDraft, REVIEW_DRAFT_MAX_RECOVERED, type ComposerDraft, type RecoveredDraft, type RecoveredReason, type ReviewDraft } from "@/lib/review-drafts";
 import { blockElementId, excerpt, extractOutline, quoteLines } from "@/lib/document-outline";
 import { DocumentMarkdown, type BlockRef } from "./document-markdown";
-import { DecisionCard } from "./decision-card";
+import { DecisionCard, ReplacementDetail } from "./decision-card";
 import { OutgoingCard } from "./outgoing-card";
 import { DocumentStatusBadge } from "./deliverable-row";
 import { HumanBriefBlock } from "@/components/human-brief";
@@ -1451,11 +1451,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                                     <>
                                         A new version of this document is being produced
                                         {replacement.task_id ? <> by <Link href={replacement.links?.task_path ?? `/task/${encodeURIComponent(replacement.task_id)}`} className="underline" data-replacement-task-link="">revision task {replacement.task_id.slice(0, 8)}</Link></> : null}
-                                        {replacement.detail ? ` (${replacement.detail})` : ""}. You are reading the current version{data.version?.current_version ? ` (v${data.version.current_version})` : ""}; it takes no new review, decision or edit until the new version is ready. If the work fails or is cancelled before registering new bytes, this version reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, review waits for an explicit recovery. Earlier comments and decisions are kept.
+                                        {replacement.detail ? <> (<ReplacementDetail text={replacement.detail} />)</> : null}. You are reading the current version{data.version?.current_version ? ` (v${data.version.current_version})` : ""}; it takes no new review, decision or edit until the new version is ready. If the work fails or is cancelled before registering new bytes, this version reopens only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, review waits for an explicit recovery. Earlier comments and decisions are kept.
                                     </>
                                 ) : (
                                     <>
-                                        The last attempt to produce a new version {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? `: ${replacement.detail}` : ""}
+                                        The last attempt to produce a new version {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? <>: <ReplacementDetail text={replacement.detail} /></> : null}
                                         {replacement.task_id ? <> (<Link href={replacement.links?.task_path ?? `/task/${encodeURIComponent(replacement.task_id)}`} className="underline" data-replacement-task-link="">revision task {replacement.task_id.slice(0, 8)}</Link>)</> : null}.{" "}
                                         {closedByFailure
                                             ? <>You are reading the bytes that attempt registered{data.version?.current_version ? ` (v${data.version.current_version})` : ""}; they were never declared ready, so this version takes no review, decision or edit. The previous version and its decisions stay on record in History. Review reopens on the new version an explicit recovery delivers, never by reopening this one.</>

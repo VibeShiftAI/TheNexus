@@ -126,6 +126,30 @@ function refusalMessage(err: unknown, noteState: NoteState): { text: string; sta
     return { text: `${sentence(err instanceof Error ? err.message : "Request failed")} It is unclear whether the decision was recorded; trying again is safe.`, stale: false, reload: false };
 }
 
+/** Display fold only: a detail longer than this, or on more than one line, opens on demand. The stored text is never cut. */
+const REPLACEMENT_DETAIL_FOLD = 300;
+
+/**
+ * Replacement detail at any length (a whole QA reason, Robert's hold words; contract section 12.3). A short one-line
+ * detail reads inline; a longer one shows its opening, says how long it is, and reveals every character on demand.
+ */
+export function ReplacementDetail({ text }: { text: string }) {
+    const [open, setOpen] = useState(false);
+    const chars = Array.from(text);
+    const firstLine = text.split("\n", 1)[0];
+    if (chars.length <= REPLACEMENT_DETAIL_FOLD && firstLine === text) return <>{text}</>;
+    const preview = Array.from(firstLine).slice(0, REPLACEMENT_DETAIL_FOLD).join("");
+    return (
+        <span data-replacement-detail={open ? "open" : "folded"}>
+            <span className={open ? "whitespace-pre-wrap break-words" : undefined}>{open ? text : `${preview}…`}</span>
+            {" "}
+            <button type="button" className="underline" aria-expanded={open} onClick={() => setOpen((value) => !value)} data-replacement-detail-toggle="">
+                {open ? "show less" : `show all ${chars.length.toLocaleString("en-US")} characters`}
+            </button>
+        </span>
+    );
+}
+
 function HistoryList({ history, currentRevisionId }: { history: DocumentHistory; currentRevisionId: string | null }) {
     const revisions = [...history.revisions].sort((a, b) => b.captured_at.localeCompare(a.captured_at));
     const decisionsByRevision = new Map<string, DocumentDecision[]>();
@@ -183,7 +207,7 @@ function HistoryList({ history, currentRevisionId }: { history: DocumentHistory;
                             {` · attempt ${rp.attempt} · accepted ${formatWhen(rp.created_at)}`}
                             {rp.completed_at ? ` · ended ${formatWhen(rp.completed_at)}` : ""}
                             {rp.task_id ? <> · <Link href={rp.links?.task_path ?? `/task/${encodeURIComponent(rp.task_id)}`} className="text-cyan-300 hover:underline" data-history-replacement-task="">task {rp.task_id.slice(0, 8)}</Link></> : null}
-                            {rp.detail ? <span className="text-slate-300">: {rp.detail}</span> : null}
+                            {rp.detail ? <span className="text-slate-300">: <ReplacementDetail text={rp.detail} /></span> : null}
                         </li>
                     ))}
                 </ul>
@@ -203,10 +227,10 @@ function ReplacementNote({ replacement, blocked }: { replacement: DocumentReplac
         <p className={`mt-2 text-[11px] ${replacement.open ? "text-cyan-100" : replacement.state === "failed" ? "text-rose-200" : "text-slate-300"}`} data-replacement-note={replacement.state}>
             <span className={`mr-1.5 inline-flex items-center rounded-full border px-1.5 py-px ${label.tone}`}>{label.text}{replacement.attempt > 1 ? ` · attempt ${replacement.attempt}` : ""}</span>
             {replacement.open
-                ? <>A new version is being produced{taskLink ? <> by {taskLink}</> : null}{replacement.detail ? ` (${replacement.detail})` : ""}.{blocked ? " Decisions reopen when it is ready. If the work fails or is cancelled before registering new bytes, they reopen on this version only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, they wait for an explicit recovery." : ""}</>
+                ? <>A new version is being produced{taskLink ? <> by {taskLink}</> : null}{replacement.detail ? <> (<ReplacementDetail text={replacement.detail} />)</> : null}.{blocked ? " Decisions reopen when it is ready. If the work fails or is cancelled before registering new bytes, they reopen on this version only when no failed result governs the current version; if an earlier failed or cancelled attempt registered this version, or the work registered bytes first, they wait for an explicit recovery." : ""}</>
                 : blocked
-                    ? <>The last revision attempt {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? `: ${replacement.detail}` : ""}{taskLink ? <> ({taskLink})</> : null}. These bytes are its unaccepted result and take no decision; decisions reopen on the new version an explicit recovery delivers.</>
-                    : <>The last revision attempt {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? `: ${replacement.detail}` : ""}{taskLink ? <> ({taskLink})</> : null}. This version stays current; a retry is a new attempt, never a silent reopening of the old one.</>}
+                    ? <>The last revision attempt {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? <>: <ReplacementDetail text={replacement.detail} /></> : null}{taskLink ? <> ({taskLink})</> : null}. These bytes are its unaccepted result and take no decision; decisions reopen on the new version an explicit recovery delivers.</>
+                    : <>The last revision attempt {replacement.state === "failed" ? "failed" : "was cancelled"}{replacement.detail ? <>: <ReplacementDetail text={replacement.detail} /></> : null}{taskLink ? <> ({taskLink})</> : null}. This version stays current; a retry is a new attempt, never a silent reopening of the old one.</>}
         </p>
     );
 }

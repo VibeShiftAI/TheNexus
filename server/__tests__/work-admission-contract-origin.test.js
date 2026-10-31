@@ -324,6 +324,16 @@ test('a runtime-attested chat instruction is recorded as attested, never as Nexu
     expect(receipt(relayed.data.task).decision).toBe('new_work');
 });
 
+test('a long attested instruction is recorded whole (it was cut to 4,000 characters)', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const instruction = `If Robert is the source of a task contract change, his instruction authorizes that change. ${'Keep the memo to one page and cite each figure. '.repeat(100)}END-OF-INSTRUCTION`;
+    expect(instruction.length).toBeGreaterThan(4000);
+    const relayed = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...task.antigravity_payload, prompt: RULED_PROMPT },
+        contract_change: { origin: 'operator_relayed', fields: ['payload.prompt'], decision_ref: { kind: 'chat_instruction', id: 'chat-long-1', instruction } } }, { key: runtimeKey });
+    expect(relayed.status).toBe(200);
+    expect(receipt(relayed.data.task).contract.authorized_by.decision_ref.instruction).toBe(instruction);
+});
+
 // ── Criterion 3: unrelated gates and immutable history stay intact ──
 
 test('overlap holds, explicit concerns, dependency gates and resolve authority are untouched by an authorized change', async () => {

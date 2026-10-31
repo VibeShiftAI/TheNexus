@@ -268,7 +268,8 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         }
         if (['chat_instruction', 'inbox_answer', 'questionnaire'].includes(given.kind)) {
             if (!normalized(given.id) || !normalized(given.instruction)) throw fail(`${given.kind} reference needs id and the instruction text`, 400, 'contract_change_invalid');
-            return { kind: given.kind, id: String(given.id).slice(0, 200), instruction: String(given.instruction).trim().slice(0, 4000),
+            // Robert's instruction is the authority for the change, so it is kept whole (it was cut to 4,000 characters until 2026-10-31).
+            return { kind: given.kind, id: String(given.id), instruction: String(given.instruction).trim(),
                 ...(normalized(given.instructed_at) ? { instructed_at: String(given.instructed_at) } : {}), verified: false, verification: 'runtime_attested' };
         }
         throw fail('Unsupported decision reference kind', 400, 'contract_change_invalid');

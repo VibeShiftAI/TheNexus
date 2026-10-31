@@ -269,6 +269,35 @@ test('replacement work accepted while a draft round is open: the next save is re
   } finally { again.cleanup(); }
 });
 
+test('a long replacement detail is stored whole and shown whole on demand: the banner and the rail fold it, say how long it is, and reveal every character', async () => {
+  window.localStorage.clear();
+  // A whole QA reason over several lines, longer than the 2000 characters the API used to refuse, with a distinct tail.
+  const detail = `QA exhausted after 2 corrections. Last corrections:\n${'Criterion 1 is not met: the appendix still cites the old totals. '.repeat(60)}\nEND OF CORRECTIONS`;
+  const srv = server({ review: submittedReview(), replacement: failedReplacement({ detail }) });
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const banner = c.querySelector('[data-replacement-banner]');
+    const folded = banner.querySelector('[data-replacement-detail]');
+    assert.equal(folded.dataset.replacementDetail, 'folded');
+    assert.match(banner.textContent, /The last attempt to produce a new version failed: QA exhausted after 2 corrections\. Last corrections:…/);
+    const toggle = folded.querySelector('[data-replacement-detail-toggle]');
+    assert.equal(toggle.textContent, `show all ${detail.length.toLocaleString('en-US')} characters`, 'the fold announces itself and the full length');
+    assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+    assert.doesNotMatch(banner.textContent, /END OF CORRECTIONS/);
+    await click(toggle);
+    assert.equal(folded.dataset.replacementDetail, 'open');
+    assert.ok(banner.textContent.includes(detail), 'every character is shown on demand');
+    // The decision card's note folds the same detail independently.
+    const note = card(c).querySelector('[data-replacement-note] [data-replacement-detail]');
+    assert.equal(note.dataset.replacementDetail, 'folded');
+    await click(note.querySelector('[data-replacement-detail-toggle]'));
+    assert.ok(card(c).querySelector('[data-replacement-note]').textContent.includes(detail));
+    assert.deepEqual(writes(srv), [], 'unfolding writes nothing');
+  } finally { t.cleanup(); }
+});
+
 test('a failed attempt leaves the version current and reviewable with the failure explained; an attempt on an older version is history only', async () => {
   window.localStorage.clear();
   const srv = server({ review: submittedReview(), replacement: failedReplacement() });
