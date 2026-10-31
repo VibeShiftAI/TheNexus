@@ -14,6 +14,28 @@ const { classifyNamespace, formatRetrieved } = require('../lib/provenance');
 
 const READ_ONLY_CYPHER_RE = /\b(CREATE|DELETE|MERGE|SET|REMOVE|DROP|CALL\s+apoc\.create)\b/i;
 
+/**
+ * Describe a stored episode whose content is not the text sent. Lengths, not
+ * two copies of the text: the caller already holds what it sent, and a cut
+ * copy is named as a cut so it can never pass for the whole observation.
+ */
+function contentMismatch(uuid, sent, stored) {
+  if (typeof stored === 'string' && stored.length < sent.length && sent.startsWith(stored)) {
+    return {
+      field: 'content',
+      expected: `the whole text (${sent.length} characters)`,
+      actual: `episode ${uuid} holds only the first ${stored.length} characters; Cortex cut the rest (a gateway still running the old 8,000-character cut needs a restart)`,
+    };
+  }
+  return {
+    field: 'content',
+    expected: `the whole text (${sent.length} characters)`,
+    actual: typeof stored === 'string'
+      ? `episode ${uuid} holds ${stored.length} characters that differ from the text sent`
+      : `episode ${uuid} has no stored content`,
+  };
+}
+
 function register(server, ctx) {
   server.tool(
     'memory_search',
@@ -125,7 +147,7 @@ function register(server, ctx) {
 
   server.tool(
     'memory_write',
-    'Write a transient observation to Cortex (vector + graph). USE FOR: ephemeral facts that may become irrelevant — "Robert is in NYC today", "port 5432 in use as of 3am", "build X failed with error Y". Subject to compaction. DO NOT USE for reusable procedures, durable identity facts, or anything you would want to find by browsing in a year. For durable content, use vault_write to skills/, memories/, or projects/.',
+    'Write a transient observation to Cortex (vector + graph). USE FOR: ephemeral facts that may become irrelevant: "Robert is in NYC today", "port 5432 in use as of 3am", "build X failed with error Y". Subject to compaction. DO NOT USE for reusable procedures, durable identity facts, or anything you would want to find by browsing in a year. For durable content, use vault_write to skills/, memories/, or projects/. The whole text is stored and read back; a write Cortex stores only part of is reported as a failure.',
     {
       text: z.string().describe('The factual observation. Will become the Episodic node content.'),
       kind: z.string().default('observation').describe('Free-form tag, e.g. "observation", "decision", "build-status".'),
@@ -164,12 +186,10 @@ function register(server, ctx) {
           }),
           readAfter: () => backends.cortexEpisodeById(uuid),
           verify: ({ after }) => {
-            const mismatches = compareFields(after, {
-              name: uuid,
-              content: text.slice(0, 8000),
-              source,
-              factoids,
-            });
+            // The whole text is checked: a write Cortex stored only part of
+            // is a failed write, never a success.
+            const mismatches = compareFields(after, { name: uuid, source, factoids });
+            if (after?.content !== text) mismatches.push(contentMismatch(uuid, text, after?.content));
             return { ok: mismatches.length === 0, mismatches };
           },
         });

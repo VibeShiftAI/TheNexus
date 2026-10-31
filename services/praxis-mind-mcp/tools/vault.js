@@ -26,6 +26,16 @@ const ROBERT_ONLY = new Set(['SOUL.md', 'USER.md', 'CONTEXT.md']);
 const STATIC_ROOT = new Set(['CLAUDE.md', 'README.md']);
 const RIPGREP_MISSING_MESSAGE = 'ripgrep not installed: vault_search grep mode requires the `rg` binary. Install ripgrep and ensure `rg` is on PATH.';
 let ripgrepValidated = false;
+// Grep mode returns every match, a page at a time. This is a page size, not a
+// cap: a page that leaves matches out says how many remain (matches and
+// files) and gives the offset of the next page, so every match is reachable.
+// 200 is the number the old silent cut used; callers can pass page_size.
+const GREP_PAGE_SIZE = 200;
+// vault_list does not descend into these. The result names them, so a reader
+// never mistakes an excluded tree for an empty one.
+const LIST_SKIP_DIRS = ['.git', '.obsidian', '_archive', 'node_modules'];
+const LIST_EXCLUSION_NOTE = 'Not listed: .git/, .obsidian/ and node_modules/ (tooling), _archive/ (preserved, read-only; vault_read still opens a known _archive path), ._* AppleDouble files, and symbolic links (not followed, so the walk stays inside the vault; any found are named in skipped_links).';
+const SEARCH_NOTE = 'Mixed-provenance result set: vault_read a specific path for its own trust tier.';
 
 function resolveVaultPath(rel) {
   // Reject absolute paths and parent traversal.
@@ -173,23 +183,28 @@ function register(server, ctx) {
 
   server.tool(
     'vault_list',
-    'List files in the vault matching an optional glob pattern. Returns paths + sizes + mtimes. USE THIS before vault_read if you need to find files. Glob examples: "**/*.md", "projects/*", "skills/maintenance/*".',
-    { glob: z.string().optional().describe('Optional glob pattern relative to vault root. Default: top-level + one level deep.') },
+    'List files in the vault matching an optional glob pattern. Returns paths + sizes + mtimes for every matching file at any depth, plus a note naming the trees the walk does not enter (.git, .obsidian, node_modules, _archive, ._* files, symbolic links). USE THIS before vault_read if you need to find files. Glob examples: "**/*.md", "projects/*", "skills/maintenance/*".',
+    { glob: z.string().optional().describe('Optional glob pattern relative to vault root. Default: every file in the vault, at any depth.') },
     async ({ glob: pattern }) => {
       const auth = checkPrivilege(ctx.caller, 'vault.read');
       if (auth) return auth;
       try {
-        // Simple walker (no glob lib to keep deps light)
+        // Simple walker (no glob lib to keep deps light). It walks the whole
+        // tree: the vault itself is the boundary. Dirent.isDirectory() is
+        // false for a symbolic link, so links are never followed and the walk
+        // cannot cycle; links are reported instead of silently dropped.
         const results = [];
-        const skip = new Set(['.git', '.obsidian', '_archive', 'node_modules']);
-        function walk(dir, depth = 0) {
-          if (depth > 4) return;
+        const skippedLinks = [];
+        const skip = new Set(LIST_SKIP_DIRS);
+        function walk(dir) {
           for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
             if (entry.name.startsWith('._')) continue;
             if (skip.has(entry.name)) continue;
             const abs = path.join(dir, entry.name);
-            if (entry.isDirectory()) {
-              walk(abs, depth + 1);
+            if (entry.isSymbolicLink()) {
+              skippedLinks.push(path.relative(VAULT, abs));
+            } else if (entry.isDirectory()) {
+              walk(abs);
             } else if (entry.isFile()) {
               const rel = path.relative(VAULT, abs);
               const st = fs.statSync(abs);
@@ -201,8 +216,15 @@ function register(server, ctx) {
         }
         walk(VAULT);
         results.sort((a, b) => a.path.localeCompare(b.path));
+        skippedLinks.sort();
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_list', success: true });
-        return { content: [{ type: 'text', text: JSON.stringify({ count: results.length, files: results }, null, 2) }] };
+        const listing = {
+          count: results.length,
+          not_listed: LIST_EXCLUSION_NOTE,
+          ...(skippedLinks.length ? { skipped_links: skippedLinks } : {}),
+          files: results,
+        };
+        return { content: [{ type: 'text', text: JSON.stringify(listing, null, 2) }] };
       } catch (e) {
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_list', success: false, error: e.message });
         return { content: [{ type: 'text', text: `Error listing vault: ${e.message}` }], isError: true };
@@ -212,13 +234,15 @@ function register(server, ctx) {
 
   server.tool(
     'vault_search',
-    'Search the shared-mind vault with ranked hybrid retrieval — BM25 keyword + embedding vector + reciprocal-rank fusion, boosted by the LINKS.md backlink graph (GBrain pattern, served by the Cortex vault index). Best for concept/topic queries ("how do we recover stale tasks"). Set mode:"grep" for exact substring/regex matching via ripgrep (identifiers, exact strings). Hybrid falls back to grep automatically when Cortex is unreachable.',
+    'Search the shared-mind vault with ranked hybrid retrieval: BM25 keyword + embedding vector + reciprocal-rank fusion, boosted by the LINKS.md backlink graph (GBrain pattern, served by the Cortex vault index). Hybrid returns the top k ranked chunks, each chunk whole. Best for concept/topic queries ("how do we recover stale tasks"). Set mode:"grep" for exact substring/regex matching via ripgrep (identifiers, exact strings): grep returns every match, paged; a page that leaves matches out says how many remain and the offset of the next page. Hybrid falls back to grep automatically when Cortex is unreachable.',
     {
       query: z.string().describe('Natural-language query (hybrid mode) or substring/regex (grep mode).'),
-      k: z.number().int().min(1).max(25).default(8).describe('Max results in hybrid mode.'),
+      k: z.number().int().min(1).max(25).default(8).describe('Hybrid mode: how many ranked chunks to return (the Cortex endpoint accepts 1 to 25). Each chunk comes back whole.'),
       mode: z.enum(['hybrid', 'grep']).default('hybrid').describe('hybrid = ranked retrieval; grep = exact ripgrep match.'),
+      offset: z.number().int().min(0).default(0).describe('Grep mode (and the grep fallback): index of the first match to return, from a previous page\'s next_offset. Matches are sorted by path, then line.'),
+      page_size: z.number().int().min(1).default(GREP_PAGE_SIZE).describe(`Grep mode: matches per page (default ${GREP_PAGE_SIZE}). Not a cap: every match is reachable by paging, and each page reports what remains.`),
     },
-    async ({ query, k = 8, mode = 'hybrid' }) => {
+    async ({ query, k = 8, mode = 'hybrid', offset = 0, page_size: pageSize = GREP_PAGE_SIZE }) => {
       const auth = checkPrivilege(ctx.caller, 'vault.read');
       if (auth) return auth;
       let grepNote = '';
@@ -242,8 +266,8 @@ function register(server, ctx) {
             content: [{
               type: 'text',
               text: formatRetrieved(
-                { origin: 'vault:search', tier: 'external', note: 'Mixed-provenance result set — vault_read a specific path for its own trust tier.' },
-                formatHybridResults(res),
+                { origin: 'vault:search', tier: 'external', note: SEARCH_NOTE },
+                formatHybridResults(res, k),
               ),
             }],
           };
@@ -251,11 +275,12 @@ function register(server, ctx) {
           degradedReason = [401, 403].includes(e.status) ? 'authentication_failed' : 'backend_unavailable';
           // Do not echo upstream response bodies: they may contain credentials.
           const reason = degradedReason === 'authentication_failed' ? `authentication failed (HTTP ${e.status})` : 'backend unavailable';
-          grepNote = `[Cortex vault index ${reason} — fell back to grep scan]\n`;
+          grepNote = `[Cortex vault index ${reason}: fell back to grep scan]\n`;
         }
       }
       try {
-        const lines = grepVault(query);
+        const matches = grepVault(query);
+        const { page, info } = pageGrepMatches(matches, offset, pageSize);
         ledger.record({ caller: ctx.caller.identity, tool: 'vault_search', success: true });
         return {
           structuredContent: {
@@ -264,13 +289,14 @@ function register(server, ctx) {
             degraded_reason: degradedReason,
             source_generated_at: null,
             fallback_notice: grepNote.trim() || null,
-            results: lines,
+            results: page.map((m) => m.line),
+            page: info,
           },
           content: [{
             type: 'text',
             text: formatRetrieved(
-              { origin: 'vault:search', tier: 'external', note: 'Mixed-provenance result set — vault_read a specific path for its own trust tier.' },
-              grepNote + (lines.length === 0 ? 'No matches.' : lines.join('\n')),
+              { origin: 'vault:search', tier: 'external', note: SEARCH_NOTE },
+              grepNote + formatGrepPage(page, info),
             ),
           }],
         };
@@ -331,8 +357,13 @@ function runRipgrep(query, fixedStrings) {
       '--line-number',
       '--with-filename',
       '--no-heading',
-      '--max-count',
-      '5',
+      // A NUL after the path, so a path containing ':' still parses, and the
+      // file count on a page is exact.
+      '--null',
+      // Stable order (path, then line) so an offset names the same match on
+      // the next call. No --max-count: every matching line is returned.
+      '--sort',
+      'path',
       '--glob',
       '*.md',
       '--glob',
@@ -349,33 +380,128 @@ function runRipgrep(query, fixedStrings) {
     {
       cwd: VAULT,
       encoding: 'utf8',
-      maxBuffer: 1024 * 1024,
+      // Every match comes back (the tool pages them), so the output is bounded
+      // by the vault itself, not by a number here. A fixed buffer would turn a
+      // broad query into a failed scan (a 1 MiB buffer did, at about 4,000
+      // matching lines).
+      maxBuffer: Infinity,
     },
   );
 }
 
+/** Parse `rg --null` output into whole match lines with their file. */
 function parseRipgrepOutput(stdout) {
   return (stdout || '')
     .split(/\r?\n/)
     .filter(Boolean)
-    .slice(0, 200)
-    .map((line) => line.replace(/^\.\//, '').trim());
+    .map((raw) => {
+      const nul = raw.indexOf('\0');
+      let file;
+      let rest;
+      if (nul >= 0) {
+        file = raw.slice(0, nul);
+        rest = raw.slice(nul + 1);
+      } else {
+        // Output without --null (older callers, test doubles): path:line:text.
+        const m = /^(.*?):(\d+):/.exec(raw);
+        file = m ? m[1] : raw;
+        rest = m ? raw.slice(m[1].length + 1) : '';
+      }
+      file = file.replace(/^\.\//, '');
+      return { file, line: `${file}:${rest}`.trim() };
+    });
 }
 
-/** Render /api/vault/search results as compact ranked text for agents. */
-function formatHybridResults(res) {
+/**
+ * One page of grep matches plus an honest account of the rest: totals,
+ * what remains after this page (matches and files) and the next offset.
+ */
+function pageGrepMatches(matches, offset, pageSize) {
+  const start = Math.max(0, offset || 0);
+  const size = Math.max(1, pageSize || GREP_PAGE_SIZE);
+  const page = matches.slice(start, start + size);
+  const rest = matches.slice(start + page.length);
+  const remainingMatches = rest.length;
+  return {
+    page,
+    info: {
+      offset: start,
+      page_size: size,
+      returned: page.length,
+      total_matches: matches.length,
+      total_files: new Set(matches.map((m) => m.file)).size,
+      remaining_matches: remainingMatches,
+      remaining_files: new Set(rest.map((m) => m.file)).size,
+      next_offset: remainingMatches ? start + page.length : null,
+    },
+  };
+}
+
+function plural(n, word) {
+  return `${n} ${word}${n === 1 ? '' : 'es'}`;
+}
+
+function files(n) {
+  return `${n} file${n === 1 ? '' : 's'}`;
+}
+
+function formatGrepPage(page, info) {
+  if (info.total_matches === 0) return 'No matches.';
+  if (page.length === 0) {
+    return `No matches at offset ${info.offset}: this search has ${plural(info.total_matches, 'match')} in ${files(info.total_files)} (offsets 0 to ${info.total_matches - 1}).`;
+  }
+  const header = `Grep matches ${info.offset + 1} to ${info.offset + page.length} of ${info.total_matches} (${files(info.total_files)}), sorted by path and line.`;
+  const lines = [header];
+  if (info.offset > 0) lines.push(`${plural(info.offset, 'match')} ${info.offset === 1 ? 'comes' : 'come'} before this page (offset 0 starts the list).`);
+  lines.push('', ...page.map((m) => m.line));
+  if (info.remaining_matches) {
+    lines.push('', `[${plural(info.remaining_matches, 'match')} more in ${files(info.remaining_files)} not shown on this page: call vault_search again with mode "grep", the same query and offset ${info.next_offset}.]`);
+  } else {
+    lines.push('', '[End of matches: nothing left out.]');
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Render /api/vault/search results for agents: every chunk whole. The
+ * request asks Cortex for `include_content`; a gateway that predates it
+ * returns only a discovery snippet, and the snippet then says so.
+ */
+function formatHybridResults(res, k) {
   const results = res.results || [];
   const lines = [
-    `Vault hybrid search — mode: ${res.mode}${res.generated ? `, index generated ${res.generated}` : ''}`,
+    `Vault hybrid search, mode: ${res.mode}${res.generated ? `, index generated ${res.generated}` : ''}`,
   ];
+  if (results.length) {
+    const n = results.length;
+    const chunks = `${n} ranked chunk${n === 1 ? '' : 's'}`;
+    lines.push(n >= k
+      ? `The top ${chunks} (k=${k}), each whole. Lower-ranked chunks are not listed: raise k (up to 25) or use mode "grep" for every exact match. A chunk is one section of its file; vault_read the path for the whole file.`
+      : `${chunks} (the index returned ${n} for k=${k}), each whole. A chunk is one section of its file; vault_read the path for the whole file.`);
+  }
   results.forEach((r, i) => {
     const loc = r.heading && r.heading !== r.title ? `${r.path} › ${r.heading}` : r.path;
     const backlinks = r.backlinks ? `, ${r.backlinks} backlinks` : '';
     lines.push('', `${i + 1}. ${loc}  (score ${r.score}${backlinks})`);
-    lines.push(`   ${(r.text || '').replace(/\s+/g, ' ').slice(0, 300)}`);
+    lines.push(chunkText(r));
   });
   if (results.length === 0) lines.push('', 'No results.');
   return lines.join('\n');
 }
 
-module.exports = { register };
+/**
+ * The whole text of one Cortex vault chunk. Cortex's `text` is a discovery
+ * snippet and `content` the whole chunk (sent when the request carries
+ * include_content). Without `content`, a cut snippet announces itself.
+ */
+function chunkText(r) {
+  if (typeof r.content === 'string') return r.content;
+  const text = r.text || '';
+  if (r.text_truncated) {
+    const of = Number.isFinite(r.content_chars) ? ` of ${r.content_chars}` : '';
+    return `${text}\n[Snippet only: the first ${text.length}${of} characters of this chunk; this Cortex gateway did not return the whole chunk. vault_read ${r.path} for the full text.]`;
+  }
+  return text;
+}
+
+module.exports = { register, formatHybridResults, chunkText, GREP_PAGE_SIZE };

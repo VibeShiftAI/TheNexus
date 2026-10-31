@@ -110,4 +110,24 @@ describe('studio ingestion worker', () => {
     expect(callAI).toHaveBeenCalled();
     for (const call of callAI.mock.calls) expect(call[0]).toEqual(expect.objectContaining({ provider: 'local' }));
   });
+
+  test('an extraction cut at the model output limit says so on the source item', async () => {
+    const sources = (await json(`${handle.baseUrl}/api/studio/${channelId}/sources`)).body;
+    for (const s of sources) {
+      await json(`${handle.baseUrl}/api/studio/${channelId}/sources/${s.id}`, { method: 'PATCH', body: JSON.stringify({ enabled: false }) });
+    }
+    await json(`${handle.baseUrl}/api/studio/${channelId}/sources`, {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Test web source', source_type: 'web', url: 'https://example.com/testus-prime-c' }),
+    });
+    const whole = await callAI();
+    callAI.mockImplementation(async () => ({ ...whole, truncated: true, finishReason: 'length' }));
+
+    const run = await json(`${handle.baseUrl}/api/studio/${channelId}/ingestion/run`, { method: 'POST', body: JSON.stringify({ trigger: 'unit' }) });
+    const finished = await waitForRun(handle.baseUrl, channelId, run.body.run.id);
+    expect(finished.status).toBe('complete');
+    const items = (await json(`${handle.baseUrl}/api/studio/${channelId}/ingestion/runs/${run.body.run.id}`)).body.items;
+    const done = items.find((item) => item.ingestion_status === 'done');
+    expect(done.excerpt).toMatch(/^Extracted 1 object\(s\)\. The model stopped at its output limit.*may be missing\.$/);
+  });
 });

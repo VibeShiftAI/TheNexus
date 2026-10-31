@@ -76,10 +76,13 @@ async function cortexCypher({ query, params = {} }) {
 async function cortexVaultSearch({ query, k = 8, rerank = false }) {
   // Hybrid vault retrieval (BM25 + vector + RRF, backlink-boosted) over the
   // watcher-built index at shared-mind/.index/vault-search.json.
+  // include_content: Cortex's `text` field is a discovery snippet; the whole
+  // indexed chunk comes back as `content` only when asked for. Every caller
+  // here wants the whole chunk (tools/vault.js chunkText renders it).
   return httpJSON(`${cfg.CORTEX_GATEWAY}/api/vault/search`, {
     method: 'POST',
     headers: cortexHeaders(),
-    body: { query, k, rerank },
+    body: { query, k, rerank, include_content: true },
   });
 }
 
@@ -103,7 +106,7 @@ async function cortexEpisodeById(episodeUuid) {
 
 // ─────────────────── Praxis ───────────────────
 
-async function praxisChat({ messages, system = null, max_tokens = 2048, depth = 1, caller = 'unknown' }) {
+async function praxisChat({ messages, system = null, max_tokens, depth = 1, caller = 'unknown' }) {
   // POST /v1/llm/chat/completions is Praxis's raw-completion gateway (ported
   // off the deprecated /v1/brain/chat alias by ticket C-1, 2026-09-04; same
   // OpenAI ChatCompletion response). No `model` → Praxis's default gateway
@@ -111,10 +114,13 @@ async function praxisChat({ messages, system = null, max_tokens = 2048, depth = 
   // server-side and forces tier=reasoning — three layers of loop prevention
   // (client-side, server-side, depth header). X-MCP-Caller attributes the
   // downstream LLM call in the usage ledger as gateway.<caller>.
+  // max_tokens rides only when the MCP caller set one. Without it the model's
+  // own output limit applies; a cut answer still shows as finish_reason
+  // "length" on the response, which the brain tools surface.
   const body = {
     messages,
     system: system || undefined,
-    max_tokens,
+    ...(Number.isInteger(max_tokens) ? { max_tokens } : {}),
   };
   return httpJSON(`${cfg.PRAXIS}/v1/llm/chat/completions`, {
     method: 'POST',

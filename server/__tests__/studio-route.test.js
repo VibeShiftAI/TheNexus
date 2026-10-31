@@ -468,6 +468,39 @@ describe('studio route', () => {
     expect(labels).toContain(`Source pack: ${sources}`);
   });
 
+  test('an answer cut at the model output limit is flagged, never saved as if whole', async () => {
+    const channelId = 'impossible-worlds-field-guide';
+    const base = `${handle.baseUrl}/api/studio/${channelId}`;
+    const idea = await json(`${base}/ideas`, { method: 'POST', body: JSON.stringify({ title: 'Standing on Delta', status: 'approved' }) });
+
+    // Single-pass text job: the cut answer is kept, the result says so, the idea gets a checklist item.
+    callAI.mockResolvedValueOnce({ text: 'Physics notes that stop in the mid', truncated: true, finishReason: 'length' });
+    const rigor = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'physics_rigor_pass', ideaId: idea.body.id, mode: 'local' }) });
+    expect(rigor.status).toBe(200);
+    expect(rigor.body.result).toEqual(expect.objectContaining({ truncated: true, warning: expect.stringMatching(/output limit/) }));
+    expect(rigor.body.result.summary).toMatch(/output limit/);
+    expect(rigor.body.idea.checklist.map((item) => item.label)).toEqual(expect.arrayContaining([
+      'Physics rigor pass: Physics notes that stop in the mid',
+      expect.stringMatching(/^Physics rigor pass: The model stopped at its output limit/),
+    ]));
+
+    // JSON job cut mid-object: the parse error names the cut instead of reading as a parse bug.
+    callAI.mockResolvedValueOnce({ text: '{"titles": ["One", "Tw', truncated: true, finishReason: 'length' });
+    const kit = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'publish_kit', ideaId: idea.body.id, mode: 'local' }) });
+    expect(kit.status).toBe(400);
+    expect(kit.body.error).toMatch(/Could not parse JSON.*output limit/s);
+
+    // Writer + critic: a critic cut mid-JSON keeps the writer draft rather than saving raw JSON as the script.
+    const draft = 'Writer draft that is long enough to stand as a script on its own.';
+    callAI.mockResolvedValueOnce({ text: draft, finishReason: 'stop', truncated: false });
+    callAI.mockResolvedValueOnce({ text: '{"script": "Critic revision that ran out of room before it could fin', truncated: true, finishReason: 'length' });
+    const scripted = await json(`${base}/generate`, { method: 'POST', body: JSON.stringify({ type: 'write_script', ideaId: idea.body.id, mode: 'local' }) });
+    expect(scripted.status).toBe(200);
+    expect(scripted.body.idea.script).toBe(draft);
+    expect(scripted.body.result).toEqual(expect.objectContaining({ truncated: true, warning: expect.stringMatching(/critic revision stopped at the model's output limit/) }));
+    expect(scripted.body.idea.checklist.map((item) => item.label)).toEqual(expect.arrayContaining([expect.stringMatching(/^Cut short: the critic revision/)]));
+  });
+
   test('unreal_environment and physics_analysis prompts include the selected objects', async () => {
     const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
     const obj = await json(`${base}/objects`, {

@@ -84,7 +84,7 @@ test('private contact details, notes and observations never enter the lookup', a
 
 test('query validation distinguishes unknown members, unknown projects and malformed requests', async () => {
     for (const query of ['', 'scope=all', 'scope=project', 'scope=project&project_id=', `scope=general&project_id=${project.id}`, 'scope=general&question=nope',
-        'scope=general&question=role', 'scope=general&limit=0', 'scope=general&limit=201', 'scope=general&limit=1x', 'scope=general&scope=project',
+        'scope=general&question=role', 'scope=general&limit=0', 'scope=general&limit=1x', 'scope=general&offset=-1', 'scope=general&offset=1x', 'scope=general&offset=01', 'scope=general&scope=project',
         'scope=general&extra=1', 'scope=general&fact_key[]=x', `scope=general&fact_key=${'x'.repeat(201)}`]) {
         const response = await api(`/api/members/${member.id}/evidence?${query}`);
         expect(response).toEqual({ status: 400, json: { error: expect.any(String) } });
@@ -107,4 +107,13 @@ test('partial pages and corrected history stay distinguishable through the route
     expect(partial.json.sources.general_assertions.records).toHaveLength(1);
     expect(partial.json.context.history.corrected.records).toEqual([expect.objectContaining({ id: first.id, history_status: 'corrected', corrected_by: corrected.id })]);
     expect(partial.json.coverage.limit).toBe(1);
+    // The next page is reachable through the route by next_offset, and the page size has no 200 ceiling.
+    expect(partial.json.sources.general_assertions).toMatchObject({ offset: 0, remaining: 1, next_offset: 1 });
+    const next = await api(`/api/members/${member.id}/evidence?scope=general&question=goal&limit=1&offset=${partial.json.sources.general_assertions.next_offset}`);
+    expect(next.status).toBe(200);
+    expect(next.json.sources.general_assertions).toMatchObject({ total: 2, offset: 1, remaining: 0, next_offset: null });
+    expect(next.json.sources.general_assertions.records.map(record => record.id))
+        .not.toContain(partial.json.sources.general_assertions.records[0].id);
+    expect(next.json.coverage).toMatchObject({ limit: 1, offset: 1 });
+    expect((await api(`/api/members/${member.id}/evidence?scope=general&question=goal&limit=201`)).status).toBe(200);
 });

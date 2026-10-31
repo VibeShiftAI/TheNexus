@@ -707,6 +707,8 @@ function createModelControlRouter({ db, syncModelSources, callAI, io }) {
                 resolved,
                 response: result?.text || String(result || ''),
                 usage: result?.usage || null,
+                finish_reason: result?.finishReason ?? null,
+                truncated: Boolean(result?.truncated),
                 snapshot
             });
         } catch (error) {

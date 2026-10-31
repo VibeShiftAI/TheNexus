@@ -3,7 +3,7 @@
  *
  * 2026-07-06 consolidation: TheNexus no longer owns provider SDKs or API
  * keys for chat completions. callAI() keeps its signature and result
- * contract ({ text, usage } / plain text) but every call rides Praxis's
+ * contract ({ text, usage, finishReason, truncated } / plain text) but every call rides Praxis's
  * POST /v1/llm/chat/completions (the OpenAI-wire raw-completion gateway;
  * ported off /v1/brain/chat by ticket C-1, 2026-09-04) with an explicit
  * provider/model pin or a model-control role — Praxis
@@ -110,11 +110,21 @@ async function getAIModelConfig(taskType) {
 }
 
 /**
+ * Message for an answer the model stopped writing at its output limit.
+ * Praxis already retried such a call once without `max_tokens`, so a
+ * "length" stop that reaches The Nexus is the model's own limit.
+ */
+const OUTPUT_LIMIT_NOTE = 'The model stopped at its output limit (finish_reason "length"), so this answer is cut short.';
+
+/**
  * Relay one completion through Praxis's raw-completion gateway
  * POST /v1/llm/chat/completions. The body is the gateway's brain-form
  * superset: `role` (wins when set) or `provider` + bare `model` pin, plus
- * `system`, `messages`, `max_tokens`. Returns the { text, usage } contract
- * the retired provider handlers used.
+ * `system`, `messages`, and `max_tokens` only when the caller passes
+ * `options.maxTokens` (2026-10-31: every call used to send 8192; without it
+ * the model's own output limit applies). Returns the { text, usage }
+ * contract the retired provider handlers used, plus `finishReason` and
+ * `truncated` (true when the model stopped for length).
  */
 async function callPraxisBrain(message, provider, modelId, systemPrompt, history, options = {}) {
     const messages = [
@@ -141,24 +151,31 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
             role: options.role || undefined,
             system: systemPrompt || undefined,
             messages,
-            max_tokens: options.maxTokens || 8192
+            ...(options.maxTokens ? { max_tokens: options.maxTokens } : {})
         },
         timeoutMs: PRAXIS_BRAIN_TIMEOUT_MS
     });
 
     if (!response.ok) {
         const errText = await response.text().catch(() => '');
-        throw new Error(`Praxis llm gateway relay failed (${response.status}): ${errText.slice(0, 300)}`);
+        throw new Error(`Praxis llm gateway relay failed (${response.status}): ${errText}`);
     }
 
     const data = await response.json();
-    const msg = data.choices?.[0]?.message || {};
-    // reasoning_content salvage: local Gemma emits most tokens there.
+    const choice = data.choices?.[0] || {};
+    const msg = choice.message || {};
+    const finishReason = typeof choice.finish_reason === 'string' ? choice.finish_reason : null;
+    const truncated = finishReason === 'length';
+    // reasoning_content salvage: local Gemma emits most tokens there. A
+    // salvaged answer that stopped for length still carries `truncated`.
     const text = (typeof msg.content === 'string' && msg.content.trim())
         || (typeof msg.reasoning_content === 'string' && msg.reasoning_content.trim())
         || 'No response from model';
 
     const usage = data.usage || {};
+    if (truncated) {
+        console.warn(`[callAI] ${data.model || modelId} stopped at its output limit after ${usage.completion_tokens ?? 'an unknown number of'} completion tokens; the answer is cut short.`);
+    }
     tokenTracker.trackUsage({
         provider,
         model: data.model || modelId,
@@ -175,7 +192,9 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
             totalTokens: usage.total_tokens || 0
         },
         // Praxis may have cascaded past the pinned model — surface what ran.
-        servedBy: data.model || modelId
+        servedBy: data.model || modelId,
+        finishReason,
+        truncated
     };
 }
 
@@ -193,8 +212,13 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
  * @param {string} systemPrompt - System instructions
  * @param {Array} history - Optional conversation history
  * @param {Object} options - Additional options
- * @param {boolean} options.returnFullResult - If true, returns { text, usage } instead of just text
- * @returns {Promise<string|Object>} The AI response text, or { text, usage } if returnFullResult=true
+ * @param {boolean} options.returnFullResult - If true, returns { text, usage, finishReason, truncated, ... } instead of just text
+ * @param {number} [options.maxTokens] - Output budget to send; omitted by default so the model's own output limit applies
+ * @returns {Promise<string|Object>} The AI response text, or the full result if returnFullResult=true.
+ *   A plain-text call never hands back a cut answer as if it were whole: when
+ *   the model stops for length it throws an Error with code 'output_truncated',
+ *   `finishReason` and `partialText`. Ask for returnFullResult to receive a cut
+ *   answer with `truncated: true` instead.
  */
 async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], options = {}) {
     let provider, modelId, role;
@@ -225,6 +249,13 @@ async function callAI(taskOrConfig, userPrompt, systemPrompt, history = [], opti
     // Return full result or just text based on options
     if (options.returnFullResult) {
         return { ...result, provider, model: modelId };
+    }
+    if (result.truncated) {
+        throw Object.assign(new Error(OUTPUT_LIMIT_NOTE), {
+            code: 'output_truncated',
+            finishReason: result.finishReason,
+            partialText: result.text
+        });
     }
     return result.text;
 }

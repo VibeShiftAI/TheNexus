@@ -819,7 +819,12 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             }
             const prompt = `Generate a concise git commit message (max 72 chars for first line) for these changes:\n\nFiles changed:\n${fileChanges}\n${walkthroughContent ? `\nImplementation Summary (from walkthrough):\n${walkthroughContent}\n` : ''}Diff preview:\n${diffPreview}\n\nFollow conventional commits format (feat:, fix:, docs:, refactor:, etc). Return ONLY the commit message, nothing else.`;
             try {
-                const aiMessage = await callAI('quick', prompt, 'You are a git commit message generator.');
+                const ai = await callAI('quick', prompt, 'You are a git commit message generator.', [], { returnFullResult: true });
+                const aiMessage = typeof ai === 'string' ? ai : ai?.text;
+                if (aiMessage && ai?.truncated) {
+                    return res.json({ message: aiMessage.trim(), generated: true, truncated: true,
+                        note: 'The model stopped at its output limit, so this message may be incomplete.' });
+                }
                 if (aiMessage) return res.json({ message: aiMessage.trim(), generated: true });
             } catch (e) { /* fall through */ }
             res.json({ message: `Update: ${status.files.length} file(s) changed`, generated: false });

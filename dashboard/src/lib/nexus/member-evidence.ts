@@ -21,6 +21,8 @@ export interface EvidenceRecord {
 }
 export interface EvidenceBucket {
   label: string; applies_to: string | string[] | null; status: BucketStatus; total: number; truncated: boolean; records: EvidenceRecord[];
+  /** Paging (server since 2026-10-31): records after this page and the offset that returns them. */
+  offset?: number; remaining?: number; next_offset?: number | null;
   note?: string; reason?: string; is_project_statement?: boolean;
   external?: { council_reputation: { status: string; seat_id: string | null; reason: string } };
   project_fields?: { status: string; reason: string };
@@ -33,7 +35,7 @@ export interface MemberEvidence {
   sources: { directory_settings: EvidenceBucket; general_assertions: EvidenceBucket; project_assertions: EvidenceBucket; inferred_observations: EvidenceBucket;
     demonstrated_contributions: EvidenceBucket; completion_claims: EvidenceBucket };
   context: { open_commitments: EvidenceBucket; pending_proposals: EvidenceBucket; history: { corrected: EvidenceBucket; retracted: EvidenceBucket; conflicts: EvidenceBucket } };
-  coverage: { scopes: string[]; other_projects_included: boolean; observations_included: boolean; contact_details_included: boolean; limit: number };
+  coverage: { scopes: string[]; other_projects_included: boolean; observations_included: boolean; contact_details_included: boolean; limit: number; offset?: number; paging?: string };
   usage_guidance: string;
 }
 
@@ -57,10 +59,12 @@ function checkBucket(value: unknown, memberId: string, projectId: string | null,
   return value as unknown as EvidenceBucket;
 }
 
-export async function getMemberEvidence(memberId: string, projectId: string | null, question: QuestionType, factKey?: string): Promise<MemberEvidence> {
+/** `limit` is the per-bucket page size; omitted, the server's default page applies. */
+export async function getMemberEvidence(memberId: string, projectId: string | null, question: QuestionType, factKey?: string, limit?: number): Promise<MemberEvidence> {
   const params = new URLSearchParams({ scope: projectId === null ? 'general' : 'project', question });
   if (projectId !== null) params.set('project_id', projectId);
   if (factKey) params.set('fact_key', factKey);
+  if (limit !== undefined) params.set('limit', String(limit));
   const response = await authFetch(`/api/members/${encodeURIComponent(memberId)}/evidence?${params}`, { cache: 'no-store' });
   const value: unknown = await response.json();
   if (!response.ok) throw new Error(isObject(value) && typeof value.error === 'string' ? value.error : `Member evidence unavailable (${response.status})`);

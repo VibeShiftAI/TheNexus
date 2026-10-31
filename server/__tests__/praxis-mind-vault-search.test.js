@@ -63,7 +63,10 @@ describe('praxis-mind vault_search dependency validation', () => {
     expect(result.content[0].text).toContain('skills/maintenance/example.md:12:Recover stale tasks with a restart.');
     expect(spawnSync).toHaveBeenNthCalledWith(1, 'rg', ['--version'], { encoding: 'utf8' });
     expect(spawnSync.mock.calls[1][0]).toBe('rg');
-    expect(spawnSync.mock.calls[1][1]).toContain('--max-count');
-    expect(spawnSync.mock.calls[1][2]).toMatchObject({ cwd: '/Volumes/Projects/shared-mind' });
+    // Every match is returned (paged by the tool), in a stable order: no
+    // per-file --max-count, and the output buffer is not a hidden cap.
+    expect(spawnSync.mock.calls[1][1]).not.toContain('--max-count');
+    expect(spawnSync.mock.calls[1][1]).toEqual(expect.arrayContaining(['--sort', 'path', '--null']));
+    expect(spawnSync.mock.calls[1][2]).toMatchObject({ cwd: '/Volumes/Projects/shared-mind', maxBuffer: Infinity });
   });
 });

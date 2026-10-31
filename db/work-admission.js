@@ -553,12 +553,16 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
             }).filter(t => t.score > 0).sort((a, b) => b.score - a.score || a.task_id.localeCompare(b.task_id));
             const relevant_hash = digest(relevant.map(({task_id,fingerprint,status,evidence_hash})=>({task_id,fingerprint,status,evidence_hash}))
                 .sort((left, right) => left.task_id.localeCompare(right.task_id)));
-            const matches = relevant.slice(0,3);
+            // Every relevant candidate is a match, ranked. The relevance test
+            // above (score > 0) is the boundary; until 2026-10-31 only the top
+            // three were kept, and the rest were reachable only as a count, so
+            // a resolution could stand having compared three of them.
+            const matches = relevant;
             return { fingerprint, retrieval_version: RETRIEVAL_VERSION, matches, relevant_hash, coverage_hash, coverage: { project_id: task.project_id, workspace: c.workspace,
-                searched_count: candidates.length, relevant_count: relevant.length, retained_history: true, shortlist_limit: 3 }, lookup_failed: false };
+                searched_count: candidates.length, relevant_count: relevant.length, retained_history: true }, lookup_failed: false };
         } catch (error) {
             return { fingerprint, retrieval_version: RETRIEVAL_VERSION, matches: [], coverage_hash: null, coverage: { project_id: task.project_id, workspace: c.workspace,
-                retained_history: true, shortlist_limit: 3, error: 'lookup_unavailable' }, lookup_failed: true };
+                retained_history: true, error: 'lookup_unavailable' }, lookup_failed: true };
         }
     }
     function baseReceipt(task, concerns = [], previous, { contract: baseline, basis = 'admitted_contract' } = {}) {

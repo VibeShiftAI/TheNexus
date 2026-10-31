@@ -532,6 +532,10 @@ function runModelControlMigrations(sqlite) {
         // Measured 2026-08-25 on stealth/ox-alpha: a one-sentence prompt at
         // max_tokens 128 returned empty content with finish_reason "length",
         // and answered normally at 256. Tune it here rather than in code.
+        // Its one consumer is Praxis (src/llm/manager.ts, via model-control
+        // resolve), which only RAISES a caller's smaller budget to it; a call
+        // with no max_tokens stays uncapped. Nothing in The Nexus caps with it:
+        // callAI ignores resolved parameters and sends no max_tokens by default.
         //
         // INSERT OR IGNORE, so re-seeding never clobbers operator tuning.
         sqlite.exec(`

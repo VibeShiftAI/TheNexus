@@ -74,7 +74,7 @@ test('general preference plus project exception: each scope is labelled and othe
         evidence: 'directory', applies_to: 'all_projects', is_project_statement: false, ref: `/api/members/${member}#preferences.channel`, updated_at: '2026-09-10T00:00:00.000Z' })]);
     const json = JSON.stringify(result);
     for (const leak of [foreign.id, otherProject, 'Portal only']) expect(json).not.toContain(leak);
-    expect(result.coverage).toEqual({ scopes: [`project:${project}`, 'general'], other_projects_included: false, observations_included: false, contact_details_included: false, limit: 50 });
+    expect(result.coverage).toEqual({ scopes: [`project:${project}`, 'general'], other_projects_included: false, observations_included: false, contact_details_included: false, limit: 50, offset: 0, paging: expect.stringMatching(/next_offset/) });
     expect(result.usage_guidance).toMatch(/never project statements/);
 
     const generalOnly = evidence.lookup(member, { scope: 'general', question: 'contact_channel' });
@@ -350,10 +350,48 @@ test('partial results, unavailable stores, deleted or unlinked projects and inva
 
     for (const options of [undefined, null, [], {}, { scope: 'all' }, { scope: 'project' }, { scope: 'project', project_id: ' ' }, { scope: 'general', project_id: project },
         { scope: 'general', question: 'nope' }, { scope: 'general', question: 42 }, { scope: 'general', fact_key: '' }, { scope: 'general', fact_key: 'x'.repeat(201) },
-        { scope: 'general', limit: 0 }, { scope: 'general', limit: 201 }, { scope: 'general', limit: 1.5 }, { scope: 'general', limit: '5' }]) {
+        { scope: 'general', limit: 0 }, { scope: 'general', limit: 1.5 }, { scope: 'general', limit: '5' },
+        { scope: 'general', offset: -1 }, { scope: 'general', offset: 1.5 }, { scope: 'general', offset: '5' }]) {
         expectStatus(() => evidence.lookup(member, options), 400);
     }
     expect(QUESTION_TYPES).toEqual(['all', 'contact_channel', 'tone', 'availability', 'approval', 'role', 'preference', 'goal', 'expertise', 'commitment']);
+});
+
+// Until 2026-10-31 limit stopped at 200 with no offset, so records past the 200th were unreachable.
+test('evidence past 200 records is reachable: offset pages carry a next_offset and a remaining count, and a large limit returns everything', () => {
+    const appended = [];
+    for (let i = 0; i < 250; i++) appended.push(ledger.append(member, fact(`Goal ${i}`, `profile.goal.${i}`)));
+    const newestFirst = ids(appended).reverse();
+
+    const first = evidence.lookup(member, { scope: 'general', question: 'goal' });
+    expect(first.sources.general_assertions).toMatchObject({ status: 'partial', total: 250, truncated: true, offset: 0, remaining: 200, next_offset: 50 });
+    expect(first.coverage).toMatchObject({ limit: 50, offset: 0 });
+
+    const seen = [];
+    let offset = 0, pages = 0;
+    while (offset !== null) {
+        const page = evidence.lookup(member, { scope: 'general', question: 'goal', limit: 60, offset }).sources.general_assertions;
+        expect(page.total).toBe(250);
+        expect(page.remaining).toBe(250 - offset - page.records.length);
+        seen.push(...ids(page.records));
+        offset = page.next_offset;
+        pages++;
+    }
+    expect(pages).toBe(5);
+    expect(seen).toEqual(newestFirst);
+
+    const last = evidence.lookup(member, { scope: 'general', question: 'goal', limit: 60, offset: 240 }).sources.general_assertions;
+    expect(last).toMatchObject({ status: 'partial', truncated: true, remaining: 0, next_offset: null });
+    expect(ids(last.records)).toEqual(newestFirst.slice(240));
+
+    const whole = evidence.lookup(member, { scope: 'general', question: 'goal', limit: 1000 }).sources.general_assertions;
+    expect(whole).toMatchObject({ status: 'present', total: 250, truncated: false, remaining: 0, next_offset: null });
+    expect(ids(whole.records)).toEqual(newestFirst);
+
+    const beyond = evidence.lookup(member, { scope: 'general', question: 'goal', offset: 300 }).sources.general_assertions;
+    expect(beyond).toMatchObject({ status: 'partial', total: 250, records: [], remaining: 0, next_offset: null });
+    // Buckets with nothing to page say so the same way.
+    expect(first.sources.project_assertions).toMatchObject({ status: 'not_requested', total: 0, remaining: 0, next_offset: null });
 });
 
 test('private directory details and raw observations never enter the lookup', () => {

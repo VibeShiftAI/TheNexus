@@ -137,7 +137,9 @@ function createContactsRouter({ db }) {
     // labelled so a global directory setting is never an implicit project answer.
     router.get('/:id/evidence', async (req, res) => {
         try {
-            const allowed = new Set(['scope', 'project_id', 'question', 'fact_key', 'limit', '_cb']);
+            // limit is the per-bucket page size and offset pages every bucket
+            // (each bucket reports total, remaining and next_offset).
+            const allowed = new Set(['scope', 'project_id', 'question', 'fact_key', 'limit', 'offset', '_cb']);
             if (Object.entries(req.query).some(([key, value]) => !allowed.has(key) || typeof value !== 'string')) {
                 return res.status(400).json({ error: 'Invalid evidence query fields' });
             }
@@ -146,6 +148,10 @@ function createContactsRouter({ db }) {
             if (req.query.limit !== undefined) {
                 if (!/^[1-9]\d*$/.test(req.query.limit)) return res.status(400).json({ error: 'limit must be a positive integer' });
                 options.limit = Number(req.query.limit);
+            }
+            if (req.query.offset !== undefined) {
+                if (!/^(0|[1-9]\d*)$/.test(req.query.offset)) return res.status(400).json({ error: 'offset must be a non-negative integer' });
+                options.offset = Number(req.query.offset);
             }
             res.json(await db.getMemberEvidence(req.params.id, options));
         } catch (error) {

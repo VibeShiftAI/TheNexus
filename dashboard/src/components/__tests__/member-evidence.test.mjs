@@ -115,6 +115,32 @@ test('changing the question refetches with that question and partial buckets say
   } finally { await h.dispose(); }
 });
 
+test('a partial bucket can be shown whole: "Show all" looks up again with that bucket total as the page size', async () => {
+  const urls = [];
+  const records = Array.from({ length: 3 }, (_, i) => ledgerRecord(`00000000-0000-4000-8000-00000000010${i}`, { seq: 10 - i, fact_key: `profile.expertise.${i}`, text: `Expertise ${i}` }));
+  const h = await mount(async url => {
+    const parsed = new URL(url, 'http://localhost'); urls.push(parsed);
+    // The fake server's default page holds one record, so the first look-up is partial.
+    const limit = Number(parsed.searchParams.get('limit') || 1);
+    const shown = limit >= 3 ? records : records.slice(0, 1);
+    return json(fixture({ sources: { ...fixture().sources,
+      general_assertions: bucket('General member assertions', shown, shown.length < 3 ? { status: 'partial', total: 3, truncated: true, offset: 0, remaining: 2, next_offset: 1 } : { total: 3 }) },
+      coverage: { ...fixture().coverage, limit } }));
+  });
+  try {
+    assert.equal(urls[0].searchParams.get('limit'), null);
+    assert.match(h.node.textContent, /Partial: 2 more not shown/);
+    const button = [...h.node.querySelectorAll('button')].find(b => b.textContent === 'Show all 3');
+    assert.ok(button, 'a Show all button is offered for the partial bucket');
+    await act(async () => button.dispatchEvent(new window.MouseEvent('click', { bubbles: true })));
+    assert.equal(urls.length, 2);
+    assert.equal(urls[1].searchParams.get('limit'), '3');
+    assert.equal(urls[1].searchParams.get('question'), 'all');
+    assert.doesNotMatch(h.node.textContent, /more not shown/);
+    for (const i of [0, 1, 2]) assert.match(h.node.textContent, new RegExp(`Expertise ${i}`));
+  } finally { await h.dispose(); }
+});
+
 test('records from another project or member are rejected before anything is rendered', async () => {
   const leaks = [
     fixture({ sources: { ...fixture().sources, general_assertions: bucket('General member assertions', [ledgerRecord(generalId, { project_id: otherProject, scope: 'project', text: 'LEAKED PROJECT FACT' })]) } }),

@@ -17,6 +17,8 @@ const astro = require('./astro-parameters');
 const crypto = require('crypto');
 
 const CHUNK_CHARS = 12000; // keep each local-LLM call comfortably within context
+// callAI returns `truncated: true` when the model stopped at its output limit.
+const OUTPUT_LIMIT_NOTE = 'The model stopped at its output limit (finish_reason "length"), so this answer is cut short.';
 
 function createStudioIngestion({ sql, callAI, uuid, now, helpers, listSources, deps = {} }) {
   const { upsertSpecValues, insertWonderPoints, extractJSON } = helpers;
@@ -97,9 +99,16 @@ function createStudioIngestion({ sql, callAI, uuid, now, helpers, listSources, d
     if (!callAI) throw new Error('AI service is not available for local extraction.');
     const model = localModel();
     const full = await callAI(model, extractionUser(item, text), extractionSystem(channel), [], { returnFullResult: true });
-    const parsed = extractJSON(full.text || full);
+    const truncated = Boolean(full?.truncated);
+    let parsed;
+    try {
+      parsed = extractJSON(full.text || full);
+    } catch (e) {
+      // An extraction cut off mid-JSON says so instead of reading as a parse bug.
+      throw truncated ? new Error(`${e.message} ${OUTPUT_LIMIT_NOTE}`) : e;
+    }
     const objects = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.objects) ? parsed.objects : []);
-    return { objects, model: `${model.provider}/${model.model}` };
+    return { objects, model: `${model.provider}/${model.model}`, truncated };
   }
 
   function findObjectByName(channelId, name) {
@@ -277,7 +286,7 @@ function createStudioIngestion({ sql, callAI, uuid, now, helpers, listSources, d
       const text = fetched.content || '';
       if (!text || text.trim().length < 40) { setItemStatus(sourceItemId, 'empty', 'No usable content.'); return { objects: 0, expanded: 0 }; }
       setItemStatus(sourceItemId, 'extracting');
-      const { objects } = await runLocalExtraction(channel, { ...item, title: fetched.title || item.title }, text);
+      const { objects, truncated } = await runLocalExtraction(channel, { ...item, title: fetched.title || item.title }, text);
       let created = 0;
       const upsertedIds = [];
       const tx = sql.transaction(() => {
@@ -287,7 +296,7 @@ function createStudioIngestion({ sql, callAI, uuid, now, helpers, listSources, d
         }
       });
       tx();
-      setItemStatus(sourceItemId, 'done', `Extracted ${created} object(s).`);
+      setItemStatus(sourceItemId, 'done', `Extracted ${created} object(s).${truncated ? ` ${OUTPUT_LIMIT_NOTE} Objects later in this source may be missing.` : ''}`);
       return { objects: created, upsertedIds };
     } catch (e) {
       setItemStatus(sourceItemId, 'failed', e.message);

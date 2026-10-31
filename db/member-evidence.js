@@ -84,9 +84,14 @@ function validateOptions(options = {}) {
     if (QUESTIONS[question].project_only && scope !== 'project') throw failure(400, `question "${question}" requires project scope`);
     const factKey = options.fact_key ?? null;
     if (factKey !== null && (typeof factKey !== 'string' || !factKey.trim() || factKey.length > 200)) throw failure(400, 'fact_key must be a nonempty string of at most 200 characters');
+    // limit is the page size per bucket; offset pages every bucket. There is
+    // no upper bound on limit (until 2026-10-31 it was 200 with no offset, so
+    // records past the 200th were unreachable).
     const limit = options.limit ?? 50;
-    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) throw failure(400, 'limit must be an integer from 1 to 200');
-    return { scope, project_id: scope === 'project' ? projectId : null, question, fact_key: factKey, limit };
+    if (!Number.isSafeInteger(limit) || limit < 1) throw failure(400, 'limit must be a positive integer');
+    const offset = options.offset ?? 0;
+    if (!Number.isSafeInteger(offset) || offset < 0) throw failure(400, 'offset must be a non-negative integer');
+    return { scope, project_id: scope === 'project' ? projectId : null, question, fact_key: factKey, limit, offset };
 }
 
 function parseJson(value, fallback) {
@@ -116,12 +121,27 @@ function directoryValue(field, directory, link) {
     }
 }
 
-function bucket(label, appliesTo, records, limit, extra = {}) {
+/**
+ * One page of a bucket. `total` counts the whole bucket, `remaining` the
+ * records after this page, and `next_offset` is the offset that returns them
+ * (null when this page reaches the end). `truncated`/`partial` mean this
+ * response does not carry every record of the bucket.
+ */
+function bucket(label, appliesTo, records, page, extra = {}) {
     const total = records.length;
-    const truncated = total > limit;
+    const start = Math.min(page.offset, total);
+    const shown = records.slice(start, start + page.limit);
+    const remaining = total - start - shown.length;
+    const truncated = shown.length < total;
     return { label, applies_to: appliesTo, status: truncated ? 'partial' : total ? 'present' : 'missing',
-        total, truncated, records: records.slice(0, limit), ...extra };
+        total, truncated, offset: page.offset, remaining, next_offset: remaining > 0 ? start + shown.length : null, records: shown, ...extra };
 }
+/** A bucket that was not looked up or cannot be read: nothing to page. */
+const emptyPage = () => ({ total: 0, truncated: false, remaining: 0, next_offset: null, records: [] });
+const PAGING_NOTE = 'Each bucket returns at most `limit` records starting at `offset`. `total` counts the whole bucket, '
+    + '`remaining` counts the records after this page and `next_offset` is the offset that returns them (null when none remain). '
+    + 'Every bucket pages by the same offset; a larger limit returns more of each bucket at once. '
+    + 'Each page is a separate read, so a write between pages can shift later pages; if a bucket total changes, start again at offset 0.';
 const scopeLabel = scope => scope.scope === 'project' ? `project:${scope.project_id}` : 'general';
 
 function createMemberEvidence(db, ledger, { now = () => new Date().toISOString() } = {}) {
@@ -255,16 +275,16 @@ function createMemberEvidence(db, ledger, { now = () => new Date().toISOString()
                 }
             }
             const pendingBucket = proposals.status === 'unavailable'
-                ? { label: 'Pending profile proposals (unreviewed)', applies_to: scopes.map(scopeLabel), status: 'unavailable', reason: proposals.reason, total: 0, truncated: false, records: [] }
-                : bucket('Pending profile proposals (unreviewed)', scopes.map(scopeLabel), proposals.records, query.limit);
+                ? { label: 'Pending profile proposals (unreviewed)', applies_to: scopes.map(scopeLabel), status: 'unavailable', reason: proposals.reason, ...emptyPage() }
+                : bucket('Pending profile proposals (unreviewed)', scopes.map(scopeLabel), proposals.records, query);
 
             const projectBucket = query.scope === 'project'
-                ? bucket('Project-specific assertions', `project:${query.project_id}`, assertions.project, query.limit, {
+                ? bucket('Project-specific assertions', `project:${query.project_id}`, assertions.project, query, {
                     is_project_statement: true,
                     ...(assertions.project.length === 0 && { note: inferred.some(entry => entry.scope === 'project')
                         ? 'No confirmed or member-stated project assertion is recorded for this project and question. Inferred project records are listed separately and remain unconfirmed.'
                         : 'No project-specific assertion is recorded for this project and question. Do not answer from the general or directory context as if it were a project statement.' }) })
-                : { label: 'Project-specific assertions', applies_to: null, status: 'not_requested', total: 0, truncated: false, records: [], is_project_statement: true,
+                : { label: 'Project-specific assertions', applies_to: null, status: 'not_requested', ...emptyPage(), is_project_statement: true,
                     note: 'General scope was requested; project assertions were not looked up.' };
             const unavailableDemonstrated = { status: 'unavailable', seat_id: nonblank(row.seat_id),
                 reason: 'Council reputation standing is computed in Praxis (council reputation ledger keyed by seat_id) and is not stored in Nexus.' };
@@ -277,33 +297,33 @@ function createMemberEvidence(db, ledger, { now = () => new Date().toISOString()
                     ...(sameName.length > 0 && { note: 'Another member record shares this name. This result is for the canonical id above only; verify the identity before relying on it.' }) },
                 project_link: link,
                 sources: {
-                    directory_settings: bucket('Global directory settings', 'all_projects', directoryRecords, query.limit, { is_project_statement: false,
+                    directory_settings: bucket('Global directory settings', 'all_projects', directoryRecords, query, { is_project_statement: false,
                         note: 'Operator-maintained defaults that apply to every project unless a project assertion says otherwise. Not a project statement.', ...directoryExtra }),
-                    general_assertions: bucket('General member assertions', 'general', assertions.general, query.limit, { is_project_statement: false }),
+                    general_assertions: bucket('General member assertions', 'general', assertions.general, query, { is_project_statement: false }),
                     project_assertions: projectBucket,
-                    inferred_observations: bucket('Inferred records (unconfirmed)', scopes.map(scopeLabel), inferred, query.limit),
+                    inferred_observations: bucket('Inferred records (unconfirmed)', scopes.map(scopeLabel), inferred, query),
                     demonstrated_contributions: question.demonstrated
-                        ? bucket('Demonstrated outcomes', scopes.map(scopeLabel), demonstrated, query.limit, { external: { council_reputation: unavailableDemonstrated } })
-                        : { label: 'Demonstrated outcomes', applies_to: scopes.map(scopeLabel), status: 'not_requested', total: 0, truncated: false, records: [],
+                        ? bucket('Demonstrated outcomes', scopes.map(scopeLabel), demonstrated, query, { external: { council_reputation: unavailableDemonstrated } })
+                        : { label: 'Demonstrated outcomes', applies_to: scopes.map(scopeLabel), status: 'not_requested', ...emptyPage(),
                             external: { council_reputation: unavailableDemonstrated } },
                     completion_claims: question.demonstrated
-                        ? bucket('Completion claims (not demonstrated)', scopes.map(scopeLabel), completionClaims, query.limit, { note: COMPLETION_CLAIM_NOTE })
-                        : { label: 'Completion claims (not demonstrated)', applies_to: scopes.map(scopeLabel), status: 'not_requested', total: 0, truncated: false, records: [],
+                        ? bucket('Completion claims (not demonstrated)', scopes.map(scopeLabel), completionClaims, query, { note: COMPLETION_CLAIM_NOTE })
+                        : { label: 'Completion claims (not demonstrated)', applies_to: scopes.map(scopeLabel), status: 'not_requested', ...emptyPage(),
                             note: COMPLETION_CLAIM_NOTE },
                 },
                 context: {
                     open_commitments: question.commitments
-                        ? bucket('Open commitments', scopes.map(scopeLabel), openCommitments, query.limit)
-                        : { label: 'Open commitments', applies_to: scopes.map(scopeLabel), status: 'not_requested', total: 0, truncated: false, records: [] },
+                        ? bucket('Open commitments', scopes.map(scopeLabel), openCommitments, query)
+                        : { label: 'Open commitments', applies_to: scopes.map(scopeLabel), status: 'not_requested', ...emptyPage() },
                     pending_proposals: pendingBucket,
                     history: {
-                        corrected: bucket('Corrected facts', scopes.map(scopeLabel), corrected, query.limit),
-                        retracted: bucket('Retracted facts', scopes.map(scopeLabel), retracted, query.limit),
-                        conflicts: bucket('Unresolved conflicts', scopes.map(scopeLabel), conflicts, query.limit),
+                        corrected: bucket('Corrected facts', scopes.map(scopeLabel), corrected, query),
+                        retracted: bucket('Retracted facts', scopes.map(scopeLabel), retracted, query),
+                        conflicts: bucket('Unresolved conflicts', scopes.map(scopeLabel), conflicts, query),
                     },
                 },
                 coverage: { scopes: scopes.map(scopeLabel), other_projects_included: false, observations_included: false,
-                    contact_details_included: false, limit: query.limit },
+                    contact_details_included: false, limit: query.limit, offset: query.offset, paging: PAGING_NOTE },
                 usage_guidance: GUIDANCE,
             };
         })();

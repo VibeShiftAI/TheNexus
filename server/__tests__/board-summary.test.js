@@ -186,7 +186,10 @@ describe('compact board summary over real SQLite and HTTP', () => {
     expect(result.body.tasks[0]).toMatchObject({ dependencies: ids, is_unblocked: true, title: 'title '.repeat(1000) });
     expect(queries).toHaveLength(3);
     expect(queries.every(query => (query.match(/\?/g) || []).length <= 500)).toBe(true);
-  });
+    // The 1003 same-titled fixture tasks are each other's work-admission
+    // matches, and since 2026-10-31 a receipt lists every relevant match (it
+    // kept three), so the setup writes far larger receipts than production does.
+  }, 30000);
   test('presence flags include nested QA notes but never project their bodies', async () => {
     await task('empty');
     await task('note', { metadata: { status_message: 'QA passed after review' } });

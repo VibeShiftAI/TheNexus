@@ -14,6 +14,10 @@ const IMPOSSIBLE_WORLDS_CHANNEL_ID = 'impossible-worlds-field-guide';
 const STAGES = ['suggested', 'approved', 'scripted', 'thumbnail', 'ready', 'published'];
 const ALL_STATUSES = [...STAGES, 'archived'];
 const JSON_FIELDS = ['thumbnail_concepts', 'image_prompts', 'checklist', 'publish_kit'];
+// callAI returns `truncated: true` when the model stopped at its output limit
+// (Praxis already retried once without a token budget). Studio saves what came
+// back, says so in the job result and leaves a checklist item on the idea.
+const OUTPUT_LIMIT_NOTE = 'The model stopped at its output limit (finish_reason "length"), so this answer is cut short.';
 const EDITABLE_CHANNEL_FIELDS = [
   'name',
   'project_path',
@@ -376,17 +380,22 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
           if (parsed && typeof parsed.script === 'string' && parsed.script.trim().length > 40) finalScript = parsed.script;
           if (parsed && Array.isArray(parsed.notes)) notes = parsed.notes;
         } catch {
-          if (criticText && criticText.trim().length > 40) finalScript = criticText;
+          // A critic answer cut off mid-JSON is not a script; keep the draft.
+          if (!criticRaw.truncated && criticText && criticText.trim().length > 40) finalScript = criticText;
         }
+        const cut = [draft.truncated && 'writer draft', criticRaw.truncated && 'critic revision'].filter(Boolean);
+        const cutNote = cut.length ? `Cut short: the ${cut.join(' and ')} stopped at the model's output limit (finish_reason "length"). Re-run the script or finish it by hand.` : null;
 
         const status = ['suggested', 'approved'].includes(idea.status) ? 'scripted' : idea.status;
         const checklist = Array.isArray(idea.checklist) ? idea.checklist : [];
         // 2026-10-30: used to keep 8 critic notes of 200 characters each.
         for (const note of notes) checklist.push({ label: `Critic: ${String(note)}`, done: false });
         if (!params.hasObjects) checklist.push({ label: 'Attach object records so the script can be grounded in real parameters.', done: false });
+        if (cutNote) checklist.push({ label: cutNote, done: false });
         sql.prepare('UPDATE studio_ideas SET script = ?, script_model = ?, status = ?, checklist = ?, updated_at = ? WHERE id = ?')
           .run(String(finalScript), `${modelLabel} (writer+critic)`, status, JSON.stringify(checklist), now(), ideaId);
-        return { summary: `Script written via writer+critic (${String(finalScript).length} chars, ${notes.length} critic note(s))`, ideaId };
+        const summary = `Script written via writer+critic (${String(finalScript).length} chars, ${notes.length} critic note(s))`;
+        return cutNote ? { summary: `${summary}. ${cutNote}`, ideaId, truncated: true, warning: cutNote } : { summary, ideaId };
       },
       // Prompt-mode + paste fallback (single pass).
       build({ channel, channelId, ideaId }) {
@@ -628,7 +637,22 @@ function createStudioRouter({ callAI, ingestionDeps, astroDeps } = {}) {
     }
     const built = def.build({ ...params, channel });
     const full = await callAI(model, built.user, built.system, [], { returnFullResult: true });
-    return def.apply({ ...params, model: modelLabel }, full.text || full);
+    if (!full?.truncated) return def.apply({ ...params, model: modelLabel }, full.text || full);
+    // Cut answer: apply what came back, but never as if it were whole.
+    let result;
+    try {
+      result = def.apply({ ...params, model: modelLabel }, full.text || full);
+    } catch (e) {
+      throw new Error(`${e.message} ${OUTPUT_LIMIT_NOTE}`);
+    }
+    const ideaId = result?.ideaId || params.ideaId;
+    const idea = ideaId ? getIdea(ideaId) : null;
+    if (idea) {
+      const checklist = Array.isArray(idea.checklist) ? idea.checklist : [];
+      checklist.push({ label: `${def.label}: ${OUTPUT_LIMIT_NOTE} Re-run it or finish it by hand.`, done: false });
+      sql.prepare('UPDATE studio_ideas SET checklist = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(checklist), now(), ideaId);
+    }
+    return { ...result, summary: `${result?.summary || def.label}. ${OUTPUT_LIMIT_NOTE}`, truncated: true, warning: OUTPUT_LIMIT_NOTE };
   }
 
   router.get('/channels', (_req, res) => {

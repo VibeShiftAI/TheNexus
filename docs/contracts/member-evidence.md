@@ -24,7 +24,11 @@ Query parameters (all strings; unknown or repeated fields fail with 400):
 | `project_id` | Required with `scope=project`, forbidden with `scope=general`. |
 | `question` | Question type, default `all`: `all`, `contact_channel`, `tone`, `availability`, `approval`, `role` (project scope only), `preference`, `goal`, `expertise`, `commitment`. |
 | `fact_key` | Optional exact ledger topic. Narrows the question's ledger and proposal matches to records carrying exactly this key (with `question=all` it is a pure exact-key filter). |
-| `limit` | Per-bucket cap, 1 to 200, default 50. |
+| `limit` | Per-bucket page size, any positive integer, default 50. |
+| `offset` | Records to skip in every bucket, default 0. Use a bucket's `next_offset` (with the same `limit`) for its next page. |
+
+Until 2026-10-31 `limit` stopped at 200 and there was no `offset`, so a bucket's
+records past the 200th could not be read at all.
 
 Each question maps to directory fields, ledger topics and proposal categories. A
 ledger key matches a question when it starts with one of the question's prefixes
@@ -76,15 +80,26 @@ and reports `project_link.status = "project_deleted"`.
   `retracted` with `retracted_by` and the retraction text, `conflicts` with
   `source_class: "conflict"`, the competing event ids and `status: "unresolved"`).
 - `coverage`: eligible scopes, and explicit `other_projects_included`,
-  `observations_included` and `contact_details_included`, all `false`.
+  `observations_included` and `contact_details_included`, all `false`; the
+  `limit` and `offset` this response used, and a `paging` note that explains them.
 
 Every ledger record keeps its full event fields (`id`, `seq`, `fact_key`,
 `source`, `source_ref`, `supersedes_id`, `target_id`, timestamps) plus `scope`,
 `source_class` and a human `evidence_label`, so a downstream answer can cite
 exact identifiers. Bucket `status` values are `present`, `missing` (known
-absence in the exact scope), `partial` (truncated by `limit`; `total` and
-`truncated` say how much is missing), `not_requested` (outside the question) and
-`unavailable` (a store that cannot be read, with a `reason`).
+absence in the exact scope), `partial` (this page does not hold the whole
+bucket), `not_requested` (outside the question) and `unavailable` (a store that
+cannot be read, with a `reason`). Every bucket carries `total` (the whole
+bucket), `truncated` (this page is not the whole bucket), `remaining` (records
+after this page) and `next_offset` (the offset that returns them, `null` when
+none remain); looked-up buckets also echo `offset`. Paging walks the same
+ordering as the first page, so following `next_offset` until it is `null`
+returns every record exactly once while the ledger is unchanged. Each page is a
+separate read: a write between pages (a new fact, a correction or retraction
+moving a record between buckets) shifts later pages, so a reader that needs an
+exact set compares `total` across pages and starts again at offset 0 when it
+changed, or asks for one page with a `limit` of at least `total`. The dashboard panel offers "Show all N" on a
+partial bucket, which looks up again with that total as the page size.
 
 ## Boundaries
 

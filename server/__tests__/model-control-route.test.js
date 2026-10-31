@@ -741,6 +741,8 @@ describe('model control route', () => {
                 mode: 'live',
                 live: true,
                 response: 'probe ok',
+                finish_reason: null,
+                truncated: false,
                 snapshot: expect.objectContaining({ id: 'snapshot-1', project_id: 'project-1' }),
                 resolved: expect.objectContaining({
                     resolvedModelId: 'local-llama',

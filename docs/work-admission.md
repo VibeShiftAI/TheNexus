@@ -17,7 +17,11 @@ windows are distinct. Without an explicit identity, an exact substantive
 contract is still retry-safe.
 
 Lexical lookup searches the full retained project/workspace history and returns
-at most three likely matches. Similarity only puts the new proposal into
+every relevant candidate as a match, ranked by score; relevance (a nonzero
+weighted scope or title overlap) is the only boundary. Until 2026-10-31 it kept
+the top three and reported the rest only as `coverage.relevant_count`, so they
+could not be inspected and a resolution could stand having compared three of
+them. Similarity only puts the new proposal into
 `needs_evidence`; it never merges or completes work. Lookup failure also holds.
 The receipt names its owner, reason, checked time, fingerprint, matched task
 versions and searched coverage. Raw task metadata is only a projection; facade
@@ -90,9 +94,10 @@ scope) are rebound once, recorded as `legacy_fingerprint`, only when their
 stored fingerprint exactly matches the current task under the old rule. Unmarked authored rules, including reserved `BC-*` IDs,
 remain substantive. A changed exact reservation returns conflict rather than
 substituting a differently scoped task. Resolved receipts survive unrelated
-history changes but invalidate on any newly relevant owner, including results
-beyond the three-item shortlist. `coverage.relevant_count` exposes truncation to
-the runtime. Admission GET joins a valid `x-nexus-board-lease` so the runtime can
+history changes but invalidate on any newly relevant owner. `coverage.relevant_count`
+equals the number of matches; a runtime that bounds its own automatic comparison
+(Praxis holds above three) can read it, and every match stays listed for the
+reviewer who narrows the comparison. Admission GET joins a valid `x-nexus-board-lease` so the runtime can
 fence final inspection and launch against concurrent API mutations.
 
 Retrieval version 2 uses corpus-frequency weighted cosine and excludes recognized
