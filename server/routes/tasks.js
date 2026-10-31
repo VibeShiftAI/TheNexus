@@ -16,8 +16,9 @@ const { requireStakeholderAuthority } = require('../services/stakeholder-authori
 const { createContractChangeAuthority } = require('../services/contract-change-authority');
 const {
     normalizeSourceClaim, guardSourceUpdate, guardPayloadUpdate, guardDispatchPayload,
-    tierOf, UNVERIFIED_OPERATOR_SOURCE,
+    tierOf, UNVERIFIED_OPERATOR_SOURCE, OPERATOR_ORIGIN_SOURCES,
 } = require('../lib/provenance');
+const { OPERATOR_TASK_HEADER, createOperatorTaskOrigin } = require('../services/operator-task-origin');
 
 /**
  * Canonical-status gate (2026-07-05 unification). Legacy synonyms
@@ -36,9 +37,12 @@ function requireValidStatus(res, rawStatus) {
     return canonical;
 }
 
-function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, validateInitiativeRequest, pushService }) {
+function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, callAI, validateInitiativeRequest, pushService, operatorTaskOrigin }) {
     const router = express.Router();
     router.use(boardRequestLease(db));
+    // Verified "Robert filed this" labels (server/services/operator-task-origin.js).
+    // One instance per router: the attestation verifier's nonce memory lives here.
+    const operatorOrigin = operatorTaskOrigin || createOperatorTaskOrigin();
 
     function repeatOptions(req, body = req.body) {
         if (body.work_repeat === undefined) return undefined;
@@ -495,6 +499,19 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                     task.status = canonicalStatus;
                 }
             }
+            // Praxis's chat dispatch attests that Robert asked for this task in a
+            // verified chat turn. One attestation covers exactly one task (it
+            // signs the project and that task's name); anything else falls back
+            // to the ordinary claim cap below.
+            let attestedSource;
+            const attestation = req.get(OPERATOR_TASK_HEADER);
+            if (attestation !== undefined) {
+                const verdict = tasks.length === 1
+                    ? operatorOrigin.verifyChatAttestation(attestation, { projectId: project_id, name: tasks[0]?.name })
+                    : { ok: false, reason: 'not-single-task' };
+                if (verdict.ok) attestedSource = verdict.source;
+                else console.warn(`[Provenance] Operator-task attestation refused (${verdict.reason}) on batch create in project ${project_id}; source claims capped as usual`);
+            }
             const preparedTasks = tasks.map(task => {
                 const realId = crypto.randomUUID();
                 if (task.stable_id) stableIdToRealId.set(task.stable_id, realId);
@@ -502,12 +519,13 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 // the endpoint praxis-mind (and therefore every MCP agent)
                 // writes through.
                 const claim = normalizeSourceClaim(task.source);
-                if (claim.downgradedFrom) {
+                if (claim.downgradedFrom && !attestedSource) {
                     console.warn(`[Provenance] Refused operator-authorship claim "${claim.downgradedFrom}" on batch task "${task.name}"; recorded as "${claim.source}"`);
                 }
+                const recordedSource = attestedSource || claim.source;
                 return {
                     ...task, id: realId, project_id,
-                    ...(claim.source ? { source: claim.source } : {}),
+                    ...(recordedSource ? { source: recordedSource } : {}),
                     last_activity_at: new Date().toISOString(),
                 };
             });
@@ -598,10 +616,18 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
             // claim cap as every other create path: nothing over HTTP can
             // assert operator tier (see server/lib/provenance.js).
             const claim = normalizeSourceClaim(source);
+            // The board's add-task form asks for the operator origin
+            // (`operator: true`). Only a verified operator session earns
+            // `operator:board`; without one the idea is still saved, under the
+            // unverified label (server/services/operator-task-origin.js).
+            const origin = await operatorOrigin.boardOrigin(req);
+            if (origin.requested && !origin.verified) {
+                console.warn(`[Provenance] Board create asked for operator origin without a verified operator session (${origin.reason}); recorded as "${claim.source || UNVERIFIED_OPERATOR_SOURCE}"`);
+            }
             const created = await db.createTask({
                 project_id: project.id, name: title.trim(), description: description?.trim() || '',
                 status: 'idea', priority: 0, initiative_validation: validation,
-                source: claim.source || UNVERIFIED_OPERATOR_SOURCE,
+                source: origin.verified ? OPERATOR_ORIGIN_SOURCES.board : (claim.source || UNVERIFIED_OPERATOR_SOURCE),
                 model_assignment: model_assignment || null,
                 ...(payload ? { antigravity_payload: payload } : {}),
                 ...(deps.length > 0 ? { dependencies: deps } : {}),
@@ -609,7 +635,10 @@ function createTasksRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects, c
                 metadata: { ...metadata, classifiedAt: new Date().toISOString() },
                 last_activity_at: new Date().toISOString()
             }, ...(admissionOptions ? [admissionOptions] : []));
-            res.json({ success: true, task: { ...created, title: created.name, createdAt: created.created_at } });
+            res.json({
+                success: true, task: { ...created, title: created.name, createdAt: created.created_at },
+                ...(origin.requested ? { operator_origin: { verified: origin.verified, ...(origin.reason ? { reason: origin.reason } : {}) } } : {}),
+            });
         } catch (error) {
             if (sendLeaseError(res, error)) return;
             if (error.status) return admissionError(res, error);

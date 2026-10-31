@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { operatorFetch, LOCAL_OPERATOR_PROOF_KEY } from '../local-operator-session.ts';
 import { dispatchTask } from '../dispatches.ts';
+import { addTask } from '../nexus/tasks.ts';
 
 async function browser(origin, run) {
     const priorWindow = globalThis.window, priorFetch = globalThis.fetch;
@@ -106,5 +107,29 @@ test('refused local bootstrap removes a stale proof and never treats the UI clai
         assert.equal(response.status, 403);
         assert.equal(values.has(LOCAL_OPERATOR_PROOF_KEY), false);
         assert.equal(calls.at(-1).options.headers.has('X-Nexus-Local-Proof'), false);
+    });
+});
+
+test('a board task create asks for operator origin through the verified session, never the legacy bearer', async () => {
+    await browser('http://localhost:3000/project/joey', async values => {
+        values.set(LOCAL_OPERATOR_PROOF_KEY, 'b'.repeat(43));
+        const calls = [];
+        globalThis.fetch = async (url, options) => {
+            calls.push({ url, options });
+            return { ok: true, status: 200, json: async () => url === '/api/operator-session'
+                ? { operator: true, expiresAt: Date.now() + 3600000 }
+                : { success: true, task: { id: 't-1' }, operator_origin: { verified: true } } };
+        };
+        const result = await addTask('joey', 'Try the new layout', 'Robert typed this', null);
+        const create = calls.at(-1);
+        assert.match(create.url, /^\/api\/projects\/joey\/tasks\?_cb=\d+$/);
+        assert.equal(create.options.method, 'POST');
+        assert.equal(create.options.headers.get('X-Nexus-Local-Proof'), 'b'.repeat(43));
+        assert.equal(create.options.headers.has('Authorization'), false);
+        const body = JSON.parse(create.options.body);
+        assert.equal(body.operator, true);
+        assert.equal(body.title, 'Try the new layout');
+        assert.equal('source' in body, false, 'the origin label is the server\'s to record, never the client\'s');
+        assert.deepEqual(result.operator_origin, { verified: true });
     });
 });
