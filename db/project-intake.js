@@ -40,9 +40,10 @@ function initializeProjectIntake(db) {
     )`);
 }
 function invalidateReview(intake) {
+    const resume = intake.review?.mode === 'preparation' ? intake.review.resume_state : null;
     if (intake.review) intake.review_history.push(intake.review);
     intake.review = null; intake.acceptance = null;
-    if (['council_review', 'ready_for_decision'].includes(intake.state)) intake.state = 'interviewing';
+    if (['council_review', 'ready_for_decision'].includes(intake.state)) intake.state = resume || 'interviewing';
 }
 function rememberBrief(intake, needs, at) {
     intake.brief_history.push({ brief_revision: intake.brief_revision, brief: structuredClone(intake.brief), sources: structuredClone(intake.sources),
@@ -123,7 +124,7 @@ function createProjectIntakeStore(db, { deserialize }) {
             }
             const at = timestamp(current?.updated_at), id = current?.id || crypto.randomUUID();
             const intake = parse(ProjectIntakeSchema, { revision: 0, brief_revision: 0, state: 'preparing', original: { problem: input.problem, source_ref: input.source_ref, at },
-                brief: {}, sources: input.sources || [], brief_history: [], need_ids: [], pending_need_id: null, workspace: location, review: null, review_history: [], acceptance: null,
+                brief: {}, sources: input.sources || [], brief_history: [], need_ids: (current?.needs || []).filter(n => n.kind === 'information' && n.knowledge).map(n => n.id), pending_need_id: (current?.needs || []).find(n => n.kind === 'information' && n.knowledge && n.status === 'open')?.id || null, workspace: location, review: null, review_history: [], acceptance: null,
                 operations: [{ operation_id: input.operation_id, action: 'create', revision: 0, at }] });
             if (current) save(id, { phase: 'intake', intake, path: location.path || '', updated_at: at });
             else db.prepare('INSERT INTO projects(id,name,path,description,status,phase,intake,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)')
@@ -151,7 +152,8 @@ function createProjectIntakeStore(db, { deserialize }) {
                     if (ids.has(addition.id)) throw fail('Duplicate need ids in one operation', 'INVALID_INTAKE', 400);
                     ids.add(addition.id);
                     const needs = [...(project.needs || [])], index = needs.findIndex(n => n.id === addition.id);
-                    if (index >= 0 && !intake.need_ids.includes(addition.id)) throw fail('Need id belongs to an unrelated project need', 'INTAKE_NEED_CONFLICT');
+                    if (index >= 0 && (needs[index].kind !== 'information' || !needs[index].knowledge)) throw fail('Need id belongs to an unrelated project need', 'INTAKE_NEED_CONFLICT');
+                    if (index >= 0 && addition.expected_knowledge_revision === undefined) throw fail('Existing information need definitions require expected_knowledge_revision', 'INTAKE_NEED_REVISION_REQUIRED', 428);
                     const { expected_knowledge_revision, ...definition } = addition;
                     if (index >= 0) needs[index] = { ...needs[index], ...definition, knowledge: { ...needs[index].knowledge, ...definition.knowledge } };
                     else needs.push({ ...definition, status: 'open' });
@@ -177,7 +179,9 @@ function createProjectIntakeStore(db, { deserialize }) {
                 case 'attach_workspace':
                     intake.workspace = attach(input.existing_path, project); patch.path = intake.workspace.path; break;
                 case 'prepare':
-                    allowed(['preparing']); mergeMaterial(); intake.state = 'awaiting_choice'; break;
+                    allowed(['preparing']); mergeMaterial();
+                    if (!(intake.brief.outcome?.trim() || intake.brief.purpose?.trim()) || !intake.need_ids.some(id => project.needs?.some(n => n.id === id && n.kind === 'information' && n.knowledge))) throw fail('Preparation requires an initial outcome or purpose and at least one saved information need; answered needs count as coverage.', 'INTAKE_PREPARATION_INCOMPLETE', 400);
+                    intake.state = 'awaiting_choice'; break;
                 case 'revise':
                     mergeMaterial(); break;
                 case 'start':
@@ -205,28 +209,47 @@ function createProjectIntakeStore(db, { deserialize }) {
                     }
                     material = true; break;
                 }
-                case 'request_review':
-                    allowed(['interviewing', 'awaiting_choice', 'ready_for_decision']);
+                case 'request_review': {
+                    const preparation = input.mode === 'preparation';
+                    const retry = intake.state === 'council_review' && ['failed', 'partial'].includes(intake.review?.status);
+                    if (!retry) allowed(preparation ? ['preparing', 'awaiting_choice', 'deferred', 'interviewing'] : ['interviewing', 'awaiting_choice', 'ready_for_decision']);
+                    if (retry && (intake.review.mode || 'review') !== input.mode) throw fail('A council retry must preserve its mode', 'INTAKE_STATE_CONFLICT');
+                    if (preparation && !input.source_ref) throw fail('Preparation councils require the explicit request source_ref', 'INVALID_INTAKE', 400);
                     if (input.brief_revision !== intake.brief_revision) throw fail('Review must use current brief_revision', 'INTAKE_REVIEW_STALE');
+                    const resume = retry ? intake.review.resume_state : intake.state;
                     if (intake.review) intake.review_history.push(intake.review);
-                    intake.review = { session_id: input.session_id, brief_revision: input.brief_revision, requested_at: at, status: 'pending', findings: [] };
+                    intake.review = { session_id: input.session_id, mode: input.mode, resume_state: resume, brief_revision: input.brief_revision, requested_at: at, status: 'pending', findings: [],
+                        ...(input.source_ref ? { source_ref: input.source_ref, request_source_ref: input.source_ref } : {}) };
                     intake.state = 'council_review'; break;
-                case 'record_review':
+                }
+                case 'record_review': {
                     allowed(['council_review']);
                     if (!intake.review || intake.review.session_id !== input.session_id || intake.review.brief_revision !== input.brief_revision || intake.brief_revision !== input.brief_revision) throw fail('Council result does not match the current requested review', 'INTAKE_REVIEW_STALE');
-                    intake.review = { ...intake.review, status: input.status || 'completed', source_ref: input.source_ref, findings: input.findings, completed_at: at };
-                    mergeNeeds(input.needs);
-                    if (input.needs?.length) { rememberBrief(frozenBrief, frozenNeeds, at); intake.brief_history = frozenBrief.brief_history; intake.brief_revision++; intake.review_history.push(intake.review); intake.review = null; intake.state = 'interviewing'; }
-                    else if (intake.review.status !== 'completed') intake.state = 'council_review';
-                    else intake.state = input.findings.some(f => ['ask_robert', 'revise_proposal'].includes(f.disposition)) ? 'interviewing' : 'ready_for_decision';
+                    const preparation = intake.review.mode === 'preparation';
+                    if (!preparation && (input.brief || input.sources)) throw fail('Only preparation councils may supply brief/source changes; revise and review the changed brief separately', 'INVALID_INTAKE', 400);
+                    const status = input.status || 'completed';
+                    if (status !== 'completed' && (input.brief || input.sources || input.needs?.length)) throw fail('Failed or partial council results cannot apply preparation changes', 'INVALID_INTAKE', 400);
+                    intake.review = { ...intake.review, status, source_ref: input.source_ref, findings: input.findings, completed_at: at };
+                    if (status !== 'completed') break;
+                    if (preparation) {
+                        mergeMaterial();
+                        const resume = intake.review.resume_state || 'preparing';
+                        intake.review_history.push(intake.review); intake.review = null; intake.state = resume;
+                    } else {
+                        const beforeNeeds = project.needs;
+                        mergeNeeds(input.needs);
+                        material = !equal(beforeNeeds, project.needs);
+                        intake.state = material || input.findings.some(f => ['ask_robert', 'revise_proposal'].includes(f.disposition)) ? 'interviewing' : 'ready_for_decision';
+                    }
                     break;
+                }
                 case 'accept': {
                     allowed(['ready_for_decision']);
-                    if (input.brief_revision !== intake.brief_revision || intake.review?.brief_revision !== intake.brief_revision || intake.review.status !== 'completed') throw fail('Acceptance requires a completed review of the current brief', 'INTAKE_REVIEW_STALE');
+                    if (input.brief_revision !== intake.brief_revision || intake.review?.brief_revision !== intake.brief_revision || intake.review.status !== 'completed' || (intake.review.mode || 'review') !== 'review') throw fail('Acceptance requires a completed review of the current brief', 'INTAKE_REVIEW_STALE');
                     const b = intake.brief;
-                    if (!['outcome', 'beneficiary', 'scope', 'decision_owner'].every(k => b[k]?.trim()) || !b.success_criteria?.length) throw fail('Acceptance requires outcome, beneficiary, scope, success criteria and decision owner', 'INTAKE_BRIEF_INCOMPLETE', 400);
-                    for (const n of project.needs.filter(n => n.status === 'open' && n.knowledge?.blocking)) {
-                        if (!n.knowledge.resolution?.owner?.trim() || !n.knowledge.resolution.next_action?.trim()) throw fail(`Blocking need ${n.id} requires a resolution owner and next action`, 'INTAKE_NEED_UNPLANNED', 400);
+                    if (!['purpose', 'outcome', 'beneficiary', 'scope', 'decision_owner'].every(k => b[k]?.trim()) || !b.success_criteria?.length) throw fail('Acceptance requires purpose, outcome, beneficiary, scope, success criteria and decision owner', 'INTAKE_BRIEF_INCOMPLETE', 400);
+                    for (const n of project.needs.filter(n => n.status === 'open' && n.knowledge && (n.knowledge.blocking || intake.need_ids.includes(n.id)))) {
+                        if (!n.knowledge.resolution?.method?.trim() || !n.knowledge.resolution.owner?.trim() || !n.knowledge.resolution.next_action?.trim()) throw fail(`Open need ${n.id} requires a resolution method, owner and next action`, 'INTAKE_NEED_UNPLANNED', 400);
                     }
                     const adopted = prepareProjectPatch(project, { expected_updated_at: project.updated_at, end_state: b.outcome,
                         endpoint: { beneficiary: b.beneficiary, scope: b.scope, exclusions: b.exclusions || '', proposed_next: input.next_step },

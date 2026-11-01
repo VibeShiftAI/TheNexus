@@ -5,7 +5,7 @@ const express = require('express');
 const http = require('http');
 const crypto = require('crypto');
 
-const brief = { outcome: 'Neighbors can coordinate shared tools', beneficiary: 'Our neighborhood', scope: 'Tool lending pilot', success_criteria: ['A neighbor completes a loan'], decision_owner: 'Robert' };
+const brief = { purpose: 'Reduce waste and make tools accessible', outcome: 'Neighbors can coordinate shared tools', beneficiary: 'Our neighborhood', scope: 'Tool lending pilot', success_criteria: ['A neighbor completes a loan'], decision_owner: 'Robert' };
 const need = (id = 'owner', method = 'human') => ({ id, kind: 'information', description: 'Choose the pilot owner', knowledge: { question: 'Who owns the pilot?', purpose: 'Identify authority', satisfaction_test: 'Owner explicitly confirms', resolution: { method, owner: 'Robert', next_action: 'Ask Robert' } } });
 
 describe('durable record-only project intake', () => {
@@ -227,6 +227,137 @@ describe('durable record-only project intake', () => {
     const saved = (await request(`/${p.project.id}/intake`, null, 'GET')).body;
     expect(saved).toEqual(winner);
     expect(saved.project.needs[0].knowledge.history).toHaveLength(1);
+  });
+
+  test('adopts authoritative existing information needs and guards later revisions', async () => {
+    const id = crypto.randomUUID(), name = crypto.randomUUID();
+    await db.upsertProject({ id, name, path: '' });
+    const saved = db.updateProjectNeed(id, null, need('original'));
+    const needId = saved.need.id;
+    const answered = db.updateProjectNeed(id, needId, { expected_knowledge_revision: 1, knowledge: { answer: 'Robert', evidence: [{ ref: 'chat:earlier' }] } });
+    const verified = db.updateProjectNeed(id, needId, { expected_knowledge_revision: 2, status: 'met', knowledge: { verification: { rationale: 'Explicit choice', evidence_refs: ['chat:earlier'] } } });
+    const p = (await create({ project_id: id, name })).body;
+    expect(p.intake.need_ids).toContain(needId);
+    expect(p.project.needs).toEqual(verified.needs);
+    const preparedResult = await op(p, 'prepare', { brief });
+    const revisedDefinition = { ...need(needId), description: 'Confirm accountable owner', expected_knowledge_revision: 2, knowledge: { ...need().knowledge, question: 'Who is accountable for the pilot?' } };
+    const result = await op(preparedResult.body, 'revise', { needs: [revisedDefinition] });
+    expect(result.status).toBe(200);
+    expect(result.body.project.needs).toHaveLength(1);
+    expect(result.body.project.needs[0].knowledge).toMatchObject({ answer: 'Robert', evidence: [{ ref: 'chat:earlier' }], revision: 3 });
+    expect(result.body.project.needs[0].knowledge.history.some(h => h.verification)).toBe(true);
+    const stale = await op(result.body, 'revise', { needs: [{ ...revisedDefinition, description: 'Stale overwrite' }] });
+    expect(stale.status).toBe(409);
+  });
+
+  test.each(['', '/scaffold'])('legacy creation route %s rejects intake name before any filesystem mutation', async route => {
+    const p = (await create()).body;
+    const folder = path.join(dir, p.project.name);
+    expect(fs.existsSync(folder)).toBe(false);
+    const result = await request(route, { name: p.project.name });
+    expect(result.status).toBe(409);
+    expect(result.body.code).toBe('PROJECT_INTAKE');
+    expect(fs.existsSync(folder)).toBe(false);
+    expect((await request(`/${p.project.id}/intake`, null, 'GET')).body).toEqual(p);
+  });
+
+  test('acceptance requires explicit purpose and a resolution plan for nonblocking open research', async () => {
+    const research = need('research', 'research');
+    research.knowledge.resolution = { method: 'research' };
+    let p = await prepared([research]);
+    p = (await op(p, 'revise', { brief: { purpose: '' } })).body;
+    p = (await op(p, 'start')).body;
+    p = (await op(p, 'request_review', { session_id: 'council:readiness', brief_revision: p.intake.brief_revision })).body;
+    p = (await op(p, 'record_review', { session_id: 'council:readiness', brief_revision: p.intake.brief_revision, source_ref: 'council:readiness-result', findings: [] })).body;
+    const incomplete = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision });
+    expect(incomplete.status).toBe(400); expect(incomplete.body.code).toBe('INTAKE_BRIEF_INCOMPLETE');
+    p = (await op(p, 'revise', { brief: { purpose: brief.purpose } })).body;
+    p = (await op(p, 'request_review', { session_id: 'council:planned', brief_revision: p.intake.brief_revision })).body;
+    p = (await op(p, 'record_review', { session_id: 'council:planned', brief_revision: p.intake.brief_revision, source_ref: 'council:planned-result', findings: [] })).body;
+    const unplanned = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision });
+    expect(unplanned.status).toBe(400); expect(unplanned.body.code).toBe('INTAKE_NEED_UNPLANNED');
+  });
+
+  test('preparation councils persist provenance and findings without satisfying final review', async () => {
+    const p = (await create()).body;
+    const requested = await op(p, 'request_review', { mode: 'preparation', source_ref: 'chat:explicit-council', session_id: 'council:prepare', brief_revision: p.intake.brief_revision });
+    expect(requested.status).toBe(200);
+    expect(requested.body.intake.review).toMatchObject({ mode: 'preparation', source_ref: 'chat:explicit-council', resume_state: 'preparing' });
+    const result = await op(requested.body, 'record_review', { session_id: 'council:prepare', brief_revision: p.intake.brief_revision, source_ref: 'council:preparation-result', findings: [], brief, needs: [need()] });
+    expect(result.status).toBe(200);
+    expect(result.body.intake.state).toBe('preparing');
+    expect(result.body.intake.review_history.at(-1)).toMatchObject({ mode: 'preparation', status: 'completed', source_ref: 'council:preparation-result' });
+    expect(result.body.intake.brief).toEqual(brief);
+    expect(result.body.intake.brief_revision).toBe(1);
+    expect((await op(result.body, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: 1 })).status).toBe(409);
+    const ready = await op(result.body, 'prepare', {});
+    expect(ready.status).toBe(200); expect(ready.body.intake.state).toBe('awaiting_choice');
+  });
+
+  test('preparation needs an explicit source and restores deferred choice without auto-resuming', async () => {
+    let p = await prepared();
+    expect((await op(p, 'request_review', { mode: 'preparation', session_id: 'council:unrequested', brief_revision: p.intake.brief_revision })).status).toBe(400);
+    p = (await op(p, 'defer')).body;
+    p = (await op(p, 'request_review', { mode: 'preparation', source_ref: 'chat:explicit-council', session_id: 'council:deferred-prep', brief_revision: p.intake.brief_revision })).body;
+    const result = await op(p, 'record_review', { session_id: 'council:deferred-prep', brief_revision: p.intake.brief_revision, source_ref: 'council:deferred-result', findings: [] });
+    expect(result.status).toBe(200); expect(result.body.intake.state).toBe('deferred');
+    expect(result.body.intake.review).toBeNull();
+    expect(result.body.intake.review_history.at(-1).mode).toBe('preparation');
+  });
+
+  test('material changes during a deferred preparation council do not resume the interview', async () => {
+    let p = (await op(await prepared(), 'defer')).body;
+    p = (await op(p, 'request_review', { mode: 'preparation', source_ref: 'chat:explicit', session_id: 'council:waiting', brief_revision: p.intake.brief_revision })).body;
+    const result = await op(p, 'revise', { brief: { scope: 'Smaller pilot' } });
+    expect(result.status).toBe(200); expect(result.body.intake.state).toBe('deferred');
+    expect(result.body.intake.review).toBeNull();
+    expect((await op(result.body, 'record_review', { session_id: 'council:waiting', brief_revision: p.intake.brief_revision, source_ref: 'council:stale', findings: [] })).status).toBe(409);
+  });
+
+  test('post-interview review cannot adopt a changed brief from its callback', async () => {
+    let p = (await op(await prepared(), 'start')).body;
+    p = (await op(p, 'request_review', { session_id: 'council:read-only', brief_revision: p.intake.brief_revision })).body;
+    const result = await op(p, 'record_review', { session_id: 'council:read-only', brief_revision: p.intake.brief_revision, source_ref: 'council:result', findings: [], brief: { scope: 'Unreviewed scope' } });
+    expect(result.status).toBe(400);
+    expect((await request(`/${p.project.id}/intake`, null, 'GET')).body).toEqual(p);
+  });
+
+  test('preparation after a completed review cannot revive the old review or acceptance', async () => {
+    let p = (await op(await prepared(), 'start')).body;
+    p = (await op(p, 'request_review', { session_id: 'council:old-review', brief_revision: p.intake.brief_revision })).body;
+    p = (await op(p, 'record_review', { session_id: 'council:old-review', brief_revision: p.intake.brief_revision, source_ref: 'council:old-result', findings: [] })).body;
+    p = (await op(p, 'start')).body;
+    p = (await op(p, 'request_review', { mode: 'preparation', source_ref: 'chat:reconsider', session_id: 'council:reconsider', brief_revision: p.intake.brief_revision })).body;
+    p = (await op(p, 'record_review', { session_id: 'council:reconsider', brief_revision: p.intake.brief_revision, source_ref: 'council:prep-result', findings: [], brief: { scope: 'Reconsidered scope' } })).body;
+    expect(p.intake.state).toBe('interviewing'); expect(p.intake.review).toBeNull();
+    expect(p.intake.review_history.map(r => r.mode)).toEqual(['review', 'preparation']);
+    expect(p.intake.review_history[1].request_source_ref).toBe('chat:reconsider');
+    expect((await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision })).status).toBe(409);
+  });
+
+  test('partial preparation is visible and retryable without applying an incomplete brief', async () => {
+    let p = (await create()).body;
+    p = (await op(p, 'request_review', { mode: 'preparation', source_ref: 'chat:explicit', session_id: 'council:failed-prep', brief_revision: 0 })).body;
+    const partial = await op(p, 'record_review', { session_id: 'council:failed-prep', brief_revision: 0, source_ref: 'council:partial', findings: [], status: 'partial', brief });
+    expect(partial.status).toBe(400);
+    p = (await op(p, 'record_review', { session_id: 'council:failed-prep', brief_revision: 0, source_ref: 'council:partial', findings: [], status: 'partial' })).body;
+    expect(p.intake.review.status).toBe('partial');
+    p = (await op(p, 'request_review', { mode: 'preparation', source_ref: 'chat:retry', session_id: 'council:retry-prep', brief_revision: 0 })).body;
+    expect(p.intake.review.resume_state).toBe('preparing');
+    p = (await op(p, 'record_review', { session_id: 'council:retry-prep', brief_revision: 0, source_ref: 'council:complete', findings: [] })).body;
+    expect(p.intake.state).toBe('preparing');
+    expect(p.intake.review_history.map(r => r.status)).toEqual(['partial', 'completed']);
+  });
+
+  test('preparation cannot offer a conversation until understanding and registry are saved', async () => {
+    const p = (await create()).body;
+    for (const input of [{}, { brief }, { needs: [need()] }]) {
+      const result = await op(p, 'prepare', input);
+      expect(result.status).toBe(400); expect(result.body.code).toBe('INTAKE_PREPARATION_INCOMPLETE');
+      expect((await request(`/${p.project.id}/intake`, null, 'GET')).body).toEqual(p);
+    }
+    const understood = await op(p, 'prepare', { brief: { purpose: 'Make tools available to neighbors' }, needs: [need()] });
+    expect(understood.status).toBe(200); expect(understood.body.intake.state).toBe('awaiting_choice');
   });
 
 });

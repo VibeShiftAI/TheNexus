@@ -28,13 +28,13 @@ than silently retry a changed answer against a newer revision.
 
 | Action | Fields and effect |
 | --- | --- |
-| `prepare` | Optional `brief`, `sources`, `needs`, `pending_need_id`; preparing → awaiting_choice. |
+| `prepare` | Optional `brief`, `sources`, `needs`, `pending_need_id`; preparing → awaiting_choice only with a nonblank outcome or purpose and at least one authoritative information need (answered needs count). |
 | `start` | Optional `pending_need_id`; awaiting_choice/deferred → interviewing. |
 | `defer` | Optional `pending_need_id`; saves setup for later without starting work. |
 | `answer` | `need_id`, `answer`, `source_ref`, `expected_knowledge_revision`; optional `evidence`, `verification`, `pending_need_id`. |
 | `revise` | Optional `brief`, `sources`, `needs`, `pending_need_id`; material changes invalidate review. |
-| `request_review` | `session_id`, `brief_revision`; records the frozen council identity and moves to council_review. |
-| `record_review` | Matching `session_id`, `brief_revision`, `source_ref`, `findings`; optional `status` (completed/failed/partial) and follow-up `needs`. |
+| `request_review` | `session_id`, `brief_revision`, optional `mode` (review by default). Explicit preparation additionally requires `source_ref`; records frozen council identity and moves to council_review. |
+| `record_review` | Matching `session_id`, `brief_revision`, `source_ref`, `findings`; optional `status` (completed/failed/partial) and follow-up `needs`. Preparation alone may supply `brief` and `sources`. |
 | `accept` | `brief_revision`, `source_ref`, `next_step`; adopts reviewed outcome and manual success criteria through project-data guards, then moves phase to planning. |
 | `attach_workspace` | `existing_path`; exact existing or unavailable folder association on the same project ID, also permitted after handoff. |
 
@@ -48,8 +48,9 @@ operation responses remain durable.
 ## Need and evidence ownership
 
 `project.needs` remains authoritative. Intake stores stable `need_ids` and one
-`pending_need_id`, not another question registry. Definition writes merge by ID
-and preserve omitted fields and unrelated needs. They cannot truncate a large
+`pending_need_id`, not another question registry. Explicit existing-project binding adopts its structured information need IDs
+without rewriting answers, verification, or history. Definition writes merge by ID,
+require `expected_knowledge_revision` for existing needs, and preserve omitted fields and unrelated needs. They cannot truncate a large
 legacy registry or overwrite a need outside this intake.
 
 Answers use the existing knowledge lifecycle guards. The original answer is
@@ -60,10 +61,19 @@ evidence reference. A corrected answer preserves revision history and reopens
 prior satisfaction. Invalid evidence or a failed receipt insert rolls back the
 entire operation.
 
-Open blocking needs require a resolution owner and next action before handoff.
-Acceptance requires outcome, beneficiary, scope, success criteria, decision
+Every open intake knowledge need, and any other blocking knowledge need, requires
+a resolution method, owner and next action before handoff.
+Acceptance requires purpose, outcome, beneficiary, scope, success criteria, decision
 owner, and a completed current review. Partial and failed reviews remain visible
 and cannot authorize acceptance. Handoff preserves remaining needs.
+
+Preparation councils retain their explicit `request_source_ref`, `mode`, and
+`resume_state`. Completed preparation is archived in review history and restores
+the prior preparing, awaiting-choice, deferred, or interviewing state. Its
+material changes increment the brief revision. It never provides the completed
+post-interview review required by acceptance. Partial preparation cannot install
+a changed brief; its result stays visible for explicit retry. Changes during a
+pending deferred preparation preserve the deferred choice and fence stale callbacks.
 
 ## Admission boundaries
 
@@ -75,7 +85,8 @@ cannot bypass intake revision, phase, workspace, or endpoint handoff guards.
 
 Workspace routes reject absent or unavailable paths with 409
 `WORKSPACE_UNAVAILABLE`; paths never fall back to the server working directory.
-Workspace writes are also blocked during intake for attached folders. Association
+Workspace writes are also blocked during intake for attached folders. Legacy project creation and scaffold routes preflight existing intake bindings
+before any filesystem mutation. Association
 checks canonical identity, supports non-Git folders, and preserves an unavailable
 supplied path without creating a replacement.
 

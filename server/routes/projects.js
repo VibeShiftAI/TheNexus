@@ -349,6 +349,16 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         });
     };
 
+    // The board lease spans this preflight and filesystem mutation. A registered
+    // intake identity must never reach scaffold first and fail only at upsert.
+    async function preflightWorkspaceCreation(name, projectPath, scaffold = false) {
+        const existing = typeof db.getProject === 'function' ? await db.getProject(name) : null;
+        if (existing?.intake || existing?.phase === 'intake') throw Object.assign(new Error('This project already has intake. Attach its intended existing folder through intake operations.'), { status: 409, code: 'PROJECT_INTAKE' });
+        if (existing && (scaffold || existing.path !== projectPath)) throw Object.assign(new Error('A project with this name already exists; use its exact project binding.'), { status: 409, code: 'PROJECT_NAME_CONFLICT' });
+        const atPath = typeof db.getProjectByPath === 'function' ? await db.getProjectByPath(projectPath) : null;
+        if (atPath && atPath.id !== existing?.id) throw Object.assign(new Error('This workspace already belongs to another project.'), { status: 409, code: 'PROJECT_PATH_CONFLICT' });
+    }
+
     // ─── Create Project ──────────────────────────────────────────────────
     router.post('/', async (req, res) => {
         const { name, description, type, goal } = req.body;
@@ -359,6 +369,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
                 path: path.join(PROJECT_ROOT, name), tasks_list: []
             };
             const projectPath = path.join(PROJECT_ROOT, name);
+            await preflightWorkspaceCreation(name, projectPath);
             if (!fs.existsSync(projectPath)) {
                 requireLeases(db).runSync({scope:'workspace', path:projectPath}, () => {
                     fs.mkdirSync(projectPath, {recursive:true});
@@ -372,6 +383,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             res.status(201).json(result);
         } catch (error) {
             if (sendLeaseError(res, error)) return;
+            if (error.status) return res.status(error.status).json({ error: error.message, code: error.code });
             console.error('Error creating project:', error);
             res.status(500).json({ error: 'Failed to create project: ' + error.message });
         }
@@ -388,6 +400,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             return res.status(400).json({ error: `Project '${name}' already exists.` });
         }
         try {
+            await preflightWorkspaceCreation(name, projectPath, true);
             requireLeases(db).runSync({ scope: 'workspace', path: projectPath }, () => fs.mkdirSync(projectPath, { recursive: true }));
             const projectMeta = {
                 name, type: type || 'web-app', description: description || '',
@@ -428,6 +441,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             });
         } catch (error) {
             if (sendLeaseError(res, error)) return;
+            if (error.status) return res.status(error.status).json({ error: error.message, code: error.code });
             console.error(`Error scaffolding project:`, error);
             res.status(500).json({ error: 'Failed to scaffold project: ' + error.message });
         }
