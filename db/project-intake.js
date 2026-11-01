@@ -30,6 +30,13 @@ function workspace(location) {
         return { state: 'unavailable', path: location };
     }
 }
+// Retrieval time is audit metadata. Content, version, availability and processing
+// results describe the evidence itself and invalidate knowledge that cites it.
+function sourceContent(source) {
+    const { retrieved_at, ...content } = source;
+    return content;
+}
+function sourceContents(sources) { return [...sources].map(sourceContent); }
 function initializeProjectIntake(db) {
     const columns = db.prepare('PRAGMA table_info(projects)').all();
     if (!columns.some(c => c.name === 'status')) db.exec("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'");
@@ -186,17 +193,26 @@ function createProjectIntakeStore(db, { deserialize }) {
                 }
             };
             const mergeMaterial = () => {
-                const before = { brief: intake.brief, sources: intake.sources, needs: project.needs };
+                const before = { brief: intake.brief, sources: sourceContents(intake.sources), needs: project.needs };
+                const changedRefs = [];
                 if (input.brief) intake.brief = { ...intake.brief, ...input.brief };
                 if (input.sources) {
                     const refs = new Set();
                     for (const source of input.sources) { if (refs.has(source.ref)) throw fail('Duplicate source references', 'INVALID_INTAKE', 400); refs.add(source.ref); }
                     const sources = new Map(intake.sources.map(s => [s.ref, s]));
-                    for (const source of input.sources) sources.set(source.ref, { ...sources.get(source.ref), ...source });
+                    for (const source of input.sources) {
+                        const previous = sources.get(source.ref), next = { ...previous, ...source };
+                        if (!previous || !equal(sourceContent(previous), sourceContent(next))) changedRefs.push(source.ref);
+                        sources.set(source.ref, next);
+                    }
                     intake.sources = [...sources.values()];
                 }
                 mergeNeeds(input.needs);
-                material = !equal(before, { brief: intake.brief, sources: intake.sources, needs: project.needs });
+                if (changedRefs.length) {
+                    const prepared = prepareProjectPatch(project, {}, { changedKnowledgeSourceRefs: changedRefs });
+                    project = { ...project, ...prepared }; Object.assign(patch, prepared);
+                }
+                material = !equal(before, { brief: intake.brief, sources: sourceContents(intake.sources), needs: project.needs });
             };
             switch (input.action) {
                 case 'attach_workspace':

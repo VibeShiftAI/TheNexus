@@ -99,6 +99,61 @@ describe('durable record-only project intake', () => {
     expect(saved.project.needs[1].knowledge.answer).toBeUndefined();
   });
 
+  const verifiedSource = async () => {
+    const source = { ref: 'file:costs', type: 'file', availability: 'available', revision: 'v1', summary: 'Costs $100', processing_result: 'Read successfully' };
+    let p = (await create({ sources: [source] })).body;
+    p = (await op(p, 'prepare', { brief, needs: [need('cost', 'research'), need('unrelated')] })).body;
+    p = (await op(p, 'start')).body;
+    const answered = await op(p, 'answer', { need_id: 'cost', expected_knowledge_revision: 1, answer: '$100', source_ref: 'chat:cost', evidence: [{ ref: source.ref }], verification: { rationale: 'The cost table provides the price', evidence_refs: [source.ref] } });
+    expect(answered.status).toBe(200);
+    p = answered.body;
+    p = (await op(p, 'request_review', { session_id: 'council:cost', brief_revision: p.intake.brief_revision })).body;
+    p = (await op(p, 'record_review', { session_id: 'council:cost', brief_revision: p.intake.brief_revision, source_ref: 'council:cost-result', findings: [] })).body;
+    expect(p.project.needs[0].status).toBe('met');
+    return { p, source };
+  };
+
+  test.each([
+    ['revision', { revision: 'v2' }], ['availability', { availability: 'conflicting' }],
+    ['content', { summary: 'Costs $500' }], ['processing result', { processing_result: 'Table could not be parsed' }],
+  ])('source-only %s correction reopens only linked knowledge with durable history and CAS', async (_label, change) => {
+    const { p, source } = await verifiedSource();
+    const previous = p.project.needs[0];
+    const input = { operation_id: crypto.randomUUID(), expected_revision: p.intake.revision, action: 'revise', sources: [{ ...source, ...change }] };
+    const result = await request(`/${p.project.id}/intake/operations`, input);
+    expect(result.status).toBe(200);
+    const reopened = result.body.project.needs[0];
+    expect(reopened).toMatchObject({ status: 'open', knowledge: { answer: '$100', revision: previous.knowledge.revision + 1, research_status: 'stale' } });
+    expect(reopened.resolved_at).toBeUndefined();
+    expect(reopened.knowledge.history.at(-1)).toMatchObject({ revision: previous.knowledge.revision, answer: '$100', verification: previous.knowledge.verification, evidence: previous.knowledge.evidence });
+    expect(reopened.knowledge.verification.revision).not.toBe(reopened.knowledge.revision);
+    expect(result.body.project.needs[1]).toEqual(p.project.needs[1]);
+    expect(result.body.intake).toMatchObject({ state: 'interviewing', brief_revision: p.intake.brief_revision + 1, review: null });
+    expect(result.body.intake.brief_history.at(-1).sources).toEqual([source]);
+    expect((await request(`/${p.project.id}/intake/operations`, input)).body).toEqual(result.body);
+    expect((await op(p, 'revise', { sources: [source] })).status).toBe(409);
+    expect((await request(`/${p.project.id}/intake`, null, 'GET')).body).toEqual(result.body);
+  });
+
+  test('new unrelated sources do not reopen verified knowledge', async () => {
+    const { p } = await verifiedSource();
+    const result = await op(p, 'revise', { sources: [{ ref: 'file:unrelated', type: 'file', availability: 'conflicting', summary: 'Unrelated uncertainty' }] });
+    expect(result.status).toBe(200);
+    expect(result.body.project.needs).toEqual(p.project.needs);
+    expect(result.body.intake.brief_revision).toBe(p.intake.brief_revision + 1);
+  });
+
+  test.each([{}, { retrieved_at: '2026-11-01T12:00:00.000Z' }])('identical source content or retrieval refresh %j preserves verification and current review', async metadata => {
+    const { p, source } = await verifiedSource();
+    const result = await op(p, 'revise', { sources: [{ ...source, ...metadata }] });
+    expect(result.status).toBe(200);
+    expect(result.body.project.needs).toEqual(p.project.needs);
+    expect(result.body.intake.sources).toEqual([{ ...source, ...metadata }]);
+    expect(result.body.intake.brief_revision).toBe(p.intake.brief_revision);
+    expect(result.body.intake.review).toEqual(p.intake.review);
+    expect(result.body.intake.state).toBe('ready_for_decision');
+  });
+
   test('binds review and acceptance to current content and atomically adopts criteria without dispatch', async () => {
     let p = (await op(await prepared(), 'start')).body;
     p = (await op(p, 'request_review', { session_id: 'council:1', brief_revision: p.intake.brief_revision })).body;

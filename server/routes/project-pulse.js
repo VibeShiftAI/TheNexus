@@ -23,6 +23,7 @@ const simpleGit = require('simple-git');
 const { openRaw, resolveNexusDbPath } = require('../../db/raw');
 const { TASK_START_STATUSES } = require('@praxis/contract');
 const { tokenSource, aggregateTokenSource } = require('../services/usage-source');
+const { projectWorkspacePath } = require('../lib/project-workspace');
 
 const DEFAULT_DB_PATH = resolveNexusDbPath();
 
@@ -262,13 +263,13 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
 
     let batchCache = null;
     let batchCacheAt = 0;
+    let batchCacheKey = null;
     let batchInFlight = null;
 
-    async function buildBatch() {
+    async function buildBatch(projects, workspaces) {
         const nowMs = Date.now();
-        const projects = (await getAllProjects(PROJECT_ROOT)).filter(p => p.status !== 'archived');
         const { tasks, crew } = boardRollups(nowMs);
-        const gits = await mapPool(projects, GIT_POOL_SIZE, p => gitPulse(p.path, 14, nowMs));
+        const gits = await mapPool(projects, GIT_POOL_SIZE, p => gitPulse(workspaces.get(p.id), 14, nowMs));
         const pulses = {};
         projects.forEach((p, i) => {
             pulses[p.id] = assemblePulse(p, gits[i], tasks.get(p.id), crew.get(p.id));
@@ -278,15 +279,22 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
 
     router.get('/pulse', async (_req, res) => {
         try {
-            if (batchCache && Date.now() - batchCacheAt < BATCH_CACHE_TTL_MS) {
+            const projects = (await getAllProjects(PROJECT_ROOT)).filter(p => p.status !== 'archived');
+            const workspaces = new Map(projects.map(p => [p.id, projectWorkspacePath(p)]));
+            // Git rollups remain cached, but eligibility is checked on every read.
+            // A missing/retargeted binding cannot retain a cached repository pulse.
+            const key = JSON.stringify([...workspaces].sort(([a], [b]) => a.localeCompare(b)));
+            if (batchCache && batchCacheKey === key && Date.now() - batchCacheAt < BATCH_CACHE_TTL_MS) {
                 return res.json(batchCache);
             }
-            if (!batchInFlight) {
-                batchInFlight = buildBatch()
-                    .then(payload => { batchCache = payload; batchCacheAt = Date.now(); return payload; })
-                    .finally(() => { batchInFlight = null; });
+            if (!batchInFlight || batchInFlight.key !== key) {
+                const flight = { key };
+                flight.promise = buildBatch(projects, workspaces)
+                    .then(payload => { batchCache = payload; batchCacheKey = key; batchCacheAt = Date.now(); return payload; })
+                    .finally(() => { if (batchInFlight === flight) batchInFlight = null; });
+                batchInFlight = flight;
             }
-            res.json(await batchInFlight);
+            res.json(await batchInFlight.promise);
         } catch (err) {
             console.error('[Pulse] batch failed:', err.message);
             res.status(500).json({ error: 'Failed to build project pulse: ' + err.message });
@@ -299,14 +307,15 @@ function createProjectPulseRouter({ PROJECT_ROOT, getAllProjects, getProjectById
             if (!project) return res.status(404).json({ error: 'Project not found' });
             const nowMs = Date.now();
             const { tasks, crew } = boardRollups(nowMs);
-            const git = await gitPulse(project.path, 30, nowMs);
+            const workspace = projectWorkspacePath(project);
+            const git = await gitPulse(workspace, 30, nowMs);
             const pulse = assemblePulse(project, git, tasks.get(project.id), crew.get(project.id));
 
             // Ops log — commits, dispatches, and completions merged newest-first.
             const events = [];
             if (git.hasCommits) {
                 try {
-                    const log = await simpleGit(project.path).log({ maxCount: 30 });
+                    const log = await simpleGit(workspace).log({ maxCount: 30 });
                     for (const c of log.all) {
                         events.push({
                             type: 'commit', at: c.date, title: c.message,

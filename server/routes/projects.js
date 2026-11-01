@@ -40,6 +40,7 @@ const simpleGit = require('simple-git');
 const { buildRunTrace } = require('../services/run-trace');
 const { fitToWindow } = require('../services/context-window');
 const { tokenSource } = require('../services/usage-source');
+const { projectWorkspacePath } = require('../lib/project-workspace');
 
 // Names/emails that mark a commit trailer as belonging to an AI executor, so
 // the Recent Activity Feed can attribute a commit to the model that authored it.
@@ -279,13 +280,8 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         '/:id/context', '/:id/context/sync', '/:id/context/verify',
     ], async (req, res, next) => {
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
-        let available = false;
-        if (project?.path?.trim() && path.isAbsolute(project.path)) {
-            try {
-                const canonical = project.intake?.workspace?.canonical_path;
-                available = fs.statSync(project.path).isDirectory() && (!canonical || fs.realpathSync(project.path) === canonical);
-            } catch { /* Missing, inaccessible or retargeted bindings cannot supply a workspace. */ }
-        }
+        const available = projectWorkspacePath(project);
+        req.projectWorkspacePath = available;
         if (project && !available) {
             return res.status(409).json({ error: 'This project has no available workspace at its recorded identity. Attach its intended folder before using workspace actions.', code: 'WORKSPACE_UNAVAILABLE' });
         }
@@ -673,12 +669,12 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         const { id } = req.params;
         const project = await getProjectById(PROJECT_ROOT, id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
-        const gitPath = path.join(project.path, '.git');
+        const gitPath = path.join(req.projectWorkspacePath, '.git');
         if (!fs.existsSync(gitPath)) {
             return res.json({ hasGit: false, hasRemote: false, remoteUrl: null, current: null, latest_commit: null, files: [], error: null });
         }
         try {
-            const git = simpleGit(project.path);
+            const git = simpleGit(req.projectWorkspacePath);
             const status = await git.status();
             let remoteUrl = null, hasRemote = false;
             try {
@@ -718,9 +714,9 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     router.post('/:id/git/init', async (req, res) => {
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
-        if (fs.existsSync(path.join(project.path, '.git'))) return res.status(400).json({ error: 'Git already initialized' });
+        if (fs.existsSync(path.join(req.projectWorkspacePath, '.git'))) return res.status(400).json({ error: 'Git already initialized' });
         try {
-            workspaceCommand(requireLeases(db), project.path, 'git', ['init']);
+            workspaceCommand(requireLeases(db), req.projectWorkspacePath, 'git', ['init']);
             res.json({ success: true, message: 'Git initialized successfully' });
         } catch (error) {
             if (sendLeaseError(res, error)) return;
@@ -735,7 +731,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
         try {
-            workspaceCommand(requireLeases(db), project.path, 'git', ['remote', 'add', 'origin', url]);
+            workspaceCommand(requireLeases(db), req.projectWorkspacePath, 'git', ['remote', 'add', 'origin', url]);
             res.json({ success: true, message: 'Remote added successfully' });
         } catch (error) {
             if (sendLeaseError(res, error)) return;
@@ -774,7 +770,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         const readmeNames = ['README.md', 'readme.md', 'Readme.md'];
         let content = null, foundPath = null;
         for (const name of readmeNames) {
-            const readmePath = path.join(project.path, name);
+            const readmePath = path.join(req.projectWorkspacePath, name);
             if (fs.existsSync(readmePath)) { try { content = fs.readFileSync(readmePath, 'utf-8'); foundPath = name; break; } catch (e) {} }
         }
         if (!content) return res.json({ exists: false, content: null });
@@ -785,9 +781,9 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     router.get('/:id/commits', async (req, res) => {
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
-        if (!fs.existsSync(path.join(project.path, '.git'))) return res.json({ commits: [], hasGit: false });
+        if (!fs.existsSync(path.join(req.projectWorkspacePath, '.git'))) return res.json({ commits: [], hasGit: false });
         try {
-            const log = await simpleGit(project.path).log({ maxCount: 50 });
+            const log = await simpleGit(req.projectWorkspacePath).log({ maxCount: 50 });
             res.json({ commits: log.all.map(c => ({ hash: c.hash, message: c.message, author: c.author_name, email: c.author_email, date: c.date })), hasGit: true });
         } catch (error) {
             if (error.message.includes('does not have any commits') || error.message.includes('fatal: bad default revision')) return res.json({ commits: [], hasGit: true });
@@ -802,16 +798,16 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         if (!message?.trim()) return res.status(400).json({ error: 'Commit message is required' });
         const project = await getProjectById(PROJECT_ROOT, id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
-        if (!fs.existsSync(path.join(project.path, '.git'))) return res.status(400).json({ error: 'No git repository in this project' });
+        if (!fs.existsSync(path.join(req.projectWorkspacePath, '.git'))) return res.status(400).json({ error: 'No git repository in this project' });
         try {
-            const git = simpleGit(project.path);
-            workspaceCommand(requireLeases(db), project.path, 'git', ['add', '.']);
+            const git = simpleGit(req.projectWorkspacePath);
+            workspaceCommand(requireLeases(db), req.projectWorkspacePath, 'git', ['add', '.']);
             const status = await git.status();
             if (status.files.length === 0) return res.json({ success: true, message: 'No changes to commit', filesCommitted: 0 });
-            workspaceCommand(requireLeases(db), project.path, 'git', ['commit', '-m', message.trim()]);
+            workspaceCommand(requireLeases(db), req.projectWorkspacePath, 'git', ['commit', '-m', message.trim()]);
             const remotes = await git.getRemotes();
             if (remotes.length === 0) return res.json({ success: true, message: `Committed ${status.files.length} file(s). No remote configured, push skipped.`, filesCommitted: status.files.length, pushed: false });
-            workspaceCommand(requireLeases(db), project.path, 'git', ['push', 'origin', status.current]);
+            workspaceCommand(requireLeases(db), req.projectWorkspacePath, 'git', ['push', 'origin', status.current]);
             res.json({ success: true, message: `Committed and pushed ${status.files.length} file(s)`, filesCommitted: status.files.length, pushed: true });
         } catch (error) {
             if (sendLeaseError(res, error)) return;
@@ -823,9 +819,9 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     router.get('/:id/diff', async (req, res) => {
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
-        if (!fs.existsSync(path.join(project.path, '.git'))) return res.status(400).json({ error: 'No git repository' });
+        if (!fs.existsSync(path.join(req.projectWorkspacePath, '.git'))) return res.status(400).json({ error: 'No git repository' });
         try {
-            const git = simpleGit(project.path);
+            const git = simpleGit(req.projectWorkspacePath);
             const [diffSummary, diff] = await Promise.all([git.diffSummary(), git.diff()]);
             const status = await git.status();
             res.json({ summary: diffSummary, diff: diff.substring(0, 5000), files: status.files.map(f => ({ path: f.path, status: f.index || f.working_dir })), truncated: diff.length > 5000 });
@@ -843,7 +839,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
         try {
-            const git = simpleGit(project.path);
+            const git = simpleGit(req.projectWorkspacePath);
             const status = await git.status();
             let diff = '';
             try { diff = await git.diff(); } catch (e) { /* ignore */ }
@@ -937,7 +933,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         if (!project) return res.status(404).json({ error: 'Project not found' });
         if (!db.isDatabaseEnabled()) return res.status(501).json({ error: 'Database not enabled' });
         try {
-            const result = await contextSync.pullAndSyncFromGit(req.params.id, project.path, db);
+            const result = await contextSync.pullAndSyncFromGit(req.params.id, req.projectWorkspacePath, db);
             res.json({ success: result.success, synced: result.synced, pulled: result.pulled, errors: result.errors });
         } catch (error) {
             if (sendLeaseError(res, error)) return;
@@ -948,7 +944,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
         if (!db.isDatabaseEnabled()) return res.status(501).json({ error: 'Database not enabled' });
-        try { res.json(await contextSync.verifyContextSync(req.params.id, project.path, db)); }
+        try { res.json(await contextSync.verifyContextSync(req.params.id, req.projectWorkspacePath, db)); }
         catch (error) { res.status(500).json({ error: 'Failed to verify context sync: ' + error.message }); }
     });
 
@@ -978,9 +974,10 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
 
         const activities = [];
         for (const project of projects) {
-            if (!project.path?.trim() || !fs.existsSync(path.join(project.path, '.git'))) continue;
+            const workspace = projectWorkspacePath(project);
+            if (!workspace || !fs.existsSync(path.join(workspace, '.git'))) continue;
             try {
-                const log = await simpleGit(project.path).log({ maxCount: 5 });
+                const log = await simpleGit(workspace).log({ maxCount: 5 });
                 const projectDispatches = dispatchesByProject.get(project.id) || [];
                 for (const commit of log.all) {
                     // Explicit commit trailers (Model:/Tokens:) are precise when present;

@@ -59,7 +59,12 @@ the same transaction. Human/decision/acceptance needs may use the answer message
 as satisfaction evidence. Empirical needs also require an independently cited
 evidence reference. A corrected answer preserves revision history and reopens
 prior satisfaction. Invalid evidence or a failed receipt insert rolls back the
-entire operation.
+entire operation. Source content, revision, availability, or processing-result
+changes reopen only knowledge that cites the changed source in its evidence or
+verification. They retain the old answer and verification in revision history,
+invalidate dependent assessments, and fence prior council results in the same
+transaction. Retired needs remain retired. Identical source content and changes
+only to `retrieved_at` retain verification and the current reviewed brief.
 
 Every open intake knowledge need, and any other blocking knowledge need, requires
 a resolution method, owner and next action before handoff.
@@ -93,7 +98,10 @@ when the supplied path spelling differs. Association
 checks canonical identity, supports non-Git folders, and preserves an unavailable
 supplied path without creating a replacement. The recorded canonical identity
 remains authoritative if a symlink is retargeted or becomes unavailable. Workspace
-routes check that identity before accessing files. Intake-bound projects are
+routes check that identity before accessing files. Pulse and activity readers use
+the same eligibility check and canonical path for Git reads; unavailable or
+retargeted bindings produce no repository events while board activity remains
+visible. Pulse caches recheck eligibility on each read. Intake-bound projects are
 excluded from legacy fuzzy ID recovery, so mistyped IDs cannot rewrite folder metadata.
 
 ## Verification
@@ -103,3 +111,6 @@ SQLite databases, including replay, collisions, concurrent answers, storage
 rollback, exact folder association, deferred/reopened state, stale review,
 atomic handoff, large registries, and delivery admission. Existing project
 knowledge and admission suites exercise compatibility outside intake.
+`server/__tests__/project-workspace-readers.test.js` uses temporary repositories
+and real HTTP readers to verify canonical identity, pulse-cache invalidation,
+unavailable folders, and preservation of task activity.

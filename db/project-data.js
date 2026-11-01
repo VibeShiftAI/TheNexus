@@ -75,7 +75,7 @@ function criterionDefinitions(criteria = []) {
 }
 
 /** Pure preparation. Caller holds a SQLite transaction from read through write. */
-function prepareProjectPatch(current, updates, { needMutation } = {}) {
+function prepareProjectPatch(current, updates, { needMutation, changedKnowledgeSourceRefs = [] } = {}) {
     object(updates, 'project patch');
     const patch = { ...updates };
     if (own(patch, 'checkpoints') && current.id && !own(updates, 'expected_checkpoints_revision')) throw invalid('Checkpoint saves require expected_checkpoints_revision from the read snapshot', 428);
@@ -139,6 +139,17 @@ function prepareProjectPatch(current, updates, { needMutation } = {}) {
             reopened.knowledge.endpoint_revision = patch.end_state_updated_at;
             return reopened;
         });
+    }
+    if (changedKnowledgeSourceRefs.length) {
+        const changedRefs = new Set(changedKnowledgeSourceRefs);
+        const needs = patch.needs || current.needs || [];
+        const reopened = needs.map(need => {
+            if (!need.knowledge || need.status === 'dropped') return need;
+            const refs = [...(need.knowledge.evidence || []).map(e => e.ref), ...(need.knowledge.verification?.evidence_refs || [])];
+            const affected = [...new Set(refs.filter(ref => changedRefs.has(ref)))];
+            return affected.length ? reopen(need, `Referenced source changed; review prior evidence: ${affected.join(', ')}`, at) : need;
+        });
+        if (reopened.some((need, index) => need !== needs[index])) patch.needs = reopened;
     }
     if (own(patch, 'end_state_assessment') && patch.end_state_assessment !== null) {
         if (current.id && !own(updates, 'expected_updated_at')) throw invalid('Assessment writes require expected_updated_at from the evaluated project snapshot.', 428);
