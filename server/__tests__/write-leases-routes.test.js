@@ -40,7 +40,7 @@ describe('Nexus lease enforcement across real HTTP, SQLite and workspace files',
         fs.rmSync(dir, { recursive: true, force: true });
     });
     beforeEach(async () => {
-        raw.exec('DELETE FROM write_leases; DELETE FROM tasks');
+        raw.exec('DELETE FROM write_leases; DELETE FROM write_lease_requests; DELETE FROM tasks');
         await db.createTask({ id: 'task-1', project_id: '11111111-1111-4111-8111-111111111111', name: 'Original', status: 'todo' });
         fs.writeFileSync(path.join(dir, 'note.txt'), 'Original', 'utf8');
     });
@@ -69,6 +69,71 @@ describe('Nexus lease enforcement across real HTTP, SQLite and workspace files',
         expect((await request('/api/tasks/task-1', 'PATCH', { title: 'Stale', expected_version: 0 }, { 'x-nexus-board-lease': lease.token })).status).toBe(409);
         expect((await request('/api/write-leases', 'DELETE', { token: lease.token })).status).toBe(200);
         expect((await request('/api/tasks/task-1', 'PATCH', { title: 'After release' })).status).toBe(200);
+    });
+
+    test('a repeated POST with the same request_id and owner returns the same lease; GET and 409 bodies hide it', async () => {
+        const request_id = 'praxis-0123456789abcdef';
+        const lease = await acquire('board', { request_id });
+        expect(lease.request_id).toBe(request_id);
+        const replay = await acquire('board', { request_id });
+        expect(replay.token).toBe(lease.token);
+        const other = await request('/api/write-leases', 'POST', { scope: 'board', owner: 'someone-else' });
+        expect(other.status).toBe(409);
+        expect(other.body.code).toBe('write_lease_conflict');
+        const reused = await request('/api/write-leases', 'POST', { scope: 'board', owner: 'someone-else', request_id });
+        expect(reused.status).toBe(409);
+        expect(reused.body.code).toBe('write_lease_lost');
+        const status = await request('/api/write-leases?scope=board');
+        expect(status.body.leases).toHaveLength(1);
+        for (const body of [other.body, reused.body, status.body]) {
+            expect(JSON.stringify(body)).not.toContain(lease.token);
+            expect(JSON.stringify(body)).not.toContain(request_id);
+        }
+    });
+
+    test('a client that drops the POST before reading the answer can release the grant by request_id', async () => {
+        const request_id = 'praxis-dropped-0123456789';
+        const body = JSON.stringify({ scope: 'board', owner: 'praxis:fixture', ttl_ms: 300000, request_id });
+        const { port } = server.address();
+        await new Promise((resolve, reject) => {
+            const req = http.request({ host: '127.0.0.1', port, path: '/api/write-leases', method: 'POST',
+                headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } });
+            req.on('error', () => {}); // the client gives up; any socket error is expected
+            req.on('response', () => reject(new Error('client must not read the answer')));
+            req.end(body, () => { req.destroy(); resolve(); });
+        });
+        const granted = Date.now() + 5000;
+        while (raw.prepare('SELECT count(*) AS n FROM write_leases').get().n === 0) {
+            if (Date.now() > granted) throw new Error('server never processed the dropped POST');
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        // The orphan: the server granted a lease the client never received.
+        expect((await request('/api/tasks/task-1', 'PATCH', { title: 'Blocked' })).status).toBe(409);
+        const released = await request('/api/write-leases', 'DELETE', { request_id });
+        expect(released).toEqual({ status: 200, body: { success: true, released: true } });
+        expect((await request('/api/tasks/task-1', 'PATCH', { title: 'Unblocked' })).status).toBe(200);
+        expect((await request('/api/write-leases', 'DELETE', { request_id })).body).toEqual({ success: true, released: false });
+    });
+
+    test('a release by request_id that arrives before its POST stops the POST from granting', async () => {
+        const request_id = 'praxis-early-release-0123';
+        expect((await request('/api/write-leases', 'DELETE', { request_id })).body).toEqual({ success: true, released: false });
+        const late = await request('/api/write-leases', 'POST', { scope: 'board', owner: 'praxis:fixture', request_id });
+        expect(late.status).toBe(409);
+        expect(late.body.code).toBe('write_lease_lost');
+        expect((await request('/api/write-leases?scope=board')).body.leases).toEqual([]);
+        expect((await request('/api/tasks/task-1', 'PATCH', { title: 'Free' })).status).toBe(200);
+    });
+
+    test.each([
+        [{ token: 'some-token', request_id: 'praxis-0123456789abcdef' }],
+        [{ request_id: 'short' }],
+        [{ scope: 'board', request_id: 42 }],
+    ])('lease API rejects malformed request_id use %p', async body => {
+        const method = body.scope ? 'POST' : 'DELETE';
+        const result = await request('/api/write-leases', method, body);
+        expect(result.status).toBe(400);
+        expect(result.body.code).toBe('invalid_write_lease');
     });
 
     test.each([
