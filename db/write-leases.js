@@ -52,6 +52,21 @@ function ttl(value = DEFAULT_TTL) {
     return value;
 }
 
+// A request id outlives its lease, or its cancellation, by this long. A POST
+// that reaches the server after its caller gave up and released by request id
+// is then refused instead of granting a lease nobody holds.
+const REQUEST_RETENTION = 600000;
+
+// The request id is chosen by the acquirer and can recover the token, so it
+// is a bearer secret like the token: long enough not to be guessed.
+function requestId(value) {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value !== 'string' || !/^[\x21-\x7e]{16,200}$/.test(value)) {
+        throw leaseError('invalid_write_lease', 'request_id must be 16 to 200 visible ASCII characters', 400);
+    }
+    return value;
+}
+
 function publicLease({ token, ...lease }) { return lease; }
 
 function createWriteLeases(db, { now = Date.now } = {}) {
@@ -59,7 +74,10 @@ function createWriteLeases(db, { now = Date.now } = {}) {
     db.exec(`CREATE TABLE IF NOT EXISTS write_leases (
         token TEXT PRIMARY KEY, scope TEXT NOT NULL, path TEXT NOT NULL,
         owner TEXT NOT NULL, acquired_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
-    ); CREATE INDEX IF NOT EXISTS write_leases_scope ON write_leases(scope, expires_at);`);
+    ); CREATE INDEX IF NOT EXISTS write_leases_scope ON write_leases(scope, expires_at);
+    CREATE TABLE IF NOT EXISTS write_lease_requests (
+        request_id TEXT PRIMARY KEY, owner TEXT, token TEXT, retain_until INTEGER NOT NULL
+    ); CREATE INDEX IF NOT EXISTS write_lease_requests_token ON write_lease_requests(token);`);
     const atomic = fn => {
         try { return db.transaction(fn).immediate(); }
         catch (error) {
@@ -74,18 +92,37 @@ function createWriteLeases(db, { now = Date.now } = {}) {
     const live = r => db.prepare('SELECT * FROM write_leases WHERE scope = ? AND expires_at > ?').all(r.scope, now())
         .filter(row => r.scope === 'board' || contains(row.path, r.path) || contains(r.path, row.path));
 
-    function acquire(input, { owner = 'nexus', ttl_ms } = {}) {
-        const r = resource(input), duration = ttl(ttl_ms);
+    const requestById = id => {
+        db.prepare('DELETE FROM write_lease_requests WHERE retain_until <= ?').run(now());
+        return db.prepare('SELECT * FROM write_lease_requests WHERE request_id = ?').get(id);
+    };
+
+    function acquire(input, { owner = 'nexus', ttl_ms, request_id } = {}) {
+        const r = resource(input), duration = ttl(ttl_ms), id = requestId(request_id);
         if (typeof owner !== 'string' || !owner.trim() || owner.length > 200) {
             throw leaseError('invalid_write_lease', 'owner must be a nonempty string of at most 200 characters', 400);
         }
         return atomic(() => {
+            // A repeated request id replays its own live grant, so a caller that
+            // lost the first answer can still learn the token. Any other reuse
+            // (released, expired, cancelled, other owner or resource) is refused.
+            const request = id === undefined ? undefined : requestById(id);
+            if (request) {
+                const lease = request.token ? byToken(request.token) : undefined;
+                if (lease && lease.expires_at > now() && lease.owner === owner && lease.scope === r.scope && lease.path === r.path) {
+                    return { ...lease, request_id: id };
+                }
+                throw leaseError('write_lease_lost', 'request_id was already used and its lease was released, expired or cancelled, or belongs to another owner or resource; acquire with a new request_id');
+            }
             const holders = live(r).map(publicLease);
             if (holders.length) throw leaseError('write_lease_conflict', 'Resource has an active writer; retry after its lease is released', 409, holders);
             db.prepare('DELETE FROM write_leases WHERE expires_at <= ?').run(now());
             const lease = { token: randomUUID(), ...r, owner, acquired_at: now(), expires_at: now() + duration };
             db.prepare('INSERT INTO write_leases (token, scope, path, owner, acquired_at, expires_at) VALUES (@token, @scope, @path, @owner, @acquired_at, @expires_at)').run(lease);
-            return lease;
+            if (id === undefined) return lease;
+            db.prepare('INSERT INTO write_lease_requests (request_id, owner, token, retain_until) VALUES (?, ?, ?, ?)')
+                .run(id, owner, lease.token, lease.expires_at + REQUEST_RETENTION);
+            return { ...lease, request_id: id };
         });
     }
 
@@ -105,6 +142,8 @@ function createWriteLeases(db, { now = Date.now } = {}) {
             if (!lease || lease.expires_at <= now()) throw leaseError('write_lease_lost', 'Cannot renew an expired or released lease');
             lease.expires_at = now() + duration;
             db.prepare('UPDATE write_leases SET expires_at = ? WHERE token = ?').run(lease.expires_at, token);
+            db.prepare('UPDATE write_lease_requests SET retain_until = MAX(retain_until, ?) WHERE token = ?')
+                .run(lease.expires_at + REQUEST_RETENTION, token);
             return lease;
         });
     }
@@ -115,6 +154,27 @@ function createWriteLeases(db, { now = Date.now } = {}) {
                 throw leaseError('write_lease_lost', 'Lease no longer exists');
             }
             return true;
+        });
+    }
+
+    // Release for a caller that never saw the acquisition's answer. Idempotent:
+    // it returns whether a live lease was removed. If the POST has not been
+    // processed yet, the id is remembered so that late POST is refused.
+    function releaseRequest(request_id) {
+        const id = requestId(request_id);
+        if (id === undefined) throw leaseError('invalid_write_lease', 'request_id is required', 400);
+        return atomic(() => {
+            const request = requestById(id);
+            const retainUntil = now() + REQUEST_RETENTION;
+            if (!request) {
+                db.prepare('INSERT INTO write_lease_requests (request_id, owner, token, retain_until) VALUES (?, NULL, NULL, ?)').run(id, retainUntil);
+                return false;
+            }
+            db.prepare('UPDATE write_lease_requests SET retain_until = MAX(retain_until, ?) WHERE request_id = ?').run(retainUntil, id);
+            const lease = request.token ? byToken(request.token) : undefined;
+            if (!lease) return false;
+            db.prepare('DELETE FROM write_leases WHERE token = ?').run(lease.token);
+            return lease.expires_at > now();
         });
     }
 
@@ -168,7 +228,7 @@ function createWriteLeases(db, { now = Date.now } = {}) {
         }
     }
 
-    return { acquire, renew, release, assertHeld, run, runSync,
+    return { acquire, renew, release, releaseRequest, assertHeld, run, runSync,
         inspect: input => live(resource(input)).map(publicLease) };
 }
 

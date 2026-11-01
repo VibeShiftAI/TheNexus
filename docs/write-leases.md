@@ -28,8 +28,11 @@ transactions; ownership is a random per-acquisition bearer token.
 Use the existing authenticated Nexus API seam. The local server's current
 authentication model is unchanged; leases provide coordination, not access control.
 
-1. `POST /api/write-leases` with resource, `owner` and optional `ttl_ms` returns
-   `201 {"lease":{"token":"...","scope":"board","path":"",...}}`.
+1. `POST /api/write-leases` with resource, `owner`, optional `ttl_ms` and
+   optional `request_id` returns
+   `201 {"lease":{"token":"...","scope":"board","path":"",...}}`. Send a fresh
+   random `request_id` whenever the answer could be lost (see "When the client
+   never receives the answer" below).
 2. Read the task/project/file **after acquisition**, then calculate the edit.
 3. Pass `X-Nexus-Board-Lease: <token>` on board mutations or
    `X-Nexus-Workspace-Lease: <token>` on workspace mutations. A request that edits
@@ -52,6 +55,42 @@ or failure. Explicit leases remain the caller's responsibility. The automatic
 lease protects that operation; it does **not** reserve a prior client-side read.
 Continue supplying `expected_version` on task PATCH and the existing project
 revision/snapshot checks. Leases alone do not detect stale snapshots.
+
+### When the client never receives the answer (`request_id`, 2026-10-31)
+
+The token is generated on the server. If a client's POST times out or its
+connection drops after the request was sent, Nexus may still process it and
+grant a lease nobody holds: it cannot be renewed or released, and a board lease
+blocks every board writer until its TTL ends. This happened after Praxis
+restarts while Nexus was still starting (see Praxis's `docs/write-leases.md`,
+"The Nexus board lease and orphaned grants").
+
+A client-chosen `request_id` makes that outcome recoverable:
+
+- `request_id` is 16 to 200 visible ASCII characters; a random UUID works. It
+  can recover the token, so treat it as a secret like the token. GET and 409
+  bodies never show it.
+- A repeat POST with the same `request_id`, `owner` and resource returns the
+  same live lease (`201`, same token) instead of `409 write_lease_conflict`.
+- `DELETE /api/write-leases` with `{"request_id":"..."}` (and no token) releases
+  that grant: `200 {"success":true,"released":true}`. It is idempotent and
+  answers `"released":false` when there was no live grant. Passing both `token`
+  and `request_id` is a `400 invalid_write_lease`.
+- A release by `request_id` that reaches Nexus before its POST is remembered,
+  and the late POST is refused with `409 write_lease_lost`. So is any other
+  reuse of a `request_id`: after its lease was released (by token or id) or
+  expired, or by another owner or for another resource. Use a new id for a new
+  acquisition.
+- A refused POST (`409 write_lease_conflict` or `write_lease_busy`) records
+  nothing, so the same `request_id` may be retried after a definite refusal.
+- Request ids are kept in `write_lease_requests` until 10 minutes after their
+  lease ends (renewal extends this) or their cancellation, then pruned.
+
+A client whose POST outcome is unknown should release by `request_id` (best
+effort), then treat the acquisition as failed. Praxis's `nexusWithBoardLease`
+does this. A client that wants to proceed instead can repeat the POST with the
+same `request_id` to learn the token. Omitting `request_id` keeps the previous
+behavior.
 
 ## Enforcement and limits
 
@@ -89,6 +128,10 @@ temporary workspaces. They test owner/conflicting writes, alternate routes and
 tools, version-check preservation, expiry/renewal, directory and symlink aliases,
 context escape rejection, process-group termination, and a real second process
 trying to take over during a command after the lease's nominal expiry.
+`write-leases.test.js` and `write-leases-routes.test.js` also cover
+`request_id`: replay, release of a grant whose POST the client dropped before
+reading the answer, a release that arrives before its POST, refused reuse,
+retention and hidden ids.
 
 ## Task 402930f9 verification record
 

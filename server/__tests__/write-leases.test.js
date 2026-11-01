@@ -163,6 +163,83 @@ describe('durable write leases', () => {
         } finally { res.emit('finish'); await done; }
     });
 
+    describe('client request ids (the acquirer may never see the answer)', () => {
+        const id = 'req-0123456789abcdef';
+
+        test('a repeated request id replays the same live grant from any connection; inspection hides it', () => {
+            const lease = first.acquire(board, { owner: 'praxis', request_id: id });
+            expect(lease).toEqual(expect.objectContaining({ request_id: id, owner: 'praxis' }));
+            const replay = second.acquire(board, { owner: 'praxis', request_id: id });
+            expect(replay.token).toBe(lease.token);
+            expect(replay.request_id).toBe(id);
+            expect(second.inspect(board)).toHaveLength(1);
+            const shown = JSON.stringify(second.inspect(board));
+            expect(shown).not.toContain(lease.token);
+            expect(shown).not.toContain(id);
+            try { second.acquire(board, { owner: 'other' }); throw new Error('expected a conflict'); }
+            catch (error) {
+                expect(error.code).toBe('write_lease_conflict');
+                expect(JSON.stringify(error.holders)).not.toContain(lease.token);
+                expect(JSON.stringify(error.holders)).not.toContain(id);
+            }
+        });
+
+        test('reuse by another owner or resource, or after release or expiry, is refused rather than regranted', () => {
+            const workspace = { scope: 'workspace', path: dir };
+            first.acquire(board, { owner: 'praxis', request_id: id, ttl_ms: 1000 });
+            expect(() => second.acquire(board, { owner: 'other', request_id: id })).toThrow(expect.objectContaining({ code: 'write_lease_lost' }));
+            expect(() => second.acquire(workspace, { owner: 'praxis', request_id: id })).toThrow(expect.objectContaining({ code: 'write_lease_lost' }));
+            time += 1000;
+            expect(() => second.acquire(board, { owner: 'praxis', request_id: id })).toThrow(expect.objectContaining({ code: 'write_lease_lost' }));
+            const other = 'req-released-by-token';
+            const lease = second.acquire(board, { owner: 'praxis', request_id: other });
+            second.release(lease.token);
+            expect(() => first.acquire(board, { owner: 'praxis', request_id: other })).toThrow(expect.objectContaining({ code: 'write_lease_lost' }));
+            expect(second.inspect(board)).toEqual([]);
+        });
+
+        test('release by request id frees a grant whose token was lost, once', () => {
+            first.acquire(board, { owner: 'praxis', request_id: id, ttl_ms: 300000 });
+            expect(() => second.acquire(board)).toThrow(expect.objectContaining({ code: 'write_lease_conflict' }));
+            expect(second.releaseRequest(id)).toBe(true);
+            expect(second.inspect(board)).toEqual([]);
+            expect(second.releaseRequest(id)).toBe(false);
+            expect(() => first.acquire(board, { owner: 'praxis', request_id: id })).toThrow(expect.objectContaining({ code: 'write_lease_lost' }));
+            expect(second.acquire(board, { owner: 'next' })).toBeDefined();
+        });
+
+        test('a release that arrives before its POST makes the late POST fail instead of granting an orphan', () => {
+            expect(second.releaseRequest(id)).toBe(false);
+            expect(() => first.acquire(board, { owner: 'praxis', request_id: id })).toThrow(expect.objectContaining({ code: 'write_lease_lost' }));
+            expect(first.inspect(board)).toEqual([]);
+            expect(first.acquire(board, { owner: 'praxis', request_id: 'req-a-fresh-request-id' })).toBeDefined();
+        });
+
+        test('a refused acquisition records nothing, so the same id may retry after the holder leaves', () => {
+            const holder = first.acquire(board, { owner: 'holder' });
+            expect(() => second.acquire(board, { owner: 'praxis', request_id: id })).toThrow(expect.objectContaining({ code: 'write_lease_conflict' }));
+            first.release(holder.token);
+            expect(second.acquire(board, { owner: 'praxis', request_id: id }).request_id).toBe(id);
+        });
+
+        test('renewal keeps a long-held grant replayable; ids are forgotten ten minutes after they end', () => {
+            const lease = first.acquire(board, { owner: 'praxis', request_id: id, ttl_ms: 300000 });
+            for (let i = 0; i < 4; i++) { time += 290000; first.renew(lease.token, 300000); }
+            // Past the original lease's retention, but the lease is still live.
+            expect(second.acquire(board, { owner: 'praxis', request_id: id }).token).toBe(lease.token);
+            first.release(lease.token);
+            const cancelled = 'req-cancelled-before-post';
+            second.releaseRequest(cancelled);
+            time += 600000;
+            expect(first.acquire(board, { owner: 'praxis', request_id: cancelled }).request_id).toBe(cancelled);
+        });
+
+        test.each(['', 'too-short', 'x'.repeat(201), 'has a space in it 0123', 1234567890123456, {}])('rejects request_id %p', request_id => {
+            expect(() => first.acquire(board, { request_id })).toThrow(expect.objectContaining({ status: 400 }));
+            expect(() => first.releaseRequest(request_id)).toThrow(expect.objectContaining({ status: 400 }));
+        });
+    });
+
     test.each([0, -1, 999, 300001, NaN, '1000'])('rejects invalid TTL %s', ttl_ms => {
         expect(() => first.acquire(board, { ttl_ms })).toThrow(expect.objectContaining({ status: 400 }));
     });
