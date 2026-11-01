@@ -2,7 +2,7 @@ import { updateTask } from './tasks';
 import type { TaskStatus } from './tasks';
 import { API_URL, authFetch } from './shared';
 import type { Task } from './tasks';
-import type { ProjectCommsSettings, ReportTemplate } from '@praxis/contract';
+import type { ProjectCommsSettings, ReportTemplate, ProjectIntake } from '@praxis/contract';
 import type { RunTrace } from '../run-trace';
 import type { UsageSource } from '../usage-source';
 
@@ -34,6 +34,8 @@ export interface Project {
     name: string;
     path: string;
     type: string;
+    phase?: 'intake' | 'planning' | 'delivery' | null;
+    intake?: ProjectIntake | null;
     description?: string;
     vibe?: string;
     tasks?: string[];

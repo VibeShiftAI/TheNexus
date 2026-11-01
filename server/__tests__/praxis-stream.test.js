@@ -159,6 +159,23 @@ describe('praxis-stream route', () => {
     ]);
   });
 
+  it('captures a Chamber request before explicit intake preparation and rejects missing durable identity', async () => {
+    const praxis = express(); praxis.use(express.json());
+    const seen = [];
+    praxis.post('/agent-tool', (req, res) => { seen.push(req.body); res.json({ ok: true, result: '{"ok":true,"state":"queued"}' }); });
+    praxisHandle = await listen(praxis); process.env.PRAXIS_URL = praxisHandle.baseUrl;
+    const nexus = express(); nexus.use(express.json()); nexus.use('/api/praxis', track(require('../routes/praxis-stream')()));
+    nexusHandle = await listen(nexus);
+    const post = body => requestJson(`${nexusHandle.baseUrl}/api/praxis/council/problem`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    expect((await post({ problem: 'Help teachers' })).status).toBe(400);
+    const request = { operation_id: 'chamber-1', source_ref: 'chamber:chamber-1', problem: 'Help teachers', context: 'Limited time' };
+    expect((await post(request)).status).toBe(200);
+    expect(seen).toEqual([{ name: 'intake_capture_council', args: request }]);
+    expect((await post({ ...request, dry_run: true })).status).toBe(400);
+    expect((await post({ action: 'status', project_id: 'p', operation_id: 'chamber-1:preparation' })).status).toBe(200);
+    expect(seen[1]).toEqual({ name: 'intake_council', args: { action: 'status', project_id: 'p', operation_id: 'chamber-1:preparation' } });
+  });
+
   it('summons a council by calling the Praxis spawn_council agent tool', async () => {
     const praxis = express();
     praxis.use(express.json());

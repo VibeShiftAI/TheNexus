@@ -3,7 +3,11 @@ const { isConversationalChatMessage } = require('../db/chat-message-policy');
  * Praxis decides which excerpts its native CLI session has not already seen.
  */
 async function readConversationContext(db, userMessage) {
-    if (!userMessage?.conversation_id || !userMessage.created_at || !db.getChatMessages) return undefined;
+    if (!userMessage?.conversation_id || !userMessage.created_at) return undefined;
+    const currentMessage = userMessage.role === 'user' && typeof userMessage.id === 'string' && userMessage.id.trim()
+        ? { id: userMessage.id, role: 'user', createdAt: userMessage.created_at } : undefined;
+    const receipt = { conversationId: userMessage.conversation_id, ...(currentMessage ? { currentMessage } : {}), messages: [] };
+    if (!db.getChatMessages) return currentMessage ? receipt : undefined;
     try {
         const rows = await db.getChatMessages(userMessage.conversation_id, { limit: 12, before: userMessage.created_at, conversationalOnly: true });
         const messages = rows.slice(-12).filter(row => row.conversation_id === userMessage.conversation_id
@@ -12,10 +16,10 @@ async function readConversationContext(db, userMessage) {
             .map(row => ({ id: row.id, role: row.role,
                 content: row.content.length > 1200 ? `${row.content.slice(0, 1200)} …[truncated]` : row.content,
                 createdAt: row.created_at, voiceAnnouncement: row.metadata?.voiceAnnouncement === true }));
-        return { conversationId: userMessage.conversation_id, messages };
+        return { ...receipt, messages };
     } catch (error) {
         console.warn('[AI Chat] Recent conversation unavailable:', error.message);
-        return undefined;
+        return currentMessage ? receipt : undefined;
     }
 }
 module.exports = { readConversationContext };

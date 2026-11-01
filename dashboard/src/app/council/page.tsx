@@ -55,6 +55,9 @@ import {
     sessionKind,
     summonCouncil,
     summonProblemCouncil,
+    prepareProblemCouncilRequest,
+    getProblemCouncilStatus,
+    type CouncilSummonResponse,
     detailDurationMs,
     tokenUsageForCouncilResponse,
     type CouncilSessionDetail,
@@ -374,28 +377,33 @@ function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | n
     const [domain, setDomain] = useState<"" | "engineering" | "research" | "strategy">("");
     const [focus, setFocus] = useState(false);
     const [problemName, setProblemName] = useState("");
-    const [dryRun, setDryRun] = useState(false);
+    const [intakeReceipt, setIntakeReceipt] = useState<CouncilSummonResponse | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [ack, setAck] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    // Submissions and status reads share one visible receipt. A response from
+    // an older request must never replace the current project or mode.
+    const requestVersion = useRef(0);
+    useEffect(() => () => { requestVersion.current++; }, []);
 
     const canSubmit = topic.trim().length > 0 && !submitting;
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (!canSubmit) return;
+        const version = ++requestVersion.current;
         setSubmitting(true);
+        setIntakeReceipt(null);
         setAck(null);
         setError(null);
         try {
             const response =
                 mode === "problem"
-                    ? await summonProblemCouncil({
+                    ? await summonProblemCouncil(prepareProblemCouncilRequest({
                           problem: topic.trim(),
                           ...(problemName.trim() ? { name: problemName.trim() } : {}),
                           ...(context.trim() ? { context: context.trim() } : {}),
-                          ...(dryRun ? { dry_run: true } : {}),
-                      })
+                      }))
                     : await summonCouncil({
                           topic: topic.trim(),
                           ...(context.trim() ? { context: context.trim() } : {}),
@@ -403,13 +411,15 @@ function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | n
                           ...(domain ? { domain } : {}),
                           focus,
                       });
-            const message = response.result || (mode === "problem" ? "Problem council convened." : "Council convened.");
+            if (version !== requestVersion.current) return;
+            const message = response.result || (mode === "problem" ? "Intake preparation request saved." : "Council convened.");
             setAck(message);
-            onSummoned(sessionIdFromCouncilAck(message));
+            if (mode === "problem") setIntakeReceipt(response);
+            onSummoned(response.session_id ?? sessionIdFromCouncilAck(message));
         } catch (err) {
-            setError(err instanceof Error ? err.message : mode === "problem" ? "Problem intake failed" : "Council summon failed");
+            if (version === requestVersion.current) setError(err instanceof Error ? err.message : mode === "problem" ? "Problem intake failed" : "Council summon failed");
         } finally {
-            setSubmitting(false);
+            if (version === requestVersion.current) setSubmitting(false);
         }
     }
 
@@ -417,7 +427,10 @@ function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | n
         <button
             type="button"
             onClick={() => {
+                requestVersion.current++;
                 setMode(value);
+                setSubmitting(false);
+                setIntakeReceipt(null);
                 setAck(null);
                 setError(null);
             }}
@@ -445,12 +458,12 @@ function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | n
                     </div>
                     <div className="flex items-center gap-2">
                         {tab("deliberation", "Deliberation")}
-                        {tab("problem", "Problem → project")}
+                        {tab("problem", "Prepare an intake")}
                     </div>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
                     {mode === "problem"
-                        ? "The contributors selected in Model Control critique the setup and propose ideas, the same sessions resume to rank every idea, the ranks are aggregated, and the aggregator drafts the charter that sets the project up. 10–25 minutes on subscription capacity."
+                        ? "Save your idea as a project intake, then ask the configured council to prepare a brief and initial questions for your conversation. Preparation may use API or subscription capacity."
                         : "Runs the configured council seats and may use paid API or subscription capacity."}
                 </p>
             </div>
@@ -478,22 +491,13 @@ function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | n
                             className="w-full md:max-w-xs rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-200 outline-none transition-colors placeholder:text-slate-600 focus:border-slate-600"
                         />
                         <div className="flex items-center gap-3">
-                            <label className="inline-flex items-center gap-2 text-xs text-slate-400" title="Deliberate and draft the charter, but create nothing">
-                                <input
-                                    type="checkbox"
-                                    checked={dryRun}
-                                    onChange={(event) => setDryRun(event.target.checked)}
-                                    className="h-4 w-4 rounded border-slate-700 bg-slate-950 accent-emerald-500"
-                                />
-                                Dry run (charter only)
-                            </label>
                             <button
                                 type="submit"
                                 disabled={!canSubmit}
                                 className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-emerald-100 transition-colors hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
                             >
                                 {submitting ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
-                                Convene the problem council
+                                Save and prepare intake
                             </button>
                         </div>
                     </div>
@@ -539,6 +543,22 @@ function SummonCouncilPanel({ onSummoned }: { onSummoned: (sessionId: string | n
                 {ack && (
                     <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 whitespace-pre-wrap">
                         {ack}
+                        {intakeReceipt?.project_id && mode === "problem" && (
+                            <div className="mt-2 flex flex-wrap items-center gap-3">
+                                <Link href={`/project/${encodeURIComponent(intakeReceipt.project_id)}`} className="underline">Open saved project intake</Link>
+                                <button type="button" className="underline" onClick={async () => {
+                                    if (!intakeReceipt.operation_id || !intakeReceipt.project_id) return;
+                                    const version = ++requestVersion.current;
+                                    try {
+                                        const current = await getProblemCouncilStatus(intakeReceipt.project_id, intakeReceipt.operation_id);
+                                        if (version !== requestVersion.current) return;
+                                        setIntakeReceipt(current); setAck(current.result ?? "Status unavailable"); setError(null);
+                                    } catch (error) {
+                                        if (version === requestVersion.current) setError(error instanceof Error ? error.message : "Could not read preparation status");
+                                    }
+                                }}>Check preparation status</button>
+                            </div>
+                        )}
                     </div>
                 )}
                 {error && (

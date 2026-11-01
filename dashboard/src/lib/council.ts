@@ -231,29 +231,51 @@ export function problemCharter(metadata: Record<string, unknown>): ProblemCharte
 }
 
 export interface ProblemCouncilRequest {
+    operation_id: string;
+    source_ref: string;
     problem: string;
     name?: string;
-    type?: string;
     context?: string;
-    preset?: string;
-    dry_run?: boolean;
 }
 
-/** Hand Praxis a problem from the Chamber → problem council → project (dry_run: charter only). */
-export async function summonProblemCouncil(input: ProblemCouncilRequest): Promise<CouncilSummonResponse> {
+/** Store the actual form request before sending it, so retries survive reloads. */
+export function prepareProblemCouncilRequest(
+    input: Omit<ProblemCouncilRequest, "operation_id" | "source_ref">,
+    storage: Pick<Storage, "getItem" | "setItem"> = localStorage,
+    newId: () => string = () => crypto.randomUUID(),
+): ProblemCouncilRequest {
+    const key = "nexus-intake-council-request-v1";
+    const body = { problem: input.problem.trim(), ...(input.name?.trim() ? { name: input.name.trim() } : {}), ...(input.context?.trim() ? { context: input.context.trim() } : {}) };
+    let saved;
+    try { saved = JSON.parse(storage.getItem(key) ?? "null"); } catch { /* a corrupt draft gets a fresh identity */ }
+    if (saved?.body === JSON.stringify(body) && typeof saved.request?.operation_id === "string" && saved.request?.source_ref === `chamber:${saved.request.operation_id}`) return saved.request;
+    const operation_id = newId();
+    const request = { ...body, operation_id, source_ref: `chamber:${operation_id}` };
+    storage.setItem(key, JSON.stringify({ body: JSON.stringify(body), request }));
+    return request;
+}
+
+async function intakeCouncilRequest(input: ProblemCouncilRequest | { action: "status" | "retry_save"; project_id: string; operation_id: string }): Promise<CouncilSummonResponse> {
     const res = await fetch("/api/praxis/council/problem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-        throw new Error(typeof data.error === "string" ? data.error : `Problem intake failed (${res.status})`);
+    const envelope = await res.json().catch(() => ({}));
+    if (!res.ok || envelope?.ok === false) throw new Error(typeof envelope.error === "string" ? envelope.error : `Intake preparation failed (${res.status})`);
+    let data = envelope;
+    if (typeof envelope.result === "string") {
+        try { data = JSON.parse(envelope.result); } catch { throw new Error("Praxis did not acknowledge a saved intake council request"); }
     }
-    if (data?.ok === false) {
-        throw new Error(typeof data.error === "string" ? data.error : "Problem intake failed");
-    }
-    return data;
+    if (data?.ok === false) throw new Error(typeof data.error === "string" ? data.error : "Intake preparation failed");
+    if (data?.ok !== true || typeof data.session_id !== "string" || typeof data.project_id !== "string" || typeof data.operation_id !== "string" || typeof data.state !== "string") throw new Error("Praxis did not acknowledge a saved intake council request");
+    return { ok: true, session_id: data.session_id, project_id: data.project_id, operation_id: data.operation_id, state: data.state, result: `Intake preparation: ${data.state}. ${typeof data.next === "string" ? data.next : ""}${data.error ? ` (${data.error})` : ""}` };
+}
+
+/** Save the operator request, then explicitly prepare its intake with the council. */
+export async function summonProblemCouncil(input: ProblemCouncilRequest): Promise<CouncilSummonResponse> {
+    return intakeCouncilRequest(input);
+}
+export async function getProblemCouncilStatus(project_id: string, operation_id: string): Promise<CouncilSummonResponse> {
+    return intakeCouncilRequest({ action: "status", project_id, operation_id });
 }
 
 export type CouncilDeliverable = "analysis" | "project_plan" | "task_series";
@@ -273,6 +295,10 @@ export interface CouncilSummonRequest {
 
 export interface CouncilSummonResponse {
     ok: boolean;
+    session_id?: string;
+    project_id?: string;
+    operation_id?: string;
+    state?: string;
     result?: string;
     error?: string;
 }

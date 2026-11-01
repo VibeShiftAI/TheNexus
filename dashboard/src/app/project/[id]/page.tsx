@@ -19,6 +19,10 @@ import { ProjectRequests } from "@/components/project-requests";
 import { ProjectClientAccess } from "@/components/project-client-access";
 import { ProjectComms } from "@/components/project-comms";
 import { ProjectDeliverables } from "@/components/project-deliverables";
+import { ProjectIntakePanel } from "@/components/project-intake/panel";
+import { readChatDraft, writeChatDraft } from "@/lib/chat-draft";
+import { useLiveRefetch } from "@/components/live-board-state";
+import { useProjectRecord } from "@/hooks/use-project-record";
 import { ProjectEndpointPanel } from "@/components/project-endpoint/endpoint-panel";
 import { ProjectNeedsPanel } from "@/components/project-endpoint/needs-panel";
 import { ProjectCheckpointsPanel } from "@/components/project-endpoint/checkpoints-panel";
@@ -41,7 +45,7 @@ export default function ProjectDetailPage() {
     const projectId = params.id as string;
     const router = useRouter();
 
-    const [project, setProject] = useState<Project | null>(null);
+    const { project, apply: setProject, refresh: reloadProject, refreshError: projectRefreshError } = useProjectRecord(projectId, getProject);
     const [brief, setBrief] = useState<ProjectBrief | null>(null);
     const [commits, setCommits] = useState<Commit[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -54,9 +58,7 @@ export default function ProjectDetailPage() {
     // station re-reads its recipients + effective state.
     const [membersVersion, setMembersVersion] = useState(0);
     const onMembersChanged = useCallback(() => setMembersVersion((v) => v + 1), []);
-    const reloadProject = useCallback(() => {
-        getProject(projectId).then(setProject).catch(console.error);
-    }, [projectId]);
+    useLiveRefetch(['board'], reloadProject, { immediate: false });
 
     // Opening a task navigates to its own screen (/task/[id]) — the old
     // in-page TaskDetailModal overlay is retired.
@@ -79,8 +81,7 @@ export default function ProjectDetailPage() {
         setRestoring(true);
         try {
             await unarchiveProject(projectId);
-            const [proj] = await Promise.all([getProject(projectId), loadTasks()]);
-            setProject(proj);
+            await Promise.all([reloadProject(), loadTasks()]);
         } catch (error) {
             console.error('Failed to restore project:', error);
             alert(error instanceof Error ? error.message : 'Failed to restore project');
@@ -91,17 +92,19 @@ export default function ProjectDetailPage() {
 
     useEffect(() => {
         if (!projectId) return;
+        let current = true;
+        setLoading(true);
 
         Promise.all([
-            getProject(projectId),
+            reloadProject(),
             getProjectBrief(projectId).catch(() => null),
             getProjectCommits(projectId).catch(() => ({ commits: [], hasGit: false })),
             getTasks(projectId),
             getProjectReadme(projectId).catch(() => ({ exists: false, content: null })),
             getDashboardStats().catch(() => null)
         ])
-            .then(([proj, briefRes, commitsRes, tasksRes, readmeRes, statsRes]) => {
-                setProject(proj);
+            .then(([_proj, briefRes, commitsRes, tasksRes, readmeRes, statsRes]) => {
+                if (!current) return;
                 setBrief(briefRes);
                 setCommits(commitsRes.commits);
                 setTasks(tasksRes.tasks);
@@ -117,8 +120,9 @@ export default function ProjectDetailPage() {
                 }
             })
             .catch(console.error)
-            .finally(() => setLoading(false));
-    }, [projectId]);
+            .finally(() => { if (current) setLoading(false); });
+        return () => { current = false; };
+    }, [projectId, reloadProject]);
 
     // Legacy deep links (?taskId= from chat/mobile/bookmarks) land on the new
     // task screen — the modal they used to open no longer exists.
@@ -232,7 +236,7 @@ export default function ProjectDetailPage() {
 
             <AITerminal
                 isOpen={showAITerminal}
-                onClose={() => setShowAITerminal(false)}
+                onClose={() => { setShowAITerminal(false); reloadProject(); }}
             />
 
             <div className="container mx-auto p-6 space-y-6">
@@ -259,6 +263,15 @@ export default function ProjectDetailPage() {
                     </div>
                 )}
 
+                {projectRefreshError && <p role="alert" className="rounded-lg border border-amber-500/40 p-3 text-sm text-amber-300">The latest project state could not be loaded. Showing the last saved view. <button className="underline" onClick={reloadProject}>Retry refresh</button></p>}
+                <ProjectIntakePanel project={project} onDiscuss={text => {
+                    const existing = readChatDraft().trim();
+                    const draft = existing ? `${existing}\n\n${text}` : text;
+                    writeChatDraft(draft);
+                    setShowAITerminal(true);
+                    window.dispatchEvent(new CustomEvent("nexus:chat-seed", { detail: { text: draft } }));
+                }} />
+
                 {/* Mission brief hero */}
                 <div className="hud-boot">
                     <MissionBrief project={project} brief={brief} />
@@ -268,12 +281,12 @@ export default function ProjectDetailPage() {
                 <ProjectDeliverables projectId={projectId} />
 
                 {/* Checkpoint sequence under the long-term goal: what the crew works toward now */}
-                <ProjectCheckpointsPanel project={project} onUpdate={setProject} />
+                {project.phase !== 'intake' && <ProjectCheckpointsPanel project={project} onUpdate={setProject} />}
 
-                <div className="grid items-start gap-6 xl:grid-cols-2">
+                {project.phase !== 'intake' && <div className="grid items-start gap-6 xl:grid-cols-2">
                     <ProjectEndpointPanel project={project} onUpdate={setProject} />
                     <ProjectNeedsPanel project={project} tasks={tasks} onUpdate={updated => { setProject(updated); void loadTasks(); }} />
-                </div>
+                </div>}
 
                 {/* Reports row — operations report beside git + artifacts rail */}
                 <div className="hud-boot hud-boot-1 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -341,12 +354,12 @@ export default function ProjectDetailPage() {
                 {/* Task operations row */}
                 <div className="hud-boot hud-boot-2 grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2 min-w-0">
-                        <TaskManager
+                        {project.phase === 'intake' ? <p className="rounded-xl border border-slate-700 p-5 text-sm text-slate-400">Delivery tasks become available after intake is accepted for planning.</p> : <TaskManager
                             projectId={projectId}
                             tasks={tasks}
                             onTasksChange={loadTasks}
                             onTaskSelect={openTask}
-                        />
+                        />}
                     </div>
                     <div className="min-w-0 space-y-4">
                         <TaskArchive
@@ -368,19 +381,17 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Configuration + context — the editable underbelly of the brief */}
-                <div className="hud-boot hud-boot-4"><ProjectMaintenance projectId={projectId} /></div>
+                {project.phase !== 'intake' && project.path && <div className="hud-boot hud-boot-4"><ProjectMaintenance projectId={projectId} /></div>}
                 <div className="hud-boot hud-boot-4">
                     <HudPanel icon={<Settings2 size={16} />} title="Project Configuration" accent="purple">
                         <div className="overflow-hidden rounded-lg">
                             <div className="border-b border-slate-800 px-1 pb-3">
                                 <ProjectSettings
                                     project={project}
-                                    onUpdate={() => {
-                                        getProject(projectId).then(setProject);
-                                    }}
+                                    onUpdate={reloadProject}
                                 />
                             </div>
-                            <ProjectContextManager project={project} />
+                            {project.path && <ProjectContextManager project={project} />}
                         </div>
                     </HudPanel>
                 </div>

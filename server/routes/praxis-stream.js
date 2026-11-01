@@ -551,21 +551,25 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
         req.body = { name: 'spawn_council', args };
         return proxyJson(req, res, '/agent-tool');
     });
-    // Hand Praxis a PROBLEM from the Chamber: the problem council (three
-    // top-tier seats, two rounds, ranked ideas → charter → project set up)
-    // via Praxis's problem_intake tool. dry_run deliberates without creating.
+    // Explicit preparation saves a Nexus intake before any council models run.
+    // The browser retains the request ID across retries; the runtime owns orchestration.
     router.post('/council/problem', (req, res) => {
         const body = req.body || {};
-        const problem = typeof body.problem === 'string' ? body.problem.trim() : '';
-        if (!problem) {
-            return res.status(400).json({ ok: false, error: 'problem is required' });
+        if (body.action === 'status' || body.action === 'retry_save') {
+            if (Object.keys(body).some(key => !['action', 'project_id', 'operation_id'].includes(key)) ||
+                !['project_id', 'operation_id'].every(key => typeof body[key] === 'string' && body[key].trim())) {
+                return res.status(400).json({ ok: false, error: 'Saved council status requires project_id and operation_id' });
+            }
+            req.body = { name: 'intake_council', args: body };
+            return proxyJson(req, res, '/agent-tool');
         }
-        const args = { problem, council: body.council !== false };
-        for (const field of ['name', 'type', 'context', 'preset']) {
-            if (typeof body[field] === 'string' && body[field].trim()) args[field] = body[field].trim();
+        const allowed = ['operation_id', 'source_ref', 'problem', 'name', 'context'];
+        if (Object.keys(body).some(key => !allowed.includes(key)) ||
+            !['operation_id', 'source_ref', 'problem'].every(key => typeof body[key] === 'string' && body[key].trim()) ||
+            ['name', 'context'].some(key => body[key] !== undefined && (typeof body[key] !== 'string' || !body[key].trim()))) {
+            return res.status(400).json({ ok: false, error: 'Preparation requires problem, durable operation_id, and the actual request source_ref. Legacy scaffold/dry_run options are no longer supported.' });
         }
-        if (body.dry_run === true) args.dry_run = true;
-        req.body = { name: 'problem_intake', args };
+        req.body = { name: 'intake_capture_council', args: body };
         return proxyJson(req, res, '/agent-tool');
     });
     router.get('/models/ladder-settings', (req, res) => proxyJson(req, res, '/api/models/ladder-settings'));
