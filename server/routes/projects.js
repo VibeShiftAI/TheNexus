@@ -279,8 +279,15 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         '/:id/context', '/:id/context/sync', '/:id/context/verify',
     ], async (req, res, next) => {
         const project = await getProjectById(PROJECT_ROOT, req.params.id);
-        if (project && (!project.path?.trim() || !path.isAbsolute(project.path) || !fs.existsSync(project.path))) {
-            return res.status(409).json({ error: 'This project has no available workspace. Attach its intended folder before using workspace actions.', code: 'WORKSPACE_UNAVAILABLE' });
+        let available = false;
+        if (project?.path?.trim() && path.isAbsolute(project.path)) {
+            try {
+                const canonical = project.intake?.workspace?.canonical_path;
+                available = fs.statSync(project.path).isDirectory() && (!canonical || fs.realpathSync(project.path) === canonical);
+            } catch { /* Missing, inaccessible or retargeted bindings cannot supply a workspace. */ }
+        }
+        if (project && !available) {
+            return res.status(409).json({ error: 'This project has no available workspace at its recorded identity. Attach its intended folder before using workspace actions.', code: 'WORKSPACE_UNAVAILABLE' });
         }
         if (project?.phase === 'intake' && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return res.status(409).json({ error: 'Workspace writes are unavailable during intake.', code: 'PROJECT_INTAKE' });
         next();
@@ -358,8 +365,11 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         const existing = typeof db.getProject === 'function' ? await db.getProject(name) : null;
         if (existing?.intake || existing?.phase === 'intake') throw Object.assign(new Error('This project already has intake. Attach its intended existing folder through intake operations.'), { status: 409, code: 'PROJECT_INTAKE' });
         if (existing && (scaffold || existing.path !== projectPath)) throw Object.assign(new Error('A project with this name already exists; use its exact project binding.'), { status: 409, code: 'PROJECT_NAME_CONFLICT' });
-        const atPath = typeof db.getProjectByPath === 'function' ? await db.getProjectByPath(projectPath) : null;
-        if (atPath && atPath.id !== existing?.id) throw Object.assign(new Error('This workspace already belongs to another project.'), { status: 409, code: 'PROJECT_PATH_CONFLICT' });
+        if (typeof db.assertProjectWorkspaceUnclaimed === 'function') await db.assertProjectWorkspaceUnclaimed(projectPath, existing?.id);
+        else {
+            const atPath = typeof db.getProjectByPath === 'function' ? await db.getProjectByPath(projectPath) : null;
+            if (atPath && atPath.id !== existing?.id) throw Object.assign(new Error('This workspace already belongs to another project.'), { status: 409, code: 'PROJECT_PATH_CONFLICT' });
+        }
     }
 
     // ─── Create Project ──────────────────────────────────────────────────

@@ -67,6 +67,10 @@ async function getProjectById(projectRoot, id) {
             return diff > 0 && diff <= 6;
         });
 
+        // Intake bindings require exact identity. A typo must never select their
+        // folder or trigger the legacy project.json recovery writer.
+        if (match?.intake || match?.phase === 'intake') return null;
+
         if (match) {
             console.log(`[ProjectManager] RECOVERED: Fuzzy matched corrupted ID ${id} to valid ID ${match.id}`);
 

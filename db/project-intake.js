@@ -64,6 +64,11 @@ function fenceExternalIntakeChange(current, patch) {
         patch.intake = intake;
     }
 }
+function requireNeedPlans(needs, intake) {
+    for (const n of needs.filter(n => n.status === 'open' && n.knowledge && (n.knowledge.blocking || intake.need_ids.includes(n.id)))) {
+        if (!n.knowledge.resolution?.method?.trim() || !n.knowledge.resolution.owner?.trim() || !n.knowledge.resolution.next_action?.trim()) throw fail(`Open need ${n.id} requires a resolution method, owner and next action`, 'INTAKE_NEED_UNPLANNED', 400);
+    }
+}
 function createProjectIntakeStore(db, { deserialize }) {
     const read = id => deserialize(db.prepare('SELECT * FROM projects WHERE id=?').get(id));
     function save(id, patch) {
@@ -83,17 +88,41 @@ function createProjectIntakeStore(db, { deserialize }) {
             .run(input.operation_id, project.id, fingerprint({ project_id: projectId || null, input }), JSON.stringify(result), project.updated_at);
         return result;
     }
+    function findWorkspaceOwner(location, currentId, { onlyIntake = false } = {}) {
+        if (!location.path) return null;
+        for (const raw of db.prepare("SELECT * FROM projects WHERE path <> ''").all()) {
+            const other = deserialize(raw);
+            if (other.id === currentId || (onlyIntake && !other.intake && other.phase !== 'intake')) continue;
+            let canonical = other.intake?.workspace?.canonical_path;
+            if (!canonical) {
+                try { canonical = fs.realpathSync(other.path); } catch { canonical = path.resolve(other.path); }
+            }
+            if (path.resolve(other.path) === path.resolve(location.path) || canonical === (location.canonical_path || path.resolve(location.path))) {
+                return other;
+            }
+        }
+        return null;
+    }
+    function assertWorkspaceUnclaimed(location, currentId, options) {
+        if (findWorkspaceOwner(location, currentId, options)) throw fail('Folder is already bound to another project; use its exact project_id', 'PROJECT_PATH_CONFLICT');
+    }
     function attach(location, current) {
         const candidate = workspace(location);
         if (current?.path) {
-            const existing = workspace(current.path);
-            if ((candidate.canonical_path || path.resolve(candidate.path)) !== (existing.canonical_path || path.resolve(existing.path))) throw fail('Existing workspace identity cannot be replaced during intake', 'PROJECT_IDENTITY_CONFLICT');
+            const recordedIdentity = current.intake?.workspace?.canonical_path;
+            if (recordedIdentity) {
+                // A symlink may have moved since the original binding. The stored
+                // canonical identity is authoritative, not a fresh resolution of it.
+                if (candidate.state === 'attached' ? candidate.canonical_path !== recordedIdentity : path.resolve(candidate.path) !== path.resolve(current.path)) {
+                    throw fail('Existing workspace identity cannot be replaced during intake', 'PROJECT_IDENTITY_CONFLICT');
+                }
+                candidate.canonical_path = recordedIdentity;
+            } else {
+                const existing = workspace(current.path);
+                if ((candidate.canonical_path || path.resolve(candidate.path)) !== (existing.canonical_path || path.resolve(existing.path))) throw fail('Existing workspace identity cannot be replaced during intake', 'PROJECT_IDENTITY_CONFLICT');
+            }
         }
-        for (const other of db.prepare("SELECT id,path FROM projects WHERE path <> ''").all()) {
-            if (other.id === current?.id) continue;
-            let canonical; try { canonical = fs.realpathSync(other.path); } catch { canonical = path.resolve(other.path); }
-            if (canonical === (candidate.canonical_path || path.resolve(candidate.path))) throw fail('Folder is already bound to another project; use its exact project_id', 'PROJECT_PATH_CONFLICT');
-        }
+        assertWorkspaceUnclaimed(candidate, current?.id);
         return candidate;
     }
     function get(projectId) {
@@ -115,13 +144,7 @@ function createProjectIntakeStore(db, { deserialize }) {
             if (current && input.name !== current.name) throw fail('Explicit project binding name does not match', 'PROJECT_IDENTITY_CONFLICT');
             if (current?.path && input.existing_path && path.resolve(current.path) !== path.resolve(input.existing_path)) throw fail('Existing project workspace does not match supplied folder', 'PROJECT_IDENTITY_CONFLICT');
             const location = workspace(input.existing_path || current?.path);
-            if (location.path) {
-                for (const other of db.prepare("SELECT id,path FROM projects WHERE path <> ''").all()) {
-                    if (other.id === current?.id) continue;
-                    let canonical; try { canonical = fs.realpathSync(other.path); } catch { canonical = path.resolve(other.path); }
-                    if (canonical === (location.canonical_path || path.resolve(location.path))) throw fail('Folder is already bound to another project; use its exact project_id', 'PROJECT_PATH_CONFLICT');
-                }
-            }
+            assertWorkspaceUnclaimed(location, current?.id);
             const at = timestamp(current?.updated_at), id = current?.id || crypto.randomUUID();
             const intake = parse(ProjectIntakeSchema, { revision: 0, brief_revision: 0, state: 'preparing', original: { problem: input.problem, source_ref: input.source_ref, at },
                 brief: {}, sources: input.sources || [], brief_history: [], need_ids: (current?.needs || []).filter(n => n.kind === 'information' && n.knowledge).map(n => n.id), pending_need_id: (current?.needs || []).find(n => n.kind === 'information' && n.knowledge && n.status === 'open')?.id || null, workspace: location, review: null, review_history: [], acceptance: null,
@@ -248,13 +271,14 @@ function createProjectIntakeStore(db, { deserialize }) {
                     if (input.brief_revision !== intake.brief_revision || intake.review?.brief_revision !== intake.brief_revision || intake.review.status !== 'completed' || (intake.review.mode || 'review') !== 'review') throw fail('Acceptance requires a completed review of the current brief', 'INTAKE_REVIEW_STALE');
                     const b = intake.brief;
                     if (!['purpose', 'outcome', 'beneficiary', 'scope', 'decision_owner'].every(k => b[k]?.trim()) || !b.success_criteria?.length) throw fail('Acceptance requires purpose, outcome, beneficiary, scope, success criteria and decision owner', 'INTAKE_BRIEF_INCOMPLETE', 400);
-                    for (const n of project.needs.filter(n => n.status === 'open' && n.knowledge && (n.knowledge.blocking || intake.need_ids.includes(n.id)))) {
-                        if (!n.knowledge.resolution?.method?.trim() || !n.knowledge.resolution.owner?.trim() || !n.knowledge.resolution.next_action?.trim()) throw fail(`Open need ${n.id} requires a resolution method, owner and next action`, 'INTAKE_NEED_UNPLANNED', 400);
-                    }
+                    requireNeedPlans(project.needs, intake);
                     const adopted = prepareProjectPatch(project, { expected_updated_at: project.updated_at, end_state: b.outcome,
                         endpoint: { beneficiary: b.beneficiary, scope: b.scope, exclusions: b.exclusions || '', proposed_next: input.next_step },
                         end_state_criteria: b.success_criteria.map((description, index) => ({ id: `intake-${index + 1}`, kind: 'manual', description, source: input.source_ref })),
                         end_state_source: input.source_ref, end_state_reason: 'Accepted intake brief' });
+                    // Endpoint adoption can reopen previously verified linked needs.
+                    // The handed-off record must satisfy readiness after those guards run.
+                    requireNeedPlans(adopted.needs || project.needs, intake);
                     Object.assign(patch, adopted, { phase: 'planning' });
                     intake.acceptance = { brief_revision: intake.brief_revision, source_ref: input.source_ref, next_step: input.next_step, at };
                     intake.state = 'handed_off'; break;
@@ -271,6 +295,9 @@ function createProjectIntakeStore(db, { deserialize }) {
             return receipt(input, save(projectId, patch), projectId);
         }).immediate();
     }
-    return { create, get, operate };
+    return { create, get, operate,
+        findWorkspaceOwner: (location, options) => findWorkspaceOwner(workspace(location), null, options),
+        assertWorkspaceUnclaimed: (location, currentId, options) => assertWorkspaceUnclaimed(workspace(location), currentId, options),
+    };
 }
 module.exports = { initializeProjectIntake, createProjectIntakeStore, fenceExternalIntakeChange };

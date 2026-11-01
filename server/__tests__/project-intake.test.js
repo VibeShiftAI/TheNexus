@@ -16,7 +16,7 @@ describe('durable record-only project intake', () => {
     jest.resetModules(); db = require('../../db');
     raw = new (require('better-sqlite3'))(process.env.NEXUS_DB_PATH);
     const app = express(); app.use(express.json());
-    app.use('/api/projects', require('../routes/projects')({ db, PROJECT_ROOT: dir, getProjectById: (_, id) => db.getProject(id), getAllProjects: () => db.getProjects(), scanProjects: async () => [], contextSync: { pullAndSyncFromGit: async (_id, folder) => { if (folder?.startsWith(dir)) fs.writeFileSync(path.join(folder, 'unexpected-context-write'), 'guard was bypassed'); return { success: true }; } } }));
+    app.use('/api/projects', require('../routes/projects')({ db, PROJECT_ROOT: dir, getProjectById: require('../utils/project-manager').getProjectById, getAllProjects: () => db.getProjects(), scanProjects: async () => [], contextSync: { pullAndSyncFromGit: async (_id, folder) => { if (folder?.startsWith(dir)) fs.writeFileSync(path.join(folder, 'unexpected-context-write'), 'guard was bypassed'); return { success: true }; } } }));
     server = http.createServer(app);
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${server.address().port}/api/projects`;
@@ -372,6 +372,91 @@ describe('durable record-only project intake', () => {
     const result = await request(`/${p.project.id}/${route}`, {});
     expect(fs.readdirSync(folder)).toEqual([]);
     expect(result.status).toBe(409); expect(result.body.code).toBe('PROJECT_INTAKE');
+  });
+
+  test('workspace attachment retains the canonical identity recorded before a symlink changes', async () => {
+    const a = path.join(dir, crypto.randomUUID()), b = path.join(dir, crypto.randomUUID()), alias = path.join(dir, crypto.randomUUID());
+    fs.mkdirSync(a); fs.mkdirSync(b); fs.symlinkSync(a, alias, 'dir');
+    const p = (await create({ existing_path: alias })).body;
+    fs.unlinkSync(alias); fs.symlinkSync(b, alias, 'dir');
+    const rebound = await op(p, 'attach_workspace', { existing_path: alias });
+    expect(rebound.status).toBe(409); expect(rebound.body.code).toBe('PROJECT_IDENTITY_CONFLICT');
+    expect((await request(`/${p.project.id}/readme`, null, 'GET')).status).toBe(409);
+    fs.unlinkSync(alias);
+    const unavailable = await op(p, 'attach_workspace', { existing_path: alias });
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.body.intake.workspace).toMatchObject({ state: 'unavailable', path: alias, canonical_path: fs.realpathSync(a) });
+    expect(fs.existsSync(alias)).toBe(false);
+  });
+
+  test('handoff validates need plans after endpoint adoption reopens verified knowledge', async () => {
+    const id = crypto.randomUUID(), name = crypto.randomUUID();
+    await db.upsertProject({ id, name, path: '', end_state: 'Old outcome', end_state_criteria: [{ id: 'old-criterion', kind: 'manual', description: 'Old proof' }] });
+    const saved = db.updateProjectNeed(id, null, { ...need('old', 'research'), knowledge: { ...need('old', 'research').knowledge, blocking: true, criterion_ids: ['old-criterion'], resolution: { method: 'research' } } });
+    const needId = saved.need.id;
+    db.updateProjectNeed(id, needId, { expected_knowledge_revision: 1, knowledge: { answer: 'Prior finding', evidence: [{ ref: 'file:prior-proof' }] } });
+    db.updateProjectNeed(id, needId, { expected_knowledge_revision: 2, status: 'met', knowledge: { verification: { rationale: 'Prior proof satisfied old criterion', evidence_refs: ['file:prior-proof'] } } });
+    let p = (await create({ project_id: id, name })).body;
+    p = (await op(p, 'prepare', { brief })).body;
+    p = (await op(p, 'start')).body;
+    p = (await op(p, 'request_review', { session_id: 'council:adopt', brief_revision: p.intake.brief_revision })).body;
+    p = (await op(p, 'record_review', { session_id: 'council:adopt', brief_revision: p.intake.brief_revision, source_ref: 'council:adopted-result', findings: [] })).body;
+    const result = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision });
+    expect(result.status).toBe(400); expect(result.body.code).toBe('INTAKE_NEED_UNPLANNED');
+    expect((await request(`/${id}/intake`, null, 'GET')).body).toEqual(p);
+  });
+
+  test('a mistyped intake project id never triggers project-manager filesystem healing', async () => {
+    const id = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa', typo = 'baaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa', name = crypto.randomUUID();
+    const folder = path.join(dir, crypto.randomUUID()); fs.mkdirSync(folder);
+    const original = JSON.stringify({ id: 'original-folder-id', name: 'Existing folder' });
+    fs.writeFileSync(path.join(folder, 'project.json'), original);
+    raw.prepare('INSERT INTO projects(id,name,path) VALUES (?,?,?)').run(id, name, folder);
+    expect((await create({ project_id: id, name })).status).toBe(201);
+    const result = await request(`/${typo}/git/init`, {});
+    expect(fs.readFileSync(path.join(folder, 'project.json'), 'utf8')).toBe(original);
+    expect(fs.readdirSync(folder)).toEqual(['project.json']);
+    expect(result.status).toBe(404);
+  });
+
+  test.each(['unavailable', 'retargeted'])('canonical reservations survive an %s alias for create and attach', async state => {
+    const a = path.join(dir, crypto.randomUUID()), b = path.join(dir, crypto.randomUUID()), alias = path.join(dir, crypto.randomUUID());
+    fs.mkdirSync(a); fs.mkdirSync(b); fs.symlinkSync(a, alias, 'dir');
+    expect((await create({ existing_path: alias })).status).toBe(201);
+    fs.unlinkSync(alias); if (state === 'retargeted') fs.symlinkSync(b, alias, 'dir');
+    const duplicate = await create({ existing_path: a });
+    expect(duplicate.status).toBe(409); expect(duplicate.body.code).toBe('PROJECT_PATH_CONFLICT');
+    const sameAlias = await create({ existing_path: alias });
+    expect(sameAlias.status).toBe(409);
+    const independent = (await create()).body;
+    const attached = await op(independent, 'attach_workspace', { existing_path: a });
+    expect(attached.status).toBe(409); expect(attached.body.code).toBe('PROJECT_PATH_CONFLICT');
+    expect((await request(`/${independent.project.id}/intake`, null, 'GET')).body).toEqual(independent);
+  });
+
+  test('legacy create honors an intake canonical reservation held through another folder name', async () => {
+    const name = crypto.randomUUID(), target = path.join(dir, name), alias = path.join(dir, crypto.randomUUID());
+    fs.mkdirSync(target); fs.symlinkSync(target, alias, 'dir');
+    const git = (...args) => require('child_process').execFileSync('git', args, { cwd: target, stdio: 'pipe' });
+    git('init'); git('-c', 'user.name=Intake Test', '-c', 'user.email=intake@example.test', 'commit', '--allow-empty', '-m', 'Existing baseline');
+    const bound = (await create({ existing_path: alias })).body;
+    const result = await request('', { name });
+    expect(result.status).toBe(409); expect(result.body.code).toBe('PROJECT_PATH_CONFLICT');
+    expect(raw.prepare('SELECT id FROM projects WHERE name=?').get(name)).toBeUndefined();
+    expect((await request(`/${bound.project.id}/intake`, null, 'GET')).body).toEqual(bound);
+  });
+
+  test('scanner and generic database writers cannot duplicate an intake canonical binding', async () => {
+    const folderName = crypto.randomUUID(), folder = path.join(dir, folderName);
+    fs.mkdirSync(folder); fs.writeFileSync(path.join(folder, 'package.json'), '{}');
+    const p = (await create({ name: `Human ${crypto.randomUUID()}`, existing_path: `${folder}/.` })).body;
+    expect((await db.getProjectByPath(folder))?.id).toBe(p.project.id);
+    await expect(db.upsertProject({ name: crypto.randomUUID(), path: folder })).rejects.toMatchObject({ status: 409, code: 'PROJECT_PATH_CONFLICT' });
+    const unrelated = await db.upsertProject({ name: crypto.randomUUID(), path: '' });
+    await expect(db.updateProject(unrelated.id, { path: folder })).rejects.toMatchObject({ status: 409, code: 'PROJECT_PATH_CONFLICT' });
+    await require('../utils/project-manager').scanProjects(dir);
+    expect(raw.prepare('SELECT id FROM projects WHERE name=?').get(folderName)).toBeUndefined();
+    expect((await request(`/${p.project.id}/intake`, null, 'GET')).body).toEqual(p);
   });
 
 });

@@ -65,7 +65,8 @@ Every open intake knowledge need, and any other blocking knowledge need, require
 a resolution method, owner and next action before handoff.
 Acceptance requires purpose, outcome, beneficiary, scope, success criteria, decision
 owner, and a completed current review. Partial and failed reviews remain visible
-and cannot authorize acceptance. Handoff preserves remaining needs.
+and cannot authorize acceptance. Handoff preserves remaining needs and rechecks
+resolution plans after endpoint adoption, which can reopen previously verified needs.
 
 Preparation councils retain their explicit `request_source_ref`, `mode`, and
 `resume_state`. Completed preparation is archived in review history and restores
@@ -86,9 +87,14 @@ cannot bypass intake revision, phase, workspace, or endpoint handoff guards.
 Workspace routes reject absent or unavailable paths with 409
 `WORKSPACE_UNAVAILABLE`; paths never fall back to the server working directory.
 Workspace writes are also blocked during intake for attached folders. Legacy project creation and scaffold routes preflight existing intake bindings
-before any filesystem mutation. Association
+before any filesystem mutation. Generic database project creation and path edits
+also respect canonical intake reservations; scanner lookup reuses those bindings
+when the supplied path spelling differs. Association
 checks canonical identity, supports non-Git folders, and preserves an unavailable
-supplied path without creating a replacement.
+supplied path without creating a replacement. The recorded canonical identity
+remains authoritative if a symlink is retargeted or becomes unavailable. Workspace
+routes check that identity before accessing files. Intake-bound projects are
+excluded from legacy fuzzy ID recovery, so mistyped IDs cannot rewrite folder metadata.
 
 ## Verification
 

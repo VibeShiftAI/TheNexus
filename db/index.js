@@ -923,10 +923,10 @@ function readProject(identifier) {
 }
 
 async function getProjectByPath(projectPath) {
-    if (!db) return null;
+    if (!db || !projectPath?.trim()) return null;
     try {
         const row = db.prepare('SELECT * FROM projects WHERE path = ?').get(projectPath);
-        return deserRow(row) || null;
+        return deserRow(row) || projectIntake.findWorkspaceOwner(projectPath, { onlyIntake: true }) || null;
     } catch (err) {
         console.error('[Database] Error fetching project by path:', err.message);
         return null;
@@ -940,6 +940,7 @@ function upsertProject(project) {
             const existing = deserRow(db.prepare('SELECT * FROM projects WHERE id = ? OR name = ?').get(project.id || '', project.name));
             if (existing) return writeProject(existing.id, project);
             const input = { ...project, id: project.id || uuid(), created_at: project.created_at || now() };
+            if (input.path) projectIntake.assertWorkspaceUnclaimed(input.path, null, { onlyIntake: true });
             const prepared = prepareProjectPatch({}, input);
             const { sql, values } = buildInsert('projects', prepared, 'name');
             db.prepare(sql).run(...values);
@@ -956,6 +957,7 @@ function writeProject(projectId, updates, options) {
     const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
     if (!current) return null;
     const patch = prepareProjectPatch(current, updates, options);
+    if (patch.path && patch.path !== current.path) projectIntake.assertWorkspaceUnclaimed(patch.path, current.id, { onlyIntake: true });
     fenceExternalIntakeChange(current, patch);
     routeKnowledgeChangeWork({ db, current, patch, createTask, updateTask,
         readTask: id => deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id)) });
@@ -3498,6 +3500,7 @@ module.exports = {
     getProject,
     getProjectByPath,
     getProjectIntake: id => projectIntake.get(id),
+    assertProjectWorkspaceUnclaimed: (location, currentId) => projectIntake.assertWorkspaceUnclaimed(location, currentId),
     createProjectIntake: leasedBoardWrite(input => projectIntake.create(input)),
     operateProjectIntake: leasedBoardWrite((id, input) => projectIntake.operate(id, input)),
     upsertProject: async (...args) => leasedBoardWrite(upsertProject)(...args),
