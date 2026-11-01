@@ -117,6 +117,90 @@ describe('applied knowledge changes route real pending work atomically', () => {
     } finally { raw.exec('DROP TRIGGER refuse_intake_receipt'); }
   });
 
+  const sourceLinkedIntake = async () => {
+    const need = await applied({ taskIds: ['original', 'pending-a', 'pending-b', 'running'] });
+    for (const id of ['pending-a', 'pending-b', 'running']) {
+      const name = { 'pending-a': 'Validate trial cost measurements', 'pending-b': 'Evaluate failover options', running: 'Execute release observation' }[id];
+      const created = await db.createTask({ id, project_id: PROJECT, name, status: id === 'running' ? 'in_progress' : 'planning',
+        description: `Preserve requested scope. ${name}.`, metadata: { knowledge_need_ids: [need.id], other: 'Preserved',
+          knowledge_context: { version: 1, lookup_status: 'available', requirements: [{ id: `need:${need.id}`, need_id: need.id, question: need.knowledge.question, tags: [], satisfaction_test: need.knowledge.satisfaction_test,
+            reason: 'Previously verified from the original source.', source_refs: ['vault:trial'], verified: true, answer_revision: need.knowledge.revision }] } } });
+      expect(created?.id).toBe(id);
+    }
+    const source = { ref: 'vault:trial', type: 'other', availability: 'available', revision: 'v1', summary: 'Budget met.' };
+    let p = await db.createProjectIntake({ operation_id: 'adopt-intake', project_id: PROJECT, name: 'Project', problem: 'Review our assumptions', source_ref: 'chat:intake', sources: [source] });
+    p = await db.operateProjectIntake(PROJECT, { operation_id: 'defer-intake', expected_revision: p.intake.revision, action: 'defer' });
+    return { need, source, p };
+  };
+  const sourceRevision = (p, source, revision) => ({ operation_id: `source-${revision}`, expected_revision: p.intake.revision, action: 'revise', sources: [{ ...source, revision }] });
+
+  test('source-only intake revisions refresh pending task freshness without creating work or altering completed and running tasks', async () => {
+    let { need, source, p } = await sourceLinkedIntake();
+    const original = await db.getTask('original'), running = await db.getTask('running');
+    for (const revision of ['v2', 'v3']) {
+      const pending = await db.getTask('pending-a');
+      const input = sourceRevision(p, source, revision);
+      const result = await req('/intake/operations', input, 'POST');
+      expect(result.status).toBe(200);
+      p = result.body;
+      const reopened = p.project.needs.find(n => n.id === need.id);
+      expect(reopened).toMatchObject({ status: 'open', knowledge: { answer: need.knowledge.answer, research_status: 'stale', revision: need.knowledge.revision + (revision === 'v2' ? 1 : 2) } });
+      expect(reopened.knowledge.evidence).toEqual(need.knowledge.evidence);
+      const refreshed = await db.getTask('pending-a');
+      expect(refreshed.version).toBeGreaterThan(pending.version);
+      expect(refreshed.description).toContain('Preserve requested scope.');
+      expect(refreshed.dispatch_instructions).toContain('Required first step: re-verify');
+      expect(refreshed.metadata.knowledge_changes.at(-1)).toMatchObject({ need_id: need.id, revision: reopened.knowledge.revision, verification_pending: true });
+      expect(refreshed.metadata.knowledge_context.requirements[0]).toMatchObject({ need_id: need.id, reason: expect.stringMatching(/re-verification is required/), source_refs: ['vault:trial'] });
+      expect(refreshed.metadata.knowledge_context.requirements[0].verified).toBeUndefined();
+      expect(refreshed.metadata.other).toBe('Preserved');
+      expect((await db.getTask('pending-b')).metadata.knowledge_changes.at(-1).revision).toBe(reopened.knowledge.revision);
+      expect(await db.getTask('original')).toEqual(original);
+      expect(await db.getTask('running')).toEqual(running);
+      expect(tasks()).toHaveLength(4);
+      expect(p.intake.state).toBe('deferred');
+      const storedTasks = tasks();
+      expect((await req('/intake/operations', input, 'POST')).body).toEqual(p);
+      expect(tasks()).toEqual(storedTasks);
+    }
+    const beforeRefresh = tasks();
+    const refreshed = await req('/intake/operations', { ...sourceRevision(p, source, 'v3'), operation_id: 'retrieved-again', sources: [{ ...source, revision: 'v3', retrieved_at: '2026-11-01T14:00:00Z' }] }, 'POST');
+    expect(refreshed.status).toBe(200);
+    expect(refreshed.body.intake.brief_revision).toBe(p.intake.brief_revision);
+    expect(tasks()).toEqual(beforeRefresh);
+  });
+
+  test('canonical knowledge invalidation during Intake refreshes pending tasks without creating work', async () => {
+    const { need } = await sourceLinkedIntake();
+    const result = await req(`/needs/${need.id}`, { status: 'open', expected_knowledge_revision: need.knowledge.revision });
+    expect(result.status).toBe(200);
+    expect((await db.getTask('pending-a')).metadata).toMatchObject({ knowledge_changes: [expect.objectContaining({ need_id: need.id, verification_pending: true })] });
+    expect(tasks()).toHaveLength(4);
+  });
+
+  test.each(['task update', 'receipt'])('source-only intake invalidation rolls back needs and every pending refresh on %s failure', async failure => {
+    const { source, p } = await sourceLinkedIntake();
+    const beforeTasks = tasks();
+    const trigger = failure === 'task update'
+      ? "CREATE TRIGGER refuse_source_refresh BEFORE UPDATE ON tasks WHEN NEW.id = 'pending-b' BEGIN SELECT RAISE(ABORT, 'test task refresh refusal'); END;"
+      : "CREATE TRIGGER refuse_source_refresh BEFORE INSERT ON project_intake_operations BEGIN SELECT RAISE(ABORT, 'test receipt refusal'); END;";
+    raw.exec(trigger);
+    try {
+      const result = await req('/intake/operations', sourceRevision(p, source, 'v2'), 'POST');
+      expect(result.status).toBeGreaterThanOrEqual(500);
+      expect(tasks()).toEqual(beforeTasks);
+      expect(await db.getProjectIntake(PROJECT)).toEqual(p);
+    } finally { raw.exec('DROP TRIGGER refuse_source_refresh'); }
+  });
+
+  test('canonical freshness invalidation outside Intake does not add an automatic routing trigger', async () => {
+    const need = await applied({ taskStatus: 'planning' });
+    const before = tasks();
+    const result = await req(`/needs/${need.id}`, { status: 'open', expected_knowledge_revision: need.knowledge.revision });
+    expect(result.status).toBe(200);
+    expect(tasks()).toEqual(before);
+  });
+
   test('completed applied task gets one admitted idea follow-up and immutable old work', async () => {
     const need = await applied();
     const original = await db.getTask('original');

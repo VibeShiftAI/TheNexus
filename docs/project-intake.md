@@ -128,6 +128,12 @@ tasks. Intake does not add a special task permission or label. Knowledge correct
 save history but do not automatically generate reconciliation tasks. Corrections
 to previously applied knowledge refresh already authorized, never-run linked tasks
 through ordinary task CAS, preserving completed work and avoiding new follow-ups.
+This includes source-only invalidation: a new stale knowledge revision replaces
+old verification claims in pending task context even when the answer and evidence
+references remain unchanged. Repeated source revisions refresh that context again;
+identical source content and retrieval-time-only updates do not. Canonical freshness
+invalidation during Intake follows the same refresh rule without expanding automatic
+task creation outside Intake.
 This refresh shares the knowledge transaction and intake operation receipt rollback.
 
 Ordinary goal edits are available during Intake: explicitly supplied changed

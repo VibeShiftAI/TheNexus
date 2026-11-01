@@ -103,6 +103,13 @@ function routeKnowledgeChangeWork({ db, current, patch, readTask, createTask, up
         const k = need.knowledge;
         if (!before || !k) continue;
         const fields = changedFields(before, k);
+        // Source/endpoint invalidation can retain the exact answer and evidence
+        // references while making their verification obsolete. Intake refreshes
+        // existing work for that new stale revision, without expanding the
+        // ordinary automatic follow-up creation policy.
+        if (!allowCreate && k.research_status === 'stale') {
+            for (const field of ['revision', 'research_status']) if (!equal(before[field], k[field])) fields.push(field);
+        }
         const history = applications(before);
         if (!fields.length || !history.some(positive)) continue;
         const routed = history.filter(item => item.status === 'ready' && item.id?.startsWith(ROUTING_RECEIPT_PREFIX));
