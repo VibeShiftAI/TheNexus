@@ -1037,8 +1037,8 @@ function createDispatchInsightRouter({
         let rows;
         try {
             // Newest event per task, then keep only the tasks whose newest one
-            // is the hold. Correlated subquery over ag_events(task_id) — the
-            // table is small and this runs on a 20s dashboard poll.
+            // is the hold. The correlated subquery uses idx_ag_events_task, so
+            // this 20s dashboard poll stays cheap as the table grows.
             rows = db.prepare(`
                 SELECT e.id, e.task_id, e.message, e.metadata, e.created_at,
                        t.name AS task_name, t.status AS task_status, t.project_id

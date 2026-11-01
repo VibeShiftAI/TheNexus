@@ -32,7 +32,6 @@ const ORIGIN_KINDS = new Set(['operator', 'operator_relayed', 'runtime', 'system
 // workspace, another field, or drift already held on the workspace fields.
 const SANCTIONED_WORKSPACE_ADDITION = 'workspace_addition';
 const WORKSPACE_SCOPE_FIELDS = new Set(['workspace', 'payload.workspace', 'payload.workspace_roots']);
-const CONTRACT_CHANGE_HISTORY = 30;
 const CONTRACT_DRIFT_REASON = 'Contract changed during execution by an unverified source; review the recorded diff, then approve it or return to the authorized contract.';
 const RULINGS_REWRITE_REASON = 'Recorded operator rulings were rewritten or removed; review the current scope before execution.';
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -278,15 +277,12 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         .filter(field => beforeHashes[field] !== afterHashes[field])
         .map(field => ({ field, before_sha256: beforeHashes[field] ?? null, after_sha256: afterHashes[field] ?? null,
             ...(values ? { ...(beforeRaw && field in beforeRaw ? { before: beforeRaw[field] } : {}), ...(field in afterRaw ? { after: afterRaw[field] } : {}) } : {}) }));
+    // Both histories keep every entry: they are the record of who changed the
+    // contract and Robert's rulings. They kept the last 30 until 2026-11-01; a
+    // receipt from then may still carry the count of entries dropped.
+    const keptDropCount = (previous, key) => previous?.[key] ? { [key]: previous[key] } : {};
     function appendChange(previous, entry) {
-        const history = [...(previous?.contract_changes || []), entry];
-        let dropped = previous?.contract_changes_dropped || 0;
-        while (history.length > CONTRACT_CHANGE_HISTORY) {
-            const index = history.findIndex(item => !(item.outcome === 'held' && !item.resolution));
-            if (index < 0) break;
-            history.splice(index, 1); dropped++;
-        }
-        return { contract_changes: history, ...(dropped ? { contract_changes_dropped: dropped } : {}) };
+        return { contract_changes: [...(previous?.contract_changes || []), entry], ...keptDropCount(previous, 'contract_changes_dropped') };
     }
     const priorDecision = receipt => Object.fromEntries(['decision', 'reason', 'resolved_at', 'authority', 'evidence', 'remaining_scope', 'repeat_id']
         .filter(key => receipt?.[key] !== undefined).map(key => [key, receipt[key]]));
@@ -294,10 +290,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     const changedRulingIndices = (before, after) => Array.from({ length: Math.max(before.length, after.length) }, (_, index) => index)
         .filter(index => before[index] !== after[index]);
     function appendRulingsChange(previous, entry) {
-        const history = [...(previous?.rulings_changes || []), entry];
-        let dropped = previous?.rulings_changes_dropped || 0;
-        while (history.length > CONTRACT_CHANGE_HISTORY) { history.shift(); dropped++; }
-        return { rulings_changes: history, ...(dropped ? { rulings_changes_dropped: dropped } : {}) };
+        return { rulings_changes: [...(previous?.rulings_changes || []), entry], ...keptDropCount(previous, 'rulings_changes_dropped') };
     }
     /**
      * Rulings are Robert's recorded words, not contract fields. A rewrite or

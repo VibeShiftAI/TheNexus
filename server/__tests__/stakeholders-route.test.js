@@ -175,6 +175,34 @@ describe('stakeholder governance', () => {
         });
     });
 
+    test('a decision maker keeps every decision and a long note whole, on the task and in the member log', async () => {
+        const db = loadFreshDb();
+        const project = await db.upsertProject({ name: 'Whole Notes', path: '/tmp/whole-notes', type: 'app' });
+        const pdm = await db.createContact({ name: 'Sis', email: 'sis@example.com' });
+        await db.linkContactToProject(project.id, pdm.id, { role: 'Client', decision_maker: true });
+        const [task] = await db.batchCreateTasks([{ project_id: project.id, name: 'A request with a long story', status: 'blocked', source: 'feedback',
+            metadata: { stakeholder_gate: { status: 'pending', requested_at: '2026-11-01T12:00:00.000Z' } } }]);
+        const note = `Please change it this way. ${'Here is why, in detail. '.repeat(250)}The last line matters most.`;
+        expect(note.length).toBeGreaterThan(4000);
+        const createStakeholderRouters = require('../routes/stakeholders');
+        await withServer((app) => {
+            app.use('/api/tasks', createStakeholderRouters({ db }).tasks);
+        }, async (base) => {
+            const by = { member_id: pdm.id, name: 'Sis', via: 'report' };
+            const first = await api(base, 'POST', `/api/tasks/${task.id}/stakeholder-decision`, { decision: 'defer', note, decided_by: by });
+            expect(first.json.gate.note).toBe(note);
+            expect(first.json.gate.history[0].note).toBe(note);
+            const trace = `asked for changes on request "A request with a long story": ${note}`;
+            const memory = await db.getMemberMemory(pdm.id, { limit: 5 });
+            expect(memory.timeline.some(entry => entry.text === trace)).toBe(true);
+            expect((await db.getContact(pdm.id)).interaction_log.at(-1).note).toMatch(/the whole note is in member memory\]$/);
+            let last = first;
+            for (let i = 0; i < 44; i++) last = await api(base, 'POST', `/api/tasks/${task.id}/stakeholder-decision`, { decision: 'defer', note: `Round ${i}` });
+            expect(last.json.gate.history).toHaveLength(45);
+            expect(last.json.gate.history[0].note).toBe(note);
+        });
+    });
+
     test('projects PATCH accepts comms_settings / report_template as JSON objects', async () => {
         const db = loadFreshDb();
         const project = await db.upsertProject({ name: 'Comms Test', path: '/tmp/comms-test', type: 'app' });

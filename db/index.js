@@ -2742,7 +2742,14 @@ async function appendContactLog(id, { note, source, at, source_ref, idempotency_
             let log = [];
             try { log = JSON.parse(row.interaction_log || '[]'); } catch { /* rebuild from empty */ }
             if (!Array.isArray(log)) log = [];
-            log.push({ at: at || event.recorded_at, note: event.text.slice(0, 2000), source: event.source });
+            // A bounded copy of member memory, which keeps every entry whole:
+            // every contact read returns this row, and readers use at most the
+            // last 40 entries. A long note says where the rest is (it was cut
+            // silently until 2026-11-01).
+            const note = event.text.length > 2000
+                ? `${event.text.slice(0, 2000)}… [cut at 2,000 of ${event.text.length.toLocaleString('en-US')} characters; the whole note is in member memory]`
+                : event.text;
+            log.push({ at: at || event.recorded_at, note, source: event.source });
             log = log.slice(-200);
             const now = event.recorded_at;
             db.prepare(`UPDATE contacts SET interaction_log = ?, updated_at = ?${touchContact ? ', last_contact_at = ?' : ''} WHERE id = ?`)
@@ -3137,7 +3144,7 @@ function archiveBackgroundChatMessages() {
         let inserted = 0;
         for (const row of db.prepare("SELECT m.* FROM chat_messages m LEFT JOIN ag_event_receipts r ON r.idempotency_key = 'chat-message:' || m.id WHERE r.idempotency_key IS NULL ORDER BY m.created_at, m.rowid").all()) {
             if (!isActivityOnlyChatMessage(row)) continue;
-            const result = recordActivityEvent(db, chatMessageActivityEvent(row), null);
+            const result = recordActivityEvent(db, chatMessageActivityEvent(row));
             if (!result) throw new Error(`Could not archive chat message ${row.id}`);
             if (!result.duplicate) inserted++;
         }
@@ -3292,13 +3299,10 @@ async function getAgEvents({ limit = 50, since = null, severity = null } = {}) {
     }
 }
 
-/** Rows kept in ag_events; older ones are trimmed after each insert. */
-const AG_EVENT_RETENTION = 5000;
-
 async function recordAgEvent(event = {}) {
     if (!db) return null;
     try {
-        return recordActivityEvent(db, event, AG_EVENT_RETENTION);
+        return recordActivityEvent(db, event);
     } catch (err) {
         console.error('[Database] Error recording ag_event:', err.message);
         throw err;

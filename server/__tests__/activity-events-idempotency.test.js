@@ -55,7 +55,7 @@ test('a conflicting payload cannot overwrite or be acknowledged under the old ke
     expect(raw.prepare('SELECT message FROM ag_events').get().message).toBe(event().message);
     expect(io.emit).toHaveBeenCalledTimes(1);
 });
-test('a receipt survives feed retention and does not recreate or rebroadcast the event', async () => {
+test('a receipt outlives its event and does not recreate or rebroadcast it', async () => {
     const first = await post(event()); raw.exec('DELETE FROM ag_events');
     const retry = await post(event());
     expect(retry).toMatchObject({ status: 200, data: { id: first.data.id, duplicate: true } });

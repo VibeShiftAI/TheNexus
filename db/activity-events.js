@@ -11,8 +11,10 @@ function initializeActivityEvents(db) {
       created_at TEXT NOT NULL DEFAULT (datetime('now')));
       CREATE TABLE IF NOT EXISTS ag_question_resolutions (
         question_id TEXT NOT NULL, task_id TEXT NOT NULL DEFAULT '', resumed INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY(question_id, task_id));`);
-    // Backfill before retention can remove the answer. Repeatable and monotonic.
+        PRIMARY KEY(question_id, task_id));
+      CREATE INDEX IF NOT EXISTS idx_ag_events_task ON ag_events(task_id, created_at, id);`);
+    // Answers live in their own table too, so a deleted event cannot reopen a
+    // question. Repeatable and monotonic.
     const prior = db.prepare(`SELECT * FROM ag_events WHERE event_type IN ('hitl_resolved','task_resumed_with_answer')`).all();
     db.transaction(() => { for (const event of prior) rememberQuestionResolution(db, event); })();
 }
@@ -35,8 +37,13 @@ function ordered(value) {
     return value;
 }
 
-/** Receipt and event share one transaction. Receipts deliberately outlive feed retention. */
-function recordActivityEvent(db, event = {}, retention = 5000) {
+/**
+ * Receipt and event share one transaction. Every event is kept: the QA-holds
+ * panel, per-task review counts and task progress read their state from this
+ * table, so it is a record, not only a feed. It kept the newest 5,000 until
+ * 2026-11-01, which could delete a hold that was still in effect.
+ */
+function recordActivityEvent(db, event = {}) {
     const title = typeof event.title === 'string' ? event.title.trim() : '';
     const eventType = typeof event.event_type === 'string' ? event.event_type.trim() : '';
     if (!title || !eventType) return null;
@@ -61,11 +68,6 @@ function recordActivityEvent(db, event = {}, retention = 5000) {
         const id = Number(result.lastInsertRowid);
         rememberQuestionResolution(db, event);
         if (key !== undefined) db.prepare('INSERT INTO ag_event_receipts (idempotency_key, payload_hash, event_id) VALUES (?, ?, ?)').run(key, hash, id);
-        // Historical imports receive new IDs but must not evict newer activity.
-        // Hidden chat receipts must remain retrievable after ordinary feed retention.
-        if (retention !== null) db.prepare(`DELETE FROM ag_events WHERE id IN (SELECT id FROM ag_events
-          WHERE json_extract(CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END, '$.chatMessageId') IS NULL
-          ORDER BY datetime(created_at) DESC, id DESC LIMIT -1 OFFSET ?)`).run(retention);
         return { id, duplicate: false };
     })();
 }

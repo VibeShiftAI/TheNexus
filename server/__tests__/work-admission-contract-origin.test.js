@@ -1407,3 +1407,17 @@ test('optional review: executor reordering cannot move answer authority to eithe
         expect(await read(task.id)).toEqual(before);
     }
 });
+
+test('every recorded contract change stays on the receipt, past the 30 it used to keep', async () => {
+    raw.exec('DELETE FROM tasks');
+    let task = await approved(await db.createTask(memo({ status: 'todo' })));
+    for (let i = 0; i < 32; i++) {
+        const changed = await api('PATCH', `/${task.id}`, { antigravity_payload: { ...task.antigravity_payload, prompt: `${RULED_PROMPT}\nRevision ${i}.` } });
+        expect(changed.status).toBe(200);
+        task = changed.data.task;
+    }
+    const kept = receipt(task);
+    expect(kept.contract_changes).toHaveLength(32);
+    expect(kept.contract_changes_dropped).toBeUndefined();
+    raw.exec('DELETE FROM tasks');
+});

@@ -248,7 +248,7 @@ describe('member memory facade and compatibility log', () => {
         for (let i = 0; i < 205; i++) await facade.appendContactLog(person.id, { note: `${i}:` + 'x'.repeat(4000) });
         let contact = await facade.getContact(person.id);
         expect(contact.interaction_log).toHaveLength(200);
-        expect(contact.interaction_log.every(e => e.note.length === 2000)).toBe(true);
+        expect(contact.interaction_log.every(e => /^\d+:x{1996,1998}… \[cut at 2,000 of 4,00\d characters; the whole note is in member memory\]$/.test(e.note))).toBe(true);
         const memory = await facade.getMemberMemory(person.id, { limit: 100 });
         expect(memory.total_events).toBe(206); // Creation observation plus 205 interactions.
         expect(memory.timeline[0].text.length).toBe(4004);

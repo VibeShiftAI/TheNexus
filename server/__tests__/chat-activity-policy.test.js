@@ -43,15 +43,15 @@ test('background policy preserves dialogue, explicit final responses and request
     expect(hidden({ role: 'assistant', metadata: { eventType: 'board_maintenance_requested' } })).toBe(true);
     expect(hidden({ role: 'assistant', metadata: { eventType: 'chat_dispatch.task_qa_passed' } })).toBe(false);
 });
-test('historical Activity keeps its timestamp and cannot evict more recent events', () => {
+test('historical Activity keeps its timestamp, and every event stays', () => {
     const sqlite = new (require('better-sqlite3'))(':memory:');
     const { initializeActivityEvents, recordActivityEvent } = require('../../db/activity-events');
     initializeActivityEvents(sqlite);
-    recordActivityEvent(sqlite, { event_type: 'recent', title: 'Recent', created_at: '2026-10-13T12:00:00Z' }, 2);
-    recordActivityEvent(sqlite, { event_type: 'old', title: 'Old', created_at: '2025-01-01T12:00:00Z' }, 2);
+    recordActivityEvent(sqlite, { event_type: 'recent', title: 'Recent', created_at: '2026-10-13T12:00:00Z' });
+    recordActivityEvent(sqlite, { event_type: 'old', title: 'Old', created_at: '2025-01-01T12:00:00Z' });
     expect(sqlite.prepare("SELECT created_at FROM ag_events WHERE event_type = 'old'").get().created_at).toBe('2025-01-01T12:00:00Z');
-    recordActivityEvent(sqlite, { event_type: 'new', title: 'New', created_at: '2026-10-13T13:00:00Z' }, 2);
-    expect(sqlite.prepare('SELECT event_type FROM ag_events ORDER BY id').all().map(r => r.event_type)).toEqual(['recent', 'new']);
+    recordActivityEvent(sqlite, { event_type: 'new', title: 'New', created_at: '2026-10-13T13:00:00Z' });
+    expect(sqlite.prepare('SELECT event_type FROM ag_events ORDER BY id').all().map(r => r.event_type)).toEqual(['recent', 'old', 'new']);
     sqlite.close();
 });
 test('real sync retries return canonical voice receipts once in Activity and history paginates dialogue', async () => {
@@ -109,14 +109,14 @@ test('Activity write failure rolls back a new background receipt and retry can s
     expect(await db.saveChatMessage(message)).not.toBeNull();
     expect((await db.getAgEvents({ limit: 100 })).filter(r => r.metadata.chatMessageId === message.id)).toHaveLength(1);
 });
-test('normal feed retention never removes the durable representation of hidden chat receipts', () => {
+test('the durable representation of hidden chat receipts stays beside ordinary events', () => {
     const sqlite = new (require('better-sqlite3'))(':memory:');
     const { initializeActivityEvents, recordActivityEvent } = require('../../db/activity-events');
     initializeActivityEvents(sqlite);
-    recordActivityEvent(sqlite, { event_type: 'document_delivery', title: 'Archived', created_at: '2025-01-01T00:00:00Z', metadata: { chatMessageId: 'hidden' } }, null);
-    recordActivityEvent(sqlite, { event_type: 'recent', title: 'Recent', created_at: '2026-10-13T12:00:00Z' }, 1);
-    recordActivityEvent(sqlite, { event_type: 'new', title: 'New', created_at: '2026-10-13T13:00:00Z' }, 1);
-    expect(sqlite.prepare('SELECT event_type FROM ag_events ORDER BY id').all().map(r => r.event_type)).toEqual(['document_delivery', 'new']);
+    recordActivityEvent(sqlite, { event_type: 'document_delivery', title: 'Archived', created_at: '2025-01-01T00:00:00Z', metadata: { chatMessageId: 'hidden' } });
+    recordActivityEvent(sqlite, { event_type: 'recent', title: 'Recent', created_at: '2026-10-13T12:00:00Z' });
+    recordActivityEvent(sqlite, { event_type: 'new', title: 'New', created_at: '2026-10-13T13:00:00Z' });
+    expect(sqlite.prepare('SELECT event_type FROM ag_events ORDER BY id').all().map(r => r.event_type)).toEqual(['document_delivery', 'recent', 'new']);
     sqlite.close();
 });
 test('startup migrates legacy rows with their original dates and a second startup remains idempotent', async () => {

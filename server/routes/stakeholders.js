@@ -31,7 +31,6 @@ const GATE_MESSAGE = {
     deferred: 'Changes requested by a Primary Decision Maker — awaiting revision',
     pending: 'Awaiting Primary Decision Maker approval',
 };
-const HISTORY_MAX = 40;
 
 function cleanParty(raw) {
     if (!raw || typeof raw !== 'object') return undefined;
@@ -156,16 +155,19 @@ function createStakeholderRouters({ db }) {
             const nowIso = new Date().toISOString();
             const by = cleanParty(decided_by);
             const nextStatus = DECISION_GATE[decision];
+            // The decision maker's note is kept whole and every decision stays
+            // in the history (they were cut to 4,000 characters and the last 40
+            // until 2026-11-01).
             const history = Array.isArray(gate.history) ? [...gate.history] : [];
-            history.push({ at: nowIso, status: nextStatus, ...(by ? { by } : {}), ...(note ? { note: String(note).slice(0, 4000) } : {}) });
+            history.push({ at: nowIso, status: nextStatus, ...(by ? { by } : {}), ...(note ? { note: String(note) } : {}) });
             const nextGate = {
                 ...gate,
                 status: nextStatus,
                 decided_at: nowIso,
                 ...(by ? { decided_by: by } : {}),
-                ...(note ? { note: String(note).slice(0, 4000) } : {}),
+                ...(note ? { note: String(note) } : {}),
                 ...(decision === 'duplicate' ? { duplicate_of } : {}),
-                history: history.slice(-HISTORY_MAX),
+                history,
             };
             if (decision !== 'duplicate') delete nextGate.duplicate_of;
             const updates = {
@@ -181,10 +183,10 @@ function createStakeholderRouters({ db }) {
             if (by?.member_id && typeof db.appendContactLog === 'function') {
                 const verb = { approved: 'approved', rejected: 'declined', duplicate: 'marked as duplicate', deferred: 'asked for changes on' }[nextStatus];
                 db.appendContactLog(by.member_id, {
-                    note: `${verb} request "${String(task.name).slice(0, 120)}"${note ? ` — ${String(note).slice(0, 200)}` : ''}`,
+                    note: `${verb} request "${String(task.name)}"${note ? `: ${String(note)}` : ''}`,
                     source: 'stakeholder-decision',
                     touchContact: by.via === 'report' || by.via === 'email',
-                }).catch(() => undefined);
+                }).catch(error => console.warn(`[Stakeholders] member log note for ${by.member_id} not saved: ${error.message}`));
             }
             res.json({ success: true, task: updated, gate: nextGate });
         } catch (error) {

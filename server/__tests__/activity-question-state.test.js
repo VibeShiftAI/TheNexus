@@ -38,10 +38,10 @@ test('resolution is matched by question and task, and applied before limit and s
  expect(readActivityEvents(db,{severity:'warning',limit:1})).toHaveLength(0);
  expect(db.prepare("SELECT event_type,requires_action FROM ag_events WHERE id=1").get()).toEqual({event_type:'task_blocked',requires_action:1});
 });
-test('resolved state survives retention of the permanent archived question',()=>{
+test('resolved state survives losing the answer event',()=>{
  add('task_blocked',{hitlId:'q1',chatMessageId:'chat'});
  add('hitl_resolved',{hitlId:'q1'},{task_id:null});
- recordActivityEvent(db,{event_type:'other',title:'other',created_at:'2026-10-21T17:20:00Z'},1);
+ db.prepare("DELETE FROM ag_events WHERE event_type='hitl_resolved'").run();
  expect(readActivityEvents(db).find(r=>r.metadata.hitlId==='q1').event_type).toBe('task_question_resolved');
 });
 test('an older answer still resolves a late notice selected by since and limit',()=>{
