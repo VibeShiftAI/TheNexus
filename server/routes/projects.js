@@ -285,7 +285,6 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         if (project && !available) {
             return res.status(409).json({ error: 'This project has no available workspace at its recorded identity. Attach its intended folder before using workspace actions.', code: 'WORKSPACE_UNAVAILABLE' });
         }
-        if (project?.phase === 'intake' && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return res.status(409).json({ error: 'Workspace writes are unavailable during intake.', code: 'PROJECT_INTAKE' });
         next();
     });
 

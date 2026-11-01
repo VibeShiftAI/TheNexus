@@ -62,7 +62,7 @@ function fenceExternalIntakeChange(current, patch) {
     if (!current.intake) return;
     if (own(patch, 'path') && patch.path !== current.path) throw fail('Attach workspaces through an explicit intake operation; generic path edits cannot rebind intake', 'INTAKE_WORKSPACE_GUARD');
     if (current.intake.state === 'handed_off') return;
-    if (['end_state', 'endpoint', 'end_state_criteria'].some(key => own(patch, key))) throw fail('Accept the reviewed intake brief before adopting an endpoint', 'INTAKE_HANDOFF_REQUIRED');
+    if (['end_state', 'endpoint', 'end_state_criteria'].some(key => own(patch, key))) throw fail('Adopt intake endpoint fields through the explicit accept operation', 'INTAKE_HANDOFF_REQUIRED');
     if (own(patch, 'needs') && !equal(current.needs, patch.needs)) {
         const intake = structuredClone(current.intake);
         rememberBrief(intake, current.needs, patch.updated_at);
@@ -71,10 +71,32 @@ function fenceExternalIntakeChange(current, patch) {
         patch.intake = intake;
     }
 }
-function requireNeedPlans(needs, intake) {
-    for (const n of needs.filter(n => n.status === 'open' && n.knowledge && (n.knowledge.blocking || intake.need_ids.includes(n.id)))) {
-        if (!n.knowledge.resolution?.method?.trim() || !n.knowledge.resolution.owner?.trim() || !n.knowledge.resolution.next_action?.trim()) throw fail(`Open need ${n.id} requires a resolution method, owner and next action`, 'INTAKE_NEED_UNPLANNED', 400);
+function reviewDisposition(intake) {
+    if (intake.review) {
+        if (intake.review.brief_revision !== intake.brief_revision) return 'stale';
+        if (intake.review.mode === 'preparation' && intake.review.status === 'completed') return 'preparation_only';
+        return intake.review.status;
     }
+    if (intake.review_history.some(review => (review.mode || 'review') === 'review')) return 'stale';
+    return intake.review_history.length ? 'preparation_only' : 'not_requested';
+}
+function readinessGaps(needs, intake, disposition) {
+    const gaps = [];
+    for (const field of ['purpose', 'outcome', 'beneficiary', 'scope', 'decision_owner']) {
+        if (!intake.brief[field]?.trim()) gaps.push(`Brief is missing ${field}.`);
+    }
+    if (!intake.brief.success_criteria?.length) gaps.push('Brief is missing success_criteria.');
+    if (disposition !== 'completed') gaps.push(`Current post-interview review is incomplete (${disposition}).`);
+    if (intake.review?.brief_revision === intake.brief_revision) {
+        for (const finding of intake.review.findings) {
+            if (['ask_robert', 'revise_proposal'].includes(finding.disposition)) gaps.push(`Review follow-up (${finding.disposition}): ${finding.summary}`);
+        }
+    }
+    for (const n of needs.filter(n => n.status === 'open' && n.knowledge && (n.knowledge.blocking || intake.need_ids.includes(n.id)))) {
+        const missing = ['method', 'owner', 'next_action'].filter(field => !n.knowledge.resolution?.[field]?.trim());
+        if (missing.length) gaps.push(`Open need ${n.id} is missing resolution ${missing.join(', ')}.`);
+    }
+    return gaps;
 }
 function createProjectIntakeStore(db, { deserialize }) {
     const read = id => deserialize(db.prepare('SELECT * FROM projects WHERE id=?').get(id));
@@ -115,20 +137,6 @@ function createProjectIntakeStore(db, { deserialize }) {
     }
     function attach(location, current) {
         const candidate = workspace(location);
-        if (current?.path) {
-            const recordedIdentity = current.intake?.workspace?.canonical_path;
-            if (recordedIdentity) {
-                // A symlink may have moved since the original binding. The stored
-                // canonical identity is authoritative, not a fresh resolution of it.
-                if (candidate.state === 'attached' ? candidate.canonical_path !== recordedIdentity : path.resolve(candidate.path) !== path.resolve(current.path)) {
-                    throw fail('Existing workspace identity cannot be replaced during intake', 'PROJECT_IDENTITY_CONFLICT');
-                }
-                candidate.canonical_path = recordedIdentity;
-            } else {
-                const existing = workspace(current.path);
-                if ((candidate.canonical_path || path.resolve(candidate.path)) !== (existing.canonical_path || path.resolve(existing.path))) throw fail('Existing workspace identity cannot be replaced during intake', 'PROJECT_IDENTITY_CONFLICT');
-            }
-        }
         assertWorkspaceUnclaimed(candidate, current?.id);
         return candidate;
     }
@@ -215,8 +223,14 @@ function createProjectIntakeStore(db, { deserialize }) {
                 material = !equal(before, { brief: intake.brief, sources: sourceContents(intake.sources), needs: project.needs });
             };
             switch (input.action) {
-                case 'attach_workspace':
-                    intake.workspace = attach(input.existing_path, project); patch.path = intake.workspace.path; break;
+                case 'attach_workspace': {
+                    const next = attach(input.existing_path, project);
+                    intake.workspace_history = [...(intake.workspace_history || []), {
+                        previous: intake.workspace, next, operation_id: input.operation_id, at,
+                        ...(input.source_ref ? { source_ref: input.source_ref } : {}),
+                    }];
+                    intake.workspace = next; patch.path = next.path; break;
+                }
                 case 'prepare':
                     allowed(['preparing']); mergeMaterial();
                     if (!(intake.brief.outcome?.trim() || intake.brief.purpose?.trim()) || !intake.need_ids.some(id => project.needs?.some(n => n.id === id && n.kind === 'information' && n.knowledge))) throw fail('Preparation requires an initial outcome or purpose and at least one saved information need; answered needs count as coverage.', 'INTAKE_PREPARATION_INCOMPLETE', 400);
@@ -283,20 +297,26 @@ function createProjectIntakeStore(db, { deserialize }) {
                     break;
                 }
                 case 'accept': {
-                    allowed(['ready_for_decision']);
-                    if (input.brief_revision !== intake.brief_revision || intake.review?.brief_revision !== intake.brief_revision || intake.review.status !== 'completed' || (intake.review.mode || 'review') !== 'review') throw fail('Acceptance requires a completed review of the current brief', 'INTAKE_REVIEW_STALE');
+                    if (input.brief_revision !== intake.brief_revision) throw fail('Acceptance must use the current brief_revision', 'INTAKE_REVIEW_STALE');
                     const b = intake.brief;
-                    if (!['purpose', 'outcome', 'beneficiary', 'scope', 'decision_owner'].every(k => b[k]?.trim()) || !b.success_criteria?.length) throw fail('Acceptance requires purpose, outcome, beneficiary, scope, success criteria and decision owner', 'INTAKE_BRIEF_INCOMPLETE', 400);
-                    requireNeedPlans(project.needs, intake);
-                    const adopted = prepareProjectPatch(project, { expected_updated_at: project.updated_at, end_state: b.outcome,
-                        endpoint: { beneficiary: b.beneficiary, scope: b.scope, exclusions: b.exclusions || '', proposed_next: input.next_step },
-                        end_state_criteria: b.success_criteria.map((description, index) => ({ id: `intake-${index + 1}`, kind: 'manual', description, source: input.source_ref })),
-                        end_state_source: input.source_ref, end_state_reason: 'Accepted intake brief' });
+                    const endpoint = { proposed_next: input.next_step };
+                    for (const field of ['beneficiary', 'scope', 'exclusions']) if (b[field]?.trim()) endpoint[field] = b[field];
+                    const adoption = { expected_updated_at: project.updated_at, endpoint,
+                        end_state_source: input.source_ref, end_state_reason: 'Accepted intake brief' };
+                    if (b.outcome?.trim()) adoption.end_state = b.outcome;
+                    if (b.success_criteria?.length) adoption.end_state_criteria = b.success_criteria.map((description, index) => ({ id: `intake-${index + 1}`, kind: 'manual', description, source: input.source_ref }));
+                    const adopted = prepareProjectPatch(project, adoption);
                     // Endpoint adoption can reopen previously verified linked needs.
-                    // The handed-off record must satisfy readiness after those guards run.
-                    requireNeedPlans(adopted.needs || project.needs, intake);
+                    // Record remaining readiness honestly after those guards run.
+                    const disposition = reviewDisposition(intake);
+                    project = { ...project, ...adopted };
                     Object.assign(patch, adopted, { phase: 'planning' });
-                    intake.acceptance = { brief_revision: intake.brief_revision, source_ref: input.source_ref, next_step: input.next_step, at };
+                    intake.acceptance = { brief_revision: intake.brief_revision, source_ref: input.source_ref, next_step: input.next_step, at,
+                        readiness_gaps: readinessGaps(project.needs || [], intake, disposition), review_disposition: disposition,
+                        ...(input.decision_note ? { decision_note: input.decision_note } : {}) };
+                    if (intake.review?.status === 'pending') {
+                        intake.review_history.push(intake.review); intake.review = null;
+                    }
                     intake.state = 'handed_off'; break;
                 }
             }

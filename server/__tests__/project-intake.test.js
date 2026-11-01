@@ -16,7 +16,7 @@ describe('durable record-only project intake', () => {
     jest.resetModules(); db = require('../../db');
     raw = new (require('better-sqlite3'))(process.env.NEXUS_DB_PATH);
     const app = express(); app.use(express.json());
-    app.use('/api/projects', require('../routes/projects')({ db, PROJECT_ROOT: dir, getProjectById: require('../utils/project-manager').getProjectById, getAllProjects: () => db.getProjects(), scanProjects: async () => [], contextSync: { pullAndSyncFromGit: async (_id, folder) => { if (folder?.startsWith(dir)) fs.writeFileSync(path.join(folder, 'unexpected-context-write'), 'guard was bypassed'); return { success: true }; } } }));
+    app.use('/api/projects', require('../routes/projects')({ db, PROJECT_ROOT: dir, getProjectById: require('../utils/project-manager').getProjectById, getAllProjects: () => db.getProjects(), scanProjects: async () => [], contextSync: { pullAndSyncFromGit: async (_id, folder) => { if (folder?.startsWith(fs.realpathSync(dir))) fs.writeFileSync(path.join(folder, 'requested-context-write'), 'requested sync'); return { success: true }; } } }));
     server = http.createServer(app);
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${server.address().port}/api/projects`;
@@ -178,7 +178,9 @@ describe('durable record-only project intake', () => {
     expect(revised.status).toBe(200);
     expect(revised.body.intake.state).toBe('interviewing');
     expect((await op(revised.body, 'record_review', { session_id: 'council:2', brief_revision: p.intake.brief_revision, source_ref: 'council:old', findings: [] })).status).toBe(409);
-    expect((await op(revised.body, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: revised.body.intake.brief_revision })).status).toBe(409);
+    const accepted = await op(revised.body, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: revised.body.intake.brief_revision });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.intake.acceptance.review_disposition).toBe('stale');
   });
 
   test('rejects arbitrary mutations and workspace operations cannot fall back to cwd', async () => {
@@ -189,15 +191,20 @@ describe('durable record-only project intake', () => {
       expect(result.status).toBe(409); expect(result.body.code).toBe('WORKSPACE_UNAVAILABLE');
     }
   });
-  test('queued work cannot be admitted, forced into execution, or newly filed during intake', async () => {
+  test.each(['scheduled', 'in_progress'])('existing work admits and promotes to %s and definition or research tasks can be filed during intake', async status => {
     const id = crypto.randomUUID(), name = crypto.randomUUID();
-    raw.prepare('INSERT INTO projects(id,name,path,status) VALUES (?,?,?,?)').run(id, name, dir, 'active');
+    const folder = path.join(dir, crypto.randomUUID()); fs.mkdirSync(folder);
+    raw.prepare('INSERT INTO projects(id,name,path,status) VALUES (?,?,?,?)').run(id, name, folder, 'active');
     const task = await db.createTask({ project_id: id, name: 'Existing queued delivery', status: 'todo' });
     expect(task.id).toBeTruthy();
-    const p = (await create({ project_id: id, name, existing_path: dir })).body;
-    await expect(db.getWorkAdmission(task.id)).rejects.toMatchObject({ status: 409, code: 'PROJECT_INTAKE' });
-    await expect(db.updateTask(task.id, { status: 'in_progress' }, task.version, { origin: { kind: 'operator' } })).rejects.toMatchObject({ status: 409, code: 'PROJECT_INTAKE' });
-    await expect(db.createTask({ project_id: id, name: 'Autonomous research', status: 'idea' })).rejects.toMatchObject({ status: 409, code: 'PROJECT_INTAKE' });
+    const created = await create({ project_id: id, name, existing_path: folder });
+    expect(created.status).toBe(201);
+    const p = created.body;
+    expect((await db.getWorkAdmission(task.id)).id).toBe(task.id);
+    expect((await db.updateTask(task.id, { status }, task.version, { origin: { kind: 'operator', authority: 'operator_credential' } })).status).toBe(status);
+    for (const name of ['Define the project boundaries', 'Research market evidence']) {
+      expect((await db.createTask({ project_id: id, name, status: 'idea' })).id).toBeTruthy();
+    }
     expect((await db.getBoardState(id))[0]).toMatchObject({ phase: 'intake', intake: p.intake });
   });
 
@@ -224,12 +231,15 @@ describe('durable record-only project intake', () => {
     expect(result.body.project.needs).toHaveLength(206);
   });
 
-  test('failed and partial council results stay visible and cannot authorize acceptance', async () => {
+  test.each(['failed', 'partial'])('%s council results remain honest when the operator accepts', async status => {
     let p = (await op(await prepared(), 'start')).body;
     p = (await op(p, 'request_review', { session_id: 'council:partial', brief_revision: p.intake.brief_revision })).body;
-    const result = await op(p, 'record_review', { session_id: 'council:partial', brief_revision: p.intake.brief_revision, source_ref: 'council:partial-result', findings: [], status: 'partial' });
-    expect(result.body.intake.review.status).toBe('partial');
-    expect((await op(result.body, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision })).status).toBe(409);
+    const result = await op(p, 'record_review', { session_id: 'council:partial', brief_revision: p.intake.brief_revision, source_ref: 'council:partial-result', findings: [], status });
+    expect(result.body.intake.review.status).toBe(status);
+    const accepted = await op(result.body, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.intake.acceptance.review_disposition).toBe(status);
+    expect(accepted.body.intake.review).toEqual(result.body.intake.review);
   });
 
   test('reopens from another database connection and preserves immutable operation results', async () => {
@@ -258,8 +268,9 @@ describe('durable record-only project intake', () => {
     expect(attached.body.intake.workspace).toMatchObject({ state: 'attached', path: folder });
     expect(fs.readdirSync(folder)).toEqual([]);
     const git = await request(`/${p.project.id}/git/init`, {});
-    expect(git.status).toBe(409); expect(git.body.code).toBe('PROJECT_INTAKE');
-    expect(fs.readdirSync(folder)).toEqual([]);
+    expect(git.status).toBe(200);
+    expect(fs.existsSync(path.join(folder, '.git'))).toBe(true);
+    expect((await request(`/${p.project.id}/intake`, null, 'GET')).body).toEqual(attached.body);
   });
 
   test('rolls back every need and intake field when receipt persistence fails', async () => {
@@ -316,21 +327,106 @@ describe('durable record-only project intake', () => {
     expect((await request(`/${p.project.id}/intake`, null, 'GET')).body).toEqual(p);
   });
 
-  test('acceptance requires explicit purpose and a resolution plan for nonblocking open research', async () => {
+  test.each(['partial', 'unknown'])('acceptance records missing purpose and %s resolution plans without rewriting needs', async plan => {
     const research = need('research', 'research');
     research.knowledge.resolution = { method: 'research' };
-    let p = await prepared([research]);
+    let p;
+    if (plan === 'unknown') {
+      delete research.knowledge.resolution;
+      const id = crypto.randomUUID(), name = crypto.randomUUID();
+      raw.prepare('INSERT INTO projects(id,name,path,needs) VALUES (?,?,?,?)').run(id, name, '', JSON.stringify([{ ...research, status: 'open', created_at: 'old' }]));
+      const adopted = (await create({ project_id: id, name })).body;
+      const result = await op(adopted, 'prepare', { brief });
+      expect(result.status).toBe(200);
+      p = result.body;
+    } else p = await prepared([research]);
     p = (await op(p, 'revise', { brief: { purpose: '' } })).body;
     p = (await op(p, 'start')).body;
     p = (await op(p, 'request_review', { session_id: 'council:readiness', brief_revision: p.intake.brief_revision })).body;
     p = (await op(p, 'record_review', { session_id: 'council:readiness', brief_revision: p.intake.brief_revision, source_ref: 'council:readiness-result', findings: [] })).body;
-    const incomplete = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision });
-    expect(incomplete.status).toBe(400); expect(incomplete.body.code).toBe('INTAKE_BRIEF_INCOMPLETE');
-    p = (await op(p, 'revise', { brief: { purpose: brief.purpose } })).body;
-    p = (await op(p, 'request_review', { session_id: 'council:planned', brief_revision: p.intake.brief_revision })).body;
-    p = (await op(p, 'record_review', { session_id: 'council:planned', brief_revision: p.intake.brief_revision, source_ref: 'council:planned-result', findings: [] })).body;
-    const unplanned = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision });
-    expect(unplanned.status).toBe(400); expect(unplanned.body.code).toBe('INTAKE_NEED_UNPLANNED');
+    const accepted = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision, decision_note: 'We need to proceed today.' });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.intake.acceptance).toMatchObject({ review_disposition: 'completed', decision_note: 'We need to proceed today.' });
+    expect(accepted.body.intake.acceptance.readiness_gaps).toEqual(expect.arrayContaining([expect.stringContaining('purpose'), expect.stringContaining('research')]));
+    expect(accepted.body.project.needs).toEqual(p.project.needs);
+    expect(accepted.body.intake.brief_history).toEqual(p.intake.brief_history);
+  });
+
+  test('acceptance keeps unresolved current review findings visible as readiness gaps', async () => {
+    let p = await prepared();
+    p = (await op(p, 'request_review', { session_id: 'council:questions', brief_revision: p.intake.brief_revision })).body;
+    const findings = [{ summary: 'Confirm the pilot deadline', disposition: 'ask_robert' }, { summary: 'Clarify accessible tool storage', disposition: 'revise_proposal' }];
+    p = (await op(p, 'record_review', { session_id: 'council:questions', source_ref: 'council:questions-result', findings, brief_revision: p.intake.brief_revision })).body;
+    const accepted = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.intake.acceptance.review_disposition).toBe('completed');
+    expect(accepted.body.intake.acceptance.readiness_gaps).toEqual(expect.arrayContaining(findings.map(f => expect.stringContaining(f.summary))));
+    expect(accepted.body.intake.review.findings).toEqual(findings);
+  });
+
+  test.each(['preparing', 'awaiting_choice', 'deferred', 'interviewing'])('operator can accept from %s without a completed council', async state => {
+    let p = state === 'preparing' ? (await create()).body : await prepared();
+    if (state === 'deferred') p = (await op(p, 'defer')).body;
+    if (state === 'interviewing') p = (await op(p, 'start')).body;
+    const before = fs.readdirSync(dir);
+    const accepted = await op(p, 'accept', { source_ref: 'chat:proceed-now', next_step: 'Plan next actions', brief_revision: p.intake.brief_revision });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.project.phase).toBe('planning');
+    expect(accepted.body.intake).toMatchObject({ state: 'handed_off', acceptance: { review_disposition: 'not_requested' } });
+    expect(accepted.body.intake.acceptance.readiness_gaps).toEqual(expect.arrayContaining([expect.stringContaining('review')]));
+    expect(accepted.body.project.needs).toEqual(p.project.needs);
+    expect(accepted.body.intake.review).toBeNull();
+    expect(fs.readdirSync(dir)).toEqual(before);
+    expect(raw.prepare('SELECT count(*) AS n FROM tasks WHERE project_id=?').get(p.project.id).n).toBe(0);
+    if (state === 'preparing') {
+      expect(accepted.body.project.end_state).toEqual(p.project.end_state);
+      expect(accepted.body.project.end_state_criteria).toEqual(p.project.end_state_criteria);
+      expect(accepted.body.project.endpoint).toEqual({ proposed_next: 'Plan next actions', completion_policy: 'propose_next' });
+    }
+  });
+
+  test.each(['preparation', 'review'])('accepting while %s council is pending archives it and fences its later callback', async mode => {
+    let p = mode === 'preparation' ? (await create()).body : await prepared();
+    p = (await op(p, 'request_review', { mode, source_ref: 'chat:review', session_id: `council:pending-${mode}`, brief_revision: p.intake.brief_revision })).body;
+    const accepted = await op(p, 'accept', { source_ref: 'chat:move-now', next_step: 'Start planning', brief_revision: p.intake.brief_revision });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.intake.acceptance.review_disposition).toBe('pending');
+    expect(accepted.body.intake.review).toBeNull();
+    expect(accepted.body.intake.review_history.at(-1)).toEqual(p.intake.review);
+    expect((await op(accepted.body, 'record_review', { session_id: p.intake.review.session_id, source_ref: 'council:late', findings: [], brief_revision: p.intake.brief_revision })).status).toBe(409);
+    expect((await request(`/${p.project.id}/intake`, null, 'GET')).body).toEqual(accepted.body);
+  });
+
+  test('incomplete acceptance preserves an existing endpoint instead of inventing missing fields', async () => {
+    const id = crypto.randomUUID(), name = crypto.randomUUID();
+    await db.upsertProject({ id, name, path: '', end_state: 'Existing outcome', endpoint: { beneficiary: 'Existing audience', scope: 'Existing scope', exclusions: 'Existing exclusions' }, end_state_criteria: [{ id: 'existing', kind: 'manual', description: 'Existing criterion' }] });
+    let p = (await create({ project_id: id, name })).body;
+    p = (await op(p, 'revise', { brief: { scope: 'New scope' } })).body;
+    const accepted = await op(p, 'accept', { source_ref: 'chat:scope-only', next_step: 'Plan scope', brief_revision: p.intake.brief_revision });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.project.end_state).toBe('Existing outcome');
+    expect(accepted.body.project.end_state_criteria).toEqual(p.project.end_state_criteria);
+    expect(accepted.body.project.endpoint).toMatchObject({ beneficiary: 'Existing audience', scope: 'New scope', exclusions: 'Existing exclusions', proposed_next: 'Plan scope' });
+  });
+
+  test('acceptance still requires the current brief revision and nonblank source and next step', async () => {
+    const p = await prepared();
+    for (const input of [{ brief_revision: 0 }, { source_ref: '' }, { next_step: ' ' }]) {
+      const result = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision, ...input });
+      expect(result.status).toBe(input.brief_revision === 0 ? 409 : 400);
+      expect((await request(`/${p.project.id}/intake`, null, 'GET')).body).toEqual(p);
+    }
+  });
+
+  test('older records without optional acceptance details or workspace history remain readable', async () => {
+    const p = (await create()).body;
+    const legacy = { ...p.intake, state: 'handed_off', acceptance: { brief_revision: 0, source_ref: 'chat:original-accept', next_step: 'Plan', at: p.project.updated_at } };
+    delete legacy.workspace_history;
+    raw.prepare('UPDATE projects SET phase=?, intake=? WHERE id=?').run('planning', JSON.stringify(legacy), p.project.id);
+    const result = await request(`/${p.project.id}/intake`, null, 'GET');
+    expect(result.status).toBe(200);
+    expect(result.body.intake).toEqual(legacy);
+    expect(require('@praxis/contract').ProjectIntakeSchema.safeParse(legacy).success).toBe(true);
   });
 
   test('preparation councils persist provenance and findings without satisfying final review', async () => {
@@ -344,9 +440,10 @@ describe('durable record-only project intake', () => {
     expect(result.body.intake.review_history.at(-1)).toMatchObject({ mode: 'preparation', status: 'completed', source_ref: 'council:preparation-result' });
     expect(result.body.intake.brief).toEqual(brief);
     expect(result.body.intake.brief_revision).toBe(1);
-    expect((await op(result.body, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: 1 })).status).toBe(409);
-    const ready = await op(result.body, 'prepare', {});
-    expect(ready.status).toBe(200); expect(ready.body.intake.state).toBe('awaiting_choice');
+    const accepted = await op(result.body, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: 1 });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.intake.acceptance.review_disposition).toBe('preparation_only');
+    expect(accepted.body.intake.review_history).toEqual(result.body.intake.review_history);
   });
 
   test('preparation needs an explicit source and restores deferred choice without auto-resuming', async () => {
@@ -387,7 +484,9 @@ describe('durable record-only project intake', () => {
     expect(p.intake.state).toBe('interviewing'); expect(p.intake.review).toBeNull();
     expect(p.intake.review_history.map(r => r.mode)).toEqual(['review', 'preparation']);
     expect(p.intake.review_history[1].request_source_ref).toBe('chat:reconsider');
-    expect((await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision })).status).toBe(409);
+    const accepted = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.intake.acceptance.review_disposition).toBe('stale');
   });
 
   test('partial preparation is visible and retryable without applying an incomplete brief', async () => {
@@ -421,30 +520,57 @@ describe('durable record-only project intake', () => {
     expect(result.status).toBe(409); expect(result.body.code).toBe('WORKSPACE_UNAVAILABLE');
   });
 
-  test.each(['git/init/', 'GIT/INIT', 'Git/Init/', 'context/sync/', 'CONTEXT/SYNC', 'Context/Sync/'])('Express-equivalent write path %s cannot mutate an attached intake folder', async route => {
+  test.each(['git/init/', 'GIT/INIT', 'Git/Init/', 'context/sync/', 'CONTEXT/SYNC', 'Context/Sync/'])('Express-equivalent write path %s can perform requested work in an attached intake folder', async route => {
     const folder = path.join(dir, crypto.randomUUID()); fs.mkdirSync(folder);
     const p = (await create({ existing_path: folder })).body;
     const result = await request(`/${p.project.id}/${route}`, {});
-    expect(fs.readdirSync(folder)).toEqual([]);
-    expect(result.status).toBe(409); expect(result.body.code).toBe('PROJECT_INTAKE');
+    expect(result.status).toBe(200);
+    expect(fs.existsSync(path.join(folder, route.toLowerCase().startsWith('git/') ? '.git' : 'requested-context-write'))).toBe(true);
   });
 
-  test('workspace attachment retains the canonical identity recorded before a symlink changes', async () => {
+  test('workspace identity stays protected until an explicit rebind adopts a retargeted symlink', async () => {
     const a = path.join(dir, crypto.randomUUID()), b = path.join(dir, crypto.randomUUID()), alias = path.join(dir, crypto.randomUUID());
     fs.mkdirSync(a); fs.mkdirSync(b); fs.symlinkSync(a, alias, 'dir');
     const p = (await create({ existing_path: alias })).body;
     fs.unlinkSync(alias); fs.symlinkSync(b, alias, 'dir');
-    const rebound = await op(p, 'attach_workspace', { existing_path: alias });
-    expect(rebound.status).toBe(409); expect(rebound.body.code).toBe('PROJECT_IDENTITY_CONFLICT');
     expect((await request(`/${p.project.id}/readme`, null, 'GET')).status).toBe(409);
-    fs.unlinkSync(alias);
-    const unavailable = await op(p, 'attach_workspace', { existing_path: alias });
-    expect(unavailable.status).toBe(200);
-    expect(unavailable.body.intake.workspace).toMatchObject({ state: 'unavailable', path: alias, canonical_path: fs.realpathSync(a) });
-    expect(fs.existsSync(alias)).toBe(false);
+    expect((await request(`/${p.project.id}/git/init`, {})).status).toBe(409);
+    expect(fs.readdirSync(a)).toEqual([]); expect(fs.readdirSync(b)).toEqual([]);
+    const rebound = await op(p, 'attach_workspace', { existing_path: alias, source_ref: 'chat:moved-folder' });
+    expect(rebound.status).toBe(200);
+    expect(rebound.body.intake.workspace.canonical_path).toBe(fs.realpathSync(b));
+    expect(rebound.body.intake.workspace_history.at(-1)).toMatchObject({ previous: p.intake.workspace, next: rebound.body.intake.workspace, source_ref: 'chat:moved-folder' });
+    expect(fs.readdirSync(a)).toEqual([]); expect(fs.readdirSync(b)).toEqual([]);
   });
 
-  test('handoff validates need plans after endpoint adoption reopens verified knowledge', async () => {
+  test.each([false, true])('explicit workspace rebinding after handoff=%s records history and preserves missing targets', async handedOff => {
+    const a = path.join(dir, crypto.randomUUID()), b = path.join(dir, crypto.randomUUID());
+    fs.mkdirSync(a); fs.mkdirSync(b); fs.writeFileSync(path.join(a, 'source.txt'), 'keep');
+    let p = (await create({ existing_path: a })).body;
+    if (handedOff) {
+      const accepted = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision });
+      expect(accepted.status).toBe(200);
+      p = accepted.body;
+    }
+    await expect(db.updateProject(p.project.id, { path: b })).rejects.toMatchObject({ code: 'INTAKE_WORKSPACE_GUARD' });
+    const operation_id = crypto.randomUUID();
+    const rebound = await op(p, 'attach_workspace', { existing_path: b, operation_id });
+    expect(rebound.status).toBe(200);
+    expect(rebound.body.project).toMatchObject({ id: p.project.id, path: b, phase: p.project.phase });
+    expect(rebound.body.intake.workspace_history).toEqual([{ previous: p.intake.workspace, next: rebound.body.intake.workspace, operation_id, at: rebound.body.project.updated_at }]);
+    expect(fs.readdirSync(a)).toEqual(['source.txt']); expect(fs.readdirSync(b)).toEqual([]);
+    expect((await op(p, 'attach_workspace', { existing_path: b, operation_id })).body).toEqual(rebound.body);
+    expect((await op(p, 'attach_workspace', { existing_path: a })).status).toBe(409);
+    const missing = path.join(dir, crypto.randomUUID());
+    const absent = await op(rebound.body, 'attach_workspace', { existing_path: missing });
+    expect(absent.status).toBe(200);
+    expect(absent.body.intake.workspace).toEqual({ state: 'unavailable', path: missing });
+    expect(absent.body.intake.workspace_history).toHaveLength(2);
+    expect(fs.existsSync(missing)).toBe(false);
+    expect((await request(`/${p.project.id}/git/init`, {})).body.code).toBe('WORKSPACE_UNAVAILABLE');
+  });
+
+  test('handoff records missing need plans after endpoint adoption reopens verified knowledge', async () => {
     const id = crypto.randomUUID(), name = crypto.randomUUID();
     await db.upsertProject({ id, name, path: '', end_state: 'Old outcome', end_state_criteria: [{ id: 'old-criterion', kind: 'manual', description: 'Old proof' }] });
     const saved = db.updateProjectNeed(id, null, { ...need('old', 'research'), knowledge: { ...need('old', 'research').knowledge, blocking: true, criterion_ids: ['old-criterion'], resolution: { method: 'research' } } });
@@ -457,8 +583,11 @@ describe('durable record-only project intake', () => {
     p = (await op(p, 'request_review', { session_id: 'council:adopt', brief_revision: p.intake.brief_revision })).body;
     p = (await op(p, 'record_review', { session_id: 'council:adopt', brief_revision: p.intake.brief_revision, source_ref: 'council:adopted-result', findings: [] })).body;
     const result = await op(p, 'accept', { source_ref: 'chat:accept', next_step: 'Plan', brief_revision: p.intake.brief_revision });
-    expect(result.status).toBe(400); expect(result.body.code).toBe('INTAKE_NEED_UNPLANNED');
-    expect((await request(`/${id}/intake`, null, 'GET')).body).toEqual(p);
+    expect(result.status).toBe(200);
+    expect(result.body.intake.acceptance.readiness_gaps).toEqual(expect.arrayContaining([expect.stringContaining(needId)]));
+    expect(result.body.project.needs[0]).toMatchObject({ status: 'open', knowledge: { answer: 'Prior finding', resolution: { method: 'research' } } });
+    expect(result.body.project.needs[0].knowledge.history.at(-1).verification).toBeDefined();
+    expect((await request(`/${id}/intake`, null, 'GET')).body).toEqual(result.body);
   });
 
   test('a mistyped intake project id never triggers project-manager filesystem healing', async () => {
