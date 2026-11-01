@@ -16,7 +16,7 @@ describe('durable record-only project intake', () => {
     jest.resetModules(); db = require('../../db');
     raw = new (require('better-sqlite3'))(process.env.NEXUS_DB_PATH);
     const app = express(); app.use(express.json());
-    app.use('/api/projects', require('../routes/projects')({ db, PROJECT_ROOT: dir, getProjectById: (_, id) => db.getProject(id), getAllProjects: () => db.getProjects(), scanProjects: async () => [], contextSync: {} }));
+    app.use('/api/projects', require('../routes/projects')({ db, PROJECT_ROOT: dir, getProjectById: (_, id) => db.getProject(id), getAllProjects: () => db.getProjects(), scanProjects: async () => [], contextSync: { pullAndSyncFromGit: async (_id, folder) => { if (folder?.startsWith(dir)) fs.writeFileSync(path.join(folder, 'unexpected-context-write'), 'guard was bypassed'); return { success: true }; } } }));
     server = http.createServer(app);
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${server.address().port}/api/projects`;
@@ -358,6 +358,20 @@ describe('durable record-only project intake', () => {
     }
     const understood = await op(p, 'prepare', { brief: { purpose: 'Make tools available to neighbors' }, needs: [need()] });
     expect(understood.status).toBe(200); expect(understood.body.intake.state).toBe('awaiting_choice');
+  });
+
+  test.each(['status/', 'STATUS', 'readme/', 'README', 'commits/', 'COMMITS', 'diff/', 'DIFF'])('Express-equivalent read path %s cannot use an absent workspace', async route => {
+    const p = (await create()).body;
+    const result = await request(`/${p.project.id}/${route}`, null, 'GET');
+    expect(result.status).toBe(409); expect(result.body.code).toBe('WORKSPACE_UNAVAILABLE');
+  });
+
+  test.each(['git/init/', 'GIT/INIT', 'Git/Init/', 'context/sync/', 'CONTEXT/SYNC', 'Context/Sync/'])('Express-equivalent write path %s cannot mutate an attached intake folder', async route => {
+    const folder = path.join(dir, crypto.randomUUID()); fs.mkdirSync(folder);
+    const p = (await create({ existing_path: folder })).body;
+    const result = await request(`/${p.project.id}/${route}`, {});
+    expect(fs.readdirSync(folder)).toEqual([]);
+    expect(result.status).toBe(409); expect(result.body.code).toBe('PROJECT_INTAKE');
   });
 
 });

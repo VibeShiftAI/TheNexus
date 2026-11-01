@@ -271,15 +271,18 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
     router.get('/:id/intake', intakeResponse(req => db.getProjectIntake(req.params.id)));
     router.post('/:id/intake/operations', intakeResponse(req => db.operateProjectIntake(req.params.id, req.body)));
 
-    // Empty paths must never reach path.join/simpleGit, where they mean the server cwd.
-    router.use(async (req, res, next) => {
-        const match = req.path.match(/^\/([^/]+)\/(status|git\/(?:init|remote)|readme|commits|commit-push|diff|generate-commit-message|context(?:\/(?:sync|verify))?)$/);
-        if (!match) return next();
-        const project = await getProjectById(PROJECT_ROOT, decodeURIComponent(match[1]));
+    // Bind through Express itself so case, trailing slashes and parameter decoding
+    // are identical to the handlers. Empty paths must never become the server cwd.
+    router.all([
+        '/:id/status', '/:id/git/init', '/:id/git/remote', '/:id/readme',
+        '/:id/commits', '/:id/commit-push', '/:id/diff', '/:id/generate-commit-message',
+        '/:id/context', '/:id/context/sync', '/:id/context/verify',
+    ], async (req, res, next) => {
+        const project = await getProjectById(PROJECT_ROOT, req.params.id);
         if (project && (!project.path?.trim() || !path.isAbsolute(project.path) || !fs.existsSync(project.path))) {
             return res.status(409).json({ error: 'This project has no available workspace. Attach its intended folder before using workspace actions.', code: 'WORKSPACE_UNAVAILABLE' });
         }
-        if (project?.phase === 'intake' && req.method !== 'GET') return res.status(409).json({ error: 'Workspace writes are unavailable during intake.', code: 'PROJECT_INTAKE' });
+        if (project?.phase === 'intake' && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return res.status(409).json({ error: 'Workspace writes are unavailable during intake.', code: 'PROJECT_INTAKE' });
         next();
     });
 
