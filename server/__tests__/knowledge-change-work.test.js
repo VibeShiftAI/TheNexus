@@ -17,7 +17,7 @@ describe('applied knowledge changes route real pending work atomically', () => {
     jest.resetModules();
     db = require('../../db');
     raw = new Database(process.env.NEXUS_DB_PATH);
-    raw.exec("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'");
+    // Lifecycle status is now present in the base schema and intake migration.
     raw.exec(`CREATE TABLE task_dispatches (id TEXT PRIMARY KEY, task_id TEXT, kind TEXT DEFAULT 'dispatch', executor TEXT,
       outcome TEXT, started_at TEXT);`);
     const app = express();
@@ -72,6 +72,16 @@ describe('applied knowledge changes route real pending work atomically', () => {
     expected_knowledge_revision: need.knowledge.revision, knowledge,
   });
   const receipts = need => (need.knowledge.applications || []).filter(a => a.id.startsWith('knowledge-change:'));
+
+  test('intake corrections preserve knowledge history without routing delivery work', async () => {
+    const need = await applied();
+    await db.createProjectIntake({ operation_id: 'adopt-intake', project_id: PROJECT, name: 'Project', problem: 'Review our assumptions', source_ref: 'chat:intake' });
+    const before = tasks();
+    const result = await revise(need);
+    expect(result.status).toBe(200);
+    expect(result.body.need.knowledge.answer).toBe('Use blue-green deployment.');
+    expect(tasks()).toEqual(before);
+  });
 
   test('completed applied task gets one admitted idea follow-up and immutable old work', async () => {
     const need = await applied();

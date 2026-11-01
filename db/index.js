@@ -14,6 +14,7 @@ const fs = require('fs');
 const { normalizeTaskBoardStatus, isTaskDone, MemberMemoryInputSchema } = require('@praxis/contract');
 const { prepareProjectPatch, invalid: invalidProject, timestamp: projectTimestamp } = require('./project-data');
 const { routeKnowledgeChangeWork } = require('./knowledge-change-work');
+const { initializeProjectIntake, createProjectIntakeStore, fenceExternalIntakeChange } = require('./project-intake');
 const { applyCheckpointTransition, applyCheckpointReopen } = require('./project-checkpoints');
 const { initializeMemberMemory, createMemberMemoryLedger } = require('./member-memory');
 const { initializeMemberProfileProposals, createMemberProfileProposals } = require('./member-profile-proposals');
@@ -65,6 +66,7 @@ let documentReviews;
 let clientAccess;
 let stakeholderPolicy;
 let workAdmission;
+let projectIntake;
 try {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
@@ -105,6 +107,8 @@ try {
     clientAccess = createClientAccess(db);
     initializeWorkAdmission(db);
     workAdmission = createWorkAdmission(db);
+    initializeProjectIntake(db);
+    projectIntake = createProjectIntakeStore(db, { deserialize: deserRow });
     initializeActivityEvents(db);
     // Archive legacy operational receipts before conversation-only reads hide them.
     archiveBackgroundChatMessages();
@@ -318,7 +322,7 @@ const JSON_COLS = new Set([
     'antigravity_payload', 'dependencies',
     'suspended_context', 'resume_action',
     'tags',
-    'needs', 'end_state_history', 'end_state_criteria', 'endpoint', 'end_state_assessment', 'checkpoints',
+    'intake', 'needs', 'end_state_history', 'end_state_criteria', 'endpoint', 'end_state_assessment', 'checkpoints',
     'preferences', 'expertise', 'interests', 'claims', 'interaction_log',
     // Stakeholder governance (2026-08-22): per-project comms controls, the
     // branded report template, and calendar attendee lists.
@@ -952,6 +956,7 @@ function writeProject(projectId, updates, options) {
     const current = deserRow(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
     if (!current) return null;
     const patch = prepareProjectPatch(current, updates, options);
+    fenceExternalIntakeChange(current, patch);
     routeKnowledgeChangeWork({ db, current, patch, createTask, updateTask,
         readTask: id => deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id)) });
     // Identity is stable even when a scanner upserts the same project by name.
@@ -1340,7 +1345,7 @@ function createTask(task, admissionOptions) {
         if (inserted) queueFollowupEvidenceChange(null, createdTask);
         return createdTask;
     } catch (err) {
-        if (err.code === 'work_admission_conflict') throw err;
+        if (err.code === 'work_admission_conflict' || err.code === 'PROJECT_INTAKE') throw err;
         console.error('[Database] Error creating task:', err.message);
         return null;
     }
@@ -1455,7 +1460,7 @@ function batchCreateTasks(tasks, admissionOptions = []) {
         });
         return insertMany(tasks);
     } catch (err) {
-        if (err.code === 'work_admission_conflict') throw err;
+        if (err.code === 'work_admission_conflict' || err.code === 'PROJECT_INTAKE') throw err;
         console.error('[Database] Error batch-creating tasks:', err.message);
         return [];
     }
@@ -1478,7 +1483,7 @@ async function getBoardState(projectId) {
             projects = p ? [deserRow(p)] : [];
         } else {
             projects = deserRows(
-                db.prepare("SELECT * FROM projects WHERE status != 'archived' ORDER BY updated_at DESC").all()
+                db.prepare("SELECT * FROM projects WHERE status IS NULL OR status != 'archived' ORDER BY updated_at DESC").all()
             );
         }
 
@@ -3492,6 +3497,9 @@ module.exports = {
     getProjects,
     getProject,
     getProjectByPath,
+    getProjectIntake: id => projectIntake.get(id),
+    createProjectIntake: leasedBoardWrite(input => projectIntake.create(input)),
+    operateProjectIntake: leasedBoardWrite((id, input) => projectIntake.operate(id, input)),
     upsertProject: async (...args) => leasedBoardWrite(upsertProject)(...args),
     updateProject: async (...args) => leasedBoardWrite(updateProject)(...args),
     updateProjectNeed: leasedBoardWrite(updateProjectNeed),

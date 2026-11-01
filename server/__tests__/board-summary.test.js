@@ -16,7 +16,7 @@ describe('compact board summary over real SQLite and HTTP', () => {
     Database = require('better-sqlite3');
     db = require('../../db');
     raw = new Database(process.env.NEXUS_DB_PATH);
-    raw.exec("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'");
+    // Lifecycle status is now present in the base schema and intake migration.
     const app = express();
     app.use(express.json());
     const createDashboardRouter = require('../routes/dashboard');

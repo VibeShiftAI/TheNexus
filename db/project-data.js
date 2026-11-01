@@ -114,7 +114,7 @@ function prepareProjectPatch(current, updates, { needMutation } = {}) {
         next.end_state_updated_at = revisionAt;
     }
     if (own(patch, 'needs')) {
-        if (!Array.isArray(patch.needs) || patch.needs.length > 200) throw invalid('needs must be an array of at most 200 entries');
+        if (!Array.isArray(patch.needs)) throw invalid('needs must be an array');
         const existing = current.needs || [];
         // Need links may be introduced in the same atomic save as their checkpoint definitions.
         const needProject = Array.isArray(patch.checkpoints) ? { ...next, checkpoints: { items: patch.checkpoints.map(item => ({ ...(current.checkpoints?.items || []).find(cp => cp.id === item.id), ...item })) } } : next;

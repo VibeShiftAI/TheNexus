@@ -10,7 +10,7 @@ describe('authoritative board attention counts', () => {
     jest.resetModules();
     db = require('../../db');
     raw = new (require('better-sqlite3'))(process.env.NEXUS_DB_PATH);
-    raw.exec("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'");
+    // Lifecycle status is now present in the base schema and intake migration.
     raw.prepare("INSERT INTO projects (id,name,path,status) VALUES ('p','Praxis','/praxis','active')").run();
   });
   afterAll(() => {

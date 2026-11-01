@@ -81,6 +81,11 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         const row = db.prepare('SELECT document FROM work_admissions WHERE task_id = ?').get(id);
         return row ? JSON.parse(row.document) : null;
     };
+    // Read the project every time; cached pre-intake receipts never authorize execution.
+    function requireDeliveryPhase(projectId) {
+        const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+        if (project?.phase === 'intake') throw fail('Project is in intake; accept its reviewed brief before filing or executing delivery work.', 409, 'PROJECT_INTAKE');
+    }
     function contract(task, projectPath, { legacyRulings = false } = {}) {
         const metadata = object(task.metadata), identity = object(metadata.work_identity), payload = object(task.antigravity_payload);
         const workspacePath = projectPath === undefined ? db.prepare('SELECT path FROM projects WHERE id = ?').get(task.project_id)?.path : projectPath;
@@ -630,6 +635,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     }
     function admit(input, insert, options = {}) {
         return db.transaction(() => {
+            requireDeliveryPhase(input.project_id);
             const repeat = options.repeat;
             if (repeat && options.authority !== 'operator_credential') throw fail('Trusted operator repeat authority required', 403);
             if (repeat && (!normalized(repeat.repeat_id) || !normalized(repeat.reason))) throw fail('Repeat requires repeat_id and reason', 400);
@@ -660,6 +666,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
     function current(id) {
         return db.transaction(() => {
             let task = readTask(id), previous = readReceipt(id);
+            requireDeliveryPhase(task.project_id);
             // Upgrade already-persisted workspace holds without inventing operator approval.
             if (previous?.contract && previous.contract_hold && workspaceOnly(previous.contract_hold.drifted_fields)
                 && workspaceOnly(fieldDiff(previous.contract.fields, governedFields(task).hashes).map(change => change.field))) {
@@ -733,6 +740,7 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
      * with the diff, while an executor or QA session can be reading the brief.
      */
     function guardUpdate(task, updates, context = {}) {
+        if (['scheduled', ...EXECUTING_STATUSES].includes(updates.status)) requireDeliveryPhase(updates.project_id || task.project_id);
         const previous = readReceipt(task.id);
         const origin = normalizeOrigin(context.origin);
         const reopening = REPEAT_AUTHORIZATION_STATUSES.has(task.status) && updates.status !== undefined && !REPEAT_AUTHORIZATION_STATUSES.has(updates.status);

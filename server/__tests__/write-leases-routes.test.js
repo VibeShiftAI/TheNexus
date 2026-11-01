@@ -14,7 +14,7 @@ describe('Nexus lease enforcement across real HTTP, SQLite and workspace files',
         jest.resetModules();
         db = require('../../db');
         raw = new Database(process.env.NEXUS_DB_PATH);
-        raw.exec("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'");
+        // Lifecycle status is now present in the base schema and intake migration.
         raw.prepare('INSERT INTO projects (id, name, path) VALUES (?, ?, ?)').run('11111111-1111-4111-8111-111111111111', 'Fixture', dir);
         const app = express();
         app.use(express.json());

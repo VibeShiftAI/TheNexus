@@ -13,7 +13,7 @@ describe('task revision and dependency integrity', () => {
     jest.resetModules();
     db = require('../../db');
     raw = new Database(process.env.NEXUS_DB_PATH);
-    raw.exec("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'");
+    // Lifecycle status is now present in the base schema and intake migration.
     const app = express();
     app.use(express.json());
     app.use('/api/tasks', require('../routes/tasks')({ db, PROJECT_ROOT: dir }));

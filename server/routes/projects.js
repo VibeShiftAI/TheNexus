@@ -259,6 +259,30 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
         return project?.path ? { scope: 'workspace', path: project.path } : null;
     }));
 
+    // Intake uses exact project ids and never enters scaffold or fuzzy filesystem recovery paths.
+    const intakeResponse = (handler, status = 200) => async (req, res) => {
+        try { res.status(status).json(await handler(req)); }
+        catch (error) {
+            if (sendLeaseError(res, error)) return;
+            res.status(error.status || 500).json({ error: error.message, code: error.code || 'INTAKE_SAVE_FAILED' });
+        }
+    };
+    router.post('/intake', intakeResponse(req => db.createProjectIntake(req.body), 201));
+    router.get('/:id/intake', intakeResponse(req => db.getProjectIntake(req.params.id)));
+    router.post('/:id/intake/operations', intakeResponse(req => db.operateProjectIntake(req.params.id, req.body)));
+
+    // Empty paths must never reach path.join/simpleGit, where they mean the server cwd.
+    router.use(async (req, res, next) => {
+        const match = req.path.match(/^\/([^/]+)\/(status|git\/(?:init|remote)|readme|commits|commit-push|diff|generate-commit-message|context(?:\/(?:sync|verify))?)$/);
+        if (!match) return next();
+        const project = await getProjectById(PROJECT_ROOT, decodeURIComponent(match[1]));
+        if (project && (!project.path?.trim() || !path.isAbsolute(project.path) || !fs.existsSync(project.path))) {
+            return res.status(409).json({ error: 'This project has no available workspace. Attach its intended folder before using workspace actions.', code: 'WORKSPACE_UNAVAILABLE' });
+        }
+        if (project?.phase === 'intake' && req.method !== 'GET') return res.status(409).json({ error: 'Workspace writes are unavailable during intake.', code: 'PROJECT_INTAKE' });
+        next();
+    });
+
     // Scan cache to prevent redundant filesystem scans
     let scanCache = null;
     let scanCacheTime = 0;
@@ -927,7 +951,7 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
 
         const activities = [];
         for (const project of projects) {
-            if (!fs.existsSync(path.join(project.path, '.git'))) continue;
+            if (!project.path?.trim() || !fs.existsSync(path.join(project.path, '.git'))) continue;
             try {
                 const log = await simpleGit(project.path).log({ maxCount: 5 });
                 const projectDispatches = dispatchesByProject.get(project.id) || [];

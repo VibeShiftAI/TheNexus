@@ -97,7 +97,7 @@ function taskPatch(task, need, before, fields, priorTaskIds, at) {
 }
 
 function routeKnowledgeChangeWork({ db, current, patch, readTask, createTask, updateTask }) {
-    if (!patch.needs) return;
+    if (!patch.needs || current.phase === 'intake') return;
     for (const need of patch.needs) {
         const before = current.needs?.find(item => item.id === need.id)?.knowledge;
         const k = need.knowledge;
