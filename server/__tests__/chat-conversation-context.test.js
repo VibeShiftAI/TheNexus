@@ -7,7 +7,7 @@ test('the canonical receipt excludes another conversation, the current message, 
         { ...base, id: 'current' }, { ...base, id: 'system', role: 'system' },
         { ...base, id: 'future', created_at: '2026-09-12T01:01:00Z' }]) };
     expect(await readConversationContext(db, current)).toEqual({ conversationId: 'selected', messages: [] });
-    expect(db.getChatMessages).toHaveBeenCalledWith('selected', { limit: 12, before: current.created_at, conversationalOnly: true });
+    expect(db.getChatMessages).toHaveBeenCalledWith('selected', { limit: 50, before: current.created_at, conversationalOnly: true });
 });
 
 test('missing storage context fails open and never guesses the active conversation', async () => {
@@ -30,4 +30,37 @@ test('context retains actual voice dialogue and excludes duplicate operational t
     ] };
     const result = await readConversationContext(db, { id: 'current', conversation_id: 'selected', created_at: '2026-09-12T01:00:00Z' });
     expect(result.messages.map(row => row.id)).toEqual(['voice']);
+});
+
+// 2026-11-01 chat-history decision: the latest sitting, whole (it was the
+// last 12 messages, each cut to 1,200 characters).
+describe('the latest sitting', () => {
+    const at = minutes => new Date(Date.parse('2026-11-01T12:00:00Z') + minutes * 60_000).toISOString();
+    const row = (id, minutes, content = `content-${id}`) => ({ id, conversation_id: 'c', role: 'assistant', content, created_at: at(minutes), metadata: {} });
+    // A store that pages like db.getChatMessages: newest `limit` rows before `before`, returned oldest first.
+    const store = rows => ({ getChatMessages: jest.fn(async (_id, { limit, before }) =>
+        rows.filter(r => r.created_at < before).slice(-limit)) });
+
+    test('a new sitting carries the previous sitting, every message whole, and stops at the 45-minute gap', async () => {
+        const long = 'x'.repeat(5000) + 'END-OF-LONG';
+        const rows = [row('older', 0), row('s1', 60), row('s2', 70, long), row('s3', 80)];
+        const result = await readConversationContext(store(rows), { id: 'now', conversation_id: 'c', created_at: at(200) });
+        expect(result.messages.map(m => m.id)).toEqual(['s1', 's2', 's3']);
+        expect(result.messages[1].content).toBe(long);
+    });
+
+    test('mid-sitting it carries the sitting so far', async () => {
+        const rows = [row('before-gap', 0), row('a', 50), row('b', 55)];
+        const result = await readConversationContext(store(rows), { id: 'now', conversation_id: 'c', created_at: at(56) });
+        expect(result.messages.map(m => m.id)).toEqual(['a', 'b']);
+    });
+
+    test('a sitting longer than one page is read across pages', async () => {
+        const rows = [row('old', 0), ...Array.from({ length: 120 }, (_, i) => row(`m${i}`, 100 + i))];
+        const db = store(rows);
+        const result = await readConversationContext(db, { id: 'now', conversation_id: 'c', created_at: at(300) });
+        expect(result.messages).toHaveLength(120);
+        expect(result.messages[0].id).toBe('m0');
+        expect(db.getChatMessages.mock.calls.length).toBeGreaterThan(2);
+    });
 });
