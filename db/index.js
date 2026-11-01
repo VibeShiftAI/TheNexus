@@ -14,6 +14,7 @@ const fs = require('fs');
 const { normalizeTaskBoardStatus, isTaskDone, MemberMemoryInputSchema } = require('@praxis/contract');
 const { prepareProjectPatch, invalid: invalidProject, timestamp: projectTimestamp } = require('./project-data');
 const { routeKnowledgeChangeWork } = require('./knowledge-change-work');
+const { initializeProjectScopeDecisions, createProjectScopeDecisions } = require('./project-scope-decisions');
 const { initializeProjectIntake, createProjectIntakeStore, fenceExternalIntakeChange } = require('./project-intake');
 const { applyCheckpointTransition, applyCheckpointReopen } = require('./project-checkpoints');
 const { initializeMemberMemory, createMemberMemoryLedger } = require('./member-memory');
@@ -67,6 +68,7 @@ let clientAccess;
 let stakeholderPolicy;
 let workAdmission;
 let projectIntake;
+let projectScopeDecisions;
 try {
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
@@ -112,6 +114,11 @@ try {
         refreshKnowledgeWork: (current, patch) => routeKnowledgeChangeWork({ db, current, patch, createTask, updateTask, allowCreate: false,
             readTask: id => deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id)) }),
     });
+    // Priority is advertised by the canonical project API; older schemas
+    // omitted the column, making an otherwise valid metadata update fail.
+    if (!db.prepare('PRAGMA table_info(projects)').all().some(c => c.name === 'priority')) db.exec('ALTER TABLE projects ADD COLUMN priority INTEGER DEFAULT 0');
+    initializeProjectScopeDecisions(db);
+    projectScopeDecisions = createProjectScopeDecisions(db, { deserialize: deserRow, writeProject });
     initializeActivityEvents(db);
     // Archive legacy operational receipts before conversation-only reads hide them.
     archiveBackgroundChatMessages();
@@ -3502,6 +3509,8 @@ module.exports = {
     getProjects,
     getProject,
     getProjectByPath,
+    getProjectScopeDecisions: (id, operationId) => projectScopeDecisions.history(id, operationId),
+    applyProjectScopeDecision: leasedBoardWrite((id, input, origin) => projectScopeDecisions.apply(id, input, origin)),
     getProjectIntake: id => projectIntake.get(id),
     assertProjectWorkspaceUnclaimed: (location, currentId) => projectIntake.assertWorkspaceUnclaimed(location, currentId),
     createProjectIntake: leasedBoardWrite(input => projectIntake.create(input)),

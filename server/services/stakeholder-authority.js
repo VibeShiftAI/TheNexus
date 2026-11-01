@@ -1,14 +1,14 @@
 const { timingSafeEqual } = require('crypto');
 /**
  * Separate credentials: the requester/runtime can never manufacture an operator
- * decision. Fail closed when unconfigured. Neither req.user (local stub) nor
- * labels are credentials.
+ * credential. A faithful instruction relay retains runtime authority. Fail
+ * closed when unconfigured. Neither req.user (local stub) nor labels are credentials.
  *
  *   operator           NEXUS_OPERATOR_APPROVAL_KEY    Robert's own authority: reserved
  *                                                     stakeholder actions and direct
  *                                                     document decisions.
- *   runtime            NEXUS_STAKEHOLDER_RUNTIME_KEY  the Praxis runtime: receipts only,
- *                                                     never a decision.
+ *   runtime            NEXUS_STAKEHOLDER_RUNTIME_KEY  the Praxis runtime: receipts and faithful
+ *                                                     instruction relays, never proposal approvals.
  *   document_executor  NEXUS_DOCUMENT_APPROVAL_KEY    document-scoped delegated authority
  *                                                     (2026-10-04, task a2553798): a
  *                                                     dispatched executor records Robert's

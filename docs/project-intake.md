@@ -136,6 +136,11 @@ invalidation during Intake follows the same refresh rule without expanding autom
 task creation outside Intake.
 This refresh shares the knowledge transaction and intake operation receipt rollback.
 
+An explicit operational scope instruction from Robert can be relayed at any phase
+through [project scope decisions](contracts/project-scope-decisions.md), using the
+existing runtime credential and actual instruction reference. It needs no proposal,
+new task or repeated approval. Draft-only corrections still use intake `revise`.
+
 Ordinary goal edits are available during Intake: explicitly supplied changed
 `end_state` maps to brief `outcome`, endpoint `beneficiary`, `scope`, and `exclusions`
 map to the same brief fields, and criterion descriptions map to `success_criteria`.

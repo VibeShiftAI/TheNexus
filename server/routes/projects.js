@@ -32,6 +32,8 @@
  * DELETE /api/projects/:id/pin                   — Unpin project
  */
 const express = require('express');
+const { createContractChangeAuthority } = require('../services/contract-change-authority');
+const { validateScopeDecision } = require('../../db/project-scope-decisions');
 const { boardRequestLease, requestLease, requireLeases, sendLeaseError, workspaceCommand } = require('../lib/write-leases');
 const path = require('path');
 const fs = require('fs');
@@ -452,6 +454,30 @@ function createProjectsRouter({ db, PROJECT_ROOT, getProjectById, getAllProjects
             if (error.status) return res.status(error.status).json({ error: error.message, code: error.code });
             console.error(`Error scaffolding project:`, error);
             res.status(500).json({ error: 'Failed to scaffold project: ' + error.message });
+        }
+    });
+
+    // The instruction itself authorizes the edit; authenticated relay is evidence,
+    // never a new stakeholder approval or an executor-supplied permission flag.
+    const scopeAuthority = createContractChangeAuthority();
+    router.post('/:id/scope-decisions', async (req, res) => {
+        try {
+            const input = validateScopeDecision(req.body);
+            const origin = await scopeAuthority.classifyDecision(req, input);
+            res.json(await db.applyProjectScopeDecision(req.params.id, input, origin));
+        } catch (error) {
+            if (sendLeaseError(res, error)) return;
+            res.status(error.status || 500).json({ error: error.message, code: error.code || 'SCOPE_DECISION_FAILED' });
+        }
+    });
+    router.get('/:id/scope-decisions', async (req, res) => {
+        try {
+            // Reads require a verified runtime/operator without claiming an instruction.
+            const origin = await scopeAuthority.classifyWrite(req, {});
+            if (!['operator', 'runtime'].includes(origin.kind)) return res.status(403).json({ error: 'Verified runtime or operator credential required' });
+            res.json({ decisions: await db.getProjectScopeDecisions(req.params.id, req.query.operation_id) });
+        } catch (error) {
+            res.status(error.status || 500).json({ error: error.message, code: error.code || 'SCOPE_DECISION_READ_FAILED' });
         }
     });
 

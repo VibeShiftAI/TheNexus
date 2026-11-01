@@ -69,6 +69,10 @@ function fenceExternalIntakeChange(current, patch, updates = patch) {
         if (!equal(current.intake.brief[field], value)) { intake.brief[field] = value; material = true; }
     };
     if (intake.state !== 'handed_off') {
+        // Description is canonical scope even though it has no one-to-one
+        // brief field. Fence a council based on the old description without
+        // inventing a mapping or changing historical handoff acceptance.
+        if (own(updates, 'description') && (current.description || '') !== patch.description) material = true;
         if (own(updates, 'end_state') && (current.end_state || '') !== patch.end_state) syncBrief('outcome', patch.end_state);
         for (const field of ['beneficiary', 'scope', 'exclusions']) {
             // The prepared endpoint is merged; only copy fields explicitly supplied by this writer.

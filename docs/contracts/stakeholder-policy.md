@@ -10,6 +10,12 @@ permissions do not authorize correspondence, invitations, promises of expanded
 scope, or changes to the project's approved scope. Other existing permissions
 and member-memory/profile/briefing/answer flows are unchanged.
 
+Robert’s later explicit instruction to Praxis to change project scope is itself
+approval. The authenticated [direct scope decision API](project-scope-decisions.md)
+records that instruction and its canonical effect atomically, without a proposal
+or repeated approval. The workflow below remains for autonomous suggestions and
+invitations; it does not restrict this direct relay. Invitation rules are unchanged.
+
 ## Authority and activation
 
 Inspection found no authenticated human identity in the existing Nexus local
@@ -34,7 +40,7 @@ created, changed or printed by this task. No production process was restarted.
 Only a valid operator bearer credential records `authority: operator_credential`
 and server-owned `operator: robert`. `decided_by`, `req.user.role`, member/PDM
 status, missing PDMs, and service/local-dev tokens confer no reserved authority.
-The machine bridge header is rejected. The runtime credential cannot approve.
+The machine bridge header is rejected. The runtime credential cannot approve stakeholder proposals or invitations. It can faithfully relay an actual project scope instruction through the separate direct scope-decision endpoint, recorded as operator_relayed/runtime_credential.
 This credential is a capability; its possession must remain exclusive to Robert.
 
 ## Reuse of the request queue

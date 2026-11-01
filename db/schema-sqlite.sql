@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS projects (
     name TEXT NOT NULL UNIQUE,
     path TEXT NOT NULL,
     status TEXT DEFAULT 'active',
+    priority INTEGER DEFAULT 0,
     phase TEXT,                       -- Optional phase, separate from lifecycle status; legacy projects remain NULL
     intake TEXT,                      -- Authoritative revisioned intake JSON; absent workspace uses path=""
     type TEXT,
