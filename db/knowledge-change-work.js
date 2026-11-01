@@ -96,8 +96,8 @@ function taskPatch(task, need, before, fields, priorTaskIds, at) {
     };
 }
 
-function routeKnowledgeChangeWork({ db, current, patch, readTask, createTask, updateTask }) {
-    if (!patch.needs || current.phase === 'intake') return;
+function routeKnowledgeChangeWork({ db, current, patch, readTask, createTask, updateTask, allowCreate = current.phase !== 'intake' }) {
+    if (!patch.needs) return;
     for (const need of patch.needs) {
         const before = current.needs?.find(item => item.id === need.id)?.knowledge;
         const k = need.knowledge;
@@ -131,13 +131,16 @@ function routeKnowledgeChangeWork({ db, current, patch, readTask, createTask, up
             if (!updated) throw fail(`Could not update pending knowledge task ${task.id}`, 503);
             results.push({ task: updated, action: 'updated' });
         }
-        if ((!pending.length || priorTaskIds.length) && !reusable) {
+        // Intake corrections can refresh already requested pending work, but do
+        // not authorize new reconciliation work against historic deliveries.
+        if (allowCreate && (!pending.length || priorTaskIds.length) && !reusable) {
             const draft = { project_id: current.id, name: `Reconcile revised knowledge: ${need.description}`, status: 'idea', source: 'knowledge-change',
                 description: 'Reconcile previously applied project knowledge with the revised answer and assess the changes needed in prior work.' };
             const created = createTask({ ...draft, ...taskPatch(draft, need, before, fields, ids, patch.updated_at) });
             if (!created || created.project_id !== current.id || !neverRun(db, created)) throw fail('Could not create pending knowledge follow-up', 503);
             results.push({ task: created, action: 'created' });
         }
+        if (!results.length) continue;
         k.task_ids = unique(results.map(result => result.task.id));
         k.applications = applications(k);
         for (const { task, action } of results) {

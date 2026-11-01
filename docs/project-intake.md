@@ -29,12 +29,12 @@ than silently retry a changed answer against a newer revision.
 | Action | Fields and effect |
 | --- | --- |
 | `prepare` | Optional `brief`, `sources`, `needs`, `pending_need_id`; preparing → awaiting_choice only with a nonblank outcome or purpose and at least one authoritative information need (answered needs count). |
-| `start` | Optional `pending_need_id`; awaiting_choice/deferred → interviewing. |
-| `defer` | Optional `pending_need_id`; saves the interview for later without initiating work. Explicitly requested tasks and research remain available. |
-| `answer` | `need_id`, `answer`, `source_ref`, `expected_knowledge_revision`; optional `evidence`, `verification`, `pending_need_id`. |
-| `revise` | Optional `brief`, `sources`, `needs`, `pending_need_id`; material changes invalidate review. |
-| `request_review` | `session_id`, `brief_revision`, optional `mode` (review by default). Explicit preparation additionally requires `source_ref`; records frozen council identity and moves to council_review. |
-| `record_review` | Matching `session_id`, `brief_revision`, `source_ref`, `findings`; optional `status` (completed/failed/partial) and follow-up `needs`. Preparation alone may supply `brief` and `sources`. |
+| `start` | Optional `pending_need_id`; any pre-handoff state → interviewing, retaining a pending council unchanged. |
+| `defer` | Optional `pending_need_id`; any pre-handoff state → deferred, retaining a pending council unchanged. Saves the interview for later without initiating work. Explicitly requested tasks and research remain available. |
+| `answer` | `need_id`, `answer`, `source_ref`, `expected_knowledge_revision`; optional `evidence`, `verification`, `pending_need_id`. Available in every state, including handed_off; a supplied answer does not resume a deferred interview. |
+| `revise` | Optional `brief`, `sources`, `needs`, `pending_need_id`; available before and after handoff. Material changes invalidate review while retaining historical acceptance. |
+| `request_review` | New `session_id`, current `brief_revision`, optional `mode` (review by default). A real request `source_ref` permits either council mode from any pre-handoff state, including replacing an earlier council. Preparation always requires `source_ref`; records frozen council identity and moves to council_review. |
+| `record_review` | Matching current pending `session_id`, `brief_revision`, `source_ref`, `findings`; optional `status` (completed/failed/partial) and follow-up `needs`. Available regardless of interview state before handoff. Preparation alone may supply `brief` and `sources`. |
 | `accept` | Current `brief_revision`, real `source_ref`, `next_step`; optional `decision_note`. Records the operator decision from any non-handed-off state, adopts known endpoint fields through project-data guards, then moves phase to planning. |
 | `attach_workspace` | `existing_path`; optional audit `source_ref`. Explicitly attaches or replaces the existing or unavailable folder association on the same project ID, before or after handoff. |
 
@@ -45,6 +45,18 @@ stale. `brief_history` preserves prior brief/source snapshots and the need
 revisions required to reconstruct their evidence. Review history and immutable
 operation responses remain durable.
 
+Council progress and interview choice are independent. `start` and `defer` never
+erase or complete a pending council. A valid result saves its actual status and
+findings without overriding a later conversation choice. Requesting either kind
+of council while deferred does not resume the interview: completion and material
+changes retain that deferred choice unless the operator subsequently starts it.
+An explicit replacement archives the previous council unchanged, including its
+pending/failed/partial status. New requests must use new session IDs; retry the
+original operation ID to replay the same request. Superseded, completed, stale,
+and post-handoff callbacks cannot overwrite the record. Source-less automatic
+requests retain the ordinary conversation sequence and cannot replace a pending
+explicit council.
+
 ## Need and evidence ownership
 
 `project.needs` remains authoritative. Intake stores stable `need_ids` and one
@@ -52,6 +64,9 @@ operation responses remain durable.
 without rewriting answers, verification, or history. Definition writes merge by ID,
 require `expected_knowledge_revision` for existing needs, and preserve omitted fields and unrelated needs. They cannot truncate a large
 legacy registry or overwrite a need outside this intake.
+New structured information needs created through canonical project editors join
+the intake registry and can be answered through `answer`, before or after handoff.
+This does not silently adopt untouched legacy needs outside the registry.
 
 Answers use the existing knowledge lifecycle guards. The original answer is
 stored with its message evidence before explicit verification is applied, in
@@ -88,6 +103,15 @@ success criteria only when provided in the brief. Missing fields preserve the
 existing endpoint; no missing facts are invented. `next_step` becomes the proposed
 next action. The operation does not create tasks, dispatch work or scaffold files.
 
+After handoff, `answer`, `revise`, and `attach_workspace` remain available. Material
+knowledge or brief changes increment the intake and brief revisions and preserve
+the accepted version in `brief_history`. `phase = planning`, `state = handed_off`,
+and the original acceptance source, version, next step, readiness gaps and review
+disposition remain unchanged. The dashboard labels a newer current brief as newer
+than the historical acceptance; editing it does not silently re-adopt the project
+goal. Start/defer and other intake sequencing operations return planning guidance
+instead of reopening Intake.
+
 Preparation councils retain their explicit `request_source_ref`, `mode`, and
 `resume_state`. Completed preparation is archived in review history and restores
 the prior preparing, awaiting-choice, deferred, or interviewing state. Its
@@ -101,9 +125,23 @@ pending deferred preparation preserve the deferred choice and fence stale callba
 While `phase = intake`, tasks may be created, admitted and promoted through the
 ordinary authority and work-admission rules, including definition and research
 tasks. Intake does not add a special task permission or label. Knowledge corrections
-save history but do not automatically generate reconciliation tasks. Generic
-project writes cannot bypass intake revision, phase, workspace or endpoint history;
-use `accept` for endpoint handoff and `attach_workspace` for a deliberate rebind.
+save history but do not automatically generate reconciliation tasks. Corrections
+to previously applied knowledge refresh already authorized, never-run linked tasks
+through ordinary task CAS, preserving completed work and avoiding new follow-ups.
+This refresh shares the knowledge transaction and intake operation receipt rollback.
+
+Ordinary goal edits are available during Intake: explicitly supplied changed
+`end_state` maps to brief `outcome`, endpoint `beneficiary`, `scope`, and `exclusions`
+map to the same brief fields, and criterion descriptions map to `success_criteria`.
+Omitted and unchanged canonical values do not overwrite the brief. Explicit empty
+values clear the corresponding fields. Material changes snapshot the prior brief,
+increment both revisions and invalidate its review without accepting it or changing
+phase. Normal endpoint validation, stale-write guards and endpoint history still
+apply. After handoff, ordinary goal edits remain canonical project edits and do not
+rewrite the historical intake adoption. Canonical knowledge edits continue versioning
+intake history after handoff while preserving acceptance. Use `accept` for endpoint
+handoff and `attach_workspace` for a deliberate rebind. Checkpoint, goal and knowledge
+editors remain available on the project page during Intake.
 
 Workspace routes reject absent or unavailable paths with 409
 `WORKSPACE_UNAVAILABLE`; paths never fall back to the server working directory.

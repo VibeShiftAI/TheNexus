@@ -281,12 +281,12 @@ export default function ProjectDetailPage() {
                 <ProjectDeliverables projectId={projectId} />
 
                 {/* Checkpoint sequence under the long-term goal: what the crew works toward now */}
-                {project.phase !== 'intake' && <ProjectCheckpointsPanel project={project} onUpdate={setProject} />}
+                <ProjectCheckpointsPanel project={project} onUpdate={setProject} />
 
-                {project.phase !== 'intake' && <div className="grid items-start gap-6 xl:grid-cols-2">
+                <div className="grid items-start gap-6 xl:grid-cols-2">
                     <ProjectEndpointPanel project={project} onUpdate={setProject} />
                     <ProjectNeedsPanel project={project} tasks={tasks} onUpdate={updated => { setProject(updated); void loadTasks(); }} />
-                </div>}
+                </div>
 
                 {/* Reports row — operations report beside git + artifacts rail */}
                 <div className="hud-boot hud-boot-1 grid grid-cols-1 gap-6 lg:grid-cols-3">

@@ -83,6 +83,40 @@ describe('applied knowledge changes route real pending work atomically', () => {
     expect(tasks()).toEqual(before);
   });
 
+  test.each(['canonical', 'intake'])('%s corrections during Intake refresh authorized pending work without creating a reconciliation task', async api => {
+    const need = await applied({ taskIds: ['original', 'pending'] });
+    await db.createTask({ id: 'pending', project_id: PROJECT, name: 'Requested rollout research', status: 'planning', description: 'Keep the requested scope.', metadata: { knowledge_need_ids: [need.id], other: 'Preserved' } });
+    const original = await db.getTask('original'), pending = await db.getTask('pending');
+    let p = await db.createProjectIntake({ operation_id: 'adopt-intake', project_id: PROJECT, name: 'Project', problem: 'Review our assumptions', source_ref: 'chat:intake' });
+    p = await db.operateProjectIntake(PROJECT, { operation_id: 'defer-intake', expected_revision: p.intake.revision, action: 'defer' });
+    const result = api === 'canonical' ? await revise(need) : await req('/intake/operations', { operation_id: 'correct-intake', expected_revision: p.intake.revision, action: 'answer', need_id: need.id, expected_knowledge_revision: need.knowledge.revision, answer: 'Use blue-green deployment.', source_ref: 'chat:correction' }, 'POST');
+    expect(result.status).toBe(200);
+    expect(tasks()).toHaveLength(2);
+    expect(await db.getTask('original')).toEqual(original);
+    const refreshed = await db.getTask('pending');
+    expect(refreshed.version).toBeGreaterThan(pending.version);
+    expect(refreshed.description).toContain('Keep the requested scope.');
+    expect(refreshed.dispatch_instructions).toContain('Answer: Use blue-green deployment.');
+    expect(refreshed.metadata.other).toBe('Preserved');
+    expect(refreshed.metadata.knowledge_changes.at(-1)).toMatchObject({ need_id: need.id, answer: 'Use blue-green deployment.', verification_pending: true });
+    expect((await db.getProject(PROJECT)).intake.state).toBe('deferred');
+    const current = (await db.getProject(PROJECT)).needs.find(n => n.id === need.id);
+    expect(receipts(current)).toEqual([expect.objectContaining({ task_id: 'pending', status: 'ready', notes: expect.stringMatching(/updated/i) })]);
+  });
+
+  test('intake receipt failure rolls back refreshed pending work with the answer', async () => {
+    const need = await applied({ taskStatus: 'planning' });
+    const p = await db.createProjectIntake({ operation_id: 'adopt-intake', project_id: PROJECT, name: 'Project', problem: 'Review our assumptions', source_ref: 'chat:intake' });
+    const task = await db.getTask('original');
+    raw.exec("CREATE TRIGGER refuse_intake_receipt BEFORE INSERT ON project_intake_operations BEGIN SELECT RAISE(ABORT, 'test receipt refusal'); END;");
+    try {
+      const result = await req('/intake/operations', { operation_id: 'failed-intake', expected_revision: p.intake.revision, action: 'answer', need_id: need.id, expected_knowledge_revision: need.knowledge.revision, answer: 'Use blue-green deployment.', source_ref: 'chat:correction' }, 'POST');
+      expect(result.status).toBe(500);
+      expect(await db.getTask('original')).toEqual(task);
+      expect((await db.getProjectIntake(PROJECT))).toEqual(p);
+    } finally { raw.exec('DROP TRIGGER refuse_intake_receipt'); }
+  });
+
   test('completed applied task gets one admitted idea follow-up and immutable old work', async () => {
     const need = await applied();
     const original = await db.getTask('original');

@@ -108,7 +108,10 @@ try {
     initializeWorkAdmission(db);
     workAdmission = createWorkAdmission(db);
     initializeProjectIntake(db);
-    projectIntake = createProjectIntakeStore(db, { deserialize: deserRow });
+    projectIntake = createProjectIntakeStore(db, { deserialize: deserRow,
+        refreshKnowledgeWork: (current, patch) => routeKnowledgeChangeWork({ db, current, patch, createTask, updateTask, allowCreate: false,
+            readTask: id => deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id)) }),
+    });
     initializeActivityEvents(db);
     // Archive legacy operational receipts before conversation-only reads hide them.
     archiveBackgroundChatMessages();
@@ -958,7 +961,7 @@ function writeProject(projectId, updates, options) {
     if (!current) return null;
     const patch = prepareProjectPatch(current, updates, options);
     if (patch.path && patch.path !== current.path) projectIntake.assertWorkspaceUnclaimed(patch.path, current.id, { onlyIntake: true });
-    fenceExternalIntakeChange(current, patch);
+    fenceExternalIntakeChange(current, patch, updates);
     routeKnowledgeChangeWork({ db, current, patch, createTask, updateTask,
         readTask: id => deserRow(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id)) });
     // Identity is stable even when a scanner upserts the same project by name.

@@ -78,6 +78,7 @@ export function ProjectIntakePanel({ project, onDiscuss }: { project: Project; o
     </div>}
     {intake.acceptance && <div className="rounded-lg bg-emerald-950/30 p-3 text-sm text-emerald-200">
       <p>Accepted brief version {intake.acceptance.brief_revision}. Next step: {intake.acceptance.next_step}</p>
+      {intake.brief_revision > intake.acceptance.brief_revision && <p className="mt-2 text-amber-200">Current brief version {intake.brief_revision} is newer than accepted version {intake.acceptance.brief_revision}. Acceptance remains historical; these changes do not automatically change the adopted goal.</p>}
       {intake.acceptance.decision_note && <p className="mt-2">{intake.acceptance.decision_note}</p>}
       {intake.acceptance.review_disposition && <p className="mt-2">Council review: {intake.acceptance.review_disposition.replaceAll('_', ' ')}</p>}
       {!!intake.acceptance.readiness_gaps?.length && <div className="mt-3 text-slate-300"><h3 className="font-medium">Carried into planning</h3><ul className="mt-1 list-disc pl-5">{intake.acceptance.readiness_gaps.map((gap, i) => <li key={i}>{gap}</li>)}</ul></div>}

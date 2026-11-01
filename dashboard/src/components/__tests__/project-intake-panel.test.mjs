@@ -46,6 +46,20 @@ test('planning acceptance shows unfinished readiness and actual council disposit
     assert.doesNotMatch(ui.container.textContent, /Council review: completed/i);
   } finally { ui.close(); }
 });
+test('a newer brief labels acceptance as historical and keeps the adopted version readable', async () => {
+  const value = structuredClone(project);
+  value.phase = 'planning'; value.intake.state = 'handed_off'; value.intake.brief_revision = 2;
+  value.intake.brief.outcome = 'Updated planning idea';
+  value.intake.acceptance = { brief_revision: 1, source_ref: 'chat:proceed', next_step: 'Plan the garden', at: '2026-11-01T00:00:00Z' };
+  value.intake.brief_history = [{ brief_revision: 1, brief: { outcome: 'Originally adopted garden plan' }, sources: [], need_revisions: {}, at: '2026-11-01T01:00:00Z' }];
+  const ui = await mount(value);
+  try {
+    assert.match(ui.container.textContent, /Current brief version 2 is newer than accepted version 1/);
+    assert.match(ui.container.textContent, /Acceptance remains historical; these changes do not automatically change the adopted goal/);
+    assert.match(ui.container.textContent, /Originally adopted garden plan/);
+    assert.match(ui.container.textContent, /Updated planning idea/);
+  } finally { ui.close(); }
+});
 test('resume and corrections include exact project identity and ask to read saved state', async () => {
   const calls = []; const ui = await mount(project, text => calls.push(text));
   try {

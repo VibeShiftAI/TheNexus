@@ -16,6 +16,9 @@ async function mount(folder) {
   for (const match of source.matchAll(/<([A-Z][A-Za-z0-9_]*)/g)) stub[match[1]] = nothing;
   stub.TaskManager = () => createElement('p', { 'data-control': 'tasks' }, 'Task controls');
   stub.ProjectMaintenance = () => createElement('p', { 'data-control': 'workspace' }, 'Workspace controls');
+  stub.ProjectCheckpointsPanel = () => createElement('p', { 'data-control': 'checkpoints' }, 'Checkpoint controls');
+  stub.ProjectEndpointPanel = () => createElement('p', { 'data-control': 'endpoint' }, 'Goal controls');
+  stub.ProjectNeedsPanel = () => createElement('p', { 'data-control': 'needs' }, 'Knowledge controls');
   const nexus = { getProject: async () => project, getProjectBrief: async () => null, getProjectCommits: async () => ({ commits: [], hasGit: false }), getTasks: async () => [], getProjectReadme: async () => ({ exists: false }), getDashboardStats: async () => null };
   const load = name => {
     if (name === 'react' || name === 'react/jsx-runtime') return require(name);
@@ -39,4 +42,10 @@ test('record-only Intake permits task filing without inventing a workspace', asy
   const ui = await mount('');
   try { assert.ok(ui.container.querySelector('[data-control="tasks"]')); assert.equal(ui.container.querySelector('[data-control="workspace"]'), null); }
   finally { ui.close(); }
+});
+test('Intake keeps checkpoint, goal, and knowledge editors available', async () => {
+  const ui = await mount('');
+  try {
+    for (const control of ['checkpoints', 'endpoint', 'needs']) assert.ok(ui.container.querySelector(`[data-control="${control}"]`), `${control} editor should remain mounted`);
+  } finally { ui.close(); }
 });

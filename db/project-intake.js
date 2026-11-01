@@ -47,28 +47,49 @@ function initializeProjectIntake(db) {
     )`);
 }
 function invalidateReview(intake) {
-    const resume = intake.review?.mode === 'preparation' ? intake.review.resume_state : null;
+    const resume = intake.review?.mode === 'preparation' || intake.review?.resume_state === 'deferred' ? intake.review.resume_state : null;
     if (intake.review) intake.review_history.push(intake.review);
-    intake.review = null; intake.acceptance = null;
+    intake.review = null;
+    // Handoff is an immutable historical decision, not approval of later edits.
+    if (intake.state !== 'handed_off') intake.acceptance = null;
     if (['council_review', 'ready_for_decision'].includes(intake.state)) intake.state = resume || 'interviewing';
 }
 function rememberBrief(intake, needs, at) {
     intake.brief_history.push({ brief_revision: intake.brief_revision, brief: structuredClone(intake.brief), sources: structuredClone(intake.sources),
         need_revisions: Object.fromEntries((needs || []).filter(n => intake.need_ids.includes(n.id) && n.knowledge).map(n => [n.id, n.knowledge.revision || 0])), at });
 }
-/** Ordinary need edits participate in intake concurrency and invalidate prior review. */
-function fenceExternalIntakeChange(current, patch) {
+/** Ordinary project edits share intake history while preserving canonical write guards. */
+function fenceExternalIntakeChange(current, patch, updates = patch) {
     if (['intake', 'phase'].some(key => own(patch, key))) throw fail('Intake state and phase are owned by intake operations', 'INTAKE_STATE_GUARD');
     if (!current.intake) return;
     if (own(patch, 'path') && patch.path !== current.path) throw fail('Attach workspaces through an explicit intake operation; generic path edits cannot rebind intake', 'INTAKE_WORKSPACE_GUARD');
-    if (current.intake.state === 'handed_off') return;
-    if (['end_state', 'endpoint', 'end_state_criteria'].some(key => own(patch, key))) throw fail('Adopt intake endpoint fields through the explicit accept operation', 'INTAKE_HANDOFF_REQUIRED');
-    if (own(patch, 'needs') && !equal(current.needs, patch.needs)) {
-        const intake = structuredClone(current.intake);
+    const intake = structuredClone(current.intake);
+    let material = false;
+    const syncBrief = (field, value) => {
+        if (!equal(current.intake.brief[field], value)) { intake.brief[field] = value; material = true; }
+    };
+    if (intake.state !== 'handed_off') {
+        if (own(updates, 'end_state') && (current.end_state || '') !== patch.end_state) syncBrief('outcome', patch.end_state);
+        for (const field of ['beneficiary', 'scope', 'exclusions']) {
+            // The prepared endpoint is merged; only copy fields explicitly supplied by this writer.
+            if (updates.endpoint && own(updates.endpoint, field) && current.endpoint?.[field] !== patch.endpoint[field]) syncBrief(field, patch.endpoint[field]);
+        }
+        if (own(updates, 'end_state_criteria')) {
+            const descriptions = criteria => (criteria || []).map(c => c.description);
+            if (!equal(descriptions(current.end_state_criteria), descriptions(patch.end_state_criteria))) syncBrief('success_criteria', descriptions(patch.end_state_criteria));
+        }
+    }
+    if (material || (own(patch, 'needs') && !equal(current.needs, patch.needs))) {
+        const brief = intake.brief;
+        intake.brief = current.intake.brief;
         rememberBrief(intake, current.needs, patch.updated_at);
+        intake.brief = brief;
+        for (const need of patch.needs || []) {
+            if (need.kind === 'information' && need.knowledge && !current.needs?.some(previous => previous.id === need.id) && !intake.need_ids.includes(need.id)) intake.need_ids.push(need.id);
+        }
         intake.revision++; intake.brief_revision++; invalidateReview(intake);
-        if (intake.pending_need_id && !patch.needs.some(n => n.id === intake.pending_need_id && n.status === 'open')) intake.pending_need_id = null;
-        patch.intake = intake;
+        if (intake.pending_need_id && !(patch.needs || current.needs || []).some(n => n.id === intake.pending_need_id && n.status === 'open')) intake.pending_need_id = null;
+        patch.intake = parse(ProjectIntakeSchema, intake);
     }
 }
 function reviewDisposition(intake) {
@@ -98,7 +119,7 @@ function readinessGaps(needs, intake, disposition) {
     }
     return gaps;
 }
-function createProjectIntakeStore(db, { deserialize }) {
+function createProjectIntakeStore(db, { deserialize, refreshKnowledgeWork = () => {} }) {
     const read = id => deserialize(db.prepare('SELECT * FROM projects WHERE id=?').get(id));
     function save(id, patch) {
         const entries = Object.entries(patch).filter(([key]) => key !== 'id');
@@ -175,8 +196,9 @@ function createProjectIntakeStore(db, { deserialize }) {
         return db.transaction(() => {
             const prior = replay(input, projectId); if (prior) return prior;
             let { project, intake } = get(projectId);
+            const currentProject = project;
             if (intake.revision !== input.expected_revision) throw fail('Intake revision changed; reload before saving', 'INTAKE_REVISION_STALE');
-            if (intake.state === 'handed_off' && input.action !== 'attach_workspace') throw fail('Intake was already handed off', 'INTAKE_HANDED_OFF');
+            if (intake.state === 'handed_off' && !['attach_workspace', 'answer', 'revise'].includes(input.action)) throw fail('Intake was already handed off to planning. Use answer or revise to update its knowledge and brief, or continue the planning conversation.', 'INTAKE_HANDED_OFF');
             if (!Array.isArray(project.needs ?? [])) throw fail('Stored needs are invalid', 'INVALID_STORED_NEEDS', 500);
             intake = structuredClone(intake);
             const at = timestamp(project.updated_at);
@@ -238,11 +260,10 @@ function createProjectIntakeStore(db, { deserialize }) {
                 case 'revise':
                     mergeMaterial(); break;
                 case 'start':
-                    allowed(['awaiting_choice', 'deferred', 'interviewing', 'ready_for_decision']); intake.state = 'interviewing'; break;
+                    intake.state = 'interviewing'; break;
                 case 'defer':
-                    allowed(['awaiting_choice', 'interviewing', 'ready_for_decision', 'deferred']); intake.state = 'deferred'; break;
+                    intake.state = 'deferred'; break;
                 case 'answer': {
-                    allowed(['interviewing']);
                     if (!intake.need_ids.includes(input.need_id)) throw fail('Question is not part of this intake', 'INTAKE_NEED_NOT_FOUND', 404);
                     const index = project.needs.findIndex(n => n.id === input.need_id), previous = project.needs[index];
                     if (!previous?.knowledge || previous.kind !== 'information') throw fail('Question must be a structured information need', 'INVALID_INTAKE', 400);
@@ -265,19 +286,25 @@ function createProjectIntakeStore(db, { deserialize }) {
                 case 'request_review': {
                     const preparation = input.mode === 'preparation';
                     const retry = intake.state === 'council_review' && ['failed', 'partial'].includes(intake.review?.status);
-                    if (!retry) allowed(preparation ? ['preparing', 'awaiting_choice', 'deferred', 'interviewing'] : ['interviewing', 'awaiting_choice', 'ready_for_decision']);
-                    if (retry && (intake.review.mode || 'review') !== input.mode) throw fail('A council retry must preserve its mode', 'INTAKE_STATE_CONFLICT');
+                    // A source-backed operator request may replace any earlier council.
+                    // Automatic/default requests keep their normal conversation chronology.
+                    if (!input.source_ref) {
+                        if (!retry) allowed(preparation ? ['preparing', 'awaiting_choice', 'deferred', 'interviewing'] : ['interviewing', 'awaiting_choice', 'ready_for_decision']);
+                        if (intake.review?.status === 'pending') throw fail('An explicit source_ref is required to replace a pending council', 'INTAKE_STATE_CONFLICT');
+                        if (retry && (intake.review.mode || 'review') !== input.mode) throw fail('A council retry must preserve its mode', 'INTAKE_STATE_CONFLICT');
+                    }
                     if (preparation && !input.source_ref) throw fail('Preparation councils require the explicit request source_ref', 'INVALID_INTAKE', 400);
                     if (input.brief_revision !== intake.brief_revision) throw fail('Review must use current brief_revision', 'INTAKE_REVIEW_STALE');
-                    const resume = retry ? intake.review.resume_state : intake.state;
+                    if ([intake.review, ...intake.review_history].some(review => review?.session_id === input.session_id)) throw fail('A new council request requires a new session_id; replay the original operation_id to retry the same request', 'INTAKE_REVIEW_STALE');
+                    const resume = intake.state === 'council_review' ? intake.review?.resume_state || 'interviewing' : intake.state;
                     if (intake.review) intake.review_history.push(intake.review);
                     intake.review = { session_id: input.session_id, mode: input.mode, resume_state: resume, brief_revision: input.brief_revision, requested_at: at, status: 'pending', findings: [],
                         ...(input.source_ref ? { source_ref: input.source_ref, request_source_ref: input.source_ref } : {}) };
                     intake.state = 'council_review'; break;
                 }
                 case 'record_review': {
-                    allowed(['council_review']);
-                    if (!intake.review || intake.review.session_id !== input.session_id || intake.review.brief_revision !== input.brief_revision || intake.brief_revision !== input.brief_revision) throw fail('Council result does not match the current requested review', 'INTAKE_REVIEW_STALE');
+                    if (!intake.review || intake.review.status !== 'pending' || intake.review.session_id !== input.session_id || intake.review.brief_revision !== input.brief_revision || intake.brief_revision !== input.brief_revision) throw fail('Council result does not match the current pending review', 'INTAKE_REVIEW_STALE');
+                    const chosenState = ['interviewing', 'deferred'].includes(intake.state) ? intake.state : intake.review.resume_state === 'deferred' ? 'deferred' : null;
                     const preparation = intake.review.mode === 'preparation';
                     if (!preparation && (input.brief || input.sources)) throw fail('Only preparation councils may supply brief/source changes; revise and review the changed brief separately', 'INVALID_INTAKE', 400);
                     const status = input.status || 'completed';
@@ -286,13 +313,13 @@ function createProjectIntakeStore(db, { deserialize }) {
                     if (status !== 'completed') break;
                     if (preparation) {
                         mergeMaterial();
-                        const resume = intake.review.resume_state || 'preparing';
+                        const resume = chosenState || intake.review.resume_state || 'preparing';
                         intake.review_history.push(intake.review); intake.review = null; intake.state = resume;
                     } else {
                         const beforeNeeds = project.needs;
                         mergeNeeds(input.needs);
                         material = !equal(beforeNeeds, project.needs);
-                        intake.state = material || input.findings.some(f => ['ask_robert', 'revise_proposal'].includes(f.disposition)) ? 'interviewing' : 'ready_for_decision';
+                        intake.state = chosenState || (material || input.findings.some(f => ['ask_robert', 'revise_proposal'].includes(f.disposition)) ? 'interviewing' : 'ready_for_decision');
                     }
                     break;
                 }
@@ -328,6 +355,7 @@ function createProjectIntakeStore(db, { deserialize }) {
             intake.revision++;
             intake.operations.push({ operation_id: input.operation_id, action: input.action, revision: intake.revision, at });
             patch.intake = parse(ProjectIntakeSchema, intake); patch.updated_at = at;
+            refreshKnowledgeWork(currentProject, patch);
             return receipt(input, save(projectId, patch), projectId);
         }).immediate();
     }
