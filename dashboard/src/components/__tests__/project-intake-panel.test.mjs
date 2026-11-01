@@ -27,7 +27,23 @@ test('deferred intake shows saved question, source issue, and workspace without 
     assert.match(ui.container.textContent, /File could not be read/);
     assert.match(ui.container.textContent, /No folder assigned/);
     assert.match(ui.container.textContent, /Plan seasonal planting/);
+    assert.match(ui.container.textContent, /requested tasks and research can continue/i);
     assert.doesNotMatch(ui.container.textContent, /\d+%/);
+  } finally { ui.close(); }
+});
+test('planning acceptance shows unfinished readiness and actual council disposition', async () => {
+  const value = structuredClone(project);
+  value.phase = 'planning'; value.intake.state = 'handed_off';
+  value.intake.acceptance = { brief_revision: 1, source_ref: 'chat:proceed', next_step: 'Start planning the pilot', at: '2026-11-01T00:00:00Z', review_disposition: 'not_requested', readiness_gaps: ['Success criteria remain undefined'], decision_note: 'Start now to meet the deadline' };
+  value.intake.workspace = { state: 'attached', path: '/new/location', canonical_path: '/new/location' };
+  value.intake.workspace_history = [{ previous: { state: 'attached', path: '/old/location', canonical_path: '/old/location' }, next: value.intake.workspace, operation_id: 'move-1', at: '2026-11-01T00:00:00Z', source_ref: 'chat:moved' }];
+  const ui = await mount(value);
+  try {
+    assert.match(ui.container.textContent, /Success criteria remain undefined/);
+    assert.match(ui.container.textContent, /Council review: not requested/i);
+    assert.match(ui.container.textContent, /Start now to meet the deadline/);
+    assert.match(ui.container.textContent, /\/old\/location/);
+    assert.doesNotMatch(ui.container.textContent, /Council review: completed/i);
   } finally { ui.close(); }
 });
 test('resume and corrections include exact project identity and ask to read saved state', async () => {

@@ -354,12 +354,12 @@ export default function ProjectDetailPage() {
                 {/* Task operations row */}
                 <div className="hud-boot hud-boot-2 grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2 min-w-0">
-                        {project.phase === 'intake' ? <p className="rounded-xl border border-slate-700 p-5 text-sm text-slate-400">Delivery tasks become available after intake is accepted for planning.</p> : <TaskManager
+                        <TaskManager
                             projectId={projectId}
                             tasks={tasks}
                             onTasksChange={loadTasks}
                             onTaskSelect={openTask}
-                        />}
+                        />
                     </div>
                     <div className="min-w-0 space-y-4">
                         <TaskArchive
@@ -381,7 +381,7 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {/* Configuration + context — the editable underbelly of the brief */}
-                {project.phase !== 'intake' && project.path && <div className="hud-boot hud-boot-4"><ProjectMaintenance projectId={projectId} /></div>}
+                {project.path && <div className="hud-boot hud-boot-4"><ProjectMaintenance projectId={projectId} /></div>}
                 <div className="hud-boot hud-boot-4">
                     <HudPanel icon={<Settings2 size={16} />} title="Project Configuration" accent="purple">
                         <div className="overflow-hidden rounded-lg">

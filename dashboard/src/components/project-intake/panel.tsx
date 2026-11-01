@@ -31,7 +31,7 @@ export function ProjectIntakePanel({ project, onDiscuss }: { project: Project; o
   const needs = (project.needs ?? []).filter(need => intake.need_ids.includes(need.id));
   const pending = needs.find(need => need.id === intake.pending_need_id);
   const open = needs.filter(need => need.status === 'open');
-  const discuss = (request: string) => onDiscuss(`${request} for project ${JSON.stringify(project.id)} (${project.name}). First read the saved intake and authoritative knowledge needs using project_intake action=read. Preserve the existing project and folder.`);
+  const discuss = (request: string) => onDiscuss(`${request} for project ${JSON.stringify(project.id)} (${project.name}). First read the saved intake and authoritative knowledge needs using project_intake action=read. Preserve the project identity and history; keep the current folder unless I request a change.`);
   const review = intake.review;
   return <section aria-label="Project intake" className="rounded-xl border border-cyan-500/30 bg-slate-900/70 p-5 space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-3">
@@ -43,9 +43,10 @@ export function ProjectIntakePanel({ project, onDiscuss }: { project: Project; o
         <button className="rounded-md bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950" onClick={() => discuss(intake.state === 'handed_off' ? 'Discuss the accepted intake and next planning step' : 'Resume intake from the pending question')}>{intake.state === 'handed_off' ? 'Discuss next step' : 'Resume intake'}</button>
         <button className="rounded-md border border-slate-600 px-3 py-2 text-sm" onClick={() => discuss('I want to correct an answer; ask which answer and save the correction with its history')}>Correct an answer</button>
         <button className="rounded-md border border-slate-600 px-3 py-2 text-sm" onClick={() => discuss('I want to add a source; ask for the reference and reconcile it with existing answers')}>Add a source</button>
+        <button className="rounded-md border border-slate-600 px-3 py-2 text-sm" onClick={() => discuss('I want to change the project folder; use the exact new path I provide through attach_workspace and retain the previous binding in history')}>Change folder</button>
       </div>
     </header>
-    {intake.state === 'deferred' && <p className="text-sm text-slate-300">Your idea and questions are saved. Intake will wait for you; background research and delivery work are held.</p>}
+    {intake.state === 'deferred' && <p className="text-sm text-slate-300">Your idea and questions are saved. The interview and unsolicited research will wait; requested tasks and research can continue.</p>}
     {pending && <div className="rounded-lg border border-cyan-500/20 bg-cyan-950/30 p-3"><h3 className="text-xs uppercase text-cyan-400">Next question</h3><p className="mt-1 text-slate-100">{pending.knowledge?.question || pending.description}</p></div>}
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-3"><h3 className="font-semibold text-white">Intake brief</h3>
@@ -75,7 +76,13 @@ export function ProjectIntakePanel({ project, onDiscuss }: { project: Project; o
       {['failed', 'partial'].includes(review.status) && <p className="mt-2 text-sm text-amber-300">The council did not complete. Resume intake to review the saved result or retry.</p>}
       <ul className="mt-2 space-y-2 text-sm">{review.findings.map((finding, i) => <li key={i}>{finding.summary}<span className="ml-2 text-xs text-slate-400">{finding.disposition.replaceAll('_', ' ')}</span>{finding.rationale && <p className="text-slate-400">{finding.rationale}</p>}</li>)}</ul>
     </div>}
-    {intake.acceptance && <p className="rounded-lg bg-emerald-950/30 p-3 text-sm text-emerald-200">Accepted brief version {intake.acceptance.brief_revision}. Next step: {intake.acceptance.next_step}</p>}
+    {intake.acceptance && <div className="rounded-lg bg-emerald-950/30 p-3 text-sm text-emerald-200">
+      <p>Accepted brief version {intake.acceptance.brief_revision}. Next step: {intake.acceptance.next_step}</p>
+      {intake.acceptance.decision_note && <p className="mt-2">{intake.acceptance.decision_note}</p>}
+      {intake.acceptance.review_disposition && <p className="mt-2">Council review: {intake.acceptance.review_disposition.replaceAll('_', ' ')}</p>}
+      {!!intake.acceptance.readiness_gaps?.length && <div className="mt-3 text-slate-300"><h3 className="font-medium">Carried into planning</h3><ul className="mt-1 list-disc pl-5">{intake.acceptance.readiness_gaps.map((gap, i) => <li key={i}>{gap}</li>)}</ul></div>}
+    </div>}
+    {!!intake.workspace_history?.length && <details className="text-sm"><summary className="cursor-pointer text-slate-400">Folder history ({intake.workspace_history.length})</summary><ul className="mt-2 space-y-2">{intake.workspace_history.map((entry, i) => <li key={i}><Reference value={entry.previous.path || 'No folder assigned'} /> → <Reference value={entry.next.path || 'No folder assigned'} /><span className="ml-2 text-xs text-slate-400">{entry.at}</span></li>)}</ul></details>}
     {!!intake.review_history.length && <details className="text-sm"><summary className="cursor-pointer text-slate-400">Earlier councils ({intake.review_history.length})</summary><ul className="mt-3 space-y-3">{intake.review_history.map((prior, i) => <li key={i}>
       <a className="text-cyan-300 underline" href={`/council?session=${encodeURIComponent(prior.session_id)}`}>{prior.mode === 'preparation' ? 'Intake preparation' : 'Brief review'} · version {prior.brief_revision} · {prior.status}</a>
       <ul className="mt-1 text-slate-400">{prior.findings.map((finding, j) => <li key={j}>{finding.summary}</li>)}</ul>

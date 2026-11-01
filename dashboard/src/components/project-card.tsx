@@ -77,7 +77,7 @@ export function ProjectCard({ project, pulse, isPinned = false, onPinChange, pen
     };
 
     const handleInitGit = async () => {
-        if (project.phase === 'intake' || !project.path) return;
+        if (!project.path) return;
         setActionLoading(true);
         try {
             await initGitRepo(project.id);
@@ -166,7 +166,6 @@ export function ProjectCard({ project, pulse, isPinned = false, onPinChange, pen
     }, [pulse, pendingReviews]);
 
     const gitFooter = () => {
-        if (project.phase === 'intake') return <span className="text-xs text-cyan-300">Intake · {project.path ? 'existing folder preserved' : 'folder can be added later'}</span>;
         if (!project.path) return <span className="text-xs text-slate-400">No folder assigned</span>;
         if (!pulse && !gitOverride) {
             return (
