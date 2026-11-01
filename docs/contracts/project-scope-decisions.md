@@ -75,8 +75,12 @@ no repeated human approval is required.
 The optional `?operation_id=...` selects one operation. Audit history survives project deletion without blocking it; writes still require a live exact project. Runtime/operator
 authentication is required. Praxis exposes it as `nexus_projects action=scope_decisions` with exact `project_id` and optional `operation_id`. This is the canonical recovery surface after an
 uncertain acknowledgement. Praxis retains its exact request before sending and
-returns `retry_request` and `retry_file` on write failures. Retry that exact body
-or reconcile the stored receipt before any new write. Credential failures are
+returns `retry_request: {project_id, request}` and `retry_file` on write failures.
+The returned and durable envelopes bind the exact canonical HTTP request to its
+original project ID. Pass that unchanged envelope as `retry_scope_request`; a
+different outer `project_id` is rejected before any read or write, even when its
+CAS timestamp matches. The canonical POST body remains `request`, without an
+extra project field. Reconcile the stored receipt before any new write. Credential failures are
 technical, not evidence that Robert failed to approve his own instruction.
 
 Canonical edits work during Intake, adopted existing projects and Planning. Before
