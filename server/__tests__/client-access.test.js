@@ -403,6 +403,17 @@ test('reviews need a live session assertion and the exact version; acceptance is
     expect((await detail(joey.id, project.id, artifact.id)).json.artifact.accepted.map(r => r.id)).toEqual([accepted.json.review.id]);
 });
 
+// The summary used to reach the client cut to its first 2,000 characters.
+test('a long steward-written client summary reaches the client whole', async () => {
+    await grant(project.id, joey.id);
+    const long = `${'Week three: the prototype build is on track and the next review is booked. '.repeat(60)}END`;
+    expect(long.length).toBeGreaterThan(2000);
+    const detailed = await db.createTask({ project_id: project.id, name: 'Write the progress note', status: 'in_progress', metadata: { client_summary: long } });
+    const res = await read(joey.id, project.id);
+    expect(res.status).toBe(200);
+    expect(res.json.tasks.find(t => t.id === detailed.id).summary).toBe(long);
+});
+
 test('acceptance changes nothing else: tasks, checkpoints, gates and reserved proposals are untouched, and the runtime credential cannot grant or decide', async () => {
     await grant(project.id, joey.id);
     const taskBefore = JSON.stringify(await db.getTask(task.id));

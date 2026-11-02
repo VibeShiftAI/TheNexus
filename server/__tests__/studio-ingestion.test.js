@@ -75,6 +75,29 @@ describe('studio ingestion worker', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  // 2026-11-02 size cap survey, group 10: a model-extracted object name was
+  // stored cut to 220 characters without a word.
+  test('stores a long extracted object name whole', async () => {
+    const longName = `Testus Prime b, ${'also catalogued under a long survey designation '.repeat(8)}end`;
+    expect(longName.length).toBeGreaterThan(220);
+    callAI.mockImplementation(async () => ({
+      text: JSON.stringify({ objects: [{ name: longName, object_kind: 'exoplanet', reality_status: 'observed', spec_values: [] }] }),
+    }));
+    const sources = (await json(`${handle.baseUrl}/api/studio/${channelId}/sources`)).body;
+    for (const s of sources) {
+      await json(`${handle.baseUrl}/api/studio/${channelId}/sources/${s.id}`, { method: 'PATCH', body: JSON.stringify({ enabled: false }) });
+    }
+    await json(`${handle.baseUrl}/api/studio/${channelId}/sources`, {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Test web source', source_type: 'web', url: 'https://example.com/testus-prime-b-long' }),
+    });
+    const run = await json(`${handle.baseUrl}/api/studio/${channelId}/ingestion/run`, { method: 'POST', body: JSON.stringify({ trigger: 'unit' }) });
+    const finished = await waitForRun(handle.baseUrl, channelId, run.body.run.id);
+    expect(finished.status).toBe('complete');
+    const objects = (await json(`${handle.baseUrl}/api/studio/${channelId}/objects`)).body;
+    expect(objects.some((o) => o.name === longName)).toBe(true);
+  });
+
   test('extracts objects, stores provenance, and derives parameters (local only)', async () => {
     // Disable seeded sources, add one controlled web source.
     const sources = (await json(`${handle.baseUrl}/api/studio/${channelId}/sources`)).body;

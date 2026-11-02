@@ -22,7 +22,8 @@ const UPDATES_DIR = path.resolve(__dirname, '..', '..', 'desktop', 'updates');
 // Only these may be fetched — no arbitrary path from the URL.
 const ALLOWED = /^[A-Za-z0-9._-]+\.(json|exe|sig)$/;
 
-function createUpdatesRouter() {
+/** `updatesDir` points a test (or an isolated stack) at its own folder; desktop/updates by default. */
+function createUpdatesRouter({ updatesDir = UPDATES_DIR } = {}) {
     const router = express.Router();
 
     const serve = (req, res) => {
@@ -34,7 +35,8 @@ function createUpdatesRouter() {
             return res.status(400).json({ error: 'bad update file name' });
         }
         // basename guard on top of the whitelist regex — belt and suspenders.
-        const full = path.join(UPDATES_DIR, path.basename(name));
+        const file = path.basename(name);
+        const full = path.join(updatesDir, file);
         if (!fs.existsSync(full)) {
             // A missing manifest is the normal "no updates published yet"
             // state — answer 204 so the Tauri updater reads it as
@@ -47,7 +49,11 @@ function createUpdatesRouter() {
         else if (name.endsWith('.exe')) res.type('application/octet-stream');
         else res.type('text/plain');
         res.setHeader('Cache-Control', 'no-store');
-        return res.sendFile(full);
+        // Serve from the updates folder. Given a bare absolute path, Express 5's
+        // `send` applies its dotfile rule to every segment, so a checkout under a
+        // dot folder answered 404 for the manifest and installer. The rule still
+        // refuses a dot-named file itself.
+        return res.sendFile(file, { root: updatesDir });
     };
 
     router.get('/latest.json', serve);

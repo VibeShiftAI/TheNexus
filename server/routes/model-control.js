@@ -611,7 +611,8 @@ function createModelControlRouter({ db, syncModelSources, callAI, io }) {
                 }
                 until = new Date(ms).toISOString();
             }
-            const reason = typeof body.reason === 'string' ? body.reason.slice(0, 300) : null;
+            // 2026-11-02: the reason used to be cut to 300 characters; it is stored whole.
+            const reason = typeof body.reason === 'string' ? body.reason : null;
             await db.setModelControlSetting('fable_availability', { out, until, reason });
             notifyPraxisStateDoc('fable-availability');
             res.json(await getFableAvailability(db));

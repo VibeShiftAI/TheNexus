@@ -174,7 +174,15 @@ describe('compact board summary over real SQLite and HTTP', () => {
   });
   test('resolves large dependency lists in bounded SQL batches without trimming IDs', async () => {
     const ids = Array.from({ length: 1003 }, (_, i) => `dep-${i}`);
-    for (const id of ids) await task(id, { project_id: 'b', status: 'completed' });
+    // The dependency rows are fixtures, seeded directly. Filed through
+    // db.createTask, each one is a work-admission match of every earlier one,
+    // and since 2026-10-31 a receipt lists every relevant match, so the loop
+    // wrote about 131 MB of receipts and held the event loop for 3.6 s alone
+    // (more under a full parallel run). Past the server's 5 s keep-alive
+    // timeout the next fetch reused a socket the server then closed:
+    // "fetch failed", ECONNRESET.
+    const seed = raw.prepare("INSERT INTO tasks (id, project_id, name, status, priority, created_at) VALUES (?, 'b', ?, 'completed', 1, '2026-09-01')");
+    raw.transaction(() => { for (const id of ids) seed.run(id, `Task ${id}`); })();
     await task('root', { dependencies: ids, name: 'title '.repeat(1000) });
     const sql = jest.spyOn(Database.prototype, 'prepare');
     let result, queries;
@@ -186,10 +194,7 @@ describe('compact board summary over real SQLite and HTTP', () => {
     expect(result.body.tasks[0]).toMatchObject({ dependencies: ids, is_unblocked: true, title: 'title '.repeat(1000) });
     expect(queries).toHaveLength(3);
     expect(queries.every(query => (query.match(/\?/g) || []).length <= 500)).toBe(true);
-    // The 1003 same-titled fixture tasks are each other's work-admission
-    // matches, and since 2026-10-31 a receipt lists every relevant match (it
-    // kept three), so the setup writes far larger receipts than production does.
-  }, 30000);
+  });
   test('presence flags include nested QA notes but never project their bodies', async () => {
     await task('empty');
     await task('note', { metadata: { status_message: 'QA passed after review' } });

@@ -765,4 +765,39 @@ describe('model control route', () => {
             command_id: 'model-control-probe'
         }));
     });
+
+    // The reason used to be stored cut to its first 300 characters.
+    test('stores and returns a long Fable availability reason whole', async () => {
+        // The PUT pings Praxis to refresh STATE.md; keep that off the live Praxis.
+        const praxisClient = require('../services/praxis-client');
+        const ping = jest.spyOn(praxisClient, 'praxisFetch').mockResolvedValue({ ok: true });
+        try {
+            const settings = new Map();
+            const db = {
+                getModelControlSetting: jest.fn(async (key) => settings.get(key) ?? null),
+                setModelControlSetting: jest.fn(async (key, value) => { settings.set(key, value); return value; }),
+            };
+            const createModelControlRouter = require('../routes/model-control');
+            const app = express();
+            app.use(express.json());
+            app.use('/api/model-control', createModelControlRouter({ db }));
+            handle = await listen(app);
+
+            const reason = `${'Fable credits ran out mid-sprint; the renewal is booked with the account team. '.repeat(10)}END`;
+            expect(reason.length).toBeGreaterThan(300);
+            const until = new Date(Date.now() + 86_400_000).toISOString();
+            const put = await requestJson(`${handle.baseUrl}/api/model-control/fable-availability`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ out: true, until, reason })
+            });
+            expect(put).toEqual({ status: 200, body: { out: true, until, reason } });
+            expect(db.setModelControlSetting).toHaveBeenCalledWith('fable_availability', { out: true, until, reason });
+            await expect(requestJson(`${handle.baseUrl}/api/model-control/fable-availability`))
+                .resolves.toEqual({ status: 200, body: { out: true, until, reason } });
+            expect(ping).toHaveBeenCalledWith('/api/state-doc/refresh', expect.objectContaining({ method: 'POST' }));
+        } finally {
+            ping.mockRestore();
+        }
+    });
 });

@@ -35,7 +35,7 @@ const EDITABLE_CHANNEL_FIELDS = [
   'prompt_guardrails',
 ];
 
-function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps } = {}) {
+function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps, referencesDir } = {}) {
   const router = express.Router();
   // No window lookup wired (tests, or an unknown window): prompts carry the whole catalog and sources.
   const windowFor = typeof contextWindowFor === 'function' ? contextWindowFor : async () => null;
@@ -59,7 +59,13 @@ function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps
 
   // Reference-image uploads land in a server-managed, channel-scoped folder and
   // are served back through an API route so the dashboard can preview them.
-  const REF_ROOT = path.resolve(__dirname, '../../data/studio-references');
+  // data/studio-references by default; `referencesDir`, else
+  // NEXUS_STUDIO_REFERENCES_DIR, gives an isolated stack (and every test) its
+  // own folder, so test uploads never land in the live one.
+  const envReferencesDir = process.env.NEXUS_STUDIO_REFERENCES_DIR;
+  const REF_ROOT = path.resolve(referencesDir
+    || (typeof envReferencesDir === 'string' && envReferencesDir.trim() ? envReferencesDir.trim() : null)
+    || path.join(__dirname, '../../data/studio-references'));
   const refStorage = multer.diskStorage({
     destination: (req, _file, cb) => {
       const dir = path.join(REF_ROOT, String(req.params.channelId || 'default').replace(/[^a-z0-9_-]/gi, ''));
@@ -790,17 +796,19 @@ function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps
       throw err;
     }
     const id = uuid();
+    // 2026-11-02: these fields used to be cut to 100 / 220 / 2,000 / 1,200 / 120 characters,
+    // as model-generated ideas were until 2026-10-30. PATCH /ideas/:id never cut them.
     sql.prepare(
       `INSERT INTO studio_ideas (id, channel_id, source, title, angle, build_promise, category, status, checklist, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)`
     ).run(
       id,
       channelId,
-      String(source || 'manual').slice(0, 100),
-      String(title).slice(0, 220),
-      String(angle || '').slice(0, 2000),
-      String(build_promise || '').slice(0, 1200),
-      String(category || 'Episode').slice(0, 120),
+      String(source || 'manual'),
+      String(title),
+      String(angle || ''),
+      String(build_promise || ''),
+      String(category || 'Episode'),
       ALL_STATUSES.includes(status) ? status : 'suggested',
       now(),
       now()
@@ -918,14 +926,15 @@ function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps
   router.post('/:channelId/sources', (req, res) => {
     if (!requireChannel(res, req.params.channelId)) return;
     const id = uuid();
+    // 2026-11-02: name and source type used to be cut to 180 / 80 characters. PATCH never cut them.
     sql.prepare(
       `INSERT INTO studio_sources (id, channel_id, name, source_type, url, query_template, enabled, per_run_cap, relevance_floor, notes, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       req.params.channelId,
-      String(req.body.name || 'Untitled source').slice(0, 180),
-      String(req.body.source_type || 'web').slice(0, 80),
+      String(req.body.name || 'Untitled source'),
+      String(req.body.source_type || 'web'),
       req.body.url ? String(req.body.url) : null,
       req.body.query_template ? String(req.body.query_template) : null,
       req.body.enabled === false ? 0 : 1,
@@ -1253,6 +1262,7 @@ function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps
     if (!requireChannel(res, req.params.channelId)) return;
     const id = uuid();
     const ts = now();
+    // 2026-11-02: the name used to be cut to 220 characters. PATCH never cut it.
     sql.prepare(
       `INSERT INTO space_objects (id, channel_id, name, aliases, object_kind, subtype, reality_status, description,
        field_guide_summary, sensory_impression, points_of_wonder_summary, visual_motifs, human_observer_shock, worldbuilding_relevance, created_at, updated_at)
@@ -1260,7 +1270,7 @@ function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps
     ).run(
       id,
       req.params.channelId,
-      String(req.body.name || 'Untitled object').slice(0, 220),
+      String(req.body.name || 'Untitled object'),
       stringifyMaybe(req.body.aliases),
       req.body.object_kind || null,
       req.body.subtype || null,
@@ -1421,7 +1431,12 @@ function createStudioRouter({ callAI, contextWindowFor, ingestionDeps, astroDeps
   router.get('/:channelId/reference-images/:imageId/file', (req, res) => {
     const row = sql.prepare('SELECT * FROM studio_reference_images WHERE id = ? AND channel_id = ?').get(req.params.imageId, req.params.channelId);
     if (!row || !row.stored_path || !fs.existsSync(row.stored_path)) return res.status(404).json({ error: 'File not found' });
-    res.sendFile(path.resolve(row.stored_path));
+    // Serve from the file's own folder. Given a bare absolute path, Express 5's
+    // `send` applies its dotfile rule to every segment, so a checkout under a
+    // dot folder (`.worktrees/`, `.sc-nexus`) answered 404 for every image.
+    // The rule now sees only the stored name, which the upload sets (uuid + ext).
+    const stored = path.resolve(row.stored_path);
+    res.sendFile(path.basename(stored), { root: path.dirname(stored) });
   });
 
   router.post('/:channelId/generate', async (req, res) => {

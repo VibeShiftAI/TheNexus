@@ -16,3 +16,6 @@ if (!process.env.NEXUS_DB_PATH) process.env.NEXUS_DB_PATH = testDbPath;
 // Whole texts that fitToWindow keeps when a model input is cut go to a
 // throwaway folder, never the live data/model-inputs.
 process.env.NEXUS_MODEL_INPUTS_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-tests-model-inputs-'));
+// Studio reference-image uploads go to a throwaway folder, never the live
+// data/studio-references (276 test uploads had piled up there by 2026-11-02).
+process.env.NEXUS_STUDIO_REFERENCES_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-tests-studio-references-'));

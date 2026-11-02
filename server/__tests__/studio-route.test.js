@@ -83,6 +83,7 @@ describe('studio route', () => {
   let handle;
   let callAI;
   let contextWindowFor;
+  let referencesDir;
 
   beforeEach(async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-studio-test-'));
@@ -96,10 +97,12 @@ describe('studio route', () => {
     // Unknown window unless a test says otherwise: prompts carry the whole catalog.
     contextWindowFor = jest.fn(async () => null);
 
+    // Uploads stay in this test's folder, never the live data/studio-references.
+    referencesDir = path.join(tmpDir, 'studio-references');
     const createStudioRouter = require('../routes/studio');
     const app = express();
     app.use(express.json({ limit: '5mb' }));
-    app.use('/api/studio', createStudioRouter({ callAI, contextWindowFor }));
+    app.use('/api/studio', createStudioRouter({ callAI, contextWindowFor, referencesDir }));
     handle = await listen(app);
   });
 
@@ -535,6 +538,37 @@ describe('studio route', () => {
     expect(labels).toContain(`Source pack: ${sources}`);
   });
 
+  // The manual insert used to cut source, title, angle, build promise and
+  // category to 100 / 220 / 2,000 / 1,200 / 120 characters.
+  test('an idea posted by hand is stored whole, on both idea routes', async () => {
+    const channelId = 'impossible-worlds-field-guide';
+    const long = (word, n) => `${`${word} `.repeat(n)}END`;
+    const fields = (word) => ({
+      source: long(`${word}-source`, 30),
+      title: long(`${word}-title`, 40),
+      angle: long(`${word}-angle`, 400),
+      build_promise: long(`${word}-promise`, 200),
+      category: long(`${word}-category`, 20),
+    });
+    const scoped = fields('scoped');
+    expect(scoped.source.length).toBeGreaterThan(100);
+    expect(scoped.title.length).toBeGreaterThan(220);
+    expect(scoped.angle.length).toBeGreaterThan(2000);
+    expect(scoped.build_promise.length).toBeGreaterThan(1200);
+    expect(scoped.category.length).toBeGreaterThan(120);
+
+    const made = await json(`${handle.baseUrl}/api/studio/${channelId}/ideas`, { method: 'POST', body: JSON.stringify(scoped) });
+    expect(made.status).toBe(201);
+    expect(made.body).toEqual(expect.objectContaining(scoped));
+    const stored = await json(`${handle.baseUrl}/api/studio/ideas/${made.body.id}`);
+    expect(stored.body).toEqual(expect.objectContaining(scoped));
+
+    const legacy = fields('legacy');
+    const madeLegacy = await json(`${handle.baseUrl}/api/studio/ideas`, { method: 'POST', body: JSON.stringify(legacy) });
+    expect(madeLegacy.status).toBe(201);
+    expect(madeLegacy.body).toEqual(expect.objectContaining(legacy));
+  });
+
   test('an answer cut at the model output limit is flagged, never saved as if whole', async () => {
     const channelId = 'impossible-worlds-field-guide';
     const base = `${handle.baseUrl}/api/studio/${channelId}`;
@@ -701,6 +735,8 @@ describe('studio route', () => {
   test('uploads a reference image and serves it back, scoped to channel + episode', async () => {
     const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
     const idea = await json(`${base}/ideas`, { method: 'POST', body: JSON.stringify({ title: 'Reference image episode' }) });
+    const liveFolder = path.resolve(__dirname, '../../data/studio-references/impossible-worlds-field-guide');
+    const liveBefore = fs.existsSync(liveFolder) ? fs.readdirSync(liveFolder).length : 0;
 
     const form = new FormData();
     form.append('file', new Blob([Buffer.from('fake-png-bytes')], { type: 'image/png' }), 'ref.png');
@@ -721,5 +757,56 @@ describe('studio route', () => {
     const fileRes = await fetch(`${handle.baseUrl}${uploaded.file_path_or_url}`);
     expect(fileRes.status).toBe(200);
     expect(Buffer.from(await fileRes.arrayBuffer()).toString()).toBe('fake-png-bytes');
+
+    // Stored in this test's folder; nothing new in the repo's data folder.
+    expect(uploaded.stored_path.startsWith(path.join(referencesDir, 'impossible-worlds-field-guide') + path.sep)).toBe(true);
+    expect(fs.existsSync(liveFolder) ? fs.readdirSync(liveFolder).length : 0).toBe(liveBefore);
+  });
+
+  // Express 5's `send` refuses a bare absolute path with any dot folder in it,
+  // so a checkout under `.worktrees/` answered 404 for every reference image.
+  test('serves a reference image stored under a dot folder', async () => {
+    const dotted = path.join(tmpDir, '.dot-parent', 'studio-references');
+    const createStudioRouter = require('../routes/studio');
+    const app = express();
+    app.use(express.json());
+    app.use('/api/studio', createStudioRouter({ callAI, contextWindowFor, referencesDir: dotted }));
+    const dotHandle = await listen(app);
+    try {
+      const base = `${dotHandle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+      const form = new FormData();
+      form.append('file', new Blob([Buffer.from('dotted-png-bytes')], { type: 'image/png' }), 'ref.png');
+      const uploadRes = await fetch(`${base}/reference-images/upload`, { method: 'POST', body: form });
+      const uploaded = await uploadRes.json();
+      expect(uploadRes.status).toBe(201);
+      expect(uploaded.stored_path.startsWith(dotted + path.sep)).toBe(true);
+      const fileRes = await fetch(`${dotHandle.baseUrl}${uploaded.file_path_or_url}`);
+      expect(fileRes.status).toBe(200);
+      expect(Buffer.from(await fileRes.arrayBuffer()).toString()).toBe('dotted-png-bytes');
+    } finally {
+      await close(dotHandle);
+    }
+  });
+
+  // Source names and types used to be cut to 180 / 80 characters, object names to 220.
+  test('a source and an object posted by hand keep their whole name and type', async () => {
+    const base = `${handle.baseUrl}/api/studio/impossible-worlds-field-guide`;
+    const long = (word, n) => `${`${word} `.repeat(n)}END`;
+    const source = { name: long('source-name', 30), source_type: long('source-type', 15), url: 'https://example.invalid/feed' };
+    expect(source.name.length).toBeGreaterThan(180);
+    expect(source.source_type.length).toBeGreaterThan(80);
+    const madeSource = await json(`${base}/sources`, { method: 'POST', body: JSON.stringify(source) });
+    expect(madeSource.status).toBe(201);
+    expect(madeSource.body).toEqual(expect.objectContaining({ name: source.name, source_type: source.source_type }));
+    const listed = await json(`${base}/sources`);
+    expect(listed.body.find((s) => s.id === madeSource.body.id)).toEqual(expect.objectContaining({ name: source.name, source_type: source.source_type }));
+
+    const name = long('object-name', 30);
+    expect(name.length).toBeGreaterThan(220);
+    const madeObject = await json(`${base}/objects`, { method: 'POST', body: JSON.stringify({ name, object_kind: 'exoplanet' }) });
+    expect(madeObject.status).toBe(201);
+    expect(madeObject.body.name).toBe(name);
+    const stored = await json(`${base}/objects/${madeObject.body.id}`);
+    expect(stored.body.name).toBe(name);
   });
 });

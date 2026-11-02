@@ -163,7 +163,9 @@ function createStudioIngestion({ sql, callAI, contextWindowFor, uuid, now, helpe
          field_guide_summary, sensory_impression, points_of_wonder_summary, visual_motifs, human_observer_shock, worldbuilding_relevance, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
-        id, channelId, String(rec.name).slice(0, 220),
+        // The name whole (until 2026-11-02 cut to 220 without a word, while
+        // the manual object route had already stopped cutting it).
+        id, channelId, String(rec.name),
         Array.isArray(rec.aliases) ? rec.aliases.join(', ') : (rec.aliases || null),
         rec.object_kind || null, rec.subtype || null, rec.reality_status || 'candidate',
         rec.description || null, rec.field_guide_summary || null, rec.sensory_impression || null,

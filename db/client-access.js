@@ -517,7 +517,8 @@ function createClientAccess(db) {
             return {
                 id: row.id, name: row.name, status: row.status, priority: row.priority ?? 0, created_at: row.created_at,
                 updated_at: row.updated_at ?? null, last_activity_at: row.last_activity_at ?? null,
-                summary: typeof metadata.client_summary === 'string' ? metadata.client_summary.slice(0, 2000) : null,
+                // 2026-11-02: used to reach the client cut to 2,000 characters; it is the steward's whole text.
+                summary: typeof metadata.client_summary === 'string' ? metadata.client_summary : null,
                 checkpoint_id: typeof metadata.checkpoint_id === 'string' ? metadata.checkpoint_id : null,
                 request_status: gate && typeof gate === 'object' && typeof gate.status === 'string' ? gate.status : null,
             };

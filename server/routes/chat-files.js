@@ -52,7 +52,6 @@ function createChatFilesRouter() {
             const files = fs.readdirSync(CHAT_FILES_DIR);
             const match = files.find(f => f.startsWith(fileId) && !f.startsWith('.'));
             if (!match) return res.status(404).json({ error: 'File not found' });
-            const filePath = path.join(CHAT_FILES_DIR, match);
             const ext = path.extname(match).toLowerCase();
             const mimeMap = {
                 '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
@@ -63,7 +62,11 @@ function createChatFilesRouter() {
             };
             res.setHeader('Content-Type', mimeMap[ext] || 'application/octet-stream');
             res.setHeader('Content-Disposition', `inline; filename="${match}"`);
-            res.sendFile(filePath);
+            // Serve from the store's folder. Given a bare absolute path, Express 5's
+            // `send` applies its dotfile rule to every segment, so a store under a
+            // dot folder (a `.worktrees/` checkout, NEXUS_CHAT_FILES_DIR in one)
+            // answered 404 for every file. The rule now sees only the stored name.
+            res.sendFile(match, { root: CHAT_FILES_DIR });
         } catch (error) {
             res.status(500).json({ error: 'Failed to serve file: ' + error.message });
         }
