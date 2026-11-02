@@ -77,11 +77,12 @@ function recordActivityEvent(db, event = {}) {
  * Resolve before filtering/limiting so an answer outside the visible page still counts.
  */
 function readActivityEvents(db, {limit = 50, since = null, severity = null} = {}) {
-    const rows = db.prepare(`WITH normalized AS (
-      SELECT *, CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END AS meta FROM ag_events
-    ), linked AS (
-      SELECT *, nullif(trim(json_extract(meta, '$.hitlId')), '') AS question_id,
-        json_extract(meta, '$.chatMessageId') AS chat_id FROM normalized
+    // Keep message bodies and metadata out of window-function sort records.
+    // Load the full payload only after deduplication, filtering and pagination.
+    const rows = db.prepare(`WITH linked AS (
+      SELECT id, event_type, task_id, severity, created_at,
+        nullif(trim(json_extract(CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END, '$.hitlId')), '') AS question_id,
+        json_extract(CASE WHEN json_valid(metadata) THEN metadata ELSE '{}' END, '$.chatMessageId') AS chat_id FROM ag_events
     ), answers AS (
       SELECT question_id, nullif(task_id,'') AS task_id, resumed FROM ag_question_resolutions
     ), ranked AS (
@@ -92,10 +93,13 @@ function readActivityEvents(db, {limit = 50, since = null, severity = null} = {}
       SELECT *, CASE WHEN event_type='task_blocked' AND question_id IS NOT NULL THEN
         (SELECT max(resumed) FROM answers a WHERE a.question_id=ranked.question_id AND (a.task_id IS NULL OR a.task_id=ranked.task_id))
         ELSE NULL END AS answer_state FROM ranked WHERE question_rank=1
-    ) SELECT * FROM projected
+    ), page AS MATERIALIZED (SELECT id, answer_state FROM projected
       WHERE (? IS NULL OR julianday(created_at)>julianday(?))
         AND (? IS NULL OR CASE WHEN answer_state IS NOT NULL THEN 'info' ELSE severity END = ?)
-      ORDER BY datetime(created_at) DESC, id DESC LIMIT ?`).all(since,since,severity,severity,Math.min(Math.max(Number(limit)||50,1),500));
+      ORDER BY datetime(created_at) DESC, id DESC LIMIT ?)
+    SELECT e.*, CASE WHEN json_valid(e.metadata) THEN e.metadata ELSE '{}' END AS meta, page.answer_state
+      FROM page JOIN ag_events e ON e.id=page.id
+      ORDER BY datetime(e.created_at) DESC, e.id DESC`).all(since,since,severity,severity,Math.min(Math.max(Number(limit)||50,1),500));
     return rows.map(({meta,question_id,chat_id,question_rank,answer_state,...row}) => {
         row.metadata = JSON.parse(meta);
         if (answer_state !== null) {
