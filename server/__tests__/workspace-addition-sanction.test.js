@@ -80,6 +80,17 @@ test('October 20 reproduction: an unauthenticated addition now continues with a 
     expect(lastChange(after)).toMatchObject({ outcome: 'recorded', warning: 'workspace_change', origin: { kind: 'unverified', requester: 'unauthenticated' }, execution: { phase: 'executing' } });
 });
 
+test('a sanction keeps its whole reason and author in the change history (they were cut to 2,000 and 200)', async () => {
+    const before = await task();
+    const reason = `the display contract lives there; ${'the sibling repo owns the shared schema and its tests. '.repeat(50)}END`;
+    const by = `claude-code ${'session '.repeat(40)}end`;
+    expect(reason.length).toBeGreaterThan(2000);
+    expect(by.length).toBeGreaterThan(200);
+    const res = await api('POST', `/${before.id}/workspace-delta`, { ...addition(SIBLING, { sanction: { kind: 'workspace_addition', reason, by } }), expected_version: before.version }, runtime);
+    expect(res.status).toBe(200);
+    expect(lastChange(await db.getTask(before.id)).origin.sanction).toEqual({ kind: 'workspace_addition', reason, by });
+});
+
 test('the runtime credential alone records a warning without claiming operator authority', async () => {
     const before = await task();
     const res = await api('POST', `/${before.id}/workspace-delta`, { ...unsanctioned(SIBLING), expected_version: before.version }, runtime);

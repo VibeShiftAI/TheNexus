@@ -334,6 +334,15 @@ test('a long attested instruction is recorded whole (it was cut to 4,000 charact
     expect(receipt(relayed.data.task).contract.authorized_by.decision_ref.instruction).toBe(instruction);
 });
 
+test('a long origin reason is recorded whole in the change history (it was cut to 2,000 characters)', async () => {
+    const task = await approved(await db.createTask(memo({ status: 'in_progress' })));
+    const reason = `Robert edited the task on the bridge. ${'He wants each figure cited and the memo kept to one page. '.repeat(50)}END-OF-REASON`;
+    expect(reason.length).toBeGreaterThan(2000);
+    const changed = await api('PATCH', `/${task.id}`, { description: 'Apply Robert’s single change.', contract_change: { origin: 'operator', reason } }, { key: operatorKey });
+    expect(changed.status).toBe(200);
+    expect(receipt(changed.data.task).contract_changes.at(-1).origin.reason).toBe(reason);
+});
+
 // ── Criterion 3: unrelated gates and immutable history stay intact ──
 
 test('overlap holds, explicit concerns, dependency gates and resolve authority are untouched by an authorized change', async () => {

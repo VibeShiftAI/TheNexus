@@ -63,8 +63,11 @@ function parseContractChange(block) {
         if (!Array.isArray(block.fields) || block.fields.some(field => typeof field !== 'string' || !field.trim())) throw refuse(400, 'contract_change_invalid', 'contract_change.fields must list field names');
         parsed.fields = block.fields.map(field => field.trim());
     }
+    // Reasons and names are kept whole: they explain the change in its
+    // history, and only credentialed callers reach here. Until 2026-11-02 a
+    // reason over 2,000 characters (or a sanction's `by` over 200) refused the write.
     if (block.reason !== undefined) {
-        if (typeof block.reason !== 'string' || block.reason.length > 2000) throw refuse(400, 'contract_change_invalid', 'contract_change.reason must be a string of at most 2000 characters');
+        if (typeof block.reason !== 'string') throw refuse(400, 'contract_change_invalid', 'contract_change.reason must be a string');
         parsed.reason = block.reason;
     }
     if (block.decision_ref !== undefined) {
@@ -85,9 +88,9 @@ function parseSanction(block) {
     if (typeof block !== 'object' || Array.isArray(block)) throw refuse(400, 'contract_change_invalid', 'sanction must be an object');
     if (!SANCTION_KINDS.has(block.kind)) throw refuse(400, 'contract_change_invalid', `sanction.kind must be one of ${[...SANCTION_KINDS].join(', ')}`);
     const parsed = { kind: block.kind };
-    for (const [field, max] of [['reason', 2000], ['by', 200]]) {
+    for (const field of ['reason', 'by']) {
         if (block[field] === undefined) continue;
-        if (typeof block[field] !== 'string' || block[field].length > max) throw refuse(400, 'contract_change_invalid', `sanction.${field} must be a string of at most ${max} characters`);
+        if (typeof block[field] !== 'string') throw refuse(400, 'contract_change_invalid', `sanction.${field} must be a string`);
         parsed[field] = block[field];
     }
     return parsed;

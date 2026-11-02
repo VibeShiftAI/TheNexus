@@ -161,7 +161,9 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
         const kind = ORIGIN_KINDS.has(given.kind) ? given.kind : 'unverified';
         const result = { kind, authority: typeof given.authority === 'string' ? given.authority : null,
             requester: typeof given.requester === 'string' ? given.requester : 'unauthenticated' };
-        if (normalized(given.reason)) result.reason = String(given.reason).trim().slice(0, 2000);
+        // Reasons and names are kept whole: they are why the contract changed,
+        // in its change history (cut to 2,000 and 200 until 2026-11-02).
+        if (normalized(given.reason)) result.reason = String(given.reason).trim();
         if (given.decision_ref) result.decision_ref = given.decision_ref;
         if (Array.isArray(given.fields)) result.declared_fields = given.fields.filter(f => typeof f === 'string');
         if (given.sanction !== undefined) {
@@ -170,8 +172,8 @@ function createWorkAdmission(db, { now = Date.now, lookup } = {}) {
             const sanction = object(given.sanction);
             if (kind !== 'runtime' || result.authority !== 'runtime_credential') throw fail('A sanctioned workspace addition requires the Praxis runtime credential', 403, 'contract_change_unverified');
             if (sanction.kind !== SANCTIONED_WORKSPACE_ADDITION) throw fail('Unsupported sanction kind', 400, 'contract_change_invalid');
-            result.sanction = { kind: sanction.kind, ...(normalized(sanction.reason) ? { reason: String(sanction.reason).trim().slice(0, 2000) } : {}),
-                ...(normalized(sanction.by) ? { by: String(sanction.by).trim().slice(0, 200) } : {}) };
+            result.sanction = { kind: sanction.kind, ...(normalized(sanction.reason) ? { reason: String(sanction.reason).trim() } : {}),
+                ...(normalized(sanction.by) ? { by: String(sanction.by).trim() } : {}) };
         }
         // A verified origin is a credential checked by the route, never a label in the payload.
         if (AUTHORIZING_ORIGINS.has(kind) && !result.authority) throw fail('A verified operator origin requires a checked authority', 403, 'contract_change_unverified');
