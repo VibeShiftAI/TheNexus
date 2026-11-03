@@ -56,11 +56,11 @@ async function cortexSearch({
   });
 }
 
-async function cortexRecent({ hours = 24, limit = 50, types = null }) {
+async function cortexRecent({ hours = 24, limit = 50, cursor = null, types = null }) {
   return httpJSON(`${cfg.CORTEX_GATEWAY}/api/graph/recent-nodes`, {
     method: 'POST',
     headers: cortexHeaders(),
-    body: { hours, limit, types },
+    body: { hours, limit, types, ...(cursor ? { cursor } : {}) },
   });
 }
 

@@ -583,3 +583,32 @@ describe('request isolation — identity is context, never ambient', () => {
     }
   });
 });
+
+// ─── memory_recent window (2026-11-02 size cap survey, group 11) ──────────
+
+describe('memory_recent reads any window, a page at a time', () => {
+  test('no ceiling on hours or page size, and the cursor reaches the gateway', async () => {
+    const { z } = require('zod');
+    const backends = readBackends();
+    backends.cortexRecent = jest.fn(async () => ({ entities: [], episodes: [], has_more: true, next_cursor: 'c2' }));
+    const { tools } = loadToolSurface({ config, backends })(READONLY);
+    const tool = tools.get('memory_recent');
+    // Until 2026-11-02 the schema refused more than 168 hours or 200 nodes.
+    const args = z.object(tool.schema).parse({ hours: 336, limit: 2000, cursor: 'c1' });
+    const result = await tool.handler(args);
+    expect(result.isError).toBeUndefined();
+    expect(backends.cortexRecent).toHaveBeenCalledWith({ hours: 336, limit: 2000, cursor: 'c1', types: null });
+    expect(textOf(result)).toContain('"next_cursor": "c2"');
+  });
+});
+
+describe('search tools take any k (2026-11-03, group 11)', () => {
+  test('memory_search, vault_search and brain_deliberate no longer mirror the old Cortex ceilings', () => {
+    const { z } = require('zod');
+    const { tools } = loadToolSurface({ config, backends: readBackends() })(READONLY);
+    // Until 2026-11-03 these refused k over 50, 25 and 25.
+    expect(z.object(tools.get('memory_search').schema).parse({ query: 'q', k: 120 }).k).toBe(120);
+    expect(z.object(tools.get('vault_search').schema).parse({ query: 'q', k: 60 }).k).toBe(60);
+    expect(z.object(tools.get('brain_deliberate').schema).parse({ question: 'q', vault_k: 60 }).vault_k).toBe(60);
+  });
+});

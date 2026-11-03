@@ -82,7 +82,10 @@ describe('praxis-mind memory_search contract', () => {
       evidence_only: true,
       include_query_expansion: false,
     });
-    expect(() => register().invoke({ query: 'too many', k: 51 })).toThrow();
+    // No ceiling since 2026-11-03 (was 50, the Cortex endpoint's old bound); k stays at least 1.
+    expect(() => register().invoke({ query: 'none', k: 0 })).toThrow();
+    await register().invoke({ query: 'many', k: 51 });
+    expect(JSON.parse(fetchSpy.mock.calls[1][1].body).max_results).toBe(51);
   });
 
   test('rejects missing privilege before calling Cortex', async () => {

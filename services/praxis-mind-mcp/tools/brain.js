@@ -132,7 +132,8 @@ function register(server, ctx) {
       depth: z.enum(['shallow', 'deep']).default('shallow'),
       context: z.array(z.string()).optional().describe('Optional context snippets to ground the deliberation.'),
       vault_grounding: z.boolean().default(true).describe('Prepend top-ranked shared-mind vault chunks for the question.'),
-      vault_k: z.number().int().min(1).max(25).default(DEFAULT_VAULT_K).describe(`How many ranked vault chunks ground the deliberation (default ${DEFAULT_VAULT_K}, the vault_search default; the Cortex endpoint accepts 1 to 25).`),
+      // No ceiling: until 2026-11-03 at most 25, the Cortex endpoint's old own bound.
+      vault_k: z.number().int().min(1).default(DEFAULT_VAULT_K).describe(`How many ranked vault chunks ground the deliberation (default ${DEFAULT_VAULT_K}, the vault_search default).`),
     },
     async ({ question, depth, context, vault_grounding = true, vault_k: vaultK = DEFAULT_VAULT_K }) => {
       const auth = checkPrivilege(ctx.caller, 'brain.deliberate');

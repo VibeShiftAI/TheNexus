@@ -237,7 +237,8 @@ function register(server, ctx) {
     'Search the shared-mind vault with ranked hybrid retrieval: BM25 keyword + embedding vector + reciprocal-rank fusion, boosted by the LINKS.md backlink graph (GBrain pattern, served by the Cortex vault index). Hybrid returns the top k ranked chunks, each chunk whole. Best for concept/topic queries ("how do we recover stale tasks"). Set mode:"grep" for exact substring/regex matching via ripgrep (identifiers, exact strings): grep returns every match, paged; a page that leaves matches out says how many remain and the offset of the next page. Hybrid falls back to grep automatically when Cortex is unreachable.',
     {
       query: z.string().describe('Natural-language query (hybrid mode) or substring/regex (grep mode).'),
-      k: z.number().int().min(1).max(25).default(8).describe('Hybrid mode: how many ranked chunks to return (the Cortex endpoint accepts 1 to 25). Each chunk comes back whole.'),
+      // No ceiling: until 2026-11-03 at most 25, the Cortex endpoint's old own bound.
+      k: z.number().int().min(1).default(8).describe('Hybrid mode: how many ranked chunks to return. Each chunk comes back whole.'),
       mode: z.enum(['hybrid', 'grep']).default('hybrid').describe('hybrid = ranked retrieval; grep = exact ripgrep match.'),
       offset: z.number().int().min(0).default(0).describe('Grep mode (and the grep fallback): index of the first match to return, from a previous page\'s next_offset. Matches are sorted by path, then line.'),
       page_size: z.number().int().min(1).default(GREP_PAGE_SIZE).describe(`Grep mode: matches per page (default ${GREP_PAGE_SIZE}). Not a cap: every match is reachable by paging, and each page reports what remains.`),
@@ -476,7 +477,7 @@ function formatHybridResults(res, k) {
     const n = results.length;
     const chunks = `${n} ranked chunk${n === 1 ? '' : 's'}`;
     lines.push(n >= k
-      ? `The top ${chunks} (k=${k}), each whole. Lower-ranked chunks are not listed: raise k (up to 25) or use mode "grep" for every exact match. A chunk is one section of its file; vault_read the path for the whole file.`
+      ? `The top ${chunks} (k=${k}), each whole. Lower-ranked chunks are not listed: raise k or use mode "grep" for every exact match. A chunk is one section of its file; vault_read the path for the whole file.`
       : `${chunks} (the index returned ${n} for k=${k}), each whole. A chunk is one section of its file; vault_read the path for the whole file.`);
   }
   results.forEach((r, i) => {

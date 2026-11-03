@@ -42,7 +42,8 @@ function register(server, ctx) {
     'Search Cortex semantic memory (Pinecone vectors). USE FOR: looking up factoids, observations, prior research. Returns ranked hits with text and metadata.',
     {
       query: z.string().describe('Natural-language query.'),
-      k: z.number().int().min(1).max(50).default(10).describe('How many results to return.'),
+      // No ceiling: until 2026-11-03 at most 50, the Cortex endpoint's old own bound.
+      k: z.number().int().min(1).default(10).describe('How many results to return.'),
       namespace: z.string().optional().describe('Pinecone namespace. Default "ai-research" (Praxis Path B corpus). Other valid namespaces: "coding-agents-claude", "coding-agents-codex", "identity".'),
       evidence_only: z.boolean().optional().default(false).describe('Return only evidence-backed results.'),
       include_query_expansion: z.boolean().optional().default(true).describe('Allow Cortex to expand the search query.'),
@@ -81,18 +82,21 @@ function register(server, ctx) {
 
   server.tool(
     'memory_recent',
-    'Recent activity from Cortex graph (Neo4j). USE FOR: "what has Praxis been working on lately", "what happened in the last N hours". Returns recent Episodic / Synthesis nodes.',
+    'Recent activity from Cortex graph (Neo4j). USE FOR: "what has Praxis been working on lately", "what happened in the last N hours". Returns recent entities and episodes, newest first, one page at a time: when the answer says has_more, call again with its next_cursor to read the rest of the same window. entity_total and episode_total count the whole window.',
     {
-      hours: z.number().int().min(1).max(168).default(24).describe('Trailing window in hours.'),
-      limit: z.number().int().min(1).max(200).default(50),
+      // No ceiling on either (until 2026-11-02: at most 168 hours and 200
+      // nodes, the gateway's own old ceilings); the gateway pages the window.
+      hours: z.number().int().min(1).default(24).describe('Trailing window in hours. Ignored when cursor is set.'),
+      limit: z.number().int().min(1).default(50).describe('Page size: at most this many entities and this many episodes per call.'),
+      cursor: z.string().optional().describe('next_cursor from the previous page of the same window.'),
       types: z.array(z.string()).optional().describe('Optional node-type filter, e.g. ["Episodic", "Synthesis"].'),
     },
-    async ({ hours, limit, types }) => {
+    async ({ hours, limit, cursor, types }) => {
       const auth = checkPrivilege(ctx.caller, 'memory.recent');
       if (auth) return auth;
       const started = Date.now();
       try {
-        const data = await backends.cortexRecent({ hours, limit, types: types || null });
+        const data = await backends.cortexRecent({ hours, limit, cursor: cursor || null, types: types || null });
         ledger.record({ caller: ctx.caller.identity, tool: 'memory_recent', success: true, latency_ms: Date.now() - started });
         // Graph nodes span our own episodes and ingested material — floor to advisory.
         return {
