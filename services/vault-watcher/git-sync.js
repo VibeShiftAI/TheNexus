@@ -95,7 +95,16 @@ async function runGitSync(vault, log = console.log) {
     committed = await withLocksAsync(
       vault,
       ['git', 'authored', 'skills'],
-      async () => commitPhase(git, log),
+      async () => {
+        // A crashed Praxis writer releases its skills lock. Its durable journal
+        // remains until the morning slate or review read reconciles the files.
+        const dir = path.join(vault, '.index', 'skill-amendments');
+        if (fs.existsSync(dir) && fs.readdirSync(dir).some(file => file.endsWith('.pending'))) {
+          log('[GitSync] Waiting for interrupted skill amendment recovery.');
+          return 'skipped-amendment';
+        }
+        return commitPhase(git, log);
+      },
       { by: 'vault-git-sync', retries: Math.ceil(LOCK_WAIT_MS / 50), minTimeout: 50 },
     );
   } catch (e) {
@@ -107,7 +116,7 @@ async function runGitSync(vault, log = console.log) {
     }
     throw e;
   }
-  void committed;
+  if (committed === 'skipped-amendment') return committed;
 
   // Push phase (every 6h)
   const now = Date.now();
