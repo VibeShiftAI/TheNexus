@@ -7,12 +7,29 @@ function readRuntimeReport(now = new Date()) {
     const date = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
     }).format(now);
-    const file = path.join(process.env.PRAXIS_DATA_DIR || '/Volumes/Projects/Praxis/data', 'morning-health', `${date}.json`);
+    const directory = path.join(process.env.PRAXIS_DATA_DIR || '/Volumes/Projects/Praxis/data', 'morning-health');
+    let reportDate = date;
     try {
+        try { fs.statSync(path.join(directory, `${date}.json`)); }
+        catch (error) {
+            if (error.code !== 'ENOENT') return null;
+            // Praxis fleet-preflight.ts schedules the first report at 05:35 ET.
+            // Before then, retain the latest prior judgment and its capture time.
+            const time = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+            }).formatToParts(now).map(part => [part.type, part.value]));
+            if (Number(time.hour) * 60 + Number(time.minute) >= 5 * 60 + 35) return null;
+            const prior = fs.readdirSync(directory)
+                .filter(name => /^\d{4}-\d{2}-\d{2}\.json$/.test(name) && name < `${date}.json`)
+                .sort().pop();
+            if (!prior) return null;
+            reportDate = prior.slice(0, -5);
+        }
+        const file = path.join(directory, `${reportDate}.json`);
         if (fs.statSync(file).size > 1024 * 1024) return null;
         const data = JSON.parse(fs.readFileSync(file, 'utf8'));
         const report = data.report;
-        if (data.date !== date || !Number.isFinite(Date.parse(report?.capturedAt))
+        if (data.date !== reportDate || !Number.isFinite(Date.parse(report?.capturedAt))
             || Date.parse(report.capturedAt) > now.getTime()
             || !Array.isArray(report.checks) || !report.checks.some(c => c?.name === 'day activity')
             || !report.checks.every(c => c && typeof c.name === 'string' && typeof c.detail === 'string'
@@ -50,7 +67,9 @@ function projectRuntimeHealth(state, usageWaits, report) {
     }
     if (!report) unavailable.push('Daily runtime checks');
     else for (const [index, check] of report.checks.entries()) {
-        if (check.status !== 'green') add(`check-${index}`, `${check.name}: ${check.detail}`);
+        // Other preflight checks cover maintenance, resources and historical QA.
+        // Live posture/watchdog/usage sources above own executor degradation.
+        if (check.name === 'day activity' && check.status !== 'green') add(`check-${index}`, `${check.name}: ${check.detail}`);
     }
     return {
         status: causes.length ? 'degraded' : unavailable.length ? 'unknown' : 'healthy',

@@ -3,6 +3,48 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const createRouter = require('../routes/praxis-stream');
+const { readRuntimeReport, projectRuntimeHealth } = require('../services/runtime-health');
+
+// Names/statuses from the 2026-11-03 Praxis report; details are synthetic.
+function realisticReport(capturedAt = new Date().toISOString()) {
+  const checks = [
+    ['service com.thenexus.vault-watcher', 'green'],
+    ['Nexus API :4000 (Praxis child)', 'green'],
+    ['LM Studio :1234 (local LLM)', 'green'],
+    ['supervised TheNexus', 'green'],
+    ['supervised NexusDashboard', 'green'],
+    ['supervised TheCortex', 'green'],
+    ['vault git sync', 'green'],
+    ['dispatches (24h)', 'green'],
+    ['day activity', 'green', '2 dispatched in 24h'],
+    ['approval → dispatch stages', 'green'],
+    ['dispatch provenance', 'green'],
+    ['executor circuits', 'yellow', 'Previously suspended worker; current posture owns its recovery'],
+    ['CLI dispatch queue', 'green'],
+    ['local-LLM queue', 'green'],
+    ['local-LLM model', 'green'],
+    ['hosted-API credits', 'green'],
+    ['voice / TTS', 'green'],
+    ['QA lessons (14d)', 'yellow', '27 fail rounds across 22 tasks'],
+    ['QA learning loop (7d)', 'green'],
+    ['execution scorecard (14d)', 'green'],
+    ['running code freshness', 'green'],
+    ['swap', 'red', '16098 MB used'],
+    ['disk /Volumes/Projects', 'green'],
+    ['disk /', 'green'],
+    ['backups', 'green'],
+    ['feedback relay deploy', 'green'],
+    ['iPad hub fleet relay', 'green'],
+    ['restore drill', 'green'],
+    ['overnight ingest', 'red', 'Feed ingestion failed'],
+    ['graph health', 'yellow', 'Graph cull overdue'],
+    ['council quorum', 'green'],
+    ['eval availability', 'red', 'Required eval unavailable'],
+    ['skill bus', 'green'],
+    ['skill telemetry', 'green'],
+  ].map(([name, status, detail = 'Check passed']) => ({ name, status, detail }));
+  return { capturedAt, checks };
+}
 
 const day = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const healthyState = () => ({ executors: {
@@ -70,12 +112,14 @@ describe('runtime health on the existing dispatch-state relay', () => {
     report('yellow', 'completely quiet — 0 dispatched, 0 in flight');
     expect((await read()).body.runtimeHealth).toMatchObject({ status:'degraded', causes:[expect.objectContaining({ detail:expect.stringContaining('0 dispatched'), href:'/ops' })] });
   });
-  test('other reported preflight failures are not hidden behind nominal executor posture', async () => {
-    const file = path.join(dir, 'morning-health', `${day()}.json`);
-    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-    data.report.checks.push({ name:'CLI dispatch queue', status:'red', detail:'Executor wedged' });
-    fs.writeFileSync(file, JSON.stringify(data), 'utf8');
-    expect((await read()).body.runtimeHealth.status).toBe('degraded');
+  test('a realistic 34-check report does not turn unrelated preflight warnings into runtime degradation', async () => {
+    const daily = realisticReport();
+    expect(daily.checks).toHaveLength(34);
+    fs.writeFileSync(path.join(dir, 'morning-health', `${day()}.json`), JSON.stringify({ date: day(), report: daily }), 'utf8');
+    expect((await read()).body.runtimeHealth).toMatchObject({ status: 'healthy', causes: [], reportCapturedAt: daily.capturedAt });
+    Object.assign(daily.checks.find(check => check.name === 'day activity'), { status: 'yellow', detail: '0 dispatched, 0 in flight' });
+    fs.writeFileSync(path.join(dir, 'morning-health', `${day()}.json`), JSON.stringify({ date: day(), report: daily }), 'utf8');
+    expect((await read()).body.runtimeHealth).toMatchObject({ status: 'degraded', causes: [expect.objectContaining({ detail: expect.stringContaining('day activity:'), href: '/ops' })] });
   });
   test('missing, stale and malformed health sources never report healthy', async () => {
     report('green', 'old report', '2020-01-01');
@@ -100,3 +144,48 @@ describe('runtime health on the existing dispatch-state relay', () => {
   });
 });
 function listen(app) { return new Promise(resolve => { const server = app.listen(0, '127.0.0.1', () => resolve(server)); }); }
+
+describe('daily runtime report before the 05:35 ET preflight', () => {
+  let dir, saved;
+  beforeEach(() => {
+    saved = process.env.PRAXIS_DATA_DIR;
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-report-'));
+    fs.mkdirSync(path.join(dir, 'morning-health'));
+    process.env.PRAXIS_DATA_DIR = dir;
+  });
+  afterEach(() => {
+    if (saved === undefined) delete process.env.PRAXIS_DATA_DIR;
+    else process.env.PRAXIS_DATA_DIR = saved;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  function write(date, capturedAt, status = 'green') {
+    const report = realisticReport(capturedAt);
+    report.checks.find(check => check.name === 'day activity').status = status;
+    if (status !== 'green') report.checks.find(check => check.name === 'day activity').detail = '0 dispatched, 0 in flight';
+    fs.writeFileSync(path.join(dir, 'morning-health', `${date}.json`), JSON.stringify({ date, report }), 'utf8');
+    return report;
+  }
+  test.each(['green', 'yellow'])('uses the latest prior day activity (%s) with its actual capture time at 02:00 ET', status => {
+    write('2026-11-02', '2026-11-03T03:20:00Z');
+    const latest = write('2026-11-03', '2026-11-04T03:20:00Z', status);
+    write('2026-11-05', '2026-11-05T10:35:00Z');
+    const report = readRuntimeReport(new Date('2026-11-04T07:00:00Z'));
+    expect(report).toEqual(latest);
+    expect(projectRuntimeHealth(healthyState(), { available: true, items: [] }, report)).toMatchObject({
+      status: status === 'green' ? 'healthy' : 'degraded', reportCapturedAt: latest.capturedAt,
+    });
+  });
+  test('prefers today even before preflight and does not mask malformed current reports', () => {
+    write('2026-11-03', '2026-11-04T03:20:00Z');
+    const today = write('2026-11-04', '2026-11-04T06:00:00Z', 'yellow');
+    expect(readRuntimeReport(new Date('2026-11-04T07:00:00Z'))).toEqual(today);
+    fs.writeFileSync(path.join(dir, 'morning-health', '2026-11-04.json'), 'bad json', 'utf8');
+    expect(readRuntimeReport(new Date('2026-11-04T07:00:00Z'))).toBeNull();
+  });
+  test('missing reports remain unknown and prior reports expire at the morning preflight', () => {
+    expect(readRuntimeReport(new Date('2026-11-04T07:00:00Z'))).toBeNull();
+    write('2026-11-03', '2026-11-04T03:20:00Z');
+    expect(readRuntimeReport(new Date('2026-11-04T10:34:59Z'))).not.toBeNull();
+    expect(readRuntimeReport(new Date('2026-11-04T10:35:00Z'))).toBeNull();
+  });
+});
