@@ -33,6 +33,7 @@ interface Amendment {
   targetWins: number;
   targetLosses: number;
   regressions: string[];
+  regressionDetails?: { id: string; title: string; reason: string }[];
   diff: string;
   reviewId: string | null;
 }
@@ -105,6 +106,7 @@ export function SkillCandidateRow({ candidate, state, onState }: {
     amendment.targetWins > amendment.targetLosses && amendment.diff.trim() && amendment.reviewId?.trim();
   const canApply = !!eligible && expanded && reviewedId === amendment?.reviewId;
   const decided = state && state !== "deciding";
+  const changeSummary = amendment?.summary || candidate.summary;
 
   async function decide(decision: Decision) {
     if (!review || state || (decision === "approve" && review.kind !== "new") ||
@@ -135,24 +137,49 @@ export function SkillCandidateRow({ candidate, state, onState }: {
     }
   }
 
+  const source = candidate.sourceTitle && <p className="truncate text-slate-400">From {candidate.sourceUrl
+    ? <a className="underline" href={candidate.sourceUrl} target="_blank" rel="noreferrer">{candidate.sourceTitle}</a>
+    : candidate.sourceTitle}</p>;
+
   return (
     <li className="space-y-1 px-2 py-1.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-300">
       <div className="flex flex-wrap items-center gap-1.5">
-        <strong className="text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-100">{candidate.name}</strong>
+        <strong className="break-words text-[length:var(--hitl-fs-xs,0.75rem)] text-slate-100">
+          {amendment ? `Amends ${amendment.targetSkill}` : candidate.name}
+        </strong>
+        {amendment && <span className="font-semibold text-violet-300">{state === "applied"
+          ? "Amendment applied" : state === "archived" ? "Archived" : outcomes[amendment.state]}</span>}
         <span className="rounded-full border border-slate-700 px-1.5 text-slate-400">{candidate.category}</span>
-        {amendment && <strong className="break-all text-violet-300">Amends {amendment.targetSkill}</strong>}
       </div>
       {review && !amendment && review.kind !== "new" && <p className="text-amber-300">Manual review · {review.kind}</p>}
-      <p>{amendment?.summary || candidate.summary}</p>
-      {candidate.sourceTitle && <p className="truncate text-slate-400">From {candidate.sourceUrl
-        ? <a className="underline" href={candidate.sourceUrl} target="_blank" rel="noreferrer">{candidate.sourceTitle}</a>
-        : candidate.sourceTitle}</p>}
-      {!decided && amendment && (
+      {review && !amendment && <p>{candidate.summary}</p>}
+      {!amendment && source}
+      {amendment && (
         <div className="space-y-1 rounded border-l-2 border-violet-500/60 bg-slate-900/60 px-2 py-1">
-          <p className="font-semibold">{outcomes[amendment.state]}</p>
           <p>{amendment.scored}/{amendment.total} scored · {amendment.targetWins} target {amendment.targetWins === 1 ? "win" : "wins"} · {amendment.targetLosses} target {amendment.targetLosses === 1 ? "loss" : "losses"}</p>
-          {amendment.regressions.length > 0 && <p className="break-words text-rose-300">Regressions · {amendment.regressions.join(", ")}</p>}
-          {amendment.diff && <button type="button" className={actionStyle} aria-expanded={expanded} disabled={!!state}
+          {amendment.regressions.length > 0 && (
+            <div className="text-rose-300">
+              <p>Regressions</p>
+              <ul className="pl-2">
+                {amendment.regressions.map(id => {
+                  const detail = Array.isArray(amendment.regressionDetails) && amendment.regressionDetails.find(item =>
+                    item?.id === id && typeof item.title === "string" && item.title && typeof item.reason === "string");
+                  return <li key={id} className="break-words">
+                    {detail ? <details>
+                      <summary className="cursor-pointer">{detail.title}</summary>
+                      <p className="whitespace-pre-wrap pl-3 text-slate-300">{detail.reason}</p>
+                    </details> : id}
+                  </li>;
+                })}
+              </ul>
+            </div>
+          )}
+          {(changeSummary || source) && <details>
+            <summary className="cursor-pointer text-slate-200">Change summary</summary>
+            <p className="whitespace-pre-wrap break-words py-1">{changeSummary}</p>
+            {source}
+          </details>}
+          {!decided && amendment.diff && <button type="button" className={actionStyle} aria-expanded={expanded} disabled={!!state}
             onClick={() => { if (expanded) { setExpanded(false); setReviewedId(null); } else reload(true); }}>
             {expanded ? "Hide diff" : "Review diff"}
           </button>}
@@ -165,7 +192,6 @@ export function SkillCandidateRow({ candidate, state, onState }: {
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        {state === "applied" && <strong className="text-emerald-300">Amendment applied</strong>}
         {state === "deciding" && <span role="status">Saving decision…</span>}
         {review?.kind === "new" && <button type="button" className={actionStyle} disabled={!!state}
           title="Install this new skill in the live library" onClick={() => void decide("approve")}>

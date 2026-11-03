@@ -191,3 +191,43 @@ test('changing a card hint drops a prior install decision while the replacement 
     await ui.show({ ...ui.request, metadata: { ...ui.request.metadata, skillCandidates: [{ ...candidate, kind: 'skill-split' }] } });
     assert.ok(!ui.button('Approve'));
 });
+
+test('long wrapper proposals lead with target and outcome and disclose their full summary on demand', async t => {
+    const fullSummary = 'First narrow the pilot.\n\n' + 'Keep this detailed explanation. '.repeat(55);
+    const wrapper = 'skill-gardener-rollout-checklist-2026-10-15';
+    const ui = await renderCard(t, () => Response.json({ ...eligible, summary: fullSummary }), {
+        item: { ...candidate, id: wrapper, name: wrapper, summary: fullSummary },
+    });
+    const row = ui.container.querySelector('li');
+    const heading = row.firstElementChild.textContent;
+    assert.match(heading, /operations\/rollout/);
+    assert.match(heading, /Eligible to apply/);
+    assert.ok(!row.textContent.includes(wrapper));
+    const toggle = [...row.querySelectorAll('details > summary')].find(el => el.textContent === 'Change summary');
+    assert.ok(toggle);
+    const details = toggle.parentElement;
+    assert.ok(!details.open);
+    const collapsedRow = row.cloneNode(true);
+    collapsedRow.querySelectorAll('details').forEach(el => el.remove());
+    assert.ok(!collapsedRow.textContent.includes('Keep this detailed explanation'));
+    assert.match(collapsedRow.textContent, /2\/2 scored/);
+    await act(async () => toggle.click());
+    assert.ok(details.open);
+    assert.ok(details.textContent.includes(fullSummary));
+});
+
+test('regression titles identify the affected cases and disclose their individual judge reasons', async t => {
+    const regression = { id: 'protected-1', title: 'Routine staged rollout', reason: 'The proposal omitted the verification step.' };
+    const ui = await renderCard(t, () => Response.json({
+        ...eligible, state: 'regressed', regressions: [regression.id, 'older-case-2'], regressionDetails: [regression],
+    }));
+    const toggle = [...ui.container.querySelectorAll('details > summary')].find(el => el.textContent === regression.title);
+    assert.ok(toggle, 'the operator can open the human-readable case title');
+    const details = toggle.parentElement;
+    assert.ok(!details.open);
+    assert.ok(ui.container.textContent.includes('older-case-2'), 'missing optional detail falls back to its case id');
+    await act(async () => toggle.click());
+    assert.ok(details.open);
+    assert.ok(details.textContent.includes(regression.reason));
+    assert.ok(!ui.button('Apply amendment'));
+});
