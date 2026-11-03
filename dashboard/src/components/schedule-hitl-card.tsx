@@ -11,7 +11,7 @@
  *     per-row Worker/Model dropdowns + Skip + an add-instructions note (rides
  *     scheduleOverrides.instructions); Approve activates dispatch, Reject holds.
  *   • SkillCandidatesHitlCard  (kind "skill-candidates")  — nightly harvest;
- *     each candidate Approve/Archive posts immediately, then Done clears the item.
+ *     decisions post immediately, then Done clears the item.
  *   • BoardMaintenanceHitlCard (kind "board-maintenance") — Groundskeeper
  *     archive proposals (Archive/Keep ride the Done payload) + the Monday QA
  *     spot-audit (each sample links to its task + a Holds up/Flag verdict that
@@ -22,7 +22,8 @@
  * guards.
  */
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import { SkillCandidateRow, type SkillCandidateMeta, type CandidateState } from "./skill-candidate-row";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -96,19 +97,6 @@ interface ScheduleSlotMeta {
   /** Low-risk slot admitted by the project's standing-consent policy. */
   approvalSource?: "standing_consent" | null;
 }
-
-interface SkillCandidateMeta {
-  /** Candidate id (kebab-case filename in skills/_candidates/). */
-  id: string;
-  name: string;
-  category: string;
-  summary: string;
-  /** Title of the ingested item this was harvested from. */
-  sourceTitle?: string | null;
-  sourceUrl?: string | null;
-}
-
-type CandidateDecision = "approve" | "archive";
 
 interface PruneProposalMeta {
   /** Groundskeeper proposal id (stable across runs). */
@@ -786,37 +774,7 @@ export function SkillCandidatesHitlCard({
   onResolve: ResolveFn;
 }) {
   const meta = useMemo(() => asSkillMetadata(request.metadata), [request.metadata]);
-  // Each candidate decides immediately (2026-07-03) and independently of the
-  // Done button below. "approved"/"archived" are terminal here; undecided
-  // candidates stay staged and reappear tomorrow.
-  const [candidateStates, setCandidateStates] = useState<
-    Record<string, "deciding" | "approved" | "archived">
-  >({});
-  const [error, setError] = useState<string | null>(null);
-
-  async function decideCandidate(id: string, decision: CandidateDecision) {
-    setError(null);
-    setCandidateStates((prev) => ({ ...prev, [id]: "deciding" }));
-    try {
-      const res = await fetch(`/api/skill-candidates/${encodeURIComponent(id)}/decide`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision }),
-      });
-      if (!res.ok) throw new Error(`candidate decision failed (${res.status})`);
-      setCandidateStates((prev) => ({
-        ...prev,
-        [id]: decision === "approve" ? "approved" : "archived",
-      }));
-    } catch (err) {
-      setCandidateStates((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setError(err instanceof Error ? err.message : "Candidate decision failed");
-    }
-  }
+  const [candidateStates, setCandidateStates] = useState<Record<string, CandidateState | undefined>>({});
 
   if (!meta) {
     return (
@@ -827,9 +785,10 @@ export function SkillCandidatesHitlCard({
   }
 
   const candidates = meta.skillCandidates;
-  const decidedCount = candidates.filter(
-    (c) => candidateStates[c.id] === "approved" || candidateStates[c.id] === "archived",
-  ).length;
+  const keyFor = (candidate: SkillCandidateMeta) => JSON.stringify([request.id, candidate.id, candidate.kind]);
+  const states = candidates.map(c => candidateStates[keyFor(c)]);
+  const decidedCount = states.filter(state => state && state !== "deciding").length;
+  const deciding = states.includes("deciding");
 
   return (
     <article className="rounded-lg border border-violet-500/30 bg-slate-950/60 p-3">
@@ -843,98 +802,20 @@ export function SkillCandidatesHitlCard({
       </div>
 
       <p className="mb-2 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
-        Each decision applies immediately (approve installs into the live skill library; archive
-        moves to _rejected/). Undecided candidates stay for tomorrow. Tap <b>Done</b> to clear this
-        from your inbox.
+        Each decision takes effect immediately. Undecided candidates stay for tomorrow. Tap <b>Done</b> to clear the card.
       </p>
 
       <ul className="mb-3 divide-y divide-slate-700/40 overflow-hidden rounded border border-slate-700/60">
-        {candidates.map((candidate) => {
-          const state = candidateStates[candidate.id];
-          return (
-            <li key={candidate.id} className="flex items-start justify-between gap-2 px-2 py-1.5">
-              <div className="min-w-0 text-[length:var(--hitl-fs-xs,0.75rem)]">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={`truncate font-semibold ${
-                      state === "archived"
-                        ? "text-slate-500 line-through decoration-rose-400/60"
-                        : state === "approved"
-                          ? "text-emerald-300"
-                          : "text-slate-100"
-                    }`}
-                  >
-                    {candidate.name}
-                  </span>
-                  <span className="shrink-0 rounded-full border border-slate-700 px-1.5 py-0 text-[length:var(--hitl-fs-10,0.625rem)] text-slate-400">
-                    {candidate.category}
-                  </span>
-                </div>
-                <div className="mt-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] text-slate-400">{candidate.summary}</div>
-                {candidate.sourceTitle ? (
-                  <div className="mt-0.5 truncate text-[length:var(--hitl-fs-10,0.625rem)] text-slate-500">
-                    from:{" "}
-                    {candidate.sourceUrl ? (
-                      <a
-                        href={candidate.sourceUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline decoration-slate-600 hover:text-violet-300"
-                      >
-                        {candidate.sourceTitle}
-                      </a>
-                    ) : (
-                      candidate.sourceTitle
-                    )}
-                  </div>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 gap-1 pt-0.5">
-                <button
-                  disabled={state !== undefined}
-                  onClick={() => void decideCandidate(candidate.id, "approve")}
-                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] disabled:cursor-not-allowed disabled:opacity-50 ${
-                    state === "approved"
-                      ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
-                      : "border-slate-700 text-slate-300 hover:border-emerald-400 hover:text-emerald-300"
-                  }`}
-                  title="Approve now — moves into the live skill library immediately (installs for Claude Code via the vault watcher)"
-                >
-                  {state === "deciding" ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-3 w-3" />
-                  )}
-                  {state === "approved" ? "Approved" : "Approve"}
-                </button>
-                <button
-                  disabled={state !== undefined}
-                  onClick={() => void decideCandidate(candidate.id, "archive")}
-                  className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[length:var(--hitl-fs-11,0.6875rem)] disabled:cursor-not-allowed disabled:opacity-50 ${
-                    state === "archived"
-                      ? "border-rose-400 bg-rose-500/20 text-rose-200"
-                      : "border-slate-700 text-slate-300 hover:border-rose-400 hover:text-rose-300"
-                  }`}
-                  title="Reject now — moved to _candidates/_rejected/ for audit"
-                >
-                  <Trash2 className="h-3 w-3" />
-                  {state === "archived" ? "Archived" : "Archive"}
-                </button>
-              </div>
-            </li>
-          );
+        {candidates.map(candidate => {
+          const key = keyFor(candidate);
+          return <SkillCandidateRow key={key} candidate={candidate} state={candidateStates[key]}
+            onState={state => setCandidateStates(previous => ({ ...previous, [key]: state }))} />;
         })}
       </ul>
 
-      {error ? (
-        <div className="mb-2 flex items-center gap-1 text-[length:var(--hitl-fs-11,0.6875rem)] text-rose-300">
-          <AlertCircle className="h-3 w-3" /> {error}
-        </div>
-      ) : null}
-
       <div className="flex justify-end">
         <button
-          disabled={resolving}
+          disabled={resolving || deciding}
           onClick={() => void onResolve(request.id, { choice: "done" })}
           className="inline-flex items-center gap-1 rounded-md bg-violet-500 px-3 py-1.5 text-[length:var(--hitl-fs-xs,0.75rem)] font-bold text-slate-950 transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
         >
