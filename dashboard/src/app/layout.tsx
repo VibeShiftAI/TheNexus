@@ -7,6 +7,7 @@ import { CortexProvider } from "@/components/cortex-provider";
 import { GlobalVoiceDock } from "@/components/global-voice-dock";
 import { EventTicker } from "@/components/bridge/event-ticker";
 import { LiveBoardStateProvider } from "@/components/live-board-state";
+import { RuntimeHealthBanner } from "@/components/runtime-health-banner";
 import { ConnectionBanner } from "@/components/connection-banner";
 import { MobileShellBridge } from "@/components/mobile-shell-bridge";
 import { TravelPresentationLauncher } from "@/components/presentation/presentation-controller";
@@ -51,6 +52,7 @@ export default function RootLayout({
           <CortexProvider>
             <LiveBoardStateProvider>
             <BridgeActivityProvider>
+            <RuntimeHealthBanner />
             <main style={{ flex: 1 }}>
               {children}
             </main>

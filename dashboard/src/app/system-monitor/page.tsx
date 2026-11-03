@@ -1,5 +1,6 @@
 "use client";
 
+import { useRuntimeHealth, runtimeHealthLabel } from "@/hooks/use-runtime-health";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLiveRefetch } from "@/components/live-board-state";
@@ -76,6 +77,8 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 export default function SystemMonitorPage() {
+    const health = useRuntimeHealth();
+    const healthy = health.status === "healthy";
     const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
     const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -255,12 +258,8 @@ export default function SystemMonitorPage() {
                             <span>System Monitor</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <ShieldCheck size={16} className="text-emerald-500" />
-                            <span>TUNNEL ACTIVE</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Zap size={16} className="text-yellow-500" />
-                            <span>VIBE: HIGH</span>
+                            <ShieldCheck size={16} className={healthy ? "text-emerald-500" : "text-amber-400"} />
+                            <span>{runtimeHealthLabel(health)}</span>
                         </div>
                     </div>
                 </div>
@@ -333,9 +332,9 @@ export default function SystemMonitorPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
-                            <span className="text-emerald-400 font-medium flex items-center">
+                            <span className="text-slate-400 font-medium flex items-center">
                                 <TrendingUp className="w-3 h-3 mr-1" />
-                                Active
+                                Recorded usage
                             </span>
                             <span className="text-slate-500">Lifetime usage</span>
                         </div>
@@ -368,8 +367,8 @@ export default function SystemMonitorPage() {
                                     {systemStatus?.portCount || 0}
                                 </h3>
                             </div>
-                            <div className="p-2 bg-emerald-500/10 rounded-lg">
-                                <Server className="w-5 h-5 text-emerald-400" />
+                            <div className="p-2 bg-slate-500/10 rounded-lg">
+                                <Server className="w-5 h-5 text-slate-400" />
                             </div>
                         </div>
                         <div className="text-xs text-slate-500">
@@ -393,7 +392,7 @@ export default function SystemMonitorPage() {
                                 <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
                                     Praxis Agent Engine
                                 </h2>
-                                <p className="text-xs text-slate-400 font-mono tracking-wider">PRAXIS // ACTIVE</p>
+                                <p className="text-xs text-slate-400 font-mono tracking-wider">PRAXIS // {runtimeHealthLabel(health)}</p>
                             </div>
                         </div>
 
@@ -409,8 +408,8 @@ export default function SystemMonitorPage() {
                                     {systemStatus?.praxis?.model || "Offline"}
                                 </div>
                                 <div className="text-xs text-indigo-400/80 font-mono mt-2 flex items-center gap-1.5 relative z-10">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${systemStatus?.praxis?.status === 'online' ? 'bg-indigo-500 animate-[pulse_2s_ease-in-out_infinite] shadow-[0_0_5px_rgba(99,102,241,0.5)]' : 'bg-slate-500'}`}></span>
-                                    Active Version
+                                    <span className={`w-1.5 h-1.5 rounded-full ${healthy && systemStatus?.praxis?.status === 'online' ? 'bg-indigo-500 animate-[pulse_2s_ease-in-out_infinite] shadow-[0_0_5px_rgba(99,102,241,0.5)]' : 'bg-slate-500'}`}></span>
+                                    Reported version
                                 </div>
                             </div>
 
@@ -470,7 +469,7 @@ export default function SystemMonitorPage() {
                                     <Zap className={`w-5 h-5 ${
                                         (systemStatus?.praxis?.dailyCallCount ?? 0) >= 800 ? 'text-red-400 animate-pulse' :
                                         (systemStatus?.praxis?.dailyCallCount ?? 0) >= 500 ? 'text-amber-400' :
-                                        'text-emerald-400'
+                                        (healthy ? 'text-emerald-400' : 'text-slate-400')
                                     }`} />
                                     <span className="text-sm font-medium text-slate-300">API Calls Today</span>
                                 </div>
@@ -507,12 +506,12 @@ export default function SystemMonitorPage() {
                                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
                                             APPROACHING LIMIT
                                         </span>
-                                    ) : (
+                                    ) : healthy ? (
                                         <span className="text-emerald-400/80 flex items-center gap-1">
                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
                                             WITHIN BUDGET
                                         </span>
-                                    )}
+                                    ) : <span className="text-amber-400">{runtimeHealthLabel(health)}</span>}
                                 </div>
                             </div>
                         </div>
@@ -552,7 +551,7 @@ export default function SystemMonitorPage() {
                                     .map(([provider, data]) => {
                                         const limit = PROVIDER_QUOTA_LIMITS[provider] || 500;
                                         const pct = Math.min((data.requestsToday / limit) * 100, 100);
-                                        const color = PROVIDER_COLORS[provider] || PROVIDER_COLORS['other'];
+                                        const color = healthy ? (PROVIDER_COLORS[provider] || PROVIDER_COLORS['other']) : '#94a3b8';
                                         const isWarning = pct >= 80;
                                         const isCritical = pct >= 95;
                                         const label = PROVIDER_LABELS[provider] || provider;
@@ -723,7 +722,7 @@ export default function SystemMonitorPage() {
                                         <div className="flex items-center justify-between mb-1">
                                             <div className="flex items-center gap-3">
                                                 <span className="font-mono text-cyan-400 font-bold">:{port.port}</span>
-                                                <span className={`text-xs px-2 py-0.5 rounded-full ${port.type === 'node' ? 'bg-green-500/20 text-green-400' :
+                                                <span className={`text-xs px-2 py-0.5 rounded-full ${port.type === 'node' ? 'bg-slate-500/20 text-slate-400' :
                                                     port.type === 'python' ? 'bg-yellow-500/20 text-yellow-400' :
                                                         'bg-slate-500/20 text-slate-400'
                                                     }`}>

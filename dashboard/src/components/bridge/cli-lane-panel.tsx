@@ -31,7 +31,7 @@ export function CliLanePanel({ view }: { view: CliLaneView }) {
   }
 
   const { gate } = view;
-  const gateTone = gate.saturated ? "text-amber-300" : "text-emerald-300";
+  const gateTone = gate.saturated ? "text-amber-300" : "text-slate-300";
 
   return (
     <section

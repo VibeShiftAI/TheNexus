@@ -699,7 +699,7 @@ function ContainmentStrip({ eligibility }: { eligibility: DispatchEligibilityRes
             {holder.title || holder.taskId} ({holder.executor} · {holder.phase})
           </Link>
         ) : (
-          <span className="font-semibold text-emerald-300">free</span>
+          <span className="font-semibold text-slate-300">free</span>
         )}
       </span>
       <span>

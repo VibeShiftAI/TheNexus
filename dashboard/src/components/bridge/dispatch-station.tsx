@@ -22,7 +22,7 @@ import { useCortex } from "@/components/cortex-provider";
 import { useChatActivity } from "@/hooks/use-chat-activity";
 import { useBridgeActivity } from "./activity-provider";
 import { getBoardLaneId } from "@/lib/task-board";
-import { isDayWellUnderway } from "@/lib/day-underway";
+import { useRuntimeHealth } from "@/hooks/use-runtime-health";
 import { useDispatchState } from "@/hooks/use-dispatch-state";
 import { deriveCliLane } from "@/lib/cli-lane";
 import type {
@@ -119,6 +119,7 @@ export interface CronJob {
 }
 
 export interface DispatchStateResponse {
+  runtimeHealth?: import("@/hooks/use-runtime-health").RuntimeHealth;
   dispatchLog?: { id: string; title: string; status: string; dispatchedAt: string }[];
   cron?: CronJob[];
   executors?: {
@@ -339,9 +340,8 @@ export function DispatchStation() {
       .slice(0, 2);
   }, [state]);
 
-  // Zero dispatches since midnight only signals a stalled pipeline once the
-  // day's well underway — before dawn it's just an early idle fleet.
-  const degraded = today?.total === 0 && !activeRun && isDayWellUnderway();
+  // Use Praxis judgments, including its day-activity grade, without local thresholds.
+  const degraded = useRuntimeHealth().status !== "healthy";
 
   return (
     <HudPanel

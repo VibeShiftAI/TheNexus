@@ -15,8 +15,7 @@ import { HudPanel } from "@/components/bridge/hud";
 import { groupBoardTasks, type BoardTask } from "@/lib/task-board";
 import { useBoardState } from "@/hooks/use-board-state";
 import { useLiveRefetch } from "@/components/live-board-state";
-import { useCrewActivity } from "@/hooks/use-crew-activity";
-import { isDayWellUnderway } from "@/lib/day-underway";
+import { useRuntimeHealth, runtimeHealthLabel } from "@/hooks/use-runtime-health";
 
 import { useBridgeActivity } from "./activity-provider";
 import type { ActivityItem } from "@/lib/bridge-activity";
@@ -139,23 +138,14 @@ export function TaskBoardStation() {
   // header so held work is never hidden, but the rows open only on request.
   const [attentionOpen, setAttentionOpen] = useState(false);
 
-  // A clear board (nothing queued, nothing active) reads the same whether the
-  // fleet is genuinely idle or the dispatch pipeline has silently stalled —
-  // the only signal that tells them apart is whether anything dispatched at
-  // all today. Reads the deck-wide shared dispatch-state store (useDispatchState
-  // via useCrewActivity) — no extra request loop. Only judge that once the day's
-  // well underway (early morning zero is normal, not degraded); an unreachable
-  // dispatch-state feed leaves `dispatchedToday` undefined, which also stays
-  // non-degraded rather than guessing.
-  const { dispatchedToday } = useCrewActivity();
-  const degraded = onBoard === 0 && dispatchedToday?.total === 0 && isDayWellUnderway();
-
+  const health = useRuntimeHealth();
+  const degraded = health.status !== "healthy";
   return (
     <HudPanel
       icon={<ClipboardList size={16} />}
       title="TACTICAL — TASK BOARD"
       activity={activeItems.some(item => active.some(t => t.id === item.taskId?.replace(/^qa--/, ""))) ? "active" : "idle"}
-      accent={degraded ? "red" : "emerald"}
+      accent={degraded ? "amber" : "emerald"}
       className="flex h-full flex-col"
       headerRight={
         <>
@@ -171,10 +161,10 @@ export function TaskBoardStation() {
       ) : onBoard === 0 && degraded ? (
         <div
           className="flex items-center justify-center gap-1.5 rounded border border-dashed border-red-500/40 bg-red-500/5 px-2 py-6 text-center text-xs text-red-300"
-          title="Board is clear and zero dispatches have run since local midnight — this can mean an idle fleet or a stalled dispatch pipeline. Check Ops."
+          title="See the runtime banner for the reported cause and details."
         >
           <Radio size={13} className="shrink-0 motion-safe:animate-pulse" />
-          Degraded — no dispatches today, board clear.
+          {runtimeHealthLabel(health)} — board clear.
         </div>
       ) : onBoard === 0 ? (
         <div className="rounded border border-dashed border-slate-800 px-2 py-6 text-center text-xs text-slate-600">

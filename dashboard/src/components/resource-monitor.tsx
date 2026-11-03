@@ -257,7 +257,7 @@ export function ResourceMonitor({ className = '', onClose }: ResourceMonitorProp
                                                 className="flex items-center justify-between p-2 bg-slate-800/30 rounded-lg"
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-2 h-2 rounded-full ${port.type === 'node' ? 'bg-green-400' :
+                                                    <div className={`w-2 h-2 rounded-full ${port.type === 'node' ? 'bg-slate-400' :
                                                             port.type === 'python' ? 'bg-yellow-400' :
                                                                 port.type === 'java' ? 'bg-orange-400' :
                                                                     'bg-slate-400'
