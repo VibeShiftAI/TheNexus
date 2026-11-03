@@ -1,23 +1,41 @@
 const express = require('express');
+const { createDocumentDecisionAuthority } = require('../services/document-decision-authority');
+const { praxisProxyJson, operatorProvenanceHeaders } = require('../services/praxis-client');
 
-// Status/content-type/body forwarded verbatim, 502 on transport failure —
-// the shared Praxis client owns the URL and the error shape (P1-14).
-const { praxisProxyJson: proxyPraxisJson } = require('../services/praxis-client');
+const OPERATORS = new Set(['access_user', 'access_device', 'operator_credential']);
 
-/**
- * Individual approve/archive for nightly skill-harvest candidates.
- * Decoupled from the morning-plan approval (2026-07-03): the dashboard's
- * candidate buttons call this immediately; the plan's Approve button no
- * longer carries candidate decisions.
- */
-function createSkillCandidatesRouter() {
+function createSkillCandidatesRouter({ authorize = createDocumentDecisionAuthority(), sign = operatorProvenanceHeaders } = {}) {
     const router = express.Router();
 
-    router.post('/:id/decide', (req, res) =>
-        proxyPraxisJson(res, '/skill-candidates/decide', {
-            method: 'POST',
-            body: { id: req.params.id, decision: req.body?.decision },
-        }));
+    router.get('/:id/review', (req, res) => {
+        res.set('Cache-Control', 'no-store');
+        return praxisProxyJson(res, `/skill-candidates/${encodeURIComponent(req.params.id)}/review`);
+    });
+
+    router.post('/:id/decide', async (req, res) => {
+        const { id } = req.params;
+        const decision = req.body?.decision;
+        if (decision !== 'apply-amendment') {
+            return praxisProxyJson(res, '/skill-candidates/decide', { method: 'POST', body: { id, decision } });
+        }
+        if (req.get('sec-fetch-site') === 'cross-site') {
+            return res.status(403).json({ error: 'Apply the amendment from your Nexus session.' });
+        }
+        const auth = await authorize(req);
+        if (!auth?.ok || !OPERATORS.has(auth.actor?.authority)) {
+            return res.status(auth?.ok ? 403 : auth?.status || 403).json({ error: 'An operator session is required to apply a skill amendment.' });
+        }
+        const reviewId = req.body?.reviewId;
+        if (typeof reviewId !== 'string' || !reviewId.trim()) {
+            return res.status(400).json({ error: 'Open the current amendment diff before applying it.' });
+        }
+        const message = JSON.stringify({ purpose: 'skill-amendment-apply', id, reviewId });
+        const headers = sign(message, { surface: 'nexus-skill-amendment' });
+        if (!Object.keys(headers).length) {
+            return res.status(503).json({ error: 'The Nexus-to-Praxis operator relay is unavailable.' });
+        }
+        return praxisProxyJson(res, '/skill-candidates/decide', { method: 'POST', headers, body: { id, decision, reviewId } });
+    });
 
     return router;
 }
