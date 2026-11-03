@@ -1,0 +1,5 @@
+{"direction":"send","payload":{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"boundary-probe","version":"2"}}}}
+{"direction":"recv","payload":{"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{"listChanged":true}},"serverInfo":{"name":"praxis-mind","version":"0.1.0"}},"jsonrpc":"2.0","id":1}}
+{"direction":"send","payload":{"jsonrpc":"2.0","method":"notifications/initialized"}}
+{"direction":"send","payload":{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"identity_whoami","arguments":{}}}}
+{"direction":"recv","payload":{"result":{"content":[{"type":"text","text":"Error: unauthenticated. PRAXIS_MIND_KEY env var missing or invalid."}],"isError":true},"jsonrpc":"2.0","id":2}}

@@ -1,0 +1,5 @@
+[2026-11-03T21:34:10.286Z] FATAL: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/mcp-probe-home-S1XQq2/.praxis-mind/keys.json is group/world-accessible (mode 644) — refusing to load keys. Fix: chmod 600 /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/mcp-probe-home-S1XQq2/.praxis-mind/keys.json
+[2026-11-03T21:34:10.287Z] PRAXIS_MIND_KEY did not match any registered key
+[2026-11-03T21:34:10.287Z] praxis-mind spawned UNAUTHENTICATED — tools will refuse
+[2026-11-03T21:34:10.292Z] All tools registered. Connecting transport.
+[2026-11-03T21:34:10.292Z] Transport connected — awaiting MCP requests.

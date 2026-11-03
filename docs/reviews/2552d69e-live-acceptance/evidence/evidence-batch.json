@@ -1,0 +1,854 @@
+{
+  "checked_at": "2026-11-03T21:35:06.123569+00:00",
+  "url": "http://localhost:4000/api/task-evidence?task_ids=7fe1005f-f05f-430c-a6a0-b1e4dddf6876,c8948d1b-4293-4c88-b10e-fa2ea06c3c1e,69cb9a87-0c9a-462e-a282-322718f581c6,f76a16d0-b0d4-425f-83c2-465c0c701f13,6b46dcc8-3883-42c9-8d98-977bcde3850b,584f2f1d-e03a-471d-911b-f530a2f89917,9cae1b0e-cba3-4580-a83a-1c3222404dbe,6d6e2638-8fc1-46fa-8545-3ad4d5876dc0,91f1f758-4b40-464b-a2a0-29f29de0bf98,1390fc34-1923-4db2-afc6-dbd65d17a7bc,a10da6d9-23fd-43a6-ac4c-a8cee59e3b7e,0b8e348c-7abd-4a6d-858f-8ac83151f229,dade9c64-a289-4665-9d49-0f53a74dc13c,9021f20d-7275-4ed8-8888-cd10077dedb0,a2553798-fbf1-4202-8eb4-c6f2947eac60,b07f64ad-9be5-48f0-a1d6-70dd8b3cdfb5,a1cc8616-5d7b-4278-a91f-85d90c366c9e,60c8716a-c6d6-4058-90dd-75fa54a96904,75de5032-89f9-4f6f-b062-de9193407f1d,708c8a8a-edff-48a8-ad74-ba9e8d2b50ab,0d8f392f-33f4-4e2c-8ccf-5ef7759e679f,4e93bf2c-eee2-46f4-a322-a0c72b86f411,444a0be0-b220-41b2-bfd6-d0268d50fe12,5fbeff4a-e498-46ed-ae3c-ea1ae8ff14db,52143c29-6827-4adb-9d95-eba2df7ec520,e0d0ed0a-508b-4dba-9491-cd7fa7035d59,68edfc77-5038-4069-99c0-5913c8f1a0f2,143abc00-b3e5-4071-89a1-bc38ae2832fb,762637e6-d2b9-4612-8878-7eb026931c48,a2aace88-46f7-4054-8cba-cac7f1a3f087,0542c200-d6f7-4471-8426-d885559dc009,c1d62b6c-322f-4180-8482-55da29c38b1c,07b411e9-95b2-48fa-b5aa-2158cdb2611b,338399cd-caec-4c81-b98e-11648b9e09a2,1e7f4570-44d6-4a12-8b8f-a3906c8b0d24,3b38f84a-01ca-4180-8f79-4877ef4a9828,f92179ca-eb40-40a7-b1d4-9038a7fa7832,c75b2fc6-ab71-466c-9846-d3b0f3fceb44,add5817e-d363-4a92-bfdc-a229926e339d,abdf62d0-8bae-4b6f-b1f1-a1b1339e0ebe,bde8c652-2bb2-48b0-b8d8-8eed796b714d,1c3b19e3-8d35-48c7-b19a-d384bb74ae41,f98f2a68-396c-4119-8703-71cbfb838280,8401040e-4baa-4e8f-9250-4b79d0b550bc,601385cd-6cc5-45e4-84fa-362ba59bcb63,f07952d4-54c6-4606-9827-a3d5007b30fb,a9433359-c7d4-4389-81bb-cb67d57e4d34,60879a3c-3506-4fc7-9e90-4e2232ef41cd,0df94949-dcae-4c3d-9356-e1e65f0ad75f,5f15ca0f-17b1-48a7-aa93-61f212fcabf6,9f4477b5-a190-52b2-b489-8b01da55bde7,68909e82-5c4d-530a-9f80-22cc740e477e,9a0041de-b912-5c23-b4fd-5a6ecb55fd46,1599d9c7-cd7c-52ef-8d53-8d76dfc2bbb3,18ecdcd4-ae3c-4e88-a1e1-d3b53b540fd2,3dd8940c-81d3-46b1-a9d7-ff65e00b3cb2,9b309f66-40bb-4bb7-b00d-e3ae1490b2c5,66bf1c6f-d420-4031-a8cf-68728352a5d2,5fbd44a1-d378-43a7-b966-560a6a84464e,ee77828e-7c60-44e9-a9d6-91f8ba7e127d,52d7a5e7-18de-4dc5-aeee-ebe92324e477,e211181f-ed65-44dd-a170-77ad80920dd0,201ae181-a448-4fcb-a754-49ad1147ed8e,e4a3b5d2-5db8-4043-9035-2c1cabb85305,204bae0d-f466-46c7-b10e-e686bf287abf,319ac06a-4538-4770-8ba5-5f25e60fc158,d02a8905-2c0a-4999-b8ba-bad47680c2b5,02f3c8a7-f436-4b64-9823-d84f305ffcc8,5579e87c-ea01-4ec4-a641-c05a17632a12,50e55c47-3890-49f2-b860-ec7f79466bc3,3f35e87a-dfd8-42c7-aa4a-40c0c712b55f,30daf8ea-2c8b-426f-8fc8-0ccc5fb219a5,b4b102c4-aaed-44dd-bd9a-6353509a95cb,984c2ec2-c215-4f92-b151-41cfb737715c,8b16bdf4-64f2-408a-a0b8-7c2be13a005e,6f84288d-cd17-4720-bc22-fafa9315cb3f,402930f9-4e3e-411b-97a9-3e0a948ede39,899d7237-8470-4ed2-925b-f1489b4aa223,cc3ffab9-8e27-4a21-b4c0-4366e027e71a,ae7b1ff0-98e2-437f-822e-bc4397b3ef5d,86a84a46-983a-4eb7-90ee-ff1a4b0afdd6,db23fbed-025e-468d-af1c-9685d59748ae,e608e40f-7ff5-4872-ab53-de7d4ccf7dba,17c118c3-b069-4263-b23d-fa2987b65ad4,ee36a0a9-ada8-47ce-9045-064289c0489f,925ae844-ce99-4506-9b28-280497131d4c,2da2e7a5-4276-44f0-82d4-1560bff7394f,783ba9f5-e4d6-4989-b642-d2113fb2e48f,7184d02e-ef8c-4910-90e9-0ba2d33027e7,768c5a30-ce51-4e3e-af34-52e7c0a35f58,a70868a0-014b-4fdc-99fa-27a8e52a7a49,1212d226-d403-460c-8cd4-4d87fc68ed08,3caec714-3c6d-488c-99a2-4add8294336e,5f7a7e68-e099-409e-883a-65a58c99293b,47761073-90bd-4582-88ff-c90b51b33ca0",
+  "status": 200,
+  "body": {
+    "at": "2026-11-03T21:35:06.123Z",
+    "spineAvailable": true,
+    "tasks": {
+      "7fe1005f-f05f-430c-a6a0-b1e4dddf6876": {
+        "taskId": "7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "c8948d1b-4293-4c88-b10e-fa2ea06c3c1e": {
+        "taskId": "c8948d1b-4293-4c88-b10e-fa2ea06c3c1e",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "69cb9a87-0c9a-462e-a282-322718f581c6": {
+        "taskId": "69cb9a87-0c9a-462e-a282-322718f581c6",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough.",
+        "predatesEvidenceCapture": true
+      },
+      "f76a16d0-b0d4-425f-83c2-465c0c701f13": {
+        "taskId": "f76a16d0-b0d4-425f-83c2-465c0c701f13",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "6b46dcc8-3883-42c9-8d98-977bcde3850b": {
+        "taskId": "6b46dcc8-3883-42c9-8d98-977bcde3850b",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "584f2f1d-e03a-471d-911b-f530a2f89917": {
+        "taskId": "584f2f1d-e03a-471d-911b-f530a2f89917",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "9cae1b0e-cba3-4580-a83a-1c3222404dbe": {
+        "taskId": "9cae1b0e-cba3-4580-a83a-1c3222404dbe",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate.",
+        "predatesEvidenceCapture": false
+      },
+      "6d6e2638-8fc1-46fa-8545-3ad4d5876dc0": {
+        "taskId": "6d6e2638-8fc1-46fa-8545-3ad4d5876dc0",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "91f1f758-4b40-464b-a2a0-29f29de0bf98": {
+        "taskId": "91f1f758-4b40-464b-a2a0-29f29de0bf98",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate.",
+        "predatesEvidenceCapture": false
+      },
+      "1390fc34-1923-4db2-afc6-dbd65d17a7bc": {
+        "taskId": "1390fc34-1923-4db2-afc6-dbd65d17a7bc",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "a10da6d9-23fd-43a6-ac4c-a8cee59e3b7e": {
+        "taskId": "a10da6d9-23fd-43a6-ac4c-a8cee59e3b7e",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "0b8e348c-7abd-4a6d-858f-8ac83151f229": {
+        "taskId": "0b8e348c-7abd-4a6d-858f-8ac83151f229",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "dade9c64-a289-4665-9d49-0f53a74dc13c": {
+        "taskId": "dade9c64-a289-4665-9d49-0f53a74dc13c",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "9021f20d-7275-4ed8-8888-cd10077dedb0": {
+        "taskId": "9021f20d-7275-4ed8-8888-cd10077dedb0",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "a2553798-fbf1-4202-8eb4-c6f2947eac60": {
+        "taskId": "a2553798-fbf1-4202-8eb4-c6f2947eac60",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "b07f64ad-9be5-48f0-a1d6-70dd8b3cdfb5": {
+        "taskId": "b07f64ad-9be5-48f0-a1d6-70dd8b3cdfb5",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate.",
+        "predatesEvidenceCapture": false
+      },
+      "a1cc8616-5d7b-4278-a91f-85d90c366c9e": {
+        "taskId": "a1cc8616-5d7b-4278-a91f-85d90c366c9e",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "60c8716a-c6d6-4058-90dd-75fa54a96904": {
+        "taskId": "60c8716a-c6d6-4058-90dd-75fa54a96904",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "75de5032-89f9-4f6f-b062-de9193407f1d": {
+        "taskId": "75de5032-89f9-4f6f-b062-de9193407f1d",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "708c8a8a-edff-48a8-ad74-ba9e8d2b50ab": {
+        "taskId": "708c8a8a-edff-48a8-ad74-ba9e8d2b50ab",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "0d8f392f-33f4-4e2c-8ccf-5ef7759e679f": {
+        "taskId": "0d8f392f-33f4-4e2c-8ccf-5ef7759e679f",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "4e93bf2c-eee2-46f4-a322-a0c72b86f411": {
+        "taskId": "4e93bf2c-eee2-46f4-a322-a0c72b86f411",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "444a0be0-b220-41b2-bfd6-d0268d50fe12": {
+        "taskId": "444a0be0-b220-41b2-bfd6-d0268d50fe12",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "5fbeff4a-e498-46ed-ae3c-ea1ae8ff14db": {
+        "taskId": "5fbeff4a-e498-46ed-ae3c-ea1ae8ff14db",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "52143c29-6827-4adb-9d95-eba2df7ec520": {
+        "taskId": "52143c29-6827-4adb-9d95-eba2df7ec520",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "e0d0ed0a-508b-4dba-9491-cd7fa7035d59": {
+        "taskId": "e0d0ed0a-508b-4dba-9491-cd7fa7035d59",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "68edfc77-5038-4069-99c0-5913c8f1a0f2": {
+        "taskId": "68edfc77-5038-4069-99c0-5913c8f1a0f2",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "143abc00-b3e5-4071-89a1-bc38ae2832fb": {
+        "taskId": "143abc00-b3e5-4071-89a1-bc38ae2832fb",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "762637e6-d2b9-4612-8878-7eb026931c48": {
+        "taskId": "762637e6-d2b9-4612-8878-7eb026931c48",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "a2aace88-46f7-4054-8cba-cac7f1a3f087": {
+        "taskId": "a2aace88-46f7-4054-8cba-cac7f1a3f087",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "0542c200-d6f7-4471-8426-d885559dc009": {
+        "taskId": "0542c200-d6f7-4471-8426-d885559dc009",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "c1d62b6c-322f-4180-8482-55da29c38b1c": {
+        "taskId": "c1d62b6c-322f-4180-8482-55da29c38b1c",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": false
+      },
+      "07b411e9-95b2-48fa-b5aa-2158cdb2611b": {
+        "taskId": "07b411e9-95b2-48fa-b5aa-2158cdb2611b",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate.",
+        "predatesEvidenceCapture": false
+      },
+      "338399cd-caec-4c81-b98e-11648b9e09a2": {
+        "taskId": "338399cd-caec-4c81-b98e-11648b9e09a2",
+        "state": "unverified",
+        "missing": [
+          "qa"
+        ],
+        "summary": "Unverified: missing QA verdict.",
+        "predatesEvidenceCapture": false
+      },
+      "1e7f4570-44d6-4a12-8b8f-a3906c8b0d24": {
+        "taskId": "1e7f4570-44d6-4a12-8b8f-a3906c8b0d24",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "3b38f84a-01ca-4180-8f79-4877ef4a9828": {
+        "taskId": "3b38f84a-01ca-4180-8f79-4877ef4a9828",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "f92179ca-eb40-40a7-b1d4-9038a7fa7832": {
+        "taskId": "f92179ca-eb40-40a7-b1d4-9038a7fa7832",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "c75b2fc6-ab71-466c-9846-d3b0f3fceb44": {
+        "taskId": "c75b2fc6-ab71-466c-9846-d3b0f3fceb44",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "add5817e-d363-4a92-bfdc-a229926e339d": {
+        "taskId": "add5817e-d363-4a92-bfdc-a229926e339d",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "abdf62d0-8bae-4b6f-b1f1-a1b1339e0ebe": {
+        "taskId": "abdf62d0-8bae-4b6f-b1f1-a1b1339e0ebe",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough.",
+        "predatesEvidenceCapture": true
+      },
+      "bde8c652-2bb2-48b0-b8d8-8eed796b714d": {
+        "taskId": "bde8c652-2bb2-48b0-b8d8-8eed796b714d",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "1c3b19e3-8d35-48c7-b19a-d384bb74ae41": {
+        "taskId": "1c3b19e3-8d35-48c7-b19a-d384bb74ae41",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "f98f2a68-396c-4119-8703-71cbfb838280": {
+        "taskId": "f98f2a68-396c-4119-8703-71cbfb838280",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "8401040e-4baa-4e8f-9250-4b79d0b550bc": {
+        "taskId": "8401040e-4baa-4e8f-9250-4b79d0b550bc",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough.",
+        "predatesEvidenceCapture": true
+      },
+      "601385cd-6cc5-45e4-84fa-362ba59bcb63": {
+        "taskId": "601385cd-6cc5-45e4-84fa-362ba59bcb63",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "f07952d4-54c6-4606-9827-a3d5007b30fb": {
+        "taskId": "f07952d4-54c6-4606-9827-a3d5007b30fb",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "a9433359-c7d4-4389-81bb-cb67d57e4d34": {
+        "taskId": "a9433359-c7d4-4389-81bb-cb67d57e4d34",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "60879a3c-3506-4fc7-9e90-4e2232ef41cd": {
+        "taskId": "60879a3c-3506-4fc7-9e90-4e2232ef41cd",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough.",
+        "predatesEvidenceCapture": true
+      },
+      "0df94949-dcae-4c3d-9356-e1e65f0ad75f": {
+        "taskId": "0df94949-dcae-4c3d-9356-e1e65f0ad75f",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "5f15ca0f-17b1-48a7-aa93-61f212fcabf6": {
+        "taskId": "5f15ca0f-17b1-48a7-aa93-61f212fcabf6",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "9f4477b5-a190-52b2-b489-8b01da55bde7": {
+        "taskId": "9f4477b5-a190-52b2-b489-8b01da55bde7",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "68909e82-5c4d-530a-9f80-22cc740e477e": {
+        "taskId": "68909e82-5c4d-530a-9f80-22cc740e477e",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "9a0041de-b912-5c23-b4fd-5a6ecb55fd46": {
+        "taskId": "9a0041de-b912-5c23-b4fd-5a6ecb55fd46",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "1599d9c7-cd7c-52ef-8d53-8d76dfc2bbb3": {
+        "taskId": "1599d9c7-cd7c-52ef-8d53-8d76dfc2bbb3",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "18ecdcd4-ae3c-4e88-a1e1-d3b53b540fd2": {
+        "taskId": "18ecdcd4-ae3c-4e88-a1e1-d3b53b540fd2",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "3dd8940c-81d3-46b1-a9d7-ff65e00b3cb2": {
+        "taskId": "3dd8940c-81d3-46b1-a9d7-ff65e00b3cb2",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "9b309f66-40bb-4bb7-b00d-e3ae1490b2c5": {
+        "taskId": "9b309f66-40bb-4bb7-b00d-e3ae1490b2c5",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "66bf1c6f-d420-4031-a8cf-68728352a5d2": {
+        "taskId": "66bf1c6f-d420-4031-a8cf-68728352a5d2",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough.",
+        "predatesEvidenceCapture": false
+      },
+      "5fbd44a1-d378-43a7-b966-560a6a84464e": {
+        "taskId": "5fbd44a1-d378-43a7-b966-560a6a84464e",
+        "state": "unverified",
+        "missing": [
+          "qa"
+        ],
+        "summary": "Unverified: missing QA verdict.",
+        "predatesEvidenceCapture": false
+      },
+      "ee77828e-7c60-44e9-a9d6-91f8ba7e127d": {
+        "taskId": "ee77828e-7c60-44e9-a9d6-91f8ba7e127d",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough.",
+        "predatesEvidenceCapture": false
+      },
+      "52d7a5e7-18de-4dc5-aeee-ebe92324e477": {
+        "taskId": "52d7a5e7-18de-4dc5-aeee-ebe92324e477",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "e211181f-ed65-44dd-a170-77ad80920dd0": {
+        "taskId": "e211181f-ed65-44dd-a170-77ad80920dd0",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "201ae181-a448-4fcb-a754-49ad1147ed8e": {
+        "taskId": "201ae181-a448-4fcb-a754-49ad1147ed8e",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "e4a3b5d2-5db8-4043-9035-2c1cabb85305": {
+        "taskId": "e4a3b5d2-5db8-4043-9035-2c1cabb85305",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "204bae0d-f466-46c7-b10e-e686bf287abf": {
+        "taskId": "204bae0d-f466-46c7-b10e-e686bf287abf",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "319ac06a-4538-4770-8ba5-5f25e60fc158": {
+        "taskId": "319ac06a-4538-4770-8ba5-5f25e60fc158",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "d02a8905-2c0a-4999-b8ba-bad47680c2b5": {
+        "taskId": "d02a8905-2c0a-4999-b8ba-bad47680c2b5",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "02f3c8a7-f436-4b64-9823-d84f305ffcc8": {
+        "taskId": "02f3c8a7-f436-4b64-9823-d84f305ffcc8",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "5579e87c-ea01-4ec4-a641-c05a17632a12": {
+        "taskId": "5579e87c-ea01-4ec4-a641-c05a17632a12",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough.",
+        "predatesEvidenceCapture": true
+      },
+      "50e55c47-3890-49f2-b860-ec7f79466bc3": {
+        "taskId": "50e55c47-3890-49f2-b860-ec7f79466bc3",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "3f35e87a-dfd8-42c7-aa4a-40c0c712b55f": {
+        "taskId": "3f35e87a-dfd8-42c7-aa4a-40c0c712b55f",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "30daf8ea-2c8b-426f-8fc8-0ccc5fb219a5": {
+        "taskId": "30daf8ea-2c8b-426f-8fc8-0ccc5fb219a5",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "b4b102c4-aaed-44dd-bd9a-6353509a95cb": {
+        "taskId": "b4b102c4-aaed-44dd-bd9a-6353509a95cb",
+        "state": "unverified",
+        "missing": [
+          "qa"
+        ],
+        "summary": "Unverified: missing QA verdict.",
+        "predatesEvidenceCapture": false
+      },
+      "984c2ec2-c215-4f92-b151-41cfb737715c": {
+        "taskId": "984c2ec2-c215-4f92-b151-41cfb737715c",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "8b16bdf4-64f2-408a-a0b8-7c2be13a005e": {
+        "taskId": "8b16bdf4-64f2-408a-a0b8-7c2be13a005e",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "6f84288d-cd17-4720-bc22-fafa9315cb3f": {
+        "taskId": "6f84288d-cd17-4720-bc22-fafa9315cb3f",
+        "state": "unverified",
+        "missing": [
+          "qa"
+        ],
+        "summary": "Unverified: missing QA verdict.",
+        "predatesEvidenceCapture": false
+      },
+      "402930f9-4e3e-411b-97a9-3e0a948ede39": {
+        "taskId": "402930f9-4e3e-411b-97a9-3e0a948ede39",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "899d7237-8470-4ed2-925b-f1489b4aa223": {
+        "taskId": "899d7237-8470-4ed2-925b-f1489b4aa223",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "cc3ffab9-8e27-4a21-b4c0-4366e027e71a": {
+        "taskId": "cc3ffab9-8e27-4a21-b4c0-4366e027e71a",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "ae7b1ff0-98e2-437f-822e-bc4397b3ef5d": {
+        "taskId": "ae7b1ff0-98e2-437f-822e-bc4397b3ef5d",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "86a84a46-983a-4eb7-90ee-ff1a4b0afdd6": {
+        "taskId": "86a84a46-983a-4eb7-90ee-ff1a4b0afdd6",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "db23fbed-025e-468d-af1c-9685d59748ae": {
+        "taskId": "db23fbed-025e-468d-af1c-9685d59748ae",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": false
+      },
+      "e608e40f-7ff5-4872-ab53-de7d4ccf7dba": {
+        "taskId": "e608e40f-7ff5-4872-ab53-de7d4ccf7dba",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "17c118c3-b069-4263-b23d-fa2987b65ad4": {
+        "taskId": "17c118c3-b069-4263-b23d-fa2987b65ad4",
+        "state": "verified",
+        "missing": [],
+        "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+        "predatesEvidenceCapture": false
+      },
+      "ee36a0a9-ada8-47ce-9045-064289c0489f": {
+        "taskId": "ee36a0a9-ada8-47ce-9045-064289c0489f",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "925ae844-ce99-4506-9b28-280497131d4c": {
+        "taskId": "925ae844-ce99-4506-9b28-280497131d4c",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "2da2e7a5-4276-44f0-82d4-1560bff7394f": {
+        "taskId": "2da2e7a5-4276-44f0-82d4-1560bff7394f",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "783ba9f5-e4d6-4989-b642-d2113fb2e48f": {
+        "taskId": "783ba9f5-e4d6-4989-b642-d2113fb2e48f",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "7184d02e-ef8c-4910-90e9-0ba2d33027e7": {
+        "taskId": "7184d02e-ef8c-4910-90e9-0ba2d33027e7",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "768c5a30-ce51-4e3e-af34-52e7c0a35f58": {
+        "taskId": "768c5a30-ce51-4e3e-af34-52e7c0a35f58",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "a70868a0-014b-4fdc-99fa-27a8e52a7a49": {
+        "taskId": "a70868a0-014b-4fdc-99fa-27a8e52a7a49",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "1212d226-d403-460c-8cd4-4d87fc68ed08": {
+        "taskId": "1212d226-d403-460c-8cd4-4d87fc68ed08",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "3caec714-3c6d-488c-99a2-4add8294336e": {
+        "taskId": "3caec714-3c6d-488c-99a2-4add8294336e",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "5f7a7e68-e099-409e-883a-65a58c99293b": {
+        "taskId": "5f7a7e68-e099-409e-883a-65a58c99293b",
+        "state": "unverified",
+        "missing": [
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      },
+      "47761073-90bd-4582-88ff-c90b51b33ca0": {
+        "taskId": "47761073-90bd-4582-88ff-c90b51b33ca0",
+        "state": "unverified",
+        "missing": [
+          "walkthrough",
+          "verify",
+          "code_review",
+          "qa"
+        ],
+        "summary": "Unverified: missing Walkthrough, Verify gate, Code-review gate, QA verdict.",
+        "predatesEvidenceCapture": true
+      }
+    }
+  }
+}

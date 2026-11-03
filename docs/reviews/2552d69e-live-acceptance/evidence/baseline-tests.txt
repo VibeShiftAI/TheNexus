@@ -1,0 +1,274 @@
+BASELINE: 1b0e22079ef905a5c107188d65fc3745fae67fe5
+COPY: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-2552-baseline-ju430p41
+COMMAND: npm test -- --runInBand server/__tests__/openrouter-free-lane.test.js server/__tests__/praxis-stream.test.js server/__tests__/studio-route.test.js
+CHECKED_AT: 2026-11-03T21:35:09.947244+00:00
+
+> the-nexus@1.0.0 test
+> jest --runInBand server/__tests__/openrouter-free-lane.test.js server/__tests__/praxis-stream.test.js server/__tests__/studio-route.test.js
+
+FAIL server/__tests__/studio-route.test.js
+  ● Console
+
+    console.log
+      [Studio] catalog for impossible-worlds-field-guide: 2 of 12 objects fit LM Studio llama3.2 loaded context; the whole text is in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-model-inputs-xRhf35/studio-catalog-impossible-worlds-field-guide-c4415c33a586228a.txt
+
+      at log (server/routes/studio.js:315:13)
+
+  ● studio route › the enrich endpoint drains un-enriched objects and reports remaining
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 2
+
+      451 |     // No YouTube key in the test env → objects still get parameter-enriched and marked.
+      452 |     cursors = (await json(`${base}/ingestion/cursors`)).body;
+    > 453 |     expect(cursors.enrichRemaining).toBe(0);
+          |                                     ^
+      454 |   });
+      455 |
+      456 |   test('interaction_idea builds a video idea from selected objects and links them', async () => {
+
+      at Object.toBe (server/__tests__/studio-route.test.js:453:37)
+
+FAIL server/__tests__/praxis-stream.test.js
+  ● Console
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+  ● praxis-stream route › POST /api/praxis/events ingest › ignores X-Forwarded-For and judges loopback by the socket peer
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 401
+
+      501 |         });
+      502 |         // genuine loopback peer + forged header: accepted (header irrelevant)
+    > 503 |         expect((await post()).status).toBe(200);
+          |                                       ^
+      504 |         // LAN peer + forged loopback header: rejected
+      505 |         fakePeer = '192.168.1.55';
+      506 |         expect((await post()).status).toBe(403);
+
+      at Object.toBe (server/__tests__/praxis-stream.test.js:503:39)
+
+FAIL server/__tests__/openrouter-free-lane.test.js
+  ● Test suite failed to run
+
+    Cannot find module './document-agent-reviews' from 'db/index.js'
+
+    Require stack:
+      db/index.js
+      server/utils/token-tracker.js
+      server/__tests__/openrouter-free-lane.test.js
+
+      25 | const { migrateUsageStats } = require('./usage-stats-migration');
+      26 | const { initializeStakeholderPolicy, createStakeholderPolicy } = require('./stakeholder-policy');
+    > 27 | const { createAgentReviewStore } = require('./document-agent-reviews');
+         |                                    ^
+      28 | const { initializeDocumentReviews, createDocumentReviewStore } = require('./document-reviews');
+      29 | const { initializeClientAccess, createClientAccess } = require('./client-access');
+      30 | const { initializeWorkAdmission, createWorkAdmission } = require('./work-admission');
+
+      at Resolver._throwModNotFoundError (../../../../../../../Volumes/Projects/TheNexus/node_modules/jest-resolve/build/index.js:863:11)
+      at Object.require (db/index.js:27:36)
+      at Object.require (server/utils/token-tracker.js:7:12)
+      at Object.require (server/__tests__/openrouter-free-lane.test.js:16:27)
+
+Test Suites: 3 failed, 3 total
+Tests:       2 failed, 42 passed, 44 total
+Snapshots:   0 total
+Time:        2.417 s
+Ran all test suites matching server/__tests__/openrouter-free-lane.test.js|server/__tests__/praxis-stream.test.js|server/__tests__/studio-route.test.js.
+
+EXIT_CODE: 1

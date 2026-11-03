@@ -1,0 +1,12 @@
+[
+  {
+    "name": "cost_ledger.sqlite",
+    "mode": "0644",
+    "size": 24576
+  },
+  {
+    "name": "keys.json",
+    "mode": "0644",
+    "size": 148
+  }
+]

@@ -1,0 +1,55 @@
+2026-11-03T21:33:52.481014+00:00
+ M .env.example
+ M dashboard/src/app/page.tsx
+ M dashboard/src/components/__tests__/document-latest-revision.test.mjs
+ M dashboard/src/components/__tests__/document-markdown.test.mjs
+ M dashboard/src/components/__tests__/document-review-drafts.test.mjs
+ M dashboard/src/components/__tests__/document-review.test.mjs
+ M dashboard/src/components/__tests__/task-progress-panel.test.mjs
+ M dashboard/src/components/document-review/decision-card.tsx
+ M dashboard/src/components/document-review/deliverable-row.tsx
+ M dashboard/src/components/document-review/document-markdown.tsx
+ M dashboard/src/components/document-review/document-review.tsx
+ M dashboard/src/components/task-view/work-admission-panel.tsx
+ M dashboard/src/lib/document-review.ts
+ M dashboard/src/lib/review-drafts.ts
+ M dashboard/src/lib/task-progress.ts
+ M dashboard/test/loader-hooks.mjs
+ M db/document-reviews.js
+ M db/index.js
+ M server/__tests__/ai-service-routing.test.js
+ M server/__tests__/document-replacements.test.js
+ M server/__tests__/document-review-delivery.test.js
+ M server/__tests__/document-review-receiver.test.js
+ M server/__tests__/document-reviews-migration.test.js
+ M server/__tests__/documents-route.test.js
+ M server/routes/documents.js
+ M server/services/ai-service.js
+ M server/services/document-review-delivery.js
+ M server/services/document-review-format.js
+?? dashboard/src/components/__tests__/agent-reviews.test.mjs
+?? dashboard/src/components/__tests__/unified-inline-suggestions.test.mjs
+?? dashboard/src/components/document-review/inline-suggestions.tsx
+?? dashboard/src/hooks/__tests__/draft-writer.test.mjs
+?? dashboard/src/hooks/use-draft-writer.ts
+?? dashboard/src/lib/__tests__/suggestion-highlight.test.ts
+?? dashboard/src/lib/agent-reviews.ts
+?? dashboard/src/lib/suggestion-highlight.ts
+?? dashboard/test/stubs/react-markdown.mjs
+?? db/document-agent-reviews.js
+?? db/document-draft-versions.js
+?? docs/contracts/executor-document-review.md
+?? docs/reviews/2026-10-26-schedule-layout/
+?? docs/superpowers/plans/2026-10-26-schedule-layout.md
+?? docs/superpowers/plans/2026-11-01-executor-document-suggestions.md
+?? docs/superpowers/plans/2026-11-01-praxis-proposals-and-highlights.md
+?? docs/superpowers/plans/2026-11-01-review-control-consolidation.md
+?? docs/superpowers/plans/2026-11-01-unified-inline-review.md
+?? docs/superpowers/specs/2026-11-01-executor-document-suggestions.md
+?? server/__tests__/document-agent-reviews.test.js
+?? server/__tests__/document-draft-versions.test.js
+?? server/routes/document-agent-reviews.js
+?? server/services/document-agent-reviews.js
+?? server/services/document-operator-suggestions.js
+?? server/services/document-praxis-proposals.js
+?? server/services/document-unified-comments.js

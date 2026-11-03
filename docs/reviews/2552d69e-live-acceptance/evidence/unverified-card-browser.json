@@ -1,0 +1,52 @@
+{
+  "url": "http://localhost:3000/task-board?lane=complete",
+  "title": "The Nexus - VibeShift AI",
+  "text": "Status unknown\n\nStatus unknown for Runtime health source. View runtime details\n\nDashboard\nTask Board\nTHE NEXUS\nTask Board\n1 visible\nDaily Command Board\n\n1791 tasks across 35 active projects. Last task update: Nov 3, 4:35 PM.\n\nRefresh\nAll projects\nJoey Lautrup Health Tracking App\nQuantumGameMaster-recovery\nPraxis\nTheCortex\nTheNexus\nJP Lautrup Portfolio\nVibeShift AI — Consulting Business\nGroundrules.club\npraxis-email-reply-preparation\nStorageManagement\npraxis-workflow-repairs-oct13\nQuantumGameMaster-host-character\nhwc-neon-midway-before-worktree\nMeeple Magnate\nNexus-Mobile-Android\nImpossible Worlds Field Guide\nMise\nPraxis YouTube Channel\nGay-I Club Concierge\nGet Noticed at Anthropic\nBuild Your Own Ski Mountain\nDaisy Hollow Farm Website\nPraxis iPad Home Hub\nWeekend House Split\nSki House Split\nAIClubs.net\nWaiting Families Adoption Tracker\nAdventures of Dean\nChores Tracker\nLARS-Autonomous-Revenue\nTheGayGuyde.com\nnexus-shared\nshared-mind\nvibeshiftai\nNYC-Home-Finder\nLanes (5/7)\nSLATE 2026-11-03\nDrafted\n2:39 PM\nApproved\n2:54 PM\nAttempted\n5/6\n3:08 PM\n3 WITHDRAWN\nVerified\n3/6\n4:00 PM\n9 slots\nDISPATCH CONTAINMENT\nCLI slot: QA review: Show a degraded-runtime banner at the top of the dashboard so it never reads green over a degraded runtime (claude-code · testing)\nQueue: 0\n10 recent guardrail incidents\nNEW\n0\n\nFresh requests and planning work\n\nSort: Priority\nSort: Recently updated\nSort: Oldest updated\nSort: Title A–Z\nNothing here\nREADY\n0\n\nUnblocked work waiting to start\n\nSort: Priority\nSort: Recently updated\nSort: Oldest updated\nSort: Title A–Z\nNothing here\nIN PROGRESS\n0\n\nActive operator or agent work\n\nSort: Priority\nSort: Recently updated\nSort: Oldest updated\nSort: Title A–Z\nNothing here\nNEEDS ATTENTION\n0\n\nBlocked, failed, or awaiting input\n\nSort: Priority\nSort: Recently updated\nSort: Oldest updated\nSort: Title A–Z\nNothing here\nCOMPLETE\n1\n\nFinished work\n\nSort: Priority\nSort: Recently updated\nSort: Oldest updated\nSort: Title A–Z\nPython: Update LLMFactory for local orchestrator\n\nTheNexus\n\nIdea / New\nPlanning\nTo Do\nScheduled\nDispatched\nIn Progress\nNeeds Input\nBlocked\nReady for Review\nIn Review\nCompleted\nFailed\nCancelled\nArchived\nP3\n69cb9a87\nUnverified (pre-capture)\nmissing walkthrough, verify, code review, QA\n\nRefactor Python LLMFactory to default to the local model while keeping cloud models strictly for the Cortex Council.\n\nUpdated May 1, 7:32 AM\n© 2026 VibeShift AI. All rights reserved.\nINPUT NEEDED\n9 skill candidates from last night's harvest awaiting review (9 eval unavailable — review manually) — approve into the vault or archive each, then tap Done.\nQA review: Show a degraded-runtime banner at the top of the dashboard so it never reads green over a degraded runtime · claude-code · testing\nAnswer in Inbox →\n100%\nVoice\nStart conversation",
+  "links": [
+    {
+      "text": "View runtime details",
+      "href": "/ops"
+    },
+    {
+      "text": "Dashboard",
+      "href": "/"
+    },
+    {
+      "text": "QA review: Show a degraded-runtime banner at the top of the dashboard so it never reads green over a degraded runtime (claude-code · testing)",
+      "href": "/task/qa--07403a02-3731-4b19-941d-57d7289f3a6b"
+    },
+    {
+      "text": "Python: Update LLMFactory for local orchestrator",
+      "href": "/task/69cb9a87-0c9a-462e-a282-322718f581c6"
+    },
+    {
+      "text": "Unverified (pre-capture)\nmissing walkthrough, verify, code review, QA",
+      "href": "/task/69cb9a87-0c9a-462e-a282-322718f581c6"
+    },
+    {
+      "text": "Answer in Inbox →",
+      "href": "/inbox#skill-review-2026-11-03-16cdc1eb-741d-491c-9788-be5457feade4"
+    }
+  ],
+  "badges": [
+    {
+      "text": "Verified\n3/6\n4:00 PM",
+      "title": "Verified: 3 of 6 slots QA-passed\n2026-11-03T21:00:51.985Z",
+      "color": "lab(91.0821 -24.0435 -12.8306)",
+      "background": "oklab(0.714993 -0.116823 -0.0824539 / 0.1)"
+    },
+    {
+      "text": "10 recent guardrail incidents",
+      "title": "antigravity: silent-token-exhaustion (Oct 31, 11:48 PM)\nclaude-code: execution-timeout (Oct 25, 11:25 PM)\nclaude-code: execution-timeout (Oct 24, 8:42 PM)\nclaude-code: execution-timeout (Oct 20, 3:00 PM)\nclaude-code: execution-timeout (Oct 20, 12:26 PM)\nclaude-code: unknown (Oct 19, 5:46 PM)\nclaude-code: execution-timeout (Oct 16, 4:34 AM)\ncodex: unknown (Oct 7, 8:18 AM)\nclaude-code: provider-transport-failure (Oct 5, 7:59 PM)\nclaude-code: cli-auth-failure (Oct 2, 4:58 AM)",
+      "color": "oklab(0.879003 -0.00473928 0.168942 / 0.8)",
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    {
+      "text": "Unverified (pre-capture)\nmissing walkthrough, verify, code review, QA",
+      "title": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough. Completed before Praxis recorded verification evidence.",
+      "color": "lab(91.7203 -0.505269 49.9084)",
+      "background": "oklab(0.769006 0.0640422 0.176756 / 0.1)"
+    }
+  ],
+  "checked_at": "2026-11-03T21:39:30.351Z"
+}

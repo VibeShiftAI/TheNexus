@@ -1,0 +1,9 @@
+CAPTURE dashboard: http://localhost:3000/; 92954 text characters
+CAPTURE attribution: http://localhost:3000/; 83352 text characters
+CAPTURE routing-economics: http://localhost:3000/activity; 15989 text characters
+CAPTURE verified-card: http://localhost:3000/task-board?lane=complete; 2879 text characters
+CAPTURE verified-completion: http://localhost:3000/task/7fe1005f-f05f-430c-a6a0-b1e4dddf6876; 91706 text characters
+CAPTURE verified-verify-expanded: http://localhost:3000/task/7fe1005f-f05f-430c-a6a0-b1e4dddf6876; 157534 text characters
+CAPTURE unverified-card: http://localhost:3000/task-board?lane=complete; 2776 text characters
+CAPTURE unverified-completion: http://localhost:3000/task/69cb9a87-0c9a-462e-a282-322718f581c6; 15130 text characters
+CAPTURE unverified-verify-expanded: http://localhost:3000/task/69cb9a87-0c9a-462e-a282-322718f581c6; 15304 text characters

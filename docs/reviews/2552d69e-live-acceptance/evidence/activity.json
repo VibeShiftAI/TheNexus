@@ -1,0 +1,2007 @@
+{
+  "checked_at": "2026-11-03T21:34:11.434447+00:00",
+  "method": "GET",
+  "url": "http://localhost:4000/api/activity",
+  "status": 200,
+  "headers": {
+    "Content-Security-Policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Origin-Agent-Cluster": "?1",
+    "Referrer-Policy": "no-referrer",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "X-Content-Type-Options": "nosniff",
+    "X-DNS-Prefetch-Control": "off",
+    "X-Download-Options": "noopen",
+    "X-Frame-Options": "SAMEORIGIN",
+    "X-Permitted-Cross-Domain-Policies": "none",
+    "X-XSS-Protection": "0",
+    "Vary": "Origin",
+    "RateLimit-Policy": "6000;w=900",
+    "RateLimit-Limit": "6000",
+    "RateLimit-Remaining": "5528",
+    "RateLimit-Reset": "581",
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": "40897",
+    "ETag": "W/\"9fc1-zikA6aqjp0UozB20qkp3eXbucw4\"",
+    "Date": "Tue, 03 Nov 2026 21:34:11 GMT",
+    "Connection": "close"
+  },
+  "body": [
+    {
+      "projectId": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+      "projectName": "TheNexus",
+      "type": "commit",
+      "hash": "6accf294756ef43f9ebd89f28fdc7c92f83cbacf",
+      "message": "Surface degraded runtime health above the cockpit and suppress green summaries",
+      "author": "Robert Washko",
+      "date": "2026-11-03T16:33:34-05:00",
+      "model": "gpt-6-astra",
+      "modelInferred": false,
+      "tokens": null,
+      "tokensEstimated": false,
+      "tokensSource": "unavailable",
+      "dispatchId": "6f115bbb-4c23-4213-8ca3-6d0ddf7f6099",
+      "taskId": "2552d69e-69f7-4a18-bc42-b648da20e26b",
+      "runTrace": {
+        "version": 1,
+        "terminal": false,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "6f115bbb-4c23-4213-8ca3-6d0ddf7f6099",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "gpt-6-astra",
+              "executor": "codex",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": false,
+            "reason": "run_in_flight",
+            "detail": "The run has not finished, so this is not determined yet."
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 3,
+          "ratio": null,
+          "pending": true,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            },
+            {
+              "field": "finalOutcome",
+              "reason": "run_in_flight"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+      "projectName": "TheNexus",
+      "type": "commit",
+      "hash": "e4546d25f56e009689deb179672ffaf06db4b8cd",
+      "message": "Project Praxis runtime health into the cockpit dispatch snapshot",
+      "author": "Robert Washko",
+      "date": "2026-11-03T16:32:50-05:00",
+      "model": "gpt-6-astra",
+      "modelInferred": false,
+      "tokens": null,
+      "tokensEstimated": false,
+      "tokensSource": "unavailable",
+      "dispatchId": "5ae0d752-faff-49eb-b79d-e1fff716c598",
+      "taskId": "07403a02-3731-4b19-941d-57d7289f3a6b",
+      "runTrace": {
+        "version": 1,
+        "terminal": false,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "5ae0d752-faff-49eb-b79d-e1fff716c598",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "gpt-6-astra",
+              "executor": "codex",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": false,
+            "reason": "run_in_flight",
+            "detail": "The run has not finished, so this is not determined yet."
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 3,
+          "ratio": null,
+          "pending": true,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            },
+            {
+              "field": "finalOutcome",
+              "reason": "run_in_flight"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "05d25bcc-5dea-4720-8a08-e49ccecf0fa5",
+      "projectName": "Joey Lautrup Health Tracking App",
+      "type": "commit",
+      "hash": "49b036ff6b462465676b9459c3b2a89123382041",
+      "message": "Record Good Boy private deployment evidence and pending tracked-mail handoff",
+      "author": "Robert Washko",
+      "date": "2026-11-03T16:29:45-05:00",
+      "model": "gpt-6-astra",
+      "modelInferred": false,
+      "tokens": 10193910,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "6d4e3546-c287-459f-97be-f8f1e1fc2205",
+      "taskId": "5c27be52-133e-4fa8-b1a7-638a1caf7faf",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "6d4e3546-c287-459f-97be-f8f1e1fc2205",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "gpt-6-astra",
+              "executor": "codex",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 10193910,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "needs_input"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "05d25bcc-5dea-4720-8a08-e49ccecf0fa5",
+      "projectName": "Joey Lautrup Health Tracking App",
+      "type": "commit",
+      "hash": "67bea051787873676f045d64cc8028fa937a179c",
+      "message": "Add managed Good Boy export and private-install verification tools",
+      "author": "Robert Washko",
+      "date": "2026-11-03T16:20:48-05:00",
+      "model": "gpt-6-astra",
+      "modelInferred": false,
+      "tokens": 10193910,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "6d4e3546-c287-459f-97be-f8f1e1fc2205",
+      "taskId": "5c27be52-133e-4fa8-b1a7-638a1caf7faf",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "6d4e3546-c287-459f-97be-f8f1e1fc2205",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "gpt-6-astra",
+              "executor": "codex",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 10193910,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "needs_input"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "b5f0293b-71a1-4c18-99be-6f9a1bae770f",
+      "projectName": "vibeshiftai",
+      "type": "commit",
+      "hash": "2c354ef6f8010f8652ee27aa2494ae2185a2447e",
+      "message": "Add password-gated Good Boy OTA installation with expiring artifact grants",
+      "author": "Robert Washko",
+      "date": "2026-11-03T16:19:49-05:00",
+      "model": null,
+      "modelInferred": false,
+      "tokens": null,
+      "tokensEstimated": false,
+      "tokensSource": "unavailable",
+      "dispatchId": null,
+      "taskId": null,
+      "runTrace": {
+        "version": 1,
+        "terminal": false,
+        "fields": {
+          "runId": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "agentVersion": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "retries": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "errors": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "finalOutcome": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 0,
+          "ratio": null,
+          "pending": true,
+          "missing": [
+            {
+              "field": "runId",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "agentVersion",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "modelCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "retries",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "approvals",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "errors",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "finalOutcome",
+              "reason": "no_dispatch_match"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "b1a9243f-235e-4181-a8f6-8e93a71fad7d",
+      "projectName": "shared-mind",
+      "type": "commit",
+      "hash": "9d728624de6790073f0794a752ea96def96a3396",
+      "message": "Vault update: 1 generated, 1 other",
+      "author": "Robert Washko",
+      "date": "2026-11-03T16:15:30-05:00",
+      "model": "vault-watcher",
+      "modelInferred": false,
+      "tokens": 0,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": null,
+      "taskId": null,
+      "runTrace": {
+        "version": 1,
+        "terminal": false,
+        "fields": {
+          "runId": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "agentVersion": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "retries": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "errors": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "finalOutcome": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 0,
+          "ratio": null,
+          "pending": true,
+          "missing": [
+            {
+              "field": "runId",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "agentVersion",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "modelCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "retries",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "approvals",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "errors",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "finalOutcome",
+              "reason": "no_dispatch_match"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "7647b4d1-285b-4e03-8f3b-1c0763bd54a5",
+      "projectName": "QuantumGameMaster-recovery",
+      "type": "commit",
+      "hash": "309a5999f3d490ff6be41a7237097b1c22841f76",
+      "message": "docs: reconcile checkpoint 1 reset and build evidence",
+      "author": "Guatapickl",
+      "date": "2026-11-03T15:55:34-05:00",
+      "model": "gpt-6-astra",
+      "modelInferred": false,
+      "tokens": 4114686,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "f74d7108-b4fb-4c0f-a437-5948ccc67919",
+      "taskId": "35529538-6e14-48d8-bd4e-49ff2bddeba7",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "f74d7108-b4fb-4c0f-a437-5948ccc67919",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "gpt-6-astra",
+              "executor": "codex",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 4114686,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "success"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "c11f3f92-0645-4746-a7d3-0b0722e5a2d3",
+      "projectName": "Praxis",
+      "type": "commit",
+      "hash": "78ad993bda074baa36895a8b632df56592eb0bb8",
+      "message": "Verify authorized graph-cull recovery and reverse orphaning side effects",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:54:51-05:00",
+      "model": "gpt-6-astra",
+      "modelInferred": false,
+      "tokens": 16310188,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "c2a17857-e71c-47df-ab07-5a5dee352c3a",
+      "taskId": "93ac3377-d53c-4aff-a043-5ac20640c2a5",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "c2a17857-e71c-47df-ab07-5a5dee352c3a",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "gpt-6-astra",
+              "executor": "codex",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 16310188,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "success"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "4bbc4b88-8bc7-4d54-b6b9-85101e1ac00b",
+      "projectName": "TheCortex",
+      "type": "commit",
+      "hash": "67aa6a91a1191959aedb13057c911a91cddae4ab",
+      "message": "Retain approved graph-cull reversal manifests",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:53:12-05:00",
+      "model": null,
+      "modelInferred": false,
+      "tokens": null,
+      "tokensEstimated": false,
+      "tokensSource": "unavailable",
+      "dispatchId": null,
+      "taskId": null,
+      "runTrace": {
+        "version": 1,
+        "terminal": false,
+        "fields": {
+          "runId": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "agentVersion": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "retries": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "errors": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "finalOutcome": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 0,
+          "ratio": null,
+          "pending": true,
+          "missing": [
+            {
+              "field": "runId",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "agentVersion",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "modelCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "retries",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "approvals",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "errors",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "finalOutcome",
+              "reason": "no_dispatch_match"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "05d25bcc-5dea-4720-8a08-e49ccecf0fa5",
+      "projectName": "Joey Lautrup Health Tracking App",
+      "type": "commit",
+      "hash": "0240186780bc5e0500d6dc23a53861b64d258485",
+      "message": "Retain the delivered round 3 handoff receipt for the Good Boy rename record",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:40:58-05:00",
+      "model": "Claude Fable 5.1",
+      "modelInferred": false,
+      "tokens": 5022034,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "e0d410df-86f5-4081-943f-b13c2b1ed2ca",
+      "taskId": "b95785a1-30f6-4809-8b65-5e5f4e589d65",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "e0d410df-86f5-4081-943f-b13c2b1ed2ca",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "Claude Fable 5.1",
+              "executor": "claude-code",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 5022034,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "success"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "05d25bcc-5dea-4720-8a08-e49ccecf0fa5",
+      "projectName": "Joey Lautrup Health Tracking App",
+      "type": "commit",
+      "hash": "342b7e629bbd4e3d25c1493b7633f68c32ab4a05",
+      "message": "Record the Good Boy report branding change, the description read-back and the deferred phone update",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:40:19-05:00",
+      "model": "Claude Fable 5.1",
+      "modelInferred": false,
+      "tokens": 5022034,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "e0d410df-86f5-4081-943f-b13c2b1ed2ca",
+      "taskId": "b95785a1-30f6-4809-8b65-5e5f4e589d65",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "e0d410df-86f5-4081-943f-b13c2b1ed2ca",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "Claude Fable 5.1",
+              "executor": "claude-code",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 5022034,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "success"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "c11f3f92-0645-4746-a7d3-0b0722e5a2d3",
+      "projectName": "Praxis",
+      "type": "commit",
+      "hash": "1e07dec05241a61ba940d6f416fe3e7688e15d45",
+      "message": "Retain graph-cull recovery verification evidence",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:28:02-05:00",
+      "model": "gpt-6-astra",
+      "modelInferred": false,
+      "tokens": 8648547,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "d6f4bf9c-b241-436e-8f5b-eadc57bab262",
+      "taskId": "93ac3377-d53c-4aff-a043-5ac20640c2a5",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "d6f4bf9c-b241-436e-8f5b-eadc57bab262",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "gpt-6-astra",
+              "executor": "codex",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 8648547,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "needs_input"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "c11f3f92-0645-4746-a7d3-0b0722e5a2d3",
+      "projectName": "Praxis",
+      "type": "commit",
+      "hash": "fc9f63f584b3780e9a53adf46e26370400c5c8b0",
+      "message": "Fix graph-cull transaction memory exhaustion",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:25:10-05:00",
+      "model": "gpt-6-astra",
+      "modelInferred": false,
+      "tokens": 8648547,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "d6f4bf9c-b241-436e-8f5b-eadc57bab262",
+      "taskId": "93ac3377-d53c-4aff-a043-5ac20640c2a5",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "d6f4bf9c-b241-436e-8f5b-eadc57bab262",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "gpt-6-astra",
+              "executor": "codex",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 8648547,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "needs_input"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "c11f3f92-0645-4746-a7d3-0b0722e5a2d3",
+      "projectName": "Praxis",
+      "type": "commit",
+      "hash": "b7f3e133a983c36ac443453aa211a00e27790f9e",
+      "message": "Show frozen scenario titles and judge reasons for protected losses",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:20:24-05:00",
+      "model": "gpt-6-astra",
+      "modelInferred": false,
+      "tokens": 8648547,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "d6f4bf9c-b241-436e-8f5b-eadc57bab262",
+      "taskId": "93ac3377-d53c-4aff-a043-5ac20640c2a5",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "d6f4bf9c-b241-436e-8f5b-eadc57bab262",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "gpt-6-astra",
+              "executor": "codex",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 8648547,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "needs_input"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+      "projectName": "TheNexus",
+      "type": "commit",
+      "hash": "fdc468142224b059ec3752634069a52c8a3873e8",
+      "message": "Lead amendment cards with the outcome and disclose detailed evidence",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:19:19-05:00",
+      "model": null,
+      "modelInferred": false,
+      "tokens": null,
+      "tokensEstimated": false,
+      "tokensSource": "unavailable",
+      "dispatchId": null,
+      "taskId": null,
+      "runTrace": {
+        "version": 1,
+        "terminal": false,
+        "fields": {
+          "runId": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "agentVersion": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "retries": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "errors": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "finalOutcome": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 0,
+          "ratio": null,
+          "pending": true,
+          "missing": [
+            {
+              "field": "runId",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "agentVersion",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "modelCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "retries",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "approvals",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "errors",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "finalOutcome",
+              "reason": "no_dispatch_match"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "b1a9243f-235e-4181-a8f6-8e93a71fad7d",
+      "projectName": "shared-mind",
+      "type": "commit",
+      "hash": "a7b6dd688646b0335691e0b4095f946460c28800",
+      "message": "Vault update: 1 generated, 1 other",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:16:00-05:00",
+      "model": "vault-watcher",
+      "modelInferred": false,
+      "tokens": 0,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": null,
+      "taskId": null,
+      "runTrace": {
+        "version": 1,
+        "terminal": false,
+        "fields": {
+          "runId": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "agentVersion": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "retries": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "errors": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "finalOutcome": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 0,
+          "ratio": null,
+          "pending": true,
+          "missing": [
+            {
+              "field": "runId",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "agentVersion",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "modelCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "retries",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "approvals",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "errors",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "finalOutcome",
+              "reason": "no_dispatch_match"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "c11f3f92-0645-4746-a7d3-0b0722e5a2d3",
+      "projectName": "Praxis",
+      "type": "commit",
+      "hash": "c81f04d88d3d520adfc6685195460b6b2efd1ab8",
+      "message": "Merge commit 'd497486636be7eef2449c7f6d79957ada3c8842c' into feat/paired-skill-amendments",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:13:01-05:00",
+      "model": "gpt-6-astra",
+      "modelInferred": false,
+      "tokens": 1218686,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "c1804020-907d-460a-a7de-70b664bb349a",
+      "taskId": "qa--d9049fb2-19c1-4432-ba33-2ccda8ddb774",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "c1804020-907d-460a-a7de-70b664bb349a",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "gpt-6-astra",
+              "executor": "codex",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 1218686,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "success"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+      "projectName": "TheNexus",
+      "type": "commit",
+      "hash": "75ee689eb6c80f54a1b89bc1adece66349eae277",
+      "message": "Defer vault sync while a skill amendment awaits recovery",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:11:28-05:00",
+      "model": null,
+      "modelInferred": false,
+      "tokens": null,
+      "tokensEstimated": false,
+      "tokensSource": "unavailable",
+      "dispatchId": null,
+      "taskId": null,
+      "runTrace": {
+        "version": 1,
+        "terminal": false,
+        "fields": {
+          "runId": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "agentVersion": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "retries": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "errors": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "finalOutcome": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 0,
+          "ratio": null,
+          "pending": true,
+          "missing": [
+            {
+              "field": "runId",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "agentVersion",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "modelCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "retries",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "approvals",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "errors",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "finalOutcome",
+              "reason": "no_dispatch_match"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "05d25bcc-5dea-4720-8a08-e49ccecf0fa5",
+      "projectName": "Joey Lautrup Health Tracking App",
+      "type": "commit",
+      "hash": "f17aee167b0f5dfa75a361ed3b1b1fb015c39302",
+      "message": "Retain the delivered handoff receipt for the Good Boy rename record",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:09:21-05:00",
+      "model": "Claude Fable 5.1",
+      "modelInferred": false,
+      "tokens": 10878438,
+      "tokensEstimated": false,
+      "tokensSource": "measured",
+      "dispatchId": "385ff432-1425-4fbb-98d5-dccb99b13575",
+      "taskId": "b95785a1-30f6-4809-8b65-5e5f4e589d65",
+      "runTrace": {
+        "version": 1,
+        "terminal": true,
+        "fields": {
+          "runId": {
+            "known": true,
+            "value": {
+              "dispatchId": "385ff432-1425-4fbb-98d5-dccb99b13575",
+              "attemptId": null
+            }
+          },
+          "agentVersion": {
+            "known": true,
+            "value": {
+              "model": "Claude Fable 5.1",
+              "executor": "claude-code",
+              "harnessVersion": null
+            }
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it.",
+            "evidence": {
+              "tokensTotal": 10878438,
+              "tokensEstimated": false,
+              "tokensTotalSource": "measured"
+            }
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "not_instrumented",
+            "detail": "Nothing in the fleet records this today: neither the Nexus dispatch row nor the Praxis run-events spine carries it."
+          },
+          "retries": {
+            "known": false,
+            "reason": "not_recorded",
+            "detail": "This run left no record of it, though the field is one the fleet can record."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "not_queried",
+            "detail": "This surface does not read the channel that carries it; the dispatch console for the same run does."
+          },
+          "errors": {
+            "known": true,
+            "value": {
+              "message": null,
+              "guardrails": []
+            }
+          },
+          "finalOutcome": {
+            "known": true,
+            "value": "needs_input"
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 4,
+          "ratio": 0.5,
+          "pending": false,
+          "missing": [
+            {
+              "field": "modelCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "not_instrumented"
+            },
+            {
+              "field": "retries",
+              "reason": "not_recorded"
+            },
+            {
+              "field": "approvals",
+              "reason": "not_queried"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "projectId": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+      "projectName": "TheNexus",
+      "type": "commit",
+      "hash": "079b41f5c99b09ba13b5f4ce978d42356488801e",
+      "message": "Review paired evidence and the current diff before applying an amendment",
+      "author": "Robert Washko",
+      "date": "2026-11-03T15:04:52-05:00",
+      "model": null,
+      "modelInferred": false,
+      "tokens": null,
+      "tokensEstimated": false,
+      "tokensSource": "unavailable",
+      "dispatchId": null,
+      "taskId": null,
+      "runTrace": {
+        "version": 1,
+        "terminal": false,
+        "fields": {
+          "runId": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "agentVersion": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "modelCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "toolCalls": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "retries": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "approvals": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "errors": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          },
+          "finalOutcome": {
+            "known": false,
+            "reason": "no_dispatch_match",
+            "detail": "This activity could not be correlated to any dispatch, so there is no run behind it to trace."
+          }
+        },
+        "completeness": {
+          "requiredFields": 8,
+          "observedFields": 0,
+          "ratio": null,
+          "pending": true,
+          "missing": [
+            {
+              "field": "runId",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "agentVersion",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "modelCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "toolCalls",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "retries",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "approvals",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "errors",
+              "reason": "no_dispatch_match"
+            },
+            {
+              "field": "finalOutcome",
+              "reason": "no_dispatch_match"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

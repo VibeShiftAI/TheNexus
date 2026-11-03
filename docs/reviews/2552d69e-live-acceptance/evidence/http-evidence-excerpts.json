@@ -1,0 +1,689 @@
+[
+  {
+    "checked_at": "2026-11-03T21:34:10.363797+00:00",
+    "method": "GET",
+    "url": "http://localhost:4000/api/projects",
+    "status": 200,
+    "artifact": "docs/reviews/2552d69e-live-acceptance/evidence/projects.json",
+    "sha256": "cc68f569fb8a064a7c161f3c36f78f0164f0c45bbce5d750356b1581aab5e2e1",
+    "observation": "HTTP 200; project list returned"
+  },
+  {
+    "checked_at": "2026-11-03T21:34:10.397736+00:00",
+    "method": "GET",
+    "url": "http://localhost:3000",
+    "status": 200,
+    "artifact": "docs/reviews/2552d69e-live-acceptance/evidence/dashboard.json",
+    "sha256": "476a268dc4afc866256b082ad19538008bbaa10b044d2cfb0c7dd129998095ad",
+    "observation": "HTTP 200; HTML returned; browser rendering captured separately"
+  },
+  {
+    "checked_at": "2026-11-03T21:34:11.434447+00:00",
+    "method": "GET",
+    "url": "http://localhost:4000/api/activity",
+    "status": 200,
+    "artifact": "docs/reviews/2552d69e-live-acceptance/evidence/activity.json",
+    "sha256": "945677d840f60db455d702eee6bd35de64d5ad85c7c6925d87d30e563d9fc5f3",
+    "rows": [
+      {
+        "hash": "6accf294756ef43f9ebd89f28fdc7c92f83cbacf",
+        "projectName": "TheNexus",
+        "taskId": "2552d69e-69f7-4a18-bc42-b648da20e26b",
+        "dispatchId": "6f115bbb-4c23-4213-8ca3-6d0ddf7f6099",
+        "model": "gpt-6-astra",
+        "modelInferred": false,
+        "tokens": null,
+        "tokensSource": "unavailable",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "e4546d25f56e009689deb179672ffaf06db4b8cd",
+        "projectName": "TheNexus",
+        "taskId": "07403a02-3731-4b19-941d-57d7289f3a6b",
+        "dispatchId": "5ae0d752-faff-49eb-b79d-e1fff716c598",
+        "model": "gpt-6-astra",
+        "modelInferred": false,
+        "tokens": null,
+        "tokensSource": "unavailable",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "49b036ff6b462465676b9459c3b2a89123382041",
+        "projectName": "Joey Lautrup Health Tracking App",
+        "taskId": "5c27be52-133e-4fa8-b1a7-638a1caf7faf",
+        "dispatchId": "6d4e3546-c287-459f-97be-f8f1e1fc2205",
+        "model": "gpt-6-astra",
+        "modelInferred": false,
+        "tokens": 10193910,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "67bea051787873676f045d64cc8028fa937a179c",
+        "projectName": "Joey Lautrup Health Tracking App",
+        "taskId": "5c27be52-133e-4fa8-b1a7-638a1caf7faf",
+        "dispatchId": "6d4e3546-c287-459f-97be-f8f1e1fc2205",
+        "model": "gpt-6-astra",
+        "modelInferred": false,
+        "tokens": 10193910,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "2c354ef6f8010f8652ee27aa2494ae2185a2447e",
+        "projectName": "vibeshiftai",
+        "taskId": null,
+        "dispatchId": null,
+        "model": null,
+        "modelInferred": false,
+        "tokens": null,
+        "tokensSource": "unavailable",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "9d728624de6790073f0794a752ea96def96a3396",
+        "projectName": "shared-mind",
+        "taskId": null,
+        "dispatchId": null,
+        "model": "vault-watcher",
+        "modelInferred": false,
+        "tokens": 0,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "309a5999f3d490ff6be41a7237097b1c22841f76",
+        "projectName": "QuantumGameMaster-recovery",
+        "taskId": "35529538-6e14-48d8-bd4e-49ff2bddeba7",
+        "dispatchId": "f74d7108-b4fb-4c0f-a437-5948ccc67919",
+        "model": "gpt-6-astra",
+        "modelInferred": false,
+        "tokens": 4114686,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "78ad993bda074baa36895a8b632df56592eb0bb8",
+        "projectName": "Praxis",
+        "taskId": "93ac3377-d53c-4aff-a043-5ac20640c2a5",
+        "dispatchId": "c2a17857-e71c-47df-ab07-5a5dee352c3a",
+        "model": "gpt-6-astra",
+        "modelInferred": false,
+        "tokens": 16310188,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "67aa6a91a1191959aedb13057c911a91cddae4ab",
+        "projectName": "TheCortex",
+        "taskId": null,
+        "dispatchId": null,
+        "model": null,
+        "modelInferred": false,
+        "tokens": null,
+        "tokensSource": "unavailable",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "0240186780bc5e0500d6dc23a53861b64d258485",
+        "projectName": "Joey Lautrup Health Tracking App",
+        "taskId": "b95785a1-30f6-4809-8b65-5e5f4e589d65",
+        "dispatchId": "e0d410df-86f5-4081-943f-b13c2b1ed2ca",
+        "model": "Claude Fable 5.1",
+        "modelInferred": false,
+        "tokens": 5022034,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "342b7e629bbd4e3d25c1493b7633f68c32ab4a05",
+        "projectName": "Joey Lautrup Health Tracking App",
+        "taskId": "b95785a1-30f6-4809-8b65-5e5f4e589d65",
+        "dispatchId": "e0d410df-86f5-4081-943f-b13c2b1ed2ca",
+        "model": "Claude Fable 5.1",
+        "modelInferred": false,
+        "tokens": 5022034,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "1e07dec05241a61ba940d6f416fe3e7688e15d45",
+        "projectName": "Praxis",
+        "taskId": "93ac3377-d53c-4aff-a043-5ac20640c2a5",
+        "dispatchId": "d6f4bf9c-b241-436e-8f5b-eadc57bab262",
+        "model": "gpt-6-astra",
+        "modelInferred": false,
+        "tokens": 8648547,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "fc9f63f584b3780e9a53adf46e26370400c5c8b0",
+        "projectName": "Praxis",
+        "taskId": "93ac3377-d53c-4aff-a043-5ac20640c2a5",
+        "dispatchId": "d6f4bf9c-b241-436e-8f5b-eadc57bab262",
+        "model": "gpt-6-astra",
+        "modelInferred": false,
+        "tokens": 8648547,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "b7f3e133a983c36ac443453aa211a00e27790f9e",
+        "projectName": "Praxis",
+        "taskId": "93ac3377-d53c-4aff-a043-5ac20640c2a5",
+        "dispatchId": "d6f4bf9c-b241-436e-8f5b-eadc57bab262",
+        "model": "gpt-6-astra",
+        "modelInferred": false,
+        "tokens": 8648547,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "fdc468142224b059ec3752634069a52c8a3873e8",
+        "projectName": "TheNexus",
+        "taskId": null,
+        "dispatchId": null,
+        "model": null,
+        "modelInferred": false,
+        "tokens": null,
+        "tokensSource": "unavailable",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "a7b6dd688646b0335691e0b4095f946460c28800",
+        "projectName": "shared-mind",
+        "taskId": null,
+        "dispatchId": null,
+        "model": "vault-watcher",
+        "modelInferred": false,
+        "tokens": 0,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "c81f04d88d3d520adfc6685195460b6b2efd1ab8",
+        "projectName": "Praxis",
+        "taskId": "qa--d9049fb2-19c1-4432-ba33-2ccda8ddb774",
+        "dispatchId": "c1804020-907d-460a-a7de-70b664bb349a",
+        "model": "gpt-6-astra",
+        "modelInferred": false,
+        "tokens": 1218686,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "75ee689eb6c80f54a1b89bc1adece66349eae277",
+        "projectName": "TheNexus",
+        "taskId": null,
+        "dispatchId": null,
+        "model": null,
+        "modelInferred": false,
+        "tokens": null,
+        "tokensSource": "unavailable",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "f17aee167b0f5dfa75a361ed3b1b1fb015c39302",
+        "projectName": "Joey Lautrup Health Tracking App",
+        "taskId": "b95785a1-30f6-4809-8b65-5e5f4e589d65",
+        "dispatchId": "385ff432-1425-4fbb-98d5-dccb99b13575",
+        "model": "Claude Fable 5.1",
+        "modelInferred": false,
+        "tokens": 10878438,
+        "tokensSource": "measured",
+        "tokensEstimated": false
+      },
+      {
+        "hash": "079b41f5c99b09ba13b5f4ce978d42356488801e",
+        "projectName": "TheNexus",
+        "taskId": null,
+        "dispatchId": null,
+        "model": null,
+        "modelInferred": false,
+        "tokens": null,
+        "tokensSource": "unavailable",
+        "tokensEstimated": false
+      }
+    ]
+  },
+  {
+    "checked_at": "2026-11-03T21:34:11.567443+00:00",
+    "method": "GET",
+    "url": "http://localhost:4000/api/routing-economics",
+    "status": 200,
+    "artifact": "docs/reviews/2552d69e-live-acceptance/evidence/routing-economics.json",
+    "sha256": "c321149d32929459b2604844b4fa8ed39d82ba7c5eb9ad13cc8b94100f5d444a",
+    "response_excerpt": {
+      "scope": "All recorded dispatch attempts; includes failures and follow-ups. Activity commits are not additional runs.",
+      "costBasis": "Cloud costs are estimates using the cockpit static rate table and assumed token mix (85% cache read, 2% input, 8% cache write, 5% output). API-equivalent value, not subscription charges or provider bills; rates are not live. Local $0 covers provider inference fees only, excluding hardware and electricity. No metered cost telemetry is recorded.",
+      "outcomeBasis": "Completion is executor-reported success among terminal attempts, not QA acceptance or a task-difficulty-adjusted quality score. Unfinished runs are excluded. Failed attempts remain in token and cost totals.",
+      "lanes": [
+        {
+          "lane": "local",
+          "state": "no_data",
+          "runCount": 0,
+          "latency": {
+            "medianMs": null,
+            "worstMs": null,
+            "runs": 0
+          },
+          "tokens": {
+            "total": null,
+            "runs": 0,
+            "estimatedRuns": 0,
+            "source": "unavailable"
+          },
+          "cost": {
+            "usd": null,
+            "provenance": "unknown",
+            "source": "unavailable",
+            "runs": 0,
+            "estimatedRuns": 0,
+            "meteredRuns": 0,
+            "unknownRuns": 0,
+            "unknownByReason": {}
+          },
+          "outcomes": {
+            "completed": 0,
+            "failed": 0,
+            "needsInput": 0,
+            "cancelled": 0,
+            "unfinished": 0,
+            "runs": 0,
+            "completionRate": null
+          }
+        },
+        {
+          "lane": "cloud",
+          "state": "observed",
+          "runCount": 3343,
+          "latency": {
+            "medianMs": 227574,
+            "worstMs": 10800840,
+            "runs": 3330
+          },
+          "tokens": {
+            "total": 10614601718,
+            "runs": 3329,
+            "estimatedRuns": 707,
+            "source": "estimated"
+          },
+          "cost": {
+            "usd": 32082.037,
+            "provenance": "estimated",
+            "source": "estimated",
+            "runs": 2641,
+            "estimatedRuns": 2641,
+            "meteredRuns": 0,
+            "unknownRuns": 702,
+            "unknownByReason": {
+              "no_model": 510,
+              "unpriced_model": 178,
+              "no_token_record": 14
+            }
+          },
+          "outcomes": {
+            "completed": 2972,
+            "failed": 239,
+            "needsInput": 118,
+            "cancelled": 1,
+            "unfinished": 13,
+            "runs": 3330,
+            "completionRate": 0.8924924924924925
+          }
+        }
+      ],
+      "generatedAt": "2026-11-03T21:34:11.565Z"
+    }
+  },
+  {
+    "checked_at": "2026-11-03T21:34:46.411654+00:00",
+    "url": "http://localhost:4000/api/task-evidence/7308afe3-71dd-4f2e-ac37-773cc67446b4",
+    "status": 200,
+    "artifact": "docs/reviews/2552d69e-live-acceptance/evidence/7308afe3-dossier.json",
+    "sha256": "757a5c371d68cfdeb849c1d114afc6afc711d8c945bde711d9deb360affc1fcd",
+    "response_excerpt": {
+      "taskId": "7308afe3-71dd-4f2e-ac37-773cc67446b4",
+      "taskStatus": "archived",
+      "completed": false,
+      "state": "not_completed",
+      "missing": [
+        "walkthrough",
+        "verify",
+        "code_review",
+        "qa"
+      ],
+      "summary": "Not completed (status \"archived\"); evidence is gathered as it lands.",
+      "predatesEvidenceCapture": false,
+      "pieces": [
+        {
+          "key": "walkthrough",
+          "label": "Walkthrough",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No walkthrough is stored on the task.",
+          "log": null
+        },
+        {
+          "key": "verify",
+          "label": "Verify gate",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+          "log": null,
+          "ref": null
+        },
+        {
+          "key": "code_review",
+          "label": "Code-review gate",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+          "log": null,
+          "ref": null
+        },
+        {
+          "key": "qa",
+          "label": "QA verdict",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+          "log": null
+        }
+      ],
+      "verification": null,
+      "sources": {
+        "spine": {
+          "available": true,
+          "reason": null,
+          "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite",
+          "staleRecord": null
+        }
+      }
+    }
+  },
+  {
+    "checked_at": "2026-11-03T21:34:46.424713+00:00",
+    "url": "http://localhost:4000/api/task-evidence/3ea04ca2-0777-451d-963e-f8d74fc1204f",
+    "status": 200,
+    "artifact": "docs/reviews/2552d69e-live-acceptance/evidence/3ea04ca2-dossier.json",
+    "sha256": "9bc6f22afb7472e500c50bd5ba27f136bf721cd8a6190a9fc65f69d4947642a0",
+    "response_excerpt": {
+      "taskId": "3ea04ca2-0777-451d-963e-f8d74fc1204f",
+      "taskStatus": "archived",
+      "completed": false,
+      "state": "not_completed",
+      "missing": [
+        "walkthrough",
+        "verify",
+        "code_review",
+        "qa"
+      ],
+      "summary": "Not completed (status \"archived\"); evidence is gathered as it lands.",
+      "predatesEvidenceCapture": false,
+      "pieces": [
+        {
+          "key": "walkthrough",
+          "label": "Walkthrough",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No walkthrough is stored on the task.",
+          "log": null
+        },
+        {
+          "key": "verify",
+          "label": "Verify gate",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+          "log": null,
+          "ref": null
+        },
+        {
+          "key": "code_review",
+          "label": "Code-review gate",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+          "log": null,
+          "ref": null
+        },
+        {
+          "key": "qa",
+          "label": "QA verdict",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+          "log": null
+        }
+      ],
+      "verification": null,
+      "sources": {
+        "spine": {
+          "available": true,
+          "reason": null,
+          "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite",
+          "staleRecord": null
+        }
+      }
+    }
+  },
+  {
+    "checked_at": "2026-11-03T21:35:06.130681+00:00",
+    "url": "http://localhost:4000/api/task-evidence/7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+    "status": 200,
+    "artifact": "docs/reviews/2552d69e-live-acceptance/evidence/verified-dossier.json",
+    "sha256": "2384371c9c377d06886c765c63b90c93db18cd2ca6dab2be9660031cd5f333cf",
+    "response_excerpt": {
+      "taskId": "7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+      "taskStatus": "completed",
+      "completed": true,
+      "state": "verified",
+      "missing": [],
+      "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+      "predatesEvidenceCapture": false,
+      "pieces": [
+        {
+          "key": "walkthrough",
+          "label": "Walkthrough",
+          "status": "present",
+          "at": "2026-10-20T06:34:09.347Z",
+          "source": "nexus-task",
+          "detail": "3236 characters · by claude-code",
+          "reason": null,
+          "log": {
+            "dispatchId": "c4b9914e-ac13-4feb-82a7-3475e277e24f",
+            "taskId": "7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+            "executor": "claude-code",
+            "path": "/Volumes/Projects/Praxis/data/claude-code-runs/7fe1005f-f05f-430c-a6a0-b1e4dddf6876.log",
+            "startedAt": "2026-10-20T06:24:12.545Z",
+            "completedAt": "2026-10-20T06:34:09.273Z",
+            "href": "/api/task-evidence/7fe1005f-f05f-430c-a6a0-b1e4dddf6876/log/c4b9914e-ac13-4feb-82a7-3475e277e24f"
+          }
+        },
+        {
+          "key": "verify",
+          "label": "Verify gate",
+          "status": "present",
+          "at": "2026-10-20T06:39:18.337Z",
+          "source": "praxis-verification",
+          "detail": "pass (verify-floating-controls 308 OK exit 0, verify-drafts pass, tsc clean, dashboard tests 1008/1017 with only the 9 known failures, encoding clean)",
+          "reason": null,
+          "log": {
+            "dispatchId": "c4b9914e-ac13-4feb-82a7-3475e277e24f",
+            "taskId": "7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+            "executor": "claude-code",
+            "path": "/Volumes/Projects/Praxis/data/claude-code-runs/7fe1005f-f05f-430c-a6a0-b1e4dddf6876.log",
+            "startedAt": "2026-10-20T06:24:12.545Z",
+            "completedAt": "2026-10-20T06:34:09.273Z",
+            "href": "/api/task-evidence/7fe1005f-f05f-430c-a6a0-b1e4dddf6876/log/c4b9914e-ac13-4feb-82a7-3475e277e24f"
+          },
+          "ref": {
+            "source": "praxis-run-events",
+            "seq": 55441,
+            "ts": "2026-10-20T06:39:18.337Z",
+            "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite"
+          }
+        },
+        {
+          "key": "code_review",
+          "label": "Code-review gate",
+          "status": "present",
+          "at": "2026-10-20T06:39:18.337Z",
+          "source": "praxis-verification",
+          "detail": "pass (self-review of the diff: the change only affects the desktop rails, and the mode is recalculated on window resize, display-scale changes and changes to the floating controls)",
+          "reason": null,
+          "log": {
+            "dispatchId": "c4b9914e-ac13-4feb-82a7-3475e277e24f",
+            "taskId": "7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+            "executor": "claude-code",
+            "path": "/Volumes/Projects/Praxis/data/claude-code-runs/7fe1005f-f05f-430c-a6a0-b1e4dddf6876.log",
+            "startedAt": "2026-10-20T06:24:12.545Z",
+            "completedAt": "2026-10-20T06:34:09.273Z",
+            "href": "/api/task-evidence/7fe1005f-f05f-430c-a6a0-b1e4dddf6876/log/c4b9914e-ac13-4feb-82a7-3475e277e24f"
+          },
+          "ref": {
+            "source": "praxis-run-events",
+            "seq": 55441,
+            "ts": "2026-10-20T06:39:18.337Z",
+            "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite"
+          }
+        },
+        {
+          "key": "qa",
+          "label": "QA verdict",
+          "status": "present",
+          "at": "2026-10-20T06:39:18.337Z",
+          "source": "praxis-verification",
+          "detail": "QA passed (codex)",
+          "reason": null,
+          "log": {
+            "dispatchId": "bbb24719-1b61-42d0-be06-554891c0dedd",
+            "taskId": "qa--7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+            "executor": "codex",
+            "path": "/Volumes/Projects/Praxis/data/codex-runs/qa--7fe1005f-f05f-430c-a6a0-b1e4dddf6876.log",
+            "startedAt": "2026-10-20T06:34:15.018Z",
+            "completedAt": "2026-10-20T06:38:59.734Z",
+            "href": "/api/task-evidence/7fe1005f-f05f-430c-a6a0-b1e4dddf6876/log/bbb24719-1b61-42d0-be06-554891c0dedd"
+          },
+          "verdict": "pass",
+          "reviewer": "codex",
+          "ref": {
+            "source": "praxis-run-events",
+            "seq": 55441,
+            "ts": "2026-10-20T06:39:18.337Z",
+            "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite"
+          }
+        }
+      ],
+      "verification": {
+        "ts": "2026-10-20T06:39:18.337Z",
+        "seq": 55441,
+        "verdict": "uncertain"
+      },
+      "sources": {
+        "spine": {
+          "available": true,
+          "reason": null,
+          "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite",
+          "staleRecord": null
+        }
+      }
+    }
+  },
+  {
+    "checked_at": "2026-11-03T21:35:06.131918+00:00",
+    "url": "http://localhost:4000/api/task-evidence/69cb9a87-0c9a-462e-a282-322718f581c6",
+    "status": 200,
+    "artifact": "docs/reviews/2552d69e-live-acceptance/evidence/unverified-dossier.json",
+    "sha256": "99d1a6100bd587e0afe69a563575571976b5e56f5acd099ead3bf302fcea845a",
+    "response_excerpt": {
+      "taskId": "69cb9a87-0c9a-462e-a282-322718f581c6",
+      "taskStatus": "completed",
+      "completed": true,
+      "state": "unverified",
+      "missing": [
+        "walkthrough",
+        "verify",
+        "code_review",
+        "qa"
+      ],
+      "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough.",
+      "predatesEvidenceCapture": true,
+      "pieces": [
+        {
+          "key": "walkthrough",
+          "label": "Walkthrough",
+          "status": "incomplete",
+          "at": null,
+          "source": "nexus-task",
+          "detail": "1226 characters",
+          "reason": "Recorded, but its timestamp and log reference are missing, so it cannot count as evidence for this completion.",
+          "log": null,
+          "metadataMissing": [
+            "timestamp",
+            "log reference"
+          ]
+        },
+        {
+          "key": "verify",
+          "label": "Verify gate",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+          "log": null,
+          "ref": null
+        },
+        {
+          "key": "code_review",
+          "label": "Code-review gate",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+          "log": null,
+          "ref": null
+        },
+        {
+          "key": "qa",
+          "label": "QA verdict",
+          "status": "absent",
+          "at": null,
+          "source": null,
+          "detail": null,
+          "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+          "log": null
+        }
+      ],
+      "verification": null,
+      "sources": {
+        "spine": {
+          "available": true,
+          "reason": null,
+          "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite",
+          "staleRecord": null
+        }
+      }
+    }
+  }
+]

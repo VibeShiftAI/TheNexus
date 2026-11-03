@@ -1,0 +1,76 @@
+{
+  "checked_at": "2026-11-03T21:35:06.131918+00:00",
+  "url": "http://localhost:4000/api/task-evidence/69cb9a87-0c9a-462e-a282-322718f581c6",
+  "status": 200,
+  "body": {
+    "taskId": "69cb9a87-0c9a-462e-a282-322718f581c6",
+    "taskStatus": "completed",
+    "completed": true,
+    "state": "unverified",
+    "missing": [
+      "walkthrough",
+      "verify",
+      "code_review",
+      "qa"
+    ],
+    "summary": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough.",
+    "predatesEvidenceCapture": true,
+    "pieces": [
+      {
+        "key": "walkthrough",
+        "label": "Walkthrough",
+        "status": "incomplete",
+        "at": null,
+        "source": "nexus-task",
+        "detail": "1226 characters",
+        "reason": "Recorded, but its timestamp and log reference are missing, so it cannot count as evidence for this completion.",
+        "log": null,
+        "metadataMissing": [
+          "timestamp",
+          "log reference"
+        ]
+      },
+      {
+        "key": "verify",
+        "label": "Verify gate",
+        "status": "absent",
+        "at": null,
+        "source": null,
+        "detail": null,
+        "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+        "log": null,
+        "ref": null
+      },
+      {
+        "key": "code_review",
+        "label": "Code-review gate",
+        "status": "absent",
+        "at": null,
+        "source": null,
+        "detail": null,
+        "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+        "log": null,
+        "ref": null
+      },
+      {
+        "key": "qa",
+        "label": "QA verdict",
+        "status": "absent",
+        "at": null,
+        "source": null,
+        "detail": null,
+        "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+        "log": null
+      }
+    ],
+    "verification": null,
+    "sources": {
+      "spine": {
+        "available": true,
+        "reason": null,
+        "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite",
+        "staleRecord": null
+      }
+    }
+  }
+}

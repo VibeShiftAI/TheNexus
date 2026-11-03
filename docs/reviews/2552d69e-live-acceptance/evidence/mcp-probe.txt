@@ -1,0 +1,49 @@
+COMMAND: node scripts/mcp-boundary-probe.js
+STARTED: 2026-11-03T21:34:10.067545+00:00
+
+artifacts: logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z
+
+Phase A — keys.json mode 0600, credential scoped to identity.whoami
+
+PASS — scoped credential resolves and whoami succeeds
+       source:   jsonrpc response id=2 to tools/call identity_whoami, transcribed to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/phase-a.rpc.jsonl
+       evidence: whoami returned identity=probe-readonly
+PASS — nexus_task_create refused for the scoped credential
+       source:   jsonrpc response id=3 to tools/call nexus_task_create, transcribed to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/phase-a.rpc.jsonl
+       evidence: Error: caller "probe-readonly" lacks privilege "nexus.task_create". Allowed: identity.whoami
+PASS — vault_write refused for the scoped credential
+       source:   jsonrpc response id=4 to tools/call vault_write, transcribed to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/phase-a.rpc.jsonl
+       evidence: Error: caller "probe-readonly" lacks privilege "vault.write". Allowed: identity.whoami
+PASS — stderr log corroborates the caller binding for the spawn
+       source:   stderr of `node services/praxis-mind-mcp/stdio.js` (phase A spawn), captured to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/phase-a.stderr.log — matched line: "[2026-11-03T21:34:10.204Z] praxis-mind spawned for caller=probe-readonly namespace=coding-agents-probe"
+       evidence: [2026-11-03T21:34:10.204Z] praxis-mind spawned for caller=probe-readonly namespace=coding-agents-probe
+PASS — cost-ledger row corroborates the whoami invocation, attributed to the probe identity
+       source:   sqlite table `calls` in the probe cost ledger, copied to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/cost-ledger.sqlite, rows dumped to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/ledger-rows.json
+       evidence: {"caller":"probe-readonly","tool":"identity_whoami","success":1}
+PASS — refused mutations left no ledger trace (rejected before any side effect)
+       source:   sqlite table `calls` in the probe cost ledger, copied to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/cost-ledger.sqlite, rows dumped to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/ledger-rows.json
+       evidence: ledger rows for refused tools: []
+PASS — refused mutations opened no write transaction (transition log absent)
+       source:   probe-HOME file listing of .praxis-mind/, snapshotted to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/praxis-mind-listing.json
+       evidence: transition-log.jsonl is not present in the probe HOME
+
+Phase B — same keys.json chmod 0644 (the only variable changed)
+
+PASS — the same previously-valid key now resolves unauthenticated
+       source:   jsonrpc response id=2 to tools/call identity_whoami, transcribed to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/phase-b.rpc.jsonl
+       evidence: Error: unauthenticated. PRAXIS_MIND_KEY env var missing or invalid.
+PASS — stderr FATAL log corroborates the loose-keys refusal
+       source:   stderr of `node services/praxis-mind-mcp/stdio.js` (phase B spawn), captured to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/phase-b.stderr.log — matched line: "[2026-11-03T21:34:10.286Z] FATAL: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/mcp-probe-home-S1XQq2/.praxis-mind/keys.json is group/world-accessible (mode 644) — refusing to load keys. Fix: chmod 600 /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/mcp-probe-home-S1XQq2/.praxis-mind/keys.json"
+       evidence: [2026-11-03T21:34:10.286Z] FATAL: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/mcp-probe-home-S1XQq2/.praxis-mind/keys.json is group/world-accessible (mode 644) — refusing to load keys. Fix: chmod 600 /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/mcp-probe-home-S1XQq2/.praxis-mind/keys.json
+PASS — stderr log corroborates the unauthenticated spawn
+       source:   stderr of `node services/praxis-mind-mcp/stdio.js` (phase B spawn), captured to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/phase-b.stderr.log — matched line: "[2026-11-03T21:34:10.287Z] praxis-mind spawned UNAUTHENTICATED — tools will refuse"
+       evidence: [2026-11-03T21:34:10.287Z] praxis-mind spawned UNAUTHENTICATED — tools will refuse
+PASS — the unauthenticated refusal left no new ledger rows
+       source:   sqlite table `calls` in the probe cost ledger, copied to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/cost-ledger.sqlite, rows dumped to logs/mcp-boundary-probe/2026-11-03T21-34-10-089Z/ledger-rows.json
+       evidence: ledger rows before=1 after=1
+PROBE ERROR: Error: Path is a directory: /Volumes/Projects/TheNexus/logs/mcp-boundary-probe/latest
+    at Object.rmSync (node:fs:1248:18)
+    at /Volumes/Projects/TheNexus/scripts/mcp-boundary-probe.js:292:6
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+
+EXIT_CODE: 1

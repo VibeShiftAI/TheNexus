@@ -1,0 +1,8 @@
+{
+  "checked_at": "2026-11-03T21:39:32.605Z",
+  "from": "http://localhost:3000/task-board?lane=complete",
+  "href": "/task/69cb9a87-0c9a-462e-a282-322718f581c6",
+  "label": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough. Completed before Praxis recorded verification evidence.",
+  "text": "Unverified (pre-capture)\nmissing walkthrough, verify, code review, QA",
+  "to": "http://localhost:3000/task/69cb9a87-0c9a-462e-a282-322718f581c6"
+}

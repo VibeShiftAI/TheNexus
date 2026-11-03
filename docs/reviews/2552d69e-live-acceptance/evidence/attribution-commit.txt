@@ -1,0 +1,6 @@
+COMMAND: git show -s --format=%H%n%B 6accf294756ef43f9ebd89f28fdc7c92f83cbacf
+6accf294756ef43f9ebd89f28fdc7c92f83cbacf
+Surface degraded runtime health above the cockpit and suppress green summaries
+
+Task: 07403a02-3731-4b19-941d-57d7289f3a6b
+

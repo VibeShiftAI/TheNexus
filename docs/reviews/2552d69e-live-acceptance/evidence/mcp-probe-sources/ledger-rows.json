@@ -1,0 +1,7 @@
+[
+  {
+    "caller": "probe-readonly",
+    "tool": "identity_whoami",
+    "success": 1
+  }
+]

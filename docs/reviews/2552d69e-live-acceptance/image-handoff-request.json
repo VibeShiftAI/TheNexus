@@ -1,0 +1,79 @@
+{
+  "name": "document_handoff",
+  "args": {
+    "action": "register",
+    "handoff_id": "2552d69e-live-acceptance-images-v2",
+    "task_id": "2552d69e-69f7-4a18-bc42-b648da20e26b",
+    "project_id": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+    "source": {
+      "type": "task",
+      "execution_id": "38b61bd4-f1a0-4699-9917-c0c0f16aa51b"
+    },
+    "review_expected": false,
+    "deliverables": [
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/dashboard.png",
+        "title": "Live acceptance \u2014 dashboard",
+        "kind": "image",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/attribution.png",
+        "title": "Live acceptance \u2014 attribution",
+        "kind": "image",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/routing-economics.png",
+        "title": "Live acceptance \u2014 routing economics",
+        "kind": "image",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/verified-card.png",
+        "title": "Live acceptance \u2014 verified card",
+        "kind": "image",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/verified-completion.png",
+        "title": "Live acceptance \u2014 verified completion",
+        "kind": "image",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/verified-verify-expanded.png",
+        "title": "Live acceptance \u2014 verified verify expanded",
+        "kind": "image",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/unverified-card.png",
+        "title": "Live acceptance \u2014 unverified card",
+        "kind": "image",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/unverified-completion.png",
+        "title": "Live acceptance \u2014 unverified completion",
+        "kind": "image",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/unverified-verify-expanded.png",
+        "title": "Live acceptance \u2014 unverified verify expanded",
+        "kind": "image",
+        "requires_review": false,
+        "intended_action": "none"
+      }
+    ]
+  }
+}

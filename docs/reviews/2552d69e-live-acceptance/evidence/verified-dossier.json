@@ -1,0 +1,121 @@
+{
+  "checked_at": "2026-11-03T21:35:06.130681+00:00",
+  "url": "http://localhost:4000/api/task-evidence/7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+  "status": 200,
+  "body": {
+    "taskId": "7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+    "taskStatus": "completed",
+    "completed": true,
+    "state": "verified",
+    "missing": [],
+    "summary": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+    "predatesEvidenceCapture": false,
+    "pieces": [
+      {
+        "key": "walkthrough",
+        "label": "Walkthrough",
+        "status": "present",
+        "at": "2026-10-20T06:34:09.347Z",
+        "source": "nexus-task",
+        "detail": "3236 characters \u00b7 by claude-code",
+        "reason": null,
+        "log": {
+          "dispatchId": "c4b9914e-ac13-4feb-82a7-3475e277e24f",
+          "taskId": "7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+          "executor": "claude-code",
+          "path": "/Volumes/Projects/Praxis/data/claude-code-runs/7fe1005f-f05f-430c-a6a0-b1e4dddf6876.log",
+          "startedAt": "2026-10-20T06:24:12.545Z",
+          "completedAt": "2026-10-20T06:34:09.273Z",
+          "href": "/api/task-evidence/7fe1005f-f05f-430c-a6a0-b1e4dddf6876/log/c4b9914e-ac13-4feb-82a7-3475e277e24f"
+        }
+      },
+      {
+        "key": "verify",
+        "label": "Verify gate",
+        "status": "present",
+        "at": "2026-10-20T06:39:18.337Z",
+        "source": "praxis-verification",
+        "detail": "pass (verify-floating-controls 308 OK exit 0, verify-drafts pass, tsc clean, dashboard tests 1008/1017 with only the 9 known failures, encoding clean)",
+        "reason": null,
+        "log": {
+          "dispatchId": "c4b9914e-ac13-4feb-82a7-3475e277e24f",
+          "taskId": "7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+          "executor": "claude-code",
+          "path": "/Volumes/Projects/Praxis/data/claude-code-runs/7fe1005f-f05f-430c-a6a0-b1e4dddf6876.log",
+          "startedAt": "2026-10-20T06:24:12.545Z",
+          "completedAt": "2026-10-20T06:34:09.273Z",
+          "href": "/api/task-evidence/7fe1005f-f05f-430c-a6a0-b1e4dddf6876/log/c4b9914e-ac13-4feb-82a7-3475e277e24f"
+        },
+        "ref": {
+          "source": "praxis-run-events",
+          "seq": 55441,
+          "ts": "2026-10-20T06:39:18.337Z",
+          "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite"
+        }
+      },
+      {
+        "key": "code_review",
+        "label": "Code-review gate",
+        "status": "present",
+        "at": "2026-10-20T06:39:18.337Z",
+        "source": "praxis-verification",
+        "detail": "pass (self-review of the diff: the change only affects the desktop rails, and the mode is recalculated on window resize, display-scale changes and changes to the floating controls)",
+        "reason": null,
+        "log": {
+          "dispatchId": "c4b9914e-ac13-4feb-82a7-3475e277e24f",
+          "taskId": "7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+          "executor": "claude-code",
+          "path": "/Volumes/Projects/Praxis/data/claude-code-runs/7fe1005f-f05f-430c-a6a0-b1e4dddf6876.log",
+          "startedAt": "2026-10-20T06:24:12.545Z",
+          "completedAt": "2026-10-20T06:34:09.273Z",
+          "href": "/api/task-evidence/7fe1005f-f05f-430c-a6a0-b1e4dddf6876/log/c4b9914e-ac13-4feb-82a7-3475e277e24f"
+        },
+        "ref": {
+          "source": "praxis-run-events",
+          "seq": 55441,
+          "ts": "2026-10-20T06:39:18.337Z",
+          "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite"
+        }
+      },
+      {
+        "key": "qa",
+        "label": "QA verdict",
+        "status": "present",
+        "at": "2026-10-20T06:39:18.337Z",
+        "source": "praxis-verification",
+        "detail": "QA passed (codex)",
+        "reason": null,
+        "log": {
+          "dispatchId": "bbb24719-1b61-42d0-be06-554891c0dedd",
+          "taskId": "qa--7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+          "executor": "codex",
+          "path": "/Volumes/Projects/Praxis/data/codex-runs/qa--7fe1005f-f05f-430c-a6a0-b1e4dddf6876.log",
+          "startedAt": "2026-10-20T06:34:15.018Z",
+          "completedAt": "2026-10-20T06:38:59.734Z",
+          "href": "/api/task-evidence/7fe1005f-f05f-430c-a6a0-b1e4dddf6876/log/bbb24719-1b61-42d0-be06-554891c0dedd"
+        },
+        "verdict": "pass",
+        "reviewer": "codex",
+        "ref": {
+          "source": "praxis-run-events",
+          "seq": 55441,
+          "ts": "2026-10-20T06:39:18.337Z",
+          "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite"
+        }
+      }
+    ],
+    "verification": {
+      "ts": "2026-10-20T06:39:18.337Z",
+      "seq": 55441,
+      "verdict": "uncertain"
+    },
+    "sources": {
+      "spine": {
+        "available": true,
+        "reason": null,
+        "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite",
+        "staleRecord": null
+      }
+    }
+  }
+}

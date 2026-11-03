@@ -1,0 +1,6 @@
+PASS: node --check capture-live.mjs
+PASS: strict UTF-8, mojibake and credential-pattern scan for 64 package files
+PASS: JSON/JSONL parsing, PNG/SQLite signatures, HTTP response hashes
+PASS: 171 green suites, 11 MCP checks, both card navigation and expansion records match reported claims
+REVIEW: retained native Jest whitespace and final blank line in git-show output are intentional raw-output fidelity; git diff --check warnings are confined to these captures
+REVIEW: source helper and walkthrough diff re-read; no implementation changes; gaps retained in walkthrough

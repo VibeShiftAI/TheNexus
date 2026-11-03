@@ -1,0 +1,79 @@
+{
+  "name": "document_handoff",
+  "args": {
+    "action": "register",
+    "handoff_id": "2552d69e-live-acceptance-records-v1",
+    "task_id": "2552d69e-69f7-4a18-bc42-b648da20e26b",
+    "project_id": "c0117b65-9ad7-4afa-90e6-c675b483ccc3",
+    "source": {
+      "type": "task",
+      "execution_id": "38b61bd4-f1a0-4699-9917-c0c0f16aa51b"
+    },
+    "review_expected": false,
+    "deliverables": [
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/observations.txt",
+        "title": "Live acceptance evidence \u2014 observations.txt",
+        "kind": "report",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/npm-test.txt",
+        "title": "Live acceptance evidence \u2014 npm-test.txt",
+        "kind": "report",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/npm-test-isolated-env.txt",
+        "title": "Live acceptance evidence \u2014 npm-test-isolated-env.txt",
+        "kind": "report",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/baseline-tests.txt",
+        "title": "Live acceptance evidence \u2014 baseline-tests.txt",
+        "kind": "report",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/baseline-tests-supplemented.txt",
+        "title": "Live acceptance evidence \u2014 baseline-tests-supplemented.txt",
+        "kind": "report",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/mcp-probe.txt",
+        "title": "Live acceptance evidence \u2014 mcp-probe.txt",
+        "kind": "report",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/http-evidence-excerpts.json",
+        "title": "Live acceptance evidence \u2014 http-evidence-excerpts.json",
+        "kind": "data",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/knowledge-assessment.json",
+        "title": "Live acceptance evidence \u2014 knowledge-assessment.json",
+        "kind": "data",
+        "requires_review": false,
+        "intended_action": "none"
+      },
+      {
+        "path": "/Volumes/Projects/TheNexus/docs/reviews/2552d69e-live-acceptance/evidence/mcp-probe-sources/report.json",
+        "title": "Live acceptance evidence \u2014 mcp-probe-sources/report.json",
+        "kind": "data",
+        "requires_review": false,
+        "intended_action": "none"
+      }
+    ]
+  }
+}

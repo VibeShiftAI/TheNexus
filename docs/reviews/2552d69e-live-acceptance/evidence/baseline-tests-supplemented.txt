@@ -1,0 +1,370 @@
+BASELINE: 1b0e22079ef905a5c107188d65fc3745fae67fe5
+COPY: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-2552-baseline-ju430p41
+SUPPLEMENT: db/document-agent-reviews.js and db/document-draft-versions.js copied from shared working tree (already untracked at dispatch, excluded from snapshot). This is not a pristine baseline.
+COMMAND: npm test -- --runInBand server/__tests__/openrouter-free-lane.test.js server/__tests__/praxis-stream.test.js server/__tests__/studio-route.test.js
+
+> the-nexus@1.0.0 test
+> jest --runInBand server/__tests__/openrouter-free-lane.test.js server/__tests__/praxis-stream.test.js server/__tests__/studio-route.test.js
+
+FAIL server/__tests__/studio-route.test.js
+  ● Console
+
+    console.log
+      [Studio] catalog for impossible-worlds-field-guide: 2 of 12 objects fit LM Studio llama3.2 loaded context; the whole text is in /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-model-inputs-lBtRrp/studio-catalog-impossible-worlds-field-guide-db7b0e7ad3491c37.txt
+
+      at log (server/routes/studio.js:315:13)
+
+  ● studio route › the enrich endpoint drains un-enriched objects and reports remaining
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 2
+
+      451 |     // No YouTube key in the test env → objects still get parameter-enriched and marked.
+      452 |     cursors = (await json(`${base}/ingestion/cursors`)).body;
+    > 453 |     expect(cursors.enrichRemaining).toBe(0);
+          |                                     ^
+      454 |   });
+      455 |
+      456 |   test('interaction_idea builds a video idea from selected objects and links them', async () => {
+
+      at Object.toBe (server/__tests__/studio-route.test.js:453:37)
+
+FAIL server/__tests__/praxis-stream.test.js
+  ● Console
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.warn
+      [PraxisStream] upstream returned 404, will retry
+
+      323 |             res.on('error', reconnect);
+      324 |             if (res.statusCode !== 200) {
+    > 325 |                 console.warn(`[PraxisStream] upstream returned ${res.statusCode}, will retry`);
+          |                         ^
+      326 |                 res.resume();
+      327 |                 reconnect();
+      328 |                 return;
+
+      at ClientRequest.warn (server/routes/praxis-stream.js:325:25)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+    console.log
+      [PraxisStream] connected to Praxis /stream
+
+      at ClientRequest.log (server/routes/praxis-stream.js:332:21)
+
+  ● praxis-stream route › POST /api/praxis/events ingest › ignores X-Forwarded-For and judges loopback by the socket peer
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 401
+
+      501 |         });
+      502 |         // genuine loopback peer + forged header: accepted (header irrelevant)
+    > 503 |         expect((await post()).status).toBe(200);
+          |                                       ^
+      504 |         // LAN peer + forged loopback header: rejected
+      505 |         fakePeer = '192.168.1.55';
+      506 |         expect((await post()).status).toBe(403);
+
+      at Object.toBe (server/__tests__/praxis-stream.test.js:503:39)
+
+FAIL server/__tests__/openrouter-free-lane.test.js
+  ● Console
+
+    console.log
+      [Database] Migration: added project_contacts.decision_maker
+
+      at log (db/index.js:807:21)
+
+    console.log
+      [Database] Migration: added projects.comms_settings
+
+      at log (db/index.js:807:21)
+
+    console.log
+      [Database] Migration: added projects.report_template
+
+      at log (db/index.js:807:21)
+
+    console.log
+      [Database] Migration: added calendar_events.series_id
+
+      at log (db/index.js:807:21)
+
+    console.log
+      [Database] Migration: added calendar_events.recurrence
+
+      at log (db/index.js:807:21)
+
+    console.log
+      [Database] Migration: added calendar_events.attendees
+
+      at log (db/index.js:807:21)
+
+    console.warn
+      [Database] Canonical-status sweep skipped: no such column: pre_archive_status
+
+      141 |         if (healed > 0) console.log(`[Database] Status sweep: normalized ${healed} legacy task status value(s)`);
+      142 |     } catch (err) {
+    > 143 |         console.warn('[Database] Canonical-status sweep skipped:', err.message);
+          |                 ^
+      144 |     }
+      145 |
+      146 |     // A source index cannot override SQLite's old date/model table constraint.
+
+      at Object.warn (db/index.js:143:17)
+      at Object.require (server/utils/token-tracker.js:7:12)
+      at Object.require (server/__tests__/openrouter-free-lane.test.js:16:27)
+
+    console.log
+      [Database] Migration: added archived_at column to projects
+
+      at Object.log (db/index.js:158:21)
+
+    console.log
+      [Database] Migration: added archived_at column to tasks
+
+      at Object.log (db/index.js:163:21)
+
+    console.log
+      [Database] Migration: added pre_archive_status column to tasks
+
+      at Object.log (db/index.js:167:21)
+
+    console.log
+      [Database] Migration: added upgrade_posture column to projects
+
+      at Object.log (db/index.js:202:25)
+
+    console.log
+      [Database] Migration: added needs column to projects
+
+      at Object.log (db/index.js:206:25)
+
+    console.log
+      [Database] Migration: added end_state_updated_at column to projects
+
+      at Object.log (db/index.js:210:25)
+
+    console.log
+      [Database] Migration: added end_state_criteria column to projects
+
+      at Object.log (db/index.js:214:25)
+
+    console.log
+      [Database] Migration: added end_state_history column to projects (seeded 0 existing end state(s))
+
+      at Object.log (db/index.js:234:25)
+
+    console.log
+      [Database] Migration: added last_activity_at column to tasks (seeded from created_at)
+
+      at Object.log (db/index.js:251:21)
+
+    console.log
+      [Database] Migration: added successor_id column to tasks
+
+      at Object.log (db/index.js:265:21)
+
+    console.log
+      [Database] Connected to SQLite: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/nexus-tests-db-6xERF4/nexus.db
+
+      at Object.log (db/index.js:291:13)
+
+  ● praxis-env parsing › an unreadable file degrades to no values rather than throwing
+
+    expect(received).toBeNull()
+
+    Received: "[REDACTED_OPENROUTER_CREDENTIAL]"
+
+      144 |         try {
+      145 |             const { resolveSharedCredential } = require('../services/praxis-env');
+    > 146 |             expect(resolveSharedCredential('OPENROUTER_API_KEY')).toBeNull();
+          |                                                                   ^
+      147 |         } finally {
+      148 |             if (prevRoot === undefined) delete process.env.PROJECT_ROOT;
+      149 |             else process.env.PROJECT_ROOT = prevRoot;
+
+      at Object.toBeNull (server/__tests__/openrouter-free-lane.test.js:146:67)
+
+Test Suites: 3 failed, 3 total
+Tests:       3 failed, 54 passed, 57 total
+Snapshots:   0 total
+Time:        2.743 s, estimated 3 s
+Ran all test suites matching server/__tests__/openrouter-free-lane.test.js|server/__tests__/praxis-stream.test.js|server/__tests__/studio-route.test.js.
+
+EXIT_CODE: 1

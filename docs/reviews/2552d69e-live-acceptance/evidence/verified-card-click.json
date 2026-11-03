@@ -1,0 +1,8 @@
+{
+  "checked_at": "2026-11-03T21:39:25.032Z",
+  "from": "http://localhost:3000/task-board?lane=complete",
+  "href": "/task/7fe1005f-f05f-430c-a6a0-b1e4dddf6876",
+  "label": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.",
+  "text": "Verified",
+  "to": "http://localhost:3000/task/7fe1005f-f05f-430c-a6a0-b1e4dddf6876"
+}

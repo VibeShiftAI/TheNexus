@@ -1,0 +1,397 @@
+GET http://localhost:4000/api/projects => HTTP 200 at 2026-11-03T21:34:10.363797+00:00; retained projects.json
+GET http://localhost:3000 => HTTP 200 at 2026-11-03T21:34:10.397736+00:00; retained dashboard.json
+npm-test.txt: COMMAND: npm test | Test Suites: 3 failed, 168 passed, 171 total | Tests:       3 failed, 1 skipped, 2251 passed, 2255 total | EXIT_CODE: 1
+npm-test-isolated-env.txt: COMMAND: env -u OPENROUTER_API_KEY -u NEXUS_SERVICE_KEY -u YOUTUBE_API_KEY -u GOOGLE_API_KEY npm test | Test Suites: 171 passed, 171 total | Tests:       1 skipped, 2254 passed, 2255 total | EXIT_CODE: 0
+baseline-tests.txt: COMMAND: npm test -- --runInBand server/__tests__/openrouter-free-lane.test.js server/__tests__/praxis-stream.test.js server/__tests__/studio-route.test.js | Test Suites: 3 failed, 3 total | Tests:       2 failed, 42 passed, 44 total | EXIT_CODE: 1
+baseline-tests-supplemented.txt: COMMAND: npm test -- --runInBand server/__tests__/openrouter-free-lane.test.js server/__tests__/praxis-stream.test.js server/__tests__/studio-route.test.js | Test Suites: 3 failed, 3 total | Tests:       3 failed, 54 passed, 57 total | EXIT_CODE: 1
+MCP security checks: 11/11 PASS; command exited 1 during latest-link cleanup (mcp-probe.txt).
+PASS MCP: scoped credential resolves and whoami succeeds — whoami returned identity=probe-readonly
+PASS MCP: nexus_task_create refused for the scoped credential — Error: caller "probe-readonly" lacks privilege "nexus.task_create". Allowed: identity.whoami
+PASS MCP: vault_write refused for the scoped credential — Error: caller "probe-readonly" lacks privilege "vault.write". Allowed: identity.whoami
+PASS MCP: stderr log corroborates the caller binding for the spawn — [2026-11-03T21:34:10.204Z] praxis-mind spawned for caller=probe-readonly namespace=coding-agents-probe
+PASS MCP: cost-ledger row corroborates the whoami invocation, attributed to the probe identity — {"caller":"probe-readonly","tool":"identity_whoami","success":1}
+PASS MCP: refused mutations left no ledger trace (rejected before any side effect) — ledger rows for refused tools: []
+PASS MCP: refused mutations opened no write transaction (transition log absent) — transition-log.jsonl is not present in the probe HOME
+PASS MCP: the same previously-valid key now resolves unauthenticated — Error: unauthenticated. PRAXIS_MIND_KEY env var missing or invalid.
+PASS MCP: stderr FATAL log corroborates the loose-keys refusal — [2026-11-03T21:34:10.286Z] FATAL: /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/mcp-probe-home-S1XQq2/.praxis-mind/keys.json is group/world-accessible (mode 644) — refusing to load keys. Fix: chmod 600 /var/folders/rl/tstg952n00b_lvzcn18dfqw40000gn/T/mcp-probe-home-S1XQq2/.praxis-mind/keys.json
+PASS MCP: stderr log corroborates the unauthenticated spawn — [2026-11-03T21:34:10.287Z] praxis-mind spawned UNAUTHENTICATED — tools will refuse
+PASS MCP: the unauthenticated refusal left no new ledger rows — ledger rows before=1 after=1
+BROWSER attribution: http://localhost:3000/ at 2026-11-03T21:39:15.872Z
+Recent Activity
+Refresh actions
+All60
+Events40
+Commits20
+TheNexus
+5m ago
+
+Surface degraded runtime health above the cockpit and suppress green summaries
+
+6accf29
+gpt-6-astra
+12.2M
+4/8
+Logs
+TheNexus
+6m ago
+
+Project Praxis runtime health into the cockpit dispatch snapshot
+
+e4546d2
+gpt-6-astra
+12.2M
+4/8
+Logs
+Joey Lautrup Health Tracking App
+9m ago
+
+Record Good Boy private deployment evidence and pending tracked-mail handoff
+
+49b036f
+gpt-6-astra
+10.2M
+4/8
+Logs
+Joey Lautrup Health Tracking App
+18m ago
+
+Add managed Good Boy export and private-install verification tools
+
+67bea05
+gpt-6-astra
+10.2M
+4/8
+Logs
+vibeshiftai
+19m ago
+
+Add password-gated Good Boy OTA installation with expiring artifact grants
+
+2c354ef
+Robert Washko
+unavailable
+0/8
+no logs
+shared-mind
+23m ago
+
+Vault update: 1 generated, 1 other
+
+9d72862
+vault-watcher
+0
+0/8
+no logs
+QuantumGameMaster-recovery
+43m ago
+
+docs: reconcile checkpoint 1 reset and build evidence
+
+309a599
+gpt-6-astra
+4.1M
+4/8
+Logs
+Praxis
+44m ago
+
+Verify authorized graph-cull recovery and reverse orphaning side effects
+
+78ad993
+gpt-6-astra
+16.3M
+4/8
+Logs
+TheCortex
+46m ago
+
+Retain approved graph-cull reversal manifests
+
+67aa6a9
+Robert Washko
+unavailable
+0/8
+no logs
+Joey Lautrup Health Tracking App
+58m ago
+
+Retain the delivered round 3 handoff receipt for the Good Boy rename record
+
+0240186
+Claude Fable 5.1
+5.0M
+4/8
+Logs
+Joey Lautrup Health Tracking App
+58m ago
+
+Record the Good Boy report branding change, the description read-back and the deferred phone update
+
+342b7e6
+Claude Fable 5.1
+5.0M
+4/8
+Logs
+Praxis
+1h ago
+
+Retain graph-cull recovery verification evidence
+
+1e07dec
+gpt-6-astra
+8.6M
+4/8
+Logs
+Praxis
+1h ago
+
+Fix graph-cull transaction memory exhaustion
+
+fc9f63f
+gpt-6-astra
+8.6M
+4/8
+Logs
+Praxis
+1h ago
+
+Show frozen scenario titles and judge reasons for protected losses
+
+b7f3e13
+gpt-6-astra
+8.6M
+4/8
+Logs
+TheNexus
+1h ago
+
+Lead amendment cards with the outcome and disclose detailed evidence
+
+fdc4681
+Robert Washko
+unavailable
+0/8
+no logs
+shared-mind
+1h ago
+
+Vault update: 1 generated, 1 other
+
+a7b6dd6
+vault-watcher
+0
+0/8
+no logs
+Praxis
+1h ago
+
+Merge commit 'd497486636be7eef2449c7f6d79957ada3c8842c' into feat/paired-skill-amendments
+
+c81f04d
+gpt-6-astra
+1.2M
+4/8
+Logs
+TheNexus
+1h ago
+
+Defer vault sync while a skill amendment awaits recovery
+
+75ee689
+Robert Washko
+unavailable
+0/8
+no logs
+Joey Lautrup Health Tracking App
+1h ago
+
+Retain the delivered handoff receipt for the Good Boy rename record
+
+f17aee1
+Claude Fable 5.1
+10.9M
+4/8
+Logs
+TheNexus
+1h ago
+
+Review paired evidence and the current diff before applying an amendment
+
+079b41f
+Robert Washko
+unavailable
+0/8
+no logs
+PROJECT REFERENCE
+TheNexus
+TOOL
+ACTIVE
+Δ 3m
+
+The cockpit: Express API (:4000) + Next.js dashboard (:3000) over the SQLite task board — projects, tasks, dispatch console, HITL approvals — plus the praxis-mind MCP server every Claude session uses. A viewport onto Praxis, no orchestration of its own. Protocol: project-execution-cadence (adopted 2026-07-25; verification protocol codified in docs/verification-protocol.md in the workspace)
+
+TEMPO · 14D
+100 commits
+1 active
+1 in review
+2 crew engaged
+agent-orchestration
+multi-agent-systems
+model-context-protocol
++4
+fix/rev
+BROWSER routing-economics: http://localhost:3000/activity at 2026-11-03T21:39:19.174Z
+Measured routing economics
+
+Observed attempts, including failures. Small samples describe history; they do not predict the next run.
+
+Refresh
+
+All recorded dispatch attempts; includes failures and follow-ups. Activity commits are not additional runs.
+
+Routing economics by lane and model, with contributing run counts
+Model / lane	Wall-clock latency	Token total	Cost subtotal · USD	Executor outcome
+
+Local lane
+0 runs	No data — no recorded runs
+
+Cloud lane
+3344 runs	3.8m median
+3.0h worst observed
+from 3331 of 3344 runs
+	~10,626,767,607 est
+includes 707 estimated runs
+from 3330 of 3344 runs
+	$32137.391 estimate
+from 2642 of 3344 runs
+510 runs: no model recorded
+178 runs: no rate available
+14 runs: no token record
+	89% completed
+from 3331 of 3344 runs
+2973 completed · 239 failed / timed out · 118 needed input · 1 cancelled
+13 unfinished / unknown
+
+
+gpt-6-astra
+Cloud · 619 runs
+View 619 runs / logs
+	4.1m median
+2.5h worst observed
+from 616 of 619 runs
+	~2,533,668,024 est
+includes 52 estimated runs
+from 616 of 619 runs
+	$11528.190 estimate
+from 616 of 619 runs
+3 runs: no token record
+	90% completed
+from 616 of 619 runs
+552 completed · 20 failed / timed out · 44 needed input · 0 cancelled
+3 unfinished / unknown
+
+
+Model not recorded
+Cloud · 510 runs
+View 510 runs / logs
+	2.5m median
+2.9h worst observed
+from 510 of 510 runs
+	~276,897,921 est
+includes 123 estimated runs
+from 510 of 510 ru
+BROWSER verified-completion: http://localhost:3000/task/7fe1005f-f05f-430c-a6a0-b1e4dddf6876 at 2026-11-03T21:39:25.543Z
+Completion evidence
+Verified
+Praxis grade: uncertain
+
+Verified: walkthrough, verify gate, code-review gate and QA pass all on record.
+
+Walkthrough
+ON RECORD
+10/20/2026, 2:34:09 AM
+Verify gate
+ON RECORD
+10/20/2026, 2:39:18 AM
+Code-review gate
+ON RECORD
+10/20/2026, 2:39:18 AM
+QA verdict
+ON RECORD
+10/20/2026, 2:39:18 AM
+
+BROWSER unverified-completion: http://localhost:3000/task/69cb9a87-0c9a-462e-a282-322718f581c6 at 2026-11-03T21:39:33.113Z
+Completion evidence
+Unverified (pre-capture): missing walkthrough, verify, code review, QA
+
+Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough. This task completed before Praxis began recording verification evidence.
+
+Walkthrough
+INCOMPLETE
+no timestamp
+Verify gate
+ABSENT
+no timestamp
+Code-review gate
+ABSENT
+no timestamp
+QA verdict
+ABSENT
+no timestamp
+
+BROWSER verified-verify-expanded: http://localhost:3000/task/7fe1005f-f05f-430c-a6a0-b1e4dddf6876 at 2026-11-03T21:39:26.781Z
+Completion evidence
+Verified
+Praxis grade: uncertain
+
+Verified: walkthrough, verify gate, code-review gate and QA pass all on record.
+
+Walkthrough
+ON RECORD
+10/20/2026, 2:34:09 AM
+Verify gate
+ON RECORD
+10/20/2026, 2:39:18 AM
+
+pass (verify-floating-controls 308 OK exit 0, verify-drafts pass, tsc clean, dashboard tests 1008/1017 with only the 9 known failures, encoding clean)
+
+Source: Praxis verification record · run-events seq 55441
+
+Log: claude-code dispatch c4b9914e · /Volumes/Projects/Praxis/data/claude-code-runs/7fe1005f-f05f-430c-a6a0-b1e4dddf6876.log
+
+Last 64 KB of 10354 KB · file modified 10/20/2026, 2:34:08 AM
+
+tool_progress","tool_use_id":"toolu_01PgBMmmN1o1yg7bu6F3uQZb-heartbeat-1","tool_name":"Bash","parent_tool_use_id":"toolu_01PgBMmmN1o1yg7bu6F3uQZb","elapsed_time_seconds":60,"heartbeat":true,"session_id":"f53f2559-b2bc-4122-ba9a-4f7f8ce68547","uuid":"a12c72b2-b3ae-44d2-9af5-f0a25bb905c6"}
+{"type":"tool_progress","tool_use_id":"toolu_01PgBMmmN1o1yg7bu6F3uQZb-heartbeat-2","t
+BROWSER unverified-verify-expanded: http://localhost:3000/task/69cb9a87-0c9a-462e-a282-322718f581c6 at 2026-11-03T21:39:34.173Z
+Completion evidence
+Unverified (pre-capture): missing walkthrough, verify, code review, QA
+
+Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough. This task completed before Praxis began recording verification evidence.
+
+Walkthrough
+INCOMPLETE
+no timestamp
+Verify gate
+ABSENT
+no timestamp
+
+No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.
+
+No source record
+
+No run log is linked to this piece.
+
+Code-review gate
+ABSENT
+no timestamp
+QA verdict
+ABSENT
+no timestamp
+
+verified card-click: {"checked_at": "2026-11-03T21:39:25.032Z", "from": "http://localhost:3000/task-board?lane=complete", "href": "/task/7fe1005f-f05f-430c-a6a0-b1e4dddf6876", "label": "Verified: walkthrough, verify gate, code-review gate and QA pass all on record.", "text": "Verified", "to": "http://localhost:3000/task/7fe1005f-f05f-430c-a6a0-b1e4dddf6876"}
+verified click: {"checked_at": "2026-11-03T21:39:26.838Z", "click": {"text": "Verify gate\nON RECORD\n10/20/2026, 2:39:18 AM", "before": "false"}, "after": "true"}
+unverified card-click: {"checked_at": "2026-11-03T21:39:32.605Z", "from": "http://localhost:3000/task-board?lane=complete", "href": "/task/69cb9a87-0c9a-462e-a282-322718f581c6", "label": "Unverified: missing Verify gate, Code-review gate, QA verdict; no timestamp or log for Walkthrough. Completed before Praxis recorded verification evidence.", "text": "Unverified (pre-capture)\nmissing walkthrough, verify, code review, QA", "to": "http://localhost:3000/task/69cb9a87-0c9a-462e-a282-322718f581c6"}
+unverified click: {"checked_at": "2026-11-03T21:39:34.310Z", "click": {"text": "Verify gate\nABSENT\nno timestamp", "before": "false"}, "after": "true"}
+TASK SET 7308afe3-71dd-4f2e-ac37-773cc67446b4: taskStatus=archived; completed=False; state=not_completed; missing=walkthrough,verify,code_review,qa; checked_at=2026-11-03T21:34:46.411654+00:00
+TASK SET 3ea04ca2-0777-451d-963e-f8d74fc1204f: taskStatus=archived; completed=False; state=not_completed; missing=walkthrough,verify,code_review,qa; checked_at=2026-11-03T21:34:46.424713+00:00

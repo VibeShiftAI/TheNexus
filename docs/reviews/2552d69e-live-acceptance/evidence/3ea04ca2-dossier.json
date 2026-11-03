@@ -1,0 +1,72 @@
+{
+  "checked_at": "2026-11-03T21:34:46.424713+00:00",
+  "url": "http://localhost:4000/api/task-evidence/3ea04ca2-0777-451d-963e-f8d74fc1204f",
+  "status": 200,
+  "body": {
+    "taskId": "3ea04ca2-0777-451d-963e-f8d74fc1204f",
+    "taskStatus": "archived",
+    "completed": false,
+    "state": "not_completed",
+    "missing": [
+      "walkthrough",
+      "verify",
+      "code_review",
+      "qa"
+    ],
+    "summary": "Not completed (status \"archived\"); evidence is gathered as it lands.",
+    "predatesEvidenceCapture": false,
+    "pieces": [
+      {
+        "key": "walkthrough",
+        "label": "Walkthrough",
+        "status": "absent",
+        "at": null,
+        "source": null,
+        "detail": null,
+        "reason": "No walkthrough is stored on the task.",
+        "log": null
+      },
+      {
+        "key": "verify",
+        "label": "Verify gate",
+        "status": "absent",
+        "at": null,
+        "source": null,
+        "detail": null,
+        "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+        "log": null,
+        "ref": null
+      },
+      {
+        "key": "code_review",
+        "label": "Code-review gate",
+        "status": "absent",
+        "at": null,
+        "source": null,
+        "detail": null,
+        "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+        "log": null,
+        "ref": null
+      },
+      {
+        "key": "qa",
+        "label": "QA verdict",
+        "status": "absent",
+        "at": null,
+        "source": null,
+        "detail": null,
+        "reason": "No verification record exists for this task in Praxis's run-events spine. No executor run is recorded for this task.",
+        "log": null
+      }
+    ],
+    "verification": null,
+    "sources": {
+      "spine": {
+        "available": true,
+        "reason": null,
+        "path": "/Users/robertwashko/.praxis-mind/cost_ledger.sqlite",
+        "staleRecord": null
+      }
+    }
+  }
+}

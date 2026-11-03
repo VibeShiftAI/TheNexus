@@ -1,0 +1,24 @@
+{
+  "question_id": "research:5d922b5db161fb3a1052",
+  "question": "Did tasks 7308afe3 and 3ea04ca2 close with verify, code-review and QA evidence attached?",
+  "outcome": "supported",
+  "answer": "No in the current board evidence: both are archived, completed=false, state=not_completed, with all four dossier pieces absent. The satisfaction test is not met; archived status does not prove historical completion.",
+  "evidence": [
+    {
+      "source_ref": "http://localhost:4000/api/task-evidence/7308afe3-71dd-4f2e-ac37-773cc67446b4",
+      "sha256": "757a5c371d68cfdeb849c1d114afc6afc711d8c945bde711d9deb360affc1fcd",
+      "span_id": "native JSON response body: taskStatus, state, missing and pieces (not a Cortex span)",
+      "checked_at": "2026-11-03T21:34:46.411654+00:00"
+    },
+    {
+      "source_ref": "http://localhost:4000/api/task-evidence/3ea04ca2-0777-451d-963e-f8d74fc1204f",
+      "sha256": "9bc6f22afb7472e500c50bd5ba27f136bf721cd8a6190a9fc65f69d4947642a0",
+      "span_id": "native JSON response body: taskStatus, state, missing and pieces (not a Cortex span)",
+      "checked_at": "2026-11-03T21:34:46.424713+00:00"
+    }
+  ],
+  "limitations": [
+    "Cortex discovery returned degraded partial results (query_expansion timeout), with no relevant canonical source passage for these tasks. Search quality labels and unrelated snippets were not treated as proof.",
+    "Answer uses the live primary task/dossier APIs and retained response hashes. Historical closure or successor work is not established by these responses."
+  ]
+}
