@@ -19,6 +19,7 @@ const fs = require('fs');
 const { PRAXIS_BRIDGE_TOKEN_FILE } = require('../shared/constants');
 const { praxisFetch, praxisProxyJson, praxisStream } = require('../services/praxis-client');
 const { readUsageWaits, validDispatchSnapshot } = require('../services/focus-usage-waits');
+const { readRuntimeReport, projectRuntimeHealth } = require('../services/runtime-health');
 const { hitlAnswerAttachmentGuard } = require('../services/hitl-answer-attachments');
 
 /**
@@ -612,9 +613,11 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {
             const data = await upstream.json();
             if (!upstream.ok) return res.status(upstream.status).json(data);
             if (!validDispatchSnapshot(data)) throw new Error('Invalid dispatch snapshot');
-            return res.json({ ...data, executors: { ...data.executors, usageWaits: readUsageWaits() } });
+            const usageWaits = readUsageWaits();
+            const runtimeHealth = projectRuntimeHealth(data, usageWaits, readRuntimeReport());
+            return res.json({ ...data, runtimeHealth, executors: { ...data.executors, usageWaits } });
         } catch {
-            return res.status(502).json({ error: 'Dispatch activity is unavailable.' });
+            return res.status(502).json({ error: 'Dispatch activity is unavailable.', runtimeHealth: projectRuntimeHealth(null, null, null) });
         }
     });
     // Fleet switch: the browser reaches the loopback-only Praxis API through this relay.
