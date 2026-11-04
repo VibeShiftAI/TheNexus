@@ -1,0 +1,77 @@
+{
+  "task_id": "ed6a2fd8-db4a-5868-baf4-5f798a8536ac",
+  "captured_at": "2026-11-04T01:48:39.606875+00:00",
+  "suggestion_1": {
+    "disposition": "declined",
+    "reason": "Superseded by Robert's authoritative ruling: the duplicate runtime-health system was intentionally removed. The historical unbounded fallback objection is valid, but restoring that reader to patch it would recreate the rejected second health system. Current source search finds no remaining reader or morning-health fallback in Nexus.",
+    "operator_ruling": "I found an extra system implemented with a new alert system that was redundant. I asked codex to remove that system and integrate the health yellow alert into the existing health monitor and alert systems. There should be 1 and only 1"
+  },
+  "scope": "Evidence-only disposition. No production code changed. Existing foreign deletions and modifications preserved. Broader health-alert consolidation is not certified by this report.",
+  "verification": [
+    {
+      "command": [
+        "git",
+        "status",
+        "--porcelain"
+      ],
+      "exit_code": 0,
+      "stdout": " M .env.example\n D dashboard/scripts/runtime-health-browser-check.mjs\n M dashboard/src/app/layout.tsx\n M dashboard/src/app/page.tsx\n M dashboard/src/app/system-monitor/page.tsx\n M dashboard/src/app/task-board/page.tsx\n M dashboard/src/components/__tests__/document-latest-revision.test.mjs\n M dashboard/src/components/__tests__/document-markdown.test.mjs\n M dashboard/src/components/__tests__/document-review-drafts.test.mjs\n M dashboard/src/components/__tests__/document-review.test.mjs\n D dashboard/src/components/__tests__/runtime-health.test.mjs\n M dashboard/src/components/__tests__/task-progress-panel.test.mjs\n M dashboard/src/components/bridge/cli-lane-panel.tsx\n M dashboard/src/components/bridge/dispatch-station.tsx\n M dashboard/src/components/bridge/executor-detail.tsx\n M dashboard/src/components/bridge/status-strip.tsx\n M dashboard/src/components/bridge/taskboard-station.tsx\n M dashboard/src/components/document-review/decision-card.tsx\n M dashboard/src/components/document-review/deliverable-row.tsx\n M dashboard/src/components/document-review/document-markdown.tsx\n M dashboard/src/components/document-review/document-review.tsx\n M dashboard/src/components/ops-connection-status.tsx\n M dashboard/src/components/resource-monitor.tsx\n D dashboard/src/components/runtime-health-banner.tsx\n M dashboard/src/components/task-view/work-admission-panel.tsx\n D dashboard/src/hooks/use-runtime-health.ts\n M dashboard/src/lib/document-review.ts\n M dashboard/src/lib/review-drafts.ts\n M dashboard/src/lib/task-progress.ts\n M dashboard/test/loader-hooks.mjs\n M db/document-reviews.js\n M db/index.js\n M server/__tests__/ai-service-routing.test.js\n M server/__tests__/document-replacements.test.js\n M server/__tests__/document-review-delivery.test.js\n M server/__tests__/document-review-receiver.test.js\n M server/__tests__/document-reviews-migration.test.js\n M server/__tests__/documents-route.test.js\n D server/__tests__/runtime-health.test.js\n M server/routes/documents.js\n M server/routes/praxis-stream.js\n M server/services/ai-service.js\n M server/services/document-review-delivery.js\n M server/services/document-review-format.js\n D server/services/runtime-health.js\n?? dashboard/src/components/__tests__/agent-reviews.test.mjs\n?? dashboard/src/components/__tests__/unified-inline-suggestions.test.mjs\n?? dashboard/src/components/document-review/inline-suggestions.tsx\n?? dashboard/src/hooks/__tests__/draft-writer.test.mjs\n?? dashboard/src/hooks/use-draft-writer.ts\n?? dashboard/src/lib/__tests__/suggestion-highlight.test.ts\n?? dashboard/src/lib/agent-reviews.ts\n?? dashboard/src/lib/suggestion-highlight.ts\n?? dashboard/test/stubs/react-markdown.mjs\n?? db/document-agent-reviews.js\n?? db/document-draft-versions.js\n?? docs/contracts/executor-document-review.md\n?? docs/reviews/2026-10-26-schedule-layout/\n?? docs/superpowers/plans/2026-10-26-schedule-layout.md\n?? docs/superpowers/plans/2026-11-01-executor-document-suggestions.md\n?? docs/superpowers/plans/2026-11-01-praxis-proposals-and-highlights.md\n?? docs/superpowers/plans/2026-11-01-review-control-consolidation.md\n?? docs/superpowers/plans/2026-11-01-unified-inline-review.md\n?? docs/superpowers/specs/2026-11-01-executor-document-suggestions.md\n?? server/__tests__/document-agent-reviews.test.js\n?? server/__tests__/document-draft-versions.test.js\n?? server/routes/document-agent-reviews.js\n?? server/services/document-agent-reviews.js\n?? server/services/document-operator-suggestions.js\n?? server/services/document-praxis-proposals.js\n?? server/services/document-unified-comments.js\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--",
+        "server/routes/praxis-stream.js"
+      ],
+      "exit_code": 0,
+      "stdout": "diff --git a/server/routes/praxis-stream.js b/server/routes/praxis-stream.js\nindex 05e8f6e..ff103a8 100644\n--- a/server/routes/praxis-stream.js\n+++ b/server/routes/praxis-stream.js\n@@ -19,7 +19,6 @@ const fs = require('fs');\n const { PRAXIS_BRIDGE_TOKEN_FILE } = require('../shared/constants');\n const { praxisFetch, praxisProxyJson, praxisStream } = require('../services/praxis-client');\n const { readUsageWaits, validDispatchSnapshot } = require('../services/focus-usage-waits');\n-const { readRuntimeReport, projectRuntimeHealth } = require('../services/runtime-health');\n const { hitlAnswerAttachmentGuard } = require('../services/hitl-answer-attachments');\n \n /**\n@@ -613,11 +612,9 @@ function createPraxisStreamRouter({ io, pushService, db } = {}) {\n             const data = await upstream.json();\n             if (!upstream.ok) return res.status(upstream.status).json(data);\n             if (!validDispatchSnapshot(data)) throw new Error('Invalid dispatch snapshot');\n-            const usageWaits = readUsageWaits();\n-            const runtimeHealth = projectRuntimeHealth(data, usageWaits, readRuntimeReport());\n-            return res.json({ ...data, runtimeHealth, executors: { ...data.executors, usageWaits } });\n+            return res.json({ ...data, executors: { ...data.executors, usageWaits: readUsageWaits() } });\n         } catch {\n-            return res.status(502).json({ error: 'Dispatch activity is unavailable.', runtimeHealth: projectRuntimeHealth(null, null, null) });\n+            return res.status(502).json({ error: 'Dispatch activity is unavailable.' });\n         }\n     });\n     // Fleet switch: the browser reaches the loopback-only Praxis API through this relay.\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "rg",
+        "-n",
+        "readRuntimeReport|projectRuntimeHealth|morning-health|runtimeHealth",
+        "server",
+        "dashboard/src"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "ls-tree",
+        "-r",
+        "--name-only",
+        "f4297953485ac3001b3911e4bf10471f332a6d61",
+        "--",
+        "server/services/runtime-health.js",
+        "server/__tests__/runtime-health.test.js",
+        "dashboard/src/components/runtime-health-banner.tsx"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": "cd dashboard && node --import ./test/register.mjs --test src/components/__tests__/ops-connection-status.test.mjs src/components/__tests__/connection-banner.test.mjs",
+      "exit_code": 0,
+      "stdout": "✔ hidden while live; `offline` shows an honest dated pill with a manual retry that probes again (35.343375ms)\n✔ `reauth` in a browser offers one explicit sign-in action, never navigates on its own, and the click opens the sign-in window while this document stays (10.285958ms)\n✔ a blocked sign-in window keeps all edits and offers another window attempt (5.114916ms)\n✔ inside the travel shell: `renewing` shows after the grace window while the shell is asked; once every attempt fails, sign-in opens a separate window (6.74375ms)\n✔ a probe that drags on shows `recovering` only after the grace window, so an ordinary foreground return never flashes a banner (2.179334ms)\n✔ live with telemetry: dated as of the last answer, no action (17.419333ms)\n✔ the API is healthy but dispatch telemetry failed (Praxis down behind a healthy Nexus): stale, dated, retry offered, never 'no runs' (0.311125ms)\n✔ recovering, renewing and offline name the gap honestly; offline says since when and offers a retry (0.279042ms)\n✔ reauth in a browser offers exactly one explicit action; while its window is open it says so; a blocked window offers a popup retry (0.340125ms)\n✔ reauth inside the travel shell preserves the page using the native sign-in window (0.206917ms)\n✔ the component exposes phase/tone/data-state attributes and wires each offered button to the right handler (27.507792ms)\nℹ tests 11\nℹ suites 0\nℹ pass 11\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1004.009542\n",
+      "stderr": ""
+    }
+  ]
+}
