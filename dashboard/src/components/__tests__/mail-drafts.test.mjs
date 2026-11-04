@@ -575,6 +575,35 @@ test("a bound HTML revision whose bytes differ from the approval is reported, ne
     t.close();
   }
 });
+test("a bound HTML revision corrupted at the same byte length passes the size guard and is refused by the SHA-256 guard", async () => {
+  const approved = "<!doctype html><html><body><p>Approved report</p></body></html>";
+  // One ASCII letter swapped: identical byte length, different bytes.
+  const served = approved.replace("report", "repost");
+  assert.notEqual(served, approved);
+  assert.equal(Buffer.byteLength(served), Buffer.byteLength(approved));
+  const t = setup(async (url) => {
+    const u = new URL(url, "http://localhost");
+    if (u.pathname === "/api/documents/report-1/raw") return raw(served);
+    return response({
+      items: u.pathname.includes("/api/documents") ? [boundItem(bindingFor(approved))] : [],
+      counts: { drafts: 1, cancelled: 0 },
+    });
+  });
+  try {
+    await settle();
+    await click(t.c.querySelector("[data-draft-id]"));
+    await settleUntil(() => t.c.querySelector('[role="alert"]'));
+    const alert = t.c.querySelector('[role="alert"]');
+    assert.ok(alert, "the corruption is reported");
+    assert.match(alert.textContent, /bytes differ from the approved binding/);
+    assert.doesNotMatch(alert.textContent, /bytes where the approval names/);
+    assert.match(alert.textContent, /will not send a part that fails it/);
+    assert.equal(t.c.querySelector('iframe[title="HTML preview"]'), null);
+    assert.doesNotMatch(t.c.textContent, /Plain-text alternative/);
+  } finally {
+    t.close();
+  }
+});
 test("a prepared email without a bound HTML part reads no revision", async () => {
   const reads = [];
   const t = setup(async (url) => {
