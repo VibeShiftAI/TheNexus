@@ -85,6 +85,9 @@ import {
 } from "@/lib/document-review";
 import { readReviewDraft, reconcileReviewDraft, writeReviewDraft, REVIEW_DRAFT_MAX_RECOVERED, type ComposerDraft, type RecoveredDraft, type RecoveredReason, type ReviewDraft } from "@/lib/review-drafts";
 import { blockElementId, excerpt, extractOutline, quoteLines } from "@/lib/document-outline";
+import { suggestionHighlight } from "@/lib/suggestion-highlight";
+import { useDraftWriter } from "@/hooks/use-draft-writer";
+import { useInlineSuggestions, InlineSuggestionControls, InlineSuggestionApplications, InlineCommentConversion } from "./inline-suggestions";
 import { DocumentMarkdown, type BlockRef } from "./document-markdown";
 import { DecisionCard, ReplacementDetail } from "./decision-card";
 import { OutgoingCard } from "./outgoing-card";
@@ -193,7 +196,7 @@ function deliveryPending(submission: SubmissionView): boolean {
 function DeliveryBadge({ submission }: { submission: SubmissionView }) {
     const status = submission.delivery_status;
     if (status === "delivered") {
-        return <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200"><CheckCircle2 size={12} /> Delivered to Praxis</span>;
+        return <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-200"><CheckCircle2 size={12} /> Praxis notified</span>;
     }
     if (status === "failed") {
         if (submission.next_attempt_at) return <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200"><RefreshCw size={12} /> Delivery failed · retry scheduled</span>;
@@ -347,6 +350,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const loadSequence = useRef(0);
     /** The document whose stored draft has been reconciled; a composer left over from another id is never written under this one. */
     const draftRestoredFor = useRef<string | null>(null);
+    const scheduleDraft = useDraftWriter<ReviewDraft>(documentId, (id, record) => { writeReviewDraft(id, record); });
     /** Whether this page owns the stored draft (it wrote one, or reconciled its own); only then may an empty state clear storage. */
     const ownsDraft = useRef(false);
     /** Bumps when a comment or summary write is applied locally; a read that started before it must not replace the review with its older copy. */
@@ -357,7 +361,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         try {
             const response = await getDocument(documentId);
             if (documentId !== documentIdRef.current || sequence !== loadSequence.current) return;
-            if (onlyNewRevision && response.revision?.id === dataRef.current?.revision?.id) return;
+            if (onlyNewRevision && response.revision?.id === dataRef.current?.revision?.id) {
+                if (JSON.stringify(response.inline_comments) !== JSON.stringify(dataRef.current?.inline_comments)) setData(prev => prev ? {...prev, inline_comments: response.inline_comments} : prev);
+                return;
+            }
             setData(response);
             setLoadError(null);
             // A comment or summary write landed while this read was in flight: the read's copy of the review predates it.
@@ -412,6 +419,23 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         return () => window.clearInterval(timer);
     }, [review, submission, pollMs]);
 
+    // Executor findings can arrive while the human's own draft remains open.
+    useEffect(() => {
+        if (review?.status !== "draft" || editing) return;
+        let active = true;
+        const refresh = async () => {
+            try {
+                const response = await getDocument(documentId);
+                if (active && response.revision?.id === dataRef.current?.revision?.id && JSON.stringify(response.inline_comments) !== JSON.stringify(dataRef.current?.inline_comments)) {
+                    setData(prev => prev ? {...prev, inline_comments: response.inline_comments} : prev);
+                }
+            } catch { /* Existing findings and drafts remain available until the next refresh. */ }
+        };
+        const timer = window.setInterval(refresh, timings?.pollMs ?? 15_000);
+        window.addEventListener("focus", refresh);
+        return () => { active = false; window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+    }, [documentId, review?.status, editing, timings?.pollMs]);
+
     // Keep discovering new revisions, without replacing an unfinished review. A superseded round polls too: its document
     // is getting a new version, and the page should show that version (and reopen review) when it is ready.
     useEffect(() => {
@@ -459,16 +483,38 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     }, [data, doc, mediaType]);
     const primary = assets.find((a) => a.asset_key === "primary") ?? null;
     const outline = useMemo(() => (mediaType === "markdown" ? extractOutline(shownContent) : []), [shownContent, mediaType]);
-    const comments = review?.comments ?? [];
-    const roots = comments.filter((c) => !c.parent_id);
-    const repliesOf = (id: string) => comments.filter((c) => c.parent_id === id);
-    const passageComments = comments.filter((c) => c.kind === "passage");
+    const comments = useMemo(() => {
+        const all = [...(review?.comments ?? []), ...(data?.inline_comments ?? []).filter(c => !showingPinned || c.revision_id === shownRevision?.id)].filter((c,index,items)=>items.findIndex(other=>other.id===c.id)===index);
+        const converted = new Set(all.map(c=>c.source_comment_id).filter(Boolean));
+        return all.filter(c=>!converted.has(c.id)).map(c=>c.source_comment_id ? {...c,source_comment:all.find(source=>source.id===c.source_comment_id)} : c);
+    }, [review?.comments, data?.inline_comments, showingPinned, shownRevision?.id]);
+    const suggestions = useInlineSuggestions(documentId, comments, load);
+    const sourceSelection = useMemo(() => {
+        const comment=comments.find(c=>c.id===selectedComment);
+        if(!comment?.suggestion)return {target:null,reason:null};
+        const detail=comment.agent_review_id ? suggestions.details[comment.agent_review_id] : null;
+        return suggestionHighlight(comment,shownContent,shownRevision?.id??null,detail?{revisionId:detail.revision.id,content:detail.revision.content}:undefined);
+    },[comments,selectedComment,shownContent,shownRevision?.id,suggestions.details]);
+    const sourceHighlight = useMemo(() => sourceSelection.target, [sourceSelection.target?.start,sourceSelection.target?.end,sourceSelection.target?.original]);
+    const [highlightSelectionSerial,setHighlightSelectionSerial]=useState(0);
+    useEffect(() => {
+        if(!sourceHighlight)return;
+        const target=window.document.querySelector<HTMLElement>("[data-stage] [data-suggestion-highlight]");
+        if(target){target.style.scrollMarginTop="calc(var(--review-rail-top, 6rem) + 1rem)";target.scrollIntoView({behavior:"smooth",block:"start"});}
+    },[sourceHighlight,highlightSelectionSerial,shownRevision?.id]);
+
+    const roots = comments.filter((c) => !c.parent_id).sort((a,b) => {
+        const rank = (c: ReviewComment) => c.kind === "document" ? 0 : c.historical && c.anchor?.state === "orphaned" ? 3 : c.kind === "passage" ? 1 : 2;
+        return rank(a)-rank(b) || (a.anchor?.current_start_line ?? a.start_line ?? Number.MAX_SAFE_INTEGER)-(b.anchor?.current_start_line ?? b.start_line ?? Number.MAX_SAFE_INTEGER) || (a.suggestion?.start ?? 0)-(b.suggestion?.start ?? 0);
+    });
+    const repliesOf = (id: string) => comments.filter((c) => c.parent_id === id || (comments.find(root=>root.id===id)?.source_comment_id && c.parent_id === comments.find(root=>root.id===id)?.source_comment_id));
+    const passageComments = useMemo(() => comments.filter((c) => c.kind === "passage"), [comments]);
     const mediaComments = comments.filter((c) => MEDIA_COMMENT_KINDS.has(c.kind) && !c.parent_id);
     const documentNotes = comments.filter((c) => c.kind === "document" && !c.parent_id);
     const commentCounts = useMemo(() => {
         const counts: Record<number, number> = {};
         for (const comment of passageComments) {
-            const line = showingPinned || !documentChanged ? comment.start_line : comment.anchor?.current_start_line ?? null;
+            const line = comment.agent_review_id && !showingPinned ? (comment.anchor?.state === "orphaned" ? null : comment.anchor?.current_start_line ?? comment.start_line) : showingPinned || !documentChanged ? comment.start_line : comment.anchor?.current_start_line ?? null;
             if (line) counts[line] = (counts[line] || 0) + 1;
         }
         return counts;
@@ -492,6 +538,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 document_id: documentId,
                 revision_id: data.revision?.id ?? null,
                 reviewer_id: data.viewer?.id ?? null,
+                inline_comments: data.inline_comments,
                 review: review ? { id: review.id, status: review.status, summary: review.summary || "", comments: review.comments } : null,
             });
             if (!plan.foreign) {
@@ -530,7 +577,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         setDraftPhase("ready");
     }, [data, documentId, review]);
 
-    // Every keystroke in a composer, a comment edit or the summary lands in this browser's storage, bound to this
+    // Composer, comment edit and summary drafts are batched in browser storage, bound to this
     // document, revision and reviewer, until the server acknowledges it or the reader discards it.
     useEffect(() => {
         if (draftPhase !== "ready" || draftRestoredFor.current !== documentId || !data || data.document.id !== documentId) return;
@@ -553,8 +600,9 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         const empty = !record.composer && !record.edit && !record.summary && recovered.length === 0;
         // An empty state clears storage only when this page put the draft there; another reviewer's draft in a shared browser is left alone.
         if (empty && !ownsDraft.current) return;
-        if (writeReviewDraft(documentId, record)) ownsDraft.current = !empty;
-    }, [draftPhase, documentId, data, review, composer, editingComment, summary, summaryStatus.state, recovered]);
+        scheduleDraft(record, empty || recovered.length > 0);
+        ownsDraft.current = !empty;
+    }, [draftPhase, documentId, data, review, composer, editingComment, summary, summaryStatus.state, recovered, scheduleDraft]);
 
     const ensureReview = useCallback(async (): Promise<ReviewView> => {
         const current = reviewRef.current;
@@ -608,6 +656,16 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
 
     const startPassageComment = useCallback(
         (block: BlockRef, extra?: { selection?: string }) => {
+            if (suggestions.selectingFor) {
+                const target=comments.find(comment=>comment.id===suggestions.selectingFor);
+                const exact=target?.agent_review_id ? suggestions.details[target.agent_review_id]?.revision.content : undefined;
+                if (exact === undefined) { setCommentStatus({state:"error",message:"The assigned snapshot is unavailable. Reload before choosing a passage."}); return; }
+                const lines=exact.split("\n");
+                const start=lines.slice(0,block.start-1).reduce((offset,line)=>offset+line.length+1,0);
+                const original=lines.slice(block.start-1,block.end).join("\n").replace(/\r$/, "");
+                suggestions.selectConversionRange({start,end:start+original.length,original});
+                setSelected(block);setSelectedComment(suggestions.selectingFor);setComposer(null);setReviewOpen(true);return;
+            }
             if (!canAnnotate) return;
             setSelected(block);
             setSelectedComment(null);
@@ -626,7 +684,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             });
             setReviewOpen(false);
         },
-        [canAnnotate, shownContent, shownRevisionId],
+        [canAnnotate, shownContent, shownRevisionId, suggestions.selectingFor, suggestions.details, comments],
     );
 
     /** Recovered text the reader wants as a note about the whole document: it opens a composer, it is not saved. */
@@ -697,8 +755,9 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         setComposer({ ...composer, saving: true, error: undefined });
         setCommentStatus({ state: "saving" });
         try {
-            const draft = await ensureReview();
-            const created = await addComment(draft.id, {
+            const parent = composer.parentId ? comments.find(c => c.id === composer.parentId) ?? data?.inline_comments?.find(c => c.id === composer.parentId) : null;
+            const draftId = parent?.agent_review_id && parent.review_id ? parent.review_id : (await ensureReview()).id;
+            const created = await addComment(draftId, {
                 client_id: composer.clientId,
                 kind: composer.kind,
                 body: composer.text.trim(),
@@ -708,7 +767,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     : {}),
                 ...(composer.anchor ? { anchor: composer.anchor } : {}),
             });
-            applyComment(created);
+            if (parent?.agent_review_id) await load(); else applyComment(created);
             setCommentStatus({ state: "saved" });
             closeComposer();
         } catch (err) {
@@ -753,10 +812,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     };
 
     const toggleResolved = async (comment: ReviewComment) => {
-        if (!review) return;
+        const roundId = comment.agent_review_id ? comment.review_id : review?.id;
+        if (!roundId) return;
         try {
-            const updated = await setCommentResolved(review.id, comment.id, !comment.resolved);
-            applyComment({ ...updated, anchor: comment.anchor });
+            const updated = await setCommentResolved(roundId, comment.id, !comment.resolved);
+            if (comment.agent_review_id) await load(); else applyComment({ ...updated, anchor: comment.anchor });
         } catch (err) {
             setCommentStatus({ state: "error", message: messageOf(err), retry: () => void toggleResolved(comment) });
             if (closedByVersion(err)) void load();
@@ -877,11 +937,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
 
     const jumpTo = (line: number | null | undefined) => {
         if (!line) return;
-        const target = window.document.getElementById(blockElementId(line));
+        const target = window.document.getElementById(blockElementId(line)) ?? [...window.document.querySelectorAll<HTMLElement>("[data-stage] [data-review-block]")].find(block=>Number(block.dataset.blockStart)<=line && Number(block.dataset.blockEnd)>=line);
         if (target) {
-            target.scrollIntoView({ behavior: "smooth", block: "center" });
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
             const end = Number(target.dataset.blockEnd) || line;
-            setSelected({ start: line, end });
+            setSelected({ start: Number(target.dataset.blockStart) || line, end });
         }
         setOutlineOpen(false);
         setReviewOpen(false);
@@ -890,7 +950,19 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     /** A comment tapped in the rail: show its spot on the stage. */
     const jumpToComment = (comment: ReviewComment) => {
         setSelectedComment(comment.id);
-        if (comment.kind === "passage") { jumpTo(showingPinned || !documentChanged ? comment.start_line : comment.anchor?.current_start_line ?? comment.start_line); return; }
+        if(comment.suggestion) {
+            setHighlightSelectionSerial(value=>value+1);
+            const detail=comment.agent_review_id ? suggestions.details[comment.agent_review_id] : null;
+            const selection=suggestionHighlight(comment,shownContent,shownRevision?.id??null,detail?{revisionId:detail.revision.id,content:detail.revision.content}:undefined);
+            if(selection.target)jumpTo(shownContent.slice(0,selection.target.start).split("\n").length);
+            else setSelected(null);
+            return;
+        }
+        if (comment.kind === "passage") {
+            if (comment.agent_review_id && !showingPinned) { if (comment.anchor?.state !== "orphaned") jumpTo(comment.anchor?.current_start_line ?? comment.start_line); }
+            else jumpTo(showingPinned || !documentChanged ? comment.start_line : comment.anchor?.current_start_line ?? comment.start_line);
+            return;
+        }
         const anchor = comment.anchor_target as (Record<string, unknown> & { asset_key: string }) | null | undefined;
         if (!anchor) return;
         setFocusAsset(anchor.asset_key);
@@ -1002,12 +1074,17 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     );
 
     const commentActions = (comment: ReviewComment, root: boolean) => (
-        isDraft && editingComment?.id !== comment.id && (
-            <div className="mt-1.5 flex flex-wrap justify-end gap-2 text-[11px] text-slate-400">
+        (isDraft || comment.agent_review_id) && editingComment?.id !== comment.id && (
+            <div className="my-2 flex flex-wrap gap-2 text-[11px] text-slate-400" data-comment-actions="">
+                {root && comment.agent_review_id && !comment.suggestion && (suggestions.conversions[comment.id] ? <>
+                    <button type="button" disabled={!!suggestions.busy || (comment.kind !== "passage" && !suggestions.conversions[comment.id].range)} onClick={() => void suggestions.convert(comment)} className="rounded border border-cyan-600 px-2 py-1 text-cyan-200 disabled:opacity-40">Accept edit</button>
+                    <button type="button" onClick={() => {suggestions.setConversions(prev=>{const next={...prev};delete next[comment.id];return next;});suggestions.setSelectingFor(null);}}>Cancel edit</button>
+                    {comment.kind !== "passage" && <button type="button" onClick={()=>{suggestions.setSelectingFor(comment.id);setReviewOpen(false);}}>Choose passage</button>}
+                </> : <button type="button" disabled={!!suggestions.busy || suggestions.details[comment.agent_review_id]?.review.status === "applied"} onClick={() => void suggestions.generate(comment,!!suggestions.proposalErrors[comment.id])} className="rounded border border-cyan-700 px-2 py-1 text-cyan-200 disabled:opacity-40">{suggestions.generating===comment.id ? "Praxis is proposing…" : suggestions.proposalErrors[comment.id] ? "Retry generation" : "Turn into suggested edit"}</button>)}
                 {root && <button type="button" onClick={() => startReply(comment)} className="inline-flex items-center gap-1 hover:text-white" data-comment-reply=""><CornerDownRight size={11} /> Reply</button>}
-                {root && <button type="button" onClick={() => void toggleResolved(comment)} className={`inline-flex items-center gap-1 hover:text-white ${comment.resolved ? "text-emerald-300" : ""}`} data-comment-resolve="" aria-pressed={Boolean(comment.resolved)}><Check size={11} /> {comment.resolved ? "Resolved" : "Resolve"}</button>}
-                <button type="button" onClick={() => setEditingComment({ id: comment.id, text: comment.body, base: comment.body, saving: false })} className="inline-flex items-center gap-1 hover:text-white"><Pencil size={11} /> Edit</button>
-                <button type="button" onClick={() => void removeComment(comment)} className="inline-flex items-center gap-1 hover:text-rose-200"><Trash2 size={11} /> Delete</button>
+                {root && !suggestions.conversions[comment.id] && <button type="button" onClick={() => void toggleResolved(comment)} className={`inline-flex items-center gap-1 hover:text-white ${comment.resolved ? "text-emerald-300" : ""}`} data-comment-resolve="" aria-pressed={Boolean(comment.resolved)}><Check size={11} /> {comment.resolved ? "Resolved" : "Resolve"}</button>}
+                {!comment.agent_review_id && <button type="button" onClick={() => setEditingComment({ id: comment.id, text: comment.body, base: comment.body, saving: false })} className="inline-flex items-center gap-1 hover:text-white"><Pencil size={11} /> Edit</button>}
+                {!comment.agent_review_id && <button type="button" onClick={() => void removeComment(comment)} className="inline-flex items-center gap-1 hover:text-rose-200"><Trash2 size={11} /> Delete</button>}
             </div>
         )
     );
@@ -1027,30 +1104,40 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 const index = pins.indexOf[comment.id];
                 const isSelected = selectedComment === comment.id;
                 return (
-                    <li key={comment.id} className={`rounded-md border p-2.5 ${isSelected ? "border-cyan-500/60 bg-cyan-500/5" : "border-slate-800 bg-slate-950/70"}`} data-comment-id={comment.id} data-comment-kind={comment.kind}>
+                    <li key={comment.id} className={`rounded-md border p-2.5 ${isSelected ? "border-cyan-500/60 bg-cyan-500/5" : "border-slate-800 bg-slate-950/70"}`} data-comment-id={comment.id} data-comment-kind={comment.kind} onClick={event=>{const target=event.target as HTMLElement;if(target.closest("button,a,input,textarea,select,details,[role=button]"))return;jumpToComment(comment);}}>
                         <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
                             {index && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-slate-950">{index}</span>}
                             {comment.kind === "document" ? (
                                 <span className="font-semibold text-slate-200">{commentLabel(comment)}</span>
                             ) : (
-                                <button type="button" onClick={() => jumpToComment(comment)} className="font-semibold text-cyan-200 hover:underline" data-comment-jump="">{commentLabel(comment)}</button>
+                                <button type="button" onClick={() => jumpToComment(comment)} disabled={!!comment.agent_review_id && !comment.suggestion && comment.anchor?.state === "orphaned" && !showingPinned} className="font-semibold text-cyan-200 hover:underline disabled:cursor-default disabled:text-slate-400" data-comment-jump="">{commentLabel(comment)}</button>
                             )}
-                            <AnchorChip comment={comment} changed={documentChanged} />
-                            {comment.resolved && <span className="rounded-full border border-emerald-500/40 px-1.5 text-[10px] text-emerald-200">resolved</span>}
+                            {comment.author && <span className="rounded border border-cyan-800/50 px-1 text-cyan-200">{comment.author.name ?? comment.author.id}</span>}
+                            {comment.provenance?.task_id && <Link href={`/task/${encodeURIComponent(comment.provenance.task_id)}`} className="text-cyan-300 hover:underline">Review task</Link>}
+                            <AnchorChip comment={comment} changed={documentChanged || !!comment.historical} />
+                            {comment.historical && <span className="text-amber-200">earlier snapshot</span>}
+                            {comment.resolved && !comment.suggestion && <span className="rounded-full border border-emerald-500/40 px-1.5 text-[10px] text-emerald-200">resolved</span>}
                             <span className="ml-auto">{formatWhen(comment.created_at)}</span>
                         </div>
-                        {comment.kind === "passage" && (
+                        {comment.kind === "passage" && !comment.suggestion && (
                             <blockquote className="mb-1.5 whitespace-pre-wrap border-l-2 border-slate-700 pl-2 font-mono text-[11px] text-slate-500">
                                 {comment.selection ? comment.selection : excerpt(comment.quote, 200)}
                             </blockquote>
                         )}
-                        {commentBody(comment)}
-                        {commentActions(comment, true)}
+                        {comment.suggestion ? <InlineSuggestionControls comment={comment} state={suggestions} onReply={() => startReply(comment)} /> : <>
+                            <p className="text-xs font-semibold text-slate-300">Comment — no text change</p>
+                            {commentActions(comment, true)}
+                            {suggestions.generating===comment.id && <p role="status" className="text-xs text-cyan-200">Praxis is drafting a proposed change. Nothing will be accepted or applied automatically.</p>}
+                            {suggestions.proposalErrors[comment.id] && <p role="alert" className="text-xs text-amber-200">{suggestions.proposalErrors[comment.id]} Your existing edits are kept.</p>}
+                            <InlineCommentConversion comment={comment} state={suggestions} />
+                            {commentBody(comment)}
+                        </>}
+                        {isSelected && sourceSelection.reason && <p role="status" className="mt-2 text-xs text-amber-200" data-highlight-unavailable="">{sourceSelection.reason}</p>}
                         {repliesOf(comment.id).length > 0 && (
                             <ul className="mt-2 space-y-1.5 border-l-2 border-slate-800 pl-2.5" data-comment-replies="">
                                 {repliesOf(comment.id).map((reply) => (
                                     <li key={reply.id} data-comment-id={reply.id}>
-                                        <div className="mb-0.5 flex items-center gap-1.5 text-[10px] text-slate-500"><CornerDownRight size={10} /> reply · {formatWhen(reply.created_at)}</div>
+                                        <div className="mb-0.5 flex items-center gap-1.5 text-[10px] text-slate-500"><CornerDownRight size={10} /> {reply.author?.name ?? reply.author?.id ?? "Reply"} · {formatWhen(reply.created_at)}</div>
                                         {commentBody(reply)}
                                         {commentActions(reply, false)}
                                     </li>
@@ -1076,8 +1163,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             )}
             {submission.delivery_status === "delivered" && submission.receipt && (
                 <p className="mt-2 text-[11px] text-slate-400">
-                    Receipt: delivered {formatWhen(submission.receipt.delivered_at)} into the Praxis conversation ({submission.receipt.conversation_id.slice(0, 8)}…). Praxis&apos;s reply is in{" "}
-                    <Link href="/" className="text-cyan-300 hover:underline">the bridge chat</Link>.
+                    Receipt: Praxis notified {formatWhen(submission.receipt.delivered_at)}. Feedback remains saved with this document; notification does not mean revision work is complete.
                 </p>
             )}
             {submission.delivery_status === "failed" && (
@@ -1087,7 +1173,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 </div>
             )}
             {(submission.delivery_status === "queued" || submission.delivery_status === "relaying") && (
-                <p className="mt-2 text-[11px] text-slate-400">Your feedback is stored. It will show as delivered once Praxis confirms the turn (attempt {submission.delivery_attempts}).</p>
+                <p className="mt-2 text-[11px] text-slate-400">Your feedback is stored. It will show as notified once Praxis confirms receipt (attempt {submission.delivery_attempts}).</p>
             )}
             {submission.delivery_status !== "delivered" && (
                 <button type="button" onClick={() => void retry()} disabled={retrying} className="mt-2 inline-flex items-center gap-1 rounded-md border border-slate-600 px-2.5 py-1 text-[11px] text-slate-200 hover:border-cyan-500/60 disabled:opacity-50">
@@ -1100,7 +1186,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const finishPanel = finishOpen && isDraft && (
         <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3" data-finish-panel="">
             <p className="text-xs text-emerald-100">
-                Finishing sends every comment verbatim, with its {textual ? "quoted passage" : "exact spot (screen, region, moment or page)"} and this {mediaLabel(mediaType).toLowerCase()}&apos;s revision, into your Praxis chat. Finishing with no comments is fine.
+                Finishing saves your comments and the exact reviewed revision, then notifies Praxis to retrieve them directly. Finishing with no comments is fine.
             </p>
             <p className="mt-1 text-[11px] text-emerald-100/70" data-finish-scope="">
                 {delegateApproval
@@ -1218,6 +1304,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                         : ""}
                 </div>
                 {commentList}
+            <InlineSuggestionApplications state={suggestions} comments={comments} />
             </div>
             {isDraft && !finishOpen && (
                 <button type="button" onClick={() => setFinishOpen(true)} className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25" data-finish-button="">
@@ -1282,7 +1369,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         }
         switch (mediaType) {
             case "markdown":
-                return <DocumentMarkdown content={shownContent} selected={selected} commentCounts={commentCounts} interactive={canAnnotate} onBlockSelect={startPassageComment} />;
+                return <DocumentMarkdown content={shownContent} sourceHighlight={sourceHighlight} selected={selected} commentCounts={commentCounts} interactive={canAnnotate || !!suggestions.selectingFor} onBlockSelect={startPassageComment} />;
             case "text":
             case "code":
             case "json":
@@ -1314,7 +1401,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     />
                 ) : <PlainText content={shownContent} mono counts={commentCounts} selected={selected} />;
             default:
-                return <DocumentMarkdown content={shownContent} selected={selected} commentCounts={commentCounts} interactive={canAnnotate} onBlockSelect={startPassageComment} />;
+                return <DocumentMarkdown content={shownContent} sourceHighlight={sourceHighlight} selected={selected} commentCounts={commentCounts} interactive={canAnnotate || !!suggestions.selectingFor} onBlockSelect={startPassageComment} />;
         }
     })();
 

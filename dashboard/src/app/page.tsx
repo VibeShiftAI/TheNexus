@@ -163,13 +163,12 @@ export default function Home() {
         {/* Headline KPI strip — click a chip to warp to its station */}
         <StatusStrip />
 
-        {/* Bridge deck — the Praxis core viewer and its four stations stack in
-            the left column; the inbox/schedule/activity rail falls beside the
-            whole stack on the right rather than stopping under the core. */}
+        {/* Desktop keeps two independent columns. Below xl, contents lets the
+            schedule slot directly after the core, ahead of the stations. */}
         <div className="mb-6 grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           {/* Left column — main viewer over the bridge stations */}
-          <div className="flex min-w-0 flex-col gap-4">
-            <div id="station-core">
+          <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-4">
+            <div id="station-core" className="order-1 min-w-0 xl:order-none">
               <PraxisCore />
             </div>
 
@@ -177,7 +176,7 @@ export default function Home() {
             {/* Stations, 2-up: Dispatch and Knowledge sit directly under the
                 core. Rows stretch so paired stations stay flush — Dispatch and
                 Knowledge both fill their row height (h-full panels). */}
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="order-3 grid min-w-0 gap-4 md:grid-cols-2 xl:order-none">
               <div id="station-dispatch">
                 <DispatchStation />
               </div>
@@ -193,12 +192,16 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right column — inbox / schedule / activity rail */}
-          <div id="panel-inbox" className="flex flex-col gap-4 min-w-0">
-            <HitlInbox />
-            <ScheduleTimeline />
-            <div id="panel-activity">
-              <ActivityFeed />
+          {/* Right column — schedule / inbox / activity rail */}
+          <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-4">
+            <div id="panel-schedule" className="order-2 min-w-0 xl:order-none">
+              <ScheduleTimeline />
+            </div>
+            <div id="panel-inbox" className="order-4 flex min-w-0 flex-col gap-4 xl:order-none">
+              <HitlInbox />
+              <div id="panel-activity">
+                <ActivityFeed />
+              </div>
             </div>
           </div>
         </div>

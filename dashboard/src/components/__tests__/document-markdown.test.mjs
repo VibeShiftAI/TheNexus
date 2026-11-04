@@ -229,3 +229,16 @@ test('changing the document replaces its diagrams; unrelated re-renders do not r
     container.remove();
   }
 });
+
+test('suggestion highlights preserve formatting, target repeated words exactly and identify insertions',()=>{
+ const container=document.createElement('div');const root=createRoot(container);const content='First **word** and word.';
+ const render=target=>act(()=>root.render(createElement(DocumentMarkdown,{content,interactive:false,sourceHighlight:target})));
+ try{render({start:19,end:23,original:'word'});assert.equal(container.querySelector('mark[data-suggestion-highlight]')?.textContent,'word');assert.equal(container.querySelector('strong mark'),null);assert.equal(container.querySelector('strong')?.textContent,'word');
+ render({start:8,end:12,original:'word'});assert.equal(container.querySelector('strong mark')?.textContent,'word');
+ render({start:19,end:19,original:''});assert.ok(container.querySelector('[data-insertion-point]'));
+ }finally{act(()=>root.unmount());}
+});
+test('unmappable formatted source has an explicit verified block fallback and end insertions remain visible',()=>{
+ const c=document.createElement('div');const root=createRoot(c);const content='A &amp; B';try{act(()=>root.render(createElement(DocumentMarkdown,{content,sourceHighlight:{start:2,end:7,original:'&amp;'},interactive:false})));assert.match(c.querySelector('[data-highlight-fallback]')?.textContent,/Exact source.*&amp;/);assert.ok(c.querySelector('[data-suggestion-highlight="block"]'));
+ act(()=>root.render(createElement(DocumentMarkdown,{content:'End.\n',sourceHighlight:{start:5,end:5,original:''},interactive:false})));assert.ok(c.querySelector('[data-insertion-point]'));}finally{act(()=>root.unmount());}
+});

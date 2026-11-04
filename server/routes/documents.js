@@ -60,6 +60,8 @@
  * (docs/contracts/document-review-deliverables.md).
  */
 const express = require('express');
+const { createAgentReviewsRouter } = require('./document-agent-reviews');
+const { inlineComments } = require('../services/document-unified-comments');
 const { createDocumentOutgoingRouter } = require('./document-outgoing');
 const path = require('path');
 const fs = require('fs');
@@ -263,7 +265,7 @@ function registrationIdentityPath(value, seen = new Set()) {
     return resolvedParent ? path.join(resolvedParent, path.basename(normalized)) : normalized;
 }
 
-function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumentDecisionAuthority() }) {
+function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumentDecisionAuthority(), proposalCompletion }) {
     const router = express.Router();
     const store = () => db?.documentReviews;
 
@@ -273,12 +275,14 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         next();
     });
 
+    router.use(createAgentReviewsRouter({ db, authorizeDecision, recordRevision, reviewability, reconcileReplacement, proposalCompletion }));
+
     // ── Shared helpers ────────────────────────────────────────────────────
     function revisionMeta(revision) {
         if (!revision) return null;
         const { content, ...meta } = revision;
-        // The 1-based version within the document (capture order), so "v3" and "rev abcd1234" name the same thing.
-        return { ...meta, version: store().revisionVersion(revision.id) };
+        // Editorial draft numbers are distinct from immutable capture order.
+        return { ...meta, ...store().revisionDraft(revision.id) };
     }
 
     // ── Versions and replacement work (task 6b46dcc8) ─────────────────────
@@ -492,7 +496,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 asset_count: (read.assets ? read.assets.length : 0) + 1, width: read.width ?? null, height: read.height ?? null,
                 manifest: read.manifest ? JSON.stringify(read.manifest) : null,
             });
-            if (exact && !read.binary && read.exactContent !== read.content && read.mediaType !== 'design') store().insertRevisionExact(revision.id, read.exactContent);
+            if (!read.binary && read.exactContent !== read.content && read.mediaType !== 'design') store().insertRevisionExact(revision.id, read.exactContent);
             const primary = {
                 asset_key: 'primary', role: 'primary', path: doc.path, media_type: read.mediaType, mime_type: read.mimeType,
                 byte_length: exact ? read.exactByteLength : read.byteLength,
@@ -701,6 +705,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         return {
             ...doc,
             ...mediaSummary(doc, currentMeta),
+            agent_review_ready: (db.agentReviews?.list(doc.id) || []).some(r => r.status === 'submitted' && r.base_revision_id === doc.current_revision_id),
             blocking_tasks: store().getBlockingTasks(doc.id),
             current_revision: revisionMeta(currentMeta),
             review_url: fmt.reviewUrlFor(doc.id),
@@ -1028,13 +1033,14 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 source,
                 outgoing: store().getOutgoing(doc.id),
                 review: review ? reviewView(review, { revision: captured.revision }) : null,
+                inline_comments: captured.revision ? inlineComments(db, doc.id, captured.revision) : [],
                 review_status: store().getReviewStatus(doc.id),
                 current_decision: latest ? { ...latest, applies_to_current_revision: latest.revision_id === fresh.current_revision_id } : null,
                 // Version lifecycle (task 6b46dcc8): the open replacement (else the attempt whose unaccepted bytes are current, else
                 // the newest closed one, which explains a failed or cancelled attempt), and whether this version takes review actions now.
                 replacement: replacementView(replacementForReader(fresh, captured.revision)),
                 reviewable: { ok: gate.ok, reason: gate.reason, replacement_id: gate.replacement?.id ?? null },
-                version: { current_revision_id: fresh.current_revision_id, current_version: captured.revision ? store().revisionVersion(captured.revision.id) : null, revision_count: store().listRevisionMeta(doc.id).length },
+                version: { current_revision_id: fresh.current_revision_id, current_version: captured.revision ? store().revisionVersion(captured.revision.id) : null, revision_count: store().listRevisionMeta(doc.id).length, capture_count: store().listRevisionMeta(doc.id).length, draft_count: store().draftHistory(doc.id).drafts.length },
                 // Who this read is for: the browser binds its unsaved review text to this reviewer (task 1390fc34).
                 viewer: { id: req.user.id },
                 links: { review_url: fmt.reviewUrlFor(fresh.id), review_path: fmt.reviewPathFor(fresh.id), raw_url: `/api/documents/${fresh.id}/raw` },
@@ -1306,7 +1312,8 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             if (!doc) return;
             await reconcileReplacement(doc);
             const fresh = store().getDocument(doc.id);
-            const revisions = store().listRevisionMeta(doc.id);
+            const draftHistory = store().draftHistory(doc.id);
+            const revisions = draftHistory.revisions;
             return res.json({
                 document_id: doc.id,
                 current_revision_id: fresh.current_revision_id,
@@ -1314,7 +1321,10 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
                 review_status: store().getReviewStatus(doc.id),
                 reviewable: reviewability(fresh, fresh.current_revision_id ? store().getRevisionMeta(fresh.current_revision_id) : null).ok,
                 // Every revision with its version number and whether it is the current one; history is never rewritten.
-                revisions: revisions.map((revision, index) => ({ ...revision, version: index + 1, is_current: revision.id === fresh.current_revision_id })),
+                revisions,
+                drafts: draftHistory.drafts,
+                capture_count: revisions.length,
+                draft_count: draftHistory.drafts.length,
                 decisions: store().listDecisions(doc.id),
                 edits: store().listEdits(doc.id),
                 registrations: store().listRegistrations(doc.id).map(registration => receiptView(registration, store().getRevisionMeta(registration.revision_id))),
@@ -1943,9 +1953,22 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         return res.json({ review: reviewView(updated, currentFor(store().getDocument(review.document_id))) });
     });
 
-    router.post('/reviews/:reviewId/comments', (req, res) => {
-        const review = ownReview(req, res);
-        if (!review || !requireDraft(review, res)) return;
+    async function commentReviewAccess(req,res) {
+        const candidate=store().getReview(req.params.reviewId);
+        const agent=db.agentReviews?.get(req.params.reviewId);
+        if(candidate&&agent?.unified_review_id===candidate.id){
+            if(req.get('sec-fetch-site')==='cross-site'){res.status(403).json({error:'Same-origin requests only',code:'cross_site'});return null;}
+            const auth=await authorizeDecision(req);
+            if(!auth.ok||auth.actor.authority==='document_executor_credential'){res.status(403).json({error:'Operator required',code:'operator_required'});return null;}
+            return {review:candidate,agent,actor:auth.actor};
+        }
+        const review=ownReview(req,res);if(!review||!requireDraft(review,res))return null;
+        return {review,agent:null,actor:{id:req.user.id,authority:'reviewer'}};
+    }
+    router.post('/reviews/:reviewId/comments', async (req, res) => {
+        const access=await commentReviewAccess(req,res);if(!access)return;
+        const {review,agent,actor}=access;
+        if(agent&&!req.body?.parent_id)return res.status(400).json({error:'Reply to an existing finding using parent_id',code:'parent_required'});
         const body = req.body || {};
         const clientId = body.client_id === undefined ? null : text(String(body.client_id), LIMITS.clientId);
         if (body.client_id !== undefined && !clientId) return res.status(400).json({ error: 'client_id must be a short string' });
@@ -1958,7 +1981,7 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         const kind = body.kind === 'document' ? 'document' : body.kind === 'passage' ? 'passage' : fmt.MEDIA_COMMENT_KINDS.has(body.kind) ? body.kind : null;
         if (!kind) return res.status(400).json({ error: "kind must be 'passage', 'document', 'region', 'point', 'time', 'page' or 'screen'" });
 
-        const row = { review_id: review.id, client_id: clientId, kind, body: commentBody, start_line: null, end_line: null, block_hash: null, quote: null, selection: null, anchor: null, target_label: null, parent_id: null };
+        const row = { review_id: review.id, author: actor, provenance: agent ? {agent_review_id:agent.id,task_id:agent.task_id,parent_finding_id:store().getComment(body.parent_id)?.provenance?.finding_id} : null, client_id: clientId, kind, body: commentBody, start_line: null, end_line: null, block_hash: null, quote: null, selection: null, anchor: null, target_label: null, parent_id: null };
         if (body.parent_id !== undefined && body.parent_id !== null) {
             const parentId = text(String(body.parent_id), 120);
             const parent = parentId ? store().getComment(parentId) : null;
@@ -2001,9 +2024,10 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
         }
     });
 
-    router.patch('/reviews/:reviewId/comments/:commentId', (req, res) => {
-        const review = ownReview(req, res);
-        if (!review || !requireDraft(review, res)) return;
+    router.patch('/reviews/:reviewId/comments/:commentId', async (req, res) => {
+        const access=await commentReviewAccess(req,res);if(!access)return;
+        const {review,agent}=access;
+        if(agent&&req.body?.body!==undefined)return res.status(403).json({error:'Executor findings are immutable; reply or resolve instead',code:'immutable_finding'});
         const comment = store().getComment(req.params.commentId);
         if (!comment || comment.review_id !== review.id) return res.status(404).json({ error: 'Comment not found' });
         const patch = {};
@@ -2086,7 +2110,13 @@ function createDocumentsRouter({ db, delivery, authorizeDecision = createDocumen
             const finished = { ...review, summary, approval_delegated: delegated, submitted_authority: submittedAuthority };
             const latestDecision = store().latestDecision(doc.id);
             const selectedDirection = latestDecision?.decision === 'approve' && latestDecision.revision_id === review.revision_id ? latestDecision.selection?.direction ?? null : null;
-            const payload = fmt.buildSubmissionPayload({ submissionId, review: finished, comments, document: doc, revision, source, submittedAt, selectedDirection });
+            // Decision notes are stored separately from review comments. Snapshot all
+            // change requests for this exact revision so neither input channel is lost.
+            const changeRequests = store().listDecisions(doc.id).filter(decision =>
+                decision.decision === 'request_changes' && decision.revision_id === review.revision_id && decision.note?.trim());
+            const payload = fmt.buildSubmissionPayload({ submissionId, review: finished, comments, document: doc, revision, source, submittedAt, selectedDirection, changeRequests });
+            payload.decisions = store().listDecisions(doc.id).filter(d => d.revision_id === review.revision_id);
+            payload.agent_reviews = db.agentReviews?.list(doc.id).filter(r => r.base_revision_id === review.revision_id) || [];
             const messageText = fmt.formatSubmissionMessage(payload);
             let submission;
             try {

@@ -14,11 +14,12 @@
  * other fence stays an ordinary code block.
  */
 
-import { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from "react";
+import { memo, createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MessageSquarePlus } from "lucide-react";
 import { blockElementId } from "@/lib/document-outline";
+import type { SourceHighlight } from "@/lib/suggestion-highlight";
 import { MermaidDiagram } from "./mermaid-diagram";
 
 export interface BlockRef {
@@ -45,6 +46,41 @@ function rehypeBlockAnchors() {
             node.properties = node.properties || {};
             node.properties.dataBlockStart = String(node.position.start.line);
             node.properties.dataBlockEnd = String(node.position.end.line);
+        }
+    };
+}
+
+type HighlightNode = {type:string;tagName?:string;value?:string;children?:HighlightNode[];properties?:Record<string,unknown>;position?:{start:{offset?:number};end:{offset?:number}}};
+function rehypeSuggestionHighlight({content,target}:{content:string;target?:SourceHighlight|null}) {
+    return (tree:{children:HighlightNode[]}) => {
+        if(!target || content.slice(target.start,target.end)!==target.original)return;
+        let marked=false;let unmapped=false;
+        const mark=(text:string,insertion=false):HighlightNode=>({type:"element",tagName:"mark",properties:{dataSuggestionHighlight:"",...(insertion?{dataInsertionPoint:"",ariaLabel:"Insertion point"}:{}),className:["bg-amber-300/35","text-inherit","rounded-sm","ring-1","ring-amber-300/70"]},children:[{type:"text",value:text}]});
+        const visit=(parent:HighlightNode)=>{
+            if(!parent.children)return;
+            parent.children=parent.children.flatMap(node=>{
+                if(node.type!=="text"){visit(node);return [node];}
+                const start=node.position?.start.offset,end=node.position?.end.offset;
+                if(start===undefined||end===undefined)return [node];
+                if(content.slice(start,end)!==node.value){if(target.end>start&&target.start<end)unmapped=true;return [node];}
+                const insertion=target.start===target.end;
+                if(insertion?(marked||target.start<start||target.start>end):(target.end<=start||target.start>=end))return [node];
+                const from=Math.max(target.start,start)-start,to=Math.min(target.end,end)-start;
+                marked=true;const value=node.value??"";
+                return [{type:"text",value:value.slice(0,from)},mark(insertion?"▏":value.slice(from,to),insertion),{type:"text",value:value.slice(to)}];
+            });
+        };
+        tree.children.forEach(visit);
+        if(!marked||unmapped){
+            const block=tree.children.find(node=>(node.position?.start.offset??Infinity)<=target.start&&(node.position?.end.offset??-1)>=target.end);
+            if(block){
+                block.properties={...block.properties,dataSuggestionHighlight:"block",className:[...((block.properties?.className as string[])??[]),"bg-amber-300/15","ring-1","ring-amber-300/60"]};
+                const note:HighlightNode={type:"element",tagName:"span",properties:{dataHighlightFallback:"",...(target.start===target.end?{dataInsertionPoint:"",ariaLabel:"Insertion point within formatted block"}:{}),className:["block","text-xs","text-amber-200"]},children:[{type:"text",value:target.original?`Exact source (includes formatting): ${target.original}`:"Insertion point within this formatted block"}]};
+                tree.children.splice(tree.children.indexOf(block)+1,0,note);
+            } else if(target.start===target.end) {
+                const index=tree.children.findIndex(node=>(node.position?.start.offset??Infinity)>=target.start);
+                tree.children.splice(index<0?tree.children.length:index,0,mark("▏ Insert here",true));
+            }
         }
     };
 }
@@ -86,6 +122,7 @@ function BlockShell({ start, end, children }: { start: number; end: number; chil
             data-review-block=""
             data-block-start={start}
             data-block-end={end}
+            style={{scrollMarginTop:"calc(var(--review-rail-top, 6rem) + 1rem)"}}
             className={`review-block group relative -mx-2 rounded-md px-2 py-0.5 transition-colors ${
                 isSelected ? "bg-cyan-500/10 ring-1 ring-cyan-400/60" : count > 0 ? "bg-amber-500/5" : ""
             }`}
@@ -184,6 +221,7 @@ const PROSE =
 
 export interface DocumentMarkdownProps {
     content: string;
+    sourceHighlight?: SourceHighlight | null;
     selected?: BlockRef | null;
     commentCounts?: Record<number, number>;
     interactive?: boolean;
@@ -192,7 +230,7 @@ export interface DocumentMarkdownProps {
     onBlockSelect?: (block: BlockRef, extra?: { selection?: string }) => void;
 }
 
-export function DocumentMarkdown({ content, selected = null, commentCounts = {}, interactive = true, presentationSafe = false, onBlockSelect }: DocumentMarkdownProps) {
+export const DocumentMarkdown = memo(function DocumentMarkdown({ content, sourceHighlight, selected = null, commentCounts = {}, interactive = true, presentationSafe = false, onBlockSelect }: DocumentMarkdownProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const selectRef = useRef(onBlockSelect);
     selectRef.current = onBlockSelect;
@@ -232,7 +270,7 @@ export function DocumentMarkdown({ content, selected = null, commentCounts = {},
     return (
         <BlockContext.Provider value={{ selected, commentCounts, interactive, onBlockSelect }}>
             <div ref={containerRef} className={`${PROSE} pr-9 md:pr-10`} onMouseUp={captureSelection} data-document-markdown="">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeBlockAnchors]} components={presentationSafe ? {
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeBlockAnchors, [rehypeSuggestionHighlight, {content,target:sourceHighlight}]]} components={presentationSafe ? {
                     ...COMPONENTS,
                     // Mermaid may fetch image nodes before sanitizing SVG; keep fences literal here.
                     pre: PRESENTATION_PRE as Components["pre"],
@@ -244,4 +282,4 @@ export function DocumentMarkdown({ content, selected = null, commentCounts = {},
             </div>
         </BlockContext.Provider>
     );
-}
+});

@@ -1,0 +1,237 @@
+[
+  {
+    "width": 390,
+    "route": "/",
+    "textOverflow": [],
+    "layout": {
+      "core": {
+        "x": 12,
+        "y": 322,
+        "width": 366,
+        "height": 785,
+        "bottom": 1107
+      },
+      "schedule": {
+        "x": 12,
+        "y": 1123,
+        "width": 366,
+        "height": 130,
+        "bottom": 1253
+      },
+      "inbox": {
+        "x": 12,
+        "y": 2777,
+        "width": 366,
+        "height": 197,
+        "bottom": 2974
+      },
+      "stations": {
+        "x": 12,
+        "y": 1269,
+        "width": 366,
+        "height": 590,
+        "bottom": 1859
+      },
+      "scheduleCount": 1
+    },
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "bodyScrollWidth": 390,
+    "offenders": [],
+    "count": 0,
+    "title": "The Nexus - VibeShift AI",
+    "innerWidth": 390,
+    "visualWidth": 390,
+    "visualScale": 1,
+    "overflow": false,
+    "shot": "390_home.png"
+  },
+  {
+    "width": 768,
+    "route": "/",
+    "textOverflow": [],
+    "layout": {
+      "core": {
+        "x": 24,
+        "y": 264.25,
+        "width": 720,
+        "height": 917.5,
+        "bottom": 1181.75
+      },
+      "schedule": {
+        "x": 24,
+        "y": 1197.75,
+        "width": 720,
+        "height": 476,
+        "bottom": 1673.75
+      },
+      "inbox": {
+        "x": 24,
+        "y": 2832.25,
+        "width": 720,
+        "height": 10558.53125,
+        "bottom": 13390.78125
+      },
+      "stations": {
+        "x": 24,
+        "y": 1689.75,
+        "width": 352,
+        "height": 590,
+        "bottom": 2279.75
+      },
+      "scheduleCount": 1
+    },
+    "scrollWidth": 768,
+    "clientWidth": 768,
+    "bodyScrollWidth": 768,
+    "offenders": [],
+    "count": 0,
+    "title": "The Nexus - VibeShift AI",
+    "innerWidth": 768,
+    "visualWidth": 768,
+    "visualScale": 1,
+    "overflow": false,
+    "shot": "768_home.png"
+  },
+  {
+    "width": 1279,
+    "route": "/",
+    "textOverflow": [],
+    "layout": {
+      "core": {
+        "x": 24,
+        "y": 264.25,
+        "width": 1231,
+        "height": 491,
+        "bottom": 755.25
+      },
+      "schedule": {
+        "x": 24,
+        "y": 771.25,
+        "width": 1231,
+        "height": 476,
+        "bottom": 1247.25
+      },
+      "inbox": {
+        "x": 24,
+        "y": 2377.25,
+        "width": 1231,
+        "height": 8734.234375,
+        "bottom": 11111.484375
+      },
+      "stations": {
+        "x": 24,
+        "y": 1263.25,
+        "width": 607.5,
+        "height": 590,
+        "bottom": 1853.25
+      },
+      "scheduleCount": 1
+    },
+    "scrollWidth": 1279,
+    "clientWidth": 1279,
+    "bodyScrollWidth": 1279,
+    "offenders": [],
+    "count": 0,
+    "title": "The Nexus - VibeShift AI",
+    "innerWidth": 1279,
+    "visualWidth": 1279,
+    "visualScale": 1,
+    "overflow": false,
+    "shot": "1279_home.png"
+  },
+  {
+    "width": 1280,
+    "route": "/",
+    "textOverflow": [],
+    "layout": {
+      "core": {
+        "x": 24,
+        "y": 152.75,
+        "width": 810.65625,
+        "height": 491,
+        "bottom": 643.75
+      },
+      "schedule": {
+        "x": 850.65625,
+        "y": 152.75,
+        "width": 405.34375,
+        "height": 504.5,
+        "bottom": 657.25
+      },
+      "inbox": {
+        "x": 850.65625,
+        "y": 673.25,
+        "width": 405.34375,
+        "height": 17237.234375,
+        "bottom": 17910.484375
+      },
+      "stations": {
+        "x": 24,
+        "y": 659.75,
+        "width": 397.328125,
+        "height": 590,
+        "bottom": 1249.75
+      },
+      "scheduleCount": 1
+    },
+    "scrollWidth": 1280,
+    "clientWidth": 1280,
+    "bodyScrollWidth": 1280,
+    "offenders": [],
+    "count": 0,
+    "title": "The Nexus - VibeShift AI",
+    "innerWidth": 1280,
+    "visualWidth": 1280,
+    "visualScale": 1,
+    "overflow": false,
+    "shot": "1280_home.png"
+  },
+  {
+    "width": 1440,
+    "route": "/",
+    "textOverflow": [],
+    "layout": {
+      "core": {
+        "x": 24,
+        "y": 152.75,
+        "width": 917.328125,
+        "height": 491,
+        "bottom": 643.75
+      },
+      "schedule": {
+        "x": 957.328125,
+        "y": 152.75,
+        "width": 458.65625,
+        "height": 476,
+        "bottom": 628.75
+      },
+      "inbox": {
+        "x": 957.328125,
+        "y": 644.75,
+        "width": 458.65625,
+        "height": 14767.109375,
+        "bottom": 15411.859375
+      },
+      "stations": {
+        "x": 24,
+        "y": 659.75,
+        "width": 450.65625,
+        "height": 590,
+        "bottom": 1249.75
+      },
+      "scheduleCount": 1
+    },
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "bodyScrollWidth": 1440,
+    "offenders": [],
+    "count": 0,
+    "title": "The Nexus - VibeShift AI",
+    "innerWidth": 1440,
+    "visualWidth": 1440,
+    "visualScale": 1,
+    "overflow": false,
+    "shot": "1440_home.png"
+  }
+]

@@ -191,9 +191,24 @@ export interface RevisionMeta {
     height?: number | null;
     /** 1-based version within the document (capture order); absent on an API that predates it. */
     version?: number | null;
+    capture_number?: number;
+    draft_id?: string;
+    is_delivered?: boolean;
+    capture_count?: number;
 }
 
 export interface ReviewComment {
+    review_id?: string;
+    historical?: boolean;
+    agent_review_id?: string;
+    suggestion_id?: string;
+    source_comment_id?: string;
+    source_comment?: ReviewComment;
+    author?: {id:string;name?:string;authority?:string};
+    revision_id?: string;
+    provenance?: {agent_review_id?:string;task_id?:string;finding_id?:string;start?:number;end?:number;original?:string};
+    suggestion?: import("./agent-reviews").AgentSuggestion;
+    choice?: import("./agent-reviews").AgentChoice;
     id: string;
     kind: CommentKind;
     start_line: number | null;
@@ -226,7 +241,7 @@ export interface SubmissionView {
     next_attempt_at: string | null;
     last_error: string | null;
     delivered_at: string | null;
-    receipt: { conversation_id: string; user_message_id: string; assistant_message_id: string; delivered_at: string } | null;
+    receipt: { conversation_id?: string; user_message_id?: string; assistant_message_id?: string; delivered_at: string; event_id?: string; document_id?: string; revision_id?: string; submission_id?: string; status?: string; received_at?: string; transport?: "notification" } | null;
     review_url: string | null;
     created_at: string;
     updated_at: string;
@@ -284,6 +299,7 @@ export interface DocumentOutgoing {
 }
 
 export interface DocumentResponse {
+    inline_comments?: ReviewComment[];
     blocking_tasks?: DocumentBlockingTask[];
     document: DocumentRecord;
     revision: RevisionMeta | null;
@@ -315,6 +331,7 @@ export interface DocumentResponse {
 }
 
 export interface DocumentListEntry extends DocumentRecord {
+    agent_review_ready?: boolean;
     blocking_tasks?: DocumentBlockingTask[];
     blocking_task_count?: number;
     asset_count?: number;
@@ -365,6 +382,7 @@ export interface DocumentHistory {
     current_version?: number | null;
     reviewable?: boolean;
     revisions: (RevisionMeta & { is_current?: boolean })[];
+    drafts?: (RevisionMeta & { is_current?: boolean })[];
     decisions: DocumentDecision[];
     registrations: { id: string; revision_id: string; content_hash: string; task_id: string | null; project_id: string | null; registered_at: string; registered_by: string | null; media_type?: MediaType; asset_count?: number }[];
     edits?: { id: string; base_revision_id: string; result_revision_id: string; actor_id: string; authority: string; summary: string; created_at: string }[];
@@ -386,6 +404,7 @@ export interface NewCommentInput {
 
 export class DocumentApiError extends Error {
     status: number;
+    retryWithNewRequestId?: boolean;
     code: string | null;
     /** For a refused decision, what the operator session check found (for example `assertion-missing`). */
     reason: string | null;
@@ -419,8 +438,10 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
     let data: unknown = null;
     try { data = await res.json(); } catch { data = null; }
     if (!res.ok) {
-        const body = (data && typeof data === 'object') ? data as { error?: string; code?: string; reason?: string } : {};
-        throw new DocumentApiError(body.error || `Request failed (${res.status})`, res.status, body.code ?? null, typeof body.reason === 'string' ? body.reason : null);
+        const body = (data && typeof data === 'object') ? data as { error?: string; code?: string; reason?: string; retry_with_new_request_id?: boolean } : {};
+        const error = new DocumentApiError(body.error || `Request failed (${res.status})`, res.status, body.code ?? null, typeof body.reason === 'string' ? body.reason : null);
+        error.retryWithNewRequestId = body.retry_with_new_request_id === true;
+        throw error;
     }
     return data as T;
 }
@@ -728,4 +749,13 @@ export function newClientId(): string {
 /** An explicit operator grant or permanent cancellation for the exact envelope on screen. */
 export function recordOutgoingDecision(documentId: string, input: { decision: 'approve_send' | 'cancel'; revision_id: string; envelope_hash: string }): Promise<{ outgoing: DocumentOutgoing }> {
     return request(`${BASE}/${encodeURIComponent(documentId)}/outgoing/decision`, { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** Convert an existing discussion into an explicit operator-authored replacement. */
+export function convertCommentToSuggestion(reviewId: string, commentId: string, input: {client_request_id: string; proposed: string; status: 'accepted'|'pending'; start?: number; end?: number; original?: string}): Promise<{comment: ReviewComment; review: import('./agent-reviews').AgentReview}> {
+    return request(`/api/documents/reviews/${encodeURIComponent(reviewId)}/comments/${encodeURIComponent(commentId)}/suggestion`, {method:'POST',body:JSON.stringify(input)});
+}
+
+export function generateCommentProposal(reviewId:string,commentId:string,clientRequestId:string):Promise<{comment:ReviewComment;review:import('./agent-reviews').AgentReview}> {
+    return request(`/api/documents/reviews/${encodeURIComponent(reviewId)}/comments/${encodeURIComponent(commentId)}/proposal`,{method:'POST',body:JSON.stringify({client_request_id:clientRequestId})});
 }

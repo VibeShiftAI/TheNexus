@@ -1,3 +1,4 @@
+const { reconcileDocumentDrafts } = require('./document-draft-versions');
 /**
  * Markdown document review store (2026-09-10 design:
  * docs/superpowers/specs/2026-09-10-markdown-document-review-design.md).
@@ -34,6 +35,7 @@
  * executor-recorded approval.
  */
 const { randomUUID } = require('crypto');
+const { createAgentReviewStore } = require('./document-agent-reviews');
 const { ACTIVE_TASK_SQL, WAITING_TASKS_FROM_SQL } = require('./document-review-blockers');
 const { initializeDocumentOutgoing, createDocumentOutgoingStore } = require('./document-outgoing');
 
@@ -76,6 +78,9 @@ const REVISION_MEDIA_COLUMNS = [
  * in the same review, `resolved_at` the reviewer's own bookkeeping.
  */
 const COMMENT_MEDIA_COLUMNS = [
+    ['author', 'TEXT'],
+    ['provenance', 'TEXT'],
+    ['suggestion', 'TEXT'],
     ['anchor', 'TEXT'],
     ['target_label', 'TEXT'],
     ['parent_id', 'TEXT'],
@@ -145,7 +150,7 @@ const GOVERNING_REPLACEMENT_JOIN = `LEFT JOIN review_document_replacements rp ON
          WHERE z.document_id = d.id AND z.result_revision_id = d.current_revision_id
          ORDER BY z.created_at DESC, z.rowid DESC LIMIT 1))`;
 /** The bucket a list row falls in, over the columns documentQuery selects: a governing replacement takes it out of the decision buckets. */
-const LIST_BUCKET_SQL = `CASE WHEN replacement_id IS NULL THEN review_status ELSE 'in_progress' END`;
+const LIST_BUCKET_SQL = `CASE WHEN replacement_id IS NOT NULL THEN 'in_progress' WHEN agent_review_ready = 1 THEN 'needs_review' ELSE review_status END`;
 
 /**
  * Columns added to review_document_decisions after the 2026-10-02 contract.
@@ -307,6 +312,7 @@ function migrateMediaColumns(db) {
 }
 
 function initializeDocumentReviews(db) {
+    createAgentReviewStore(db);
     db.exec(`CREATE TABLE IF NOT EXISTS review_documents (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
@@ -460,13 +466,16 @@ function initializeDocumentReviews(db) {
     migrateDecisionColumns(db);
     migrateReviewColumns(db);
     migrateMediaColumns(db);
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_comment_operator_proposal_source
+      ON document_review_comments(review_id, json_extract(provenance,'$.source_comment_id'))
+      WHERE json_extract(provenance,'$.kind')='operator_suggestion'`);
     migrateReplacementLifecycle(db);
     initializeDocumentOutgoing(db);
 }
 
-const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest', 'superseded_review_ids']);
+const JSON_COLUMNS = new Set(['metadata', 'payload', 'receipt', 'declaration', 'provenance', 'blocking_task_ids', 'anchor', 'selection_json', 'manifest', 'superseded_review_ids', 'author', 'suggestion']);
 /** JSON columns whose absence reads as null rather than an empty object. */
-const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance', 'anchor', 'selection_json', 'manifest']);
+const NULLABLE_JSON_COLUMNS = new Set(['receipt', 'provenance', 'anchor', 'selection_json', 'manifest', 'author', 'suggestion']);
 const BOOLEAN_COLUMNS = new Set(['requires_review', 'document_created', 'revision_created', 'approval_delegated', 'reviewable']);
 
 function parseJson(value, fallback) {
@@ -515,7 +524,7 @@ function documentQuery({ id, task_id, project_id, kind, q, include_mail } = {}, 
         params.push(like, like, like);
     }
     // Alongside the decision-derived review_status: the governing replacement (if any) and whether the row takes review actions now.
-    const sql = `SELECT d.*, ${REVIEW_STATUS_SQL} AS review_status, ${blockingCountSql} AS blocking_task_count,
+    const sql = `SELECT d.*, EXISTS (SELECT 1 FROM document_agent_reviews ar WHERE ar.document_id = d.id AND json_extract(ar.data, '$.status') = 'submitted' AND json_extract(ar.data, '$.base_revision_id') = d.current_revision_id) AS agent_review_ready, ${REVIEW_STATUS_SQL} AS review_status, ${blockingCountSql} AS blocking_task_count,
         rp.id AS replacement_id, rp.state AS replacement_state, rp.task_id AS replacement_task_id, rp.attempt AS replacement_attempt,
         CASE WHEN rp.id IS NULL THEN 1 ELSE 0 END AS reviewable
         FROM review_documents d ${LATEST_DECISION_JOIN} ${GOVERNING_REPLACEMENT_JOIN}${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
@@ -665,12 +674,16 @@ function createDocumentReviewStore(db) {
                 media_type, mime_type, source, edited_by, asset_count, width, height
                 FROM review_document_revisions WHERE document_id = ? ORDER BY captured_at ASC, rowid ASC`, documentId);
         },
-        /** The 1-based version number of a revision within its document (capture order), for "v3" labels. */
+        /** Editorial draft number; capture order is retained separately as capture_number. */
         revisionVersion(revisionId) {
-            const row = db.prepare(`SELECT COUNT(*) AS n FROM review_document_revisions r, review_document_revisions self
-                WHERE self.id = ? AND r.document_id = self.document_id
-                  AND (r.captured_at < self.captured_at OR (r.captured_at = self.captured_at AND r.rowid <= self.rowid))`).get(revisionId);
-            return row && row.n > 0 ? row.n : null;
+            return this.revisionDraft(revisionId)?.version ?? null;
+        },
+        revisionDraft(revisionId) {
+            const row = db.prepare('SELECT document_id FROM review_document_revisions WHERE id = ?').get(revisionId);
+            return row ? this.draftHistory(row.document_id).revisions.find(r => r.id === revisionId) ?? null : null;
+        },
+        draftHistory(documentId) {
+            return reconcileDocumentDrafts(db, documentId);
         },
 
         // ── Revision assets (design package members and the primary asset) ─
@@ -845,12 +858,15 @@ function createDocumentReviewStore(db) {
         findCommentByClientId(reviewId, clientId) {
             return one('SELECT * FROM document_review_comments WHERE review_id = ? AND client_id = ?', reviewId, clientId);
         },
+        listAgentComments(documentId, revisionId) {
+            return many(`SELECT c.* FROM document_review_comments c JOIN document_reviews r ON r.id=c.review_id WHERE r.document_id=? AND (? IS NULL OR r.revision_id=?) AND c.provenance IS NOT NULL AND json_extract(c.provenance,'$.agent_review_id') IS NOT NULL ORDER BY c.created_at,c.rowid`,documentId,revisionId||null,revisionId||null);
+        },
         listComments(reviewId) {
             return many('SELECT * FROM document_review_comments WHERE review_id = ? ORDER BY created_at ASC, rowid ASC', reviewId);
         },
         insertComment(comment) {
             const ts = now();
-            const row = { id: comment.id || randomUUID(), ...comment, created_at: ts, updated_at: ts };
+            const row = { id: comment.id || randomUUID(), ...comment, created_at: comment.created_at || ts, updated_at: comment.updated_at || comment.created_at || ts };
             insert('document_review_comments', row);
             return this.getComment(row.id);
         },

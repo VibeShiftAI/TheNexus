@@ -70,7 +70,6 @@ export function buildTaskProgress(input: ProgressInput) {
   else if (background) { state = background.state === 'held' ? 'Held for background evidence' : 'Waiting for background evidence'; stateAt = live?.updatedAt ?? null; }
   else if (live?.lane === 'running') { state = 'Active'; stateAt = live.startedAt ?? null; }
   else if (live?.lane === 'qa') { state = 'QA in progress'; stateAt = live.qa?.startedAt ?? live.finishedAt ?? null; }
-  else if (admission) { state = 'Waiting for admission'; stateAt = typeof admission.checked_at === 'string' ? admission.checked_at : null; }
   else if (live?.lane === 'queued') { state = live.correction ? 'Retrying — queued' : 'Waiting in queue'; stateAt = live.enqueuedAt ?? null; }
   else if (live?.lane === 'waiting') { state = 'Waiting'; stateAt = live.updatedAt ?? null; }
   else if (liveFresh && progressFresh) {

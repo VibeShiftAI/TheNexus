@@ -1,0 +1,17 @@
+Dashboard schedule placement — 2026-10-26
+
+Changed: dashboard/src/app/page.tsx
+- Desktop (xl, >=1280px): Today's Schedule is first in the right rail, followed by Praxis Inbox with a 16px gap.
+- Narrow layout (<1280px): main viewer/chat, schedule, bridge stations, inbox/activity.
+- One mounted schedule panel. Existing inbox navigation ID retained on inbox/activity group.
+
+Verification:
+- NEXT_DIST_DIR=.next-verify npm --prefix dashboard run build: exit 0.
+- Dashboard npm test: 1123 tests, 1118 pass, 5 fail.
+- Focused cockpit layout test: 1/1 passes.
+- The same five failures reproduce in focused chat/voice tests: ai-terminal exceeds its existing line budget (711 vs <700); four voice announcement tests fail. Those tests and components are unchanged from HEAD and do not render the home page. No unrelated fixes attempted.
+- Live http://localhost:3000 browser geometry checks: 390, 768, 1279, 1280, 1440px all pass with zero horizontal overflow. Narrow layouts place schedule exactly 16px below core; desktop places schedule exactly 16px above inbox with aligned left edges.
+- Loaded phone view checked again at 390px after 15 seconds: passes; screenshot inspected along with desktop screenshot.
+- git diff --check: passes. Final page diff reviewed; unrelated existing .env.example changes preserved.
+
+Evidence: build.log, dashboard-tests.log, focused-tests.log, responsive.log, report.json, *_home.png, mobile-loaded/.

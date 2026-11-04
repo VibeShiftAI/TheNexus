@@ -149,6 +149,7 @@ async function callPraxisBrain(message, provider, modelId, systemPrompt, history
             // model-control role (subscription CLI lane first) and the
             // provider/model pin above is ignored on that side.
             role: options.role || undefined,
+            ...(options.requireNoTools === true ? { require_no_tools: true } : {}),
             system: systemPrompt || undefined,
             messages,
             ...(options.maxTokens ? { max_tokens: options.maxTokens } : {})

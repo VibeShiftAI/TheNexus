@@ -124,14 +124,14 @@ export function describeOpsConnection(input: OpsConnectionInput): OpsConnectionD
 }
 
 const TONE_CLASS: Record<OpsConnectionTone, string> = {
-    live: "border-cyan-500/30 bg-cyan-500/5 text-cyan-200",
+    live: "border-emerald-500/30 bg-emerald-500/5 text-emerald-200",
     stale: "border-amber-500/40 bg-amber-500/10 text-amber-200",
     offline: "border-red-500/50 bg-red-500/10 text-red-200",
     reauth: "border-fuchsia-500/50 bg-fuchsia-500/10 text-fuchsia-100",
 };
 
 const DOT_CLASS: Record<OpsConnectionTone, string> = {
-    live: "bg-cyan-400",
+    live: "bg-emerald-400",
     stale: "bg-amber-400 animate-pulse",
     offline: "bg-red-500",
     reauth: "bg-fuchsia-400",

@@ -196,6 +196,10 @@ function mediaAnchorState(comment, currentAssets) {
 function publicComment(comment) {
     return {
         id: comment.id,
+        review_id: comment.review_id,
+        author: comment.author ?? null,
+        provenance: comment.provenance ?? null,
+        suggestion: comment.suggestion ?? null,
         kind: comment.kind,
         start_line: comment.start_line,
         end_line: comment.end_line,
@@ -213,7 +217,7 @@ function publicComment(comment) {
     };
 }
 
-function buildSubmissionPayload({ submissionId, review, comments, document, revision, source, submittedAt, selectedDirection = null }) {
+function buildSubmissionPayload({ submissionId, review, comments, document, revision, source, submittedAt, selectedDirection = null, changeRequests = [] }) {
     return {
         media_type: document.media_type || revision.media_type || 'markdown',
         selected_direction: selectedDirection,
@@ -222,6 +226,7 @@ function buildSubmissionPayload({ submissionId, review, comments, document, revi
         reviewer_id: review.reviewer_id,
         submitted_at: submittedAt,
         summary: review.summary || '',
+        change_requests: changeRequests.map(({ id, note, created_at }) => ({ id, note, created_at })),
         // Robert's explicit approve-after-changes grant and the operator proof it was made with (task a2553798).
         approval_delegated: review.approval_delegated === true,
         submitted_authority: review.submitted_authority || null,
@@ -280,6 +285,14 @@ function formatSubmissionMessage(payload) {
         payload.summary && payload.summary.trim() ? payload.summary.trim() : '(no summary given)',
         '',
     ];
+
+    // Keep this after Summary: Praxis's intake extracts feedback from that heading onward.
+    if (payload.change_requests?.length) {
+        lines.push(`**Request changes notes (${payload.change_requests.length})**`);
+        for (const request of payload.change_requests) {
+            lines.push(request.note, '');
+        }
+    }
 
     if (payload.approval_delegated) {
         lines.push('**Approval delegated**');

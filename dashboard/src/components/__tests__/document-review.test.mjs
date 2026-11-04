@@ -174,8 +174,8 @@ test('Finish review submits once with the summary and shows queued then delivere
     assert.match(c.textContent, /Queued for delivery/);
     assert.ok(!button(c, 'Finish review'), 'no second finish control');
     await settle(60);
-    assert.match(c.textContent, /Delivered to Praxis/);
-    assert.match(c.textContent, /Receipt: delivered/);
+    assert.match(c.textContent, /Praxis notified/);
+    assert.match(c.textContent, /Receipt: Praxis notified/);
     assert.match(c.textContent, /Finished/);
     assert.ok(srv.calls.filter(x => x.method === 'GET' && x.path.endsWith('/submission')).length >= 2, 'delivery state was polled');
     assert.ok(button(c, 'Start a new review of this document'));
@@ -194,7 +194,7 @@ test('finishing with zero comments opens a draft and submits it', async () => {
     const order = srv.calls.filter(x => x.method === 'POST').map(x => x.path);
     assert.deepEqual(order, ['/api/documents/doc-1/reviews', `/api/documents/reviews/${srv.state.review.id}/finish`]);
     await settle(40);
-    assert.match(c.textContent, /Delivered to Praxis/);
+    assert.match(c.textContent, /Praxis notified/);
   } finally { t.cleanup(); }
 });
 
@@ -236,9 +236,9 @@ test('a scheduled automatic retry keeps being observed until its outcome is know
     assert.match(c.querySelector('[data-submission-card]').textContent, /Automatic retry at/);
     await settle(120);
     assert.ok(srv.state.polls >= 2, `expected the scheduled retry to be polled, saw ${srv.state.polls}`);
-    assert.match(c.textContent, /Delivered to Praxis/);
+    assert.match(c.textContent, /Praxis notified/);
     assert.doesNotMatch(c.textContent, /Delivery failed/);
-    assert.match(c.textContent, /Receipt: delivered/);
+    assert.match(c.textContent, /Receipt: Praxis notified/);
   } finally { t.cleanup(); }
 });
 
@@ -269,7 +269,7 @@ test('a finish whose response was lost reconciles with the server instead of cla
     assert.match(c.textContent, /Finished/);
     assert.ok(!button(c, 'Finish review'), 'the submitted review offers no second finish');
     await settle(60);
-    assert.match(c.textContent, /Delivered to Praxis/);
+    assert.match(c.textContent, /Praxis notified/);
   } finally { t.cleanup(); }
 });
 

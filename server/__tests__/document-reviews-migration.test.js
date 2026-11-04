@@ -183,12 +183,13 @@ test('legacy documents, revisions, comments and feedback deliveries survive migr
     expect(store.listRegistrations('doc-legacy')).toEqual([]);
 
     // The feedback outbox still delivers a submission queued before the migration.
-    const relay = jest.fn(async () => ({ response: 'Noted.' }));
+    const relay = jest.fn(async event => ({ ...event, status: 'received', received_at: new Date().toISOString() }));
     const worker = require('../services/document-review-delivery').createDocumentReviewDelivery({ db, relay, intervalMs: 0 });
     const delivered = await worker.deliver('sub-queued');
     expect(delivered).toMatchObject({ delivery_status: 'delivered', delivery_attempts: 1 });
     expect(relay).toHaveBeenCalledTimes(1);
-    expect(relay.mock.calls[0][0]).toBe('[DOCUMENT REVIEW] queued');
+    expect(relay.mock.calls[0][0]).toMatchObject({ type: 'document.review_submitted', submission_id: 'sub-queued', event_id: 'docreview:sub-queued' });
+    expect(relay.mock.calls[0][0]).not.toHaveProperty('message');
 });
 
 test('the migration is idempotent across restarts and makes revisions immutable and decisions append-only', async () => {

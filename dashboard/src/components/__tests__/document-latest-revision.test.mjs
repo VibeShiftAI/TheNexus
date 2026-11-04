@@ -39,7 +39,7 @@ async function type(field, value) {
 if (!window.HTMLElement.prototype.scrollIntoView) window.HTMLElement.prototype.scrollIntoView = function () {};
 
 /** In-memory documents API: GET /api/documents/:id answers like server/routes/documents.js (latest review, current revision, pinned_content when they differ). */
-function server({ review, current = 'rev-2', doc = DOC_1 }) {
+function server({ review, current = 'rev-2', doc = DOC_1, drafts }) {
   const { id, byId } = doc;
   const base = `/api/documents/${id}`;
   const state = { current, review, decisions: [], comments: review.comments };
@@ -65,7 +65,7 @@ function server({ review, current = 'rev-2', doc = DOC_1 }) {
       return response({ document, revision, content, file_state: 'ok', file_error: null, source: SOURCE, review: reviewView(), review_status: statusOf(), current_decision: latest && { ...latest, applies_to_current_revision: latest.revision_id === state.current }, links: { review_url: `https://nexus.example.test/documents/${id}`, raw_url: `${base}/raw`, review_path: `/documents/${id}` } });
     }
     if (method === 'GET' && p === `${base}/history`) {
-      return response({ document_id: id, current_revision_id: state.current, review_status: statusOf(), revisions: Object.values(byId).map(([r]) => r).filter(r => r.id <= state.current), decisions: state.decisions, registrations: [], reviews: [] });
+      return response({ document_id: id, current_revision_id: state.current, review_status: statusOf(), drafts, revisions: Object.values(byId).map(([r]) => r).filter(r => r.id <= state.current), decisions: state.decisions, registrations: [], reviews: [] });
     }
     if (method === 'PATCH' && p === `/api/documents/reviews/${state.review.id}`) {
       state.review = { ...state.review, summary: body.summary };
@@ -299,4 +299,8 @@ test('a slow older refresh cannot replace a newer revision already displayed', a
     await settle();
     assert.equal(headerRevision(t.container), 'bbbbbbbb', 'the stale response is discarded');
   } finally { release?.(); t.cleanup(); }
+});
+
+test('regular history lists delivered drafts while capture history remains inspectable',async()=>{
+ const srv=server({review:submittedReview(),current:'rev-3',drafts:[{...REV_1,version:1,capture_count:1},{...REV_3,version:2,capture_count:2}]});const t=mount(srv);try{await settle();await click(t.container.querySelector('[data-history-toggle]'));const history=t.container.querySelector('[data-document-history]');assert.deepEqual([...history.querySelectorAll('[data-history-revision]')].map(e=>e.dataset.historyRevision),['rev-3','rev-1']);assert.ok(t.container.querySelector('[data-capture-history] a[href*="revision=rev-2"]'));}finally{t.cleanup();}
 });

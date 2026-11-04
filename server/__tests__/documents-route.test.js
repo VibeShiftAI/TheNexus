@@ -375,3 +375,43 @@ test('a storage fault while finishing rolls the transaction back: draft preserve
     expect(submission.payload.comments.map(c => c.body)).toEqual(['Title could carry the date.', 'Still editable after the fault.']);
     expect(submission.payload.summary).toBe('Final words');
 });
+
+
+test('finish delivers exact-revision Request changes notes alongside summary and passage comments', async () => {
+    const { json: { document, revision: oldRevision } } = await register();
+    const record = (revision, note, decision = 'request_changes') => db.documentReviews.insertDecision({
+        document_id: document.id, revision_id: revision.id, content_hash: revision.content_hash,
+        decision, note, actor_id: 'local_user', authority: 'operator',
+    });
+    record(oldRevision, 'Old revision only');
+    fs.writeFileSync(reportPath, CONTENT + '\nNew revision.');
+    const { json: { revision } } = await register();
+    const review = (await api('POST', `/api/documents/${document.id}/reviews`)).json.review;
+    const note = 'Please format the Introduction into an actual script.\nleave the rest as is.';
+    const first = record(revision, note);
+    const second = record(revision, 'Keep my exact opening words.');
+    record(revision, 'Approval note only', 'approve');
+    await api('POST', `/api/documents/reviews/${review.id}/comments`, {
+        kind: 'passage', start_line: 1, end_line: 1, quote: '# Readiness report', body: 'Title could carry the date.',
+    });
+    const finished = await api('POST', `/api/documents/reviews/${review.id}/finish`, { summary: 'See my request for revising the intro' });
+    expect(finished.status).toBe(202);
+    const submission = (await api('GET', `/api/documents/reviews/${review.id}/submission?full=1`)).json.submission;
+    expect(submission.payload.change_requests).toEqual([
+        { id: first.id, note, created_at: first.created_at },
+        { id: second.id, note: second.note, created_at: second.created_at },
+    ]);
+    expect(submission.message_text).toContain(note);
+    expect(submission.message_text).toContain(second.note);
+    expect(submission.message_text).toContain('See my request for revising the intro');
+    expect(submission.message_text).toContain('Title could carry the date.');
+    expect(submission.message_text).not.toContain('Old revision only');
+    expect(submission.message_text).not.toContain('Approval note only');
+    expect(submission.message_text.indexOf(note)).toBeGreaterThan(submission.message_text.indexOf('**Summary**'));
+    record(revision, 'Written after submission');
+    const retry = await api('POST', `/api/documents/reviews/${review.id}/finish`, {});
+    expect(retry.json.duplicate).toBe(true);
+    const saved = (await api('GET', `/api/documents/reviews/${review.id}/submission?full=1`)).json.submission;
+    expect(saved.message_text).toBe(submission.message_text);
+    expect(delivery.deliver).toHaveBeenCalledTimes(1);
+});

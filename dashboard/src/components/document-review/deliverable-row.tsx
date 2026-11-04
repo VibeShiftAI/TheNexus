@@ -93,6 +93,7 @@ export function DeliverableRow({ entry, projectNames, showTask = true, showProje
                 )}
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
                     <DocumentStatusBadge status={entry.review_status} />
+                    {entry.agent_review_ready && <span className="rounded border border-cyan-600/50 px-2 py-0.5 text-xs text-cyan-200">Suggested edits ready</span>}
                     {entry.replacement && (
                         // The replacement that governs the row (contract §12): open work producing a new version, or a failed or cancelled
                         // attempt whose unaccepted bytes are the current revision. Either way this version takes no review actions.

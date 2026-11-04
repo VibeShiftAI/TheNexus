@@ -7,7 +7,6 @@
  */
 "use client";
 
-import { useRuntimeHealth, runtimeHealthLabel } from "@/hooks/use-runtime-health";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Activity, Send, Inbox, Zap, CheckCircle2, Radio } from "lucide-react";
@@ -55,8 +54,6 @@ interface Chip {
 }
 
 export function StatusStrip() {
-  const health = useRuntimeHealth();
-  const healthy = health.status === "healthy";
   // The folded live context (socket + SSE), not the SSE store alone: the chip
   // used to read "Offline" whenever the EventSource was dead even while the
   // socket was delivering every frame (every backend restart, until a reload).
@@ -80,7 +77,7 @@ export function StatusStrip() {
     {
       id: "praxis",
       label: "PRAXIS",
-      value: healthy ? praxisStyle.label : runtimeHealthLabel(health),
+      value: praxisStyle.label,
       icon: <Activity size={13} />,
       tone: praxisStyle.textClass,
       target: "station-core",
@@ -157,12 +154,12 @@ export function StatusStrip() {
           title={c.hoverTitle ?? (c.onClick ? c.title : `Warp to ${c.title}`)}
           aria-label={c.ariaLabel}
         >
-          <span className={`shrink-0 ${healthy ? c.tone : "text-amber-300"}`}>{c.icon}</span>
+          <span className={`shrink-0 ${c.tone}`}>{c.icon}</span>
           <span className="min-w-0">
             <span className="block text-[9px] font-semibold uppercase tracking-widest text-slate-500">
               {c.label}
             </span>
-            <span className={`block truncate text-[13px] font-bold leading-tight ${healthy ? (c.valueTone ?? c.tone) : "text-amber-300"}`}>{c.value}</span>
+            <span className={`block truncate text-[13px] font-bold leading-tight ${c.valueTone ?? c.tone}`}>{c.value}</span>
           </span>
         </button>
       ))}

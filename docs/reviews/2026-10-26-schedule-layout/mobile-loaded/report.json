@@ -1,0 +1,49 @@
+[
+  {
+    "width": 390,
+    "route": "/",
+    "textOverflow": [],
+    "layout": {
+      "core": {
+        "x": 12,
+        "y": 322,
+        "width": 366,
+        "height": 834,
+        "bottom": 1156
+      },
+      "schedule": {
+        "x": 12,
+        "y": 1172,
+        "width": 366,
+        "height": 504.5,
+        "bottom": 1676.5
+      },
+      "inbox": {
+        "x": 12,
+        "y": 3603,
+        "width": 366,
+        "height": 17663.75,
+        "bottom": 21266.75
+      },
+      "stations": {
+        "x": 12,
+        "y": 1692.5,
+        "width": 366,
+        "height": 590,
+        "bottom": 2282.5
+      },
+      "scheduleCount": 1
+    },
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "bodyScrollWidth": 390,
+    "offenders": [],
+    "count": 0,
+    "title": "The Nexus - VibeShift AI",
+    "innerWidth": 390,
+    "visualWidth": 390,
+    "visualScale": 1,
+    "overflow": false,
+    "shot": "390_home.png"
+  }
+]

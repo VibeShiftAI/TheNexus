@@ -24,6 +24,7 @@ const { createMemberEvidence } = require('./member-evidence');
 const { createMemberCommitments } = require('./member-commitments');
 const { migrateUsageStats } = require('./usage-stats-migration');
 const { initializeStakeholderPolicy, createStakeholderPolicy } = require('./stakeholder-policy');
+const { createAgentReviewStore } = require('./document-agent-reviews');
 const { initializeDocumentReviews, createDocumentReviewStore } = require('./document-reviews');
 const { initializeClientAccess, createClientAccess } = require('./client-access');
 const { initializeWorkAdmission, createWorkAdmission } = require('./work-admission');
@@ -64,6 +65,7 @@ let memberProfileProposals;
 let memberEvidence;
 let memberCommitments;
 let documentReviews;
+let agentReviews;
 let clientAccess;
 let stakeholderPolicy;
 let workAdmission;
@@ -104,6 +106,7 @@ try {
     stakeholderPolicy = createStakeholderPolicy(db);
     initializeDocumentReviews(db);
     documentReviews = createDocumentReviewStore(db);
+    agentReviews = createAgentReviewStore(db);
     // Client project access: entitlement + version-review ledger (db/client-access.js, 2026-10-02).
     initializeClientAccess(db);
     clientAccess = createClientAccess(db);
@@ -3628,6 +3631,7 @@ module.exports = {
     getBoardSummary: options => require('./board-summary').getBoardSummary(db, options),
     // Markdown document reviews (db/document-reviews.js); undefined when the DB failed to open
     documentReviews,
+    agentReviews,
     // Client project access entitlements and version-review ledger (db/client-access.js); undefined when the DB failed to open
     clientAccess,
     reorderTasks: async (...args) => leasedBoardWrite(reorderTasks)(...args),

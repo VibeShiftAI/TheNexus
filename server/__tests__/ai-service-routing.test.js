@@ -28,6 +28,14 @@ describe('AI service Praxis relay', () => {
         global.fetch = originalFetch;
     });
 
+    test('proposal generation forwards model-control role and explicit native no-tools fence through raw gateway',async()=>{
+        global.fetch.mockResolvedValueOnce(jsonResponse(brainCompletion({content:'{"original":"A","proposed":"B","explanation":"Clarity"}',finish_reason:'stop'})));
+        const {callPraxisBrain}=require('../services/ai-service');
+        await callPraxisBrain('canonical immutable source',undefined,undefined,'Propose only',[],{role:'brain.chat',requireNoTools:true,maxTokens:8192});
+        expect(global.fetch.mock.calls).toHaveLength(1);expect(global.fetch.mock.calls[0][0]).toBe('http://praxis.test/v1/llm/chat/completions');
+        const body=JSON.parse(global.fetch.mock.calls[0][1].body);expect(body).toMatchObject({role:'brain.chat',require_no_tools:true});expect(body.tools).toBeUndefined();expect(body.messages).toEqual([{role:'user',content:'canonical immutable source'}]);
+    });
+
     test('relays direct config through Praxis /v1/llm/chat/completions with a model pin', async () => {
         global.fetch.mockResolvedValueOnce(jsonResponse(brainCompletion({ content: 'from claude' })));
         const { callAI } = require('../services/ai-service');

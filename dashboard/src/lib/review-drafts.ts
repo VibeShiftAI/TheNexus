@@ -107,6 +107,7 @@ export interface LiveReviewComment {
 }
 
 export interface LiveReviewState {
+    inline_comments?: LiveReviewComment[];
     document_id: string;
     /** The revision on screen now. */
     revision_id: string | null;
@@ -343,14 +344,14 @@ export function reconcileReviewDraft(draft: ReviewDraft, live: LiveReviewState):
     if (draft.reviewer_id && live.reviewer_id && draft.reviewer_id !== live.reviewer_id) return { ...none, foreign: true };
     const review = live.review;
     const reviewOpen = !review || review.status === "draft";
-    const comments = review?.comments ?? [];
+    const comments = [...(review?.comments ?? []), ...(live.inline_comments ?? [])];
     const plan: DraftReconciliation = { ...none };
 
     if (draft.composer && hasText(draft.composer.text)) {
         const c = draft.composer;
         const { saved, twin } = savedIdentity(c, comments);
         if (saved) plan.composer = { saved: c, comment_id: saved.id };
-        else if (!reviewOpen) plan.composer = { recovered: c, reason: "review" };
+        else if (!reviewOpen && !live.inline_comments?.some(comment => comment.id === c.parent_id)) plan.composer = { recovered: c, reason: "review" };
         else if (c.parent_id && !comments.some((comment) => comment.id === c.parent_id)) plan.composer = { recovered: c, reason: "parent" };
         else if (ANCHORED_KINDS.has(c.kind) && draft.revision_id && live.revision_id && draft.revision_id !== live.revision_id) plan.composer = { recovered: c, reason: "revision" };
         else plan.composer = twin ? { restore: c, same_as: twin.id } : { restore: c };

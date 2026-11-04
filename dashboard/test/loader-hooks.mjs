@@ -21,6 +21,7 @@ const SRC_ROOT = new URL("../src/", import.meta.url);
 const STUB_ROOT = new URL("./stubs/", import.meta.url);
 
 const STUBS = new Map([
+    ["react-markdown", new URL("react-markdown.mjs", STUB_ROOT).href],
     ["@/components/cortex-provider", new URL("cortex-provider.mjs", STUB_ROOT).href],
     ["@/lib/active-client", new URL("active-client.mjs", STUB_ROOT).href],
     ["@/lib/normalizeMarkdown", new URL("normalize-markdown.mjs", STUB_ROOT).href],

@@ -29,19 +29,20 @@ const admissionInput = (status = 'todo', decision = 'needs_evidence') => ({
  progress: source({ taskId: 't', attempts: [], events: [], eventsAvailable: true }), live: source({ praxis: { reachable: true }, items: [] }), pending: source([]), recent: source([]), evidence: source(null),
 });
 const renderProgress = input => { const div = document.createElement('div'); div.innerHTML = renderToStaticMarkup(createElement(TaskProgressView, { input })); return div; };
-test('pending admission shows factual reason, checked time and compared task links without requesting user action', () => {
+test('routine overlap is advisory and does not replace runtime progress with an admission wait', () => {
  const div = renderProgress(admissionInput()); const hold = div.querySelector('[data-work-admission]');
- assert.ok(hold, 'routine admission hold is visible');
- assert.match(div.textContent, /Waiting for admission/);
+ assert.ok(hold, 'routine overlap warning is visible');
+ assert.doesNotMatch(div.textContent, /Waiting for admission|Before work starts/);
+ assert.match(hold.textContent, /Scope overlap warning/);
  assert.match(hold.textContent, /Possible scope overlap requires a bounded evidence comparison/);
- assert.match(hold.textContent, /Praxis compares retained evidence automatically before starting/);
+ assert.match(hold.textContent, /does not block starting or continuing work/);
  assert.equal(hold.querySelector('time').getAttribute('datetime'), '2026-10-10T16:00:00Z');
  assert.equal(hold.querySelector('a').getAttribute('href'), '/task/compared%2Ftask');
  assert.match(hold.textContent, /Earlier delivery/);
  assert.doesNotMatch(hold.textContent, /currently reviewing|your response|resolve this/i);
  assert.equal(hold.querySelector('[role="alert"]'), null);
 });
-test('all blocking routine admission decisions appear but allowed and contract holds do not duplicate', () => {
+test('all routine overlap warnings appear but allowed and contract holds do not duplicate', () => {
  for (const decision of ['covered_by_open', 'already_delivered', 'partial_overlap']) assert.ok(renderProgress(admissionInput('todo', decision)).querySelector('[data-work-admission]'));
  assert.equal(renderProgress(admissionInput('todo', 'new_work')).querySelector('[data-work-admission]'), null);
  const input = admissionInput(); input.task.metadata.work_admission.hold_kind = 'contract_drift'; input.task.metadata.work_admission.contract_hold = {};
@@ -58,6 +59,7 @@ test('scheduled work also exposes its admission hold before dispatch', () => {
 test('partial overlap names remaining scope without promising automatic re-review', () => {
  const panel = renderProgress(admissionInput('todo', 'partial_overlap')).querySelector('[data-work-admission]');
  assert.match(panel.textContent, /remaining scope/i);
+ assert.doesNotMatch(panel.textContent, /needs an admission decision before a new launch/);
  assert.doesNotMatch(panel.textContent, /compares retained evidence automatically/i);
 });
 test('resumable nonterminal statuses show admission while active and terminal states suppress historical receipts', () => {
@@ -79,4 +81,10 @@ test('background hold renders exact reason and only links a recorded recovery qu
  assert.match(div.textContent, /Waiting for you/);
  assert.ok(div.querySelector('a[href="/inbox#recovery"]'));
  assert.match(div.querySelector('[data-runtime-hold]').textContent, /Artifact is not fresh/);
+});
+
+test('overlap warning preserves confirmed queue state and contract holds remain separate', () => {
+ const input=admissionInput(); input.live.data.items=[{taskId:'t',lane:'queued',enqueuedAt:'2026-10-10T16:05:00Z'}];
+ const div=renderProgress(input);assert.match(div.textContent,/Waiting in queue/);assert.match(div.textContent,/Scope overlap warning/);assert.doesNotMatch(div.textContent,/Waiting for admission/);
+ input.task.metadata.work_admission.hold_kind='contract_drift';input.task.metadata.work_admission.contract_hold={since:'now'};assert.equal(renderProgress(input).querySelector('[data-work-admission]'),null);
 });

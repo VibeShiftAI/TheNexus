@@ -180,7 +180,7 @@ function LocalLlmDetail({ state }: { state: DispatchStateResponse }) {
         <HudStat
           label="worker"
           value={worker?.paused ? "paused" : "running"}
-          tone={worker?.paused ? "text-amber-300" : "text-slate-300"}
+          tone={worker?.paused ? "text-amber-300" : "text-emerald-300"}
         />
         <HudStat label="running" value={counts["running"] ?? 0} tone="text-cyan-300" />
         <HudStat label="queued" value={counts["queued"] ?? 0} />

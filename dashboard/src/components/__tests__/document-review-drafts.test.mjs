@@ -21,7 +21,7 @@ const DOCUMENT_2 = { ...DOCUMENT, id: 'doc-2', title: 'Other brief' };
 const SOURCE = { task: null, project: { id: 'proj-1', name: 'Praxis', path: '/Volumes/Projects/Praxis' } };
 const links = id => ({ review_url: `https://nexus.vibeshiftai.com/documents/${id}`, raw_url: `/api/documents/${id}/raw` });
 const response = (data, status = 200) => ({ ok: status < 400, status, json: async () => data });
-async function settle(ms = 0) { await act(async () => { await new Promise(resolve => setTimeout(resolve, ms)); }); }
+async function settle(ms = 180) { await act(async () => { await new Promise(resolve => setTimeout(resolve, ms)); }); }
 function button(container, label) { return [...container.querySelectorAll('button')].find(b => b.textContent.trim() === label); }
 async function click(node) { assert.ok(node, 'expected a node to click'); await act(async () => node.click()); await settle(); }
 async function type(field, value) {
@@ -428,4 +428,12 @@ test('without client ids from the API a reload during the save keeps the draft, 
     assert.equal((t.container.querySelector('[data-comment-list]').textContent.match(/Please clarify\./g) ?? []).length, 1, 'still listed once');
     assert.equal(window.localStorage.getItem(KEY), null);
   } finally { t.cleanup(); }
+});
+
+ test('typing composer text does not reparse unchanged document Markdown', async () => {
+ fresh(); const t=mount(server()); try { await settle(); await click(t.container.querySelector('#L3 [data-block-comment-button]')); const count=globalThis.__documentMarkdownParses; await type(t.container.querySelector('[data-composer] textarea'),'One'); await type(t.container.querySelector('[data-composer] textarea'),'One two'); assert.equal(globalThis.__documentMarkdownParses,count); } finally {t.cleanup();}
+});
+
+test('unmount flushes the last keystroke before the debounce expires', async () => {
+ fresh();const srv=server();let t=mount(srv);try {await settle();await click(button(t.container,'Add a note about the whole document'));await type(t.container.querySelector('[data-composer] textarea'),'Last keystroke');t.cleanup();t=mount(srv);await settle();assert.equal(t.container.querySelector('[data-composer] textarea').value,'Last keystroke');}finally{t.cleanup();}
 });

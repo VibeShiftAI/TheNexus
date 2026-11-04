@@ -337,8 +337,9 @@ test('only current, change-requesting authority opens work; stale, approving, un
     fs.writeFileSync(file, V2);
     const v2 = (await read(document.id)).json.revision;
     expect(v2.id).not.toBe(v1.id);
-    expect(v2.version).toBe(2);
-    expect(await accept(document.id, { client_request_id: 'k', source: { submission_id: submission.id } })).toMatchObject({ status: 409, json: { code: 'source_not_current', source_revision_id: v1.id, current_revision: { id: v2.id, version: 2 } } });
+    expect(v2.version).toBe(1); // An unhanded-off capture is still editorial draft 1.
+    expect(v2.capture_number).toBe(2);
+    expect(await accept(document.id, { client_request_id: 'k', source: { submission_id: submission.id } })).toMatchObject({ status: 409, json: { code: 'source_not_current', source_revision_id: v1.id, current_revision: { id: v2.id, version: 1, capture_number: 2 } } });
     const changesOnV2 = await decide(document.id, v2.id, 'request_changes', { note: 'Still wrong.' });
     expect(changesOnV2.status).toBe(201);
     expect(await accept(document.id, { client_request_id: 'k', source: { decision_id: decision.id } })).toMatchObject({ status: 409, json: { code: 'source_not_current', source_revision_id: v1.id } });
@@ -454,8 +455,9 @@ test('bytes captured by a plain read are never a result, and ready requires the 
     expect((await report(document.id, rp.id, { state: 'implemented', revision_id: partial.revision.id })).json.replacement).toMatchObject({ state: 'implemented', result_revision_id: partial.revision.id });
     fs.writeFileSync(file, V3);
     const v3 = (await read(document.id)).json.revision;
-    expect(v3.version).toBe(3);
-    expect(await report(document.id, rp.id, { state: 'ready' })).toMatchObject({ status: 409, json: { code: 'result_not_ready', reason: 'result_not_current', current_revision: { id: v3.id, version: 3 } } });
+    expect(v3.version).toBe(2); // Another capture during the same replacement, not another delivered draft.
+    expect(v3.capture_number).toBe(3);
+    expect(await report(document.id, rp.id, { state: 'ready' })).toMatchObject({ status: 409, json: { code: 'result_not_ready', reason: 'result_not_current', current_revision: { id: v3.id, version: 2, capture_number: 3 } } });
     expect(db.documentReviews.getReplacement(rp.id).state).toBe('implemented');
 
     // Registering the final bytes under the work task moves the result to them; ready is now verified against the current revision.
@@ -464,7 +466,7 @@ test('bytes captured by a plain read are never a result, and ready requires the 
     expect(registered.json.receipt.replacement).toMatchObject({ id: rp.id, state: 'implemented' });
     expect(db.documentReviews.getReplacement(rp.id).result_revision_id).toBe(v3.id);
     expect(await report(document.id, rp.id, { state: 'ready' })).toMatchObject({ status: 200, json: { reviewable: true, replacement: { state: 'ready', result_revision_id: v3.id } } });
-    expect((await read(document.id)).json).toMatchObject({ version: { current_version: 3, revision_count: 3 }, reviewable: { ok: true } });
+    expect((await read(document.id)).json).toMatchObject({ version: { current_version: 2, revision_count: 3 }, reviewable: { ok: true } });
     expect((await api('GET', `/api/documents/${document.id}/raw`)).json).toBe(V3);
 });
 
@@ -760,8 +762,9 @@ test('no draft survives into open or failed work: acceptance closes a draft pinn
     expect(older.revision_id).toBe(v1.id);
     fs.writeFileSync(file, V2);
     const v2 = (await read(document.id)).json.revision;
-    expect(v2.version).toBe(2);
-    // Robert reviews v2 and requests changes; Praxis accepts the work.
+    expect(v2.version).toBe(1);
+    expect(v2.capture_number).toBe(2);
+    // Robert reviews the second capture and requests changes; Praxis accepts the work.
     const { submission } = await finishReview(document.id);
     expect(submission.revision_id).toBe(v2.id);
     expect((await decide(document.id, v2.id, 'request_changes', { note: 'Update the HWC row.' })).status).toBe(201);
@@ -806,7 +809,7 @@ test('a draft left on an older revision by a plain capture is returned pinned to
     fs.writeFileSync(file, V2);
     const detail = (await read(document.id)).json;
     const v2 = detail.revision;
-    expect(detail).toMatchObject({ revision: { version: 2 }, reviewable: { ok: true }, replacement: null });
+    expect(detail).toMatchObject({ revision: { version: 1, capture_number: 2 }, reviewable: { ok: true }, replacement: null });
 
     // The open draft is returned as the caller's round, labelled with its own revision, never relabelled as v2.
     for (const body of [{}, { revision_id: v2.id }]) {

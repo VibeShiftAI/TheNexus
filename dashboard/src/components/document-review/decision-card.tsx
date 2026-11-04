@@ -150,8 +150,8 @@ export function ReplacementDetail({ text }: { text: string }) {
     );
 }
 
-function HistoryList({ history, currentRevisionId }: { history: DocumentHistory; currentRevisionId: string | null }) {
-    const revisions = [...history.revisions].sort((a, b) => b.captured_at.localeCompare(a.captured_at));
+function HistoryList({ history, currentRevisionId, snapshots = false }: { history: DocumentHistory; currentRevisionId: string | null; snapshots?: boolean }) {
+    const revisions = [...(history.drafts ?? history.revisions)].sort((a, b) => b.captured_at.localeCompare(a.captured_at));
     const decisionsByRevision = new Map<string, DocumentDecision[]>();
     for (const decision of history.decisions) {
         decisionsByRevision.set(decision.revision_id, [...(decisionsByRevision.get(decision.revision_id) ?? []), decision]);
@@ -168,7 +168,7 @@ function HistoryList({ history, currentRevisionId }: { history: DocumentHistory;
             {revisions.map((revision) => (
                 <li key={revision.id} className="rounded-md border border-slate-800 bg-slate-950/60 p-2 text-[11px] text-slate-400" data-history-revision={revision.id} data-history-version={revision.version ?? undefined}>
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-slate-200" title={revision.content_hash}>{revision.version ? `v${revision.version} · ` : ""}rev {shortHash(revision.content_hash)}</span>
+                        <span className="font-mono text-slate-200" title={revision.content_hash}>{snapshots ? `Snapshot ${revision.capture_number ?? ""} · ` : revision.version ? `v${revision.version} · ` : ""}rev {shortHash(revision.content_hash)}</span>
                         <span>captured {formatWhen(revision.captured_at)}</span>
                         {revision.id === currentRevisionId && <span className="rounded-full border border-cyan-500/40 px-1.5 text-cyan-200">current</span>}
                         {replacements.some((rp) => rp.result_revision_id === revision.id) && <span className="rounded-full border border-emerald-500/40 px-1.5 text-emerald-200" data-history-replacement-result="">new version from revision work</span>}
@@ -196,6 +196,7 @@ function HistoryList({ history, currentRevisionId }: { history: DocumentHistory;
                 </li>
             ))}
         </ol>
+        {history.drafts && <details className="mt-2 text-xs text-slate-400" data-capture-history=""><summary className="cursor-pointer">All saved snapshots ({history.revisions.length})</summary><p className="my-2">Intermediate saves remain available here; they are not additional delivered drafts.</p><HistoryList history={{...history,drafts:undefined,replacements:[]}} currentRevisionId={currentRevisionId} snapshots /></details>}
         {replacements.length > 0 && (
             // Every replacement work item, newest first: what was accepted, for which version, by which task, and how it ended (contract §12).
             <div className="mt-2" data-history-replacements="">
