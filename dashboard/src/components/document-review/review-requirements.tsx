@@ -55,7 +55,7 @@ export function ReviewRequirements({ document: doc, onRefresh }: {
                             <input aria-label="Find waiting tasks" value={query} onChange={e => setQuery(e.target.value)} placeholder="Find a task or project…" className="mt-2 w-full rounded border border-slate-600 bg-slate-950 px-2 py-1.5" />
                             <div className="mt-2 max-h-52 space-y-2 overflow-auto">
                                 {visible.map(task => (
-                                    <label key={task.id} className="flex items-start gap-2 text-slate-300">
+                                    <label key={task.id} className="flex items-start gap-2 text-slate-300 max-lg:min-h-11 max-lg:items-center">
                                         <input type="checkbox" disabled={saving} checked={selected.includes(task.id)} onChange={e => setSelected(ids => e.target.checked ? [...ids, task.id] : ids.filter(id => id !== task.id))} className="mt-0.5" />
                                         <span>{task.title}{task.project_name && <span className="block text-[11px] text-slate-500">{task.project_name}</span>}</span>
                                     </label>

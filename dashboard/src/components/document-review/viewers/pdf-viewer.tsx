@@ -38,7 +38,8 @@ export function PdfViewer({ src, assetKey, markers = [], selectedMarkerId = null
                 </label>
                 <button type="button" onClick={() => setPage((p) => p + 1)} aria-label="Next page" className="rounded-md border border-slate-700 p-1.5 hover:border-cyan-500/60"><ChevronRight size={14} /></button>
                 {pages.length > 0 && (
-                    <span className="ml-1 flex items-center gap-1">
+                    // Below lg each page marker is a 44px chip (lib/review-tap-targets); the row wraps so none is pushed off a phone screen.
+                    <span className="ml-1 flex flex-wrap items-center gap-1">
                         {markers.map((m) => (
                             <button key={m.id} type="button" data-page-marker={m.id} onClick={() => { setPage(m.page); onSelectMarker?.(m.id); }} aria-label={`Comment ${m.index} on page ${m.page}`} title={m.label ?? undefined}
                                 className={`flex h-5 min-w-5 items-center justify-center rounded-full border px-1 text-[10px] font-bold ${selectedMarkerId === m.id ? "border-cyan-200 bg-cyan-500 text-slate-950" : m.resolved ? "border-emerald-200 bg-emerald-500 text-slate-950" : "border-amber-200 bg-amber-400 text-slate-950"}`}>

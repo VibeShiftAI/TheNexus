@@ -4,6 +4,7 @@ import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { DocumentReviewPage } from '../document-review/document-review.tsx';
 import { decisionNoteDraftKey } from '../../lib/decision-note-draft.ts';
+import { uncovered } from './tap-target-coverage.mjs';
 
 // Synthetic document, revisions and decisions only: these tests never reach a real registry.
 const CONTENT_1 = ['# Rollout plan', '', 'Ship to the pilot group first.', '', '## Risks', '', '- rollback is manual'].join('\n');
@@ -129,6 +130,15 @@ test('task status, QA verdict and the document decision are labelled apart; Appr
     await click(card(c).querySelector('[data-decision-button="approve"]'));
     assert.match(card(c).querySelector('[data-decision-confirm]').textContent, /Approve rev aaaaaaaa exactly as shown/);
     assert.match(card(c).querySelector('[data-decision-submit]').className, /\bmax-lg:min-h-11\b/);
+    // QA round 1: the whole card, both confirmation states and the History toggle, nothing under 44px below lg.
+    assert.deepEqual(uncovered(card(c).querySelector('[data-decision-confirm]')), [], 'approve confirmation');
+    assert.match(card(c).querySelector('[data-history-toggle]').className, /\bmax-lg:min-h-11\b/, 'History');
+    assert.deepEqual(uncovered(card(c)), [], 'decision card with the approve confirmation open');
+    await click(button(card(c).querySelector('[data-decision-confirm]'), 'Cancel'));
+    await click(card(c).querySelector('[data-decision-button="request_changes"]'));
+    assert.deepEqual(uncovered(card(c).querySelector('[data-decision-confirm="request_changes"]')), [], 'request-changes confirmation');
+    await click(button(card(c).querySelector('[data-decision-confirm]'), 'Cancel'));
+    await click(card(c).querySelector('[data-decision-button="approve"]'));
     await type(card(c).querySelector('textarea#decision-note'), 'Pilot first is right.');
     await click(card(c).querySelector('[data-decision-submit]'));
 

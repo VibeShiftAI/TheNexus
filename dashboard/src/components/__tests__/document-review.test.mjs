@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { createElement, act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { DocumentReviewPage } from '../document-review/document-review.tsx';
+import { REVIEW_TAP_TARGETS } from '../../lib/review-tap-targets.ts';
+import { covered, uncovered } from './tap-target-coverage.mjs';
 
 const CONTENT = ['# Readiness', '', 'Restart survived the drill.', '', '## Gaps', '', '- alerting is manual', '- no runbook'].join('\n');
 const REVISION = { id: 'rev-1', document_id: 'doc-1', content_hash: 'a'.repeat(64), byte_length: CONTENT.length, line_count: 8, captured_at: '2026-09-10T10:00:00Z' };
@@ -414,5 +416,80 @@ test('phone and tablet tap targets in the header, phone bar and drawers are at l
     const drawer = c.querySelector('[data-review-drawer]');
     assert.match(drawer.querySelector('button[aria-label="Close"]').className, /\bmin-h-11 min-w-11\b/);
     assert.match(drawer.className, /pb-\[max\(4\.5rem,var\(--nexus-floating-overlay-bottom,0px\)\)\]/, 'the drawer ends past the bottom-left issue pill');
+  } finally { t.cleanup(); }
+});
+
+test('every control in the review drawer, its expanded states, the navigator and the composer is a 44px target below lg (task 3f8d291a, QA round 1)', async () => {
+  const srv = server();
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const page = c.querySelector('[data-document-review-page]');
+    for (const cls of REVIEW_TAP_TARGETS.split(/\s+/)) assert.ok(page.classList.contains(cls), 'the page root carries the review-surface rule');
+    assert.deepEqual(uncovered(page), [], 'page: nothing under 44px');
+
+    await click(c.querySelector('[data-open-navigator]'));
+    const navigator = c.querySelector('[role="dialog"][aria-label="Contents"]');
+    assert.ok(navigator && page.contains(navigator), 'the navigator drawer renders inside the page root');
+    assert.match(navigator.querySelector('button[aria-label="Close"]').className, /(^|\s)min-w-11!(\s|$)/, 'its close button keeps 44px of width on a phone');
+    assert.deepEqual(uncovered(navigator), [], 'navigator: headings and close');
+    await click(navigator.querySelector('button[aria-label="Close"]'));
+
+    await click(c.querySelector('[data-open-review]'));
+    let drawer = c.querySelector('[data-review-drawer]');
+    assert.ok(page.contains(drawer));
+    assert.match(button(drawer, 'Add a note about the whole document').className, /\bmax-lg:min-h-11\b/, 'Add a note');
+    assert.match(drawer.querySelector('[data-finish-button]').className, /\bmax-lg:min-h-11\b/, 'Finish review');
+    assert.deepEqual(uncovered(drawer), [], 'review drawer: nothing under 44px');
+
+    await click(drawer.querySelector('[data-finish-button]'));
+    const finish = drawer.querySelector('[data-finish-panel]');
+    assert.match(finish.querySelector('[data-delegate-approval]').className, /\bmax-lg:min-h-11\b/, 'the approval checkbox\'s label is the 44px target');
+    assert.deepEqual(uncovered(finish), [], 'finish confirmation: checkbox label, Keep reviewing, Send to Praxis');
+    await click(button(finish, 'Keep reviewing'));
+
+    await click(button(drawer, 'Add a note about the whole document'));
+    const sheet = c.querySelector('[data-composer-sheet]');
+    assert.ok(sheet && page.contains(sheet), 'the composer sheet renders inside the page root');
+    assert.deepEqual(uncovered(sheet), [], 'composer: close, text, Cancel, Save comment');
+    await click(button(sheet, 'Cancel'));
+    drawer = c.querySelector('[data-review-drawer]');
+    assert.ok(drawer, 'cancelling the note returns to the drawer');
+  } finally { t.cleanup(); }
+});
+
+test('markdown: each block\'s 44px comment button fits its own block and keeps clear of the text below lg', async () => {
+  const srv = server({ review: makeReview() });
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const blocks = [...c.querySelectorAll('.review-block')].filter((b) => b.querySelector(':scope > [data-block-comment-button]'));
+    assert.ok(blocks.length >= 3, 'a draft review makes every block commentable');
+    for (const b of blocks) {
+      assert.match(b.className, /\bmax-lg:min-h-12\b/, 'at least the button (44px) plus its md:top-1 offset tall, so neighbours never overlap');
+      assert.match(b.className, /\bmax-md:pr-4\b/, 'a right gutter for the button\'s inner edge');
+      assert.ok(covered(b.querySelector(':scope > [data-block-comment-button]')), 'the button itself is floored to 44px');
+    }
+  } finally { t.cleanup(); }
+});
+
+test('a code file keeps its line rhythm: the line-number gutter is left out of the 44px floor, every other control is covered', async () => {
+  const code = ['import json', '', 'def load(path):', '    return json.load(open(path))'].join('\n');
+  const srv = server({ document: { ...DOCUMENT, media_type: 'code', path: '/Volumes/Projects/Praxis/tools/load.py' }, content: code });
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const gutter = [...c.querySelectorAll('[data-plain-text] [data-block-comment-button]')];
+    assert.equal(gutter.length, 4, 'one gutter number per line');
+    const rule = REVIEW_TAP_TARGETS.split(/\s+/)[0].slice('max-lg:[&_'.length, -']:min-h-11'.length).replaceAll('_', ' ');
+    for (const g of gutter) {
+      assert.ok(g.hasAttribute('data-line-gutter'), 'marked as a line gutter');
+      assert.ok(!g.matches(rule), 'sized by its line, not by the 44px floor (WCAG 2.5.8 line-height exception)');
+      assert.match(g.className, /\bw-12\b/, '48px wide');
+    }
+    assert.deepEqual(uncovered(c.querySelector('[data-document-review-page]')), [], 'every other control on the page is covered');
   } finally { t.cleanup(); }
 });

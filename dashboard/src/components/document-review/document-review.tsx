@@ -85,6 +85,7 @@ import {
 } from "@/lib/document-review";
 import { readReviewDraft, reconcileReviewDraft, writeReviewDraft, REVIEW_DRAFT_MAX_RECOVERED, type ComposerDraft, type RecoveredDraft, type RecoveredReason, type ReviewDraft } from "@/lib/review-drafts";
 import { blockElementId, excerpt, extractOutline, quoteLines } from "@/lib/document-outline";
+import { REVIEW_TAP_TARGETS } from "@/lib/review-tap-targets";
 import { suggestionHighlight } from "@/lib/suggestion-highlight";
 import { useDraftWriter } from "@/hooks/use-draft-writer";
 import { useInlineSuggestions, InlineSuggestionControls, InlineSuggestionApplications, InlineCommentConversion } from "./inline-suggestions";
@@ -243,7 +244,10 @@ function PlainText({ content, mono, onLine, counts, selected }: { content: strin
                 const count = counts[n] || 0;
                 return (
                     <div key={n} id={blockElementId(n)} data-review-block="" data-block-start={n} data-block-end={n} className={`group flex ${selected?.start === n ? "bg-cyan-500/10" : count ? "bg-amber-500/5" : ""}`}>
-                        <button type="button" onClick={() => onLine?.(n)} disabled={!onLine} aria-label={`Comment on line ${n}`} data-block-comment-button="" className={`w-12 shrink-0 select-none border-r border-slate-800 pr-2 text-right text-[11px] ${count ? "text-amber-200" : "text-slate-600"} ${onLine ? "hover:text-cyan-200" : ""}`}>
+                        {/* The line-number gutter is sized by the line it numbers (WCAG 2.5.8's line-height exception), so the
+                            review surface's 44px floor leaves it out ([data-line-gutter], lib/review-tap-targets): a 44px row
+                            per line spread a code file to twice its length on a phone. It is 48px wide and grows with wraps. */}
+                        <button type="button" onClick={() => onLine?.(n)} disabled={!onLine} aria-label={`Comment on line ${n}`} data-block-comment-button="" data-line-gutter="" className={`w-12 shrink-0 select-none border-r border-slate-800 pr-2 text-right text-[11px] ${count ? "text-amber-200" : "text-slate-600"} ${onLine ? "hover:text-cyan-200" : ""}`}>
                             {count ? `${n} ·${count}` : n}
                         </button>
                         <pre className="min-w-0 flex-1 whitespace-pre-wrap break-words px-3">{line || " "}</pre>
@@ -1212,7 +1216,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     ? "Approval is delegated: once the executor makes the change you ask for, it records your approval of that corrected revision only, citing this review. Nothing goes to anyone else or gets published."
                     : "This is feedback only: it does not approve the document, and nothing goes to anyone else or gets published."}
             </p>
-            <label className="mt-2 flex items-start gap-2 text-[11px] text-emerald-100/90" data-delegate-approval="">
+            <label className="mt-2 flex items-start gap-2 text-[11px] text-emerald-100/90 max-lg:min-h-11 max-lg:items-center" data-delegate-approval="">
                 <input type="checkbox" checked={delegateApproval} onChange={(e) => setDelegateApproval(e.target.checked)} className="mt-0.5 accent-emerald-400" />
                 <span>Approve once this change is made. Needs your verified session; the executor can record only this approval.</span>
             </label>
@@ -1292,7 +1296,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 </p>
             )}
             {isDraft && (!documentChanged || showingPinned) && !showSource && !editing && (
-                <button type="button" onClick={startDocumentNote} className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 hover:border-cyan-500/50">
+                <button type="button" onClick={startDocumentNote} className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs max-lg:min-h-11 text-slate-200 hover:border-cyan-500/50">
                     <MessageSquarePlus size={13} /> {noteButtonLabel}
                 </button>
             )}
@@ -1326,7 +1330,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             <InlineSuggestionApplications state={suggestions} comments={comments} />
             </div>
             {isDraft && !finishOpen && (
-                <button type="button" onClick={() => setFinishOpen(true)} className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25" data-finish-button="">
+                <button type="button" onClick={() => setFinishOpen(true)} className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25 max-lg:min-h-11" data-finish-button="">
                     <Send size={14} /> Finish review
                 </button>
             )}
@@ -1434,7 +1438,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         : "sticky top-[var(--review-rail-top,6rem)] max-h-[max(8rem,calc(100vh/var(--nexus-display-scale,1)-var(--review-rail-top,6rem)-var(--nexus-floating-bottom,6rem)))] overflow-y-auto";
 
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30" data-document-review-page="" data-media-type={mediaType} style={headerHeight === null ? undefined : ({ "--review-rail-top": `calc(${headerHeight}px + 1.25rem)`, "--review-rail-tail": `${railsFlow ? 0 : railTail}px` } as CSSProperties)}>
+        <main className={`min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 ${REVIEW_TAP_TARGETS}`} data-document-review-page="" data-media-type={mediaType} style={headerHeight === null ? undefined : ({ "--review-rail-top": `calc(${headerHeight}px + 1.25rem)`, "--review-rail-tail": `${railsFlow ? 0 : railTail}px` } as CSSProperties)}>
             {/* A slim bar: where you are, what you can do, what this is. Sticky on desktop only; on a phone and a tablet it
                 scrolls away and the bottom bar below keeps the drawers reachable (2026-10-24). The brief is not in here: pinned,
                 it covered half the window at 100% and three quarters at 150% (task 3f8d291a), so it opens the stage column below
@@ -1638,7 +1642,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 <div className="fixed inset-0 z-[80] lg:hidden" role="dialog" aria-label={navigatorTitle}>
                     <button type="button" aria-label={`Close ${navigatorTitle.toLowerCase()}`} onClick={() => setOutlineOpen(false)} className="absolute inset-0 bg-black/60" />
                     <div className="absolute inset-x-0 bottom-0 max-h-[calc(75vh/var(--nexus-display-scale,1))] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-[max(4.5rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)]">
-                        <div className="mb-2 flex justify-end"><button type="button" onClick={() => setOutlineOpen(false)} aria-label="Close" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-slate-400"><X size={16} /></button></div>
+                        <div className="mb-2 flex justify-end"><button type="button" onClick={() => setOutlineOpen(false)} aria-label="Close" className="inline-flex min-h-11 min-w-11! items-center justify-center rounded text-slate-400"><X size={16} /></button></div>
                         {outlinePanel}
                     </div>
                 </div>
@@ -1649,7 +1653,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 <div className="fixed inset-0 z-[80] lg:hidden" role="dialog" aria-label="Your review">
                     <button type="button" aria-label="Close review" onClick={() => setReviewOpen(false)} className="absolute inset-0 bg-black/60" />
                     <div className="absolute inset-x-0 bottom-0 max-h-[calc(85vh/var(--nexus-display-scale,1))] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-[max(4.5rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)]" data-review-drawer="">
-                        <div className="mb-2 flex justify-end"><button type="button" onClick={() => setReviewOpen(false)} aria-label="Close" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-slate-400"><X size={16} /></button></div>
+                        <div className="mb-2 flex justify-end"><button type="button" onClick={() => setReviewOpen(false)} aria-label="Close" className="inline-flex min-h-11 min-w-11! items-center justify-center rounded text-slate-400"><X size={16} /></button></div>
                         {reviewPanel}
                     </div>
                 </div>

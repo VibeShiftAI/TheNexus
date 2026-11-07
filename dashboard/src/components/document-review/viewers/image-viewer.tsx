@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Columns2, Expand, Maximize2, Minus, Plus, SplitSquareHorizontal, SquareDashedMousePointer } from "lucide-react";
 import type { Region } from "@/lib/document-review";
+import { REVIEW_PIN_HIT_AREA } from "@/lib/review-tap-targets";
 import { Lightbox } from "./lightbox";
 
 export interface ImagePin {
@@ -209,19 +210,19 @@ export function ImageViewer({ src, alt, assetKey, width, height, beforeSrc, pins
     // In the flow above the image, never over it: on a phone the image is narrow enough that an overlaid bar hid its top.
     const toolbar = !compact && (
         <div data-image-toolbar="" className="mb-1.5 flex flex-wrap items-center gap-1 rounded-lg border border-slate-700/80 bg-slate-950/85 p-1 text-[11px] text-slate-300">
-            <button type="button" onClick={() => stepZoom(-1)} aria-label="Zoom out" className="rounded p-1 hover:bg-slate-800"><Minus size={13} /></button>
-            <button type="button" onClick={() => { setZoom("fit"); setOffset({ x: 0, y: 0 }); }} className={`rounded px-1.5 py-1 font-mono hover:bg-slate-800 ${zoom === "fit" ? "text-cyan-200" : ""}`} aria-label="Fit to view" title="Fit">
+            <button type="button" onClick={() => stepZoom(-1)} aria-label="Zoom out" className="rounded p-1 hover:bg-slate-800 max-lg:min-h-11 max-lg:min-w-11!"><Minus size={13} /></button>
+            <button type="button" onClick={() => { setZoom("fit"); setOffset({ x: 0, y: 0 }); }} className={`rounded px-1.5 py-1 font-mono hover:bg-slate-800 max-lg:min-h-11 max-lg:min-w-11! ${zoom === "fit" ? "text-cyan-200" : ""}`} aria-label="Fit to view" title="Fit">
                 {Math.round(scale * 100)}%
             </button>
-            <button type="button" onClick={() => stepZoom(1)} aria-label="Zoom in" className="rounded p-1 hover:bg-slate-800"><Plus size={13} /></button>
-            <button type="button" onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} aria-label="Actual size" title="Actual pixels" className={`rounded p-1 hover:bg-slate-800 ${zoom === 1 ? "text-cyan-200" : ""}`}><Maximize2 size={13} /></button>
+            <button type="button" onClick={() => stepZoom(1)} aria-label="Zoom in" className="rounded p-1 hover:bg-slate-800 max-lg:min-h-11 max-lg:min-w-11!"><Plus size={13} /></button>
+            <button type="button" onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} aria-label="Actual size" title="Actual pixels" className={`rounded p-1 hover:bg-slate-800 max-lg:min-h-11 max-lg:min-w-11! ${zoom === 1 ? "text-cyan-200" : ""}`}><Maximize2 size={13} /></button>
             {beforeSrc && (
                 <>
                     <span className="mx-0.5 h-4 w-px bg-slate-700" />
-                    <button type="button" onClick={() => setCompare((c) => (c === "slider" ? "off" : "slider"))} aria-pressed={compare === "slider"} className={`inline-flex items-center gap-1 rounded px-1.5 py-1 hover:bg-slate-800 ${compare === "slider" ? "text-cyan-200" : ""}`} title="Before/after slider">
+                    <button type="button" onClick={() => setCompare((c) => (c === "slider" ? "off" : "slider"))} aria-pressed={compare === "slider"} className={`inline-flex items-center gap-1 rounded px-1.5 py-1 hover:bg-slate-800 max-lg:min-h-11 ${compare === "slider" ? "text-cyan-200" : ""}`} title="Before/after slider">
                         <SplitSquareHorizontal size={13} /> Before/after
                     </button>
-                    <button type="button" onClick={() => setCompare((c) => (c === "side" ? "off" : "side"))} aria-pressed={compare === "side"} className={`rounded p-1 hover:bg-slate-800 ${compare === "side" ? "text-cyan-200" : ""}`} aria-label="Side by side" title="Side by side">
+                    <button type="button" onClick={() => setCompare((c) => (c === "side" ? "off" : "side"))} aria-pressed={compare === "side"} className={`rounded p-1 hover:bg-slate-800 max-lg:min-h-11 max-lg:min-w-11! ${compare === "side" ? "text-cyan-200" : ""}`} aria-label="Side by side" title="Side by side">
                         <Columns2 size={13} />
                     </button>
                 </>
@@ -229,13 +230,13 @@ export function ImageViewer({ src, alt, assetKey, width, height, beforeSrc, pins
             {canPin && (
                 <>
                     <span className="mx-0.5 h-4 w-px bg-slate-700" />
-                    <button type="button" onClick={() => setPinMode((v) => !v)} aria-pressed={pinning} data-pin-mode={pinning ? "on" : "off"} title={pinning ? "Drag on the image to mark the region your note is about" : "Switch on to mark a region of the image for a note"} className={`inline-flex items-center gap-1 rounded px-1.5 py-1 hover:bg-slate-800 ${pinning ? "bg-cyan-500/15 text-cyan-200" : ""}`}>
+                    <button type="button" onClick={() => setPinMode((v) => !v)} aria-pressed={pinning} data-pin-mode={pinning ? "on" : "off"} title={pinning ? "Drag on the image to mark the region your note is about" : "Switch on to mark a region of the image for a note"} className={`inline-flex items-center gap-1 rounded px-1.5 py-1 hover:bg-slate-800 max-lg:min-h-11 ${pinning ? "bg-cyan-500/15 text-cyan-200" : ""}`}>
                         <SquareDashedMousePointer size={13} /> {pinning ? "Pinning · drag to mark" : "Pin a note"}
                     </button>
                 </>
             )}
             <span className="mx-0.5 h-4 w-px bg-slate-700" />
-            <button type="button" onClick={openFullScreen} aria-label="Full screen" title="Full screen" className="rounded p-1 hover:bg-slate-800" data-open-fullscreen=""><Expand size={13} /></button>
+            <button type="button" onClick={openFullScreen} aria-label="Full screen" title="Full screen" className="rounded p-1 hover:bg-slate-800 max-lg:min-h-11 max-lg:min-w-11!" data-open-fullscreen=""><Expand size={13} /></button>
         </div>
     );
 
@@ -305,6 +306,8 @@ export function ImageViewer({ src, alt, assetKey, width, height, beforeSrc, pins
                                 <span className={`absolute -left-2.5 -top-2.5 flex h-5 min-w-5 items-center justify-center rounded-full border px-1 text-[10px] font-bold shadow ${selectedPinId === pin.id ? "border-cyan-200 bg-cyan-500 text-slate-950" : pin.resolved ? "border-emerald-200 bg-emerald-500 text-slate-950" : "border-amber-200 bg-amber-400 text-slate-950"}`}>
                                     {pin.index}
                                 </span>
+                                {/* The badge's centre is the box's top-left corner; below lg a 44px square there takes the tap. */}
+                                <span aria-hidden="true" className={`left-0 top-0 ${REVIEW_PIN_HIT_AREA}`} data-tap-area="" />
                             </button>
                         ))}
                         {draft && (

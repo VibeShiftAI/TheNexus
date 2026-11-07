@@ -14,6 +14,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
+// Portaled outside the review page, so it carries the page's phone and tablet 44px target rule itself.
+import { REVIEW_TAP_TARGETS } from "@/lib/review-tap-targets";
 
 export interface LightboxItem {
     src: string;
@@ -154,7 +156,7 @@ export function Lightbox({ items, index, onIndexChange, onClose }: LightboxProps
     if (!item || typeof document === "undefined") return null;
 
     return createPortal(
-        <div role="dialog" aria-modal="true" aria-label={item.label ?? item.alt} className="fixed inset-0 z-[120] flex flex-col bg-black/95 text-slate-200" data-lightbox="" data-lightbox-index={index}>
+        <div role="dialog" aria-modal="true" aria-label={item.label ?? item.alt} className={`fixed inset-0 z-[120] flex flex-col bg-black/95 text-slate-200 ${REVIEW_TAP_TARGETS}`} data-lightbox="" data-lightbox-index={index}>
             <div className="flex items-center gap-2 px-3 py-2 text-xs">
                 <span className="min-w-0 truncate font-semibold text-slate-100" data-lightbox-title="">{item.label ?? item.alt}</span>
                 {items.length > 1 && <span className="shrink-0 font-mono text-slate-400" data-lightbox-counter="">{index + 1} / {items.length}</span>}

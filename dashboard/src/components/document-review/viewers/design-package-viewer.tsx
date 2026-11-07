@@ -99,7 +99,7 @@ export function DesignPackageViewer({ documentId, revisionId, manifest, assets, 
     }, [compare, directions, screens, appearance]);
 
     const tabButton = (id: Tab, label: string, count?: number) => (
-        <button key={id} type="button" onClick={() => setTab(id)} aria-pressed={tab === id} className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${tab === id ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"}`} data-design-tab={id}>
+        <button key={id} type="button" onClick={() => setTab(id)} aria-pressed={tab === id} className={`rounded-md px-2.5 py-1 text-[11px] font-medium max-lg:min-h-11 max-lg:min-w-11! ${tab === id ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"}`} data-design-tab={id}>
             {label}{typeof count === "number" ? <span className="ml-1 text-slate-500">{count}</span> : null}
         </button>
     );
@@ -110,18 +110,18 @@ export function DesignPackageViewer({ documentId, revisionId, manifest, assets, 
             {directions.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2" data-design-directions="">
                     {directions.length > 1 && (
-                        <button type="button" onClick={() => setDirection("all")} aria-pressed={direction === "all"} className={`rounded-full border px-3 py-1 text-xs ${direction === "all" ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100" : "border-slate-700 text-slate-300 hover:border-slate-500"}`}>All</button>
+                        <button type="button" onClick={() => setDirection("all")} aria-pressed={direction === "all"} className={`rounded-full border px-3 py-1 text-xs max-lg:min-h-11 max-lg:min-w-11! ${direction === "all" ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100" : "border-slate-700 text-slate-300 hover:border-slate-500"}`}>All</button>
                     )}
                     {directions.map((d) => (
                         <button key={d.id} type="button" onClick={() => { setDirection(d.id); setCompare(false); }} aria-pressed={direction === d.id} data-design-direction={d.id} title={d.summary ?? undefined}
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${direction === d.id ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100" : "border-slate-700 text-slate-300 hover:border-slate-500"}`}>
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs max-lg:min-h-11 ${direction === d.id ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100" : "border-slate-700 text-slate-300 hover:border-slate-500"}`}>
                             <span className="font-mono text-[10px] text-slate-400">{d.id}</span> {d.title}
                             {d.recommended && <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-1.5 text-[10px] text-amber-200" title="Recommended by the producer"><Star size={9} /> rec.</span>}
                             {selectedDirection === d.id && <span className="rounded-full bg-sky-400/20 px-1.5 text-[10px] text-sky-100" data-design-selected="">selected</span>}
                         </button>
                     ))}
                     {directions.length > 1 && (
-                        <button type="button" onClick={() => setCompare((c) => !c)} aria-pressed={compare} className={`ml-auto inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs ${compare ? "border-cyan-400/60 text-cyan-100" : "border-slate-700 text-slate-300 hover:border-slate-500"}`} data-design-compare="">
+                        <button type="button" onClick={() => setCompare((c) => !c)} aria-pressed={compare} className={`ml-auto inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs max-lg:min-h-11 ${compare ? "border-cyan-400/60 text-cyan-100" : "border-slate-700 text-slate-300 hover:border-slate-500"}`} data-design-compare="">
                             <Columns3 size={13} /> Compare directions
                         </button>
                     )}
@@ -136,7 +136,7 @@ export function DesignPackageViewer({ documentId, revisionId, manifest, assets, 
                 {screens.some((s) => s.appearance) && (
                     <div className="ml-auto inline-flex rounded-md border border-slate-700 p-0.5 text-[11px]" role="group" aria-label="Appearance">
                         {(["light", "dark", "all"] as const).map((mode) => (
-                            <button key={mode} type="button" onClick={() => setAppearance(mode)} aria-pressed={appearance === mode} className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${appearance === mode ? "bg-slate-800 text-white" : "text-slate-400"}`} data-design-appearance={mode}>
+                            <button key={mode} type="button" onClick={() => setAppearance(mode)} aria-pressed={appearance === mode} className={`inline-flex items-center justify-center gap-1 rounded px-2 py-0.5 max-lg:min-h-11 max-lg:min-w-11! ${appearance === mode ? "bg-slate-800 text-white" : "text-slate-400"}`} data-design-appearance={mode}>
                                 {mode === "light" ? <Sun size={11} /> : mode === "dark" ? <Moon size={11} /> : null} {mode === "all" ? "Both" : mode}
                             </button>
                         ))}

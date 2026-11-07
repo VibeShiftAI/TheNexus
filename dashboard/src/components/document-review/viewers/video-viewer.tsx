@@ -126,9 +126,12 @@ export function VideoViewer({ src, assetKey, kind, mimeType, markers = [], selec
                     </div>
                 )}
             </div>
-            {/* Timeline with markers */}
+            {/* Timeline with markers. Below lg the seek input is 44px tall (0-44px: transparent, over a drawn track centred
+                on its thumb) and the markers hang in their own 44px strip under it (44-88px), each with a 44px hit square
+                there, so a tap on the bar always seeks and a tap on a marker always selects it. */}
             <div className="px-3 pt-3">
-                <div className="relative h-7">
+                <div className="relative h-7 max-lg:h-[88px]">
+                    <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[19px] h-1.5 rounded-full bg-slate-700 lg:hidden" />
                     <input
                         type="range"
                         min={0}
@@ -137,11 +140,11 @@ export function VideoViewer({ src, assetKey, kind, mimeType, markers = [], selec
                         value={Math.min(time, duration || 0)}
                         onChange={(e) => seek(Number(e.target.value))}
                         aria-label="Seek"
-                        className="absolute inset-x-0 top-2 z-10 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-700 accent-cyan-400"
+                        className="absolute inset-x-0 top-2 z-10 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-700 accent-cyan-400 max-lg:top-0 max-lg:h-11 max-lg:bg-transparent"
                         data-video-seek=""
                     />
                     {range.in !== undefined && range.out !== undefined && (
-                        <div className="pointer-events-none absolute top-2 h-1.5 rounded-full bg-cyan-400/40" style={{ left: pct(range.in), width: pct(range.out - range.in) }} />
+                        <div className="pointer-events-none absolute top-2 h-1.5 rounded-full bg-cyan-400/40 max-lg:top-[19px]" style={{ left: pct(range.in), width: pct(range.out - range.in) }} />
                     )}
                     {markers.map((m) => (
                         <button
@@ -152,9 +155,10 @@ export function VideoViewer({ src, assetKey, kind, mimeType, markers = [], selec
                             aria-label={`Comment ${m.index} at ${formatSeconds(m.t_start)}`}
                             title={m.label ?? undefined}
                             style={{ left: pct(m.t_start), width: m.t_end && m.t_end > m.t_start ? `max(10px, ${((m.t_end - m.t_start) / (duration || 1)) * 100}%)` : undefined }}
-                            className={`absolute top-4 z-20 flex h-4 min-w-[18px] -translate-x-1/2 items-center justify-center rounded-b-md border px-1 text-[9px] font-bold ${selectedMarkerId === m.id ? "border-cyan-200 bg-cyan-500 text-slate-950" : m.resolved ? "border-emerald-200 bg-emerald-500 text-slate-950" : "border-amber-200 bg-amber-400 text-slate-950"}`}
+                            className={`absolute top-4 z-20 flex h-4 min-w-[18px] -translate-x-1/2 items-center max-lg:top-11 justify-center rounded-b-md border px-1 text-[9px] font-bold ${selectedMarkerId === m.id ? "border-cyan-200 bg-cyan-500 text-slate-950" : m.resolved ? "border-emerald-200 bg-emerald-500 text-slate-950" : "border-amber-200 bg-amber-400 text-slate-950"}`}
                         >
                             {m.index}
+                            <span aria-hidden="true" className="absolute left-1/2 top-0 size-11 -translate-x-1/2 lg:hidden" data-tap-area="" />
                         </button>
                     ))}
                 </div>

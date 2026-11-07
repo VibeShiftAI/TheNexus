@@ -495,7 +495,7 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
                             <legend className="text-[11px] font-semibold text-slate-300">Which direction? Approval records this choice against this exact revision.</legend>
                             <div className="mt-1 flex flex-wrap gap-1.5">
                                 {directions.map((d) => (
-                                    <label key={d.id} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] ${direction === d.id ? "border-sky-400/60 bg-sky-400/10 text-sky-100" : "border-slate-700 text-slate-300"}`}>
+                                    <label key={d.id} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] max-lg:min-h-11 ${direction === d.id ? "border-sky-400/60 bg-sky-400/10 text-sky-100" : "border-slate-700 text-slate-300"}`}>
                                         <input type="radio" name="decision-direction" value={d.id} checked={direction === d.id} onChange={() => setDirection(d.id)} className="accent-sky-400" />
                                         <span className="font-mono text-[10px] text-slate-400">{d.id}</span> {d.title}{d.recommended ? <span className="text-amber-200"> · recommended</span> : null}
                                     </label>
@@ -543,7 +543,7 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
                     {notice.tone === "ok" ? <Check size={12} className="mt-0.5 shrink-0" /> : <AlertTriangle size={12} className="mt-0.5 shrink-0" />} {notice.text}
                 </p>
             )}
-            <button type="button" onClick={() => setHistoryOpen((v) => !v)} aria-expanded={historyOpen} className="mt-2 inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200" data-history-toggle="">
+            <button type="button" onClick={() => setHistoryOpen((v) => !v)} aria-expanded={historyOpen} className="mt-2 inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200 max-lg:min-h-11" data-history-toggle="">
                 {historyOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />} <History size={12} /> History: revisions, decisions and feedback
             </button>
             {historyOpen && (

@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import { ExternalLink, MousePointerClick, RefreshCw, Smartphone, Tablet, Monitor } from "lucide-react";
+import { REVIEW_PIN_HIT_AREA } from "@/lib/review-tap-targets";
 
 export interface PointPin { id: string; index: number; x: number; y: number; viewport?: string | null; label?: string | null; resolved?: boolean }
 
@@ -80,6 +81,8 @@ export function PrototypeViewer({ src, assetKey, title, pins = [], selectedPinId
                             style={{ left: `${pin.x * 100}%`, top: `${pin.y * 100}%` }}
                             className={`absolute z-10 flex h-5 min-w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border px-1 text-[10px] font-bold shadow ${selectedPinId === pin.id ? "border-cyan-200 bg-cyan-500 text-slate-950" : pin.resolved ? "border-emerald-200 bg-emerald-500 text-slate-950" : "border-amber-200 bg-amber-400 text-slate-950"}`}>
                             {pin.index}
+                            {/* Below lg a 44px square centred on the badge takes the tap; the badge stays small over the prototype. */}
+                            <span aria-hidden="true" className={`left-1/2 top-1/2 ${REVIEW_PIN_HIT_AREA}`} data-tap-area="" />
                         </button>
                     ))}
                 </div>

@@ -123,7 +123,10 @@ function BlockShell({ start, end, children }: { start: number; end: number; chil
             data-block-start={start}
             data-block-end={end}
             style={{scrollMarginTop:"calc(var(--review-rail-top, 6rem) + 1rem)"}}
-            className={`review-block group relative -mx-2 rounded-md px-2 py-0.5 transition-colors ${
+            // Below lg the comment button is a 44px target (lib/review-tap-targets): an interactive block is at least as tall
+            // as the button plus its md:top-1 offset, so one block's button never overlaps the next one's, and below md it
+            // keeps a right gutter the button's inner 16px sits in, so it never covers the text.
+            className={`review-block group relative -mx-2 rounded-md px-2 py-0.5 transition-colors ${interactive ? "max-lg:min-h-12 max-md:pr-4" : ""} ${
                 isSelected ? "bg-cyan-500/10 ring-1 ring-cyan-400/60" : count > 0 ? "bg-amber-500/5" : ""
             }`}
         >
