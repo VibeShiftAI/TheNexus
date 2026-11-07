@@ -79,7 +79,7 @@ const LIMITS = { title: 300, body: 20000, summary: 20000, selection: 2000, metad
 const INTENDED_ACTIONS = new Set(['none', 'implement', 'send', 'publish']);
 const { parseBlockingTaskIds } = require('../../db/document-review-blockers');
 const DELIVERABLE_FIELDS = new Set(['key', 'purpose', 'requires_review', 'intended_action', 'source', 'blocking_task_ids']);
-const SOURCE_TYPES = new Set(['task', 'chat']);
+const SOURCE_TYPES = new Set(['task', 'chat', 'report']);
 const SOURCE_ID_FIELDS = ['conversation_id', 'message_id', 'execution_id'];
 const DECISIONS = new Set(['approve', 'request_changes']);
 const STATUS_FILTERS = new Set(['all', ...LIST_STATUSES]);
@@ -162,7 +162,7 @@ function parseDeclaration(body) {
         if (!isPlainObject(declared.source)) return badRequest('deliverable.source must be an object');
         const unknownSource = Object.keys(declared.source).filter(field => field !== 'type' && !SOURCE_ID_FIELDS.includes(field));
         if (unknownSource.length) return badRequest(`Unknown deliverable.source field(s): ${unknownSource.join(', ')}`);
-        if (!SOURCE_TYPES.has(declared.source.type)) return badRequest('deliverable.source.type must be "task" or "chat"');
+        if (!SOURCE_TYPES.has(declared.source.type)) return badRequest('deliverable.source.type must be "task", "chat" or "report"');
         source = { type: declared.source.type };
         for (const field of SOURCE_ID_FIELDS) {
             if (declared.source[field] === undefined) continue;
@@ -171,6 +171,7 @@ function parseDeclaration(body) {
             source[field] = value;
         }
         if (source.type === 'chat' && !source.conversation_id) return badRequest('A chat deliverable needs deliverable.source.conversation_id');
+        if (source.type === 'report' && !source.execution_id) return badRequest('A report deliverable needs deliverable.source.execution_id (report revision id)');
     }
     const title = text(body.title, LIMITS.title);
     if (!title) return badRequest(`A declared deliverable needs a title of 1-${LIMITS.title} characters`);
@@ -181,7 +182,7 @@ function parseDeclaration(body) {
         taskId = text(body.task_id, 120);
         if (!taskId) return badRequest('task_id must be a short string');
     }
-    if (!taskId && source?.type !== 'chat') return badRequest('task_id is required unless the deliverable comes from a chat (deliverable.source.type "chat")');
+    if (!taskId && !['chat', 'report'].includes(source?.type)) return badRequest('task_id is required unless the deliverable comes from a chat or report');
     let kind = null;
     if (body.kind !== undefined) {
         kind = typeof body.kind === 'string' ? body.kind.trim() : '';

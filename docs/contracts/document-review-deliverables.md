@@ -43,7 +43,7 @@ response also carries `review_path` now).
   "path": "/Volumes/Projects/<project>/docs/plans/example.md",
   "title": "Example plan",
   "project_id": "<project id>",
-  "task_id": "<task id, required unless source.type is chat>",
+  "task_id": "<task id, required unless source.type is chat or report>",
   "kind": "plan",
   "metadata": { "subject_project_id": "<optional>" },
   "expected_content_hash": "<optional lowercase hex sha256 of the bytes you wrote>",
@@ -52,7 +52,7 @@ response also carries `review_path` now).
     "purpose": "What this document is for, 1-500 characters",
     "requires_review": true,
     "intended_action": "none | implement | send | publish",
-    "source": { "type": "task | chat", "conversation_id": "...", "message_id": "...", "execution_id": "..." }
+    "source": { "type": "task | chat | report", "conversation_id": "...", "message_id": "...", "execution_id": "..." }
   }
 }
 ```
@@ -67,10 +67,10 @@ never silently register a reference document in place of a review request):
 | `purpose` | optional descriptive text, up to 500 characters; omitted, null or blank values become `Purpose not provided.` and never block delivery |
 | `intended_action` | required, one of `none`, `implement`, `send`, `publish`. Anything but `none` requires `requires_review: true` (approval comes before the action) |
 | `key` | optional, 1-300 printable characters, must not start with `path:` (that prefix is reserved for derived keys) |
-| `source` | optional object: `type` is `task` or `chat`; optional `conversation_id`, `message_id`, `execution_id` (1-200 printable characters each). A chat source needs `conversation_id` |
+| `source` | optional object: `type` is `task`, `chat` or `report`; optional `conversation_id`, `message_id`, `execution_id` (1-200 printable characters each). A chat source needs `conversation_id`; a report source needs `execution_id` naming the report revision |
 | `title` | required, 1-300 characters |
 | `project_id` | required; the project must exist |
-| `task_id` | required unless `source.type` is `chat`; the task must exist and belong to `project_id` |
+| `task_id` | required unless `source.type` is `chat` or `report`; when supplied, the task must exist and belong to `project_id` |
 | `kind` | optional: `document`, `report`, `spec`, `plan`, `research`, `walkthrough`, `other` |
 | `metadata` | optional small JSON object (at most 8000 characters serialized), merged into existing metadata |
 | `expected_content_hash` | optional lowercase hex SHA-256 of the exact bytes on disk (BOM and line endings included); if given, the file must hold exactly those bytes |
