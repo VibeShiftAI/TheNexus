@@ -8,9 +8,12 @@
  *  - whether the brief scrolls away (its bottom passes the header's bottom after a scroll);
  *  - where the rails stick relative to the header's bottom edge (no overlap);
  *  - horizontal overflow (document scrollWidth against the viewport);
- *  - on phone and tablet, the height of every visible tap target in the header, brief, phone bar and the
- *    review drawer's decision buttons, and whether a floating control covers Approve / Request changes
- *    once they are scrolled into view (elementFromPoint at the centre and the four inset corners).
+ *  - on phone and tablet, the width and height of every visible control on the review surface (header, brief,
+ *    viewer toolbars and tabs, lightbox, navigator and review drawers, decision and finish confirmations, history,
+ *    composer), flagged when either is under 44px; targets whose boxes overlap; elements past either viewport edge in
+ *    every one of those states; and whether a floating control covers Approve / Request changes once they are
+ *    scrolled into view (elementFromPoint at the centre and the four inset corners). Links in running text and the
+ *    line-number gutter of text and code files are listed apart as exempt (WCAG 2.5.8's inline exception).
  *
  *   node scripts/review-header-browser-check.mjs <documentId> <outDir> [label]
  *
@@ -78,6 +81,22 @@ const shot = async (file) => {
     return file;
 };
 
+// In-page helper (needs `vw`): does an ancestor that sits inside the viewport scroll or clip this element sideways, so
+// what reaches past the screen edge stays reachable (a code block, the filmstrip)? An ancestor whose overflow-x is
+// only "auto" because its overflow-y is (CSS turns visible into auto when the other axis scrolls: the drawers and
+// sheets) does not count, unless it asks for horizontal overflow itself (an overflow-x-*, overflow-auto or
+// overflow-hidden class, or a <pre>, which globals.css scrolls).
+const HELD = `const held = (el) => {
+    for (let p = el.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (cs.overflowX === 'visible') continue;
+      const coerced = cs.overflowX === 'auto' && cs.overflowY !== 'visible' && p.tagName !== 'PRE' && !/(^|\\s)(overflow-x-|overflow-auto|overflow-hidden|overflow-clip)/.test(String(p.className));
+      const pb = p.getBoundingClientRect();
+      if (!coerced && pb.left >= -1 && pb.right <= vw + 1) return true;
+    }
+    return false;
+  };`;
+
 // Runs in the page. Rects are viewport CSS pixels; under the body zoom they stay comparable with each other.
 const MEASURE = `(() => {
   const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
@@ -97,10 +116,21 @@ const MEASURE = `(() => {
     if (el.parentElement && getComputedStyle(el.parentElement).position === 'fixed') continue;
     floating.push({ label: (el.getAttribute('aria-label') || el.getAttribute('data-phone-bar') !== null && 'phone-bar' || el.className.toString().slice(0, 60)), rect: r(el) });
   }
+  // Below 768px html and body clip horizontal overflow, so scrollWidth can hide it: also list elements that reach past
+  // either viewport edge without a horizontally scrolling or clipping ancestor to hold them.
+  const pastEdge = [];
+  ${HELD}
+  for (const el of document.querySelectorAll('[data-document-review-page] *, [data-lightbox] *')) {
+    const b = el.getBoundingClientRect();
+    if (b.width === 0 || b.height === 0 || (b.right <= vw + 1 && b.left >= -1)) continue;
+    if (el.closest('[aria-hidden=true]') || getComputedStyle(el).visibility === 'hidden' || held(el)) continue;
+    pastEdge.push({ tag: el.tagName.toLowerCase(), cls: String(el.className).slice(0, 60), text: (el.textContent || '').trim().slice(0, 60), left: Math.round(b.left), right: Math.round(b.right) });
+    if (pastEdge.length >= 10) break;
+  }
   const pinnedTop = header && getComputedStyle(header).position === 'sticky' ? r(header).bottom : 0;
   return {
     viewport: { width: vw, height: vh, scrollY: Math.round(window.scrollY), zoom: parseFloat(getComputedStyle(document.body).zoom) || 1 },
-    overflow: { scrollWidth: document.documentElement.scrollWidth, clientWidth: vw, horizontal: document.documentElement.scrollWidth > vw },
+    overflow: { scrollWidth: document.documentElement.scrollWidth, clientWidth: vw, horizontal: document.documentElement.scrollWidth > vw || pastEdge.length > 0, pastEdge },
     header: header ? { rect: r(header), position: getComputedStyle(header).position, containsBrief: !!(brief && header.contains(brief)) } : null,
     brief: brief ? { rect: r(brief), pinnedBy: pinnedAncestor(brief), collapsed: brief.getAttribute('data-brief-collapsed') } : null,
     pinnedTop,
@@ -110,16 +140,73 @@ const MEASURE = `(() => {
   };
 })()`;
 
-const TAPS = `(() => {
-  const sel = ['[data-document-review-page] header a', '[data-document-review-page] header button', '[data-brief-toggle]', '[data-phone-bar] button', '[data-review-drawer] [data-decision-button]', '[data-review-drawer] button[aria-label="Close"]'];
-  const out = [];
-  for (const el of document.querySelectorAll(sel.join(','))) {
-    const b = el.getBoundingClientRect();
-    if (b.width === 0 || b.height === 0) continue;
-    const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
-    out.push({ text: (el.textContent || el.getAttribute('aria-label') || '').trim().replace(/\\s+/g, ' ').slice(0, 32), height: Math.round(b.height * zoom), width: Math.round(b.width * zoom) });
+// Every visible control on the review surface, both dimensions (QA round 1: the old probe looked only at the header,
+// the phone bar and the decision buttons, and only at height). Scope: the review page (header, brief, stage, viewer
+// toolbars, phone bar, navigator and review drawers, composer sheet, evidence drawer) and the portaled lightbox.
+// A checkbox or radio inside a label is measured by its label, the real target. Links inside running text are
+// reported apart as inlineExempt (WCAG 2.5.8's inline exception); controls inside iframes are document content.
+const TAPS = (state, scope = "[data-document-review-page], [data-lightbox]") => `(() => {
+  const SEL = 'button, a[href], select, input:not([type=hidden]), textarea, summary, [role=button], [role=tab], [role=link], [role=checkbox], [role=radio]';
+  const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+  const taps = [], inlineExempt = [], seen = new Set(), rects = [];
+  const name = (el) => (el.getAttribute('aria-label') || el.textContent || el.getAttribute('title') || el.getAttribute('placeholder') || el.tagName.toLowerCase()).trim().replace(/\\s+/g, ' ').slice(0, 40);
+  const dataKeys = (el) => [...el.attributes].map((a) => a.name).filter((n) => n.startsWith('data-')).slice(0, 2).join(' ');
+  for (const root of document.querySelectorAll(${JSON.stringify(scope)})) for (const found of root.querySelectorAll(SEL)) {
+    let el = found;
+    if (el.matches('input[type=checkbox], input[type=radio]') && el.closest('label')) el = el.closest('label');
+    if (seen.has(el)) continue;
+    seen.add(el);
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) === 0) continue;
+    // Content of a closed <details> keeps a layout box in Chrome (content-visibility: hidden) but is not shown.
+    if (el.checkVisibility && !el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
+    // Image pins and video markers keep their visual box and take taps through a 44px hit square ([data-tap-area]).
+    const area = el.querySelector(':scope > [data-tap-area]');
+    const ab = area && getComputedStyle(area).display !== 'none' ? area.getBoundingClientRect() : null;
+    const eb = el.getBoundingClientRect();
+    const b = ab ? { width: Math.max(eb.width, ab.width), height: Math.max(eb.height, ab.height) } : eb;
+    if (b.width <= 2 || b.height <= 2) continue; // screen-reader-only or not rendered
+    const row = { state: ${JSON.stringify(state)}, tag: el.tagName.toLowerCase(), text: name(el), data: dataKeys(el), width: Math.round(b.width * zoom), height: Math.round(b.height * zoom) };
+    const host = el.parentElement && el.parentElement.closest('p, li, td, blockquote, dd');
+    const inProse = cs.display === 'inline' && host && (host.textContent || '').trim().length > (el.textContent || '').trim().length + 12;
+    // A code or text line-number gutter is sized by the line it numbers (WCAG 2.5.8's line-height exception).
+    if (el.matches('[data-line-gutter]')) row.reason = 'line-gutter';
+    else if (inProse) row.reason = 'inline-link';
+    (row.reason ? inlineExempt : taps).push(row);
+    if (!row.reason) rects.push({ el, row, r: ab && (ab.width > eb.width || ab.height > eb.height) ? ab : eb });
   }
-  return out;
+  // Two targets whose boxes overlap share the overlap, so neither gets its full 44px there. Full-screen backdrops
+  // (the dim layer behind a drawer, which closes it) are left out; so are a control and one nested inside it, and a
+  // page control passing under a fixed bar (it scrolls clear; the decision-cover checks cover Approve and Finish).
+  const overlaps = [], vh = document.documentElement.clientHeight;
+  const big = (r) => r.width * r.height > 0.5 * document.documentElement.clientWidth * vh;
+  const fixedHost = (el) => { for (let p = el; p && p !== document.body; p = p.parentElement) if (getComputedStyle(p).position === 'fixed') return p; return null; };
+  for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+    const a = rects[i], c = rects[j];
+    if (big(a.r) || big(c.r) || a.el.contains(c.el) || c.el.contains(a.el) || fixedHost(a.el) !== fixedHost(c.el)) continue;
+    const w = Math.min(a.r.right, c.r.right) - Math.max(a.r.left, c.r.left), h = Math.min(a.r.bottom, c.r.bottom) - Math.max(a.r.top, c.r.top);
+    if (w > 1 && h > 1 && overlaps.length < 10) overlaps.push({ state: ${JSON.stringify(state)}, a: a.row.text, b: c.row.text, overlap: Math.round(w * zoom) + 'x' + Math.round(h * zoom), rects: [a.r, c.r].map((x) => [x.top, x.bottom, x.left, x.right].map(Math.round)) });
+  }
+  // The same past-the-edge test as MEASURE, for the state's own scope (drawers, panels and tabs that open later).
+  const vw = document.documentElement.clientWidth, pastEdge = [];
+  ${HELD}
+  for (const root of document.querySelectorAll(${JSON.stringify(scope)})) for (const el of root.querySelectorAll('*')) {
+    const b = el.getBoundingClientRect();
+    if (b.width === 0 || b.height === 0 || (b.right <= vw + 1 && b.left >= -1) || el.closest('[aria-hidden=true]') || held(el)) continue;
+    pastEdge.push({ state: ${JSON.stringify(state)}, tag: el.tagName.toLowerCase(), cls: String(el.className).slice(0, 60), text: (el.textContent || '').trim().slice(0, 60), left: Math.round(b.left), right: Math.round(b.right) });
+    if (pastEdge.length >= 5) break;
+  }
+  return { taps, inlineExempt, overlaps, pastEdge, scrollWidth: document.documentElement.scrollWidth, clientWidth: vw };
+})()`;
+
+// Clicks the first match (optionally the one whose text includes a phrase) and reports whether it found one.
+const click = (selector, text) => `(() => {
+  const els = [...document.querySelectorAll(${JSON.stringify(selector)})].filter((e) => e.getBoundingClientRect().height > 0);
+  const el = ${text ? `els.find((e) => (e.textContent || '').includes(${JSON.stringify(text)}))` : "els[0]"};
+  if (!el) return false;
+  el.scrollIntoView({ block: 'center' });
+  el.click();
+  return true;
 })()`;
 
 // Scrolls each decision button into the middle of its scroller, then asks the browser what is on top of it.
@@ -164,12 +251,53 @@ for (const cfg of CONFIGS) {
         horizontalOverflow: entry.top.overflow.horizontal || s.overflow.horizontal,
     };
     if (cfg.mobile) {
-        entry.taps = await evalJs(TAPS);
+        // Walk the expanded states a reviewer reaches, measuring the controls each one adds. Nothing is submitted:
+        // decisions and Finish review only open their confirmation panels, which are then cancelled.
+        const states = [];
+        const measure = async (state, scope) => { const r = await evalJs(TAPS(state, scope)); states.push(state); return r; };
+        const runs = [];
+        runs.push(await measure("page"));
+        if (await evalJs(click("[data-brief-toggle]"))) { await sleep(500); runs.push(await measure("brief-expanded", "[data-human-brief]")); await evalJs(click("[data-brief-toggle]")); }
+        // Every design-package tab (the viewer's other panels have their own controls).
+        const tabs = await evalJs(`[...document.querySelectorAll('[data-design-tab]')].map((e) => e.getAttribute('data-design-tab'))`) || [];
+        for (const t of tabs) { await evalJs(click(`[data-design-tab="${t}"]`)); await sleep(700); runs.push(await measure(`design-tab-${t}`, "[data-document-review-page] article")); }
+        if (tabs.length) await evalJs(click(`[data-design-tab="${tabs[0]}"]`));
+        if (await evalJs(click("[data-open-fullscreen]"))) { await sleep(800); runs.push(await measure("lightbox", "[data-lightbox]")); entry.shots.push(await shot(`${label}-${cfg.name}-lightbox.png`)); await evalJs(click("[data-lightbox-close]")); await sleep(400); }
+        if (await evalJs(click("[data-open-navigator]"))) { await sleep(800); runs.push(await measure("navigator", "[role=dialog]")); entry.shots.push(await shot(`${label}-${cfg.name}-navigator.png`)); await evalJs(click("[role=dialog] button[aria-label=Close]")); await sleep(400); }
+        entry.taps = runs.flatMap((r) => r.taps);
+        entry.inlineExempt = runs.flatMap((r) => r.inlineExempt);
         await evalJs(`window.scrollTo(0, 0); document.querySelector('[data-open-review]')?.click(); true`);
         await sleep(1200);
         entry.drawerCover = await evalJs(DECISION_COVER("[data-review-drawer]"));
-        entry.drawerTaps = await evalJs(TAPS);
+        const drawerRuns = [await measure("review-drawer", "[data-review-drawer]")];
         entry.shots.push(await shot(`${label}-${cfg.name}-drawer.png`));
+        if (await evalJs(click("[data-review-drawer] [data-history-toggle]"))) { await sleep(1500); drawerRuns.push(await measure("history-open", "[data-review-drawer]")); }
+        for (const kind of ["approve", "request_changes"]) {
+            if (!(await evalJs(click(`[data-review-drawer] [data-decision-button="${kind}"]`)))) continue;
+            await sleep(600);
+            drawerRuns.push(await measure(`confirm-${kind}`, `[data-review-drawer] [data-decision-confirm]`));
+            entry.shots.push(await shot(`${label}-${cfg.name}-confirm-${kind}.png`));
+            await evalJs(click("[data-review-drawer] [data-decision-confirm] button", "Cancel"));
+            await sleep(400);
+        }
+        if (await evalJs(click("[data-review-drawer] [data-finish-button]"))) {
+            await sleep(600);
+            drawerRuns.push(await measure("finish-panel", "[data-review-drawer] [data-finish-panel]"));
+            entry.shots.push(await shot(`${label}-${cfg.name}-finish-panel.png`));
+            await evalJs(click("[data-review-drawer] [data-finish-panel] button", "Keep reviewing"));
+            await sleep(400);
+        }
+        if (await evalJs(click("[data-review-drawer] button", "Add a note"))) {
+            await sleep(800);
+            drawerRuns.push(await measure("composer", "[data-composer-sheet], [data-review-drawer] [data-composer]"));
+            entry.shots.push(await shot(`${label}-${cfg.name}-composer.png`));
+            await evalJs(click("[data-composer] button", "Cancel"));
+            await sleep(400);
+        }
+        entry.statesMeasured = states;
+        entry.drawerTaps = drawerRuns.flatMap((r) => r.taps);
+        entry.inlineExempt.push(...drawerRuns.flatMap((r) => r.inlineExempt));
+        if (!(await evalJs(`!!document.querySelector('[data-review-drawer]')`))) { await evalJs(`document.querySelector('[data-open-review]')?.click(); true`); await sleep(1000); }
         // The drawer scrolled to its end: its last control (Finish review) must clear every floating control.
         entry.drawerEnd = await evalJs(`(async () => {
           const d = document.querySelector('[data-review-drawer]');
@@ -184,7 +312,17 @@ for (const cfg of CONFIGS) {
         })()`);
         entry.shots.push(await shot(`${label}-${cfg.name}-drawer-end.png`));
         entry.findings.drawerEndCovered = entry.drawerEnd && entry.drawerEnd.covered.length ? entry.drawerEnd : null;
-        entry.findings.smallTaps = [...entry.taps, ...entry.drawerTaps].filter((t) => t.height < 44);
+        // Both dimensions; one row per distinct control (the same control seen in two states is listed once).
+        const small = new Map();
+        for (const t of [...entry.taps, ...entry.drawerTaps]) if (t.width < 44 || t.height < 44) { const k = `${t.tag}|${t.text}|${t.data}`; if (!small.has(k)) small.set(k, t); }
+        entry.findings.tapsMeasured = entry.taps.length + entry.drawerTaps.length;
+        entry.findings.smallTaps = [...small.values()];
+        // Horizontal overflow in any expanded state (the page, brief, tabs, lightbox, drawers, panels, composer).
+        const stateRuns = [...runs, ...drawerRuns];
+        entry.findings.overlappingTaps = stateRuns.flatMap((r) => r.overlaps);
+        entry.findings.exemptTaps = entry.inlineExempt.length;
+        entry.findings.stateOverflow = [...stateRuns.flatMap((r) => r.pastEdge), ...stateRuns.filter((r) => r.scrollWidth > r.clientWidth).map((r) => ({ scrollWidth: r.scrollWidth }))];
+        entry.findings.horizontalOverflow = entry.findings.horizontalOverflow || entry.findings.stateOverflow.length > 0;
         entry.findings.decisionCovered = entry.drawerCover.filter((d) => d.covered.length);
         await evalJs(`document.querySelector('[data-review-drawer]')?.parentElement?.querySelector('button[aria-label="Close review"]')?.click(); true`);
     } else {
