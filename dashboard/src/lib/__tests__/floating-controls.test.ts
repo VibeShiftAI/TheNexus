@@ -118,6 +118,22 @@ test('the review page keeps Finish review above the floating controls on desktop
   // away and a fixed bar on the floating controls' reserve keeps the navigator and the review one tap away (2026-10-24).
   assert.match(review, /<header ref=\{headerRef\} className="[^"]*\blg:sticky lg:top-0[^"]*"/);
   assert.doesNotMatch(review, /<header ref=\{headerRef\} className="sticky /, 'the header does not pin on a phone');
+  // The pinned bar is slim: the brief opens the stage column and scrolls away; the rails measure the bar alone (task 3f8d291a).
+  const header = review.slice(review.indexOf('<header ref={headerRef}'), review.indexOf('</header>'));
+  assert.ok(header.length > 0, 'the header markup is found');
+  assert.doesNotMatch(header, /HumanBriefBlock/, 'the brief is not inside the sticky header');
+  assert.match(review, /<article className="min-w-0" data-stage="">[\s\S]{0,600}<HumanBriefBlock brief=\{brief\} compact collapsible="always" \/>/, 'the brief opens the stage');
+  // A sticky rail cannot outlast its column: the columns reach over the footer to the reserve, so at the end of the page
+  // the rails stay below the header instead of riding up under it.
+  assert.equal((review.match(/<aside className="hidden lg:mb-\[calc\(var\(--review-rail-tail,0px\)\*-1\)\] lg:block">/g) ?? []).length, 2, 'both rail columns stretch to the reserve');
+  assert.match(review, /"--review-rail-tail": `\$\{railsFlow \? 0 : railTail\}px`/, 'only sticky rails need the reach');
+  assert.match(review, /setRailTail\(Math\.max\(0, Math\.round\(below \+ \(parseFloat\(getComputedStyle\(grid\)\.paddingBottom\) \|\| 0\) - reserve\)\)\)/);
+  // Present this revision (display shell only) joins the header actions, which are 44px tap targets below lg.
+  const present = readFileSync(new URL('../../components/presentation/presentation-controller.tsx', import.meta.url), 'utf8');
+  const presentButton = present.slice(present.indexOf('export function PresentDocumentButton'), present.indexOf('Present this revision'));
+  assert.match(presentButton, /<button type="button" className="[^"]*\bmax-lg:min-h-11\b/);
+  assert.match(review, /data-back-link="">\s*\{\/\*[^*]*\*\/\}\s*<span className="truncate">/, 'the back link truncates inside a block, so the ellipsis shows');
+  assert.match(review, /if \(gridRef\.current\) resize\?\.observe\(gridRef\.current\);/, 'the rail reach follows the grid, not only the body');
   assert.match(review, /data-phone-bar=""/);
   assert.match(review, /className="fixed inset-x-0 z-\[60\] [^"]*lg:hidden" style=\{\{ bottom: "var\(--nexus-floating-bottom, 0px\)" \}\}/, 'the phone bar sits on the reserve, above the ticker and voice dock');
   assert.match(review, /max-lg:pb-20 lg:grid/, 'the content ends above the phone bar');

@@ -17,7 +17,8 @@ export function PresentDocumentButton({ documentId, revisionId, contentHash }: {
   const [enabled, setEnabled] = useState(false);
   useEffect(() => setEnabled(displayShellAvailable()), []);
   if (!enabled) return null;
-  return <button type="button" className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-cyan-400 disabled:opacity-40" onClick={() => window.dispatchEvent(new window.CustomEvent('nexus:present-document', {
+  // It sits in the review header's actions, which are 44px tap targets below the large breakpoint (task 3f8d291a).
+  return <button type="button" className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 px-2.5 py-1.5 max-lg:min-h-11 text-slate-300 hover:border-cyan-400 disabled:opacity-40" onClick={() => window.dispatchEvent(new window.CustomEvent('nexus:present-document', {
     detail: { kind: 'document', documentId, revisionId, contentHash },
   }))}><MonitorUp size={13} /> Present this revision</button>;
 }

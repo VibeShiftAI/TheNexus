@@ -36,7 +36,7 @@ function server(options = {}) {
     calls.push({ method, path: url.pathname, body });
     const p = url.pathname;
     if (method === 'GET' && p === '/api/documents/doc-1') {
-      return response({ document: DOCUMENT, revision: REVISION, content: options.content ?? CONTENT, file_state: 'ok', file_error: null, source: SOURCE, review: state.review, links: LINKS });
+      return response({ document: options.document ?? DOCUMENT, revision: REVISION, content: options.content ?? CONTENT, file_state: 'ok', file_error: null, source: SOURCE, review: state.review, links: LINKS });
     }
     if (method === 'POST' && p === '/api/documents/doc-1/reviews') {
       if (!state.review || state.review.status !== 'draft') { state.review = makeReview({ id: `rev-${calls.length}` }); state.comments = []; state.submission = null; }
@@ -354,5 +354,65 @@ test('a plain finish carries no approve_after_changes field and shows no delegat
     assert.equal('approve_after_changes' in finish[0].body, false);
     assert.ok(!c.querySelector('[data-approval-delegated]'));
     await settle(40);
+  } finally { t.cleanup(); }
+});
+
+test('the brief opens the stage, folded to the ask, and the sticky header holds only the slim bar (task 3f8d291a)', async () => {
+  const brief = { project: 'Praxis', situation: 'Before-and-after samples now exist for both clients.', problem: 'The new layout needs your review.', ask: 'Approve the layout or request changes.', options: ['Approve it', 'Request changes'] };
+  const srv = server({ document: { ...DOCUMENT, metadata: { ...DOCUMENT.metadata, brief } } });
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const header = c.querySelector('[data-document-review-page] > header');
+    assert.ok(header, 'the page has its header');
+    assert.match(header.className, /\blg:sticky lg:top-0\b/, 'the slim bar is what sticks on desktop');
+    assert.equal(header.querySelectorAll('[data-human-brief]').length, 0, 'no brief inside the sticky header');
+    assert.match(header.querySelector('h1').textContent, /Reliability readiness/, 'title stays in the bar');
+    assert.ok(header.querySelector('[data-header-actions]'), 'actions stay in the bar');
+    assert.ok(header.querySelector('[data-header-status]'), 'status chips stay in the bar');
+
+    const section = c.querySelector('[data-stage] > [data-review-brief]');
+    assert.ok(section, 'the brief opens the stage column, which scrolls with the page');
+    for (let el = section; el && el !== c; el = el.parentElement) {
+      assert.doesNotMatch(String(el.className), /(^|\s)(lg:)?(sticky|fixed)(\s|$)/, 'no ancestor of the brief pins it');
+    }
+    const block = section.querySelector('[data-human-brief]');
+    assert.equal(block.getAttribute('data-brief-collapsed'), 'true', 'folded until asked');
+    const hiddenRows = [...block.querySelectorAll('[data-brief-field]')].filter(r => /(^|\s)hidden(\s|$)/.test(r.className)).map(r => r.getAttribute('data-brief-field'));
+    assert.deepEqual(hiddenRows, ['project', 'situation', 'problem'], 'every width shows only the ask while folded');
+    assert.match(block.querySelector('[data-brief-field="ask"]').textContent, /Approve the layout or request changes\. Options: Approve it \/ Request changes\./);
+    const toggle = block.querySelector('[data-brief-toggle]');
+    assert.doesNotMatch(toggle.parentElement.className ?? '', /lg:hidden/, 'the expand control shows on desktop too');
+    assert.match(toggle.className, /\bmin-h-11\b/, 'a 44px tap target');
+    assert.equal(toggle.textContent.trim(), 'Show details');
+    await click(toggle);
+    assert.equal(block.getAttribute('data-brief-collapsed'), 'false');
+    assert.equal([...block.querySelectorAll('[data-brief-field]')].filter(r => /(^|\s)hidden(\s|$)/.test(r.className)).length, 0, 'expanded shows every row');
+    assert.equal(toggle.textContent.trim(), 'Hide details');
+  } finally { t.cleanup(); }
+});
+
+test('phone and tablet tap targets in the header, phone bar and drawers are at least 44px (task 3f8d291a)', async () => {
+  const srv = server();
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const header = c.querySelector('[data-document-review-page] > header');
+    assert.match(c.querySelector('[data-back-link]').className, /\bmin-h-11\b/);
+    assert.match(c.querySelector('[data-back-link]').className, /\blg:hidden\b/, 'the tablet gets the back link, not the small-print trail');
+    assert.match(c.querySelector('[data-all-documents-link]').className, /\bmax-lg:min-h-11\b/);
+    for (const b of header.querySelectorAll('[data-header-actions] button, [data-header-actions] a')) {
+      assert.match(b.className, /\bmax-lg:min-h-11\b/, `header action "${b.textContent.trim()}" is a 44px target below lg`);
+    }
+    // The breadcrumb trail (lg:block) carries the same link on desktop; below lg the status row's link is the tap target.
+    assert.match(header.querySelector('[data-header-status] a[href="/task/task-1"]').className, /\bmax-lg:min-h-11\b/);
+    assert.match(header.querySelector('nav[aria-label="Breadcrumb"]').parentElement.className, /^hidden min-w-0 lg:block$/);
+    for (const b of c.querySelectorAll('[data-phone-bar] button')) assert.match(b.className, /\bmin-h-11\b/);
+    await click(c.querySelector('[data-open-review]'));
+    const drawer = c.querySelector('[data-review-drawer]');
+    assert.match(drawer.querySelector('button[aria-label="Close"]').className, /\bmin-h-11 min-w-11\b/);
+    assert.match(drawer.className, /pb-\[max\(4\.5rem,var\(--nexus-floating-overlay-bottom,0px\)\)\]/, 'the drawer ends past the bottom-left issue pill');
   } finally { t.cleanup(); }
 });

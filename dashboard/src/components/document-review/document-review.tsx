@@ -315,6 +315,13 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
      * the mini player, so they scroll with the page instead (QA round 1 of task 7fe1005f).
      */
     const [railsFlow, setRailsFlow] = useState(false);
+    /**
+     * How far the rail columns reach past the grid, down to the top of the floating controls' reserve. Below the grid the
+     * page still has its bottom padding and the site footer, and a sticky rail cannot outlast its column: at the end of the
+     * page the rails rode up under the header by that much (69px at 100%, Robert's screenshot of task 3f8d291a). Body units.
+     */
+    const [railTail, setRailTail] = useState(0);
+    const gridRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         if (headerHeight === null) return;
         const root = window.document.documentElement;
@@ -324,9 +331,20 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             const rem = parseFloat(getComputedStyle(root).fontSize) || 16;
             const reserve = parseFloat(getComputedStyle(root).getPropertyValue("--nexus-floating-bottom")) || 6 * rem;
             setRailsFlow(root.clientHeight / zoom - (headerHeight + 1.25 * rem) - reserve < 8 * rem);
+            // The page scroller and client rects are window px (outside the body zoom); padding and the reserve are body units.
+            const grid = gridRef.current;
+            if (grid) {
+                const below = (root.scrollHeight - (grid.getBoundingClientRect().bottom + window.scrollY)) / zoom;
+                setRailTail(Math.max(0, Math.round(below + (parseFloat(getComputedStyle(grid).paddingBottom) || 0) - reserve)));
+            }
         };
         check();
         window.addEventListener("resize", check);
+        // The footer and the page padding below the grid settle after the first paint, and the grid itself grows and
+        // shrinks without the body changing height on a short page (the layout's min-height holds it), so watch both.
+        const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(check);
+        resize?.observe(window.document.body);
+        if (gridRef.current) resize?.observe(gridRef.current);
         // lib/floating-controls republishes the reserve on <html>; the display scale arrives on <body>.
         const observer = new MutationObserver(check);
         observer.observe(root, { attributes: true, attributeFilter: ["style"] });
@@ -334,6 +352,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         return () => {
             window.removeEventListener("resize", check);
             observer.disconnect();
+            resize?.disconnect();
         };
     }, [headerHeight]);
     const summaryTimer = useRef<number | null>(null);
@@ -1415,13 +1434,15 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
         : "sticky top-[var(--review-rail-top,6rem)] max-h-[max(8rem,calc(100vh/var(--nexus-display-scale,1)-var(--review-rail-top,6rem)-var(--nexus-floating-bottom,6rem)))] overflow-y-auto";
 
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30" data-document-review-page="" data-media-type={mediaType} style={headerHeight === null ? undefined : ({ "--review-rail-top": `calc(${headerHeight}px + 1.25rem)` } as CSSProperties)}>
-            {/* Sticky on desktop only: on a phone a header that holds the brief is taller than the screen, and pinned it
-                hid the document completely (2026-10-24). There it scrolls away and the bottom bar below keeps the drawers reachable. */}
-            <header ref={headerRef} className="z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md lg:sticky lg:top-0">
+        <main className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30" data-document-review-page="" data-media-type={mediaType} style={headerHeight === null ? undefined : ({ "--review-rail-top": `calc(${headerHeight}px + 1.25rem)`, "--review-rail-tail": `${railsFlow ? 0 : railTail}px` } as CSSProperties)}>
+            {/* A slim bar: where you are, what you can do, what this is. Sticky on desktop only; on a phone and a tablet it
+                scrolls away and the bottom bar below keeps the drawers reachable (2026-10-24). The brief is not in here: pinned,
+                it covered half the window at 100% and three quarters at 150% (task 3f8d291a), so it opens the stage column below
+                and scrolls away with the page, and the rails, measured from this bar alone, stick just under it. */}
+            <header ref={headerRef} className="z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md lg:sticky lg:top-0" data-review-header="">
                 {/* Row 1: where you are and what you can do. Row 2: what this is. */}
                 <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-2">
-                    <div className="hidden min-w-0 sm:block">
+                    <div className="hidden min-w-0 lg:block">
                         <Breadcrumbs
                             parents={doc?.task_id
                                 ? [{ label: "Task Board", href: "/task-board" }, { label: task?.title || "Task", href: `/task/${doc.task_id}` }]
@@ -1431,38 +1452,39 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             current={doc?.title || "Document"}
                         />
                     </div>
-                    {/* Phone: one step back instead of the full trail. */}
-                    <Link href={doc?.task_id ? `/task/${doc.task_id}` : doc?.project_id ? `/project/${doc.project_id}` : "/documents"} className="max-w-[55%] truncate text-sm text-slate-400 hover:text-white sm:hidden" data-back-link="">
-                        ← {doc?.task_id ? task?.title || "Task" : doc?.project_id ? project?.name || "Project" : "Reviews"}
+                    {/* Phone and tablet: one step back instead of the full trail, as a full-height tap target. */}
+                    <Link href={doc?.task_id ? `/task/${doc.task_id}` : doc?.project_id ? `/project/${doc.project_id}` : "/documents"} className="flex min-h-11 min-w-0 max-w-[55%] items-center text-sm text-slate-400 hover:text-white lg:hidden" data-back-link="">
+                        {/* The ellipsis belongs on a block inside the flex link: a flex container does not draw one. */}
+                        <span className="truncate">← {doc?.task_id ? task?.title || "Task" : doc?.project_id ? project?.name || "Project" : "Reviews"}</span>
                     </Link>
-                    <Link href="/documents" className="flex shrink-0 items-center gap-1 text-sm text-slate-400 hover:text-white" data-all-documents-link="">
+                    <Link href="/documents" className="flex shrink-0 items-center gap-1 text-sm text-slate-400 hover:text-white max-lg:min-h-11" data-all-documents-link="">
                         <FileCheck2 size={14} /> Reviews
                     </Link>
                     <div className="ml-auto flex max-w-full shrink-0 items-center gap-1.5 overflow-x-auto text-xs [scrollbar-width:none] sm:flex-wrap sm:overflow-visible" data-header-actions="">
                         {canEdit && (
-                            <button type="button" onClick={() => { setEditing(true); setShowSource(false); setComposer(null); }} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-cyan-500/50 bg-cyan-500/10 px-2.5 py-1.5 text-cyan-100 hover:bg-cyan-500/20" data-edit-button="">
+                            <button type="button" onClick={() => { setEditing(true); setShowSource(false); setComposer(null); }} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border max-lg:min-h-11 border-cyan-500/50 bg-cyan-500/10 px-2.5 py-1.5 text-cyan-100 hover:bg-cyan-500/20" data-edit-button="">
                                 <Pencil size={13} /> Edit
                             </button>
                         )}
                         {textual && !editing && (
-                            <button type="button" onClick={() => setShowSource((v) => !v)} className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-2.5 py-1.5 ${showSource ? "border-cyan-500/60 text-cyan-200" : "border-slate-700 text-slate-300 hover:border-slate-500"}`} aria-pressed={showSource}>
+                            <button type="button" onClick={() => setShowSource((v) => !v)} className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border max-lg:min-h-11 px-2.5 py-1.5 ${showSource ? "border-cyan-500/60 text-cyan-200" : "border-slate-700 text-slate-300 hover:border-slate-500"}`} aria-pressed={showSource}>
                                 {showSource ? <FileText size={13} /> : <FileCode size={13} />} {showSource ? "Rendered" : "Source"}
                             </button>
                         )}
                         {data && (
-                            <button type="button" onClick={() => setEvidenceOpen(true)} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500" data-evidence-button="">
+                            <button type="button" onClick={() => setEvidenceOpen(true)} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border max-lg:min-h-11 border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500" data-evidence-button="">
                                 <ShieldCheck size={13} /> Evidence
                             </button>
                         )}
                         {doc && (
                             <>
                             {shownRevision && ['markdown', 'pdf', 'image', 'video'].includes(mediaType) && <PresentDocumentButton documentId={doc.id} revisionId={shownRevision.id} contentHash={shownRevision.content_hash} />}
-                            <a href={rawDocumentUrl(doc.id, { revision: showingPinned ? review?.revision_id : null, download: true })} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
+                            <a href={rawDocumentUrl(doc.id, { revision: showingPinned ? review?.revision_id : null, download: true })} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border max-lg:min-h-11 border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
                                 <Download size={13} /> Download
                             </a>
                             </>
                         )}
-                        <button type="button" onClick={() => void copyLink()} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
+                        <button type="button" onClick={() => void copyLink()} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border max-lg:min-h-11 border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
                             {linkCopied ? <Check size={13} className="text-emerald-300" /> : null} {linkCopied ? "Link copied" : "Copy link"}
                         </button>
                     </div>
@@ -1474,7 +1496,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                         </span>
                         <h1 className="min-w-0 truncate text-base font-semibold leading-snug text-white" title={doc?.title}>{doc?.title || "Document"}</h1>
                     </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+                    {/* One line on desktop, so the pinned bar stays slim at every display scale: the long task title truncates. */}
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 lg:flex-nowrap lg:overflow-hidden lg:whitespace-nowrap" data-header-status="">
                         <DocumentStatusBadge status={data?.review_status} prefix />
                         {doc?.kind && doc.kind !== mediaType && <span className="uppercase tracking-wide">{doc.kind}</span>}
                         {asOf && <span>as of {asOf}</span>}
@@ -1489,32 +1512,35 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             </span>
                         )}
                         {task && (
-                            <span>
-                                from <Link href={`/task/${task.id}`} className="text-cyan-300 hover:underline">{task.title || task.id}</Link>
+                            <span className="lg:flex lg:min-w-0 lg:items-center lg:gap-1">
+                                from <Link href={`/task/${task.id}`} className="text-cyan-300 hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center lg:min-w-0 lg:truncate" title={task.title || task.id}>{task.title || task.id}</Link>
                                 {(task.status || task.status_message) && (
-                                    <span className="ml-1.5 rounded border border-slate-700 px-1.5 py-px text-slate-400" data-task-status="" title="Status of the task that produced this document (execution and QA), not your decision on the document">
+                                    <span className="ml-1.5 shrink-0 rounded border border-slate-700 px-1.5 py-px text-slate-400" data-task-status="" title="Status of the task that produced this document (execution and QA), not your decision on the document">
                                         Task: {[task.status, task.status_message].filter(Boolean).join(" · ")}
                                     </span>
                                 )}
                             </span>
                         )}
-                        {project && <span>in <Link href={`/project/${project.id}`} className="text-cyan-300 hover:underline">{project.name || project.id}</Link></span>}
+                        {project && <span>in <Link href={`/project/${project.id}`} className="text-cyan-300 hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center">{project.name || project.id}</Link></span>}
                     </div>
-                    {brief && (
-                        <div className="mt-2 max-w-3xl">
-                            <HumanBriefBlock brief={brief} compact collapsible />
-                        </div>
-                    )}
                 </div>
             </header>
 
-            <div className="mx-auto max-w-[1600px] px-4 py-5 max-lg:pb-20 lg:grid lg:grid-cols-[200px_minmax(0,1fr)_380px] lg:gap-6">
-                {/* Sticky or in the page flow: see railPosition. */}
-                <aside className="hidden lg:block">
+            <div ref={gridRef} className="mx-auto max-w-[1600px] px-4 py-5 max-lg:pb-20 lg:grid lg:grid-cols-[200px_minmax(0,1fr)_380px] lg:gap-6">
+                {/* Sticky or in the page flow: see railPosition. The negative margin stretches each rail column over the
+                    footer to the floating controls (railTail), so a sticky rail stays below the header to the end of the page. */}
+                <aside className="hidden lg:mb-[calc(var(--review-rail-tail,0px)*-1)] lg:block">
                     <div className={`${railPosition} pr-2`} data-rail-position={railsFlow ? "flow" : "sticky"}>{outlinePanel}</div>
                 </aside>
 
                 <article className="min-w-0" data-stage="">
+                    {/* The brief opens the stage and scrolls away with it, folded to the ask until "Show details": it is never
+                        inside the sticky bar, and in the stage column the rails still start where they stick (task 3f8d291a). */}
+                    {brief && (
+                        <section className="mb-4 max-w-3xl" aria-label="Brief" data-review-brief="">
+                            <HumanBriefBlock brief={brief} compact collapsible="always" />
+                        </section>
+                    )}
                     {loadError && (
                         <div role="alert" className="mb-4 flex items-start gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-200">
                             <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {loadError}
@@ -1579,7 +1605,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     {stage}
                 </article>
 
-                <aside className="hidden lg:block">
+                <aside className="hidden lg:mb-[calc(var(--review-rail-tail,0px)*-1)] lg:block">
                     <div className={`${railPosition} rounded-xl border border-slate-800 bg-slate-900/40 p-3`} data-rail-position={railsFlow ? "flow" : "sticky"}>{reviewPanel}</div>
                 </aside>
             </div>
@@ -1588,19 +1614,21 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 scrolled. It sits on the floating controls' reserve (lib/floating-controls), above the ticker and voice dock,
                 and under the sheets and drawers, whose overlays cover it. */}
             <div className="fixed inset-x-0 z-[60] flex gap-2 border-t border-slate-800/80 bg-slate-950/95 px-4 py-2 backdrop-blur-md lg:hidden" style={{ bottom: "var(--nexus-floating-bottom, 0px)" }} data-phone-bar="">
-                <button type="button" onClick={() => setOutlineOpen(true)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 py-2 text-xs text-slate-200" data-open-navigator="">
+                <button type="button" onClick={() => setOutlineOpen(true)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 py-2 text-xs text-slate-200" data-open-navigator="">
                     <ListTree size={13} /> {navigatorTitle}
                 </button>
-                <button type="button" onClick={() => setReviewOpen(true)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 py-2 text-xs text-cyan-100" data-open-review="">
+                <button type="button" onClick={() => setReviewOpen(true)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/10 py-2 text-xs text-cyan-100" data-open-review="">
                     <MessageSquare size={13} /> Review &amp; decide ({comments.length})
                 </button>
             </div>
 
-            {/* Phone sheets and drawers pad their ends past the mini player and feedback launcher, which stay on top of them;
-                the scroll padding keeps a focused or scrolled-to control (Send to Praxis) out from under them too. */}
+            {/* Phone sheets and drawers pad their ends past the mini player and feedback launcher, which stay on top of them,
+                and at least 4.5rem past the bottom-left issue pill (Next's dev indicator on the supervised :3000, about 4rem
+                tall with its inset), so Finish review and Send to Praxis end in open space (task 3f8d291a); the scroll padding
+                keeps a focused or scrolled-to control out from under them too. */}
             {/* Phone: composer sheet */}
             {composer && (
-                <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[calc(70vh/var(--nexus-display-scale,1))] overflow-y-auto border-t border-cyan-500/40 bg-slate-950 p-3 pb-[max(1.5rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)] shadow-2xl lg:hidden" data-composer-sheet="">
+                <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[calc(70vh/var(--nexus-display-scale,1))] overflow-y-auto border-t border-cyan-500/40 bg-slate-950 p-3 pb-[max(4.5rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)] shadow-2xl lg:hidden" data-composer-sheet="">
                     {composerPanel}
                 </div>
             )}
@@ -1609,8 +1637,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             {outlineOpen && (
                 <div className="fixed inset-0 z-[80] lg:hidden" role="dialog" aria-label={navigatorTitle}>
                     <button type="button" aria-label={`Close ${navigatorTitle.toLowerCase()}`} onClick={() => setOutlineOpen(false)} className="absolute inset-0 bg-black/60" />
-                    <div className="absolute inset-x-0 bottom-0 max-h-[calc(75vh/var(--nexus-display-scale,1))] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-[max(2rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)]">
-                        <div className="mb-2 flex justify-end"><button type="button" onClick={() => setOutlineOpen(false)} aria-label="Close" className="rounded p-1 text-slate-400"><X size={16} /></button></div>
+                    <div className="absolute inset-x-0 bottom-0 max-h-[calc(75vh/var(--nexus-display-scale,1))] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-[max(4.5rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)]">
+                        <div className="mb-2 flex justify-end"><button type="button" onClick={() => setOutlineOpen(false)} aria-label="Close" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-slate-400"><X size={16} /></button></div>
                         {outlinePanel}
                     </div>
                 </div>
@@ -1620,8 +1648,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             {reviewOpen && (
                 <div className="fixed inset-0 z-[80] lg:hidden" role="dialog" aria-label="Your review">
                     <button type="button" aria-label="Close review" onClick={() => setReviewOpen(false)} className="absolute inset-0 bg-black/60" />
-                    <div className="absolute inset-x-0 bottom-0 max-h-[calc(85vh/var(--nexus-display-scale,1))] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-[max(2rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)]" data-review-drawer="">
-                        <div className="mb-2 flex justify-end"><button type="button" onClick={() => setReviewOpen(false)} aria-label="Close" className="rounded p-1 text-slate-400"><X size={16} /></button></div>
+                    <div className="absolute inset-x-0 bottom-0 max-h-[calc(85vh/var(--nexus-display-scale,1))] overflow-y-auto rounded-t-2xl border-t border-slate-700 bg-slate-950 p-4 pb-[max(4.5rem,var(--nexus-floating-overlay-bottom,0px))] scroll-pb-[var(--nexus-floating-overlay-bottom,0px)]" data-review-drawer="">
+                        <div className="mb-2 flex justify-end"><button type="button" onClick={() => setReviewOpen(false)} aria-label="Close" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-slate-400"><X size={16} /></button></div>
                         {reviewPanel}
                     </div>
                 </div>

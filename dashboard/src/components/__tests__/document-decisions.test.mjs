@@ -124,8 +124,11 @@ test('task status, QA verdict and the document decision are labelled apart; Appr
     assert.match(card(c).textContent, /Approval is what allows implementing it/);
     assert.match(card(c).textContent, /Nothing is sent or published from here/);
 
+    // On a phone or tablet (the review drawer) Approve and Request changes are 44px tap targets (task 3f8d291a).
+    for (const kind of ['approve', 'request_changes']) assert.match(card(c).querySelector(`[data-decision-button="${kind}"]`).className, /\bmax-lg:min-h-11\b/);
     await click(card(c).querySelector('[data-decision-button="approve"]'));
     assert.match(card(c).querySelector('[data-decision-confirm]').textContent, /Approve rev aaaaaaaa exactly as shown/);
+    assert.match(card(c).querySelector('[data-decision-submit]').className, /\bmax-lg:min-h-11\b/);
     await type(card(c).querySelector('textarea#decision-note'), 'Pilot first is right.');
     await click(card(c).querySelector('[data-decision-submit]'));
 

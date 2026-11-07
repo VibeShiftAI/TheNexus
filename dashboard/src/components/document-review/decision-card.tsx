@@ -450,6 +450,7 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
             ) : blocked ? (
                 <p className="mt-2 text-[11px] text-amber-200" data-decision-blocked={workBlocks && gate ? gate.reason ?? "" : ""}>{blocked}</p>
             ) : (
+                // Below the large breakpoint (the phone and tablet drawer) these are 44px tap targets (task 3f8d291a).
                 <div className="mt-2 flex flex-wrap gap-2">
                     <button
                         type="button"
@@ -457,7 +458,7 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
                         disabled={busy || (appliesNow && current?.decision === "approve")}
                         title={appliesNow && current?.decision === "approve" ? "This revision is already approved" : undefined}
                         aria-expanded={confirm?.kind === "approve"}
-                        className="inline-flex items-center gap-1 rounded-md border border-sky-400/50 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-100 hover:bg-sky-400/20 disabled:opacity-40"
+                        className="inline-flex items-center gap-1 rounded-md border max-lg:min-h-11 border-sky-400/50 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-100 hover:bg-sky-400/20 disabled:opacity-40"
                         data-decision-button="approve"
                     >
                         <ThumbsUp size={13} /> {DECISION_TEXT.approve.button}
@@ -468,7 +469,7 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
                         disabled={busy || (appliesNow && current?.decision === "request_changes")}
                         title={appliesNow && current?.decision === "request_changes" ? "Changes are already requested on this revision" : undefined}
                         aria-expanded={confirm?.kind === "request_changes"}
-                        className="inline-flex items-center gap-1 rounded-md border border-orange-500/50 bg-orange-500/10 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-500/20 disabled:opacity-40"
+                        className="inline-flex items-center gap-1 rounded-md border max-lg:min-h-11 border-orange-500/50 bg-orange-500/10 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-500/20 disabled:opacity-40"
                         data-decision-button="request_changes"
                     >
                         <Undo2 size={13} /> {DECISION_TEXT.request_changes.button}
@@ -526,8 +527,8 @@ export function DecisionCard({ data, viewedRevision, viewingCurrent, onRefresh, 
                         </p>
                     )}
                     <div className="mt-2 flex justify-end gap-2">
-                        <button type="button" onClick={() => setConfirm(null)} disabled={busy} className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300">Cancel</button>
-                        <button type="button" onClick={() => void submit()} disabled={busy} className="inline-flex items-center gap-1 rounded-md border border-cyan-500/50 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 disabled:opacity-50" data-decision-submit="">
+                        <button type="button" onClick={() => setConfirm(null)} disabled={busy} className="rounded-md border max-lg:min-h-11 border-slate-700 px-3 py-1.5 text-xs text-slate-300">Cancel</button>
+                        <button type="button" onClick={() => void submit()} disabled={busy} className="inline-flex items-center gap-1 rounded-md border max-lg:min-h-11 border-cyan-500/50 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 disabled:opacity-50" data-decision-submit="">
                             {busy ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} {DECISION_TEXT[confirm.kind].confirm}
                         </button>
                     </div>

@@ -15,14 +15,18 @@ import { BRIEF_LABELS, type HumanBrief } from "@/lib/human-brief";
  * it: a 9.5rem label column next to a 375px phone's text column made four
  * short lines stand over 500px tall in the document reviewer (2026-10-24).
  * With `collapsible`, a phone (below the large breakpoint) shows only the ask
- * until "Show details" is tapped; desktop always shows the whole brief.
+ * until "Show details" is tapped; desktop shows the whole brief. With
+ * `collapsible="always"` every width starts folded to the ask: the document
+ * reviewer uses it so the brief never stands between Robert and the design
+ * (task 3f8d291a). The toggle is a 44px tap target.
  */
-export function HumanBriefBlock({ brief, compact = false, collapsible = false }: { brief: HumanBrief; compact?: boolean; collapsible?: boolean }) {
+export function HumanBriefBlock({ brief, compact = false, collapsible = false }: { brief: HumanBrief; compact?: boolean; collapsible?: boolean | "always" }) {
   const [expanded, setExpanded] = useState(false);
-  const foldable = collapsible && !expanded;
+  const foldable = !!collapsible && !expanded;
+  const hidden = collapsible === "always" ? "hidden" : "max-lg:hidden";
   const row = (key: keyof typeof BRIEF_LABELS, value: string | undefined, accent = false) =>
     value ? (
-      <div key={key} className={`flex flex-col gap-0.5 sm:flex-row sm:gap-2 ${foldable && !accent ? "max-lg:hidden" : ""}`} data-brief-field={key}>
+      <div key={key} className={`flex flex-col gap-0.5 sm:flex-row sm:gap-2 ${foldable && !accent ? hidden : ""}`} data-brief-field={key}>
         <dt className={`shrink-0 text-[length:var(--hitl-fs-11,0.6875rem)] uppercase tracking-wider sm:w-[9.5rem] ${accent ? "text-cyan-300" : "text-slate-500"}`}>
           {BRIEF_LABELS[key]}
         </dt>
@@ -42,8 +46,8 @@ export function HumanBriefBlock({ brief, compact = false, collapsible = false }:
       {row("recommendation", brief.recommendation)}
       {row("ifIgnored", brief.ifIgnored)}
       {collapsible && (
-        <div className="lg:hidden">
-          <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} className="text-[length:var(--hitl-fs-11,0.6875rem)] font-semibold uppercase tracking-wider text-cyan-300 hover:text-cyan-100" data-brief-toggle="">
+        <div className={collapsible === "always" ? undefined : "lg:hidden"}>
+          <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} className="inline-flex min-h-11 items-center text-[length:var(--hitl-fs-11,0.6875rem)] font-semibold uppercase tracking-wider text-cyan-300 hover:text-cyan-100" data-brief-toggle="">
             {expanded ? "Hide details" : "Show details"}
           </button>
         </div>
