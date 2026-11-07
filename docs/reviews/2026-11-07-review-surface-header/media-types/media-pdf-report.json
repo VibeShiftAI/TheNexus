@@ -1,0 +1,604 @@
+{
+  "documentId": "f6b7a491-50be-4992-a983-50a5b28f2f64",
+  "base": "http://localhost:3000",
+  "label": "media-pdf",
+  "capturedAt": "2026-11-07T22:13:42.446Z",
+  "configs": [
+    {
+      "name": "desktop-125",
+      "width": 1470,
+      "height": 847,
+      "dpr": 2,
+      "mobile": false,
+      "scale": 1.25,
+      "shots": [
+        "media-pdf-desktop-125-top.png",
+        "media-pdf-desktop-125-scrolled.png"
+      ],
+      "top": {
+        "viewport": {
+          "width": 1470,
+          "height": 847,
+          "scrollY": 0,
+          "zoom": 1.25
+        },
+        "overflow": {
+          "scrollWidth": 1470,
+          "clientWidth": 1470,
+          "horizontal": false
+        },
+        "header": {
+          "rect": {
+            "top": 0,
+            "bottom": 126,
+            "left": 0,
+            "right": 1470,
+            "height": 126,
+            "width": 1470
+          },
+          "position": "sticky",
+          "containsBrief": false
+        },
+        "brief": {
+          "rect": {
+            "top": 151,
+            "bottom": 320,
+            "left": 300,
+            "right": 945,
+            "height": 170,
+            "width": 645
+          },
+          "pinnedBy": null,
+          "collapsed": "true"
+        },
+        "pinnedTop": 126,
+        "railTopVar": "calc(100px + 1.25rem)",
+        "rails": [
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 151,
+              "bottom": 199,
+              "left": 20,
+              "right": 270,
+              "height": 48,
+              "width": 250
+            },
+            "position": "sticky",
+            "top": "120px",
+            "visible": true
+          },
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 151,
+              "bottom": 728,
+              "left": 975,
+              "right": 1450,
+              "height": 577,
+              "width": 475
+            },
+            "position": "sticky",
+            "top": "120px",
+            "visible": true
+          }
+        ],
+        "floating": [
+          {
+            "label": "fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md tran",
+            "rect": {
+              "top": 801,
+              "bottom": 847,
+              "left": 0,
+              "right": 1470,
+              "height": 46,
+              "width": 1470
+            }
+          },
+          {
+            "label": "Global voice controls",
+            "rect": {
+              "top": 737,
+              "bottom": 791,
+              "left": 1111,
+              "right": 1455,
+              "height": 54,
+              "width": 344
+            }
+          }
+        ]
+      },
+      "scrolled": {
+        "viewport": {
+          "width": 1470,
+          "height": 847,
+          "scrollY": 700,
+          "zoom": 1.25
+        },
+        "overflow": {
+          "scrollWidth": 1470,
+          "clientWidth": 1470,
+          "horizontal": false
+        },
+        "header": {
+          "rect": {
+            "top": 0,
+            "bottom": 126,
+            "left": 0,
+            "right": 1470,
+            "height": 126,
+            "width": 1470
+          },
+          "position": "sticky",
+          "containsBrief": false
+        },
+        "brief": {
+          "rect": {
+            "top": -549,
+            "bottom": -380,
+            "left": 300,
+            "right": 945,
+            "height": 170,
+            "width": 645
+          },
+          "pinnedBy": null,
+          "collapsed": "true"
+        },
+        "pinnedTop": 126,
+        "railTopVar": "calc(100px + 1.25rem)",
+        "rails": [
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 150,
+              "bottom": 198,
+              "left": 20,
+              "right": 270,
+              "height": 48,
+              "width": 250
+            },
+            "position": "sticky",
+            "top": "120px",
+            "visible": true
+          },
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 150,
+              "bottom": 727,
+              "left": 975,
+              "right": 1450,
+              "height": 577,
+              "width": 475
+            },
+            "position": "sticky",
+            "top": "120px",
+            "visible": true
+          }
+        ],
+        "floating": [
+          {
+            "label": "fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md tran",
+            "rect": {
+              "top": 801,
+              "bottom": 847,
+              "left": 0,
+              "right": 1470,
+              "height": 46,
+              "width": 1470
+            }
+          },
+          {
+            "label": "Global voice controls",
+            "rect": {
+              "top": 737,
+              "bottom": 791,
+              "left": 1111,
+              "right": 1455,
+              "height": 54,
+              "width": 344
+            }
+          }
+        ]
+      },
+      "findings": {
+        "briefPinned": false,
+        "briefScrolledAway": true,
+        "pinnedHeight": 126,
+        "pinnedShare": 0.15,
+        "railOverlap": [
+          24,
+          24
+        ],
+        "horizontalOverflow": false,
+        "decisionCovered": []
+      },
+      "railCover": [
+        {
+          "button": "approve",
+          "rect": {
+            "top": 356,
+            "bottom": 393
+          },
+          "covered": []
+        },
+        {
+          "button": "request_changes",
+          "rect": {
+            "top": 356,
+            "bottom": 393
+          },
+          "covered": []
+        }
+      ]
+    },
+    {
+      "name": "phone-375",
+      "width": 375,
+      "height": 812,
+      "dpr": 3,
+      "mobile": true,
+      "scale": 1,
+      "shots": [
+        "media-pdf-phone-375-top.png",
+        "media-pdf-phone-375-scrolled.png",
+        "media-pdf-phone-375-drawer.png"
+      ],
+      "top": {
+        "viewport": {
+          "width": 375,
+          "height": 812,
+          "scrollY": 0,
+          "zoom": 1
+        },
+        "overflow": {
+          "scrollWidth": 375,
+          "clientWidth": 375,
+          "horizontal": false
+        },
+        "header": {
+          "rect": {
+            "top": 0,
+            "bottom": 332,
+            "left": 0,
+            "right": 375,
+            "height": 332,
+            "width": 375
+          },
+          "position": "static",
+          "containsBrief": false
+        },
+        "brief": {
+          "rect": {
+            "top": 352,
+            "bottom": 508,
+            "left": 16,
+            "right": 359,
+            "height": 156,
+            "width": 343
+          },
+          "pinnedBy": null,
+          "collapsed": "true"
+        },
+        "pinnedTop": 0,
+        "railTopVar": "calc(332px + 1.25rem)",
+        "rails": [
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "352px",
+            "visible": false
+          },
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "352px",
+            "visible": false
+          }
+        ],
+        "floating": [
+          {
+            "label": "phone-bar",
+            "rect": {
+              "top": 654,
+              "bottom": 715,
+              "left": 0,
+              "right": 375,
+              "height": 61,
+              "width": 375
+            }
+          },
+          {
+            "label": "fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md tran",
+            "rect": {
+              "top": 775,
+              "bottom": 812,
+              "left": 0,
+              "right": 375,
+              "height": 37,
+              "width": 375
+            }
+          },
+          {
+            "label": "Global voice controls",
+            "rect": {
+              "top": 723,
+              "bottom": 767,
+              "left": 86,
+              "right": 363,
+              "height": 44,
+              "width": 277
+            }
+          }
+        ]
+      },
+      "scrolled": {
+        "viewport": {
+          "width": 375,
+          "height": 812,
+          "scrollY": 700,
+          "zoom": 1
+        },
+        "overflow": {
+          "scrollWidth": 375,
+          "clientWidth": 375,
+          "horizontal": false
+        },
+        "header": {
+          "rect": {
+            "top": -700,
+            "bottom": -368,
+            "left": 0,
+            "right": 375,
+            "height": 332,
+            "width": 375
+          },
+          "position": "static",
+          "containsBrief": false
+        },
+        "brief": {
+          "rect": {
+            "top": -348,
+            "bottom": -192,
+            "left": 16,
+            "right": 359,
+            "height": 156,
+            "width": 343
+          },
+          "pinnedBy": null,
+          "collapsed": "true"
+        },
+        "pinnedTop": 0,
+        "railTopVar": "calc(332px + 1.25rem)",
+        "rails": [
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "352px",
+            "visible": false
+          },
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "352px",
+            "visible": false
+          }
+        ],
+        "floating": [
+          {
+            "label": "phone-bar",
+            "rect": {
+              "top": 654,
+              "bottom": 715,
+              "left": 0,
+              "right": 375,
+              "height": 61,
+              "width": 375
+            }
+          },
+          {
+            "label": "fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md tran",
+            "rect": {
+              "top": 775,
+              "bottom": 812,
+              "left": 0,
+              "right": 375,
+              "height": 37,
+              "width": 375
+            }
+          },
+          {
+            "label": "Global voice controls",
+            "rect": {
+              "top": 723,
+              "bottom": 767,
+              "left": 86,
+              "right": 363,
+              "height": 44,
+              "width": 277
+            }
+          }
+        ]
+      },
+      "findings": {
+        "briefPinned": false,
+        "briefScrolledAway": true,
+        "pinnedHeight": 0,
+        "pinnedShare": 0,
+        "railOverlap": [],
+        "horizontalOverflow": false,
+        "smallTaps": [],
+        "decisionCovered": []
+      },
+      "taps": [
+        {
+          "text": "← Finalize VibeShift AI business",
+          "height": 44,
+          "width": 189
+        },
+        {
+          "text": "Reviews",
+          "height": 44,
+          "width": 71
+        },
+        {
+          "text": "Evidence",
+          "height": 44,
+          "width": 90
+        },
+        {
+          "text": "Download",
+          "height": 44,
+          "width": 95
+        },
+        {
+          "text": "Copy link",
+          "height": 44,
+          "width": 74
+        },
+        {
+          "text": "Finalize VibeShift AI business c",
+          "height": 44,
+          "width": 343
+        },
+        {
+          "text": "VibeShift AI — Consulting Busine",
+          "height": 44,
+          "width": 184
+        },
+        {
+          "text": "Show details",
+          "height": 44,
+          "width": 91
+        },
+        {
+          "text": "Markers",
+          "height": 44,
+          "width": 168
+        },
+        {
+          "text": "Review & decide (0)",
+          "height": 44,
+          "width": 168
+        }
+      ],
+      "drawerCover": [
+        {
+          "button": "approve",
+          "rect": {
+            "top": 344,
+            "bottom": 388
+          },
+          "covered": []
+        },
+        {
+          "button": "request_changes",
+          "rect": {
+            "top": 344,
+            "bottom": 388
+          },
+          "covered": []
+        }
+      ],
+      "drawerTaps": [
+        {
+          "text": "← Finalize VibeShift AI business",
+          "height": 44,
+          "width": 189
+        },
+        {
+          "text": "Reviews",
+          "height": 44,
+          "width": 71
+        },
+        {
+          "text": "Evidence",
+          "height": 44,
+          "width": 90
+        },
+        {
+          "text": "Download",
+          "height": 44,
+          "width": 95
+        },
+        {
+          "text": "Copy link",
+          "height": 44,
+          "width": 74
+        },
+        {
+          "text": "Finalize VibeShift AI business c",
+          "height": 44,
+          "width": 343
+        },
+        {
+          "text": "VibeShift AI — Consulting Busine",
+          "height": 44,
+          "width": 184
+        },
+        {
+          "text": "Show details",
+          "height": 44,
+          "width": 91
+        },
+        {
+          "text": "Markers",
+          "height": 44,
+          "width": 168
+        },
+        {
+          "text": "Review & decide (0)",
+          "height": 44,
+          "width": 168
+        },
+        {
+          "text": "Close",
+          "height": 44,
+          "width": 16
+        },
+        {
+          "text": "Approve document",
+          "height": 44,
+          "width": 155
+        },
+        {
+          "text": "Request changes",
+          "height": 44,
+          "width": 145
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,183 @@
+{
+  "format": "nexus-design-package/1",
+  "title": "Review surface header fix: before/after at desktop, tablet and phone",
+  "summary": "The document review page pins only a slim bar; the brief scrolls away, folded to the ask. Before/after of the Joey and Meeple Magnate status report package at desktop 100%, 125% and 150%, 768px and 375px.",
+  "screens": [
+    {
+      "id": "desktop-100-top",
+      "title": "Desktop 100%: page load",
+      "viewport": "1470x847 @2x",
+      "state": "top",
+      "file": "after/after-desktop-100-top.png",
+      "before": "before/before-desktop-100-top.png",
+      "notes": "Robert's window size. Before: the pinned header with the brief took 379px (45%). After: a 102px bar; the brief is folded to the ask in the stage column."
+    },
+    {
+      "id": "desktop-100-scrolled",
+      "title": "Desktop 100%: scrolled down",
+      "viewport": "1470x847 @2x",
+      "state": "scrolled",
+      "file": "after/after-desktop-100-scrolled.png",
+      "before": "before/before-desktop-100-scrolled.png",
+      "notes": "Robert's window size. Before: the pinned header with the brief took 379px (45%). After: a 102px bar; the brief is folded to the ask in the stage column."
+    },
+    {
+      "id": "desktop-125-top",
+      "title": "Desktop 125%: page load",
+      "viewport": "1470x847 @2x, display scale 125%",
+      "state": "top",
+      "file": "after/after-desktop-125-top.png",
+      "before": "before/before-desktop-125-top.png",
+      "notes": "Before: 495px pinned (58%). After: 126px."
+    },
+    {
+      "id": "desktop-125-scrolled",
+      "title": "Desktop 125%: scrolled down",
+      "viewport": "1470x847 @2x, display scale 125%",
+      "state": "scrolled",
+      "file": "after/after-desktop-125-scrolled.png",
+      "before": "before/before-desktop-125-scrolled.png",
+      "notes": "Before: 495px pinned (58%). After: 126px."
+    },
+    {
+      "id": "desktop-150-top",
+      "title": "Desktop 150%: page load",
+      "viewport": "1470x847 @2x, display scale 150%",
+      "state": "top",
+      "file": "after/after-desktop-150-top.png",
+      "before": "before/before-desktop-150-top.png",
+      "notes": "Before: 644px pinned (76%). After: 201px (the actions wrap to a second row at this scale)."
+    },
+    {
+      "id": "desktop-150-scrolled",
+      "title": "Desktop 150%: scrolled down",
+      "viewport": "1470x847 @2x, display scale 150%",
+      "state": "scrolled",
+      "file": "after/after-desktop-150-scrolled.png",
+      "before": "before/before-desktop-150-scrolled.png",
+      "notes": "Before: 644px pinned (76%). After: 201px (the actions wrap to a second row at this scale)."
+    },
+    {
+      "id": "tablet-768-top",
+      "title": "Tablet 768px: page load",
+      "viewport": "768x1024 @2x",
+      "state": "top",
+      "file": "after/after-tablet-768-top.png",
+      "before": "before/before-tablet-768-top.png",
+      "notes": "The header scrolls away below the large breakpoint; tap targets are now 44px."
+    },
+    {
+      "id": "tablet-768-scrolled",
+      "title": "Tablet 768px: scrolled down",
+      "viewport": "768x1024 @2x",
+      "state": "scrolled",
+      "file": "after/after-tablet-768-scrolled.png",
+      "before": "before/before-tablet-768-scrolled.png",
+      "notes": "The header scrolls away below the large breakpoint; tap targets are now 44px."
+    },
+    {
+      "id": "tablet-768-drawer",
+      "title": "Tablet 768px: review drawer open",
+      "viewport": "768x1024 @2x",
+      "state": "drawer",
+      "file": "after/after-tablet-768-drawer.png",
+      "before": "before/before-tablet-768-drawer.png",
+      "notes": "The header scrolls away below the large breakpoint; tap targets are now 44px."
+    },
+    {
+      "id": "tablet-768-drawer-end",
+      "title": "Tablet 768px: review drawer scrolled to its end",
+      "viewport": "768x1024 @2x",
+      "state": "drawer-end",
+      "file": "after/after-tablet-768-drawer-end.png",
+      "notes": "After only: Finish review ends clear of the bottom-left issue pill and the floating controls."
+    },
+    {
+      "id": "phone-375-top",
+      "title": "Phone 375px: page load",
+      "viewport": "375x812 @3x",
+      "state": "top",
+      "file": "after/after-phone-375-top.png",
+      "before": "before/before-phone-375-top.png",
+      "notes": "The header scrolls away; tap targets are now 44px; the brief is folded to the ask."
+    },
+    {
+      "id": "phone-375-scrolled",
+      "title": "Phone 375px: scrolled down",
+      "viewport": "375x812 @3x",
+      "state": "scrolled",
+      "file": "after/after-phone-375-scrolled.png",
+      "before": "before/before-phone-375-scrolled.png",
+      "notes": "The header scrolls away; tap targets are now 44px; the brief is folded to the ask."
+    },
+    {
+      "id": "phone-375-drawer",
+      "title": "Phone 375px: review drawer open",
+      "viewport": "375x812 @3x",
+      "state": "drawer",
+      "file": "after/after-phone-375-drawer.png",
+      "before": "before/before-phone-375-drawer.png",
+      "notes": "The header scrolls away; tap targets are now 44px; the brief is folded to the ask."
+    },
+    {
+      "id": "phone-375-drawer-end",
+      "title": "Phone 375px: review drawer scrolled to its end",
+      "viewport": "375x812 @3x",
+      "state": "drawer-end",
+      "file": "after/after-phone-375-drawer-end.png",
+      "notes": "After only: Finish review ends clear of the bottom-left issue pill and the floating controls."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "summary",
+      "label": "What changed and the measurements",
+      "file": "summary.md"
+    },
+    {
+      "id": "before-report",
+      "label": "Before: browser measurements",
+      "file": "before/before-report.json"
+    },
+    {
+      "id": "after-report",
+      "label": "After: browser measurements",
+      "file": "after/after-report.json"
+    },
+    {
+      "id": "media-markdown",
+      "label": "Other media types: markdown",
+      "file": "media-types/media-markdown-report.json"
+    },
+    {
+      "id": "media-json",
+      "label": "Other media types: json",
+      "file": "media-types/media-json-report.json"
+    },
+    {
+      "id": "media-text",
+      "label": "Other media types: text",
+      "file": "media-types/media-text-report.json"
+    },
+    {
+      "id": "media-image",
+      "label": "Other media types: image",
+      "file": "media-types/media-image-report.json"
+    },
+    {
+      "id": "media-code",
+      "label": "Other media types: code",
+      "file": "media-types/media-code-report.json"
+    },
+    {
+      "id": "media-pdf",
+      "label": "Other media types: pdf",
+      "file": "media-types/media-pdf-report.json"
+    },
+    {
+      "id": "media-html",
+      "label": "Other media types: html",
+      "file": "media-types/media-html-report.json"
+    }
+  ]
+}
