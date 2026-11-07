@@ -1,7 +1,7 @@
 {
   "format": "nexus-design-package/1",
   "title": "Review surface header fix: before/after at desktop, tablet and phone",
-  "summary": "The document review page pins only a slim bar; the brief scrolls away, folded to the ask. Before/after of the Joey and Meeple Magnate status report package at desktop 100%, 125% and 150%, 768px and 375px.",
+  "summary": "The document review page pins only a slim bar; the brief scrolls away, folded to the ask. Before/after of the Joey and Meeple Magnate status report package at desktop 100%, 125% and 150%, 768px and 375px. QA round 1: every control on the page, in the viewers, the full-screen lightbox, the navigator and the review drawer is now at least 44x44px on tablets and phones (77 and 78 undersized controls before, 0 after, across 14 page states).",
   "screens": [
     {
       "id": "desktop-100-top",
@@ -93,6 +93,59 @@
       "notes": "After only: Finish review ends clear of the bottom-left issue pill and the floating controls."
     },
     {
+      "id": "tablet-768-image-toolbar",
+      "title": "Tablet 768px: design tabs and image toolbar",
+      "viewport": "768x1024 @2x",
+      "state": "scrolled",
+      "file": "after/after-tablet-768-scrolled.png",
+      "before": "before/qa-round1-tablet-768-scrolled.png",
+      "notes": "QA round 1. Before: design tabs 25px tall, appearance switch 21px, Zoom out and Full screen 21x21px. After: every tab, switch and toolbar button is at least 44x44px; the toolbar wraps instead of widening the page."
+    },
+    {
+      "id": "tablet-768-lightbox",
+      "title": "Tablet 768px: full-screen lightbox",
+      "viewport": "768x1024 @2x",
+      "state": "lightbox",
+      "file": "after/after-tablet-768-lightbox.png",
+      "before": "before/qa-round1-tablet-768-lightbox.png",
+      "notes": "QA round 1. Zoom, fit, close, previous and next are 44x44px."
+    },
+    {
+      "id": "tablet-768-navigator",
+      "title": "Tablet 768px: navigator drawer",
+      "viewport": "768x1024 @2x",
+      "state": "navigator",
+      "file": "after/after-tablet-768-navigator.png",
+      "before": "before/qa-round1-tablet-768-navigator.png",
+      "notes": "QA round 1. Close and every navigator entry are at least 44px."
+    },
+    {
+      "id": "tablet-768-confirm-approve",
+      "title": "Tablet 768px: Approve confirmation",
+      "viewport": "768x1024 @2x",
+      "state": "confirm-approve",
+      "file": "after/after-tablet-768-confirm-approve.png",
+      "notes": "After only (QA round 1): the expanded confirmation, its buttons and History are 44px targets."
+    },
+    {
+      "id": "tablet-768-finish-panel",
+      "title": "Tablet 768px: Finish review panel",
+      "viewport": "768x1024 @2x",
+      "state": "finish-panel",
+      "file": "after/after-tablet-768-finish-panel.png",
+      "before": "before/qa-round1-tablet-768-finish-panel.png",
+      "notes": "QA round 1. Before: Finish review 38px tall. After: Finish review, the direction choices and Keep reviewing are at least 44px."
+    },
+    {
+      "id": "tablet-768-composer",
+      "title": "Tablet 768px: note composer",
+      "viewport": "768x1024 @2x",
+      "state": "composer",
+      "file": "after/after-tablet-768-composer.png",
+      "before": "before/qa-round1-tablet-768-composer.png",
+      "notes": "QA round 1. Before: Add a note 34px tall. After: Add a note, the composer's buttons and Cancel are at least 44px."
+    },
+    {
       "id": "phone-375-top",
       "title": "Phone 375px: page load",
       "viewport": "375x812 @3x",
@@ -126,6 +179,59 @@
       "state": "drawer-end",
       "file": "after/after-phone-375-drawer-end.png",
       "notes": "After only: Finish review ends clear of the bottom-left issue pill and the floating controls."
+    },
+    {
+      "id": "phone-375-image-toolbar",
+      "title": "Phone 375px: design tabs and image toolbar",
+      "viewport": "375x812 @3x",
+      "state": "scrolled",
+      "file": "after/after-phone-375-scrolled.png",
+      "before": "before/qa-round1-phone-375-scrolled.png",
+      "notes": "QA round 1. Before: design tabs 25px tall, appearance switch 21px, toolbar icons 21x21px. After: all at least 44x44px, wrapping within the 375px width."
+    },
+    {
+      "id": "phone-375-lightbox",
+      "title": "Phone 375px: full-screen lightbox",
+      "viewport": "375x812 @3x",
+      "state": "lightbox",
+      "file": "after/after-phone-375-lightbox.png",
+      "before": "before/qa-round1-phone-375-lightbox.png",
+      "notes": "QA round 1. Zoom, fit, close, previous and next are 44x44px."
+    },
+    {
+      "id": "phone-375-navigator",
+      "title": "Phone 375px: navigator drawer",
+      "viewport": "375x812 @3x",
+      "state": "navigator",
+      "file": "after/after-phone-375-navigator.png",
+      "before": "before/qa-round1-phone-375-navigator.png",
+      "notes": "QA round 1. Close and every navigator entry are at least 44px."
+    },
+    {
+      "id": "phone-375-confirm-approve",
+      "title": "Phone 375px: Approve confirmation",
+      "viewport": "375x812 @3x",
+      "state": "confirm-approve",
+      "file": "after/after-phone-375-confirm-approve.png",
+      "notes": "After only (QA round 1): the expanded confirmation, its buttons and History are 44px targets."
+    },
+    {
+      "id": "phone-375-finish-panel",
+      "title": "Phone 375px: Finish review panel",
+      "viewport": "375x812 @3x",
+      "state": "finish-panel",
+      "file": "after/after-phone-375-finish-panel.png",
+      "before": "before/qa-round1-phone-375-finish-panel.png",
+      "notes": "QA round 1. Before: Finish review 38px tall. After: Finish review, the direction choices and Keep reviewing are at least 44px."
+    },
+    {
+      "id": "phone-375-composer",
+      "title": "Phone 375px: note composer",
+      "viewport": "375x812 @3x",
+      "state": "composer",
+      "file": "after/after-phone-375-composer.png",
+      "before": "before/qa-round1-phone-375-composer.png",
+      "notes": "QA round 1. Before: Add a note 34px tall. After: Add a note, the composer's buttons and Cancel are at least 44px."
     }
   ],
   "evidence": [
@@ -143,6 +249,11 @@
       "id": "after-report",
       "label": "After: browser measurements",
       "file": "after/after-report.json"
+    },
+    {
+      "id": "qa-round1-report",
+      "label": "QA round 1 reproduction: every undersized control before the fix",
+      "file": "before/qa-round1-report.json"
     },
     {
       "id": "media-markdown",

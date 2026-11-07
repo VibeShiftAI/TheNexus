@@ -2,7 +2,7 @@
   "documentId": "f6b7a491-50be-4992-a983-50a5b28f2f64",
   "base": "http://localhost:3000",
   "label": "media-pdf",
-  "capturedAt": "2026-11-07T22:13:42.446Z",
+  "capturedAt": "2026-11-07T23:20:42.944Z",
   "configs": [
     {
       "name": "desktop-125",
@@ -25,7 +25,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -118,7 +119,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -233,6 +235,614 @@
       ]
     },
     {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 1024,
+      "dpr": 2,
+      "mobile": true,
+      "scale": 1,
+      "shots": [
+        "media-pdf-tablet-768-top.png",
+        "media-pdf-tablet-768-scrolled.png",
+        "media-pdf-tablet-768-navigator.png",
+        "media-pdf-tablet-768-drawer.png",
+        "media-pdf-tablet-768-confirm-approve.png",
+        "media-pdf-tablet-768-confirm-request_changes.png",
+        "media-pdf-tablet-768-drawer-end.png"
+      ],
+      "top": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "scrollY": 0,
+          "zoom": 1
+        },
+        "overflow": {
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "horizontal": false,
+          "pastEdge": []
+        },
+        "header": {
+          "rect": {
+            "top": 0,
+            "bottom": 274,
+            "left": 0,
+            "right": 768,
+            "height": 274,
+            "width": 768
+          },
+          "position": "static",
+          "containsBrief": false
+        },
+        "brief": {
+          "rect": {
+            "top": 294,
+            "bottom": 408,
+            "left": 16,
+            "right": 752,
+            "height": 114,
+            "width": 736
+          },
+          "pinnedBy": null,
+          "collapsed": "true"
+        },
+        "pinnedTop": 0,
+        "railTopVar": "calc(274px + 1.25rem)",
+        "rails": [
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "294px",
+            "visible": false
+          },
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "294px",
+            "visible": false
+          }
+        ],
+        "floating": [
+          {
+            "label": "phone-bar",
+            "rect": {
+              "top": 866,
+              "bottom": 927,
+              "left": 0,
+              "right": 768,
+              "height": 61,
+              "width": 768
+            }
+          },
+          {
+            "label": "fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md tran",
+            "rect": {
+              "top": 987,
+              "bottom": 1024,
+              "left": 0,
+              "right": 768,
+              "height": 37,
+              "width": 768
+            }
+          },
+          {
+            "label": "Global voice controls",
+            "rect": {
+              "top": 935,
+              "bottom": 979,
+              "left": 479,
+              "right": 756,
+              "height": 44,
+              "width": 277
+            }
+          }
+        ]
+      },
+      "scrolled": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "scrollY": 552,
+          "zoom": 1
+        },
+        "overflow": {
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "horizontal": false,
+          "pastEdge": []
+        },
+        "header": {
+          "rect": {
+            "top": -552,
+            "bottom": -278,
+            "left": 0,
+            "right": 768,
+            "height": 274,
+            "width": 768
+          },
+          "position": "static",
+          "containsBrief": false
+        },
+        "brief": {
+          "rect": {
+            "top": -258,
+            "bottom": -144,
+            "left": 16,
+            "right": 752,
+            "height": 114,
+            "width": 736
+          },
+          "pinnedBy": null,
+          "collapsed": "true"
+        },
+        "pinnedTop": 0,
+        "railTopVar": "calc(274px + 1.25rem)",
+        "rails": [
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "294px",
+            "visible": false
+          },
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "294px",
+            "visible": false
+          }
+        ],
+        "floating": [
+          {
+            "label": "phone-bar",
+            "rect": {
+              "top": 866,
+              "bottom": 927,
+              "left": 0,
+              "right": 768,
+              "height": 61,
+              "width": 768
+            }
+          },
+          {
+            "label": "fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md tran",
+            "rect": {
+              "top": 987,
+              "bottom": 1024,
+              "left": 0,
+              "right": 768,
+              "height": 37,
+              "width": 768
+            }
+          },
+          {
+            "label": "Global voice controls",
+            "rect": {
+              "top": 935,
+              "bottom": 979,
+              "left": 479,
+              "right": 756,
+              "height": 44,
+              "width": 277
+            }
+          }
+        ]
+      },
+      "findings": {
+        "briefPinned": false,
+        "briefScrolledAway": true,
+        "pinnedHeight": 0,
+        "pinnedShare": 0,
+        "railOverlap": [],
+        "horizontalOverflow": false,
+        "drawerEndCovered": null,
+        "tapsMeasured": 40,
+        "smallTaps": [],
+        "overlappingTaps": [],
+        "exemptTaps": 1,
+        "stateOverflow": [],
+        "decisionCovered": []
+      },
+      "taps": [
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "← Finalize VibeShift AI business cards: ",
+          "data": "data-back-link",
+          "width": 405,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Reviews",
+          "data": "data-all-documents-link",
+          "width": 71,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Evidence",
+          "data": "data-evidence-button",
+          "width": 90,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Download",
+          "data": "",
+          "width": 95,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Copy link",
+          "data": "",
+          "width": 74,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Finalize VibeShift AI business cards: /c",
+          "data": "",
+          "width": 470,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "VibeShift AI — Consulting Business",
+          "data": "",
+          "width": 184,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "View reviewed revision",
+          "data": "",
+          "width": 147,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Review this revision",
+          "data": "",
+          "width": 129,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Previous page",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "input",
+          "text": "Page number",
+          "data": "data-pdf-page",
+          "width": 56,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Next page",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Open full",
+          "data": "",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Markers",
+          "data": "data-open-navigator",
+          "width": 364,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Review & decide (0)",
+          "data": "data-open-review",
+          "width": 364,
+          "height": 44
+        },
+        {
+          "state": "brief-expanded",
+          "tag": "button",
+          "text": "Hide details",
+          "data": "data-brief-toggle",
+          "width": 83,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close markers",
+          "data": "",
+          "width": 768,
+          "height": 1024
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "inlineExempt": [
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "task cfd4fcdb",
+          "data": "data-history-replacement-task",
+          "width": 73,
+          "height": 13,
+          "reason": "inline-link"
+        }
+      ],
+      "drawerCover": [
+        {
+          "button": "approve",
+          "rect": {
+            "top": 488,
+            "bottom": 532
+          },
+          "covered": []
+        },
+        {
+          "button": "request_changes",
+          "rect": {
+            "top": 488,
+            "bottom": 532
+          },
+          "covered": []
+        }
+      ],
+      "statesMeasured": [
+        "page",
+        "brief-expanded",
+        "navigator",
+        "review-drawer",
+        "history-open",
+        "confirm-approve",
+        "confirm-request_changes"
+      ],
+      "drawerTaps": [
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Edit waiting tasks",
+          "data": "",
+          "width": 117,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Approve document",
+          "data": "data-decision-button",
+          "width": 155,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Request changes",
+          "data": "data-decision-button",
+          "width": 145,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Start a new review of this pdf",
+          "data": "",
+          "width": 154,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Edit waiting tasks",
+          "data": "",
+          "width": 117,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Approve document",
+          "data": "data-decision-button",
+          "width": 155,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Request changes",
+          "data": "data-decision-button",
+          "width": 145,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "Download this revision",
+          "data": "",
+          "width": 118,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "Download this revision",
+          "data": "",
+          "width": 118,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "summary",
+          "text": "All saved snapshots (2)",
+          "data": "",
+          "width": 710,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Start a new review of this pdf",
+          "data": "",
+          "width": 154,
+          "height": 44
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 688,
+          "height": 64
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "button",
+          "text": "Approve this revision",
+          "data": "data-decision-submit",
+          "width": 166,
+          "height": 44
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 688,
+          "height": 64
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "button",
+          "text": "Request changes on this revision",
+          "data": "data-decision-submit",
+          "width": 236,
+          "height": 44
+        }
+      ],
+      "drawerEnd": {
+        "button": "Start a new review of this pdf",
+        "covered": []
+      }
+    },
+    {
       "name": "phone-375",
       "width": 375,
       "height": 812,
@@ -242,7 +852,11 @@
       "shots": [
         "media-pdf-phone-375-top.png",
         "media-pdf-phone-375-scrolled.png",
-        "media-pdf-phone-375-drawer.png"
+        "media-pdf-phone-375-navigator.png",
+        "media-pdf-phone-375-drawer.png",
+        "media-pdf-phone-375-confirm-approve.png",
+        "media-pdf-phone-375-confirm-request_changes.png",
+        "media-pdf-phone-375-drawer-end.png"
       ],
       "top": {
         "viewport": {
@@ -254,7 +868,8 @@
         "overflow": {
           "scrollWidth": 375,
           "clientWidth": 375,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -358,7 +973,8 @@
         "overflow": {
           "scrollWidth": 375,
           "clientWidth": 375,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -459,146 +1075,380 @@
         "pinnedShare": 0,
         "railOverlap": [],
         "horizontalOverflow": false,
+        "drawerEndCovered": null,
+        "tapsMeasured": 40,
         "smallTaps": [],
+        "overlappingTaps": [],
+        "exemptTaps": 1,
+        "stateOverflow": [],
         "decisionCovered": []
       },
       "taps": [
         {
-          "text": "← Finalize VibeShift AI business",
-          "height": 44,
-          "width": 189
+          "state": "page",
+          "tag": "a",
+          "text": "← Finalize VibeShift AI business cards: ",
+          "data": "data-back-link",
+          "width": 189,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Reviews",
-          "height": 44,
-          "width": 71
+          "data": "data-all-documents-link",
+          "width": 71,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Evidence",
-          "height": 44,
-          "width": 90
+          "data": "data-evidence-button",
+          "width": 90,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Download",
-          "height": 44,
-          "width": 95
+          "data": "",
+          "width": 95,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Copy link",
-          "height": 44,
-          "width": 74
+          "data": "",
+          "width": 74,
+          "height": 44
         },
         {
-          "text": "Finalize VibeShift AI business c",
-          "height": 44,
-          "width": 343
+          "state": "page",
+          "tag": "a",
+          "text": "Finalize VibeShift AI business cards: /c",
+          "data": "",
+          "width": 343,
+          "height": 44
         },
         {
-          "text": "VibeShift AI — Consulting Busine",
-          "height": 44,
-          "width": 184
+          "state": "page",
+          "tag": "a",
+          "text": "VibeShift AI — Consulting Business",
+          "data": "",
+          "width": 184,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Show details",
-          "height": 44,
-          "width": 91
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
+          "text": "View reviewed revision",
+          "data": "",
+          "width": 147,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Review this revision",
+          "data": "",
+          "width": 129,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Previous page",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "input",
+          "text": "Page number",
+          "data": "data-pdf-page",
+          "width": 56,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Next page",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Open full",
+          "data": "",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
           "text": "Markers",
-          "height": 44,
-          "width": 168
+          "data": "data-open-navigator",
+          "width": 168,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Review & decide (0)",
-          "height": 44,
-          "width": 168
+          "data": "data-open-review",
+          "width": 168,
+          "height": 44
+        },
+        {
+          "state": "brief-expanded",
+          "tag": "button",
+          "text": "Hide details",
+          "data": "data-brief-toggle",
+          "width": 83,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close markers",
+          "data": "",
+          "width": 375,
+          "height": 812
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "inlineExempt": [
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "task cfd4fcdb",
+          "data": "data-history-replacement-task",
+          "width": 265,
+          "height": 30,
+          "reason": "inline-link"
         }
       ],
       "drawerCover": [
         {
           "button": "approve",
           "rect": {
-            "top": 344,
-            "bottom": 388
+            "top": 361,
+            "bottom": 405
           },
           "covered": []
         },
         {
           "button": "request_changes",
           "rect": {
-            "top": 344,
-            "bottom": 388
+            "top": 361,
+            "bottom": 405
           },
           "covered": []
         }
       ],
+      "statesMeasured": [
+        "page",
+        "brief-expanded",
+        "navigator",
+        "review-drawer",
+        "history-open",
+        "confirm-approve",
+        "confirm-request_changes"
+      ],
       "drawerTaps": [
         {
-          "text": "← Finalize VibeShift AI business",
-          "height": 44,
-          "width": 189
-        },
-        {
-          "text": "Reviews",
-          "height": 44,
-          "width": 71
-        },
-        {
-          "text": "Evidence",
-          "height": 44,
-          "width": 90
-        },
-        {
-          "text": "Download",
-          "height": 44,
-          "width": 95
-        },
-        {
-          "text": "Copy link",
-          "height": 44,
-          "width": 74
-        },
-        {
-          "text": "Finalize VibeShift AI business c",
-          "height": 44,
-          "width": 343
-        },
-        {
-          "text": "VibeShift AI — Consulting Busine",
-          "height": 44,
-          "width": 184
-        },
-        {
-          "text": "Show details",
-          "height": 44,
-          "width": 91
-        },
-        {
-          "text": "Markers",
-          "height": 44,
-          "width": 168
-        },
-        {
-          "text": "Review & decide (0)",
-          "height": 44,
-          "width": 168
-        },
-        {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Close",
-          "height": 44,
-          "width": 16
+          "data": "",
+          "width": 44,
+          "height": 44
         },
         {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Edit waiting tasks",
+          "data": "",
+          "width": 117,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Approve document",
-          "height": 44,
-          "width": 155
+          "data": "data-decision-button",
+          "width": 155,
+          "height": 44
         },
         {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Request changes",
-          "height": 44,
-          "width": 145
+          "data": "data-decision-button",
+          "width": 145,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Start a new review of this pdf",
+          "data": "",
+          "width": 154,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Edit waiting tasks",
+          "data": "",
+          "width": 117,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Approve document",
+          "data": "data-decision-button",
+          "width": 155,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Request changes",
+          "data": "data-decision-button",
+          "width": 145,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "Download this revision",
+          "data": "",
+          "width": 118,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "Download this revision",
+          "data": "",
+          "width": 118,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "summary",
+          "text": "All saved snapshots (2)",
+          "data": "",
+          "width": 317,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Start a new review of this pdf",
+          "data": "",
+          "width": 154,
+          "height": 44
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 295,
+          "height": 64
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "button",
+          "text": "Approve this revision",
+          "data": "data-decision-submit",
+          "width": 166,
+          "height": 44
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 295,
+          "height": 64
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 63,
+          "height": 46
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "button",
+          "text": "Request changes on this revision",
+          "data": "data-decision-submit",
+          "width": 224,
+          "height": 46
         }
-      ]
+      ],
+      "drawerEnd": {
+        "button": "Start a new review of this pdf",
+        "covered": []
+      }
     }
   ]
 }

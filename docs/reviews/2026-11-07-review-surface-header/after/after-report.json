@@ -2,7 +2,7 @@
   "documentId": "bdc3746b-709c-4b20-b17f-b7306d272127",
   "base": "http://localhost:3000",
   "label": "after",
-  "capturedAt": "2026-11-07T22:20:45.549Z",
+  "capturedAt": "2026-11-07T23:14:40.631Z",
   "configs": [
     {
       "name": "desktop-100",
@@ -25,7 +25,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -118,7 +119,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -253,7 +255,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -346,7 +349,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -481,7 +485,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -574,7 +579,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -698,7 +704,13 @@
       "shots": [
         "after-tablet-768-top.png",
         "after-tablet-768-scrolled.png",
+        "after-tablet-768-lightbox.png",
+        "after-tablet-768-navigator.png",
         "after-tablet-768-drawer.png",
+        "after-tablet-768-confirm-approve.png",
+        "after-tablet-768-confirm-request_changes.png",
+        "after-tablet-768-finish-panel.png",
+        "after-tablet-768-composer.png",
         "after-tablet-768-drawer-end.png"
       ],
       "top": {
@@ -711,7 +723,8 @@
         "overflow": {
           "scrollWidth": 768,
           "clientWidth": 768,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -815,7 +828,8 @@
         "overflow": {
           "scrollWidth": 768,
           "clientWidth": 768,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -917,164 +931,2402 @@
         "railOverlap": [],
         "horizontalOverflow": false,
         "drawerEndCovered": null,
+        "tapsMeasured": 294,
         "smallTaps": [],
+        "overlappingTaps": [],
+        "exemptTaps": 0,
+        "stateOverflow": [],
         "decisionCovered": []
       },
       "taps": [
         {
-          "text": "← One report design system: them",
-          "height": 44,
-          "width": 405
+          "state": "page",
+          "tag": "a",
+          "text": "← One report design system: theme tokens",
+          "data": "data-back-link",
+          "width": 405,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Reviews",
-          "height": 44,
-          "width": 71
+          "data": "data-all-documents-link",
+          "width": 71,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Edit",
-          "height": 44,
-          "width": 61
+          "data": "data-edit-button",
+          "width": 61,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Source",
-          "height": 44,
-          "width": 79
+          "data": "",
+          "width": 79,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Evidence",
-          "height": 44,
-          "width": 90
+          "data": "data-evidence-button",
+          "width": 90,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Download",
-          "height": 44,
-          "width": 95
+          "data": "",
+          "width": 95,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Copy link",
-          "height": 44,
-          "width": 74
+          "data": "",
+          "width": 74,
+          "height": 44
         },
         {
-          "text": "One report design system: theme ",
-          "height": 44,
-          "width": 571
+          "state": "page",
+          "tag": "a",
+          "text": "One report design system: theme tokens, ",
+          "data": "",
+          "width": 571,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Praxis",
-          "height": 44,
-          "width": 32
+          "data": "",
+          "width": 44,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Show details",
-          "height": 44,
-          "width": 91
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
+          "text": "standard Standard report layout rec.",
+          "data": "data-design-direction",
+          "width": 249,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Screens48",
+          "data": "data-design-tab",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Previews14",
+          "data": "data-design-tab",
+          "width": 85,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Tokens",
+          "data": "data-design-tab",
+          "width": 58,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Evidence17",
+          "data": "data-design-tab",
+          "width": 84,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "light",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "dark",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Both",
+          "data": "data-design-appearance",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "1 Joey · Health Wealth Score · email · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "2 Joey · Health Wealth Score · email · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "3 Joey · Health Wealth Score · email · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "4 Joey · Health Wealth Score · email · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "5 Joey · Health Wealth Score · web · chr",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "6 Joey · Health Wealth Score · web · web",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "7 Joey · Health Wealth Score · web · chr",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "8 Joey · Health Wealth Score · web · web",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "9 Meeple Magnate · email · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "10 Meeple Magnate · email · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "11 Meeple Magnate · email · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "12 Meeple Magnate · email · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "13 Meeple Magnate · web · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "14 Meeple Magnate · web · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "15 Meeple Magnate · web · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "16 Meeple Magnate · web · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "17 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "18 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "19 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "20 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "21 Classic · populated fixture · web · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "22 Classic · populated fixture · web · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "23 Classic · populated fixture · web · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "24 Classic · populated fixture · web · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "25 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "26 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "27 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "28 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "29 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "30 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "31 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "32 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "33 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "34 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "35 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "36 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "37 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "38 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "39 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "40 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "41 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "42 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "43 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "44 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "45 Arcade · populated fixture · web · ch",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "46 Arcade · populated fixture · web · we",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "47 Arcade · populated fixture · web · ch",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "48 Arcade · populated fixture · web · we",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Zoom out",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Fit to view",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Zoom in",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Actual size",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Before/after",
+          "data": "",
+          "width": 92,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Side by side",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Pin a note",
+          "data": "data-pin-mode",
+          "width": 81,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Full screen",
+          "data": "data-open-fullscreen",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
           "text": "Screens",
-          "height": 44,
-          "width": 364
+          "data": "data-open-navigator",
+          "width": 364,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Review & decide (0)",
-          "height": 44,
-          "width": 364
+          "data": "data-open-review",
+          "width": 364,
+          "height": 44
+        },
+        {
+          "state": "brief-expanded",
+          "tag": "button",
+          "text": "Hide details",
+          "data": "data-brief-toggle",
+          "width": 83,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "standard Standard report layout rec.",
+          "data": "data-design-direction",
+          "width": 249,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Screens48",
+          "data": "data-design-tab",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Previews14",
+          "data": "data-design-tab",
+          "width": 85,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Tokens",
+          "data": "data-design-tab",
+          "width": 58,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Evidence17",
+          "data": "data-design-tab",
+          "width": 84,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "light",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "dark",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Both",
+          "data": "data-design-appearance",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "1 Joey · Health Wealth Score · email · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "2 Joey · Health Wealth Score · email · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "3 Joey · Health Wealth Score · email · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "4 Joey · Health Wealth Score · email · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "5 Joey · Health Wealth Score · web · chr",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "6 Joey · Health Wealth Score · web · web",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "7 Joey · Health Wealth Score · web · chr",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "8 Joey · Health Wealth Score · web · web",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "9 Meeple Magnate · email · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "10 Meeple Magnate · email · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "11 Meeple Magnate · email · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "12 Meeple Magnate · email · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "13 Meeple Magnate · web · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "14 Meeple Magnate · web · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "15 Meeple Magnate · web · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "16 Meeple Magnate · web · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "17 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "18 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "19 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "20 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "21 Classic · populated fixture · web · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "22 Classic · populated fixture · web · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "23 Classic · populated fixture · web · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "24 Classic · populated fixture · web · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "25 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "26 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "27 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "28 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "29 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "30 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "31 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "32 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "33 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "34 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "35 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "36 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "37 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "38 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "39 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "40 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "41 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "42 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "43 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "44 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "45 Arcade · populated fixture · web · ch",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "46 Arcade · populated fixture · web · we",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "47 Arcade · populated fixture · web · ch",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "48 Arcade · populated fixture · web · we",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Zoom out",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Fit to view",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Zoom in",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Actual size",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Before/after",
+          "data": "",
+          "width": 92,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Side by side",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Pin a note",
+          "data": "data-pin-mode",
+          "width": 81,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Full screen",
+          "data": "data-open-fullscreen",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "standard Standard report layout rec.",
+          "data": "data-design-direction",
+          "width": 249,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Screens48",
+          "data": "data-design-tab",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Previews14",
+          "data": "data-design-tab",
+          "width": 85,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Tokens",
+          "data": "data-design-tab",
+          "width": 58,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Evidence17",
+          "data": "data-design-tab",
+          "width": 84,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "light",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "dark",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Both",
+          "data": "data-design-appearance",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · email",
+          "data": "",
+          "width": 197,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · web",
+          "data": "",
+          "width": 191,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Meeple Magnate · email",
+          "data": "",
+          "width": 142,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Meeple Magnate · web",
+          "data": "",
+          "width": 136,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Classic · populated fixture · email",
+          "data": "",
+          "width": 192,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Classic · populated fixture · web",
+          "data": "",
+          "width": 186,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Editorial · populated fixture · email",
+          "data": "",
+          "width": 197,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Editorial · populated fixture · web",
+          "data": "",
+          "width": 191,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · email",
+          "data": "",
+          "width": 200,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · web",
+          "data": "",
+          "width": 194,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Arcade · populated fixture · email",
+          "data": "",
+          "width": 192,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Arcade · populated fixture · web",
+          "data": "",
+          "width": 185,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · actual isol",
+          "data": "",
+          "width": 319,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Meeple Magnate · actual isolated dry-run",
+          "data": "",
+          "width": 265,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Phone",
+          "data": "",
+          "width": 67,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Tablet",
+          "data": "",
+          "width": 66,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Desktop",
+          "data": "",
+          "width": 78,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Reload prototype",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "a",
+          "text": "Open full",
+          "data": "",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Place a comment",
+          "data": "data-prototype-place",
+          "width": 132,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "standard Standard report layout rec.",
+          "data": "data-design-direction",
+          "width": 249,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Screens48",
+          "data": "data-design-tab",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Previews14",
+          "data": "data-design-tab",
+          "width": 85,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Tokens",
+          "data": "data-design-tab",
+          "width": 58,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Evidence17",
+          "data": "data-design-tab",
+          "width": 84,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "light",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "dark",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Both",
+          "data": "data-design-appearance",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "standard Standard report layout rec.",
+          "data": "data-design-direction",
+          "width": 249,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Screens48",
+          "data": "data-design-tab",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Previews14",
+          "data": "data-design-tab",
+          "width": 85,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Tokens",
+          "data": "data-design-tab",
+          "width": 58,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Evidence17",
+          "data": "data-design-tab",
+          "width": 84,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "light",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "dark",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Both",
+          "data": "data-design-appearance",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Zoom out",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Fit to screen",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Zoom in",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Close full screen",
+          "data": "data-lightbox-close",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Previous",
+          "data": "data-lightbox-prev",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Next",
+          "data": "data-lightbox-next",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close screens",
+          "data": "",
+          "width": 768,
+          "height": 1024
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · email · chr",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · email · web",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · email · chr",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · email · web",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · web · chrom",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · web · webki",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · web · chrom",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · web · webki",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · email · chromium standa",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · email · webkit standard",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · email · chromium standa",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · email · webkit standard",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · web · chromium standard",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · web · webkit standard ·",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · web · chromium standard",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · web · webkit standard ·",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · email · ch",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · email · we",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · email · ch",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · email · we",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · web · chro",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · web · webk",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · web · chro",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · web · webk",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · email · ",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · email · ",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · email · ",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · email · ",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · web · ch",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · web · we",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · web · ch",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · web · we",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · email · c",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · email · w",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · email · c",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · email · w",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · web · chr",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · web · web",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · web · chr",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · web · web",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · email · chr",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · email · web",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · email · chr",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · email · web",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · web · chrom",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · web · webki",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · web · chrom",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · web · webki",
+          "data": "",
+          "width": 736,
+          "height": 44
         }
       ],
+      "inlineExempt": [],
       "drawerCover": [
         {
           "button": "approve",
           "rect": {
-            "top": 531,
-            "bottom": 575
+            "top": 492,
+            "bottom": 536
           },
           "covered": []
         },
         {
           "button": "request_changes",
           "rect": {
-            "top": 531,
-            "bottom": 575
+            "top": 492,
+            "bottom": 536
           },
           "covered": []
         }
       ],
+      "statesMeasured": [
+        "page",
+        "brief-expanded",
+        "design-tab-screens",
+        "design-tab-previews",
+        "design-tab-tokens",
+        "design-tab-evidence",
+        "lightbox",
+        "navigator",
+        "review-drawer",
+        "history-open",
+        "confirm-approve",
+        "confirm-request_changes",
+        "finish-panel",
+        "composer"
+      ],
       "drawerTaps": [
         {
-          "text": "← One report design system: them",
-          "height": 44,
-          "width": 405
-        },
-        {
-          "text": "Reviews",
-          "height": 44,
-          "width": 71
-        },
-        {
-          "text": "Edit",
-          "height": 44,
-          "width": 61
-        },
-        {
-          "text": "Source",
-          "height": 44,
-          "width": 79
-        },
-        {
-          "text": "Evidence",
-          "height": 44,
-          "width": 90
-        },
-        {
-          "text": "Download",
-          "height": 44,
-          "width": 95
-        },
-        {
-          "text": "Copy link",
-          "height": 44,
-          "width": 74
-        },
-        {
-          "text": "One report design system: theme ",
-          "height": 44,
-          "width": 571
-        },
-        {
-          "text": "Praxis",
-          "height": 44,
-          "width": 32
-        },
-        {
-          "text": "Show details",
-          "height": 44,
-          "width": 91
-        },
-        {
-          "text": "Screens",
-          "height": 44,
-          "width": 364
-        },
-        {
-          "text": "Review & decide (0)",
-          "height": 44,
-          "width": 364
-        },
-        {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Close",
-          "height": 44,
-          "width": 44
+          "data": "",
+          "width": 44,
+          "height": 44
         },
         {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Edit waiting tasks",
+          "data": "",
+          "width": 117,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Approve document",
-          "height": 44,
-          "width": 155
+          "data": "data-decision-button",
+          "width": 155,
+          "height": 44
         },
         {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Request changes",
-          "height": 44,
-          "width": 145
+          "data": "data-decision-button",
+          "width": 145,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Add a note about the whole deliverable",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 736,
+          "height": 80
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Edit waiting tasks",
+          "data": "",
+          "width": 117,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Approve document",
+          "data": "data-decision-button",
+          "width": 155,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Request changes",
+          "data": "data-decision-button",
+          "width": 145,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "Download this revision",
+          "data": "",
+          "width": 118,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "summary",
+          "text": "All saved snapshots (1)",
+          "data": "",
+          "width": 710,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Add a note about the whole deliverable",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 736,
+          "height": 80
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 688,
+          "height": 64
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "button",
+          "text": "Approve this revision",
+          "data": "data-decision-submit",
+          "width": 166,
+          "height": 44
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 688,
+          "height": 64
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "button",
+          "text": "Request changes on this revision",
+          "data": "data-decision-submit",
+          "width": 236,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "label",
+          "text": "Approve once this change is made. Needs ",
+          "data": "data-delegate-approval",
+          "width": 710,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 710,
+          "height": 80
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Keep reviewing",
+          "data": "",
+          "width": 112,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Send to Praxis",
+          "data": "",
+          "width": 127,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel comment",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "textarea",
+          "text": "Comment text",
+          "data": "",
+          "width": 718,
+          "height": 96
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Save comment",
+          "data": "",
+          "width": 129,
+          "height": 44
         }
       ],
       "drawerEnd": {
@@ -1092,7 +3344,13 @@
       "shots": [
         "after-phone-375-top.png",
         "after-phone-375-scrolled.png",
+        "after-phone-375-lightbox.png",
+        "after-phone-375-navigator.png",
         "after-phone-375-drawer.png",
+        "after-phone-375-confirm-approve.png",
+        "after-phone-375-confirm-request_changes.png",
+        "after-phone-375-finish-panel.png",
+        "after-phone-375-composer.png",
         "after-phone-375-drawer-end.png"
       ],
       "top": {
@@ -1105,7 +3363,8 @@
         "overflow": {
           "scrollWidth": 375,
           "clientWidth": 375,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -1209,7 +3468,8 @@
         "overflow": {
           "scrollWidth": 375,
           "clientWidth": 375,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -1311,164 +3571,2402 @@
         "railOverlap": [],
         "horizontalOverflow": false,
         "drawerEndCovered": null,
+        "tapsMeasured": 294,
         "smallTaps": [],
+        "overlappingTaps": [],
+        "exemptTaps": 0,
+        "stateOverflow": [],
         "decisionCovered": []
       },
       "taps": [
         {
-          "text": "← One report design system: them",
-          "height": 44,
-          "width": 189
+          "state": "page",
+          "tag": "a",
+          "text": "← One report design system: theme tokens",
+          "data": "data-back-link",
+          "width": 189,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Reviews",
-          "height": 44,
-          "width": 71
+          "data": "data-all-documents-link",
+          "width": 71,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Edit",
-          "height": 44,
-          "width": 61
+          "data": "data-edit-button",
+          "width": 61,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Source",
-          "height": 44,
-          "width": 79
+          "data": "",
+          "width": 79,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Evidence",
-          "height": 44,
-          "width": 90
+          "data": "data-evidence-button",
+          "width": 90,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Download",
-          "height": 44,
-          "width": 95
+          "data": "",
+          "width": 95,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Copy link",
-          "height": 44,
-          "width": 74
+          "data": "",
+          "width": 74,
+          "height": 44
         },
         {
-          "text": "One report design system: theme ",
-          "height": 44,
-          "width": 343
+          "state": "page",
+          "tag": "a",
+          "text": "One report design system: theme tokens, ",
+          "data": "",
+          "width": 343,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Praxis",
-          "height": 44,
-          "width": 32
+          "data": "",
+          "width": 44,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Show details",
-          "height": 44,
-          "width": 91
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
+          "text": "standard Standard report layout rec.",
+          "data": "data-design-direction",
+          "width": 249,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Screens48",
+          "data": "data-design-tab",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Previews14",
+          "data": "data-design-tab",
+          "width": 85,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Tokens",
+          "data": "data-design-tab",
+          "width": 58,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Evidence17",
+          "data": "data-design-tab",
+          "width": 84,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "light",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "dark",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Both",
+          "data": "data-design-appearance",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "1 Joey · Health Wealth Score · email · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "2 Joey · Health Wealth Score · email · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "3 Joey · Health Wealth Score · email · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "4 Joey · Health Wealth Score · email · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "5 Joey · Health Wealth Score · web · chr",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "6 Joey · Health Wealth Score · web · web",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "7 Joey · Health Wealth Score · web · chr",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "8 Joey · Health Wealth Score · web · web",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "9 Meeple Magnate · email · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "10 Meeple Magnate · email · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "11 Meeple Magnate · email · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "12 Meeple Magnate · email · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "13 Meeple Magnate · web · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "14 Meeple Magnate · web · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "15 Meeple Magnate · web · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "16 Meeple Magnate · web · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "17 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "18 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "19 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "20 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "21 Classic · populated fixture · web · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "22 Classic · populated fixture · web · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "23 Classic · populated fixture · web · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "24 Classic · populated fixture · web · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "25 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "26 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "27 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "28 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "29 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "30 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "31 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "32 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "33 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "34 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "35 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "36 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "37 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "38 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "39 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "40 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "41 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "42 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "43 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "44 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "45 Arcade · populated fixture · web · ch",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "46 Arcade · populated fixture · web · we",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "47 Arcade · populated fixture · web · ch",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "48 Arcade · populated fixture · web · we",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Zoom out",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Fit to view",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Zoom in",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Actual size",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Before/after",
+          "data": "",
+          "width": 92,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Side by side",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Pin a note",
+          "data": "data-pin-mode",
+          "width": 81,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Full screen",
+          "data": "data-open-fullscreen",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
           "text": "Screens",
-          "height": 44,
-          "width": 168
+          "data": "data-open-navigator",
+          "width": 168,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Review & decide (0)",
-          "height": 44,
-          "width": 168
+          "data": "data-open-review",
+          "width": 168,
+          "height": 44
+        },
+        {
+          "state": "brief-expanded",
+          "tag": "button",
+          "text": "Hide details",
+          "data": "data-brief-toggle",
+          "width": 83,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "standard Standard report layout rec.",
+          "data": "data-design-direction",
+          "width": 249,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Screens48",
+          "data": "data-design-tab",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Previews14",
+          "data": "data-design-tab",
+          "width": 85,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Tokens",
+          "data": "data-design-tab",
+          "width": 58,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Evidence17",
+          "data": "data-design-tab",
+          "width": 84,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "light",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "dark",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Both",
+          "data": "data-design-appearance",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "1 Joey · Health Wealth Score · email · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "2 Joey · Health Wealth Score · email · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "3 Joey · Health Wealth Score · email · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "4 Joey · Health Wealth Score · email · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "5 Joey · Health Wealth Score · web · chr",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "6 Joey · Health Wealth Score · web · web",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "7 Joey · Health Wealth Score · web · chr",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "8 Joey · Health Wealth Score · web · web",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "9 Meeple Magnate · email · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "10 Meeple Magnate · email · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "11 Meeple Magnate · email · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "12 Meeple Magnate · email · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "13 Meeple Magnate · web · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "14 Meeple Magnate · web · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "15 Meeple Magnate · web · chromium",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "16 Meeple Magnate · web · webkit",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "17 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "18 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "19 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "20 Classic · populated fixture · email ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "21 Classic · populated fixture · web · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "22 Classic · populated fixture · web · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "23 Classic · populated fixture · web · c",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "24 Classic · populated fixture · web · w",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "25 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "26 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "27 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "28 Editorial · populated fixture · email",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "29 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "30 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "31 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "32 Editorial · populated fixture · web ·",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "33 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "34 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "35 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "36 Tabletop · populated fixture · email ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "37 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "38 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "39 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "40 Tabletop · populated fixture · web · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "41 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "42 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "43 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "44 Arcade · populated fixture · email · ",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "45 Arcade · populated fixture · web · ch",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "46 Arcade · populated fixture · web · we",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "47 Arcade · populated fixture · web · ch",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "48 Arcade · populated fixture · web · we",
+          "data": "data-design-screen",
+          "width": 112,
+          "height": 105
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Zoom out",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Fit to view",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Zoom in",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Actual size",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Before/after",
+          "data": "",
+          "width": 92,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Side by side",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Pin a note",
+          "data": "data-pin-mode",
+          "width": 81,
+          "height": 44
+        },
+        {
+          "state": "design-tab-screens",
+          "tag": "button",
+          "text": "Full screen",
+          "data": "data-open-fullscreen",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "standard Standard report layout rec.",
+          "data": "data-design-direction",
+          "width": 249,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Screens48",
+          "data": "data-design-tab",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Previews14",
+          "data": "data-design-tab",
+          "width": 85,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Tokens",
+          "data": "data-design-tab",
+          "width": 58,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Evidence17",
+          "data": "data-design-tab",
+          "width": 84,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "light",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "dark",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Both",
+          "data": "data-design-appearance",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · email",
+          "data": "",
+          "width": 197,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · web",
+          "data": "",
+          "width": 191,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Meeple Magnate · email",
+          "data": "",
+          "width": 142,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Meeple Magnate · web",
+          "data": "",
+          "width": 136,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Classic · populated fixture · email",
+          "data": "",
+          "width": 192,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Classic · populated fixture · web",
+          "data": "",
+          "width": 186,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Editorial · populated fixture · email",
+          "data": "",
+          "width": 197,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Editorial · populated fixture · web",
+          "data": "",
+          "width": 191,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · email",
+          "data": "",
+          "width": 200,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · web",
+          "data": "",
+          "width": 194,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Arcade · populated fixture · email",
+          "data": "",
+          "width": 192,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Arcade · populated fixture · web",
+          "data": "",
+          "width": 185,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · actual isol",
+          "data": "",
+          "width": 319,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Meeple Magnate · actual isolated dry-run",
+          "data": "",
+          "width": 265,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Phone",
+          "data": "",
+          "width": 67,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Tablet",
+          "data": "",
+          "width": 66,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Desktop",
+          "data": "",
+          "width": 78,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Reload prototype",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "a",
+          "text": "Open full",
+          "data": "",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "design-tab-previews",
+          "tag": "button",
+          "text": "Place a comment",
+          "data": "data-prototype-place",
+          "width": 132,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "standard Standard report layout rec.",
+          "data": "data-design-direction",
+          "width": 249,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Screens48",
+          "data": "data-design-tab",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Previews14",
+          "data": "data-design-tab",
+          "width": 85,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Tokens",
+          "data": "data-design-tab",
+          "width": 58,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Evidence17",
+          "data": "data-design-tab",
+          "width": 84,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "light",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "dark",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-tokens",
+          "tag": "button",
+          "text": "Both",
+          "data": "data-design-appearance",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "standard Standard report layout rec.",
+          "data": "data-design-direction",
+          "width": 249,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Screens48",
+          "data": "data-design-tab",
+          "width": 82,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Previews14",
+          "data": "data-design-tab",
+          "width": 85,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Tokens",
+          "data": "data-design-tab",
+          "width": 58,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Evidence17",
+          "data": "data-design-tab",
+          "width": 84,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "light",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "dark",
+          "data": "data-design-appearance",
+          "width": 54,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "button",
+          "text": "Both",
+          "data": "data-design-appearance",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "design-tab-evidence",
+          "tag": "a",
+          "text": "Open",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Zoom out",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Fit to screen",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Zoom in",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Close full screen",
+          "data": "data-lightbox-close",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Previous",
+          "data": "data-lightbox-prev",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Next",
+          "data": "data-lightbox-next",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close screens",
+          "data": "",
+          "width": 375,
+          "height": 812
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · email · chr",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · email · web",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · email · chr",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · email · web",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · web · chrom",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · web · webki",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · web · chrom",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Joey · Health Wealth Score · web · webki",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · email · chromium standa",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · email · webkit standard",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · email · chromium standa",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · email · webkit standard",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · web · chromium standard",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · web · webkit standard ·",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · web · chromium standard",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Meeple Magnate · web · webkit standard ·",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · email · ch",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · email · we",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · email · ch",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · email · we",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · web · chro",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · web · webk",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · web · chro",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Classic · populated fixture · web · webk",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · email · ",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · email · ",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · email · ",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · email · ",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · web · ch",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · web · we",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · web · ch",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Editorial · populated fixture · web · we",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · email · c",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · email · w",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · email · c",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · email · w",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · web · chr",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · web · web",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · web · chr",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Tabletop · populated fixture · web · web",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · email · chr",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · email · web",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · email · chr",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · email · web",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · web · chrom",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · web · webki",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · web · chrom",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Arcade · populated fixture · web · webki",
+          "data": "",
+          "width": 343,
+          "height": 44
         }
       ],
+      "inlineExempt": [],
       "drawerCover": [
         {
           "button": "approve",
           "rect": {
-            "top": 376,
-            "bottom": 420
+            "top": 393,
+            "bottom": 437
           },
           "covered": []
         },
         {
           "button": "request_changes",
           "rect": {
-            "top": 376,
-            "bottom": 420
+            "top": 393,
+            "bottom": 437
           },
           "covered": []
         }
       ],
+      "statesMeasured": [
+        "page",
+        "brief-expanded",
+        "design-tab-screens",
+        "design-tab-previews",
+        "design-tab-tokens",
+        "design-tab-evidence",
+        "lightbox",
+        "navigator",
+        "review-drawer",
+        "history-open",
+        "confirm-approve",
+        "confirm-request_changes",
+        "finish-panel",
+        "composer"
+      ],
       "drawerTaps": [
         {
-          "text": "← One report design system: them",
-          "height": 44,
-          "width": 189
-        },
-        {
-          "text": "Reviews",
-          "height": 44,
-          "width": 71
-        },
-        {
-          "text": "Edit",
-          "height": 44,
-          "width": 61
-        },
-        {
-          "text": "Source",
-          "height": 44,
-          "width": 79
-        },
-        {
-          "text": "Evidence",
-          "height": 44,
-          "width": 90
-        },
-        {
-          "text": "Download",
-          "height": 44,
-          "width": 95
-        },
-        {
-          "text": "Copy link",
-          "height": 44,
-          "width": 74
-        },
-        {
-          "text": "One report design system: theme ",
-          "height": 44,
-          "width": 343
-        },
-        {
-          "text": "Praxis",
-          "height": 44,
-          "width": 32
-        },
-        {
-          "text": "Show details",
-          "height": 44,
-          "width": 91
-        },
-        {
-          "text": "Screens",
-          "height": 44,
-          "width": 168
-        },
-        {
-          "text": "Review & decide (0)",
-          "height": 44,
-          "width": 168
-        },
-        {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Close",
-          "height": 44,
-          "width": 16
+          "data": "",
+          "width": 44,
+          "height": 44
         },
         {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Edit waiting tasks",
+          "data": "",
+          "width": 117,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Approve document",
-          "height": 44,
-          "width": 155
+          "data": "data-decision-button",
+          "width": 155,
+          "height": 44
         },
         {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Request changes",
-          "height": 44,
-          "width": 145
+          "data": "data-decision-button",
+          "width": 145,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Add a note about the whole deliverable",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 343,
+          "height": 80
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Edit waiting tasks",
+          "data": "",
+          "width": 117,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Approve document",
+          "data": "data-decision-button",
+          "width": 155,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Request changes",
+          "data": "data-decision-button",
+          "width": 145,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "Download this revision",
+          "data": "",
+          "width": 118,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "summary",
+          "text": "All saved snapshots (1)",
+          "data": "",
+          "width": 317,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Add a note about the whole deliverable",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 343,
+          "height": 80
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 295,
+          "height": 64
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "confirm-approve",
+          "tag": "button",
+          "text": "Approve this revision",
+          "data": "data-decision-submit",
+          "width": 166,
+          "height": 44
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 295,
+          "height": 64
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 63,
+          "height": 46
+        },
+        {
+          "state": "confirm-request_changes",
+          "tag": "button",
+          "text": "Request changes on this revision",
+          "data": "data-decision-submit",
+          "width": 224,
+          "height": 46
+        },
+        {
+          "state": "finish-panel",
+          "tag": "label",
+          "text": "Approve once this change is made. Needs ",
+          "data": "data-delegate-approval",
+          "width": 317,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 317,
+          "height": 80
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Keep reviewing",
+          "data": "",
+          "width": 112,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Send to Praxis",
+          "data": "",
+          "width": 127,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel comment",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "textarea",
+          "text": "Comment text",
+          "data": "",
+          "width": 325,
+          "height": 96
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Save comment",
+          "data": "",
+          "width": 129,
+          "height": 44
         }
       ],
       "drawerEnd": {

@@ -2,7 +2,7 @@
   "documentId": "fa08d4e9-f23d-42d7-9bef-674e07dfaf88",
   "base": "http://localhost:3000",
   "label": "media-image",
-  "capturedAt": "2026-11-07T22:12:59.899Z",
+  "capturedAt": "2026-11-07T23:18:57.195Z",
   "configs": [
     {
       "name": "desktop-125",
@@ -25,7 +25,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -112,13 +113,14 @@
         "viewport": {
           "width": 1470,
           "height": 847,
-          "scrollY": 505,
+          "scrollY": 536,
           "zoom": 1.25
         },
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -134,8 +136,8 @@
         },
         "brief": {
           "rect": {
-            "top": -354,
-            "bottom": -71,
+            "top": -385,
+            "bottom": -102,
             "left": 300,
             "right": 945,
             "height": 284,
@@ -216,6 +218,629 @@
       "railCover": []
     },
     {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 1024,
+      "dpr": 2,
+      "mobile": true,
+      "scale": 1,
+      "shots": [
+        "media-image-tablet-768-top.png",
+        "media-image-tablet-768-scrolled.png",
+        "media-image-tablet-768-lightbox.png",
+        "media-image-tablet-768-navigator.png",
+        "media-image-tablet-768-drawer.png",
+        "media-image-tablet-768-finish-panel.png",
+        "media-image-tablet-768-composer.png",
+        "media-image-tablet-768-drawer-end.png"
+      ],
+      "top": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "scrollY": 0,
+          "zoom": 1
+        },
+        "overflow": {
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "horizontal": false,
+          "pastEdge": []
+        },
+        "header": {
+          "rect": {
+            "top": 0,
+            "bottom": 258,
+            "left": 0,
+            "right": 768,
+            "height": 258,
+            "width": 768
+          },
+          "position": "static",
+          "containsBrief": false
+        },
+        "brief": {
+          "rect": {
+            "top": 278,
+            "bottom": 437,
+            "left": 16,
+            "right": 752,
+            "height": 159,
+            "width": 736
+          },
+          "pinnedBy": null,
+          "collapsed": "true"
+        },
+        "pinnedTop": 0,
+        "railTopVar": "calc(258px + 1.25rem)",
+        "rails": [
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "278px",
+            "visible": false
+          },
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "278px",
+            "visible": false
+          }
+        ],
+        "floating": [
+          {
+            "label": "phone-bar",
+            "rect": {
+              "top": 866,
+              "bottom": 927,
+              "left": 0,
+              "right": 768,
+              "height": 61,
+              "width": 768
+            }
+          },
+          {
+            "label": "fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md tran",
+            "rect": {
+              "top": 987,
+              "bottom": 1024,
+              "left": 0,
+              "right": 768,
+              "height": 37,
+              "width": 768
+            }
+          },
+          {
+            "label": "Global voice controls",
+            "rect": {
+              "top": 935,
+              "bottom": 979,
+              "left": 479,
+              "right": 756,
+              "height": 44,
+              "width": 277
+            }
+          }
+        ]
+      },
+      "scrolled": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "scrollY": 291,
+          "zoom": 1
+        },
+        "overflow": {
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "horizontal": false,
+          "pastEdge": []
+        },
+        "header": {
+          "rect": {
+            "top": -291,
+            "bottom": -33,
+            "left": 0,
+            "right": 768,
+            "height": 258,
+            "width": 768
+          },
+          "position": "static",
+          "containsBrief": false
+        },
+        "brief": {
+          "rect": {
+            "top": -13,
+            "bottom": 146,
+            "left": 16,
+            "right": 752,
+            "height": 159,
+            "width": 736
+          },
+          "pinnedBy": null,
+          "collapsed": "true"
+        },
+        "pinnedTop": 0,
+        "railTopVar": "calc(258px + 1.25rem)",
+        "rails": [
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "278px",
+            "visible": false
+          },
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "278px",
+            "visible": false
+          }
+        ],
+        "floating": [
+          {
+            "label": "phone-bar",
+            "rect": {
+              "top": 866,
+              "bottom": 927,
+              "left": 0,
+              "right": 768,
+              "height": 61,
+              "width": 768
+            }
+          },
+          {
+            "label": "fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md tran",
+            "rect": {
+              "top": 987,
+              "bottom": 1024,
+              "left": 0,
+              "right": 768,
+              "height": 37,
+              "width": 768
+            }
+          },
+          {
+            "label": "Global voice controls",
+            "rect": {
+              "top": 935,
+              "bottom": 979,
+              "left": 479,
+              "right": 756,
+              "height": 44,
+              "width": 277
+            }
+          }
+        ]
+      },
+      "findings": {
+        "briefPinned": false,
+        "briefScrolledAway": false,
+        "pinnedHeight": 0,
+        "pinnedShare": 0,
+        "railOverlap": [],
+        "horizontalOverflow": false,
+        "drawerEndCovered": null,
+        "tapsMeasured": 45,
+        "smallTaps": [],
+        "overlappingTaps": [],
+        "exemptTaps": 0,
+        "stateOverflow": [],
+        "decisionCovered": []
+      },
+      "taps": [
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "← Record a live acceptance walkthrough o",
+          "data": "data-back-link",
+          "width": 405,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Reviews",
+          "data": "data-all-documents-link",
+          "width": 71,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Evidence",
+          "data": "data-evidence-button",
+          "width": 90,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Download",
+          "data": "",
+          "width": 95,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Copy link",
+          "data": "",
+          "width": 74,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Record a live acceptance walkthrough of ",
+          "data": "",
+          "width": 553,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "TheNexus",
+          "data": "",
+          "width": 52,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Zoom out",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Fit to view",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Zoom in",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Actual size",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Pin a note",
+          "data": "data-pin-mode",
+          "width": 81,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Full screen",
+          "data": "data-open-fullscreen",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Markers",
+          "data": "data-open-navigator",
+          "width": 364,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Review & decide (0)",
+          "data": "data-open-review",
+          "width": 364,
+          "height": 44
+        },
+        {
+          "state": "brief-expanded",
+          "tag": "button",
+          "text": "Hide details",
+          "data": "data-brief-toggle",
+          "width": 83,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Zoom out",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Fit to screen",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Zoom in",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Close full screen",
+          "data": "data-lightbox-close",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close markers",
+          "data": "",
+          "width": 768,
+          "height": 1024
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "inlineExempt": [],
+      "drawerCover": [],
+      "statesMeasured": [
+        "page",
+        "brief-expanded",
+        "lightbox",
+        "navigator",
+        "review-drawer",
+        "history-open",
+        "finish-panel",
+        "composer"
+      ],
+      "drawerTaps": [
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Move to review queue",
+          "data": "",
+          "width": 142,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Add a note about the whole deliverable",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 736,
+          "height": 80
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Move to review queue",
+          "data": "",
+          "width": 142,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "Download this revision",
+          "data": "",
+          "width": 118,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "summary",
+          "text": "All saved snapshots (1)",
+          "data": "",
+          "width": 710,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Add a note about the whole deliverable",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 736,
+          "height": 80
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "label",
+          "text": "Approve once this change is made. Needs ",
+          "data": "data-delegate-approval",
+          "width": 710,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 710,
+          "height": 80
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Keep reviewing",
+          "data": "",
+          "width": 112,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Send to Praxis",
+          "data": "",
+          "width": 127,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel comment",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "textarea",
+          "text": "Comment text",
+          "data": "",
+          "width": 718,
+          "height": 96
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Save comment",
+          "data": "",
+          "width": 129,
+          "height": 44
+        }
+      ],
+      "drawerEnd": {
+        "button": "Finish review",
+        "covered": []
+      }
+    },
+    {
       "name": "phone-375",
       "width": 375,
       "height": 812,
@@ -225,7 +850,12 @@
       "shots": [
         "media-image-phone-375-top.png",
         "media-image-phone-375-scrolled.png",
-        "media-image-phone-375-drawer.png"
+        "media-image-phone-375-lightbox.png",
+        "media-image-phone-375-navigator.png",
+        "media-image-phone-375-drawer.png",
+        "media-image-phone-375-finish-panel.png",
+        "media-image-phone-375-composer.png",
+        "media-image-phone-375-drawer-end.png"
       ],
       "top": {
         "viewport": {
@@ -237,7 +867,8 @@
         "overflow": {
           "scrollWidth": 375,
           "clientWidth": 375,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -335,18 +966,19 @@
         "viewport": {
           "width": 375,
           "height": 812,
-          "scrollY": 372,
+          "scrollY": 440,
           "zoom": 1
         },
         "overflow": {
           "scrollWidth": 375,
           "clientWidth": 375,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
-            "top": -372,
-            "bottom": -40,
+            "top": -440,
+            "bottom": -108,
             "left": 0,
             "right": 375,
             "height": 332,
@@ -357,8 +989,8 @@
         },
         "brief": {
           "rect": {
-            "top": -20,
-            "bottom": 227,
+            "top": -88,
+            "bottom": 159,
             "left": 16,
             "right": 359,
             "height": 247,
@@ -442,119 +1074,394 @@
         "pinnedShare": 0,
         "railOverlap": [],
         "horizontalOverflow": false,
+        "drawerEndCovered": null,
+        "tapsMeasured": 45,
         "smallTaps": [],
+        "overlappingTaps": [],
+        "exemptTaps": 0,
+        "stateOverflow": [],
         "decisionCovered": []
       },
       "taps": [
         {
-          "text": "← Record a live acceptance walkt",
-          "height": 44,
-          "width": 189
+          "state": "page",
+          "tag": "a",
+          "text": "← Record a live acceptance walkthrough o",
+          "data": "data-back-link",
+          "width": 189,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Reviews",
-          "height": 44,
-          "width": 71
+          "data": "data-all-documents-link",
+          "width": 71,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Evidence",
-          "height": 44,
-          "width": 90
+          "data": "data-evidence-button",
+          "width": 90,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Download",
-          "height": 44,
-          "width": 95
+          "data": "",
+          "width": 95,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Copy link",
-          "height": 44,
-          "width": 74
+          "data": "",
+          "width": 74,
+          "height": 44
         },
         {
-          "text": "Record a live acceptance walkthr",
-          "height": 44,
-          "width": 343
+          "state": "page",
+          "tag": "a",
+          "text": "Record a live acceptance walkthrough of ",
+          "data": "",
+          "width": 343,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "TheNexus",
-          "height": 44,
-          "width": 52
+          "data": "",
+          "width": 52,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Show details",
-          "height": 44,
-          "width": 91
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
+          "text": "Zoom out",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Fit to view",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Zoom in",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Actual size",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Pin a note",
+          "data": "data-pin-mode",
+          "width": 81,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Full screen",
+          "data": "data-open-fullscreen",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
           "text": "Markers",
-          "height": 44,
-          "width": 168
+          "data": "data-open-navigator",
+          "width": 168,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Review & decide (0)",
-          "height": 44,
-          "width": 168
+          "data": "data-open-review",
+          "width": 168,
+          "height": 44
+        },
+        {
+          "state": "brief-expanded",
+          "tag": "button",
+          "text": "Hide details",
+          "data": "data-brief-toggle",
+          "width": 83,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Zoom out",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Fit to screen",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Zoom in",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "lightbox",
+          "tag": "button",
+          "text": "Close full screen",
+          "data": "data-lightbox-close",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close markers",
+          "data": "",
+          "width": 375,
+          "height": 812
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
         }
       ],
+      "inlineExempt": [],
       "drawerCover": [],
+      "statesMeasured": [
+        "page",
+        "brief-expanded",
+        "lightbox",
+        "navigator",
+        "review-drawer",
+        "history-open",
+        "finish-panel",
+        "composer"
+      ],
       "drawerTaps": [
         {
-          "text": "← Record a live acceptance walkt",
-          "height": 44,
-          "width": 189
-        },
-        {
-          "text": "Reviews",
-          "height": 44,
-          "width": 71
-        },
-        {
-          "text": "Evidence",
-          "height": 44,
-          "width": 90
-        },
-        {
-          "text": "Download",
-          "height": 44,
-          "width": 95
-        },
-        {
-          "text": "Copy link",
-          "height": 44,
-          "width": 74
-        },
-        {
-          "text": "Record a live acceptance walkthr",
-          "height": 44,
-          "width": 343
-        },
-        {
-          "text": "TheNexus",
-          "height": 44,
-          "width": 52
-        },
-        {
-          "text": "Show details",
-          "height": 44,
-          "width": 91
-        },
-        {
-          "text": "Markers",
-          "height": 44,
-          "width": 168
-        },
-        {
-          "text": "Review & decide (0)",
-          "height": 44,
-          "width": 168
-        },
-        {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Close",
-          "height": 44,
-          "width": 16
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Move to review queue",
+          "data": "",
+          "width": 142,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Add a note about the whole deliverable",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 343,
+          "height": 80
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Move to review queue",
+          "data": "",
+          "width": 142,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "Download this revision",
+          "data": "",
+          "width": 118,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "summary",
+          "text": "All saved snapshots (1)",
+          "data": "",
+          "width": 317,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Add a note about the whole deliverable",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 343,
+          "height": 80
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "label",
+          "text": "Approve once this change is made. Needs ",
+          "data": "data-delegate-approval",
+          "width": 317,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 317,
+          "height": 80
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Keep reviewing",
+          "data": "",
+          "width": 112,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Send to Praxis",
+          "data": "",
+          "width": 127,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel comment",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "textarea",
+          "text": "Comment text",
+          "data": "",
+          "width": 325,
+          "height": 96
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Save comment",
+          "data": "",
+          "width": 129,
+          "height": 44
         }
-      ]
+      ],
+      "drawerEnd": {
+        "button": "Finish review",
+        "covered": []
+      }
     }
   ]
 }

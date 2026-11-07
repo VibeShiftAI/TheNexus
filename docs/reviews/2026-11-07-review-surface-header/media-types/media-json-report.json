@@ -2,7 +2,7 @@
   "documentId": "957c71bd-cb6b-4095-b997-eeac791b01a6",
   "base": "http://localhost:3000",
   "label": "media-json",
-  "capturedAt": "2026-11-07T22:12:17.418Z",
+  "capturedAt": "2026-11-07T23:17:13.981Z",
   "configs": [
     {
       "name": "desktop-125",
@@ -25,7 +25,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -118,7 +119,8 @@
         "overflow": {
           "scrollWidth": 1470,
           "clientWidth": 1470,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -216,6 +218,1266 @@
       "railCover": []
     },
     {
+      "name": "tablet-768",
+      "width": 768,
+      "height": 1024,
+      "dpr": 2,
+      "mobile": true,
+      "scale": 1,
+      "shots": [
+        "media-json-tablet-768-top.png",
+        "media-json-tablet-768-scrolled.png",
+        "media-json-tablet-768-navigator.png",
+        "media-json-tablet-768-drawer.png",
+        "media-json-tablet-768-finish-panel.png",
+        "media-json-tablet-768-composer.png",
+        "media-json-tablet-768-drawer-end.png"
+      ],
+      "top": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "scrollY": 0,
+          "zoom": 1
+        },
+        "overflow": {
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "horizontal": false,
+          "pastEdge": []
+        },
+        "header": {
+          "rect": {
+            "top": 0,
+            "bottom": 212,
+            "left": 0,
+            "right": 768,
+            "height": 212,
+            "width": 768
+          },
+          "position": "static",
+          "containsBrief": false
+        },
+        "brief": {
+          "rect": {
+            "top": 232,
+            "bottom": 413,
+            "left": 16,
+            "right": 752,
+            "height": 182,
+            "width": 736
+          },
+          "pinnedBy": null,
+          "collapsed": "true"
+        },
+        "pinnedTop": 0,
+        "railTopVar": "calc(212px + 1.25rem)",
+        "rails": [
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "232px",
+            "visible": false
+          },
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "232px",
+            "visible": false
+          }
+        ],
+        "floating": [
+          {
+            "label": "phone-bar",
+            "rect": {
+              "top": 866,
+              "bottom": 927,
+              "left": 0,
+              "right": 768,
+              "height": 61,
+              "width": 768
+            }
+          },
+          {
+            "label": "fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md tran",
+            "rect": {
+              "top": 987,
+              "bottom": 1024,
+              "left": 0,
+              "right": 768,
+              "height": 37,
+              "width": 768
+            }
+          },
+          {
+            "label": "Global voice controls",
+            "rect": {
+              "top": 935,
+              "bottom": 979,
+              "left": 479,
+              "right": 756,
+              "height": 44,
+              "width": 277
+            }
+          }
+        ]
+      },
+      "scrolled": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "scrollY": 700,
+          "zoom": 1
+        },
+        "overflow": {
+          "scrollWidth": 768,
+          "clientWidth": 768,
+          "horizontal": false,
+          "pastEdge": []
+        },
+        "header": {
+          "rect": {
+            "top": -700,
+            "bottom": -488,
+            "left": 0,
+            "right": 768,
+            "height": 212,
+            "width": 768
+          },
+          "position": "static",
+          "containsBrief": false
+        },
+        "brief": {
+          "rect": {
+            "top": -468,
+            "bottom": -287,
+            "left": 16,
+            "right": 752,
+            "height": 182,
+            "width": 736
+          },
+          "pinnedBy": null,
+          "collapsed": "true"
+        },
+        "pinnedTop": 0,
+        "railTopVar": "calc(212px + 1.25rem)",
+        "rails": [
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "232px",
+            "visible": false
+          },
+          {
+            "mode": "sticky",
+            "rect": {
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "height": 0,
+              "width": 0
+            },
+            "position": "sticky",
+            "top": "232px",
+            "visible": false
+          }
+        ],
+        "floating": [
+          {
+            "label": "phone-bar",
+            "rect": {
+              "top": 866,
+              "bottom": 927,
+              "left": 0,
+              "right": 768,
+              "height": 61,
+              "width": 768
+            }
+          },
+          {
+            "label": "fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md tran",
+            "rect": {
+              "top": 987,
+              "bottom": 1024,
+              "left": 0,
+              "right": 768,
+              "height": 37,
+              "width": 768
+            }
+          },
+          {
+            "label": "Global voice controls",
+            "rect": {
+              "top": 935,
+              "bottom": 979,
+              "left": 479,
+              "right": 756,
+              "height": 44,
+              "width": 277
+            }
+          }
+        ]
+      },
+      "findings": {
+        "briefPinned": false,
+        "briefScrolledAway": true,
+        "pinnedHeight": 0,
+        "pinnedShare": 0,
+        "railOverlap": [],
+        "horizontalOverflow": false,
+        "drawerEndCovered": null,
+        "tapsMeasured": 37,
+        "smallTaps": [],
+        "overlappingTaps": [],
+        "exemptTaps": 78,
+        "stateOverflow": [],
+        "decisionCovered": []
+      },
+      "taps": [
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "← Bound the age of the pre-preflight run",
+          "data": "data-back-link",
+          "width": 405,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Reviews",
+          "data": "data-all-documents-link",
+          "width": 71,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Edit",
+          "data": "data-edit-button",
+          "width": 61,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Source",
+          "data": "",
+          "width": 79,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Evidence",
+          "data": "data-evidence-button",
+          "width": 90,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Download",
+          "data": "",
+          "width": 95,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Copy link",
+          "data": "",
+          "width": 74,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "Bound the age of the pre-preflight runti",
+          "data": "",
+          "width": 340,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "a",
+          "text": "TheNexus",
+          "data": "",
+          "width": 52,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Show details",
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Markers",
+          "data": "data-open-navigator",
+          "width": 364,
+          "height": 44
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Review & decide (0)",
+          "data": "data-open-review",
+          "width": 364,
+          "height": 44
+        },
+        {
+          "state": "brief-expanded",
+          "tag": "button",
+          "text": "Hide details",
+          "data": "data-brief-toggle",
+          "width": 83,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close markers",
+          "data": "",
+          "width": 768,
+          "height": 1024
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "inlineExempt": [
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 1",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 2",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 3",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 4",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 5",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 6",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 96,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 7",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 72,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 8",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 9",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 72,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 10",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 11",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 12",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 13",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 14",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 15",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 16",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 17",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 18",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 1152,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 19",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 20",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 21",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 22",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 23",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 24",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 25",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 26",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 27",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 28",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 29",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 480,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 30",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 31",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 32",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 33",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 34",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 35",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 36",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 37",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 38",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 39",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 40",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 41",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 42",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 43",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 44",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 45",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 46",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 47",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 48",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 49",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 50",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 51",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 52",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 53",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 54",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 55",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 56",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 57",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 58",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 59",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 60",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 61",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 62",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 63",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 64",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 65",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 66",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 67",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 68",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 69",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 70",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 71",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 72,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 72",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 73",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 408,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 74",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 75",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 76",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 77",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 78",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        }
+      ],
+      "drawerCover": [],
+      "statesMeasured": [
+        "page",
+        "brief-expanded",
+        "navigator",
+        "review-drawer",
+        "history-open",
+        "finish-panel",
+        "composer"
+      ],
+      "drawerTaps": [
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Move to review queue",
+          "data": "",
+          "width": 142,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Add a note about the whole document",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 736,
+          "height": 80
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Move to review queue",
+          "data": "",
+          "width": 142,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "Download this revision",
+          "data": "",
+          "width": 118,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "summary",
+          "text": "All saved snapshots (1)",
+          "data": "",
+          "width": 710,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Add a note about the whole document",
+          "data": "",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 736,
+          "height": 80
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 736,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "label",
+          "text": "Approve once this change is made. Needs ",
+          "data": "data-delegate-approval",
+          "width": 710,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 710,
+          "height": 80
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Keep reviewing",
+          "data": "",
+          "width": 112,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Send to Praxis",
+          "data": "",
+          "width": 127,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel comment",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "textarea",
+          "text": "Comment text",
+          "data": "",
+          "width": 718,
+          "height": 96
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Save comment",
+          "data": "",
+          "width": 129,
+          "height": 44
+        }
+      ],
+      "drawerEnd": {
+        "button": "Finish review",
+        "covered": []
+      }
+    },
+    {
       "name": "phone-375",
       "width": 375,
       "height": 812,
@@ -225,7 +1487,11 @@
       "shots": [
         "media-json-phone-375-top.png",
         "media-json-phone-375-scrolled.png",
-        "media-json-phone-375-drawer.png"
+        "media-json-phone-375-navigator.png",
+        "media-json-phone-375-drawer.png",
+        "media-json-phone-375-finish-panel.png",
+        "media-json-phone-375-composer.png",
+        "media-json-phone-375-drawer-end.png"
       ],
       "top": {
         "viewport": {
@@ -237,7 +1503,8 @@
         "overflow": {
           "scrollWidth": 375,
           "clientWidth": 375,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -341,7 +1608,8 @@
         "overflow": {
           "scrollWidth": 375,
           "clientWidth": 375,
-          "horizontal": false
+          "horizontal": false,
+          "pastEdge": []
         },
         "header": {
           "rect": {
@@ -442,139 +1710,1032 @@
         "pinnedShare": 0,
         "railOverlap": [],
         "horizontalOverflow": false,
+        "drawerEndCovered": null,
+        "tapsMeasured": 37,
         "smallTaps": [],
+        "overlappingTaps": [],
+        "exemptTaps": 78,
+        "stateOverflow": [],
         "decisionCovered": []
       },
       "taps": [
         {
-          "text": "← Bound the age of the pre-prefl",
-          "height": 44,
-          "width": 189
+          "state": "page",
+          "tag": "a",
+          "text": "← Bound the age of the pre-preflight run",
+          "data": "data-back-link",
+          "width": 189,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Reviews",
-          "height": 44,
-          "width": 71
+          "data": "data-all-documents-link",
+          "width": 71,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Edit",
-          "height": 44,
-          "width": 61
+          "data": "data-edit-button",
+          "width": 61,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Source",
-          "height": 44,
-          "width": 79
+          "data": "",
+          "width": 79,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Evidence",
-          "height": 44,
-          "width": 90
+          "data": "data-evidence-button",
+          "width": 90,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "Download",
-          "height": 44,
-          "width": 95
+          "data": "",
+          "width": 95,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Copy link",
-          "height": 44,
-          "width": 74
+          "data": "",
+          "width": 74,
+          "height": 44
         },
         {
-          "text": "Bound the age of the pre-preflig",
-          "height": 44,
-          "width": 340
+          "state": "page",
+          "tag": "a",
+          "text": "Bound the age of the pre-preflight runti",
+          "data": "",
+          "width": 340,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "a",
           "text": "TheNexus",
-          "height": 44,
-          "width": 52
+          "data": "",
+          "width": 52,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Show details",
-          "height": 44,
-          "width": 91
+          "data": "data-brief-toggle",
+          "width": 91,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Markers",
-          "height": 44,
-          "width": 168
+          "data": "data-open-navigator",
+          "width": 168,
+          "height": 44
         },
         {
+          "state": "page",
+          "tag": "button",
           "text": "Review & decide (0)",
-          "height": 44,
-          "width": 168
+          "data": "data-open-review",
+          "width": 168,
+          "height": 44
+        },
+        {
+          "state": "brief-expanded",
+          "tag": "button",
+          "text": "Hide details",
+          "data": "data-brief-toggle",
+          "width": 83,
+          "height": 44
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close markers",
+          "data": "",
+          "width": 375,
+          "height": 812
+        },
+        {
+          "state": "navigator",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "inlineExempt": [
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 1",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 2",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 48,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 3",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 48,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 4",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 5",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 6",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 240,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 7",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 192,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 8",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 9",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 144,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 10",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 11",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 12",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 13",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 14",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 15",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 16",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 17",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 18",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 3072,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 19",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 20",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 21",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 22",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 23",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 24",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 25",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 26",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 48,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 27",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 28",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 29",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 1368,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 30",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 31",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 32",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 33",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 34",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 35",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 36",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 72,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 37",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 38",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 39",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 40",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 41",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 42",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 43",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 44",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 45",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 46",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 47",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 48",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 49",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 50",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 72,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 51",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 52",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 48,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 53",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 48,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 54",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 72,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 55",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 56",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 57",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 58",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 59",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 60",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 61",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 62",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 63",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 64",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 65",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 66",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 67",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 68",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 69",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 70",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 71",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 144,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 72",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 73",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 1056,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 74",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 75",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 76",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 77",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
+        },
+        {
+          "state": "page",
+          "tag": "button",
+          "text": "Comment on line 78",
+          "data": "data-block-comment-button data-line-gutter",
+          "width": 48,
+          "height": 24,
+          "reason": "line-gutter"
         }
       ],
       "drawerCover": [],
+      "statesMeasured": [
+        "page",
+        "brief-expanded",
+        "navigator",
+        "review-drawer",
+        "history-open",
+        "finish-panel",
+        "composer"
+      ],
       "drawerTaps": [
         {
-          "text": "← Bound the age of the pre-prefl",
-          "height": 44,
-          "width": 189
-        },
-        {
-          "text": "Reviews",
-          "height": 44,
-          "width": 71
-        },
-        {
-          "text": "Edit",
-          "height": 44,
-          "width": 61
-        },
-        {
-          "text": "Source",
-          "height": 44,
-          "width": 79
-        },
-        {
-          "text": "Evidence",
-          "height": 44,
-          "width": 90
-        },
-        {
-          "text": "Download",
-          "height": 44,
-          "width": 95
-        },
-        {
-          "text": "Copy link",
-          "height": 44,
-          "width": 74
-        },
-        {
-          "text": "Bound the age of the pre-preflig",
-          "height": 44,
-          "width": 340
-        },
-        {
-          "text": "TheNexus",
-          "height": 44,
-          "width": 52
-        },
-        {
-          "text": "Show details",
-          "height": 44,
-          "width": 91
-        },
-        {
-          "text": "Markers",
-          "height": 44,
-          "width": 168
-        },
-        {
-          "text": "Review & decide (0)",
-          "height": 44,
-          "width": 168
-        },
-        {
+          "state": "review-drawer",
+          "tag": "button",
           "text": "Close",
-          "height": 44,
-          "width": 16
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Move to review queue",
+          "data": "",
+          "width": 142,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Add a note about the whole document",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "review-drawer",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 343,
+          "height": 80
+        },
+        {
+          "state": "review-drawer",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Close",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Move to review queue",
+          "data": "",
+          "width": 142,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "History: revisions, decisions and feedba",
+          "data": "data-history-toggle",
+          "width": 253,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "a",
+          "text": "Download this revision",
+          "data": "",
+          "width": 118,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "summary",
+          "text": "All saved snapshots (1)",
+          "data": "",
+          "width": 317,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Add a note about the whole document",
+          "data": "",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "history-open",
+          "tag": "textarea",
+          "text": "Overall impression, decisions, what to d",
+          "data": "",
+          "width": 343,
+          "height": 80
+        },
+        {
+          "state": "history-open",
+          "tag": "button",
+          "text": "Finish review",
+          "data": "data-finish-button",
+          "width": 343,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "label",
+          "text": "Approve once this change is made. Needs ",
+          "data": "data-delegate-approval",
+          "width": 317,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "textarea",
+          "text": "textarea",
+          "data": "",
+          "width": 317,
+          "height": 80
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Keep reviewing",
+          "data": "",
+          "width": 112,
+          "height": 44
+        },
+        {
+          "state": "finish-panel",
+          "tag": "button",
+          "text": "Send to Praxis",
+          "data": "",
+          "width": 127,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel comment",
+          "data": "",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "textarea",
+          "text": "Comment text",
+          "data": "",
+          "width": 325,
+          "height": 96
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Cancel",
+          "data": "",
+          "width": 65,
+          "height": 44
+        },
+        {
+          "state": "composer",
+          "tag": "button",
+          "text": "Save comment",
+          "data": "",
+          "width": 129,
+          "height": 44
         }
-      ]
+      ],
+      "drawerEnd": {
+        "button": "Finish review",
+        "covered": []
+      }
     }
   ]
 }
