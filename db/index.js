@@ -584,7 +584,10 @@ function runModelControlMigrations(sqlite) {
         // Seed the local alias and the canonical call-site roles as they stand
         // (2026-10-30): bulk and background roles on the local model, the rest
         // on the subscription CLIs. INSERT OR IGNORE never clobbers a value the
-        // operator has tuned through PUT /roles.
+        // operator has tuned through PUT /roles. The two cortex.* roles (Praxis
+        // src/llm/roles.ts, task 342192c1) and ingestion.graphiti's local
+        // default were added 2026-11-07 (task 42706754); an existing database
+        // keeps whatever its rows already say.
         sqlite.exec(`
             INSERT OR IGNORE INTO model_aliases (alias, target, description) VALUES
               ('local_default', 'model:local-gemma-4-31b', 'Local model (LM Studio) for bulk and background roles');
@@ -593,7 +596,9 @@ function runModelControlMigrations(sqlite) {
               ('ingestion.extract',       'cli:antigravity/gemini-4-argon@high', 'Nightly Pass-1 entity/factoid extraction'),
               ('ingestion.refine',        'cli:antigravity/gemini-4-argon@high', 'Pass-2 refinement'),
               ('ingestion.journal',       'alias:local_default',  'Overnight journal reflection'),
-              ('ingestion.graphiti',      'cli:antigravity/gemini-3.8-flash@low', 'TheCortex Graphiti memory extraction via the Praxis /v1/llm gateway, on the antigravity CLI (Robert 2026-08-20: no per-token API fallback)'),
+              ('ingestion.graphiti',      'alias:local_default',  'TheCortex Graphiti memory extraction via the Praxis /v1/llm gateway on the local model, reloaded on demand (Robert 2026-11-07: Switch to local)'),
+              ('cortex.query_expand',     'alias:local_default',  'TheCortex search-query expansion (QueryExpander) via the Praxis /v1/llm gateway, reloaded on demand'),
+              ('cortex.entity_extract',   'alias:local_default',  'TheCortex per-search entity/keyword extraction via the Praxis /v1/llm gateway, reloaded on demand'),
               ('ingestion.summary',       'cli:antigravity/gemini-4-argon@high', 'Nightly AI-intelligence briefing narrative'),
               ('ingestion.evidence',      'cli:antigravity/gemini-4-argon@high', 'Full-source evidence extraction prepared overnight with source checkpoints'),
               ('report.upload',           'alias:local_default',  'Report-upload chunk summaries'),
