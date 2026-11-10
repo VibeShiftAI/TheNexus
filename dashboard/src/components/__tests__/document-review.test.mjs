@@ -214,12 +214,29 @@ test('a changed document opens on the current file with honest anchor states; th
     const c = t.container;
     assert.match(c.textContent, /alerting is automatic now/, 'current file shown on open');
     assert.equal(c.querySelectorAll('[data-block-comment-button]').length, 0, 'current file is read-only for anchors');
-    assert.match(c.querySelector('[data-changed-banner]').textContent, /viewing the latest revision[\s\S]*not moved/);
-    assert.match(c.querySelector('[data-comment-list]').textContent, /now at line 5/);
-    assert.match(c.querySelector('[data-comment-list]').textContent, /passage no longer in current revision/);
-    await click(button(c, 'View reviewed revision'));
-    assert.match(c.querySelector('[data-changed-banner]').textContent, /the revision you reviewed/);
+    // Task 381916df: the latest version is marked, and the comments written on the earlier revision are not displayed
+    // anywhere on it: not in the rail, not in the phone bar's count or drawer, not as inline markers or anchor chips.
+    assert.equal(c.querySelector('[data-latest-version-badge]').textContent.trim(), 'Latest version');
+    assert.equal(c.querySelector('[data-changed-banner]'), null);
+    const marked = () => [...c.querySelectorAll('[data-stage] [data-review-block]')].filter(b => b.className.includes('bg-amber-500/5')).map(b => b.dataset.blockStart);
+    assert.deepEqual(marked(), [], 'no inline markers from the earlier revision');
+    assert.equal(c.querySelectorAll('[data-comment-list] [data-comment-id]').length, 0);
+    assert.doesNotMatch(c.textContent, /Which drill\?|Link the runbook\.|now at line 5|passage no longer in current revision/);
+    assert.match(c.querySelector('[data-open-review]').textContent, /Review & decide \(0\)/);
+    await click(c.querySelector('[data-open-review]'));
+    const drawer = c.querySelector('[data-review-drawer]');
+    assert.equal(drawer.querySelectorAll('[data-comment-list] [data-comment-id]').length, 0, 'the phone drawer starts clean too');
+    assert.match(drawer.querySelector('[data-latest-empty]').textContent, /No comments on the latest version yet/);
+    assert.ok(drawer.querySelector('[data-earlier-review-note] [data-view-earlier]'), 'the earlier version is reachable from the drawer');
+    await click(drawer.querySelector('[data-view-earlier]'));
+    // The earlier revision: labelled as not the latest, its own content, its comments and markers, annotatable.
+    assert.match(c.querySelector('[data-version-marker="earlier"]').textContent, /Earlier version, not the latest/);
+    assert.equal(c.querySelector('[data-latest-version-badge]'), null);
     assert.match(c.textContent, /no runbook/, 'pinned revision content shown');
+    assert.match(c.querySelector('[data-comment-list]').textContent, /Which drill\?/);
+    assert.match(c.querySelector('[data-comment-list]').textContent, /Link the runbook\./);
+    assert.match(c.querySelector('[data-open-review]').textContent, /Review & decide \(2\)/);
+    assert.deepEqual(marked(), ['3', '7'], 'markers on the lines the comments were written on');
     assert.ok(c.querySelector('#L7 [data-block-comment-button]'), 'annotating the pinned revision is allowed');
     assert.equal(srv.calls.filter(x => x.method !== 'GET').length, 0);
   } finally { t.cleanup(); }

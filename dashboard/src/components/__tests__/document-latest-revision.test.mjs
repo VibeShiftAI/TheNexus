@@ -116,15 +116,20 @@ test('opening a document whose latest revision was registered after a finished r
     assert.equal(headerRevision(c), 'bbbbbbbb', 'the header names the latest revision');
     assert.match(card(c).textContent, /Records your decision on rev bbbbbbbb/, 'deciding targets the revision on screen');
     assert.equal(card(c).querySelector('[data-decision-blocked]')?.textContent ?? null, null);
-    const banner = c.querySelector('[data-changed-banner]');
-    assert.match(banner.textContent, /latest revision \(rev bbbbbbbb\)/);
-    assert.match(banner.textContent, /you reviewed rev aaaaaaaa/);
+    // Task 381916df: the latest version says so with a check-mark badge, not an amber paragraph about the older review.
+    assert.equal(c.querySelector('[data-latest-version-badge]').textContent.trim(), 'Latest version');
+    assert.ok(c.querySelector('[data-latest-version-badge] svg'), 'the badge carries a check-mark icon');
+    assert.equal(c.querySelector('[data-changed-banner]'), null, 'no amber newer-revision banner');
+    assert.doesNotMatch(c.textContent, /A newer revision of this document was registered/);
     assert.deepEqual(downloadHrefs(c), ['/api/documents/doc-1/raw?download=1'], 'Download serves the latest revision');
-    // The finished review keeps its own revision: the comment keeps its original line and quote, flagged honestly.
+    // The finished review covers rev-1: on the latest its comment, summary and count are not shown, only pointed to.
     const list = c.querySelector('[data-comment-list]');
-    assert.match(list.textContent, /Line 3/);
-    assert.match(list.textContent, /Scores rest on three studies\./);
-    assert.match(list.textContent, /passage no longer in current revision/);
+    assert.doesNotMatch(list.textContent, /Summarise the studies here|Scores rest on three studies|passage no longer in current revision/);
+    assert.equal(list.querySelectorAll('[data-comment-id]').length, 0);
+    assert.match(c.querySelector('[data-review-panel]').textContent, /Comments \(0\)/);
+    assert.doesNotMatch(c.querySelector('[data-review-panel]').textContent, /Needs a summary of each study/, 'the earlier review summary stays with its version');
+    assert.match(c.querySelector('[data-earlier-review-note]').textContent, /earlier version \(rev aaaaaaaa\)/);
+    assert.ok(c.querySelector('[data-view-earlier]'), 'the earlier version is one click away');
     assert.equal(srv.calls.filter(x => x.method !== 'GET').length, 0, 'opening writes nothing');
   } finally { t.cleanup(); }
 });
@@ -135,16 +140,26 @@ test('the reviewed revision stays one explicit click away, read-only for decisio
   try {
     await settle();
     const c = t.container;
-    await click(button(c, 'View reviewed revision'));
+    await click(button(c, 'View earlier version'));
     assert.match(article(c).textContent, /Scores rest on three studies\./);
     assert.doesNotMatch(article(c).textContent, /Provenance: registered after review/);
     assert.equal(headerRevision(c), 'aaaaaaaa');
-    assert.match(c.querySelector('[data-changed-banner]').textContent, /viewing rev aaaaaaaa, the revision you reviewed/);
+    // The earlier version is labelled as not the latest, and its comments are back, unchanged.
+    assert.match(c.querySelector('[data-version-marker="earlier"]').textContent, /Earlier version, not the latest \(rev aaaaaaaa\)/);
+    assert.match(c.querySelector('[data-revision-chip]').textContent, /earlier version/);
+    assert.equal(c.querySelector('[data-latest-version-badge]'), null, 'no latest badge on an older revision');
+    const list = c.querySelector('[data-comment-list]');
+    assert.match(list.textContent, /Line 3/);
+    assert.match(list.textContent, /Summarise the studies here\./);
+    assert.match(c.querySelector('[data-review-panel]').textContent, /Needs a summary of each study/);
     assert.ok(card(c).querySelector('[data-decision-blocked]'), 'no decision while an older revision is on screen');
     assert.deepEqual(downloadHrefs(c), ['/api/documents/doc-1/raw?revision=rev-1&download=1'], 'Download serves the reviewed bytes');
-    await click(button(c, 'View current file'));
+    await click(button(c, 'Back to latest version'));
     assert.equal(headerRevision(c), 'bbbbbbbb');
+    assert.ok(c.querySelector('[data-latest-version-badge]'));
+    assert.equal(c.querySelector('[data-comment-list] [data-comment-id]'), null, 'back on the latest, the slate is clean again');
     assert.match(card(c).textContent, /Records your decision on rev bbbbbbbb/);
+    assert.deepEqual(srv.state.review.comments, [COMMENT], 'the earlier comment is stored unchanged');
   } finally { t.cleanup(); }
 });
 
@@ -156,6 +171,10 @@ test('return navigation after a newer revision is registered opens on that newer
     await settle();
     assert.equal(headerRevision(t.container), 'aaaaaaaa');
     assert.equal(t.container.querySelector('[data-changed-banner]')?.textContent ?? null, null);
+    // The badge marks the current version whenever it is on screen, also when the review covers this same revision.
+    assert.equal(t.container.querySelector('[data-latest-version-badge]').textContent.trim(), 'Latest version');
+    assert.equal(t.container.querySelector('[data-view-earlier]'), null, 'nothing earlier to open');
+    assert.match(t.container.querySelector('[data-comment-list]').textContent, /Summarise the studies here\./, 'comments written on this revision show');
   } finally { t.cleanup(); }
   // Robert leaves (back to the task or the bridge); the requested change is registered as rev-2.
   srv.state.current = 'rev-2';
@@ -183,7 +202,7 @@ test('moving to another document in the same mounted page opens that document on
   try {
     await settle();
     const c = t.container;
-    await click(button(c, 'View reviewed revision'));
+    await click(button(c, 'View earlier version'));
     assert.equal(headerRevision(c), 'aaaaaaaa', 'the reviewed revision is selected before navigating');
     // Same mounted page, new id: what an in-app link from one deliverable to another does.
     act(() => t.root.render(createElement(DocumentReviewPage, { documentId: 'doc-2', timings: { pollMs: 1000, summaryDebounceMs: 60_000 } })));
@@ -196,7 +215,7 @@ test('moving to another document in the same mounted page opens that document on
     assert.match(card(c).textContent, /Records your decision on rev eeeeeeee/);
     assert.deepEqual(downloadHrefs(c), ['/api/documents/doc-2/raw?download=1']);
     // Its own reviewed revision is still one explicit click away.
-    await click(button(c, 'View reviewed revision'));
+    await click(button(c, 'View earlier version'));
     assert.equal(headerRevision(c), 'dddddddd');
     assert.match(article(c).textContent, /Draft scope: two cohorts\./);
   } finally { globalThis.fetch = original; t.cleanup(); }
@@ -217,11 +236,11 @@ test('an open draft on the older revision keeps its unsaved text and its revisio
     await type(card(c).querySelector('textarea#decision-note'), 'Approving the revised memo.');
 
     // Continuing the draft on its own revision is explicit; a passage composer opened there survives the round trip.
-    await click(button(c, 'View reviewed revision'));
+    await click(button(c, 'View earlier version'));
     assert.equal(headerRevision(c), 'aaaaaaaa');
     await click(c.querySelector('#L3 [data-block-comment-button]'));
     await type(c.querySelector('textarea[aria-label="Comment text"]'), 'Unsaved passage comment.');
-    await click(button(c, 'View current file'));
+    await click(button(c, 'Back to latest version'));
     assert.equal(c.querySelector('textarea#review-summary').value, 'Unsaved overall impression.');
     assert.equal(c.querySelector('textarea[aria-label="Comment text"]').value, 'Unsaved passage comment.');
     assert.equal(srv.calls.filter(x => x.method === 'PATCH' || x.path.endsWith('/comments')).length, 0, 'nothing was saved behind the reader');
@@ -246,8 +265,11 @@ test('an open draft on the older revision keeps its unsaved text and its revisio
     assert.equal(decisionCalls(srv).at(-1).body.revision_id, 'rev-3');
     assert.equal(decisionCalls(srv).at(-1).body.content_hash, 'c'.repeat(64));
     assert.equal(srv.state.decisions.length, 1);
-    // The draft review still belongs to the revision it was opened on.
+    // The draft review still belongs to the revision it was opened on: its comment stays with rev-1, not on the latest.
     assert.equal(srv.state.review.revision_id, 'rev-1');
+    assert.doesNotMatch(c.querySelector('[data-comment-list]').textContent, /Summarise the studies here\./);
+    assert.match(c.querySelector('[data-earlier-review-note]').textContent, /Your draft review is on an earlier version/);
+    await click(button(c, 'View earlier version'));
     assert.match(c.querySelector('[data-comment-list]').textContent, /Summarise the studies here\./);
   } finally { t.cleanup(); }
 });
@@ -264,13 +286,31 @@ test('an already-open finished review discovers the replacement revision after d
     assert.match(article(t.container).textContent, /Provenance: registered after review/);
     assert.match(t.container.querySelector('[data-review-panel]').textContent, /Previous review/);
     assert.ok(button(t.container, 'Review this revision'));
-    await click(button(t.container, 'View reviewed revision'));
+    await click(button(t.container, 'View earlier version'));
     srv.state.current = 'rev-3';
     await settle(1150);
     assert.equal(headerRevision(t.container), 'aaaaaaaa', 'refresh preserves explicit historical viewing');
-    await click(button(t.container, 'View current file'));
+    await click(button(t.container, 'Back to latest version'));
     assert.equal(headerRevision(t.container), 'cccccccc');
     assert.equal(srv.calls.filter(x => x.method !== 'GET').length, 0, 'refresh never creates duplicate documents or reviews');
+  } finally { t.cleanup(); }
+});
+
+test('a failed delivery of the earlier review stays visible with Retry on the latest version, without its comments', async () => {
+  const submission = { id: 'sub-1', review_id: 'review-1', document_id: 'doc-1', revision_id: 'rev-1', delivery_status: 'failed', delivery_attempts: 1, next_attempt_at: null, last_error: 'Praxis was unreachable.', delivered_at: null, receipt: null, review_url: 'https://example.test/documents/doc-1', created_at: '2026-10-04T18:06:00Z', updated_at: '2026-10-04T18:06:00Z' };
+  const srv = server({ review: { ...submittedReview(), submission }, current: 'rev-2' });
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    assert.equal(headerRevision(c), 'bbbbbbbb');
+    assert.equal(c.querySelector('[data-latest-version-badge]').textContent.trim(), 'Latest version');
+    const card = c.querySelector('[data-submission-card]');
+    assert.ok(card, 'the delivery card is on the latest version');
+    assert.match(card.textContent, /Praxis was unreachable\./);
+    assert.ok(button(card, 'Retry delivery'));
+    assert.doesNotMatch(c.querySelector('[data-review-panel]').textContent, /Needs a summary of each study\./);
+    assert.equal(c.querySelectorAll('[data-comment-list] [data-comment-id]').length, 0);
   } finally { t.cleanup(); }
 });
 
@@ -303,4 +343,60 @@ test('a slow older refresh cannot replace a newer revision already displayed', a
 
 test('regular history lists delivered drafts while capture history remains inspectable',async()=>{
  const srv=server({review:submittedReview(),current:'rev-3',drafts:[{...REV_1,version:1,capture_count:1},{...REV_3,version:2,capture_count:2}]});const t=mount(srv);try{await settle();await click(t.container.querySelector('[data-history-toggle]'));const history=t.container.querySelector('[data-document-history]');assert.deepEqual([...history.querySelectorAll('[data-history-revision]')].map(e=>e.dataset.historyRevision),['rev-3','rev-1']);assert.ok(t.container.querySelector('[data-capture-history] a[href*="revision=rev-2"]'));}finally{t.cleanup();}
+});
+
+// Task 381916df: Robert opens the latest version and wants a clean slate. An executor reviewed rev-1 before rev-2 was
+// registered; his own draft is on rev-2. The finding leaves the latest version and stays reachable on rev-1, which is
+// read on demand (History for its metadata, the raw route for its exact bytes) and labelled as not the latest.
+test('executor comments written on an earlier revision leave the latest version and come back on that revision, labelled as not the latest', async () => {
+  const own = { ...COMMENT, id: 'c2', client_id: 'cl-2', start_line: 9, end_line: 9, quote: 'Provenance: registered after review.', body: 'Cite the registration.', anchor: { state: 'intact', current_start_line: 9 } };
+  const finding = { id: 'f1', review_id: 'round-agent', agent_review_id: 'agent-1', revision_id: 'rev-1', historical: true, author: { id: 'Claude reviewer', authority: 'assigned_executor' }, kind: 'passage', start_line: 3, end_line: 3, block_hash: null, quote: 'Scores rest on three studies.', selection: null, body: 'Executor: name the studies.', created_at: '2026-10-04T17:00:00Z', updated_at: '2026-10-04T17:00:00Z', anchor: { state: 'orphaned', current_start_line: null } };
+  const srv = server({ review: { ...draftReview(), revision_id: 'rev-2', comments: [own] } });
+  const base = srv.handler;
+  srv.handler = async (url, init) => {
+    const method = init.method ?? 'GET';
+    if (url.pathname === '/api/documents/doc-1/raw') { srv.calls.push({ method, path: url.pathname, revision: url.searchParams.get('revision') }); return { ok: true, status: 200, text: async () => BY_ID[url.searchParams.get('revision')][1] }; }
+    if (url.pathname.startsWith('/api/documents/doc-1/agent-reviews')) return response({ error: 'not in this fixture' }, 404);
+    const res = await base(url, init);
+    if (method === 'GET' && url.pathname === '/api/documents/doc-1') return response({ ...(await res.json()), inline_comments: [finding] });
+    return res;
+  };
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const listText = () => c.querySelector('[data-comment-list]').textContent;
+    const marked = () => [...c.querySelectorAll('[data-stage] [data-review-block]')].filter(b => b.className.includes('bg-amber-500/5')).map(b => b.dataset.blockStart);
+    // Latest: badge, only this revision's comment, its count and its marker; the earlier finding nowhere.
+    assert.equal(c.querySelector('[data-latest-version-badge]').textContent.trim(), 'Latest version');
+    assert.match(listText(), /Cite the registration\./);
+    assert.doesNotMatch(c.textContent, /Executor: name the studies\./);
+    assert.match(c.querySelector('[data-open-review]').textContent, /Review & decide \(1\)/);
+    assert.deepEqual(marked(), ['9']);
+    assert.equal(c.querySelector('[data-earlier-review-note]'), null, 'the review is on this revision, nothing to point to');
+
+    await click(c.querySelector('[data-view-earlier]'));
+    await settle();
+    const marker = c.querySelector('[data-version-marker="earlier"]');
+    assert.match(marker.textContent, /Earlier version, not the latest \(rev aaaaaaaa\)/);
+    assert.equal(marker.dataset.earlierRevision, 'rev-1');
+    assert.equal(c.querySelector('[data-latest-version-badge]'), null);
+    assert.equal(headerRevision(c), 'aaaaaaaa');
+    assert.match(article(c).textContent, /Scores rest on three studies\./);
+    assert.doesNotMatch(article(c).textContent, /Provenance: registered after review/);
+    assert.match(listText(), /Executor: name the studies\./);
+    assert.doesNotMatch(listText(), /Cite the registration\./);
+    assert.match(c.querySelector('[data-open-review]').textContent, /Review & decide \(1\)/);
+    assert.deepEqual(marked(), ['3'], 'the finding is marked on the line it was written on');
+    assert.ok(card(c).querySelector('[data-decision-blocked]'), 'no decision on an earlier version');
+    assert.equal(c.querySelectorAll('[data-block-comment-button]').length, 0, 'the draft is on rev-2, so rev-1 takes no new comments');
+    assert.deepEqual(downloadHrefs(c), ['/api/documents/doc-1/raw?revision=rev-1&download=1']);
+
+    await click(button(c, 'Back to latest version'));
+    assert.ok(c.querySelector('[data-latest-version-badge]'));
+    assert.match(listText(), /Cite the registration\./);
+    assert.doesNotMatch(c.textContent, /Executor: name the studies\./);
+    assert.ok(srv.calls.some(x => x.path === '/api/documents/doc-1/raw' && x.revision === 'rev-1'), 'the earlier bytes were read by revision');
+    assert.equal(srv.calls.filter(x => x.method !== 'GET').length, 0, 'viewing never writes');
+  } finally { t.cleanup(); }
 });

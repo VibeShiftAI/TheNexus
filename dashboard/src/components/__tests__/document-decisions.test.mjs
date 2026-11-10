@@ -178,15 +178,16 @@ test('a new revision captured while reading turns the decision into a conflict; 
     assert.equal(decisionCalls(srv)[0].body.revision_id, 'rev-1', 'the decision targeted the revision that was on screen');
     assert.equal(srv.state.decisions.length, 0, 'nothing was recorded');
     assert.match(card(c).querySelector('[data-decision-notice="stale"]').textContent, /newer revision of this document was captured while you were reading, so nothing was recorded/);
-    // The reader reloaded: the changed banner is up, the comment is still there, and the page shows the newer revision.
-    assert.ok(c.querySelector('[data-changed-banner]'));
-    assert.match(c.querySelector('[data-comment-list]').textContent, /Script the rollback\./);
+    // The reader reloaded onto the newer revision: it is marked as the latest, the comment stays with the reviewed revision.
+    assert.ok(c.querySelector('[data-latest-version-badge]'));
+    assert.doesNotMatch(c.querySelector('[data-comment-list]').textContent, /Script the rollback\./);
     assert.match(c.querySelector('article').textContent, /then everyone/, 'the reload opens on the newer revision, not the reviewed one');
     assert.equal(card(c).querySelector('[data-decision-confirm]')?.textContent ?? null, null, 'the refused attempt is not resubmitted');
-    await click(button(c, 'View reviewed revision'));
+    await click(button(c, 'View earlier version'));
     assert.ok(card(c).querySelector('[data-decision-blocked]'), 'no decision while the pinned (old) revision is on screen');
+    assert.match(c.querySelector('[data-comment-list]').textContent, /Script the rollback\./, 'the comment is kept on the reviewed revision');
 
-    await click(button(c, 'View current file'));
+    await click(button(c, 'Back to latest version'));
     assert.match(c.textContent, /rev bbbbbbbb/);
     await click(card(c).querySelector('[data-decision-button="approve"]'));
     await click(card(c).querySelector('[data-decision-submit]'));
@@ -202,6 +203,9 @@ test('a new revision captured while reading turns the decision into a conflict; 
     assert.equal(history.querySelector('[data-history-revision="rev-1"] a').getAttribute('href'), '/api/documents/doc-1/raw?revision=rev-1&download=1', 'previous versions remain linked after a new review starts');
     assert.match(history.querySelector('[data-history-revision="rev-2"]').textContent, /rev bbbbbbbb[\s\S]*current[\s\S]*Approved/);
     assert.match(history.querySelector('[data-history-revision="rev-1"]').textContent, /Feedback draft · 1 comment/);
+    // Old comments persist after the decision: off the latest version's slate, back on the revision they were written on.
+    assert.doesNotMatch(c.querySelector('[data-comment-list]').textContent, /Script the rollback\./);
+    await click(button(c, 'View earlier version'));
     assert.match(c.querySelector('[data-comment-list]').textContent, /Script the rollback\./, 'old comments persist after the decision');
   } finally { t.cleanup(); }
 });
@@ -295,8 +299,8 @@ test('Request changes on the current revision while the review is pinned to an o
   try {
     await settle();
     const c = t.container;
-    assert.ok(c.querySelector('[data-changed-banner]'), 'the changed banner is up');
-    if (card(c).querySelector('[data-decision-blocked]')) await click(button(c, 'View current file'));
+    assert.ok(c.querySelector('[data-latest-version-badge]'), 'the latest version is marked');
+    if (card(c).querySelector('[data-decision-blocked]')) await click(button(c, 'Back to latest version'));
     assert.match(card(c).textContent, /Records your decision on rev bbbbbbbb/);
 
     await click(card(c).querySelector('[data-decision-button="request_changes"]'));
@@ -334,6 +338,7 @@ test('Request changes on the current revision while the review is pinned to an o
 
     // Nothing moved the feedback: the review and its passage comment stay pinned to rev-1.
     assert.equal(srv.state.review.revision_id, 'rev-1');
+    await click(button(c, 'View earlier version'));
     assert.match(c.querySelector('[data-comment-list]').textContent, /Script the rollback\./);
     assert.equal(srv.calls.filter(x => x.method !== 'GET' && x.path !== '/api/documents/doc-1/decisions').length, 0, 'no comment, review or finish call was made or moved');
   } finally { t.cleanup(); }

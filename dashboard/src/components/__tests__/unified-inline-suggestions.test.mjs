@@ -248,11 +248,14 @@ for (const loseConversionResponse of [false, true])
         [...c.querySelector("[data-comment-list]").children].map(
           (e) => e.dataset.commentId,
         ),
-        ["inline-c1", "inline-s1", "inline-old"],
+        ["inline-c1", "inline-s1"],
+        "the finding written on the earlier revision v4 is not on the latest version's slate (task 381916df)",
       );
+      assert.equal(c.querySelector('[data-comment-id="inline-old"]'), null);
+      assert.ok(c.querySelector("[data-latest-version-badge]"));
       assert.ok(
-        c.querySelector('[data-comment-id="inline-old"] [data-comment-jump]')
-          .disabled,
+        c.querySelector("[data-view-earlier]"),
+        "the earlier revision holding it is one click away",
       );
       assert.ok(card.querySelector("[data-comment-jump]"));
       assert.match(
@@ -585,12 +588,10 @@ test("Praxis generation retries into a pending proposal, card selection highligh
     }));
     window.dispatchEvent(new window.Event("focus"));
     await settle();
-    await click(c.querySelector('[data-comment-id="praxis-card"] p'));
+    // The new revision starts clean: the card written on the earlier one leaves the latest version's slate (task 381916df).
+    assert.equal(c.querySelector('[data-comment-id="praxis-card"]'), null);
+    assert.ok(c.querySelector("[data-latest-version-badge]"));
     assert.ok(!c.querySelector("[data-stage] mark[data-suggestion-highlight]"));
-    assert.match(
-      c.querySelector("[data-highlight-unavailable]").textContent,
-      /earlier or changed passage/,
-    );
   } finally {
     act(() => root.unmount());
     c.remove();

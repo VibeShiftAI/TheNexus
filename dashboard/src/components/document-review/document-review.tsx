@@ -22,6 +22,8 @@
  *
  * The page always opens on the latest registered revision. The reviewed
  * revision stays one explicit click away and its comments stay attached to it.
+ * The latest version is marked as such and shows only the comments written on
+ * it; an earlier version is labelled as not the latest.
  */
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -39,6 +41,7 @@ import {
     FileCheck2,
     FileCode,
     FileText,
+    History as HistoryIcon,
     ListTree,
     Loader2,
     MessageSquare,
@@ -58,6 +61,7 @@ import {
     finishReview,
     formatSeconds,
     getDocument,
+    getDocumentHistory,
     getReview,
     getSubmission,
     mediaLabel,
@@ -81,6 +85,7 @@ import {
     type ReviewComment,
     type ReviewView,
     type RevisionAsset,
+    type RevisionMeta,
     type SubmissionView,
 } from "@/lib/document-review";
 import { readReviewDraft, reconcileReviewDraft, writeReviewDraft, REVIEW_DRAFT_MAX_RECOVERED, type ComposerDraft, type RecoveredDraft, type RecoveredReason, type ReviewDraft } from "@/lib/review-drafts";
@@ -273,7 +278,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const [versionNotice, setVersionNotice] = useState<string | null>(null);
     const [review, setReview] = useState<ReviewView | null>(null);
     const [submission, setSubmission] = useState<SubmissionView | null>(null);
-    const [viewRevision, setViewRevision] = useState<"current" | "pinned">("current");
+    /** current: the latest revision; pinned: the earlier revision the review covers; older: another earlier revision opened for its executor comments. */
+    const [viewRevision, setViewRevision] = useState<"current" | "pinned" | "older">("current");
+    /** An earlier revision holding executor comments but not the review, read when "View earlier version" opens it. */
+    const [olderView, setOlderView] = useState<{ revision: RevisionMeta; content: string } | null>(null);
+    const [earlierError, setEarlierError] = useState<string | null>(null);
     const [showSource, setShowSource] = useState(false);
     const [editing, setEditing] = useState(false);
     const [evidenceOpen, setEvidenceOpen] = useState(false);
@@ -406,6 +415,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     useEffect(() => {
         // Every document opens on its latest revision, also when the route reuses this page for another id.
         setViewRevision("current");
+        setOlderView(null);
+        setEarlierError(null);
         setEditing(false);
         setLoadStates({});
         // Nothing of a previous document may carry over: its review, submission, unsaved text, selection or pending summary save.
@@ -475,9 +486,15 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const currentContent = data?.content ?? "";
     const documentChanged = Boolean(review?.document_changed);
     const showingPinned = documentChanged && viewRevision === "pinned" && typeof review?.pinned_content === "string";
-    const shownContent = showingPinned ? (review?.pinned_content as string) : currentContent;
-    const shownRevision = showingPinned ? review?.pinned_revision ?? null : data?.revision ?? null;
+    const showingOlder = !showingPinned && viewRevision === "older" && olderView !== null && olderView.revision.id !== data?.revision?.id;
+    /** An earlier revision is on screen (the reviewed one or another), never the latest: labelled so, read-only for decisions. */
+    const showingEarlier = showingPinned || showingOlder;
+    const shownContent = showingPinned ? (review?.pinned_content as string) : showingOlder ? olderView.content : currentContent;
+    const shownRevision = showingPinned ? review?.pinned_revision ?? null : showingOlder ? olderView.revision : data?.revision ?? null;
+    /** New comments go on the revision the review covers, and only while that revision is on screen. */
+    const onReviewRevision = showingPinned || (!documentChanged && !showingOlder);
     const reviewedHash = review?.pinned_revision?.content_hash.slice(0, 8) ?? "?";
+    const shownHash = shownRevision?.content_hash.slice(0, 8) ?? "?";
     const latestHash = data?.revision?.content_hash.slice(0, 8) ?? "?";
     // Version lifecycle (contract §12): while a new version is being produced, or the current revision is not ready, this
     // version takes no review actions. A round the server closed as `superseded` stays readable with its comments but takes
@@ -486,7 +503,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const replacement = data?.replacement ?? null;
     const superseded = review?.status === "superseded";
     const isDraft = (!review || review.status === "draft") && reviewable;
-    const canAnnotate = isDraft && (!documentChanged || showingPinned) && !showSource && !editing;
+    const canAnnotate = isDraft && onReviewRevision && !showSource && !editing;
     const roundBadge = superseded
         ? { key: "superseded", text: "Superseded", tone: "border-slate-700 bg-slate-800/40 text-slate-400" }
         : !review || review.status === "draft"
@@ -506,11 +523,59 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     }, [data, doc, mediaType]);
     const primary = assets.find((a) => a.asset_key === "primary") ?? null;
     const outline = useMemo(() => (mediaType === "markdown" ? extractOutline(shownContent) : []), [shownContent, mediaType]);
+    const currentRevisionId = data?.revision?.id ?? null;
+    // The latest version starts with a clean slate (task 381916df): only comments written on the revision on screen show,
+    // in the rail, the phone drawer and its count, and as markers. Comments written on an earlier revision are never
+    // changed or removed; they stay with that revision, which is one click away ("View earlier version") and in History.
     const comments = useMemo(() => {
-        const all = [...(review?.comments ?? []), ...(data?.inline_comments ?? []).filter(c => !showingPinned || c.revision_id === shownRevision?.id)].filter((c,index,items)=>items.findIndex(other=>other.id===c.id)===index);
+        const own = showingPinned || (!showingEarlier && !documentChanged) ? review?.comments ?? [] : [];
+        const inline = (data?.inline_comments ?? []).filter(c => showingEarlier ? c.revision_id === shownRevision?.id : !c.historical && (!c.revision_id || c.revision_id === currentRevisionId));
+        const all = [...own, ...inline].filter((c,index,items)=>items.findIndex(other=>other.id===c.id)===index);
         const converted = new Set(all.map(c=>c.source_comment_id).filter(Boolean));
         return all.filter(c=>!converted.has(c.id)).map(c=>c.source_comment_id ? {...c,source_comment:all.find(source=>source.id===c.source_comment_id)} : c);
-    }, [review?.comments, data?.inline_comments, showingPinned, shownRevision?.id]);
+    }, [review?.comments, data?.inline_comments, showingPinned, showingEarlier, documentChanged, shownRevision?.id, currentRevisionId]);
+    /** The earlier revision the review covers can be opened in place, with its comments. */
+    const canViewEarlier = documentChanged && typeof review?.pinned_content === "string";
+    /** Earlier revisions that hold comments kept off the latest version: the reviewed one first, then any with executor comments. */
+    const earlierTargets = useMemo(() => {
+        const ids: string[] = [];
+        if (canViewEarlier && review) ids.push(review.revision_id);
+        for (const c of data?.inline_comments ?? []) if (c.revision_id && c.revision_id !== currentRevisionId && !ids.includes(c.revision_id)) ids.push(c.revision_id);
+        return ids;
+    }, [canViewEarlier, review, data?.inline_comments, currentRevisionId]);
+    /** On the latest version, the review belongs to an earlier revision: it is pointed to, its comments are not shown. */
+    const earlierReview = Boolean(review) && documentChanged && !showingEarlier;
+    /** The review is not on the revision on screen: its summary and comment count stay with its own revision (delivery status does not). */
+    const reviewOffScreen = Boolean(review) && !showingPinned && (documentChanged || showingOlder);
+    /** On an earlier version, another earlier revision that also holds comments, if any. */
+    const nextEarlier = showingEarlier ? earlierTargets.find((id) => id !== shownRevision?.id) ?? null : null;
+    /**
+     * Opens an earlier revision with its comments. The reviewed revision comes with the review; any other one (executor
+     * comments only) is read on demand: its metadata from History and, for text media, its exact bytes. Reading only.
+     */
+    const openEarlier = async (revisionId: string) => {
+        setEarlierError(null);
+        if (canViewEarlier && review?.revision_id === revisionId) { setViewRevision("pinned"); return; }
+        const forDocument = documentId;
+        try {
+            const [history, content] = await Promise.all([
+                getDocumentHistory(forDocument),
+                textual
+                    ? fetch(rawDocumentUrl(forDocument, { revision: revisionId }), { cache: "no-store" }).then((res) => {
+                        if (!res.ok) throw new Error(`The earlier version could not be read (HTTP ${res.status}).`);
+                        return res.text();
+                    })
+                    : Promise.resolve(""),
+            ]);
+            if (forDocument !== documentIdRef.current) return;
+            const revision = [...history.revisions, ...(history.drafts ?? [])].find((r) => r.id === revisionId);
+            if (!revision) throw new Error("That earlier version is not in this document's history.");
+            setOlderView({ revision, content });
+            setViewRevision("older");
+        } catch (err) {
+            if (forDocument === documentIdRef.current) setEarlierError(messageOf(err));
+        }
+    };
     const suggestions = useInlineSuggestions(documentId, comments, load);
     const sourceSelection = useMemo(() => {
         const comment=comments.find(c=>c.id===selectedComment);
@@ -537,11 +602,11 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     const commentCounts = useMemo(() => {
         const counts: Record<number, number> = {};
         for (const comment of passageComments) {
-            const line = comment.agent_review_id && !showingPinned ? (comment.anchor?.state === "orphaned" ? null : comment.anchor?.current_start_line ?? comment.start_line) : showingPinned || !documentChanged ? comment.start_line : comment.anchor?.current_start_line ?? null;
+            const line = comment.agent_review_id && !showingEarlier ? (comment.anchor?.state === "orphaned" ? null : comment.anchor?.current_start_line ?? comment.start_line) : showingEarlier || !documentChanged ? comment.start_line : comment.anchor?.current_start_line ?? null;
             if (line) counts[line] = (counts[line] || 0) + 1;
         }
         return counts;
-    }, [passageComments, showingPinned, documentChanged]);
+    }, [passageComments, showingEarlier, documentChanged]);
     const pins = useMemo(() => pinsFor(comments), [comments]);
     const directions = data?.manifest?.directions ?? [];
     const selectedDirection = data?.current_decision?.applies_to_current_revision && data.current_decision.decision === "approve" ? data.current_decision.selection?.direction ?? null : null;
@@ -982,8 +1047,8 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             return;
         }
         if (comment.kind === "passage") {
-            if (comment.agent_review_id && !showingPinned) { if (comment.anchor?.state !== "orphaned") jumpTo(comment.anchor?.current_start_line ?? comment.start_line); }
-            else jumpTo(showingPinned || !documentChanged ? comment.start_line : comment.anchor?.current_start_line ?? comment.start_line);
+            if (comment.agent_review_id && !showingEarlier) { if (comment.anchor?.state !== "orphaned") jumpTo(comment.anchor?.current_start_line ?? comment.start_line); }
+            else jumpTo(showingEarlier || !documentChanged ? comment.start_line : comment.anchor?.current_start_line ?? comment.start_line);
             return;
         }
         const anchor = comment.anchor_target as (Record<string, unknown> & { asset_key: string }) | null | undefined;
@@ -1019,7 +1084,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     // docs/human-brief.md): which project, what this is, what the reviewer
     // decides. Shown under the title; absent on documents registered before it.
     const brief = briefFromMetadata(doc?.metadata);
-    const canEdit = Boolean(data?.editable) && !showingPinned && data?.file_state === "ok" && !editing && reviewable;
+    const canEdit = Boolean(data?.editable) && !showingEarlier && data?.file_state === "ok" && !editing && reviewable;
 
     const saveIndicator = (() => {
         const states = [summaryStatus, commentStatus];
@@ -1114,7 +1179,10 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
 
     const commentList = (
         <ul className="space-y-2" data-comment-list="">
-            {comments.length === 0 && (
+            {comments.length === 0 && earlierReview && (
+                <li className="text-xs italic text-slate-500" data-latest-empty="">No comments on the latest version yet.</li>
+            )}
+            {comments.length === 0 && !earlierReview && (
                 <li className="text-xs italic text-slate-500">
                     {mediaType === "markdown" || mediaType === "text" || mediaType === "code" || mediaType === "json"
                         ? "No comments yet. Tap a passage's comment control, select text, or add a note about the whole document."
@@ -1133,7 +1201,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             {comment.kind === "document" ? (
                                 <span className="font-semibold text-slate-200">{commentLabel(comment)}</span>
                             ) : (
-                                <button type="button" onClick={() => jumpToComment(comment)} disabled={!!comment.agent_review_id && !comment.suggestion && comment.anchor?.state === "orphaned" && !showingPinned} className="font-semibold text-cyan-200 hover:underline disabled:cursor-default disabled:text-slate-400" data-comment-jump="">{commentLabel(comment)}</button>
+                                <button type="button" onClick={() => jumpToComment(comment)} disabled={!!comment.agent_review_id && !comment.suggestion && comment.anchor?.state === "orphaned" && !showingEarlier} className="font-semibold text-cyan-200 hover:underline disabled:cursor-default disabled:text-slate-400" data-comment-jump="">{commentLabel(comment)}</button>
                             )}
                             {comment.author && <span className="rounded border border-cyan-800/50 px-1 text-cyan-200">{comment.author.name ?? comment.author.id}</span>}
                             {comment.provenance?.task_id && <Link href={`/task/${encodeURIComponent(comment.provenance.task_id)}`} className="text-cyan-300 hover:underline">Review task</Link>}
@@ -1233,7 +1301,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     );
 
     const noteButtonLabel = textual && mediaType !== "design" ? "Add a note about the whole document" : "Add a note about the whole deliverable";
-    const canNote = isDraft && (!documentChanged || showingPinned) && !showSource && !editing;
+    const canNote = isDraft && onReviewRevision && !showSource && !editing;
 
     // Unsaved text from before a reload that cannot go back where it was written. It is the reader's words, shown
     // verbatim with where they were meant for; placing it opens a composer, discarding it is the only way it goes away.
@@ -1259,7 +1327,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
 
     const reviewPanel = (
         <div className="space-y-3" data-review-panel="">
-            {data && <DecisionCard data={data} viewedRevision={shownRevision} viewingCurrent={!showingPinned} onRefresh={load} directions={directions} compact />}
+            {data && <DecisionCard data={data} viewedRevision={shownRevision} viewingCurrent={!showingEarlier} onRefresh={load} directions={directions} compact />}
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-100"><MessageSquare size={15} className="text-cyan-300" /> {superseded || (documentChanged && !isDraft) ? "Previous review" : "Your review"}</h2>
                 <span className={`rounded-full border px-2 py-0.5 text-[11px] ${roundBadge.tone}`} data-review-round={roundBadge.key}>{roundBadge.text}</span>
@@ -1268,7 +1336,17 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                 // Closed read-only by accepted replacement work (contract §12): the comments stay readable here and in the history, nothing was sent.
                 <p role="status" className="rounded-md border border-slate-700 bg-slate-900/60 p-2 text-[11px] text-slate-300" data-review-superseded={review.replacement_id ?? ""}>
                     This feedback round was closed, read-only, when revision work on this document was accepted{review.closed_at ? ` on ${formatWhen(review.closed_at)}` : ""}.
-                    {" "}Its {review.comments.length} comment{review.comments.length === 1 ? " is" : "s are"} kept and {review.comments.length === 1 ? "was" : "were"} not sent. The new version opens a fresh review.
+                    {reviewOffScreen
+                        ? " Its comments are kept with the earlier version and were not sent."
+                        : <>{" "}Its {review.comments.length} comment{review.comments.length === 1 ? " is" : "s are"} kept and {review.comments.length === 1 ? "was" : "were"} not sent.</>}
+                    {" "}The new version opens a fresh review.
+                </p>
+            )}
+            {earlierReview && review && (
+                // The latest version starts clean; the review that covers an earlier revision is pointed to, never shown here.
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400" data-earlier-review-note="">
+                    <span className="min-w-0 flex-1">{review.status === "draft" ? "Your draft review" : "Your last review"} is on an earlier version (rev {reviewedHash}); its comments stay with that version.</span>
+                    {canViewEarlier && <button type="button" onClick={() => void openEarlier(review.revision_id)} className="shrink-0 text-cyan-300 underline hover:text-cyan-100" data-view-earlier="">View earlier version</button>}
                 </p>
             )}
             {superseded && summary.trim() && summary !== (review?.summary || "") && (
@@ -1282,6 +1360,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
             )}
             <div>{saveIndicator}</div>
             {recoveredCard}
+            {/* Delivery status and Retry stay visible on every version: the card carries no comments or counts. */}
             {submissionCard}
             {!isDraft && review && reviewable && (
                 <button type="button" onClick={() => void startNewReview()} className="text-[11px] text-cyan-300 hover:underline">Start a new review of this {mediaLabel(mediaType).toLowerCase()}</button>
@@ -1295,7 +1374,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             : "No review can start until the current revision is ready."}
                 </p>
             )}
-            {isDraft && (!documentChanged || showingPinned) && !showSource && !editing && (
+            {canNote && (
                 <button type="button" onClick={startDocumentNote} className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs max-lg:min-h-11 text-slate-200 hover:border-cyan-500/50">
                     <MessageSquarePlus size={13} /> {noteButtonLabel}
                 </button>
@@ -1313,7 +1392,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     )}
                 </div>
             )}
-            {!isDraft && review?.summary && (
+            {!isDraft && !reviewOffScreen && review?.summary && (
                 <div>
                     <div className="text-[11px] font-semibold text-slate-300">Summary</div>
                     <p className="mt-1 whitespace-pre-wrap text-sm text-slate-200">{review.summary}</p>
@@ -1483,7 +1562,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                         {doc && (
                             <>
                             {shownRevision && ['markdown', 'pdf', 'image', 'video'].includes(mediaType) && <PresentDocumentButton documentId={doc.id} revisionId={shownRevision.id} contentHash={shownRevision.content_hash} />}
-                            <a href={rawDocumentUrl(doc.id, { revision: showingPinned ? review?.revision_id : null, download: true })} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border max-lg:min-h-11 border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
+                            <a href={rawDocumentUrl(doc.id, { revision: showingEarlier ? shownRevision?.id : null, download: true })} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border max-lg:min-h-11 border-slate-700 px-2.5 py-1.5 text-slate-300 hover:border-slate-500">
                                 <Download size={13} /> Download
                             </a>
                             </>
@@ -1507,7 +1586,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                         {asOf && <span>as of {asOf}</span>}
                         {shownRevision && (
                             <span title={shownRevision.content_hash} data-revision-chip="" data-version={shownRevision.version ?? undefined}>
-                                {shownRevision.version ? `v${shownRevision.version} · ` : ""}rev {shownRevision.content_hash.slice(0, 8)} · captured {formatWhen(shownRevision.captured_at)}{shownRevision.source === "nexus_edit" ? " · edited in Nexus" : ""}
+                                {shownRevision.version ? `v${shownRevision.version} · ` : ""}rev {shownRevision.content_hash.slice(0, 8)} · captured {formatWhen(shownRevision.captured_at)}{shownRevision.source === "nexus_edit" ? " · edited in Nexus" : ""}{showingEarlier ? " · earlier version" : ""}
                             </span>
                         )}
                         {data?.readiness && (
@@ -1587,24 +1666,39 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                             The file on disk is currently unavailable ({data.file_error || data.file_state}). Showing the last captured revision{VISUAL_NOTE(mediaType)}.
                         </div>
                     )}
-                    {data && documentChanged && (
-                        <div role="status" className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100" data-changed-banner="">
-                            <AlertTriangle size={14} className="shrink-0" />
-                            <span className="min-w-0 flex-1">
-                                A newer revision of this document was registered after the one your review covers.{" "}
-                                {showingPinned
-                                    ? `You are viewing rev ${reviewedHash}, the revision you reviewed; comments stay anchored to it. Decisions apply to the latest revision (rev ${latestHash}).`
-                                    : `You are viewing the latest revision (rev ${latestHash}); you reviewed rev ${reviewedHash}, and your review's passage comments stay pinned to it and are not moved.`}
-                            </span>
-                            <button type="button" onClick={() => setViewRevision(showingPinned ? "current" : "pinned")} className="rounded-md border border-amber-400/50 px-2 py-1 text-amber-100 hover:bg-amber-500/20">
-                                {showingPinned ? "View current file" : "View reviewed revision"}
-                            </button>
-                            {!isDraft && !showingPinned && reviewable && (
-                                <button type="button" onClick={() => void startNewReview()} className="rounded-md border border-cyan-400/50 px-2 py-1 text-cyan-100 hover:bg-cyan-500/20">Review this revision</button>
+                    {/* Which version is on screen (task 381916df). The latest gets a calm check-mark badge and nothing to read;
+                        an earlier one says plainly that it is not the latest, with the way back. */}
+                    {data && showingEarlier && (
+                        <div role="status" className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100" data-version-marker="earlier" data-earlier-revision={shownRevision?.id ?? ""}>
+                            <HistoryIcon size={14} className="shrink-0" aria-hidden="true" />
+                            <span className="min-w-0 flex-1"><strong className="font-semibold">Earlier version, not the latest</strong> (rev {shownHash}). Comments shown are the ones written on this version; decisions apply to the latest (rev {latestHash}).</span>
+                            {nextEarlier && (
+                                <button type="button" onClick={() => void openEarlier(nextEarlier)} className="rounded-md border border-amber-400/30 px-2 py-1 text-amber-100/80 hover:bg-amber-500/20" data-next-earlier="">
+                                    Another earlier version
+                                </button>
                             )}
+                            <button type="button" onClick={() => setViewRevision("current")} className="rounded-md border border-amber-400/50 px-2 py-1 text-amber-100 hover:bg-amber-500/20" data-view-latest="">
+                                Back to latest version
+                            </button>
                         </div>
                     )}
-                    {data && <OutgoingCard data={data} viewingCurrent={!showingPinned} onRefresh={load} />}
+                    {data?.revision && !showingEarlier && !editing && (
+                        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2" data-version-marker="latest">
+                            <span role="status" className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/50 bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-100" data-latest-version-badge="">
+                                <CheckCircle2 size={16} className="shrink-0 text-emerald-300" aria-hidden="true" /> Latest version
+                            </span>
+                            {earlierTargets.length > 0 && (
+                                <button type="button" onClick={() => void openEarlier(earlierTargets[0])} className="inline-flex items-center text-xs text-slate-400 underline decoration-slate-600 underline-offset-2 hover:text-slate-200" data-view-earlier="">
+                                    View earlier version
+                                </button>
+                            )}
+                            {documentChanged && !isDraft && reviewable && (
+                                <button type="button" onClick={() => void startNewReview()} className="rounded-md border border-cyan-400/50 px-2 py-1 text-xs text-cyan-100 hover:bg-cyan-500/20">Review this revision</button>
+                            )}
+                            {earlierError && <span role="alert" className="text-xs text-rose-200" data-earlier-error="">{earlierError}</span>}
+                        </div>
+                    )}
+                    {data && <OutgoingCard data={data} viewingCurrent={!showingEarlier} onRefresh={load} />}
                     {/* The decision heads the review rail (desktop) and the Review & decide drawer (phone), so the stage stays the visual. */}
                     {stage}
                 </article>
