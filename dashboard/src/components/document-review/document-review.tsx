@@ -548,7 +548,12 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
     /** The review is not on the revision on screen: its summary and comment count stay with its own revision (delivery status does not). */
     const reviewOffScreen = Boolean(review) && !showingPinned && (documentChanged || showingOlder);
     /** On an earlier version, another earlier revision that also holds comments, if any. */
-    const nextEarlier = showingEarlier ? earlierTargets.find((id) => id !== shownRevision?.id) ?? null : null;
+    // Steps through every earlier revision with comments in order and wraps around, so each one is reachable (QA round 1:
+    // picking "the first one that is not on screen" bounced between the first two and never reached a third).
+    const earlierIndex = showingEarlier && shownRevision ? earlierTargets.indexOf(shownRevision.id) : -1;
+    const nextEarlier = showingEarlier && earlierTargets.length > 1
+        ? earlierTargets[(earlierIndex + 1) % earlierTargets.length] ?? null
+        : showingEarlier && earlierTargets.length === 1 && earlierIndex === -1 ? earlierTargets[0] : null;
     /**
      * Opens an earlier revision with its comments. The reviewed revision comes with the review; any other one (executor
      * comments only) is read on demand: its metadata from History and, for text media, its exact bytes. Reading only.
@@ -1671,7 +1676,7 @@ export function DocumentReviewPage({ documentId, timings }: DocumentReviewPagePr
                     {data && showingEarlier && (
                         <div role="status" className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100" data-version-marker="earlier" data-earlier-revision={shownRevision?.id ?? ""}>
                             <HistoryIcon size={14} className="shrink-0" aria-hidden="true" />
-                            <span className="min-w-0 flex-1"><strong className="font-semibold">Earlier version, not the latest</strong> (rev {shownHash}). Comments shown are the ones written on this version; decisions apply to the latest (rev {latestHash}).</span>
+                            <span className="min-w-0 flex-1"><strong className="font-semibold">Earlier version, not the latest</strong> (rev {shownHash}{earlierIndex >= 0 && earlierTargets.length > 1 ? <span data-earlier-position="">; {earlierIndex + 1} of {earlierTargets.length} earlier versions with comments</span> : null}). Comments shown are the ones written on this version; decisions apply to the latest (rev {latestHash}).</span>
                             {nextEarlier && (
                                 <button type="button" onClick={() => void openEarlier(nextEarlier)} className="rounded-md border border-amber-400/30 px-2 py-1 text-amber-100/80 hover:bg-amber-500/20" data-next-earlier="">
                                     Another earlier version

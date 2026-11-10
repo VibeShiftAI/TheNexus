@@ -400,3 +400,59 @@ test('executor comments written on an earlier revision leave the latest version 
     assert.equal(srv.calls.filter(x => x.method !== 'GET').length, 0, 'viewing never writes');
   } finally { t.cleanup(); }
 });
+
+test('every earlier revision with comments is reachable: "Another earlier version" steps through all of them in order and wraps', async () => {
+  // QA round 1: a human review on rev-1 plus executor comments on rev-2 and rev-3, with rev-4 current. Stepping used to
+  // bounce between rev-1 and rev-2, so rev-3's comments were hidden on the latest version and could not be opened.
+  const content4 = `${CONTENT_3}\n\nFourth version.`;
+  BY_ID['rev-4'] = [rev('rev-4', 'd', content4, '2026-10-04T20:00:00Z'), content4];
+  const findings = ['rev-2', 'rev-3'].map((revision_id, i) => ({ ...COMMENT, id: `executor-${i}`, review_id: `agent-round-${i}`, agent_review_id: `agent-${i}`, revision_id, historical: true, body: `Executor comment on ${revision_id}.`, author: { id: 'Claude reviewer', authority: 'assigned_executor' } }));
+  const srv = server({ review: submittedReview(), current: 'rev-4' });
+  const base = srv.handler;
+  srv.handler = async (url, init) => {
+    const method = init.method ?? 'GET';
+    if (url.pathname === '/api/documents/doc-1/raw') { srv.calls.push({ method, path: url.pathname, revision: url.searchParams.get('revision') }); return { ok: true, status: 200, text: async () => BY_ID[url.searchParams.get('revision')][1] }; }
+    if (url.pathname.startsWith('/api/documents/doc-1/agent-reviews')) return response({ error: 'not in this fixture' }, 404);
+    const res = await base(url, init);
+    if (method === 'GET' && url.pathname === '/api/documents/doc-1') return response({ ...(await res.json()), inline_comments: findings });
+    return res;
+  };
+  const t = mount(srv);
+  try {
+    await settle();
+    const c = t.container;
+    const shown = () => c.querySelector('[data-version-marker="earlier"]')?.dataset.earlierRevision ?? null;
+    const position = () => c.querySelector('[data-earlier-position]')?.textContent.trim() ?? null;
+    const listText = () => c.querySelector('[data-comment-list]').textContent;
+    const ALL = [/Summarise the studies here\./, /Executor comment on rev-2\./, /Executor comment on rev-3\./];
+
+    // Latest (rev-4): badge and a clean slate; none of the three earlier revisions' comments.
+    assert.equal(headerRevision(c), 'dddddddd');
+    assert.equal(c.querySelector('[data-latest-version-badge]').textContent.trim(), 'Latest version');
+    for (const body of ALL) assert.doesNotMatch(c.textContent, body);
+
+    // The reviewed revision first, then each executor revision, each showing only its own comment.
+    await click(c.querySelector('[data-view-earlier]'));
+    const visited = [];
+    const expected = [['rev-1', 'aaaaaaaa', 0], ['rev-2', 'bbbbbbbb', 1], ['rev-3', 'cccccccc', 2]];
+    for (const [id, hash, own] of expected) {
+      visited.push(shown());
+      assert.equal(shown(), id);
+      assert.equal(headerRevision(c), hash);
+      assert.match(c.querySelector('[data-version-marker="earlier"]').textContent, /Earlier version, not the latest/);
+      assert.equal(position(), `; ${own + 1} of 3 earlier versions with comments`);
+      ALL.forEach((body, i) => (i === own ? assert.match : assert.doesNotMatch)(listText(), body));
+      assert.ok(card(c).querySelector('[data-decision-blocked]'), `no decision on ${id}`);
+      await click(c.querySelector('[data-next-earlier]'));
+    }
+    visited.push(shown());
+    assert.deepEqual(visited, ['rev-1', 'rev-2', 'rev-3', 'rev-1'], 'all three are reached, then it wraps to the first');
+
+    await click(button(c, 'Back to latest version'));
+    assert.equal(headerRevision(c), 'dddddddd');
+    assert.ok(c.querySelector('[data-latest-version-badge]'));
+    for (const body of ALL) assert.doesNotMatch(c.textContent, body);
+    assert.deepEqual(srv.state.review.comments, [COMMENT], 'the stored review comments are unchanged');
+    assert.equal(srv.calls.filter(x => x.method !== 'GET').length, 0, 'viewing never writes');
+  } finally { t.cleanup(); delete BY_ID['rev-4']; }
+});
